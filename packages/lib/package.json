@@ -5,8 +5,8 @@
   "main": "index.ts",
   "types": "index.ts",
   "scripts": {
-    "build": "npx tsc",
-    "dev": "npx tsc --watch",
+    "build": "../../node_modules/.bin/tsc",
+    "dev": "../../node_modules/.bin/tsc --watch",
     "type-check": "../../node_modules/.bin/tsc --noEmit"
   },
   "dependencies": {

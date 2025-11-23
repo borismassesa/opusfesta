@@ -121,6 +121,14 @@ pnpm db:studio    # Open Prisma Studio
 pnpm db:migrate   # Run migrations
 ```
 
+### Pre-push checklist
+
+Run the monorepo checks (nested git warning + lint/test/type-check on changed workspaces):
+
+```bash
+npm run check:prepush  # optional BASE_REF=origin/main or HEAD~1 fallback
+```
+
 ## Features
 
 ### V0 (Private Pilot - 4-6 Weeks)
