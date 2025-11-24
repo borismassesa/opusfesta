@@ -117,3 +117,6 @@ prisma/migrations/
 # Temporary files
 *.tmp
 *.temp
+
+# Git backups from nested repos
+**/.git.bak/
