@@ -18,13 +18,7 @@
         "name": "next"
       }
     ],
-    "ignoreDeprecations": "5.0",
-    "baseUrl": ".",
-    "paths": {
-      "@/*": ["./src/*"],
-      "@thefesta/lib": ["../../packages/lib"],
-      "@thefesta/ui": ["../../packages/ui"]
-    }
+    "ignoreDeprecations": "5.0"
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]
