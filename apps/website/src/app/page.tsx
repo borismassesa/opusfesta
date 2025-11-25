@@ -1,7 +1,7 @@
+import Image from 'next/image';
 import {
   ArrowRight,
   ArrowUpRight,
-  BookOpen,
   Camera,
   Clock,
   CreditCard,
@@ -11,13 +11,9 @@ import {
   Instagram,
   LayoutGrid,
   Lock,
-  Monitor,
   Music,
-  PieChart,
   Plus,
   Quote,
-  Search,
-  Sparkles,
   Star,
   Store,
   TrendingUp,
@@ -25,6 +21,11 @@ import {
   Users,
   CheckCircle2,
 } from 'lucide-react';
+import CategoryBar from '../components/home/category-bar';
+import Hero from '../components/home/hero';
+import Navbar from '../components/home/navbar';
+import ShotGrid from '../components/home/shot-grid';
+import VendorMarquee from '../components/home/vendor-marquee';
 import { ThemeToggle } from '../components/theme-toggle';
 
 type Testimonial = {
@@ -262,6 +263,7 @@ function TestimonialColumn({ direction, items, visibility }: (typeof testimonial
       {[...Array(2)].map((_, loopIndex) =>
         items.map((item, index) => {
           const isAccent = item.accent;
+          const avatarSrc = item.avatar ?? 'https://picsum.photos/seed/thefesta-avatar/80/80';
           return (
             <article
               key={`${item.name}-${loopIndex}-${index}`}
@@ -273,16 +275,16 @@ function TestimonialColumn({ direction, items, visibility }: (typeof testimonial
             >
               <div className="mb-4 flex items-center gap-3">
                 {isAccent ? (
-                  <div className="flex size-10 items-center justify-center rounded-full bg-sage-500 text-white font-serif italic text-lg">
+                  <div className="flex size-10 items-center justify-center rounded-full bg-sage-500 text-white font-sans italic text-lg font-semibold">
                     TF
                   </div>
                 ) : (
-                  <img
-                    src={item.avatar}
+                  <Image
+                    src={avatarSrc}
                     alt={item.name}
+                    width={40}
+                    height={40}
                     className="size-10 rounded-full object-cover"
-                    loading="lazy"
-                    decoding="async"
                   />
                 )}
                 <div>
@@ -312,93 +314,13 @@ function TestimonialColumn({ direction, items, visibility }: (typeof testimonial
 
 export default function HomePage() {
   return (
-    <div className="relative">
-      <div className="pointer-events-none fixed inset-0 -z-10 bg-[#FAFAFA] dark:bg-[#0f1116]" />
+    <div className="relative bg-[#f8f7f4] text-gray-900 dark:bg-[#0f1116] dark:text-slate-200">
+      <Navbar />
 
-      <nav className="fixed top-0 z-50 w-full border-b border-slate-100 bg-white/95 backdrop-blur-xl shadow-sm dark:border-slate-800 dark:bg-[#0f1116]/95 dark:shadow-slate-900/30">
-        <div className="mx-auto grid h-16 max-w-7xl grid-cols-[auto,1fr,auto] items-center gap-6 px-6">
-          <a href="#" className="group flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sage-50 text-sage-700 ring-1 ring-sage-200 transition-colors group-hover:bg-sage-100 dark:bg-slate-800 dark:text-sage-200 dark:ring-slate-700 dark:group-hover:bg-slate-700">
-              <Gem className="h-4 w-4" />
-            </div>
-            <span className="font-serif text-xl font-medium tracking-tight text-slate-900 dark:text-white">TheFesta</span>
-          </a>
-
-          <div className="hidden items-center justify-center gap-6 md:flex">
-            {['Planning Tools', 'Vendors', 'Websites', 'Ideas'].map(item => (
-              <a
-                key={item}
-                href="#"
-                className="text-sm font-medium text-slate-600 transition-colors hover:text-sage-700 dark:text-slate-300 dark:hover:text-sage-300"
-              >
-                {item}
-              </a>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-end gap-4">
-            <a
-              href="#"
-              className="text-sm font-medium text-slate-500 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white"
-            >
-              Log In
-            </a>
-            <button
-              type="button"
-              className="beam-button group relative hidden items-center justify-center rounded-full px-12 py-4 text-[11px] font-semibold uppercase tracking-[0.18em] sm:inline-flex"
-            >
-              <span className="beam-border" aria-hidden />
-              <span className="beam-inner" aria-hidden />
-              <span className="beam-dots" aria-hidden />
-              <span className="beam-glow" aria-hidden />
-              <span className="relative z-10 flex items-center gap-2 text-white/90 transition duration-300 group-hover:text-white">
-                Sign Up
-                <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
-              </span>
-            </button>
-          </div>
-        </div>
-      </nav>
-
-      <main className="relative pt-28 lg:pt-28">
-        {/* Hero */}
-        <section className="relative overflow-hidden px-6 pt-20 pb-12 lg:pt-32">
-          <div className="pointer-events-none absolute inset-0 bg-grid-slate [mask-image:linear-gradient(to_bottom,white,transparent)] dark:[mask-image:linear-gradient(to_bottom,#0f1116,transparent)]" />
-          <div className="relative z-10 mx-auto max-w-5xl space-y-8 text-center">
-            <h1 className="text-5xl font-medium tracking-tight text-slate-900 leading-[1.05] lg:text-7xl dark:text-white">
-              The operating system <br />
-              <span className="text-slate-400">for your </span>
-              <span className="font-serif italic text-slate-900 font-light dark:text-white">perfect day.</span>
-            </h1>
-            <p className="mx-auto max-w-xl text-lg font-light leading-relaxed text-slate-500 dark:text-slate-300">
-              Orchestrate vendors, guests, and budgets in one unified workspace. Built for modern couples who demand
-              precision.
-            </p>
-            <div className="mx-auto flex max-w-md flex-col gap-3">
-              <div className="group relative">
-                <div className="absolute -inset-1 rounded-full bg-white/30 opacity-25 blur transition duration-1000 group-hover:opacity-50 group-hover:duration-200 dark:bg-white/10" />
-                <form className="shimmer-button relative flex items-center">
-                  <span className="shimmer-rotate" aria-hidden />
-                  <span className="shimmer-surface" aria-hidden />
-                  <span className="shimmer-inner w-full gap-3 pr-3">
-                    <div className="relative z-10 pl-1 text-current">
-                      <Sparkles className="h-4 w-4" />
-                    </div>
-                    <input
-                      type="text"
-                      placeholder="Find photographers in New York..."
-                      className="z-10 w-full bg-transparent text-sm placeholder:text-inherit/70 focus:outline-none focus:ring-0"
-                    />
-                    <span className="shimmer-content inline-flex size-9 items-center justify-center rounded-full bg-[var(--icon-bg)] ring-1 ring-[var(--icon-ring)]">
-                      <ArrowRight className="h-4 w-4" />
-                    </span>
-                  </span>
-                </form>
-              </div>
-              <p className="text-[11px] font-medium tracking-wide text-slate-400">TRUSTED BY 10,000+ PLANNERS & COUPLES</p>
-            </div>
-          </div>
-        </section>
+      <main className="relative">
+        <Hero />
+        <CategoryBar />
+        <ShotGrid />
 
         {/* Dashboard Preview */}
         <section className="animate-fade-in mx-auto mb-20 max-w-6xl px-6" style={{ animationDelay: '0.1s' }}>
@@ -409,7 +331,7 @@ export default function HomePage() {
                 <span className="h-2.5 w-2.5 rounded-full bg-amber-300 shadow-sm shadow-amber-400/30 ring-1 ring-white/60 dark:ring-white/10" />
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-500/40 ring-1 ring-white/60 dark:ring-white/10" />
               </div>
-              <div className="flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50/80 px-6 py-1 text-[11px] font-medium text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
+              <div className="flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50/80 px-6 py-1 text-[11px] font-mono font-medium text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
                 <Lock className="h-3 w-3" />
                 thefesta.com/dashboard
               </div>
@@ -420,7 +342,7 @@ export default function HomePage() {
               <aside className="glass-card hidden w-64 border border-slate-200/70 bg-white/80 px-4 py-6 shadow-lg dark:border-slate-800 dark:bg-slate-900/80 md:flex md:flex-col">
                 <div className="mb-8 rounded-xl border border-white/40 bg-white/30 p-3 shadow-sm backdrop-blur-sm transition-all hover:border-white/60 dark:border-white/5 dark:bg-white/5 dark:hover:border-white/10">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200/70 bg-white/80 text-rose-600 font-serif italic text-base shadow-sm ring-2 ring-white/80 dark:border-rose-900/60 dark:bg-white/10 dark:text-rose-200 dark:ring-white/10">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl border border-rose-200/70 bg-white/80 text-rose-600 font-sans italic text-base font-semibold shadow-sm ring-2 ring-white/80 dark:border-rose-900/60 dark:bg-white/10 dark:text-rose-200 dark:ring-white/10">
                       S&J
                     </div>
                     <div>
@@ -617,7 +539,7 @@ export default function HomePage() {
         <section className="relative mx-auto mb-24 max-w-7xl px-6">
           <div className="mb-10 flex flex-col items-start gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="space-y-2">
-              <h2 className="font-serif text-3xl font-medium tracking-tight text-slate-900 sm:text-4xl dark:text-white">
+              <h2 className="text-3xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
                 Build your <span className="italic text-slate-700 dark:text-slate-200">vendor team</span>
               </h2>
               <p className="max-w-2xl text-sm text-slate-500 dark:text-slate-300">
@@ -666,8 +588,8 @@ export default function HomePage() {
                 <div className="relative flex h-full flex-col justify-between p-4 sm:p-5">
                   <div className="flex items-end justify-between gap-3">
                     <div>
-                      <h3 className="text-xl font-serif font-medium text-white drop-shadow-sm">{tile.title}</h3>
-                      <p className="text-xs font-medium uppercase tracking-wide text-white/70">View partners</p>
+                      <h3 className="text-xl font-semibold text-white drop-shadow-sm">{tile.title}</h3>
+                      <p className="text-xs font-mono font-medium uppercase tracking-wide text-white/70">View partners</p>
                     </div>
                     <div className="flex size-10 items-center justify-center rounded-full bg-white/20 text-white ring-1 ring-white/30 backdrop-blur group-hover:bg-white/30">
                       <ArrowRight className="h-4 w-4" />
@@ -678,6 +600,8 @@ export default function HomePage() {
             ))}
           </div>
         </section>
+
+        <VendorMarquee />
 
         {/* Ideas Section */}
         <section
@@ -721,18 +645,18 @@ export default function HomePage() {
               {featuredArticles.map(article => (
                 <article
                   key={article.title}
-                  className="glass-card group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_55px_rgba(0,0,0,0.12)] dark:border-slate-800 dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
+              className="glass-card group relative flex h-full flex-col overflow-hidden rounded-2xl border border-slate-200 shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_18px_55px_rgba(0,0,0,0.12)] dark:border-slate-800 dark:shadow-[0_12px_40px_rgba(0,0,0,0.35)]"
                 >
-                <div className="relative overflow-hidden">
-                  <img
+                <div className="relative overflow-hidden aspect-[4/3]">
+                  <Image
                     src={article.image}
                     alt={article.title}
-                    className="aspect-[4/3] w-full object-cover transition duration-700 group-hover:scale-105"
-                    loading="lazy"
-                    decoding="async"
+                    fill
+                    sizes="(min-width: 1024px) 33vw, 100vw"
+                    className="object-cover transition duration-700 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent opacity-80" />
-                  <div className="absolute left-4 bottom-4 rounded-full bg-white/85 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-700 ring-1 ring-emerald-100 shadow-sm dark:bg-black/70 dark:text-emerald-200 dark:ring-emerald-900/40">
+                  <div className="absolute left-4 bottom-4 rounded-full bg-white/85 px-3 py-1 text-[11px] font-mono font-semibold uppercase tracking-[0.12em] text-emerald-700 ring-1 ring-emerald-100 shadow-sm dark:bg-black/70 dark:text-emerald-200 dark:ring-emerald-900/40">
                     {article.category}
                   </div>
                 </div>
@@ -741,7 +665,7 @@ export default function HomePage() {
                     <h3 className="text-xl font-semibold leading-snug text-slate-900 dark:text-white">{article.title}</h3>
                     <p className="text-sm text-slate-600 dark:text-slate-200/80">{article.description}</p>
                   </div>
-                  <div className="flex items-center justify-between text-[12px] font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
+                  <div className="flex items-center justify-between text-[12px] font-mono font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-300">
                     <span>{article.readTime}</span>
                     <span className="inline-flex items-center gap-1 transition group-hover:text-emerald-600 dark:group-hover:text-emerald-300">
                       Read <ArrowUpRight className="h-3.5 w-3.5" />
@@ -758,7 +682,7 @@ export default function HomePage() {
         <section className="relative mb-24 mx-auto max-w-7xl bg-transparent px-6">
           <div className="mb-12 flex items-center justify-between">
             <div className="space-y-2">
-              <h2 className="font-serif text-2xl font-medium tracking-tight text-slate-900 sm:text-4xl dark:text-white">
+              <h2 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-white">
                 Community Stories
               </h2>
               <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -790,7 +714,7 @@ export default function HomePage() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sage-50 text-sage-700 dark:bg-slate-900 dark:text-sage-200">
                   <Gem className="h-4 w-4" />
                 </div>
-                <span className="font-serif text-xl font-medium text-slate-900 dark:text-white">TheFesta</span>
+                <span className="font-display text-xl font-medium text-slate-900 dark:text-white">TheFesta</span>
               </a>
               <p className="mb-6 max-w-xs text-sm text-slate-500 dark:text-slate-300">
                 The ultimate wedding planning ecosystem. Connecting couples with top-tier vendors for unforgettable

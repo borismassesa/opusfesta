@@ -6,8 +6,10 @@ const config: Config = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'Plus Jakarta Sans', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        serif: ['Playfair Display', 'Georgia', 'serif'],
+        sans: ['var(--font-sans)', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display)', 'Pacifico', 'cursive'],
+        serif: ['var(--font-display)', 'Pacifico', 'cursive'],
+        mono: ['var(--font-mono)', 'JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
         sage: {
@@ -26,6 +28,12 @@ const config: Config = {
           50: '#fdf2f8',
           100: '#fce7f3',
           500: '#f472b6',
+        },
+        dribbble: {
+          pink: '#ea4c89',
+          dark: '#0d0c22',
+          gray: '#9e9ea7',
+          bg: '#f8f7f4',
         },
         charcoal: {
           900: '#0f172a',
