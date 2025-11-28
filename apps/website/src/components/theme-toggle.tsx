@@ -1,13 +1,13 @@
 'use client';
 
-import { Monitor, Moon, Sun } from 'lucide-react';
+import { ComputerDesktopIcon, MoonIcon, SunIcon } from '@heroicons/react/24/outline';
 import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 
 const options = [
-  { value: 'light', icon: Sun, label: 'Light' },
-  { value: 'system', icon: Monitor, label: 'System' },
-  { value: 'dark', icon: Moon, label: 'Dark' },
+  { value: 'light', icon: SunIcon, label: 'Light' },
+  { value: 'system', icon: ComputerDesktopIcon, label: 'System' },
+  { value: 'dark', icon: MoonIcon, label: 'Dark' },
 ] as const;
 
 export function ThemeToggle() {

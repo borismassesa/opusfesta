@@ -2,14 +2,14 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { Search, MapPin, Users, Image as ImageIcon, Heart } from 'lucide-react';
+import { MagnifyingGlassIcon, MapPinIcon, UsersIcon, PhotoIcon, HeartIcon } from '@heroicons/react/24/outline';
 import { HERO_SLIDES } from '../../app/home-data';
 
 const SEARCH_TABS = [
-  { id: 'venues', label: 'Venues', icon: MapPin, placeholder: 'What type of venue are you looking for?' },
-  { id: 'vendors', label: 'Vendors', icon: Users, placeholder: 'What type of vendor do you need?' },
-  { id: 'websites', label: 'Wedding Websites', icon: ImageIcon, placeholder: 'What wedding website features do you need?' },
-  { id: 'ideas', label: 'Ideas', icon: Heart, placeholder: 'What are you looking to create?' },
+  { id: 'venues', label: 'Venues', icon: MapPinIcon, placeholder: 'What type of venue are you looking for?' },
+  { id: 'vendors', label: 'Vendors', icon: UsersIcon, placeholder: 'What type of vendor do you need?' },
+  { id: 'websites', label: 'Wedding Websites', icon: PhotoIcon, placeholder: 'What wedding website features do you need?' },
+  { id: 'ideas', label: 'Ideas', icon: HeartIcon, placeholder: 'What are you looking to create?' },
 ];
 
 const POPULAR_CITIES = [
@@ -115,7 +115,7 @@ const Hero = () => {
                     onClick={() => setShowCityDropdown(!showCityDropdown)}
                     className="flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-gray-700 transition-colors hover:text-gray-900"
                   >
-                    <MapPin className="h-4 w-4 text-gray-500" />
+                    <MapPinIcon className="h-4 w-4 text-gray-500" />
                     <span className="max-w-[100px] truncate sm:max-w-[120px]">{location || 'Location'}</span>
                   </button>
                   {showCityDropdown && (
@@ -148,7 +148,7 @@ const Hero = () => {
                                 className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
                               >
                                 <div className="flex items-center gap-2">
-                                  <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                                  <MapPinIcon className="h-3.5 w-3.5 text-gray-400" />
                                   <span>{city}</span>
                                 </div>
                               </button>
@@ -179,7 +179,7 @@ const Hero = () => {
                   className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-dribbble-pink text-white shadow-lg shadow-purple-200 transition-colors hover:bg-dribbble-pink/90"
                   aria-label="Search"
                 >
-                  <Search className="h-4 w-4" />
+                  <MagnifyingGlassIcon className="h-4 w-4" />
                 </button>
               </form>
             </div>

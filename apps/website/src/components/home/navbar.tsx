@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import type { CSSProperties } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { Menu, X } from 'lucide-react';
+import { Bars3Icon, XMarkIcon } from '@heroicons/react/24/outline';
 import { NAV_LINKS } from '../../app/home-data';
 
 const Navbar = () => {
@@ -37,7 +37,7 @@ const Navbar = () => {
             aria-expanded={isMenuOpen}
             aria-label="Toggle menu"
           >
-            {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            {isMenuOpen ? <XMarkIcon className="h-6 w-6" /> : <Bars3Icon className="h-6 w-6" />}
           </button>
 
           <Link href="/" className="select-none font-display text-2xl text-gray-900 transition-colors hover:text-gray-700 md:text-3xl">

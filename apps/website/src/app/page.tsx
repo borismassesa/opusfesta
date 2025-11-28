@@ -1,34 +1,29 @@
 import Image from 'next/image';
 import {
-  ArrowRight,
-  ArrowUpRight,
-  Camera,
-  Clock,
-  CreditCard,
-  Facebook,
-  Gem,
-  Heart,
-  Instagram,
-  LayoutGrid,
-  Lock,
-  Music,
-  Plus,
-  Quote,
-  Star,
-  Store,
-  TrendingUp,
-  Twitter,
-  Users,
-  CheckCircle2,
-  ListChecks,
-  Calendar,
-  Sparkles,
-  Check,
-  Mail,
-  UserPlus,
-  ChevronLeft,
-  ChevronRight,
-} from 'lucide-react';
+  ArrowRightIcon,
+  ArrowUpRightIcon,
+  CameraIcon,
+  ClockIcon,
+  CreditCardIcon,
+  LockClosedIcon,
+  MusicalNoteIcon,
+  PlusIcon,
+  StarIcon,
+  BuildingStorefrontIcon,
+  ArrowTrendingUpIcon,
+  UsersIcon,
+  CheckCircleIcon,
+  ListBulletIcon,
+  CalendarIcon,
+  SparklesIcon,
+  CheckIcon,
+  EnvelopeIcon,
+  UserPlusIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Squares2X2Icon,
+} from '@heroicons/react/24/outline';
+import { HeartIcon } from '@heroicons/react/24/solid';
 import CategoryBar from '../components/home/category-bar';
 import Hero from '../components/home/hero';
 import Navbar from '../components/home/navbar';
@@ -307,7 +302,7 @@ function TestimonialColumn({ direction, items, visibility }: (typeof testimonial
               >
                 <div className="flex gap-0.5">
                   {[...Array(5)].map((_, i) => (
-                    <Star
+                    <StarIcon
                       key={i}
                       className={`h-3 w-3 transition-all ${
                         i < item.rating
@@ -375,6 +370,44 @@ function TestimonialColumn({ direction, items, visibility }: (typeof testimonial
   );
 }
 
+const BentoCard = ({
+  children,
+  className = "",
+  title,
+  subtitle,
+  bullets
+}: {
+  children?: React.ReactNode;
+  className?: string;
+  title?: string;
+  subtitle?: string;
+  bullets?: string[];
+}) => {
+  return (
+    <div className={`bg-gray-50 rounded-[2rem] p-8 flex flex-col ${className} relative overflow-hidden group hover:shadow-lg transition-shadow duration-500`}>
+      {(title || subtitle) && (
+        <div className="mb-6 z-10 relative">
+          {title && <h3 className="text-xl sm:text-2xl font-medium text-gray-900 mb-2 leading-tight dark:text-white">{title}</h3>}
+          {subtitle && <p className="text-sm text-gray-500 leading-relaxed dark:text-slate-400">{subtitle}</p>}
+          {bullets && (
+            <ul className="mt-4 space-y-2">
+              {bullets.map((b, i) => (
+                <li key={i} className="flex items-center gap-2 text-sm text-gray-600 dark:text-slate-300">
+                  <div className="w-1 h-1 bg-gray-400 rounded-full"></div>
+                  {b}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
+      <div className="flex-1 flex items-center justify-center relative z-10 w-full">
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export default function HomePage() {
   return (
     <div className="relative bg-festa-base text-gray-900">
@@ -382,6 +415,210 @@ export default function HomePage() {
 
       <main className="relative">
         <Hero />
+
+        {/* Features Bento Grid Section */}
+        <section className="mx-auto max-w-6xl px-6 py-20">
+          <h1 className="mb-16 max-w-3xl mx-auto text-center text-3xl font-serif leading-tight text-gray-900 md:text-5xl dark:text-white">
+            Everything you need to plan<br />your perfect celebration
+          </h1>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[minmax(300px,auto)]">
+
+            {/* Wedding venues */}
+            <BentoCard
+              className="md:col-span-2 bg-[#f9f9f9] dark:bg-slate-900/40"
+              title="Wedding venues"
+              subtitle="Photos, reviews, and so much more... get in touch from here!"
+            >
+              <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Stats Section */}
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl bg-white dark:bg-slate-800 p-4 shadow-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <BuildingStorefrontIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Venues</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">500+</p>
+                    </div>
+                    <div className="rounded-xl bg-white dark:bg-slate-800 p-4 shadow-sm">
+                      <div className="flex items-center gap-2 mb-1">
+                        <StarIcon className="h-4 w-4 text-amber-500 dark:text-amber-400" />
+                        <span className="text-xs font-medium text-gray-500 dark:text-gray-400">Avg Rating</span>
+                      </div>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">4.8</p>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 shadow-sm border border-gray-200 dark:border-slate-700">
+                      Verified reviews from real couples
+                    </span>
+                    <span className="rounded-full bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 shadow-sm border border-gray-200 dark:border-slate-700">
+                      Filter by capacity & location
+                    </span>
+                    <span className="rounded-full bg-white dark:bg-slate-800 px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 shadow-sm border border-gray-200 dark:border-slate-700">
+                      Direct messaging with venues
+                    </span>
+                  </div>
+                </div>
+
+                {/* Preview Cards */}
+                <div className="space-y-2">
+                  <div className="rounded-xl bg-white dark:bg-slate-800 p-3 shadow-sm border border-gray-200 dark:border-slate-700">
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-gray-200 dark:bg-slate-700">
+                        <Image
+                          src="https://picsum.photos/seed/venue1/100/100"
+                          alt="Venue"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">Sea Cliff Hotel</h4>
+                          <div className="flex items-center gap-1">
+                            <StarIcon className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">4.9</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          <span className="rounded-full bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                            Dar es Salaam
+                          </span>
+                          <span className="rounded-full bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                            200-500 guests
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl bg-white dark:bg-slate-800 p-3 shadow-sm border border-gray-200 dark:border-slate-700">
+                    <div className="flex items-center gap-3">
+                      <div className="relative w-16 h-16 rounded-lg overflow-hidden shrink-0 bg-gray-200 dark:bg-slate-700">
+                        <Image
+                          src="https://picsum.photos/seed/venue2/100/100"
+                          alt="Venue"
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">Hyatt Regency</h4>
+                          <div className="flex items-center gap-1">
+                            <StarIcon className="h-3 w-3 fill-amber-400 text-amber-400" />
+                            <span className="text-xs font-medium text-gray-600 dark:text-gray-300">4.7</span>
+                          </div>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          <span className="rounded-full bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                            Arusha
+                          </span>
+                          <span className="rounded-full bg-gray-100 dark:bg-slate-700 px-2 py-0.5 text-[10px] font-medium text-gray-600 dark:text-gray-300">
+                            100-300 guests
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </BentoCard>
+
+            {/* Vendors */}
+            <BentoCard
+              className="bg-[#f9f9f9] dark:bg-slate-900/40"
+              title="Vendors"
+              subtitle="Find the best wedding vendors near you in every category."
+            >
+              <div className="grid grid-cols-3 gap-3">
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-md dark:bg-slate-800">
+                    <CameraIcon className="h-7 w-7 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">Photo</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-md dark:bg-slate-800">
+                    <MusicalNoteIcon className="h-7 w-7 text-rose-600 dark:text-rose-400" />
+                  </div>
+                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">Music</span>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white shadow-md dark:bg-slate-800">
+                    <SparklesIcon className="h-7 w-7 text-emerald-600 dark:text-emerald-400" />
+                  </div>
+                  <span className="text-[10px] font-medium text-gray-600 dark:text-gray-300">Decor</span>
+                </div>
+              </div>
+            </BentoCard>
+
+            {/* Your free wedding website */}
+            <BentoCard
+              className="bg-[#f9f9f9] dark:bg-slate-900/40"
+              title="Your free wedding website"
+              subtitle="Give your guests all the details - and tell your love story - with a 100% customisable website."
+            >
+              <div className="relative w-full h-32 rounded-xl overflow-hidden shadow-lg border-2 border-white dark:border-slate-700">
+                <Image
+                  src="https://picsum.photos/seed/wedding-website/600/400"
+                  alt="Wedding website preview"
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                <div className="absolute bottom-2 left-2 right-2">
+                  <p className="text-[10px] font-serif text-white">Sarah & James</p>
+                  <p className="text-[8px] text-white/70">June 14, 2025 • Zanzibar</p>
+                </div>
+              </div>
+            </BentoCard>
+
+            {/* Infinite inspiration */}
+            <BentoCard
+              className="bg-[#f9f9f9] dark:bg-slate-900/40"
+              title="Infinite inspiration"
+              subtitle="The latest trends and ideas... all the inspiration you need for your wedding"
+            >
+              <div className="flex items-center justify-center">
+                <div className="relative w-20 h-20">
+                  <SparklesIcon className="w-full h-full text-amber-500 dark:text-amber-400" />
+                  <div className="absolute inset-0 bg-amber-400/20 blur-2xl rounded-full" />
+                </div>
+              </div>
+            </BentoCard>
+
+            {/* Planning tools */}
+            <BentoCard
+              className="bg-[#f9f9f9] dark:bg-slate-900/40"
+              title="Planning tools"
+              subtitle="All under control: Checklist, Budget Planner, Seating Chart and much more!"
+            >
+              <div className="grid grid-cols-2 gap-2">
+                <div className="flex items-center gap-2 rounded-lg bg-white dark:bg-slate-800 p-3 shadow-sm">
+                  <CheckIcon className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Checklist</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg bg-white dark:bg-slate-800 p-3 shadow-sm">
+                  <CreditCardIcon className="h-4 w-4 text-purple-600 dark:text-purple-400" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Budget</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg bg-white dark:bg-slate-800 p-3 shadow-sm">
+                  <UsersIcon className="h-4 w-4 text-rose-600 dark:text-rose-400" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Seating</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg bg-white dark:bg-slate-800 p-3 shadow-sm">
+                  <CalendarIcon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                  <span className="text-xs font-medium text-gray-700 dark:text-gray-300">Timeline</span>
+                </div>
+              </div>
+            </BentoCard>
+
+          </div>
+        </section>
 
         {/* Discover & Get Inspired Section */}
         <section className="mb-24 pt-8">
@@ -401,7 +638,7 @@ export default function HomePage() {
                 className="inline-flex shrink-0 items-center gap-2 rounded-full bg-dribbble-pink px-5 py-2.5 text-sm font-semibold text-white shadow-festa-pink transition-all hover:-translate-y-0.5 hover:shadow-xl hover:bg-dribbble-pink/90"
               >
                 Start planning free
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRightIcon className="h-4 w-4" />
               </a>
             </div>
             <p className="max-w-2xl text-base leading-relaxed text-slate-600 dark:text-slate-400">
@@ -417,7 +654,7 @@ export default function HomePage() {
                 <span className="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-500/40 ring-1 ring-white/60 dark:ring-white/10" />
               </div>
               <div className="flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50/80 px-6 py-1 text-[11px] font-mono font-medium text-slate-500 shadow-sm dark:border-slate-800 dark:bg-slate-900/80 dark:text-slate-300">
-                <Lock className="h-3 w-3" />
+                <LockClosedIcon className="h-3 w-3" />
                 thefesta.com/dashboard
               </div>
               <div className="w-8" />
@@ -438,30 +675,30 @@ export default function HomePage() {
                 </div>
                 <div className="space-y-2">
                   <button className="flex w-full items-center justify-center gap-3 rounded-lg border border-sage-300/60 bg-white/60 px-3 py-2.5 text-xs font-semibold text-slate-800 shadow-md backdrop-blur-sm transition-all hover:-translate-x-0.5 hover:shadow-lg dark:border-sage-500/40 dark:bg-white/[0.12] dark:text-white">
-                    <LayoutGrid className="h-4 w-4 text-sage-600 dark:text-sage-300" /> Overview
+                    <Squares2X2Icon className="h-4 w-4 text-sage-600 dark:text-sage-300" /> Overview
                   </button>
                   <button className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/30 bg-white/20 px-3 py-2.5 text-xs font-medium text-slate-600 shadow-sm transition-all hover:-translate-x-0.5 hover:border-sage-200 hover:bg-white/40 hover:text-slate-900 dark:border-white/5 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-sage-500/30 dark:hover:text-white">
-                    <ListChecks className="h-4 w-4 text-slate-500 dark:text-slate-300" />
+                    <ListBulletIcon className="h-4 w-4 text-slate-500 dark:text-slate-300" />
                     Planning Tools
                   </button>
                   <button className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/30 bg-white/20 px-3 py-2.5 text-xs font-medium text-slate-600 shadow-sm transition-all hover:-translate-x-0.5 hover:border-sage-200 hover:bg-white/40 hover:text-slate-900 dark:border-white/5 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-sage-500/30 dark:hover:text-white">
-                    <Store className="h-4 w-4 text-slate-500 dark:text-slate-300" />
+                    <BuildingStorefrontIcon className="h-4 w-4 text-slate-500 dark:text-slate-300" />
                     Vendors
                   </button>
                   <button className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/30 bg-white/20 px-3 py-2.5 text-xs font-medium text-slate-600 shadow-sm transition-all hover:-translate-x-0.5 hover:border-sage-200 hover:bg-white/40 hover:text-slate-900 dark:border-white/5 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-sage-500/30 dark:hover:text-white">
-                    <LayoutGrid className="h-4 w-4 text-slate-500 dark:text-slate-300" />
+                    <Squares2X2Icon className="h-4 w-4 text-slate-500 dark:text-slate-300" />
                     Wedding Website
                   </button>
                   <button className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/30 bg-white/20 px-3 py-2.5 text-xs font-medium text-slate-600 shadow-sm transition-all hover:-translate-x-0.5 hover:border-sage-200 hover:bg-white/40 hover:text-slate-900 dark:border-white/5 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-sage-500/30 dark:hover:text-white">
-                    <Users className="h-4 w-4 text-slate-500 dark:text-slate-300" />
+                    <UsersIcon className="h-4 w-4 text-slate-500 dark:text-slate-300" />
                     Guests & RSVPs
                   </button>
                   <button className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/30 bg-white/20 px-3 py-2.5 text-xs font-medium text-slate-600 shadow-sm transition-all hover:-translate-x-0.5 hover:border-sage-200 hover:bg-white/40 hover:text-slate-900 dark:border-white/5 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-sage-500/30 dark:hover:text-white">
-                    <Gem className="h-4 w-4 text-slate-500 dark:text-slate-300" />
+                    <SparklesIcon className="h-4 w-4 text-slate-500 dark:text-slate-300" />
                     Attire & Rings
                   </button>
                   <button className="flex w-full items-center justify-center gap-3 rounded-lg border border-white/30 bg-white/20 px-3 py-2.5 text-xs font-medium text-slate-600 shadow-sm transition-all hover:-translate-x-0.5 hover:border-sage-200 hover:bg-white/40 hover:text-slate-900 dark:border-white/5 dark:bg-white/[0.04] dark:text-slate-200 dark:hover:border-sage-500/30 dark:hover:text-white">
-                    <Heart className="h-4 w-4 text-slate-500 dark:text-slate-300" />
+                    <HeartIcon className="h-4 w-4 text-slate-500 dark:text-slate-300" />
                     Ideas & Advice
                   </button>
                 </div>
@@ -472,7 +709,7 @@ export default function HomePage() {
                     <div className="relative">
                       <div className="mb-2 flex items-center gap-1.5">
                         <div className="flex h-6 w-6 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-orange-500 shadow-md">
-                          <Star className="h-3 w-3 fill-white text-white" />
+                          <StarIcon className="h-3 w-3 fill-white text-white" />
                         </div>
                         <span className="text-xs font-bold bg-gradient-to-r from-amber-700 to-orange-700 bg-clip-text text-transparent dark:from-amber-400 dark:to-orange-400">Festa Pro</span>
                       </div>
@@ -525,7 +762,7 @@ export default function HomePage() {
                     <div className="mb-3 flex items-center justify-between">
                       <h3 className="flex items-center gap-2 text-[11px] font-semibold text-slate-900 dark:text-white">Budget Tracker</h3>
                       <div className="rounded-full bg-emerald-50 p-1 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-200">
-                        <TrendingUp className="h-3 w-3" />
+                        <ArrowTrendingUpIcon className="h-3 w-3" />
                       </div>
                     </div>
                     <div className="mb-2 flex items-baseline gap-1">
@@ -555,7 +792,7 @@ export default function HomePage() {
                     <div className="mb-3 flex items-center justify-between">
                       <h3 className="text-[11px] font-semibold text-slate-900 dark:text-white">Active Vendors</h3>
                       <button className="flex items-center gap-1 rounded-md border border-slate-200 bg-slate-50 px-1.5 py-0.5 text-[9px] font-medium text-slate-500 transition-all hover:bg-slate-100 hover:text-slate-900 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300 dark:hover:bg-slate-800">
-                        <Plus className="h-2.5 w-2.5" />
+                        <PlusIcon className="h-2.5 w-2.5" />
                         Add Vendor
                       </button>
                     </div>
@@ -568,7 +805,7 @@ export default function HomePage() {
                           status: 'Contracted',
                           amount: '$3,500',
                           badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200 dark:border-emerald-900',
-                          Icon: Camera,
+                          Icon: CameraIcon,
                         },
                         {
                           title: 'Blooms & Petals',
@@ -577,7 +814,7 @@ export default function HomePage() {
                           status: 'Deposit Paid',
                           amount: '$2,800',
                           badgeClass: 'bg-amber-50 text-amber-700 border-amber-100 dark:bg-amber-900/30 dark:text-amber-200 dark:border-amber-900',
-                          Icon: Music,
+                          Icon: MusicalNoteIcon,
                         },
                       ].map(vendor => (
                         <div
@@ -697,7 +934,7 @@ export default function HomePage() {
                     <div className="glass-card flex cursor-pointer flex-col gap-3 rounded-xl border border-slate-100 p-4 transition-all hover:border-slate-200 hover:shadow-sm dark:border-slate-800 dark:hover:border-slate-700">
                       <div className="flex items-start justify-between">
                         <div className="flex h-5 w-5 items-center justify-center rounded-md border border-slate-300 bg-white text-transparent transition-colors hover:border-emerald-500 hover:text-emerald-500 dark:border-slate-700 dark:bg-slate-900">
-                          <CheckCircle2 className="h-4 w-4" />
+                          <CheckCircleIcon className="h-4 w-4" />
                         </div>
                         <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-medium text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300">
                           Completed
@@ -719,7 +956,7 @@ export default function HomePage() {
                       <div className="pl-2">
                         <div className="text-sm font-semibold text-slate-900 dark:text-white">Confirm ceremony musicians</div>
                         <div className="mt-1 flex items-center gap-1 text-[11px] font-medium text-rose-500 dark:text-rose-200">
-                          <Clock className="h-3 w-3" />
+                          <ClockIcon className="h-3 w-3" />
                           Due Friday
                         </div>
                       </div>
@@ -767,7 +1004,7 @@ export default function HomePage() {
               className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 shadow-sm transition-all hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-md dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-slate-600"
             >
               View all templates
-              <ArrowRight className="h-4 w-4" />
+              <ArrowRightIcon className="h-4 w-4" />
             </a>
           </div>
 
@@ -950,19 +1187,19 @@ export default function HomePage() {
                 <div className="space-y-4">
                   <div className="flex items-center gap-3 text-sm text-neutral-600 dark:text-neutral-300">
                     <div className="p-2 rounded-full bg-neutral-200/50 dark:bg-white/5 border border-neutral-200 dark:border-white/10">
-                      <Check className="w-4 h-4" />
+                      <CheckIcon className="w-4 h-4" />
                     </div>
                     <span>Know who&apos;s coming (and who needs a nudge)</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-neutral-600 dark:text-neutral-300">
                     <div className="p-2 rounded-full bg-neutral-200/50 dark:bg-white/5 border border-neutral-200 dark:border-white/10">
-                      <Mail className="w-4 h-4" />
+                      <EnvelopeIcon className="w-4 h-4" />
                     </div>
                     <span>Send beautiful invites guests actually open</span>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-neutral-600 dark:text-neutral-300">
                     <div className="p-2 rounded-full bg-neutral-200/50 dark:bg-white/5 border border-neutral-200 dark:border-white/10">
-                      <UserPlus className="w-4 h-4" />
+                      <UserPlusIcon className="w-4 h-4" />
                     </div>
                     <span>Track allergies, kids, and song requests too</span>
                   </div>
@@ -984,7 +1221,7 @@ export default function HomePage() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
                   <button className="text-left p-4 rounded-xl border-2 border-dribbble-pink bg-dribbble-pink/5 dark:bg-dribbble-pink/10 relative">
                     <div className="absolute top-3 right-3 text-dribbble-pink">
-                      <CheckCircle2 className="w-5 h-5" />
+                      <CheckCircleIcon className="w-5 h-5" />
                     </div>
                     <span className="block font-medium text-sm mb-1">Celebrating with you</span>
                     <span className="block text-2xl font-bold mb-1">127</span>
@@ -1017,8 +1254,8 @@ export default function HomePage() {
                       <div className="flex justify-between mb-4 text-sm font-medium">
                         <span>March 2024</span>
                         <div className="flex gap-2">
-                          <ChevronLeft className="w-4 h-4 cursor-pointer" />
-                          <ChevronRight className="w-4 h-4 cursor-pointer" />
+                          <ChevronLeftIcon className="w-4 h-4 cursor-pointer" />
+                          <ChevronRightIcon className="w-4 h-4 cursor-pointer" />
                         </div>
                       </div>
                       <div className="grid grid-cols-7 gap-2 text-center text-xs text-neutral-400 mb-2">
@@ -1118,7 +1355,9 @@ export default function HomePage() {
                 </p>
               </div>
               <div className="hidden items-center gap-2 text-slate-400 sm:flex">
-                <Quote className="h-4 w-4" />
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14.017 21v-7.391c0-5.704 3.731-9.57 8.983-10.609l.995 2.151c-2.432.917-3.995 3.638-3.995 5.849h4v10h-9.983zm-14.017 0v-7.391c0-5.704 3.748-9.57 9-10.609l.996 2.151c-2.433.917-3.996 3.638-3.996 5.849h3.983v10h-9.983z" />
+                </svg>
                 <span className="text-sm">Real feedback</span>
               </div>
             </div>
@@ -1139,10 +1378,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-[1400px] px-6">
           <div className="mb-12 grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
             <div className="col-span-2 lg:col-span-2">
-              <a href="#" className="mb-6 flex items-center gap-2">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sage-50 text-sage-700 dark:bg-slate-900 dark:text-sage-200">
-                  <Gem className="h-4 w-4" />
-                </div>
+              <a href="#" className="mb-6 inline-block">
                 <span className="font-display text-xl font-medium text-slate-900 dark:text-white">TheFesta</span>
               </a>
               <p className="mb-6 max-w-xs text-sm text-slate-500 dark:text-slate-300">
@@ -1150,14 +1386,30 @@ export default function HomePage() {
                 celebrations.
               </p>
               <div className="flex gap-4 text-slate-400 dark:text-slate-500">
-                <a href="#" className="transition-colors hover:text-sage-600 dark:hover:text-sage-400" aria-label="Instagram">
-                  <Instagram className="h-5 w-5" />
-                </a>
-                <a href="#" className="transition-colors hover:text-sage-600 dark:hover:text-sage-400" aria-label="Twitter">
-                  <Twitter className="h-5 w-5" />
-                </a>
                 <a href="#" className="transition-colors hover:text-sage-600 dark:hover:text-sage-400" aria-label="Facebook">
-                  <Facebook className="h-5 w-5" />
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+                  </svg>
+                </a>
+                <a href="#" className="transition-colors hover:text-sage-600 dark:hover:text-sage-400" aria-label="X">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                  </svg>
+                </a>
+                <a href="#" className="transition-colors hover:text-sage-600 dark:hover:text-sage-400" aria-label="Instagram">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M12.315 2c2.43 0 2.784.013 3.808.06 1.064.049 1.791.218 2.427.465a4.902 4.902 0 011.772 1.153 4.902 4.902 0 011.153 1.772c.247.636.416 1.363.465 2.427.048 1.067.06 1.407.06 4.123v.08c0 2.643-.012 2.987-.06 4.043-.049 1.064-.218 1.791-.465 2.427a4.902 4.902 0 01-1.153 1.772 4.902 4.902 0 01-1.772 1.153c-.636.247-1.363.416-2.427.465-1.067.048-1.407.06-4.123.06h-.08c-2.643 0-2.987-.012-4.043-.06-1.064-.049-1.791-.218-2.427-.465a4.902 4.902 0 01-1.772-1.153 4.902 4.902 0 01-1.153-1.772c-.247-.636-.416-1.363-.465-2.427-.047-1.024-.06-1.379-.06-3.808v-.63c0-2.43.013-2.784.06-3.808.049-1.064.218-1.791.465-2.427a4.902 4.902 0 011.153-1.772A4.902 4.902 0 015.45 2.525c.636-.247 1.363-.416 2.427-.465C8.901 2.013 9.256 2 11.685 2h.63zm-.081 1.802h-.468c-2.456 0-2.784.011-3.807.058-.975.045-1.504.207-1.857.344-.467.182-.8.398-1.15.748-.35.35-.566.683-.748 1.15-.137.353-.3.882-.344 1.857-.047 1.023-.058 1.351-.058 3.807v.468c0 2.456.011 2.784.058 3.807.045.975.207 1.504.344 1.857.182.466.399.8.748 1.15.35.35.683.566 1.15.748.353.137.882.3 1.857.344 1.054.048 1.37.058 4.041.058h.08c2.597 0 2.917-.01 3.96-.058.976-.045 1.505-.207 1.858-.344.466-.182.8-.398 1.15-.748.35-.35.566-.683.748-1.15.137-.353.3-.882.344-1.857.048-1.055.058-1.37.058-4.041v-.08c0-2.597-.01-2.917-.058-3.96-.045-.976-.207-1.505-.344-1.858a3.097 3.097 0 00-.748-1.15 3.098 3.098 0 00-1.15-.748c-.353-.137-.882-.3-1.857-.344-1.023-.047-1.351-.058-3.807-.058zM12 6.865a5.135 5.135 0 110 10.27 5.135 5.135 0 010-10.27zm0 1.802a3.333 3.333 0 100 6.666 3.333 3.333 0 000-6.666zm5.338-3.205a1.2 1.2 0 110 2.4 1.2 1.2 0 010-2.4z" />
+                  </svg>
+                </a>
+                <a href="#" className="transition-colors hover:text-sage-600 dark:hover:text-sage-400" aria-label="YouTube">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                  </svg>
+                </a>
+                <a href="#" className="transition-colors hover:text-sage-600 dark:hover:text-sage-400" aria-label="TikTok">
+                  <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z" />
+                  </svg>
                 </a>
               </div>
             </div>
@@ -1205,7 +1457,7 @@ export default function HomePage() {
               {/* Right - Made with love */}
               <div className="flex items-center gap-2 whitespace-nowrap">
                 <span>Made with</span>
-                <Heart className="h-3 w-3 text-rose-400" fill="currentColor" />
+                <HeartIcon className="h-3 w-3 text-rose-400" fill="currentColor" />
                 <span>for couples everywhere.</span>
               </div>
             </div>

@@ -1,17 +1,19 @@
-import type { LucideIcon } from 'lucide-react';
+import type { ForwardRefExoticComponent, SVGProps, RefAttributes } from 'react';
 import {
-  Heart,
-  Image,
-  MapPin,
-  Users,
-  CheckSquare,
-  DollarSign,
-  Calendar,
-  ClipboardList,
-  Clock,
-  ListChecks,
-  Sparkles
-} from 'lucide-react';
+  HeartIcon,
+  PhotoIcon,
+  MapPinIcon,
+  UsersIcon,
+  CheckCircleIcon,
+  CurrencyDollarIcon,
+  CalendarIcon,
+  ClipboardDocumentListIcon,
+  ClockIcon,
+  ListBulletIcon,
+  SparklesIcon,
+} from '@heroicons/react/24/outline';
+
+type HeroIcon = ForwardRefExoticComponent<SVGProps<SVGSVGElement> & RefAttributes<SVGSVGElement>>;
 
 type NavLink = {
   label: string;
@@ -31,14 +33,14 @@ export const NAV_LINKS: NavLink[] = [
 type HeroTab = {
   id: string;
   label: string;
-  icon: LucideIcon;
+  icon: HeroIcon;
 };
 
 export const HERO_TABS: HeroTab[] = [
-  { id: 'venues', label: 'Venues', icon: MapPin },
-  { id: 'vendors', label: 'Vendors', icon: Users },
-  { id: 'photos', label: 'Photos', icon: Image },
-  { id: 'ideas', label: 'Ideas', icon: Heart },
+  { id: 'venues', label: 'Venues', icon: MapPinIcon },
+  { id: 'vendors', label: 'Vendors', icon: UsersIcon },
+  { id: 'photos', label: 'Photos', icon: PhotoIcon },
+  { id: 'ideas', label: 'Ideas', icon: HeartIcon },
 ];
 
 export const POPULAR_TAGS = ['beach wedding', 'modern luxury', 'flowers', 'lace dresses'];
@@ -122,7 +124,7 @@ type PlanningTool = {
   id: string;
   title: string;
   description: string;
-  icon: LucideIcon;
+  icon: HeroIcon;
   color: string;
   bgColor: string;
   progress?: number;
@@ -133,7 +135,7 @@ export const PLANNING_TOOLS: PlanningTool[] = [
     id: 'checklist',
     title: 'Wedding Checklist',
     description: 'Stay on track with our comprehensive timeline',
-    icon: ListChecks,
+    icon: ListBulletIcon,
     color: 'text-emerald-600 dark:text-emerald-400',
     bgColor: 'bg-emerald-50 dark:bg-emerald-900/30',
     progress: 68,
@@ -142,7 +144,7 @@ export const PLANNING_TOOLS: PlanningTool[] = [
     id: 'budget',
     title: 'Budget Planner',
     description: 'Track expenses and manage your wedding finances',
-    icon: DollarSign,
+    icon: CurrencyDollarIcon,
     color: 'text-blue-600 dark:text-blue-400',
     bgColor: 'bg-blue-50 dark:bg-blue-900/30',
     progress: 85,
@@ -151,7 +153,7 @@ export const PLANNING_TOOLS: PlanningTool[] = [
     id: 'guestlist',
     title: 'Guest List Manager',
     description: 'Organize guests, track RSVPs, and manage seating',
-    icon: Users,
+    icon: UsersIcon,
     color: 'text-purple-600 dark:text-purple-400',
     bgColor: 'bg-purple-50 dark:bg-purple-900/30',
   },
@@ -159,7 +161,7 @@ export const PLANNING_TOOLS: PlanningTool[] = [
     id: 'timeline',
     title: 'Wedding Timeline',
     description: 'Create your perfect day-of schedule',
-    icon: Clock,
+    icon: ClockIcon,
     color: 'text-orange-600 dark:text-orange-400',
     bgColor: 'bg-orange-50 dark:bg-orange-900/30',
   },
@@ -167,7 +169,7 @@ export const PLANNING_TOOLS: PlanningTool[] = [
     id: 'vendor',
     title: 'Vendor Manager',
     description: 'Keep all vendor contacts and contracts organized',
-    icon: ClipboardList,
+    icon: ClipboardDocumentListIcon,
     color: 'text-indigo-600 dark:text-indigo-400',
     bgColor: 'bg-indigo-50 dark:bg-indigo-900/30',
   },
@@ -175,7 +177,7 @@ export const PLANNING_TOOLS: PlanningTool[] = [
     id: 'calendar',
     title: 'Event Calendar',
     description: 'Never miss important wedding-related dates',
-    icon: Calendar,
+    icon: CalendarIcon,
     color: 'text-pink-600 dark:text-pink-400',
     bgColor: 'bg-pink-50 dark:bg-pink-900/30',
   },
@@ -229,12 +231,12 @@ type BudgetCategory = {
   category: string;
   budgeted: number;
   spent: number;
-  icon: LucideIcon;
+  icon: HeroIcon;
 };
 
 export const BUDGET_PREVIEW: BudgetCategory[] = [
-  { category: 'Venue', budgeted: 15000, spent: 15000, icon: MapPin },
-  { category: 'Catering', budgeted: 12000, spent: 8500, icon: Users },
-  { category: 'Photography', budgeted: 5000, spent: 5000, icon: Image },
-  { category: 'Flowers', budgeted: 3000, spent: 2200, icon: Heart },
+  { category: 'Venue', budgeted: 15000, spent: 15000, icon: MapPinIcon },
+  { category: 'Catering', budgeted: 12000, spent: 8500, icon: UsersIcon },
+  { category: 'Photography', budgeted: 5000, spent: 5000, icon: PhotoIcon },
+  { category: 'Flowers', budgeted: 3000, spent: 2200, icon: HeartIcon },
 ];

@@ -2,7 +2,7 @@
 
 import { useRef } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
+import { ChevronLeftIcon, ChevronRightIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
 
 const SLIDES = [
   {
@@ -116,7 +116,7 @@ const IdeasAdvice = () => {
               className="group relative p-3 rounded-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 shadow-lg hover:shadow-xl border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:-translate-x-0.5 active:scale-95"
               aria-label="Previous slide"
             >
-              <ChevronLeft className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
+              <ChevronLeftIcon className="w-5 h-5 transition-transform group-hover:-translate-x-0.5" />
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/50 to-transparent dark:from-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </button>
             <button
@@ -124,7 +124,7 @@ const IdeasAdvice = () => {
               className="group relative p-3 rounded-full bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 shadow-lg hover:shadow-xl border border-slate-200/50 dark:border-slate-700/50 backdrop-blur-sm transition-all duration-300 hover:scale-110 hover:translate-x-0.5 active:scale-95"
               aria-label="Next slide"
             >
-              <ChevronRight className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
+              <ChevronRightIcon className="w-5 h-5 transition-transform group-hover:translate-x-0.5" />
               <div className="absolute inset-0 rounded-full bg-gradient-to-br from-white/50 to-transparent dark:from-white/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </button>
           </div>
@@ -189,7 +189,7 @@ const IdeasAdvice = () => {
                       </span>
                       <button className="group flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-white/20 hover:border-white/30 transition-all duration-200">
                         <span className="text-xs font-semibold text-white">Read</span>
-                        <ArrowRight className="w-3.5 h-3.5 text-white group-hover:translate-x-0.5 transition-transform duration-200" />
+                        <ArrowRightIcon className="w-3.5 h-3.5 text-white group-hover:translate-x-0.5 transition-transform duration-200" />
                       </button>
                     </div>
                   </div>
@@ -203,7 +203,7 @@ const IdeasAdvice = () => {
       {/* Mobile Swipe Indicator */}
       <div className="md:hidden flex items-center justify-center mt-6 text-slate-500 dark:text-slate-400 text-xs gap-2">
         <span className="font-mono uppercase tracking-wider">Swipe for more insights</span>
-        <ArrowRight className="w-4 h-4" />
+        <ArrowRightIcon className="w-4 h-4" />
       </div>
     </section>
   );

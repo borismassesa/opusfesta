@@ -1,5 +1,6 @@
 import Image from 'next/image';
-import { Eye, Heart } from 'lucide-react';
+import { EyeIcon } from '@heroicons/react/24/outline';
+import { HeartIcon } from '@heroicons/react/24/solid';
 import { MOCK_SHOTS } from '../../app/home-data';
 
 const ShotGrid = () => {
@@ -34,11 +35,11 @@ const ShotGrid = () => {
               </div>
               <div className="flex items-center gap-3 text-xs font-semibold text-gray-600 dark:text-slate-300">
                 <span className="inline-flex items-center gap-1">
-                  <Heart size={14} className="fill-gray-400 dark:fill-slate-300" />
+                  <HeartIcon className="h-3.5 w-3.5 text-gray-400 dark:text-slate-300" />
                   {shot.likes}
                 </span>
                 <span className="inline-flex items-center gap-1">
-                  <Eye size={14} />
+                  <EyeIcon className="h-3.5 w-3.5" />
                   {(shot.views ?? 0) / 1000}k
                 </span>
               </div>
