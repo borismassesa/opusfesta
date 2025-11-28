@@ -373,9 +373,9 @@ html {
   }
 
   .beam-button {
-    --beam-color: #6366f1;
-    --beam-bg: #0f172a;
-    --beam-glow: rgba(99, 102, 241, 0.7);
+    --beam-color: #6A1B9A;
+    --beam-bg: #6A1B9A;
+    --beam-glow: rgba(106, 27, 154, 0.6);
     position: relative;
     isolation: isolate;
     overflow: hidden;
@@ -385,7 +385,7 @@ html {
     color: #f8fafc;
     letter-spacing: 0.14em;
     font-weight: 600;
-    box-shadow: 0 0 40px -12px rgba(234, 88, 12, 0.35);
+    box-shadow: 0 0 40px -12px rgba(106, 27, 154, 0.35);
     transition: transform 400ms ease, box-shadow 400ms ease, color 200ms ease;
   }
 
@@ -413,7 +413,7 @@ html {
     content: '';
     position: absolute;
     inset: -100%;
-    background: conic-gradient(from 0deg, transparent 0 300deg, var(--beam-color) 360deg);
+    background: conic-gradient(from 0deg, transparent 0 260deg, var(--beam-color) 320deg, var(--beam-color) 360deg);
     animation: beam-spin 3s linear infinite;
   }
 
@@ -422,7 +422,7 @@ html {
     position: absolute;
     inset: 1px;
     border-radius: 9999px;
-    background: #0c1020;
+    background: var(--beam-bg);
   }
 
   .beam-button .beam-inner {
@@ -457,19 +457,14 @@ html {
     width: 66%;
     height: 55%;
     transform: translateX(-50%);
-    background: rgba(99, 102, 241, 0.34);
+    background: var(--beam-glow);
     filter: blur(26px);
     border-radius: 9999px;
     transition: background 400ms ease;
   }
 
   .beam-button:hover .beam-glow {
-    background: rgba(99, 102, 241, 0.52);
-  }
-
-  .dark .beam-button {
-    --beam-bg: #07090f;
-    --beam-glow: rgba(99, 102, 241, 0.35);
+    background: rgba(106, 27, 154, 0.78);
   }
 
   .text-gradient-sage {
@@ -524,6 +519,92 @@ html {
   }
   .dark .bg-slate-50 {
     background-color: #0b1224 !important;
+  }
+
+  @property --gradient-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  @property --gradient-angle-offset {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }
+
+  @property --gradient-percent {
+    syntax: '<percentage>';
+    initial-value: 20%;
+    inherits: false;
+  }
+
+  @property --gradient-shine {
+    syntax: '<color>';
+    initial-value: #6A1B9A;
+    inherits: false;
+  }
+
+  .shiny-beam-input {
+    --gradient-angle: 0deg;
+    --gradient-angle-offset: 0deg;
+    --gradient-percent: 20%;
+    --gradient-shine: #6A1B9A;
+    position: relative;
+    border-radius: 9999px;
+    background:
+      linear-gradient(#ffffff, #ffffff) padding-box,
+      conic-gradient(
+        from calc(var(--gradient-angle) - var(--gradient-angle-offset)),
+        transparent 0%,
+        #f3e8ff 5%,
+        var(--gradient-shine) 15%,
+        #f3e8ff 30%,
+        transparent 40%,
+        transparent 100%
+      )
+        border-box;
+    border: 2px solid transparent;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.06), inset 0 0 0 1px #f3f4f6;
+    animation: border-spin 2.5s linear infinite;
+    transition:
+      --gradient-angle-offset 800ms cubic-bezier(0.25, 1, 0.5, 1),
+      --gradient-percent 800ms cubic-bezier(0.25, 1, 0.5, 1),
+      --gradient-shine 800ms cubic-bezier(0.25, 1, 0.5, 1),
+      box-shadow 0.3s;
+  }
+
+  .shiny-beam-input:focus-within {
+    box-shadow: 0 12px 40px rgba(106, 27, 154, 0.15), inset 0 0 0 1px #f3e8ff;
+    --gradient-shine: #5E1688;
+    --gradient-percent: 30%;
+  }
+
+  @keyframes border-spin {
+    to {
+      --gradient-angle: 360deg;
+    }
+  }
+
+  .shiny-beam-input::after {
+    content: '';
+    pointer-events: none;
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: linear-gradient(-50deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+    mask-image: radial-gradient(circle at bottom, transparent 40%, black);
+    opacity: 0.5;
+    animation: shimmer 5s linear infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(100%);
+    }
   }
 
   @keyframes marquee-horizontal {

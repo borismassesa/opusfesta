@@ -9,9 +9,16 @@ const config: Config = {
         sans: ['var(--font-sans)', 'Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
         display: ['var(--font-display)', 'Pacifico', 'cursive'],
         serif: ['var(--font-display)', 'Pacifico', 'cursive'],
-        mono: ['var(--font-mono)', 'JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
+        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'monospace'],
       },
       colors: {
+        festa: {
+          base: '#f8f7f4',
+          section: '#f7f6f4',
+          soft: '#f7f6fb',
+          border: '#f3f4f6',
+          highlight: '#fce7f3',
+        },
         sage: {
           50: '#f2fbf5',
           100: '#e1f6e8',
@@ -30,7 +37,7 @@ const config: Config = {
           500: '#f472b6',
         },
         dribbble: {
-          pink: '#ea4c89',
+          pink: '#6A1B9A',
           dark: '#0d0c22',
           gray: '#9e9ea7',
           bg: '#f8f7f4',
@@ -38,6 +45,10 @@ const config: Config = {
         charcoal: {
           900: '#0f172a',
         },
+      },
+      boxShadow: {
+        'festa-subtle': '0 6px 18px rgba(0,0,0,0.06)',
+        'festa-pink': '0 10px 30px rgba(106,27,154,0.25)',
       },
       animation: {
         'float-slow': 'float 6s ease-in-out infinite',

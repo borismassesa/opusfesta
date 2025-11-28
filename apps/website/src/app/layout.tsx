@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import './globals.css';
-import { Inter, JetBrains_Mono, Pacifico } from 'next/font/google';
+import { Inter, Pacifico } from 'next/font/google';
 import { Providers } from './providers';
 
 const sans = Inter({
@@ -18,14 +18,6 @@ const display = Pacifico({
   display: 'swap',
 });
 
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
-  variable: '--font-mono',
-  weight: ['400', '500', '600', '700'],
-  style: ['normal', 'italic'],
-  display: 'swap',
-});
-
 export const metadata: Metadata = {
   title: 'TheFesta | Intelligent Wedding Ecosystem',
   description:
@@ -34,8 +26,8 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`${sans.variable} ${display.variable} ${mono.variable}`} suppressHydrationWarning>
-      <body className="bg-[#FAFAFA] text-slate-900 selection:bg-rose-500/20 selection:text-rose-900 dark:bg-[#0f1116] dark:text-slate-200">
+    <html lang="en" className={`${sans.variable} ${display.variable}`} suppressHydrationWarning>
+      <body className="bg-festa-base text-slate-900 selection:bg-rose-500/20 selection:text-rose-900">
         <Providers>{children}</Providers>
       </body>
     </html>

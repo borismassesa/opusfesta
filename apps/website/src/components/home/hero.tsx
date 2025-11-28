@@ -2,13 +2,72 @@
 
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
-import { Search, Sparkles } from 'lucide-react';
-import { HERO_SLIDES, HERO_TABS, POPULAR_TAGS } from '../../app/home-data';
+import { Search, MapPin, Users, Image as ImageIcon, Heart } from 'lucide-react';
+import { HERO_SLIDES } from '../../app/home-data';
+
+const SEARCH_TABS = [
+  { id: 'venues', label: 'Venues', icon: MapPin, placeholder: 'What type of venue are you looking for?' },
+  { id: 'vendors', label: 'Vendors', icon: Users, placeholder: 'What type of vendor do you need?' },
+  { id: 'websites', label: 'Wedding Websites', icon: ImageIcon, placeholder: 'What wedding website features do you need?' },
+  { id: 'ideas', label: 'Ideas', icon: Heart, placeholder: 'What are you looking to create?' },
+];
+
+const POPULAR_CITIES = [
+  'Dar es Salaam',
+  'Dodoma',
+  'Mwanza',
+  'Arusha',
+  'Mbeya',
+  'Zanzibar City',
+];
+
+const TRENDING_TAGS = [
+  // Venues
+  { label: 'beach venues', category: 'venues', searchTerm: 'beach' },
+  { label: 'garden venues', category: 'venues', searchTerm: 'garden' },
+  { label: 'ballroom', category: 'venues', searchTerm: 'ballroom' },
+  { label: 'outdoor venues', category: 'venues', searchTerm: 'outdoor' },
+  { label: 'hotel venues', category: 'venues', searchTerm: 'hotel' },
+
+  // Vendors
+  { label: 'photographers', category: 'vendors', searchTerm: 'photographers' },
+  { label: 'videographers', category: 'vendors', searchTerm: 'videographers' },
+  { label: 'florists', category: 'vendors', searchTerm: 'florists' },
+  { label: 'caterers', category: 'vendors', searchTerm: 'caterers' },
+  { label: 'DJs', category: 'vendors', searchTerm: 'DJs' },
+
+  // Wedding Websites
+  { label: 'RSVP features', category: 'websites', searchTerm: 'RSVP' },
+  { label: 'photo galleries', category: 'websites', searchTerm: 'photo gallery' },
+  { label: 'modern templates', category: 'websites', searchTerm: 'modern templates' },
+  { label: 'elegant themes', category: 'websites', searchTerm: 'elegant' },
+  { label: 'custom domains', category: 'websites', searchTerm: 'custom domain' },
+
+  // Ideas
+  { label: 'beach wedding', category: 'ideas', searchTerm: 'beach wedding' },
+  { label: 'rustic wedding', category: 'ideas', searchTerm: 'rustic wedding' },
+  { label: 'modern luxury', category: 'ideas', searchTerm: 'modern luxury' },
+  { label: 'vintage style', category: 'ideas', searchTerm: 'vintage style' },
+  { label: 'boho chic', category: 'ideas', searchTerm: 'boho chic' },
+];
 
 const Hero = () => {
   const [activeTab, setActiveTab] = useState('venues');
   const [searchText, setSearchText] = useState('');
+  const [location, setLocation] = useState('');
+  const [showCityDropdown, setShowCityDropdown] = useState(false);
   const [currentSlide, setCurrentSlide] = useState(0);
+
+  const filteredCities = POPULAR_CITIES.filter(city =>
+    city.toLowerCase().includes(location.toLowerCase())
+  );
+
+  const handleTrendingTagClick = (tag: typeof TRENDING_TAGS[0]) => {
+    setActiveTab(tag.category);
+    setSearchText(tag.searchTerm);
+    // Scroll to search results section or trigger search
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -21,63 +80,121 @@ const Hero = () => {
   return (
     <section className="mx-auto grid w-full max-w-[1400px] grid-cols-1 items-center gap-10 px-6 py-8 md:py-12 lg:grid-cols-2 lg:gap-16 lg:py-14">
       <div className="flex animate-fade-in flex-col items-center space-y-8 text-center lg:items-start lg:text-left">
-        <h1 className="text-[40px] font-bold leading-[1.05] tracking-tight text-gray-900 dark:text-white md:text-[52px] lg:text-[56px]">
-          Everything You Need to <br /> Plan Your Wedding
+        <h1 className="text-[40px] font-bold leading-[1.05] tracking-tight text-gray-900 md:text-[52px] lg:text-[56px]">
+          Everything You Need <br /> to Plan Your Wedding
         </h1>
-        <p className="max-w-lg text-lg leading-relaxed text-gray-500 dark:text-slate-300 md:text-xl">
+        <p className="max-w-lg text-lg leading-relaxed text-gray-600 md:text-xl">
           Search over 250,000 local professionals, find the perfect venue, and create your wedding website—all in one place.
         </p>
 
-        <div className="flex w-full max-w-xl flex-col gap-6">
-          <div className="inline-flex self-center rounded-full bg-gray-100/80 p-1.5 dark:bg-slate-900 lg:self-start">
-            {HERO_TABS.map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`rounded-full px-6 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                  activeTab === tab.id
-                    ? 'bg-white text-gray-900 shadow-sm dark:bg-slate-800 dark:text-white dark:shadow-slate-900/50'
-                    : 'text-gray-500 hover:text-gray-700 dark:text-slate-400 dark:hover:text-white'
-                }`}
-              >
-                <span className="flex items-center gap-2">
+        <div className="flex w-full max-w-2xl flex-col gap-6">
+          <div className="w-full rounded-2xl bg-white p-6 shadow-lg">
+            <div className="mb-6 flex items-center justify-center gap-2 lg:justify-start">
+              {SEARCH_TABS.map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${
+                    activeTab === tab.id
+                      ? 'bg-gray-900 text-white shadow-md'
+                      : 'bg-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
                   <tab.icon className="h-4 w-4" />
                   {tab.label}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          <div className="group relative w-full">
-            <div className="pointer-events-none absolute inset-y-0 left-6 flex items-center">
-              <Search className="text-gray-400 transition-colors group-focus-within:text-dribbble-pink dark:text-slate-400" size={20} />
+                </button>
+              ))}
             </div>
-            <input
-              type="text"
-              value={searchText}
-              onChange={event => setSearchText(event.target.value)}
-              placeholder="Search vendors, venues, or ideas..."
-              className="w-full rounded-full border-2 border-transparent bg-white px-14 pr-16 py-5 text-base text-gray-900 shadow-[0_8px_30px_rgb(0,0,0,0.06)] placeholder-gray-400 outline-none transition-all focus:border-pink-100 focus:ring-4 focus:ring-pink-50 dark:border-slate-800 dark:bg-slate-900 dark:text-white dark:placeholder-slate-400 dark:focus:border-slate-700 dark:focus:ring-slate-800 md:text-lg"
-            />
-            <button
-              type="button"
-              className="absolute right-3 top-2.5 rounded-full bg-dribbble-pink p-2.5 text-white shadow-lg shadow-pink-200 transition-colors hover:bg-pink-600"
-              aria-label="Search"
-            >
-              <Search size={20} />
-            </button>
+
+            <div className="relative">
+              <form className="flex items-center gap-3 rounded-2xl bg-festa-section px-4 py-3" onSubmit={event => event.preventDefault()}>
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowCityDropdown(!showCityDropdown)}
+                    className="flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-gray-700 transition-colors hover:text-gray-900"
+                  >
+                    <MapPin className="h-4 w-4 text-gray-500" />
+                    <span className="max-w-[100px] truncate sm:max-w-[120px]">{location || 'Location'}</span>
+                  </button>
+                  {showCityDropdown && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-[100]"
+                        onClick={() => setShowCityDropdown(false)}
+                      />
+                      <div className="absolute left-0 top-full z-[101] mt-2 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl sm:w-72">
+                        <div className="border-b border-gray-100 bg-gray-50 px-4 py-2">
+                          <input
+                            type="text"
+                            value={location}
+                            onChange={e => setLocation(e.target.value)}
+                            placeholder="Search cities..."
+                            className="w-full border-none bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
+                            autoFocus
+                          />
+                        </div>
+                        <div className="max-h-64 overflow-y-auto py-1">
+                          {filteredCities.length > 0 ? (
+                            filteredCities.map(city => (
+                              <button
+                                key={city}
+                                type="button"
+                                onClick={() => {
+                                  setLocation(city);
+                                  setShowCityDropdown(false);
+                                }}
+                                className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <MapPin className="h-3.5 w-3.5 text-gray-400" />
+                                  <span>{city}</span>
+                                </div>
+                              </button>
+                            ))
+                          ) : (
+                            <div className="px-4 py-8 text-center text-sm text-gray-500">
+                              No cities found
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="h-6 w-px bg-gray-300" />
+
+                <input
+                  type="text"
+                  value={searchText}
+                  onChange={event => setSearchText(event.target.value)}
+                  placeholder={SEARCH_TABS.find(tab => tab.id === activeTab)?.placeholder}
+                  className="flex-1 border-none bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
+                />
+
+                <button
+                  type="submit"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-dribbble-pink text-white shadow-lg shadow-purple-200 transition-colors hover:bg-dribbble-pink/90"
+                  aria-label="Search"
+                >
+                  <Search className="h-4 w-4" />
+                </button>
+              </form>
+            </div>
           </div>
 
-          <div className="no-scrollbar flex flex-nowrap items-center gap-3 overflow-x-auto text-sm lg:justify-start">
-            <span className="shrink-0 font-medium text-gray-400 dark:text-slate-400">Trending:</span>
-            {POPULAR_TAGS.map(tag => (
+          <div className="flex items-center gap-3 text-sm">
+            <span className="shrink-0 font-bold text-black">Trending:</span>
+            {TRENDING_TAGS.filter(tag => tag.category === activeTab).slice(0, 4).map(tag => (
               <button
-                key={tag}
+                key={tag.label}
                 type="button"
-                className="shrink-0 whitespace-nowrap rounded-full border border-gray-200 bg-white px-3 py-1 text-gray-600 transition-colors hover:border-gray-400 hover:text-gray-900 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-500"
+                onClick={() => handleTrendingTagClick(tag)}
+                className="shrink-0 whitespace-nowrap rounded-full bg-white px-4 py-2 text-gray-700 shadow-sm transition-all hover:shadow-md"
               >
-                {tag}
+                {tag.label}
               </button>
             ))}
           </div>
@@ -85,7 +202,7 @@ const Hero = () => {
 
       </div>
 
-      <div className="relative hidden aspect-[4/3] w-full overflow-hidden rounded-[2.5rem] bg-gray-100 shadow-2xl dark:bg-slate-900 lg:block">
+      <div className="relative hidden aspect-[4/3] w-full overflow-hidden rounded-[2.5rem] bg-gray-100 shadow-2xl lg:block">
         {HERO_SLIDES.map((slide, index) => (
           <div
             key={slide.id}
@@ -100,8 +217,8 @@ const Hero = () => {
           </div>
         ))}
 
-        <div className="absolute bottom-6 right-6 z-20 flex cursor-pointer items-center gap-3 rounded-full bg-white/90 px-4 py-2 shadow-lg transition-all hover:bg-white dark:bg-[#0f1116]/80">
-          <span className="text-sm font-semibold text-gray-900 transition-all duration-300 dark:text-white">
+        <div className="absolute bottom-6 right-6 z-20 flex cursor-pointer items-center gap-3 rounded-full bg-white/90 px-4 py-2 shadow-lg transition-all hover:bg-white">
+          <span className="text-sm font-semibold text-gray-900 transition-all duration-300">
             {HERO_SLIDES[currentSlide].author}
           </span>
           <Image
@@ -123,36 +240,6 @@ const Hero = () => {
         </div>
       </div>
 
-      <div className="mt-3 w-full rounded-[22px] bg-[#f7f6fb] px-5 py-4 shadow-[0_4px_20px_rgba(0,0,0,0.04)] ring-1 ring-purple-100/70 dark:bg-slate-900/60 dark:ring-slate-800 md:col-span-2 md:px-7 lg:col-span-2">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-start sm:gap-5">
-          <button
-            type="button"
-            className="beam-button group relative inline-flex items-center justify-center gap-2 rounded-full px-8 py-3 text-xs font-mono font-semibold uppercase tracking-[0.14em] text-white"
-            style={
-              {
-                '--shimmer-color': 'rgba(234,76,137,0.85)',
-                '--bg': 'rgba(234,76,137,0.14)',
-                '--icon-bg': 'rgba(234,76,137,0.18)',
-                '--icon-ring': 'rgba(234,76,137,0.35)',
-                '--beam-glow': 'rgba(234,76,137,0.4)',
-              } as React.CSSProperties
-            }
-          >
-            <span className="beam-border" aria-hidden />
-            <span className="beam-inner" aria-hidden />
-            <span className="beam-dots" aria-hidden />
-            <span className="beam-glow" aria-hidden />
-            <span className="relative z-10 flex items-center gap-2">
-              <Sparkles size={14} />
-              Get Matched Now
-            </span>
-          </button>
-
-          <p className="text-sm font-medium leading-snug text-gray-700 dark:text-slate-300">
-            Tell us what you need and instantly get paired with your dream vendor team.
-          </p>
-        </div>
-      </div>
     </section>
   );
 };

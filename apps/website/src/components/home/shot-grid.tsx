@@ -6,7 +6,7 @@ const ShotGrid = () => {
   return (
     <section className="mx-auto max-w-[1400px] px-4 py-10 sm:px-6 lg:px-8">
       <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-4">
-        {MOCK_SHOTS.map(shot => (
+        {MOCK_SHOTS.slice(0, 8).map(shot => (
           <div key={shot.id} className="flex flex-col gap-3">
             <article className="relative aspect-[4/3] overflow-hidden rounded-[22px] bg-white shadow-sm ring-1 ring-gray-100 transition duration-300 hover:-translate-y-1 hover:shadow-md dark:bg-slate-900/60 dark:ring-slate-800">
               <Image
@@ -48,11 +48,6 @@ const ShotGrid = () => {
             </div>
           </div>
         ))}
-      </div>
-      <div className="mt-12 flex w-full justify-center">
-        <button className="rounded-full border border-gray-200 bg-white px-8 py-3 text-sm font-semibold text-gray-900 shadow-sm transition-all hover:border-gray-300 hover:bg-gray-50 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:hover:border-slate-500 dark:hover:bg-slate-800">
-          Browse more wedding inspiration
-        </button>
       </div>
     </section>
   );
