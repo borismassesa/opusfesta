@@ -1135,7 +1135,7 @@ export default function HomePage() {
 
       </main>
 
-      <footer className="border-t border-slate-100 bg-festa-base pb-8 pt-16 dark:border-slate-800">
+      <footer className="border-t border-slate-200/60 bg-slate-900/[0.03] pb-8 pt-16 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/40">
         <div className="mx-auto max-w-[1400px] px-6">
           <div className="mb-12 grid grid-cols-2 gap-8 md:grid-cols-4 lg:grid-cols-5">
             <div className="col-span-2 lg:col-span-2">
@@ -1178,12 +1178,36 @@ export default function HomePage() {
             ))}
           </div>
 
-          <div className="flex flex-col items-center justify-between gap-4 border-t border-slate-100 pt-8 text-xs text-slate-400 md:flex-row">
-            <p>© 2024 TheFesta Inc. All rights reserved.</p>
-            <div className="flex items-center gap-2">
-              <span>Made with</span>
-              <Heart className="h-3 w-3 text-rose-400" fill="currentColor" />
-              <span>for couples everywhere.</span>
+          <div className="border-t border-slate-100 pt-8 dark:border-slate-800">
+            <div className="flex flex-col items-center justify-between gap-4 text-xs text-slate-400 md:flex-row">
+              {/* Left - Legal Links */}
+              <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 md:justify-start">
+                <a href="#" className="text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                  Privacy Policy
+                </a>
+                <a href="#" className="text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                  Terms of Service
+                </a>
+                <a href="#" className="text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                  Cookie Policy
+                </a>
+                <a href="#" className="text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                  Accessibility
+                </a>
+                <a href="#" className="text-slate-500 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white">
+                  Sitemap
+                </a>
+              </div>
+
+              {/* Center - Copyright */}
+              <p className="whitespace-nowrap">© 2024 TheFesta Inc. All rights reserved.</p>
+
+              {/* Right - Made with love */}
+              <div className="flex items-center gap-2 whitespace-nowrap">
+                <span>Made with</span>
+                <Heart className="h-3 w-3 text-rose-400" fill="currentColor" />
+                <span>for couples everywhere.</span>
+              </div>
             </div>
           </div>
         </div>
