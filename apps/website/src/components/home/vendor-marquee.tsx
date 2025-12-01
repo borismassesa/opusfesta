@@ -19,7 +19,7 @@ const VendorMarquee = () => {
               <div className="relative aspect-[4/3]">
                 <Image
                   src={item.image}
-                  alt={item.title}
+                  alt={item.title || 'Wedding vendor category'}
                   fill
                   sizes="(min-width: 1024px) 20vw, 60vw"
                   className="object-cover"

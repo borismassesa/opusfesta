@@ -11,6 +11,8 @@ export const metadata: Metadata = {
   description: 'Manage your wedding and event services with The Festa',
 };
 
+export const dynamic = 'force-dynamic';
+
 export default function RootLayout({
   children,
 }: {

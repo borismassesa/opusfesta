@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@heroicons/react": "^2.2.0",
+    "@supabase/ssr": "^0.8.0",
+    "@supabase/supabase-js": "^2.86.0",
     "lucide-react": "^0.469.0",
     "next": "15.0.0",
     "next-themes": "^0.3.0",

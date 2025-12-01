@@ -29,7 +29,7 @@ const Navbar = () => {
     <nav ref={containerRef} className="sticky top-0 z-50 flex w-full flex-col bg-festa-base text-gray-900">
 
       <div className="flex w-full items-center justify-between border-b border-gray-100 bg-festa-base px-6 py-4 md:px-8 md:py-5 lg:px-12">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 lg:gap-8">
           <button
             type="button"
             className="text-gray-900 lg:hidden"
@@ -43,17 +43,17 @@ const Navbar = () => {
           <Link href="/" className="select-none font-display text-2xl text-gray-900 transition-colors hover:text-gray-700 md:text-3xl">
             TheFesta
           </Link>
-        </div>
 
-        <ul className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-4 text-sm font-medium text-gray-600 lg:flex xl:gap-6">
-          {NAV_LINKS.map(link => (
-            <li key={link.label}>
-              <a href={link.href} className="whitespace-nowrap py-2 transition-colors hover:text-gray-900">
-                {link.label}
-              </a>
-            </li>
-          ))}
-        </ul>
+          <ul className="hidden items-center gap-4 text-sm font-medium text-gray-600 lg:flex xl:gap-6">
+            {NAV_LINKS.map(link => (
+              <li key={link.label}>
+                <a href={link.href} className="whitespace-nowrap py-2 transition-colors hover:text-gray-900">
+                  {link.label}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
 
         <div className="flex items-center gap-3 md:gap-4">
           <a

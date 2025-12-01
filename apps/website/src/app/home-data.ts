@@ -23,7 +23,7 @@ type NavLink = {
 
 export const NAV_LINKS: NavLink[] = [
   { label: 'Planning Tools', href: '#', hasDropdown: false },
-  { label: 'Vendors', href: '#', hasDropdown: true },
+  { label: 'Vendors', href: '/vendors', hasDropdown: true },
   { label: 'Wedding Website', href: '#', hasDropdown: false },
   { label: 'Guests & RSVPs', href: '#', hasDropdown: true },
   { label: 'Attire & Rings', href: '#', hasDropdown: true },
@@ -74,17 +74,17 @@ export const HERO_SLIDES = [
 
 export const CATEGORIES = [
   'Popular',
-  'Real Weddings',
-  'Ceremonies',
-  'Receptions',
-  'Beach Weddings',
-  'Garden Weddings',
-  'Modern & Luxury',
-  'Rustic & Barn',
-  'Decor & Details',
-  'Florals',
-  'Cakes & Desserts',
-  'Fashion & Attire',
+  'Venues',
+  'Photographers',
+  'Videographers',
+  'Caterers',
+  'Wedding Planners',
+  'Florists',
+  'DJs & Music',
+  'Beauty & Makeup',
+  'Bridal Salons',
+  'Cake & Desserts',
+  'Decorators',
 ];
 
 export const MARQUEE_CATEGORIES = [
@@ -98,25 +98,6 @@ export const MARQUEE_CATEGORIES = [
   { title: 'Venues', image: 'https://picsum.photos/seed/venues-marquee/600/400' },
   { title: 'Videographers', image: 'https://picsum.photos/seed/videographers/600/400' },
   { title: 'Wedding Planners', image: 'https://picsum.photos/seed/planners/600/400' },
-];
-
-export const MOCK_SHOTS = [
-  { id: 1, title: 'Napa Valley Vineyard Wedding', author: 'Bella Photography', image: 'https://picsum.photos/seed/wedding1/600/450', likes: 164, views: 6800, category: 'Real Weddings' },
-  { id: 2, title: 'Modern Industrial Reception', author: 'Urban Events', image: 'https://picsum.photos/seed/wedding2/600/450', likes: 142, views: 5200, category: 'Receptions' },
-  { id: 3, title: 'Seaside Elopement Film', author: 'Salty Love Photo', image: 'https://picsum.photos/seed/wedding3/600/450', likes: 185, views: 9100, category: 'Beach Weddings' },
-  { id: 4, title: 'Lush Floral Centerpieces', author: 'Bloom & Co', image: 'https://picsum.photos/seed/wedding4/600/450', likes: 121, views: 4700, category: 'Florals' },
-  { id: 5, title: 'Classic Church Ceremony', author: 'Timeless Vows', image: 'https://picsum.photos/seed/wedding5/600/450', likes: 134, views: 6100, category: 'Ceremonies' },
-  { id: 6, title: 'Garden Party Tablescape', author: 'Nature Weddings', image: 'https://picsum.photos/seed/wedding6/600/450', likes: 178, views: 8300, category: 'Garden Weddings' },
-  { id: 7, title: 'Luxury Ballroom Entrance', author: 'Grand Events', image: 'https://picsum.photos/seed/wedding7/600/450', likes: 156, views: 7200, category: 'Modern & Luxury' },
-  { id: 8, title: 'Intimate Backyard Nuptials', author: 'Home & Heart', image: 'https://picsum.photos/seed/wedding8/600/450', likes: 118, views: 4300, category: 'Real Weddings' },
-  { id: 9, title: 'Rustic Barn Celebration', author: 'Country Charm', image: 'https://picsum.photos/seed/wedding9/600/450', likes: 203, views: 11200, category: 'Rustic & Barn' },
-  { id: 10, title: 'Elegant Table Decor', author: 'Refined Events', image: 'https://picsum.photos/seed/wedding10/600/450', likes: 167, views: 7800, category: 'Decor & Details' },
-  { id: 11, title: 'Three-Tier Wedding Cake', author: 'Sweet Celebrations', image: 'https://picsum.photos/seed/wedding11/600/450', likes: 145, views: 6400, category: 'Cakes & Desserts' },
-  { id: 12, title: 'Bridal Gown Details', author: 'Couture Studio', image: 'https://picsum.photos/seed/wedding12/600/450', likes: 189, views: 9700, category: 'Fashion & Attire' },
-  { id: 13, title: 'Beachfront Vow Exchange', author: 'Coastal Weddings', image: 'https://picsum.photos/seed/wedding13/600/450', likes: 211, views: 12100, category: 'Beach Weddings' },
-  { id: 14, title: 'Garden Rose Bouquet', author: 'Petals & Stems', image: 'https://picsum.photos/seed/wedding14/600/450', likes: 176, views: 8900, category: 'Florals' },
-  { id: 15, title: 'Modern Minimalist Reception', author: 'Clean Lines Co', image: 'https://picsum.photos/seed/wedding15/600/450', likes: 158, views: 7100, category: 'Modern & Luxury' },
-  { id: 16, title: 'Outdoor Garden Ceremony', author: 'Nature Nuptials', image: 'https://picsum.photos/seed/wedding16/600/450', likes: 194, views: 10300, category: 'Garden Weddings' },
 ];
 
 // Planning Tools Data
