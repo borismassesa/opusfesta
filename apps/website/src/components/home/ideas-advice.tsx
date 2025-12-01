@@ -150,7 +150,7 @@ const IdeasAdvice = () => {
                 <div className="absolute inset-0 z-10">
                   <Image
                     src={slide.image}
-                    alt={slide.title}
+                    alt={slide.title || 'Wedding planning advice'}
                     fill
                     sizes="(max-width: 768px) 85vw, 500px"
                     className="object-cover opacity-90"

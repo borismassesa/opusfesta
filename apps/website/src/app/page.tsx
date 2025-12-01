@@ -29,6 +29,7 @@ import Hero from '../components/home/hero';
 import Navbar from '../components/home/navbar';
 import ShotGrid from '../components/home/shot-grid';
 import IdeasAdvice from '../components/home/ideas-advice';
+import PageWrapper from '../components/home/page-wrapper';
 
 type Testimonial = {
   name: string;
@@ -325,7 +326,7 @@ function TestimonialColumn({ direction, items, visibility }: (typeof testimonial
                 ) : (
                   <Image
                     src={avatarSrc}
-                    alt={item.name}
+                    alt={item.name || 'User testimonial'}
                     width={40}
                     height={40}
                     className="size-10 rounded-full object-cover"
@@ -410,11 +411,12 @@ const BentoCard = ({
 
 export default function HomePage() {
   return (
-    <div className="relative bg-festa-base text-gray-900">
-      <Navbar />
+    <PageWrapper>
+      <div className="relative bg-festa-base text-gray-900">
+        <Navbar />
 
-      <main className="relative">
-        <Hero />
+        <main className="relative">
+          <Hero />
 
         {/* Features Bento Grid Section */}
         <section className="mx-auto max-w-6xl px-6 py-20">
@@ -1465,5 +1467,6 @@ export default function HomePage() {
         </div>
       </footer>
     </div>
+    </PageWrapper>
   );
 }
