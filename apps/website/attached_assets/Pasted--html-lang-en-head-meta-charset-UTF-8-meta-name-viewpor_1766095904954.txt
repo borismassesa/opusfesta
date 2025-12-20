@@ -1,0 +1,1251 @@
+<html lang="en"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CHRONICLE | Curated Journalism</title>
+<!-- Fonts: Inter (Sans) and JetBrains Mono (Mono) for the technical aesthetic -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&amp;family=JetBrains+Mono:wght@400&amp;display=swap" rel="stylesheet">
+<!-- Iconify -->
+<script src="https://code.iconify.design/3/3.1.0/iconify.min.js"></script>
+<!-- Tailwind Script -->
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+theme: {
+extend: {
+fontFamily: {
+sans: ['Inter', 'sans-serif'],
+mono: ['JetBrains Mono', 'monospace'],
+},
+colors: {
+background: '#050505', // Almost black
+surface: '#0A0A0A',
+border: 'rgba(255, 255, 255, 0.08)',
+primary: '#FFFFFF',
+secondary: '#888888',
+accent: '#3B82F6', // Electric blue for tech feel
+},
+backgroundImage: {
+'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+'subtle-glow': 'conic-gradient(from 180deg at 50% 50%, #1a1a1a 0deg, #050505 180deg, #1a1a1a 360deg)',
+}
+}
+}
+}
+</script>
+<style>
+:root {
+--bg-color: #050505;
+--text-color: #EDEDED;
+--accent-color: #3B82F6;
+--grid-line: rgba(255, 255, 255, 0.06);
+--container-padding: 5vw;
+}
+/* Base Settings */
+html.lenis, html.lenis body {
+height: auto;
+}
+.lenis.lenis-smooth {
+scroll-behavior: auto !important;
+}
+.lenis.lenis-smooth [data-lenis-prevent] {
+overscroll-behavior: contain;
+}
+.lenis.lenis-stopped {
+overflow: hidden;
+}
+.lenis.lenis-scrolling iframe {
+pointer-events: none;
+}
+body {
+background-color: var(--bg-color);
+color: var(--text-color);
+-webkit-font-smoothing: antialiased;
+overflow-x: hidden;
+selection-background-color: rgba(59, 130, 246, 0.3);
+selection-color: white;
+}
+/* Typography Override */
+.mono-accent {
+font-family: 'JetBrains Mono', monospace;
+font-size: 0.85em;
+color: var(--secondary);
+letter-spacing: -0.02em;
+}
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+width: 6px;
+}
+::-webkit-scrollbar-track {
+background: var(--bg-color);
+}
+::-webkit-scrollbar-thumb {
+background: #333;
+border-radius: 3px;
+}
+/* Loader */
+.loader {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100vh;
+background: #000;
+z-index: 9999;
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+}
+.loader-bar-bg {
+width: 200px;
+height: 2px;
+background: rgba(255,255,255,0.1);
+margin-top: 20px;
+position: relative;
+overflow: hidden;
+}
+.loader-bar {
+position: absolute;
+left: 0;
+top: 0;
+height: 100%;
+background: white;
+width: 0%;
+}
+/* Navigation */
+.glass-nav {
+background: rgba(5, 5, 5, 0.7);
+backdrop-filter: blur(12px);
+-webkit-backdrop-filter: blur(12px);
+border-bottom: 1px solid var(--grid-line);
+}
+/* Menu Overlay */
+.menu-overlay {
+clip-path: inset(0 0 100% 0); /* Start hidden from bottom */
+pointer-events: none;
+}
+.menu-overlay.active {
+pointer-events: all;
+}
+/* Custom UI Elements */
+.btn-glow {
+position: relative;
+background: linear-gradient(to bottom, rgba(255,255,255,0.1), rgba(255,255,255,0.02));
+box-shadow: 0px 1px 0px rgba(255,255,255,0.1) inset, 0px -1px 0px rgba(0,0,0,0.5) inset;
+transition: all 0.3s cubic-bezier(0.25, 1, 0.5, 1);
+}
+.btn-glow:hover {
+background: linear-gradient(to bottom, rgba(255,255,255,0.15), rgba(255,255,255,0.05));
+box-shadow: 0 0 20px rgba(255,255,255,0.05);
+}
+/* Masking for Marquee */
+.marquee-container {
+mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+-webkit-mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+}
+/* Glow Effects */
+.hero-glow {
+position: absolute;
+width: 60vw;
+height: 60vw;
+background: radial-gradient(circle, rgba(59, 130, 246, 0.08) 0%, rgba(0,0,0,0) 70%);
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+pointer-events: none;
+z-index: 0;
+}
+/* Horizontal Scroll Snap logic for fallback, though GSAP handles it */
+.horizontal-wrapper {
+display: flex;
+width: fit-content;
+height: 100%;
+align-items: center;
+gap: 4vw;
+padding-left: var(--container-padding);
+}
+/* Text Gradients */
+.text-gradient {
+background: linear-gradient(to bottom right, #fff 30%, #666 100%);
+-webkit-background-clip: text;
+-webkit-text-fill-color: transparent;
+}
+/* New Animations */
+@keyframes loading-scan { 0% { transform: translateX(-100%); } 100% { transform: translateX(300%); } }
+.animate-loading-bar { animation: loading-scan 2s infinite linear; }
+.process-card { transition: transform 0.3s ease-out; }
+</style>
+<link id="all-fonts-link-font-geist" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-geist">
+.font-geist { font-family: 'Geist', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-roboto" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-roboto">
+.font-roboto { font-family: 'Roboto', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-montserrat" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-montserrat">
+.font-montserrat { font-family: 'Montserrat', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-poppins" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-poppins">
+.font-poppins { font-family: 'Poppins', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-playfair" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;900&amp;display=swap">
+<style id="all-fonts-style-font-playfair">
+.font-playfair { font-family: 'Playfair Display', serif !important; }
+</style>
+<link id="all-fonts-link-font-instrument-serif" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:wght@400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-instrument-serif">
+.font-instrument-serif { font-family: 'Instrument Serif', serif !important; }
+</style>
+<link id="all-fonts-link-font-merriweather" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700;900&amp;display=swap">
+<style id="all-fonts-style-font-merriweather">
+.font-merriweather { font-family: 'Merriweather', serif !important; }
+</style>
+<link id="all-fonts-link-font-bricolage" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@300;400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-bricolage">
+.font-bricolage { font-family: 'Bricolage Grotesque', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-jakarta" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&amp;display=swap">
+<style id="all-fonts-style-font-jakarta">
+.font-jakarta { font-family: 'Plus Jakarta Sans', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-manrope" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@300;400;500;600;700;800&amp;display=swap">
+<style id="all-fonts-style-font-manrope">
+.font-manrope { font-family: 'Manrope', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-space-grotesk" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-space-grotesk">
+.font-space-grotesk { font-family: 'Space Grotesk', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-work-sans" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@300;400;500;600;700;800&amp;display=swap">
+<style id="all-fonts-style-font-work-sans">
+.font-work-sans { font-family: 'Work Sans', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-pt-serif" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=PT+Serif:wght@400;700&amp;display=swap">
+<style id="all-fonts-style-font-pt-serif">
+.font-pt-serif { font-family: 'PT Serif', serif !important; }
+</style>
+<link id="all-fonts-link-font-geist-mono" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-geist-mono">
+.font-geist-mono { font-family: 'Geist Mono', monospace !important; }
+</style>
+<link id="all-fonts-link-font-space-mono" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&amp;display=swap">
+<style id="all-fonts-style-font-space-mono">
+.font-space-mono { font-family: 'Space Mono', monospace !important; }
+</style>
+<link id="all-fonts-link-font-quicksand" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Quicksand:wght@300;400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-quicksand">
+.font-quicksand { font-family: 'Quicksand', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-nunito" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&amp;display=swap">
+<style id="all-fonts-style-font-nunito">
+.font-nunito { font-family: 'Nunito', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-newsreader" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400..800&amp;display=swap">
+<style id="all-fonts-style-font-newsreader">
+.font-newsreader { font-family: 'Newsreader', serif !important; }
+</style>
+<link id="all-fonts-link-font-google-sans-flex" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Google+Sans+Flex:wght@400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-google-sans-flex">
+.font-google-sans-flex { font-family: 'Google Sans Flex', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-oswald" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-oswald">
+.font-oswald { font-family: 'Oswald', sans-serif !important; }
+</style>
+<link id="all-fonts-link-font-dm-sans" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&amp;display=swap">
+<style id="all-fonts-style-font-dm-sans">
+.font-dm-sans { font-family: 'DM Sans', sans-serif !important; }
+</style></head>
+  <body class="opacity-0 transition-opacity duration-700 bg-background text-zinc-300">
+    <!-- Loader -->
+    <div class="loader">
+      <div class="uppercase text-xs text-zinc-500 tracking-[0.2em] font-mono">
+        Initializing Core
+      </div>
+      <div class="loader-bar-bg">
+        <div class="loader-bar"></div>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="fixed top-0 w-full z-50 px-[5vw] py-5 flex justify-between items-center glass-nav">
+      <div class="flex items-center gap-2 z-50">
+        <div class="w-5 h-5 bg-white rounded-full flex items-center justify-center">
+          <div class="w-2 h-2 bg-black rounded-full"></div>
+        </div>
+        <span class="font-semibold text-sm tracking-tight text-white">
+          CHRONICLE
+        </span>
+      </div>
+
+      <div class="flex items-center gap-6 z-50">
+        <a href="#download" class="hidden md:block text-xs font-medium text-zinc-400 hover:text-white transition-colors">
+          Get the App
+        </a>
+        <button class="menu-btn group flex flex-col gap-[5px] w-8 items-end cursor-pointer">
+          <span class="w-full h-[1.5px] bg-zinc-300 transition-all duration-300 group-hover:w-3/4"></span>
+          <span class="w-2/3 h-[1.5px] bg-zinc-300 transition-all duration-300 group-hover:w-full"></span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Menu Overlay -->
+    <div class="menu-overlay fixed inset-0 bg-background z-40 flex flex-col justify-center items-center">
+      <div class="flex flex-col gap-6 text-center">
+        <a href="#hero" class="menu-link text-5xl md:text-7xl font-semibold tracking-tighter text-zinc-600 hover:text-white transition-colors">
+          Start
+        </a>
+        <a href="#issues" class="menu-link text-5xl md:text-7xl font-semibold tracking-tighter text-zinc-600 hover:text-white transition-colors">
+          Issues
+        </a>
+        <a href="#features" class="menu-link text-5xl md:text-7xl font-semibold tracking-tighter text-zinc-600 hover:text-white transition-colors">
+          Features
+        </a>
+        <a href="#community" class="menu-link text-5xl md:text-7xl font-semibold tracking-tighter text-zinc-600 hover:text-white transition-colors">
+          Join
+        </a>
+      </div>
+      <div class="absolute bottom-10 left-[5vw] right-[5vw] flex justify-between text-xs font-mono text-zinc-600 uppercase">
+        <span>v.2.4.0</span>
+        <span>San Francisco, CA</span>
+      </div>
+    </div>
+
+    <main id="smooth-wrapper">
+      <div id="smooth-content">
+        <!-- Hero Section -->
+        <div class="pin-spacer" style="order: 0; place-self: auto; grid-area: auto; z-index: auto; float: none; flex-shrink: 1; display: flex; margin: 0px; inset: 0px; position: relative; flex-basis: auto; overflow: visible; box-sizing: border-box; width: 1506px; height: 1945px; padding: 0px 0px 1167px;">
+          <div class="pin-spacer" style="order: 0; place-self: auto; grid-area: auto; z-index: auto; float: none; flex-shrink: 1; display: flex; margin: 0px; inset: 0.001px 0px 0px; position: relative; flex-basis: auto; overflow: visible; box-sizing: border-box; width: 1506px; height: 778px; padding: 0px;">
+            <section id="hero" class="relative min-h-screen flex flex-col justify-center px-[5vw] pt-20 overflow-hidden border-b border-border" style="translate: none; rotate: none; scale: none; left: 0px; top: 0.001px; margin: 0px; max-width: 1506px; width: 1506px; max-height: 778px; height: 778px; padding: 80px 75.6px 0px; box-sizing: border-box; position: fixed; transform: translate(0px, 0px);">
+              <div class="hero-glow"></div>
+
+              <!-- Floating Elements (Visual Abstract) -->
+              <div class="hero-visual absolute right-0 md:right-[10%] top-1/4 w-[300px] md:w-[500px] aspect-[4/5] md:aspect-square opacity-30 md:opacity-60 mix-blend-screen pointer-events-none z-0" style="border-radius: 0px; mix-blend-mode: normal; opacity: 0.6; right: 151px; top: 194px; height: 64.2673vh; width: 33.0688vw;">
+                <img id="hero-img" src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/272c462b-4ff7-4e56-a1d5-ac984d058b80_1600w.jpg" class="w-full h-full object-cover rounded-2xl rotate-12 blur-md grayscale opacity-80 will-change-transform origin-center" alt="Abstract Data" style="translate: none; rotate: none; scale: none; opacity: 0.8; border-radius: 16px; filter: blur(12px) grayscale(0.2%); transform: translate3d(0px, 0px, 0px) rotate(11.9999deg);">
+              </div>
+
+              <div class="z-10 max-w-4xl mt-12 md:mt-0">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 mb-8 backdrop-blur-sm">
+                  <span class="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse"></span>
+                  <span class="text-[10px] uppercase tracking-widest font-mono text-zinc-300">
+                    New Issue Available
+                  </span>
+                </div>
+
+                <h1 class="text-[clamp(3rem,8vw,7rem)] leading-[0.9] font-semibold tracking-tight text-white mb-8 hero-title" style="translate: none; rotate: none; scale: none; filter: blur(0px); transform: translate3d(0px, 0px, 0px); opacity: 1;">
+                  <span class="block overflow-hidden">
+                    <span class="block translate-y-full" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                      Information
+                    </span>
+                  </span>
+                  <span class="block overflow-hidden">
+                    <span class="block translate-y-full text-zinc-500 italic font-serif pr-4" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                      Refined
+                    </span>
+                  </span>
+                  <span class="block overflow-hidden">
+                    <span class="block translate-y-full" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                      For clarity.
+                    </span>
+                  </span>
+                </h1>
+
+                <p class="text-lg md:text-xl text-zinc-400 max-w-md leading-relaxed mb-10 hero-desc opacity-0 transform translate-y-4" style="translate: none; rotate: none; scale: none; filter: blur(0px); transform: translate3d(0px, 16px, 0px); opacity: 1;">
+                  A digital magazine designed for the focused mind. Curated
+                  journalism, zero distractions, infinite depth.
+                </p>
+
+                <div class="flex gap-4 hero-btns opacity-0 transform translate-y-4" style="translate: none; rotate: none; scale: none; filter: blur(0px); transform: translate3d(0px, 16px, 0px); opacity: 1;">
+                  <button class="btn-glow px-8 py-3 rounded-full text-sm font-medium text-white flex items-center gap-2">
+                    <span>Download for iOS</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:apple" data-width="16" class="iconify iconify--lucide">
+                      <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                        <path d="M12 6.528V3a1 1 0 0 1 1-1h0"></path>
+                        <path d="M18.237 21A15 15 0 0 0 22 11a6 6 0 0 0-10-4.472A6 6 0 0 0 2 11a15.1 15.1 0 0 0 3.763 10a3 3 0 0 0 3.648.648a5.5 5.5 0 0 1 5.178 0A3 3 0 0 0 18.237 21"></path>
+                      </g>
+                    </svg>
+                  </button>
+                  <button class="px-8 py-3 rounded-full text-sm font-medium text-zinc-400 hover:text-white transition-colors border border-transparent hover:border-white/10">
+                    Read Web Version
+                  </button>
+                </div>
+              </div>
+
+              <div class="absolute bottom-8 left-[5vw] flex items-center gap-4 text-xs font-mono text-zinc-600 uppercase tracking-widest">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="16" height="16" viewBox="0 0 24 24" data-icon="lucide:arrow-down" data-width="16" class="iconify animate-bounce iconify--lucide">
+                  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v14m7-7l-7 7l-7-7"></path>
+                </svg>
+                <span>Scroll to explore</span>
+              </div>
+            </section>
+          </div>
+        </div>
+
+        <!-- Marquee / Topics -->
+        <section class="py-6 border-b border-border bg-surface/50 marquee-container">
+          <div class="marquee-track flex gap-12 whitespace-nowrap overflow-hidden">
+            <!-- Repeated items for loop -->
+            <div class="flex gap-12 items-center text-sm font-mono text-zinc-400 uppercase tracking-widest">
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:cpu" class="iconify iconify--lucide">
+                  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                    <path d="M12 20v2m0-20v2m5 16v2m0-20v2M2 12h2m-2 5h2M2 7h2m16 5h2m-2 5h2M20 7h2M7 20v2M7 2v2"></path>
+                    <rect width="16" height="16" x="4" y="4" rx="2"></rect>
+                    <rect width="8" height="8" x="8" y="8" rx="1"></rect>
+                  </g>
+                </svg>
+                Technology
+              </span>
+              <span class="w-1 h-1 bg-zinc-700 rounded-full"></span>
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:palette" class="iconify iconify--lucide">
+                  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                    <path d="M12 22a1 1 0 0 1 0-20a10 9 0 0 1 10 9a5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"></path>
+                    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+                    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+                    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+                    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+                  </g>
+                </svg>
+                Design
+              </span>
+              <span class="w-1 h-1 bg-zinc-700 rounded-full"></span>
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:globe" class="iconify iconify--lucide">
+                  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20M2 12h20"></path>
+                  </g>
+                </svg>
+                Culture
+              </span>
+              <span class="w-1 h-1 bg-zinc-700 rounded-full"></span>
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:flask-conical" class="iconify iconify--lucide">
+                  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2M6.453 15h11.094M8.5 2h7"></path>
+                </svg>
+                Science
+              </span>
+              <span class="w-1 h-1 bg-zinc-700 rounded-full"></span>
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:briefcase" class="iconify iconify--lucide">
+                  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                    <path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    <rect width="20" height="14" x="2" y="6" rx="2"></rect>
+                  </g>
+                </svg>
+                Venture
+              </span>
+              <span class="w-1 h-1 bg-zinc-700 rounded-full"></span>
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:cpu" class="iconify iconify--lucide">
+                  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                    <path d="M12 20v2m0-20v2m5 16v2m0-20v2M2 12h2m-2 5h2M2 7h2m16 5h2m-2 5h2M20 7h2M7 20v2M7 2v2"></path>
+                    <rect width="16" height="16" x="4" y="4" rx="2"></rect>
+                    <rect width="8" height="8" x="8" y="8" rx="1"></rect>
+                  </g>
+                </svg>
+                Technology
+              </span>
+              <span class="w-1 h-1 bg-zinc-700 rounded-full"></span>
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:palette" class="iconify iconify--lucide">
+                  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                    <path d="M12 22a1 1 0 0 1 0-20a10 9 0 0 1 10 9a5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"></path>
+                    <circle cx="13.5" cy="6.5" r=".5" fill="currentColor"></circle>
+                    <circle cx="17.5" cy="10.5" r=".5" fill="currentColor"></circle>
+                    <circle cx="6.5" cy="12.5" r=".5" fill="currentColor"></circle>
+                    <circle cx="8.5" cy="7.5" r=".5" fill="currentColor"></circle>
+                  </g>
+                </svg>
+                Design
+              </span>
+              <span class="w-1 h-1 bg-zinc-700 rounded-full"></span>
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:globe" class="iconify iconify--lucide">
+                  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M12 2a14.5 14.5 0 0 0 0 20a14.5 14.5 0 0 0 0-20M2 12h20"></path>
+                  </g>
+                </svg>
+                Culture
+              </span>
+              <span class="w-1 h-1 bg-zinc-700 rounded-full"></span>
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:flask-conical" class="iconify iconify--lucide">
+                  <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 2v6a2 2 0 0 0 .245.96l5.51 10.08A2 2 0 0 1 18 22H6a2 2 0 0 1-1.755-2.96l5.51-10.08A2 2 0 0 0 10 8V2M6.453 15h11.094M8.5 2h7"></path>
+                </svg>
+                Science
+              </span>
+              <span class="w-1 h-1 bg-zinc-700 rounded-full"></span>
+              <span class="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:briefcase" class="iconify iconify--lucide">
+                  <g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2">
+                    <path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    <rect width="20" height="14" x="2" y="6" rx="2"></rect>
+                  </g>
+                </svg>
+                Venture
+              </span>
+              <span class="w-1 h-1 bg-zinc-700 rounded-full"></span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Feature Split Section -->
+        <section class="grid grid-cols-1 md:grid-cols-2 gap-12 px-[5vw] py-32 border-b border-border relative" id="philosophy">
+          <div class="sticky top-32 h-fit">
+            <span class="font-mono text-blue-500 text-xs tracking-widest uppercase mb-4 block">
+              Philosophy
+            </span>
+            <h2 class="text-4xl md:text-5xl font-semibold tracking-tight leading-tight text-white mb-8 section-title">
+              <span class="inline-block overflow-hidden align-bottom">
+                <span class="inline-block translate-y-full pb-1" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                  Signal over
+                </span>
+              </span>
+              <span class="inline-block overflow-hidden align-bottom">
+                <span class="inline-block text-zinc-600 translate-y-full pb-1" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                  noise.
+                </span>
+              </span>
+            </h2>
+            <div class="hidden md:flex flex-col items-center h-[50vh] max-h-[400px] mt-8">
+              <div class="w-1.5 h-1.5 bg-blue-500 rounded-full shadow-[0_0_8px_rgba(59,130,246,0.8)] z-10"></div>
+              <div class="w-px flex-1 bg-zinc-800 relative overflow-hidden my-2">
+                <div class="philosophy-progress absolute top-0 left-0 w-full h-full bg-blue-500 will-change-transform" style="transform: translate(0px, -100%); translate: none; rotate: none; scale: none;"></div>
+              </div>
+              <div class="w-1.5 h-1.5 bg-zinc-800 rounded-full z-10"></div>
+            </div>
+          </div>
+
+          <div class="flex flex-col gap-24">
+            <div class="reveal-card" style="translate: none; rotate: none; scale: none; transform: translate(0px, 50px); opacity: 0.2;">
+              <p class="text-xl md:text-2xl leading-relaxed text-zinc-100 mb-6">
+                The internet is broken. Algorithmic feeds prioritize outrage
+                over insight. Chronicle is a quiet space tailored for deep
+                reading.
+              </p>
+              <div class="aspect-video bg-zinc-900 rounded-lg border border-border overflow-hidden relative group">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent z-10"></div>
+                <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/7e1dc7fd-96d3-4e31-98b3-9f1b206ec0fe_1600w.webp" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700" alt="Cybersecurity">
+                <div class="absolute bottom-4 left-4 z-20">
+                  <span class="text-xs font-mono text-white border border-white/20 px-2 py-1 rounded">
+                    01. Curation
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div class="reveal-card" style="translate: none; rotate: none; scale: none; transform: translate(0px, 50px); opacity: 0.2;">
+              <p class="text-xl md:text-2xl leading-relaxed text-zinc-100 mb-6">
+                We collaborate with the world's leading thinkers to produce
+                issues that stand the test of time. No clickbait. No ads.
+              </p>
+              <div class="aspect-video bg-zinc-900 rounded-lg border border-border overflow-hidden relative group">
+                <div class="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent z-10"></div>
+                <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/5ca98040-0186-4e7b-8f5c-0e0a93b187c6_1600w.webp" class="object-cover w-full h-full group-hover:scale-105 transition-transform duration-700" alt="Network">
+                <div class="absolute bottom-4 left-4 z-20">
+                  <span class="text-xs font-mono text-white border border-white/20 px-2 py-1 rounded">
+                    02. Depth
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Horizontal Scroll (Issues) -->
+        <div class="pin-spacer" style="order: 0; place-self: auto; grid-area: auto; z-index: auto; float: none; flex-shrink: 1; display: block; margin: 0px; inset: 0px; position: relative; flex-basis: auto; overflow: visible; box-sizing: border-box; width: 1506px; height: 1347px; padding: 0px 0px 559px;">
+          <div class="pin-spacer" style="order: 0; place-self: auto; grid-area: auto; z-index: auto; float: none; flex-shrink: 1; display: block; margin: 0px; inset: 0px; position: relative; flex-basis: auto; overflow: visible; box-sizing: border-box; width: 1506px; height: 1347px; padding: 0px 0px 559px;">
+            <section id="issues" class="bg-[#080808] text-white py-24 overflow-hidden relative border-b border-border" style="translate: none; rotate: none; scale: none; inset: 0px auto auto 0px; margin: 0px; max-width: 1506px; width: 1506px; max-height: 787.797px; height: 787.797px; padding: 96px 0px; transform: translate(0px, 0px);">
+              <div class="px-[5vw] mb-16 flex justify-between items-end">
+                <div>
+                  <span class="font-mono text-blue-500 text-xs tracking-widest uppercase mb-2 block">
+                    Library
+                  </span>
+                  <h2 class="text-3xl font-semibold tracking-tight section-title">
+                    <span class="inline-block overflow-hidden align-bottom">
+                      <span class="inline-block translate-y-full pb-1" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                        Recent
+                      </span>
+                    </span>
+                    <span class="inline-block overflow-hidden align-bottom">
+                      <span class="inline-block translate-y-full pb-1" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                        Issues
+                      </span>
+                    </span>
+                  </h2>
+                </div>
+                <div class="hidden md:flex gap-2">
+                  <span class="text-xs font-mono text-zinc-500">
+                    DRAG TO EXPLORE -&gt;
+                  </span>
+                </div>
+              </div>
+
+              <!-- Scrolling Container -->
+              <div class="horizontal-scroll-container w-full">
+                <div class="horizontal-wrapper flex" style="translate: none; rotate: none; scale: none; transform: translate(0px, 0px);">
+                  <!-- Card 1 -->
+                  <div class="w-[85vw] md:w-[30vw] h-[50vh] md:h-[60vh] relative flex-shrink-0 group cursor-pointer">
+                    <div class="absolute inset-0 bg-zinc-800 rounded-xl overflow-hidden border border-border">
+                      <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/917d6f93-fb36-439a-8c48-884b67b35381_1600w.jpg" class="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500 filter grayscale group-hover:grayscale-0" alt="Issue 24">
+                      <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/90"></div>
+                      <div class="absolute bottom-0 left-0 p-8 w-full">
+                        <div class="flex justify-between items-end border-b border-white/20 pb-4 mb-4">
+                          <span class="text-4xl font-semibold tracking-tighter">
+                            The Void
+                          </span>
+                          <span class="font-mono text-xs">NO. 24</span>
+                        </div>
+                        <p class="text-sm text-zinc-400 line-clamp-2">
+                          Exploring the concept of emptiness in digital spaces
+                          and urban architecture.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card 2 -->
+                  <div class="w-[85vw] md:w-[30vw] h-[50vh] md:h-[60vh] relative flex-shrink-0 group cursor-pointer">
+                    <div class="absolute inset-0 bg-zinc-800 rounded-xl overflow-hidden border border-border">
+                      <img src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/29c82139-abf4-41db-815e-79641179c0a7_1600w.webp" class="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500 filter grayscale group-hover:grayscale-0" alt="Issue 23">
+                      <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/90"></div>
+                      <div class="absolute bottom-0 left-0 p-8 w-full">
+                        <div class="flex justify-between items-end border-b border-white/20 pb-4 mb-4">
+                          <span class="text-4xl font-semibold tracking-tighter">
+                            Synthetic
+                          </span>
+                          <span class="font-mono text-xs">NO. 23</span>
+                        </div>
+                        <p class="text-sm text-zinc-400 line-clamp-2">
+                          The rise of AI generated realities and what it means
+                          for human creativity.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card 3 -->
+                  <div class="w-[85vw] md:w-[30vw] h-[50vh] md:h-[60vh] relative flex-shrink-0 group cursor-pointer">
+                    <div class="absolute inset-0 bg-zinc-800 rounded-xl overflow-hidden border border-border">
+                      <img src="https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&amp;w=2070&amp;auto=format&amp;fit=crop" class="w-full h-full object-cover opacity-60 group-hover:opacity-80 group-hover:scale-105 transition-all duration-500 filter grayscale group-hover:grayscale-0" alt="Issue 22">
+                      <div class="absolute inset-0 bg-gradient-to-b from-transparent to-black/90"></div>
+                      <div class="absolute bottom-0 left-0 p-8 w-full">
+                        <div class="flex justify-between items-end border-b border-white/20 pb-4 mb-4">
+                          <span class="text-4xl font-semibold tracking-tighter">
+                            Circuit
+                          </span>
+                          <span class="font-mono text-xs">NO. 22</span>
+                        </div>
+                        <p class="text-sm text-zinc-400 line-clamp-2">
+                          Hardware renaissance. Why analog computing is making a
+                          comeback.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- Card 4 -->
+                  <div class="w-[85vw] md:w-[30vw] h-[50vh] md:h-[60vh] relative flex-shrink-0 group cursor-pointer pr-[5vw]">
+                    <div class="absolute inset-0 bg-zinc-900 rounded-xl overflow-hidden border border-border flex items-center justify-center">
+                      <div class="text-center group-hover:scale-110 transition-transform">
+                        <span class="block text-sm font-mono text-blue-500 mb-2">
+                          ARCHIVE
+                        </span>
+                        <span class="text-2xl font-semibold text-white">
+                          View All Issues
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+        <section id="contributors" class="py-32 px-[5vw] border-b border-border relative overflow-hidden">
+          <div class="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(59,130,246,0.03),transparent_40%)] pointer-events-none"></div>
+          <div class="flex flex-col md:flex-row gap-24 relative z-10">
+            <div class="w-full md:w-5/12">
+              <span class="font-mono text-blue-500 text-xs tracking-widest uppercase mb-12 block">
+                Network
+              </span>
+              <h2 class="text-5xl font-semibold tracking-tighter text-white mb-16 section-title">
+                <span class="block overflow-hidden">
+                  <span class="block translate-y-full pb-2" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                    Global
+                  </span>
+                </span>
+                <span class="block overflow-hidden">
+                  <span class="block text-zinc-600 translate-y-full pb-2" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                    Correspondents.
+                  </span>
+                </span>
+              </h2>
+
+              <div class="flex flex-col">
+                <div class="contributor-row group py-8 border-t border-zinc-800 cursor-pointer transition-colors hover:border-white/20" data-img="https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?q=80&amp;w=1964&amp;auto=format&amp;fit=crop">
+                  <div class="flex justify-between items-baseline">
+                    <h3 class="text-2xl text-zinc-400 group-hover:text-white transition-colors">
+                      Dr. Aris Thorne
+                    </h3>
+                    <span class="font-mono text-xs text-zinc-600 group-hover:text-blue-500">
+                      LDN
+                    </span>
+                  </div>
+                  <p class="h-0 overflow-hidden group-hover:h-auto group-hover:mt-4 text-sm text-zinc-500 transition-all duration-300">
+                    Former editor at Wired UK. Specialist in cyber-physical
+                    systems.
+                  </p>
+                </div>
+                <div class="contributor-row group py-8 border-t border-zinc-800 cursor-pointer transition-colors hover:border-white/20" data-img="https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&amp;w=1964&amp;auto=format&amp;fit=crop">
+                  <div class="flex justify-between items-baseline">
+                    <h3 class="text-2xl text-zinc-400 group-hover:text-white transition-colors">
+                      Elena Kogan
+                    </h3>
+                    <span class="font-mono text-xs text-zinc-600 group-hover:text-blue-500">
+                      BER
+                    </span>
+                  </div>
+                  <p class="h-0 overflow-hidden group-hover:h-auto group-hover:mt-4 text-sm text-zinc-500 transition-all duration-300">
+                    Investigative journalist focusing on digital privacy and
+                    cryptography.
+                  </p>
+                </div>
+                <div class="contributor-row group py-8 border-t border-zinc-800 cursor-pointer transition-colors hover:border-white/20" data-img="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&amp;w=1887&amp;auto=format&amp;fit=crop">
+                  <div class="flex justify-between items-baseline">
+                    <h3 class="text-2xl text-zinc-400 group-hover:text-white transition-colors">
+                      Kenji Sato
+                    </h3>
+                    <span class="font-mono text-xs text-zinc-600 group-hover:text-blue-500">
+                      TKY
+                    </span>
+                  </div>
+                  <p class="h-0 overflow-hidden group-hover:h-auto group-hover:mt-4 text-sm text-zinc-500 transition-all duration-300">
+                    Architect turned tech writer. Exploring the interface of
+                    smart cities.
+                  </p>
+                </div>
+                <div class="contributor-row group py-8 border-t border-zinc-800 cursor-pointer transition-colors hover:border-white/20" data-img="https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&amp;w=1887&amp;auto=format&amp;fit=crop">
+                  <div class="flex justify-between items-baseline">
+                    <h3 class="text-2xl text-zinc-400 group-hover:text-white transition-colors">
+                      David Chen
+                    </h3>
+                    <span class="font-mono text-xs text-zinc-600 group-hover:text-blue-500">
+                      SF
+                    </span>
+                  </div>
+                  <p class="h-0 overflow-hidden group-hover:h-auto group-hover:mt-4 text-sm text-zinc-500 transition-all duration-300">
+                    Venture analyst covering the intersection of finance and AI.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div class="hidden md:block w-7/12 relative h-[80vh]">
+              <div class="sticky top-24 w-full h-full rounded-sm overflow-hidden bg-zinc-900 border border-white/5 relative">
+                <div class="absolute inset-0 bg-zinc-900 z-20 transition-opacity duration-500 pointer-events-none opacity-0" id="contrib-overlay"></div>
+                <img id="contrib-img" src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/590c8fd4-d2a3-4252-9b6a-b00e756fc496_1600w.jpg" class="w-full h-full object-cover filter grayscale opacity-60 transition-transform duration-700" alt="">
+
+                <div class="absolute bottom-8 left-8 z-30 mix-blend-difference">
+                  <div class="inline-flex items-center gap-2 border border-white/30 px-3 py-1 rounded-full">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-[10px] font-mono text-white uppercase tracking-widest">
+                      Live Uplink
+                    </span>
+                  </div>
+                </div>
+                <!-- Decorative grid -->
+                <div class="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Tech Specs / Accordion -->
+        <section id="methodology" class="py-32 px-[5vw] bg-surface border-b border-border relative">
+          <div class="mb-32">
+            <span class="font-mono text-blue-500 text-xs tracking-widest uppercase mb-4 block">
+              Process
+            </span>
+            <h2 class="text-5xl md:text-7xl font-semibold tracking-tighter text-white section-title">
+              <span class="block overflow-hidden">
+                <span class="block translate-y-full pb-2" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                  Refinement
+                </span>
+              </span>
+              <span class="block overflow-hidden">
+                <span class="block text-zinc-700 translate-y-full pb-2" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                  Protocol.
+                </span>
+              </span>
+            </h2>
+          </div>
+
+          <div class="flex flex-col gap-8 relative max-w-5xl mx-auto">
+            <!-- Card 1 -->
+            <div class="process-card sticky top-32 w-full bg-[#0E0E0E] border border-white/10 rounded-xl p-8 md:p-16 flex flex-col md:flex-row gap-12 min-h-[400px]" style="translate: none; rotate: none; scale: none; filter: none; transform: translate(0px, 0px);">
+              <div class="font-mono text-6xl md:text-8xl text-zinc-800 leading-none">
+                01
+              </div>
+              <div class="pt-4 w-full">
+                <h3 class="text-3xl text-white font-medium mb-6">
+                  Global Ingestion
+                </h3>
+                <p class="text-xl text-zinc-400 leading-relaxed max-w-md">
+                  Our systems parse 50,000+ data points daily, from academic
+                  repositories to edge-case forums.
+                </p>
+                <div class="mt-12 h-px w-full bg-zinc-800 relative overflow-hidden">
+                  <div class="absolute inset-0 bg-blue-500 w-1/3 animate-loading-bar"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 2 -->
+            <div class="process-card sticky top-40 w-full bg-[#111] border border-white/10 rounded-xl p-8 md:p-16 flex flex-col md:flex-row gap-12 min-h-[400px] shadow-[0_-20px_40px_-20px_rgba(0,0,0,0.5)]" style="translate: none; rotate: none; scale: none; filter: none; transform: translate(0px, 0px);">
+              <div class="font-mono text-6xl md:text-8xl text-zinc-800 leading-none">
+                02
+              </div>
+              <div class="pt-4 w-full">
+                <h3 class="text-3xl text-white font-medium mb-6">
+                  Signal Verification
+                </h3>
+                <p class="text-xl text-zinc-400 leading-relaxed max-w-md">
+                  Cross-referencing against historical baselines to eliminate
+                  hallucination and bias.
+                </p>
+                <div class="mt-12 flex gap-2">
+                  <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+                  <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse delay-75"></span>
+                  <span class="w-2 h-2 bg-zinc-700 rounded-full"></span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Card 3 -->
+            <div class="process-card sticky top-48 w-full bg-[#141414] border border-white/10 rounded-xl p-8 md:p-16 flex flex-col md:flex-row gap-12 min-h-[400px] shadow-[0_-20px_40px_-20px_rgba(0,0,0,0.5)]" style="translate: none; rotate: none; scale: none; filter: none; transform: translate(0px, 0px);">
+              <div class="font-mono text-6xl md:text-8xl text-zinc-800 leading-none">
+                03
+              </div>
+              <div class="pt-4 w-full">
+                <h3 class="text-3xl text-white font-medium mb-6">
+                  Narrative Synthesis
+                </h3>
+                <p class="text-xl text-zinc-400 leading-relaxed max-w-md">
+                  The final output is not just data, but a coherent story
+                  designed for the human mind.
+                </p>
+                <button class="mt-12 text-sm font-mono text-blue-500 border-b border-blue-500/30 pb-1 hover:text-white hover:border-white transition-all">
+                  READ MANIFESTO -&gt;
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section id="features" class="py-32 px-[5vw] border-b border-border">
+          <div class="max-w-3xl mx-auto">
+            <span class="font-mono text-blue-500 text-xs tracking-widest uppercase mb-12 block text-center">
+              System Capabilities
+            </span>
+
+            <div class="space-y-0">
+              <!-- Item 1 -->
+              <div class="accordion-item border-t border-border group hover:bg-white/[0.02] transition-colors cursor-pointer">
+                <div class="py-6 flex justify-between items-center">
+                  <h3 class="text-xl font-medium text-zinc-300 group-hover:text-white transition-colors">
+                    Offline Synthesis
+                  </h3>
+                  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:plus" class="iconify text-zinc-500 transition-transform duration-300 group-[.active]:rotate-45 iconify--lucide">
+                    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7v14"></path>
+                  </svg>
+                </div>
+                <div class="accordion-content h-0 overflow-hidden opacity-0">
+                  <div class="pb-6 text-zinc-400 leading-relaxed text-sm max-w-lg">
+                    Full library synchronization allows for seamless reading
+                    experiences without network connectivity. Your library is
+                    locally indexed and searchable on device.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Item 2 -->
+              <div class="accordion-item border-t border-border group hover:bg-white/[0.02] transition-colors cursor-pointer">
+                <div class="py-6 flex justify-between items-center">
+                  <h3 class="text-xl font-medium text-zinc-300 group-hover:text-white transition-colors">
+                    Audio Transcription
+                  </h3>
+                  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:plus" class="iconify text-zinc-500 transition-transform duration-300 group-[.active]:rotate-45 iconify--lucide">
+                    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7v14"></path>
+                  </svg>
+                </div>
+                <div class="accordion-content h-0 overflow-hidden opacity-0">
+                  <div class="pb-6 text-zinc-400 leading-relaxed text-sm max-w-lg">
+                    Every article is available as a high-fidelity audio
+                    narration. Switch context from reading to listening
+                    instantly with position syncing.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Item 3 -->
+              <div class="accordion-item border-t border-b border-border group hover:bg-white/[0.02] transition-colors cursor-pointer">
+                <div class="py-6 flex justify-between items-center">
+                  <h3 class="text-xl font-medium text-zinc-300 group-hover:text-white transition-colors">
+                    Cross-Platform State
+                  </h3>
+                  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:plus" class="iconify text-zinc-500 transition-transform duration-300 group-[.active]:rotate-45 iconify--lucide">
+                    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7v14"></path>
+                  </svg>
+                </div>
+                <div class="accordion-content h-0 overflow-hidden opacity-0">
+                  <div class="pb-6 text-zinc-400 leading-relaxed text-sm max-w-lg">
+                    Start on iOS, continue on Web. Your reading progress,
+                    highlights, and margin notes are encrypted and synced in
+                    real-time.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Footer -->
+        <footer class="pt-24 pb-12 px-[5vw] bg-[#020202] relative" id="community">
+          <!-- Large CTA -->
+          <div class="mb-24 text-center">
+            <h2 class="text-[clamp(2.5rem,6vw,5rem)] font-semibold tracking-tighter text-white mb-8 leading-none section-title">
+              <span class="block overflow-hidden">
+                <span class="block translate-y-full pb-2" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                  Upgrade your
+                </span>
+              </span>
+              <span class="block overflow-hidden">
+                <span class="block text-zinc-600 translate-y-full pb-2" style="translate: none; rotate: none; scale: none; transform: translate(0px, 110%);">
+                  input source.
+                </span>
+              </span>
+            </h2>
+            <button class="btn-glow px-10 py-4 rounded-full text-base font-medium text-white inline-flex items-center gap-2 group">
+              <span>Start Free Trial</span>
+              <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:arrow-right" class="iconify group-hover:translate-x-1 transition-transform iconify--lucide">
+                <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14m-7-7l7 7l-7 7"></path>
+              </svg>
+            </button>
+          </div>
+
+          <div class="grid grid-cols-2 md:grid-cols-4 gap-12 border-t border-border pt-12">
+            <div class="col-span-2 md:col-span-1">
+              <div class="flex items-center gap-2 mb-6">
+                <div class="w-4 h-4 bg-white rounded-full flex items-center justify-center">
+                  <div class="w-1.5 h-1.5 bg-black rounded-full"></div>
+                </div>
+                <span class="font-semibold text-sm text-white">CHRONICLE</span>
+              </div>
+              <p class="text-xs text-zinc-500 max-w-[200px]">
+                Designed in Tokyo.
+                <br>
+                Built for the global mind.
+                <br>
+                © 2024
+              </p>
+            </div>
+
+            <div>
+              <h4 class="font-mono text-xs text-zinc-500 mb-6 uppercase tracking-wider">
+                Product
+              </h4>
+              <ul class="space-y-4 text-sm text-zinc-400">
+                <li>
+                  <a href="#" class="hover:text-white transition-colors">
+                    Download
+                  </a>
+                </li>
+                <li>
+                  <a href="#" class="hover:text-white transition-colors">
+                    Pricing
+                  </a>
+                </li>
+                <li>
+                  <a href="#" class="hover:text-white transition-colors">
+                    Gift Cards
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div>
+              <h4 class="font-mono text-xs text-zinc-500 mb-6 uppercase tracking-wider">
+                Company
+              </h4>
+              <ul class="space-y-4 text-sm text-zinc-400">
+                <li>
+                  <a href="#" class="hover:text-white transition-colors">
+                    Manifesto
+                  </a>
+                </li>
+                <li>
+                  <a href="#" class="hover:text-white transition-colors">
+                    Careers
+                  </a>
+                </li>
+                <li>
+                  <a href="#" class="hover:text-white transition-colors">
+                    Legal
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            <div class="col-span-2 md:col-span-1">
+              <h4 class="font-mono text-xs text-zinc-500 mb-6 uppercase tracking-wider">
+                Newsletter
+              </h4>
+              <form class="flex items-center border-b border-zinc-700 pb-2" onsubmit="event.preventDefault()">
+                <input type="email" placeholder="email@address.com" class="bg-transparent w-full text-sm text-white focus:outline-none placeholder:text-zinc-600 font-mono">
+                <button class="text-zinc-400 hover:text-white transition-colors">
+                  <svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img" width="1em" height="1em" viewBox="0 0 24 24" data-icon="lucide:arrow-up-right" class="iconify iconify--lucide">
+                    <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h10v10M7 17L17 7"></path>
+                  </svg>
+                </button>
+              </form>
+            </div>
+          </div>
+        </footer>
+      </div>
+    </main>
+
+    <!-- Dependencies -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/ScrollTrigger.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/gh/studio-freight/lenis@1.0.29/bundled/lenis.min.js"></script>
+
+    <script>
+      // Init GSAP & Lenis
+      gsap.registerPlugin(ScrollTrigger);
+
+      const lenis = new Lenis({
+          duration: 1.2,
+          easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+          smooth: true
+      });
+
+      function raf(time) {
+          lenis.raf(time);
+          requestAnimationFrame(raf);
+      }
+      requestAnimationFrame(raf);
+
+      // Sync scroll
+      lenis.on('scroll', ScrollTrigger.update);
+      gsap.ticker.add((time) => {
+          lenis.raf(time * 1000);
+      });
+      gsap.ticker.lagSmoothing(0);
+
+      // --- Animations ---
+
+      // 1. Loader Logic
+      const loadTl = gsap.timeline({
+          onComplete: () => {
+              document.body.classList.remove('opacity-0');
+          }
+      });
+      loadTl.to('.loader-bar', { width: '100%', duration: 1.2, ease: "power2.inOut" })
+            .to('.loader', { yPercent: -100, duration: 0.8, ease: "expo.inOut" })
+            .from('.hero-title span span', { y: '110%', duration: 1, stagger: 0.1, ease: "power4.out" }, "-=0.4")
+            .to('.hero-desc, .hero-btns', { opacity: 1, y: 0, duration: 1, stagger: 0.1, ease: "power2.out" }, "-=0.5");
+
+      // 2. Marquee
+      gsap.to(".marquee-track", {
+          xPercent: -50,
+          repeat: -1,
+          duration: 20,
+          ease: "linear"
+      });
+
+      // 3. Feature Split Section Parallax
+      gsap.utils.toArray('.reveal-card').forEach(card => {
+          gsap.from(card, {
+              opacity: 0.2,
+              y: 50,
+              duration: 1,
+              scrollTrigger: {
+                  trigger: card,
+                  start: "top 80%",
+                  end: "top 50%",
+                  scrub: 1
+              }
+          });
+      });
+
+      // 4. Horizontal Scroll (Desktop)
+      if (window.innerWidth > 768) {
+          const wrapper = document.querySelector('.horizontal-wrapper');
+          const container = document.querySelector('#issues');
+
+          const getScrollAmount = () => -(wrapper.scrollWidth - window.innerWidth);
+
+          gsap.to(wrapper, {
+              x: getScrollAmount,
+              ease: "none",
+              scrollTrigger: {
+                  trigger: container,
+                  pin: true,
+                  scrub: 1,
+                  end: () => `+=${wrapper.scrollWidth - window.innerWidth}`,
+                  invalidateOnRefresh: true
+              }
+          });
+      }
+
+      // 5. Contributors Hover
+      const contribRows = document.querySelectorAll('.contributor-row');
+      const contribImg = document.querySelector('#contrib-img');
+
+      if(contribImg) {
+          contribRows.forEach(row => {
+              row.addEventListener('mouseenter', () => {
+                  const src = row.getAttribute('data-img');
+                  gsap.to(contribImg, { opacity: 0.2, duration: 0.2, onComplete: () => {
+                      contribImg.src = src;
+                      gsap.to(contribImg, { opacity: 0.6, duration: 0.3, scale: 1.05 });
+                  }});
+              });
+              row.addEventListener('mouseleave', () => {
+                   gsap.to(contribImg, { scale: 1, duration: 0.5 });
+              });
+          });
+      }
+
+      // 6. Methodology Cards Stacking Effect
+      gsap.utils.toArray('.process-card').forEach((card, i) => {
+          gsap.to(card, {
+              scale: 0.95,
+              filter: "brightness(0.5)",
+              scrollTrigger: {
+                  trigger: card,
+                  start: "top 150px",
+                  end: "max",
+                  scrub: true,
+                  toggleActions: "play none none reverse"
+              }
+          });
+      });
+
+      // 7. Accordion Logic
+      document.querySelectorAll('.accordion-item').forEach(item => {
+          item.addEventListener('click', () => {
+              const isActive = item.classList.contains('active');
+              const content = item.querySelector('.accordion-content');
+
+              document.querySelectorAll('.accordion-item').forEach(other => {
+                  other.classList.remove('active');
+                  gsap.to(other.querySelector('.accordion-content'), { height: 0, opacity: 0, duration: 0.4 });
+              });
+
+              if (!isActive) {
+                  item.classList.add('active');
+                  gsap.to(content, { height: 'auto', opacity: 1, duration: 0.4 });
+              }
+          });
+      });
+
+      // 8. Navigation
+      const menuBtn = document.querySelector('.menu-btn');
+      const menuOverlay = document.querySelector('.menu-overlay');
+      const menuLinks = document.querySelectorAll('.menu-link');
+      let isMenuOpen = false;
+
+      menuBtn.addEventListener('click', () => {
+          isMenuOpen = !isMenuOpen;
+          if (isMenuOpen) {
+              menuOverlay.classList.add('active');
+              gsap.to(menuOverlay, { clipPath: 'inset(0 0 0 0)', duration: 0.8, ease: 'power4.inOut' });
+              lenis.stop();
+          } else {
+              gsap.to(menuOverlay, { clipPath: 'inset(0 0 100% 0)', duration: 0.8, ease: 'power4.inOut', onComplete: () => menuOverlay.classList.remove('active') });
+              lenis.start();
+          }
+      });
+
+      menuLinks.forEach(link => {
+          link.addEventListener('click', () => {
+              isMenuOpen = false;
+              gsap.to(menuOverlay, { clipPath: 'inset(0 0 100% 0)', duration: 0.8, ease: 'power4.inOut', onComplete: () => menuOverlay.classList.remove('active') });
+              lenis.start();
+          });
+      });
+    </script>
+
+    <script>
+      // Hero Scroll Animation: Clear up and Zoom in
+      const heroTl = gsap.timeline({
+        scrollTrigger: {
+          trigger: "#hero",
+          start: "top top",
+          end: "+=150%",
+          pin: true,
+          scrub: true
+        }
+      });
+
+      heroTl.to(".hero-visual", {
+        width: "100vw",
+        height: "100vh",
+        top: 0,
+        right: 0,
+        opacity: 1,
+        mixBlendMode: "normal",
+        borderRadius: 0,
+        ease: "power2.inOut"
+      }, 0)
+      .to("#hero-img", {
+        rotation: 0,
+        scale: 1,
+        filter: "blur(0px) grayscale(0%)",
+        borderRadius: 0,
+        opacity: 1,
+        ease: "power2.inOut"
+      }, 0);
+    </script>
+
+    <script>
+      // 9. Section Titles Reveal
+      gsap.utils.toArray('.section-title').forEach(title => {
+          gsap.from(title.querySelectorAll('span span'), {
+              y: '110%',
+              duration: 1.1,
+              stagger: 0.1,
+              ease: "power4.out",
+              scrollTrigger: {
+                  trigger: title,
+                  start: "top 90%",
+                  toggleActions: "play none none reverse"
+              }
+          });
+      });
+    </script>
+
+    <script>
+      if (document.querySelector('.philosophy-progress')) {
+        gsap.to(".philosophy-progress", {
+          y: "0%",
+          ease: "none",
+          scrollTrigger: {
+            trigger: "#philosophy",
+            start: "top center",
+            end: "bottom center",
+            scrub: true
+          }
+        });
+      }
+    </script>
+  
+</body></html>

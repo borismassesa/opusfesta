@@ -1,0 +1,194 @@
+import React, { useState, useEffect } from 'react';
+import { Search, Sparkles } from 'lucide-react';
+
+const HERO_TABS = [
+  { id: 'venues', label: 'Venues' },
+  { id: 'vendors', label: 'Vendors' },
+  { id: 'photos', label: 'Photos' },
+  { id: 'ideas', label: 'Ideas' }
+];
+
+const POPULAR_TAGS = ['Rustic', 'Beach', 'Vintage', 'Modern', 'Boho'];
+
+const HERO_SLIDES = [
+  {
+    id: 1,
+    video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerJoyrides.mp4",
+    poster: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerJoyrides.jpg",
+    author: "Evergreen Films",
+    avatar: "https://picsum.photos/seed/vid1/50/50",
+    color: "#e8f4f8"
+  },
+  {
+    id: 2,
+    video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4",
+    poster: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerBlazes.jpg",
+    author: "Love & Lens",
+    avatar: "https://picsum.photos/seed/vid2/50/50",
+    color: "#f8e8e8"
+  },
+  {
+    id: 3,
+    video: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4",
+    poster: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/images/ForBiggerEscapes.jpg",
+    author: "Rustic Barns Co.",
+    avatar: "https://picsum.photos/seed/vid3/50/50",
+    color: "#e8f8ec"
+  },
+];
+
+const Hero: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('venues');
+  const [searchText, setSearchText] = useState('');
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % HERO_SLIDES.length);
+    }, 3000); // Change slide every 3 seconds
+
+    return () => clearInterval(timer);
+  }, []);
+
+  return (
+    <section className="w-full max-w-[1400px] mx-auto px-6 py-8 md:py-20 lg:py-24 grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-20 items-center">
+      
+      {/* Text Content */}
+      <div className="flex flex-col items-center lg:items-start text-center lg:text-left space-y-8">
+        
+        {/* Headline */}
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.1] tracking-tight">
+          Plan Less <br/> Celebrate More
+        </h1>
+        
+        {/* Subhead */}
+        <p className="text-gray-500 text-lg md:text-xl max-w-lg leading-relaxed">
+          Search over 250,000 local professionals, find the perfect venue, and create your wedding website—all in one place.
+        </p>
+
+        {/* Input Area Wrapper */}
+        <div className="w-full max-w-xl flex flex-col gap-6">
+          
+          {/* Tabs */}
+          <div className="bg-gray-100/80 p-1.5 rounded-full inline-flex self-center lg:self-start">
+            {HERO_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-6 py-2.5 rounded-full text-sm font-semibold transition-all duration-200 ${
+                  activeTab === tab.id
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Search Bar with Beam Effect */}
+          <div className="group w-full shiny-beam-input relative">
+            <div className="absolute inset-y-0 left-6 flex items-center pointer-events-none z-10">
+              <Search className="text-gray-400 group-focus-within:text-dribbble-pink transition-colors" size={20} />
+            </div>
+            <input
+              type="text"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="Search vendors, venues, or ideas..."
+              className="w-full pl-14 pr-16 py-5 bg-transparent border-none rounded-full text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-0 text-base md:text-lg relative z-10"
+            />
+            <button className="absolute right-3 top-2.5 bg-dribbble-pink hover:bg-pink-600 text-white p-2.5 rounded-full transition-colors shadow-lg shadow-pink-200 z-10">
+               <Search size={20} />
+            </button>
+          </div>
+
+          {/* Popular Tags */}
+          <div className="flex flex-wrap justify-center lg:justify-start gap-3 items-center text-sm">
+            <span className="text-gray-400 font-medium">Trending:</span>
+            {POPULAR_TAGS.map((tag) => (
+              <button
+                key={tag}
+                className="px-3 py-1 border border-gray-200 rounded-full text-gray-600 hover:border-gray-400 hover:text-gray-900 transition-colors bg-white"
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Get Matched Banner */}
+        <div className="w-full max-w-xl bg-gradient-to-r from-purple-50 to-white border border-purple-100 rounded-2xl p-5 flex flex-col sm:flex-row items-center justify-between gap-4 mt-4">
+          <div className="flex items-center gap-3">
+             <div className="bg-white p-2 rounded-full shadow-sm text-purple-600">
+                <Sparkles size={20} />
+             </div>
+             <div className="text-left">
+                <div className="flex items-center gap-2 mb-0.5">
+                   <h3 className="font-bold text-gray-900">Get Matched Now</h3>
+                   <span className="bg-dribbble-pink text-white text-[10px] font-bold px-1.5 py-0.5 rounded uppercase">Free</span>
+                </div>
+                <p className="text-sm text-gray-500 leading-tight">Tell us your style, we'll find your dream team.</p>
+             </div>
+          </div>
+           <button className="bg-gray-900 text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-gray-800 transition-all whitespace-nowrap">
+             Start Planning
+           </button>
+        </div>
+
+      </div>
+
+      {/* Hero Visual - Video Carousel - HIDDEN ON MOBILE/TABLET */}
+      <div className="hidden lg:block relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group bg-gray-100">
+        
+        {HERO_SLIDES.map((slide, index) => (
+          <div 
+            key={slide.id}
+            className={`absolute inset-0 w-full h-full transition-opacity duration-700 ease-in-out ${
+              index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+            }`}
+            style={{ backgroundColor: slide.color }}
+          >
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={slide.poster}
+              className="w-full h-full object-cover"
+            >
+              <source src={slide.video} type="video/mp4" />
+            </video>
+          </div>
+        ))}
+        
+        {/* Dynamic Artist Credit */}
+        <div className="absolute bottom-6 right-6 flex items-center gap-3 bg-white/90 backdrop-blur-sm px-4 py-2 rounded-full shadow-lg hover:bg-white transition-all cursor-pointer z-20">
+          <span className="text-sm font-semibold text-gray-900 transition-all duration-300">
+            {HERO_SLIDES[currentSlide].author}
+          </span>
+          <img 
+            src={HERO_SLIDES[currentSlide].avatar} 
+            alt="Artist" 
+            className="w-8 h-8 rounded-full border border-gray-200" 
+          />
+        </div>
+        
+        {/* Slide Indicators */}
+        <div className="absolute bottom-6 left-6 flex gap-2 z-20">
+            {HERO_SLIDES.map((_, idx) => (
+                <div 
+                    key={idx} 
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                        idx === currentSlide ? 'w-6 bg-white' : 'w-1.5 bg-white/50'
+                    }`}
+                />
+            ))}
+        </div>
+
+      </div>
+    </section>
+  );
+};
+
+export default Hero;

@@ -10,6 +10,8 @@
   "scripts": {
     "build": "turbo build",
     "dev": "turbo dev",
+    "dev:website": "turbo dev --filter=./apps/website",
+    "build:website": "turbo build --filter=./apps/website",
     "lint": "turbo lint",
     "test": "turbo test",
     "type-check": "turbo type-check",
@@ -35,5 +37,10 @@
   "overrides": {
     "@types/react": "19.1.0",
     "@types/react-dom": "19.1.0"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.23.25",
+    "tailwind-merge": "^3.4.0"
   }
 }

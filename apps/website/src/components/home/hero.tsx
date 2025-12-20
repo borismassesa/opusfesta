@@ -1,247 +1,424 @@
-'use client';
+"use client"
 
-import Image from 'next/image';
-import { useEffect, useState } from 'react';
-import { MagnifyingGlassIcon, MapPinIcon, UsersIcon, PhotoIcon, HeartIcon } from '@heroicons/react/24/outline';
-import { HERO_SLIDES } from '../../app/home-data';
+import { useState, useEffect, useRef } from "react";
+import { Search, Sparkles } from "lucide-react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { useTranslation } from "react-i18next";
+import { useContent } from "@/context/ContentContext";
 
-const SEARCH_TABS = [
-  { id: 'venues', label: 'Venues', icon: MapPinIcon, placeholder: 'What type of venue are you looking for?' },
-  { id: 'vendors', label: 'Vendors', icon: UsersIcon, placeholder: 'What type of vendor do you need?' },
-  { id: 'websites', label: 'Wedding Websites', icon: PhotoIcon, placeholder: 'What wedding website features do you need?' },
-  { id: 'ideas', label: 'Ideas', icon: HeartIcon, placeholder: 'What are you looking to create?' },
-];
+function TypingEffect({ words }: { words: string[] }) {
+  const [index, setIndex] = useState(0);
+  const [subIndex, setSubIndex] = useState(words[0].length);
+  const [reverse, setReverse] = useState(false);
+  const [blink, setBlink] = useState(true);
 
-const POPULAR_CITIES = [
-  'Dar es Salaam',
-  'Dodoma',
-  'Mwanza',
-  'Arusha',
-  'Mbeya',
-  'Zanzibar City',
-];
-
-const TRENDING_TAGS = [
-  // Venues
-  { label: 'beach venues', category: 'venues', searchTerm: 'beach' },
-  { label: 'garden venues', category: 'venues', searchTerm: 'garden' },
-  { label: 'ballroom', category: 'venues', searchTerm: 'ballroom' },
-  { label: 'outdoor venues', category: 'venues', searchTerm: 'outdoor' },
-  { label: 'hotel venues', category: 'venues', searchTerm: 'hotel' },
-
-  // Vendors
-  { label: 'photographers', category: 'vendors', searchTerm: 'photographers' },
-  { label: 'videographers', category: 'vendors', searchTerm: 'videographers' },
-  { label: 'florists', category: 'vendors', searchTerm: 'florists' },
-  { label: 'caterers', category: 'vendors', searchTerm: 'caterers' },
-  { label: 'DJs', category: 'vendors', searchTerm: 'DJs' },
-
-  // Wedding Websites
-  { label: 'RSVP features', category: 'websites', searchTerm: 'RSVP' },
-  { label: 'photo galleries', category: 'websites', searchTerm: 'photo gallery' },
-  { label: 'modern templates', category: 'websites', searchTerm: 'modern templates' },
-  { label: 'elegant themes', category: 'websites', searchTerm: 'elegant' },
-  { label: 'custom domains', category: 'websites', searchTerm: 'custom domain' },
-
-  // Ideas
-  { label: 'beach wedding', category: 'ideas', searchTerm: 'beach wedding' },
-  { label: 'rustic wedding', category: 'ideas', searchTerm: 'rustic wedding' },
-  { label: 'modern luxury', category: 'ideas', searchTerm: 'modern luxury' },
-  { label: 'vintage style', category: 'ideas', searchTerm: 'vintage style' },
-  { label: 'boho chic', category: 'ideas', searchTerm: 'boho chic' },
-];
-
-const Hero = () => {
-  const [activeTab, setActiveTab] = useState('venues');
-  const [searchText, setSearchText] = useState('');
-  const [location, setLocation] = useState('');
-  const [showCityDropdown, setShowCityDropdown] = useState(false);
-  const [currentSlide, setCurrentSlide] = useState(0);
-
-  const filteredCities = POPULAR_CITIES.filter(city =>
-    city.toLowerCase().includes(location.toLowerCase())
-  );
-
-  const handleTrendingTagClick = (tag: typeof TRENDING_TAGS[0]) => {
-    setActiveTab(tag.category);
-    setSearchText(tag.searchTerm);
-    // Scroll to search results section or trigger search
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  // Blinking cursor
+  useEffect(() => {
+    const timeout2 = setTimeout(() => {
+      setBlink((prev) => !prev);
+    }, 500);
+    return () => clearTimeout(timeout2);
+  }, [blink]);
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentSlide(prev => (prev + 1) % HERO_SLIDES.length);
-    }, 3000);
+    if (index === words.length) return;
 
-    return () => clearInterval(timer);
-  }, []);
+    // Pause before deleting
+    if (subIndex === words[index].length + 1 && !reverse) {
+      const timeout = setTimeout(() => setReverse(true), 2000); 
+      return () => clearTimeout(timeout);
+    }
+
+    // Move to next word
+    if (subIndex === 0 && reverse) {
+      setReverse(false);
+      setIndex((prev) => (prev + 1) % words.length);
+      return;
+    }
+
+    // Typing/Deleting
+    const timeout = setTimeout(() => {
+      setSubIndex((prev) => prev + (reverse ? -1 : 1));
+    }, reverse ? 50 : 100);
+
+    return () => clearTimeout(timeout);
+  }, [subIndex, index, reverse, words]);
+
+  // Reset index if words change (language switch)
+  useEffect(() => {
+    setIndex(0);
+    setSubIndex(0);
+    setReverse(false);
+  }, [words]);
 
   return (
-    <section className="mx-auto grid w-full max-w-[1400px] grid-cols-1 items-center gap-10 px-6 py-8 md:py-12 lg:grid-cols-2 lg:gap-16 lg:py-14">
-      <div className="flex animate-fade-in flex-col items-center space-y-8 text-center lg:items-start lg:text-left">
-        <h1 className="text-[40px] font-bold leading-[1.05] tracking-tight text-gray-900 md:text-[52px] lg:text-[56px]">
-          Everything You Need <br /> to Plan Your Wedding
-        </h1>
-        <p className="max-w-lg text-lg leading-relaxed text-gray-600 md:text-xl">
-          Search over 250,000 local professionals, find the perfect venue, and create your wedding website—all in one place.
-        </p>
-
-        <div className="flex w-full max-w-2xl flex-col gap-6">
-          <div className="w-full rounded-2xl bg-white p-6 shadow-lg">
-            <div className="mb-6 flex items-center justify-center gap-2 lg:justify-start">
-              {SEARCH_TABS.map(tab => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-200 ${
-                    activeTab === tab.id
-                      ? 'bg-gray-900 text-white shadow-md'
-                      : 'bg-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  <tab.icon className="h-4 w-4" />
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative">
-              <form className="flex items-center gap-3 rounded-2xl bg-festa-section px-4 py-3" onSubmit={event => event.preventDefault()}>
-                <div className="relative">
-                  <button
-                    type="button"
-                    onClick={() => setShowCityDropdown(!showCityDropdown)}
-                    className="flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-gray-700 transition-colors hover:text-gray-900"
-                  >
-                    <MapPinIcon className="h-4 w-4 text-gray-500" />
-                    <span className="max-w-[100px] truncate sm:max-w-[120px]">{location || 'Location'}</span>
-                  </button>
-                  {showCityDropdown && (
-                    <>
-                      <div
-                        className="fixed inset-0 z-[100]"
-                        onClick={() => setShowCityDropdown(false)}
-                      />
-                      <div className="absolute left-0 top-full z-[101] mt-2 w-64 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-xl sm:w-72">
-                        <div className="border-b border-gray-100 bg-gray-50 px-4 py-2">
-                          <input
-                            type="text"
-                            value={location}
-                            onChange={e => setLocation(e.target.value)}
-                            placeholder="Search cities..."
-                            className="w-full border-none bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
-                            autoFocus
-                          />
-                        </div>
-                        <div className="max-h-64 overflow-y-auto py-1">
-                          {filteredCities.length > 0 ? (
-                            filteredCities.map(city => (
-                              <button
-                                key={city}
-                                type="button"
-                                onClick={() => {
-                                  setLocation(city);
-                                  setShowCityDropdown(false);
-                                }}
-                                className="block w-full px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-50"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <MapPinIcon className="h-3.5 w-3.5 text-gray-400" />
-                                  <span>{city}</span>
-                                </div>
-                              </button>
-                            ))
-                          ) : (
-                            <div className="px-4 py-8 text-center text-sm text-gray-500">
-                              No cities found
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <div className="h-6 w-px bg-gray-300" />
-
-                <input
-                  type="text"
-                  value={searchText}
-                  onChange={event => setSearchText(event.target.value)}
-                  placeholder={SEARCH_TABS.find(tab => tab.id === activeTab)?.placeholder}
-                  className="flex-1 border-none bg-transparent text-sm text-gray-700 placeholder-gray-400 outline-none focus:ring-0"
-                />
-
-                <button
-                  type="submit"
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-dribbble-pink text-white shadow-lg shadow-purple-200 transition-colors hover:bg-dribbble-pink/90"
-                  aria-label="Search"
-                >
-                  <MagnifyingGlassIcon className="h-4 w-4" />
-                </button>
-              </form>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3 text-sm">
-            <span className="shrink-0 font-bold text-black">Trending:</span>
-            {TRENDING_TAGS.filter(tag => tag.category === activeTab).slice(0, 4).map(tag => (
-              <button
-                key={tag.label}
-                type="button"
-                onClick={() => handleTrendingTagClick(tag)}
-                className="shrink-0 whitespace-nowrap rounded-full bg-white px-4 py-2 text-gray-700 shadow-sm transition-all hover:shadow-md"
-              >
-                {tag.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-      </div>
-
-      <div className="relative hidden aspect-[4/3] w-full overflow-hidden rounded-[2.5rem] bg-gray-100 shadow-2xl lg:block">
-        {HERO_SLIDES.map((slide, index) => (
-          <div
-            key={slide.id}
-            className={`absolute inset-0 h-full w-full transition-opacity duration-700 ease-in-out ${
-              index === currentSlide ? 'z-10 opacity-100' : 'z-0 opacity-0'
-            }`}
-            style={{ backgroundColor: slide.color }}
-          >
-            <video autoPlay muted loop playsInline poster={slide.poster} className="h-full w-full object-cover">
-              <source src={slide.video} type="video/mp4" />
-            </video>
-          </div>
-        ))}
-
-        <div className="absolute bottom-6 right-6 z-20 flex cursor-pointer items-center gap-3 rounded-full bg-white/90 px-4 py-2 shadow-lg transition-all hover:bg-white">
-          <span className="text-sm font-semibold text-gray-900 transition-all duration-300">
-            {HERO_SLIDES[currentSlide].author}
-          </span>
-          <Image
-            src={HERO_SLIDES[currentSlide].avatar}
-            alt={HERO_SLIDES[currentSlide].author || 'Artist'}
-            width={32}
-            height={32}
-            className="h-8 w-8 rounded-full border border-gray-200"
-          />
-        </div>
-
-        <div className="absolute bottom-6 left-6 z-20 flex gap-2">
-          {HERO_SLIDES.map((slide, idx) => (
-            <span
-              key={slide.id}
-              className={`h-1.5 rounded-full transition-all duration-300 ${idx === currentSlide ? 'w-6 bg-white' : 'w-1.5 bg-white/50'}`}
-            />
-          ))}
-        </div>
-      </div>
-
-    </section>
+    <>
+      {words[index]?.substring(0, subIndex)}
+      <span className={`${blink ? "opacity-100" : "opacity-0"} transition-opacity duration-100 ml-1 font-light text-secondary`}>|</span>
+    </>
   );
-};
+}
 
-export default Hero;
+export function Hero() {
+  const { t } = useTranslation();
+  const { content } = useContent();
+  const { hero } = content;
+  
+  const containerRef = useRef<HTMLDivElement>(null);
+  const visualRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  const [activeTab, setActiveTab] = useState('venues');
+  const [searchText, setSearchText] = useState('');
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const HERO_TABS = [
+    { id: 'venues', label: t('tabs.venues') },
+    { id: 'vendors', label: t('tabs.vendors') },
+    { id: 'planning', label: t('tabs.planning') },
+    { id: 'inspiration', label: t('tabs.inspiration') }
+  ];
+
+  // Use content from context instead of i18n for typing phrases if available, fallback to i18n
+  // For this demo, we'll use the context exclusively to demonstrate CMS
+  const TYPING_PHRASES = hero.typingPhrases; 
+
+  useEffect(() => {
+    // Hero Animations with GSAP
+    const ctx = gsap.context(() => {
+      const mm = gsap.matchMedia();
+
+      // Common Text Animation (Intro)
+      const tl = gsap.timeline();
+      tl.from(
+        ".hero-word span",
+        {
+          y: "110%",
+          duration: 1,
+          stagger: 0.1,
+          ease: "power4.out",
+          immediateRender: false,
+        },
+        0.5,
+      );
+
+      tl.from(
+        ".hero-fade",
+        {
+          y: 20,
+          opacity: 0,
+          duration: 0.8,
+          stagger: 0.1,
+          ease: "power2.out",
+          immediateRender: false,
+        },
+        "-=0.5",
+      );
+
+      // Desktop & Tablet Specifics
+      mm.add("(min-width: 768px)", () => {
+        const navOffset = 80;
+        // Ensure text is visible before scroll animations in Strict Mode
+        gsap.set(contentRef.current, { opacity: 1, y: 0 });
+
+        // Remove Intro animation for visual to prevent conflict and ensure visibility
+        gsap.set(visualRef.current, { opacity: 1, x: 0, y: 0, scale: 1 });
+
+        // Scroll: Visual expands
+        const scrollTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top top",
+            end: "+=150%",
+            pin: true,
+            scrub: true,
+            invalidateOnRefresh: true 
+          }
+        });
+
+        const initAnimation = () => {
+             if (!visualRef.current || !containerRef.current) return;
+             
+             // Ensure visual is visible and in flow
+             gsap.set(visualRef.current, { opacity: 1, clearProps: "position,left,top,width,height,transform" });
+             
+             scrollTl.clear();
+
+             // 1. Fade out content
+             scrollTl.to(contentRef.current, {
+                opacity: 0,
+                y: -50,
+                duration: 0.5,
+                ease: "power2.out"
+             }, 0);
+
+             const visualRect = visualRef.current.getBoundingClientRect();
+             const containerRect = containerRef.current.getBoundingClientRect();
+             
+             // Calculate offsets
+             const startLeft = visualRect.left - containerRect.left;
+             const startTop = visualRect.top - containerRect.top;
+             const startWidth = visualRect.width;
+             const startHeight = visualRect.height;
+
+             // 2. Animate visual using Layout properties (width/height/top/left)
+             // We switch to layout animation to ensure object-fit: cover works correctly
+             // and avoids stretching/distortion or shrinking of content.
+             // Modern browsers handle this well enough for a hero scroll effect.
+
+             scrollTl.fromTo(visualRef.current, 
+              {
+                position: 'absolute',
+                left: startLeft,
+                top: startTop,
+                width: startWidth,
+                height: startHeight,
+                borderRadius: "2.5rem",
+                zIndex: 40,
+                boxShadow: "0 0 0 rgba(0,0,0,0)",
+                transform: "none" // Ensure no transforms are interfering
+              },
+              {
+                left: "50%",
+                top: `calc(50% + ${navOffset / 2}px)`,
+                xPercent: -50,
+                yPercent: -50,
+                width: "94vw",
+                height: `calc(90vh - ${navOffset}px)`,
+                borderRadius: "1.5rem",
+                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
+                duration: 1,
+                ease: "power3.inOut"
+              }, 
+              0
+            );
+            
+            // Just ensure video scale is normal
+            scrollTl.fromTo(".hero-video", 
+                { scale: 1.1 }, 
+                { scale: 1, duration: 1, ease: "power3.inOut" }, 
+                0
+             );
+        };
+
+        // Initialize immediately
+        // Use a small timeout to ensure layout is settled
+        setTimeout(initAnimation, 100);
+        
+        ScrollTrigger.addEventListener("refreshInit", initAnimation);
+      });
+
+      // Mobile Specifics
+      mm.add("(max-width: 767px)", () => {
+        const navOffset = 72;
+        // No intro animation for visual (it stays hidden/opacity 0 via CSS or set here)
+        gsap.set(visualRef.current, { opacity: 0, y: 50 }); // Ensure hidden initially
+
+        // Scroll: Reveals visual
+        const scrollTl = gsap.timeline({
+          scrollTrigger: {
+            trigger: containerRef.current,
+            start: "top top",
+            end: "+=150%",
+            pin: true,
+            scrub: true
+          }
+        });
+
+        scrollTl.to(contentRef.current, {
+          opacity: 0,
+          y: -50,
+          duration: 0.5,
+          ease: "power2.out"
+        }, 0);
+
+        // Animate Visual In
+        scrollTl.fromTo(visualRef.current,
+          {
+             opacity: 0,
+             scale: 0.8,
+             position: 'absolute',
+             left: '50%',
+             xPercent: -50,
+             top: '100%',     // Start from the very bottom
+             yPercent: 0,     // No offset initially
+             width: '90vw',
+             height: '50vh',  // Keep consistent height
+             zIndex: 40
+          },
+          {
+             opacity: 1,
+             scale: 1,
+             top: `calc(50% + ${navOffset / 2}px)`, // Move to vertical center with nav offset
+             yPercent: -50,   // Center alignment
+             left: '50%',
+             xPercent: -50,
+             width: '94vw',
+             height: `calc(50vh - ${navOffset}px)`,
+             borderRadius: "1.5rem",
+             duration: 1,
+             ease: "power3.out" // Smoother easing
+          },
+          0
+        );
+      });
+
+    }, containerRef);
+
+
+    // Slide Interval
+    const timer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % hero.slides.length);
+    }, 5000); 
+
+    return () => {
+      ctx.revert();
+      clearInterval(timer);
+    };
+  }, [hero.slides.length]);
+
+  return (
+    <div ref={containerRef} className="relative min-h-[100dvh] w-full overflow-hidden border-b border-border bg-background flex flex-col justify-center">
+      <section id="hero" className="w-full max-w-[1400px] mx-auto px-6 lg:px-12 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-16 items-center py-20 md:py-0">
+        
+        {/* Text Content */}
+        <div ref={contentRef} className="hero-content relative flex flex-col items-center md:items-start text-center md:text-left space-y-2 z-10 w-full max-w-xl mx-auto lg:mx-0">
+          
+          {/* Headline with Masked Reveal */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-primary leading-[1.1] tracking-tight max-w-full lg:max-w-none min-h-[100px] sm:min-h-[120px] md:min-h-[140px] lg:min-h-[160px]">
+            <span className="block overflow-hidden hero-word">
+              <span className="block">{hero.headlinePrefix}</span>
+            </span>
+            <span className="block hero-word">
+              <span className="block text-secondary">
+                <TypingEffect words={TYPING_PHRASES} />
+              </span>
+            </span>
+          </h1>
+          
+          {/* Subhead - Simplified */}
+          <p className="hero-fade text-secondary text-sm sm:text-base md:text-lg max-w-md leading-relaxed px-1 sm:px-0">
+            {hero.subhead}
+          </p>
+
+          {/* Input Area Wrapper - Simplified */}
+          <div className="hero-fade w-full max-w-lg flex flex-col gap-4 mt-6">
+            
+            {/* Quick Actions Row - Moved ABOVE search bar */}
+            <div className="w-full flex justify-center md:justify-start">
+              <div className="flex flex-nowrap overflow-x-auto pb-2 -mb-2 mask-linear-fade lg:overflow-visible lg:pb-0 lg:mb-0 lg:flex-wrap gap-2 items-center text-xs font-medium no-scrollbar max-w-[100vw] px-4 lg:px-0 -mx-4 lg:mx-0">
+                <span className="text-secondary/80 uppercase tracking-wider mr-1 hidden md:inline-block">{t('hero.browse')}:</span>
+                {HERO_TABS.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`px-3 py-1.5 rounded-lg border transition-all duration-200 whitespace-nowrap flex-shrink-0 text-xs sm:text-sm ${
+                      activeTab === tab.id
+                        ? 'bg-primary text-background border-primary'
+                        : 'bg-transparent border-border text-secondary hover:border-primary/50 hover:text-primary hover:bg-surface'
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Search Bar with Beam Effect - Cleaner look */}
+            <div className="group w-full shiny-beam-input relative bg-surface rounded-full border border-border/50 transition-all focus-within:ring-2 focus-within:ring-primary/5 hover:border-primary/20 shadow-sm hover:shadow-md">
+              <div className="absolute inset-y-0 left-4 lg:left-5 flex items-center pointer-events-none z-10">
+                <Search className="text-secondary group-focus-within:text-primary transition-colors w-4 h-4 lg:w-5 lg:h-5" />
+              </div>
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                placeholder={t(`hero.searchPlaceholders.${activeTab}`)}
+                className="w-full pl-10 lg:pl-12 pr-12 lg:pr-4 py-3 lg:py-4 bg-transparent border-none rounded-full text-primary placeholder:text-secondary/60 focus:outline-none focus:ring-0 text-[13px] sm:text-base font-normal relative z-10 truncate"
+              />
+              <div className="absolute right-1.5 top-1.5 bottom-1.5">
+                 <button className="h-full bg-primary hover:bg-primary/90 text-background w-10 lg:w-auto lg:px-6 rounded-full text-sm font-medium transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
+                   <span className="hidden lg:inline">{t('hero.search')}</span>
+                   <Search className="lg:hidden w-4 h-4" />
+                 </button>
+              </div>
+            </div>
+
+          </div>
+
+          {/* Social Proof Badge - Updated to match design */}
+          <div className="hero-fade flex items-center gap-3 sm:gap-4 mt-8 pl-2 pr-4 sm:pr-6 py-2 bg-surface rounded-full shadow-sm border border-border w-full sm:w-fit hover:scale-105 transition-transform duration-300 cursor-default max-w-full">
+             <div className="flex -space-x-3 flex-shrink-0">
+               {[10, 15, 20].map((i) => (
+                 <div key={i} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-[3px] border-surface overflow-hidden relative ring-1 ring-border">
+                    <img 
+                      src={`https://picsum.photos/seed/${i}/100/100`} 
+                      alt="User" 
+                      className="w-full h-full object-cover grayscale-[20%]" 
+                    />
+                 </div>
+               ))}
+             </div>
+             <span className="text-xs sm:text-sm text-secondary font-medium whitespace-nowrap overflow-hidden text-ellipsis">
+               {t('hero.join', { countVal: '250,000' })}
+             </span>
+          </div>
+
+        </div>
+
+        {/* Hero Visual - Video Carousel */}
+        <div ref={visualRef} className="hero-visual block relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group bg-surface border border-border z-20">
+          
+          {hero.slides.map((slide, index) => (
+            <div 
+              key={slide.id}
+              className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
+                index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+              }`}
+              style={{ backgroundColor: slide.color }}
+            >
+              <video
+                autoPlay
+                muted
+                loop
+                playsInline
+                poster={slide.poster}
+                className="hero-video w-full h-full object-cover"
+              >
+                <source src={slide.video} type="video/mp4" />
+              </video>
+              {/* Dark overlay for better text contrast if needed */}
+              <div className="absolute inset-0 bg-black/10"></div>
+            </div>
+          ))}
+          
+          {/* Dynamic Artist Credit */}
+          <div className="absolute bottom-4 right-4 lg:bottom-6 lg:right-6 flex items-center gap-2 lg:gap-3 bg-surface/90 backdrop-blur-sm px-3 py-1.5 lg:px-4 lg:py-2 rounded-full shadow-lg hover:scale-105 transition-all cursor-pointer z-20 border border-border">
+            <span className="text-xs lg:text-sm font-semibold text-primary transition-all duration-300">
+              {hero.slides[currentSlide].author}
+            </span>
+            <img 
+              src={hero.slides[currentSlide].avatar} 
+              alt="Artist" 
+              className="w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-border" 
+            />
+          </div>
+          
+          {/* Slide Indicators */}
+          <div className="absolute bottom-4 left-4 lg:bottom-6 lg:left-6 flex gap-2 z-20">
+              {hero.slides.map((_, idx) => (
+                  <div 
+                      key={idx} 
+                      className={`h-1.5 rounded-full transition-all duration-300 ${
+                          idx === currentSlide ? 'w-6 bg-white shadow-[0_0_10px_rgba(0,0,0,0.3)]' : 'w-1.5 bg-white/50'
+                      }`}
+                  />
+              ))}
+          </div>
+
+        </div>
+      </section>
+    </div>
+  );
+}
