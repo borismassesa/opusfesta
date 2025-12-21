@@ -35,10 +35,14 @@ export const metadata: Metadata = {
     creator: "@thefesta",
   },
   icons: {
-    icon: "/favicon.png",
+    icon: [
+      { url: "/icon.png", sizes: "512x512", type: "image/png" },
+      { url: "/favicon.png", sizes: "any", type: "image/png" },
+    ],
     shortcut: "/favicon.png",
-    apple: "/favicon.png",
+    apple: "/icon.png",
   },
+  manifest: "/site.webmanifest",
 };
 
 export default function RootLayout({
