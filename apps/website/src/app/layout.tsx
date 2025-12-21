@@ -36,13 +36,11 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/icon.png", sizes: "512x512", type: "image/png" },
       { url: "/favicon.png", sizes: "any", type: "image/png" },
     ],
     shortcut: "/favicon.png",
-    apple: "/icon.png",
+    apple: "/favicon.png",
   },
-  manifest: "/site.webmanifest",
 };
 
 export default function RootLayout({
