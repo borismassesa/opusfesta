@@ -16,6 +16,7 @@
     "test": "turbo test",
     "type-check": "turbo type-check",
     "clean": "turbo clean",
+    "postinstall": "node scripts/cleanup-vendor-react.js",
     "check:prepush": "bash scripts/prepush-check.sh",
     "db:generate": "turbo db:generate",
     "db:push": "turbo db:push",
@@ -36,7 +37,19 @@
   "packageManager": "npm@10.7.0",
   "overrides": {
     "@types/react": "19.1.0",
-    "@types/react-dom": "19.1.0"
+    "@types/react-dom": "19.1.0",
+    "@thefesta/admin": {
+      "react": "18.3.1",
+      "react-dom": "18.3.1"
+    },
+    "@thefesta/vendor-portal": {
+      "react": "18.3.1",
+      "react-dom": "18.3.1"
+    },
+    "rest-express": {
+      "react": "18.3.1",
+      "react-dom": "18.3.1"
+    }
   },
   "dependencies": {
     "clsx": "^2.1.1",
