@@ -36,8 +36,8 @@
   },
   "packageManager": "npm@10.7.0",
   "overrides": {
-    "@types/react": "19.1.0",
-    "@types/react-dom": "19.1.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
     "@thefesta/admin": {
       "react": "18.3.1",
       "react-dom": "18.3.1"
