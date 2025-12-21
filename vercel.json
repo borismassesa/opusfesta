@@ -1,0 +1,6 @@
+{
+  "buildCommand": "cd ../.. && turbo run build --filter=rest-express",
+  "outputDirectory": "apps/website/.next",
+  "framework": "nextjs",
+  "installCommand": "npm install"
+}
