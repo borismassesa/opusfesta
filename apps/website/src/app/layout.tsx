@@ -19,9 +19,9 @@ export const metadata: Metadata = {
     siteName: "THE FESTA",
     images: [
       {
-        url: "/opengraph.jpg",
-        width: 1200,
-        height: 630,
+        url: "/opengraph.png",
+        width: 765,
+        height: 259,
         alt: "THE FESTA - Plan Your Perfect Wedding",
       },
     ],
@@ -31,7 +31,7 @@ export const metadata: Metadata = {
     title: "THE FESTA | Plan Your Perfect Wedding",
     description:
       "The all-in-one marketplace for venues, vendors, and planning tools. Discover inspiration and manage every detail in one place.",
-    images: ["/opengraph.jpg"],
+    images: ["/opengraph.png"],
     creator: "@thefesta",
   },
   icons: {
