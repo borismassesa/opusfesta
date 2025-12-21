@@ -2,20 +2,58 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Loader2, Check } from "lucide-react";
 import signupImg from "@assets/stock_images/elegant_wedding_invi_ec57761b.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Signup() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [userType, setUserType] = useState<"couple" | "vendor">("couple");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate signup delay
-    setTimeout(() => setIsLoading(false), 2000);
+    setErrorMessage("");
+    setSuccessMessage("");
+
+    const redirectTo =
+      typeof window !== "undefined" ? `${window.location.origin}/login` : undefined;
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: `${firstName} ${lastName}`.trim(),
+          user_type: userType,
+        },
+        emailRedirectTo: redirectTo,
+      },
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
+      setIsLoading(false);
+      return;
+    }
+
+    if (data.session) {
+      router.push("/admin");
+      return;
+    }
+
+    setSuccessMessage("Check your email to confirm your account.");
+    setIsLoading(false);
   };
 
   return (
@@ -126,6 +164,8 @@ export default function Signup() {
                   type="text"
                   placeholder="Jane"
                   className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
                   required
                 />
               </div>
@@ -137,6 +177,8 @@ export default function Signup() {
                   type="text"
                   placeholder="Doe"
                   className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
                   required
                 />
               </div>
@@ -150,6 +192,8 @@ export default function Signup() {
                 type="email"
                 placeholder="name@example.com"
                 className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -162,6 +206,8 @@ export default function Signup() {
                 <input
                   type={showPassword ? "text" : "password"}
                   className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 pr-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="Create a password"
                 />
@@ -192,6 +238,12 @@ export default function Signup() {
                 "Get Started"
               )}
             </button>
+            {errorMessage ? (
+              <p className="text-sm text-destructive text-center">{errorMessage}</p>
+            ) : null}
+            {successMessage ? (
+              <p className="text-sm text-primary text-center">{successMessage}</p>
+            ) : null}
           </form>
 
           <div className="relative">

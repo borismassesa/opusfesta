@@ -5,12 +5,15 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useContent } from "@/context/ContentContext";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export function About() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
+  const { content } = useContent();
+  const stats = content.about.stats;
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -120,7 +123,7 @@ export function About() {
               15k+
             </div>
             <div className="text-sm sm:text-base md:text-xl font-medium pl-1 text-secondary">
-              {t('about.stats.weddings')}
+              {stats.weddings || t('about.stats.weddings')}
             </div>
           </div>
 
@@ -130,7 +133,7 @@ export function About() {
               99%
             </div>
             <div className="text-sm sm:text-base md:text-xl font-medium pl-1 text-secondary">
-              {t('about.stats.satisfaction')}
+              {stats.satisfaction || t('about.stats.satisfaction')}
             </div>
           </div>
 
@@ -140,7 +143,7 @@ export function About() {
               2M+
             </div>
             <div className="text-sm sm:text-base md:text-xl font-medium pl-1 text-secondary">
-              {t('about.stats.guests')}
+              {stats.guests || t('about.stats.guests')}
             </div>
           </div>
 
@@ -150,7 +153,7 @@ export function About() {
               4.9
             </div>
             <div className="text-sm sm:text-base md:text-xl font-medium pl-1 text-secondary">
-              {t('about.stats.rating')}
+              {stats.rating || t('about.stats.rating')}
             </div>
           </div>
         </div>
