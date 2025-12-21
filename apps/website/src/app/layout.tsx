@@ -5,7 +5,7 @@ import { Providers } from "@/app/providers";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
+    process.env.NEXT_PUBLIC_SITE_URL || "https://thefestaevents.com",
   ),
   title: "THE FESTA | Plan Your Perfect Wedding",
   description:
@@ -15,7 +15,16 @@ export const metadata: Metadata = {
     description:
       "The all-in-one marketplace for venues, vendors, and planning tools. Discover inspiration and manage every detail in one place.",
     type: "website",
-    images: ["/opengraph.jpg"],
+    url: "https://thefestaevents.com",
+    siteName: "THE FESTA",
+    images: [
+      {
+        url: "/opengraph.jpg",
+        width: 1200,
+        height: 630,
+        alt: "THE FESTA - Plan Your Perfect Wedding",
+      },
+    ],
   },
   twitter: {
     card: "summary_large_image",
@@ -23,9 +32,12 @@ export const metadata: Metadata = {
     description:
       "The all-in-one marketplace for venues, vendors, and planning tools. Discover inspiration and manage every detail in one place.",
     images: ["/opengraph.jpg"],
+    creator: "@thefesta",
   },
   icons: {
     icon: "/favicon.png",
+    shortcut: "/favicon.png",
+    apple: "/favicon.png",
   },
 };
 
