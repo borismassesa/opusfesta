@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
   FileText,
@@ -19,7 +19,9 @@ import {
   LogOut,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import type { Session } from "@supabase/supabase-js";
 import { useTheme } from "next-themes";
+import { supabase } from "@/lib/supabaseClient";
 import {
   SidebarProvider,
   Sidebar,
@@ -86,13 +88,80 @@ function isActiveRoute(pathname: string, href: string) {
 }
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [session, setSession] = useState<Session | null>(null);
+  const [role, setRole] = useState("");
+
+  const allowedRoles = ["owner", "admin", "editor", "viewer"];
+  const isAllowed = session && allowedRoles.includes(role);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    let mountedRef = true;
+    const getRole = (currentSession: Session | null) =>
+      currentSession?.user?.app_metadata?.role ?? "";
+
+    supabase.auth.getSession().then(({ data }) => {
+      if (!mountedRef) return;
+      setSession(data.session ?? null);
+      setRole(getRole(data.session ?? null));
+      setAuthChecked(true);
+    });
+
+    const { data } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (!mountedRef) return;
+      setSession(nextSession);
+      setRole(getRole(nextSession));
+      setAuthChecked(true);
+    });
+
+    return () => {
+      mountedRef = false;
+      data.subscription.unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!authChecked) return;
+    if (!session) {
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
+    }
+    if (!allowedRoles.includes(role)) {
+      router.replace("/login?unauthorized=1");
+    }
+  }, [authChecked, pathname, role, router, session]);
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.replace("/login");
+  };
+
+  if (!authChecked) {
+    return (
+      <div className="flex h-screen items-center justify-center text-muted-foreground">
+        Checking access...
+      </div>
+    );
+  }
+
+  if (!isAllowed) {
+    return null;
+  }
+
+  const displayName =
+    session?.user?.user_metadata?.full_name ??
+    session?.user?.email ??
+    "Admin User";
+  const displayEmail = session?.user?.email ?? "admin@thefesta.com";
+  const avatarUrl = session?.user?.user_metadata?.avatar_url ?? "https://github.com/shadcn.png";
 
   return (
     <SidebarProvider>
@@ -159,20 +228,28 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
 
           {/* User Profile Dropdown */}
           <div className="mt-auto p-2 border-t border-border/40 m-2 flex flex-col gap-2 group-data-[collapsible=icon]:m-0 group-data-[collapsible=icon]:border-none group-data-[collapsible=icon]:p-2">
+            <button
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="flex items-center justify-center gap-2 w-full rounded-xl border border-border/60 bg-surface/70 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-primary hover:bg-surface transition-colors group-data-[collapsible=icon]:w-10 group-data-[collapsible=icon]:px-0"
+              aria-label="Toggle theme"
+            >
+              {mounted && theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+              <span className="group-data-[collapsible=icon]:hidden">Theme</span>
+            </button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-surface/50 transition-colors cursor-pointer group data-[state=open]:bg-surface/50 w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-0 group-data-[collapsible=icon]:bg-transparent">
                   <div className="w-9 h-9 rounded-full bg-zinc-200 border border-border flex items-center justify-center text-xs font-medium text-muted-foreground overflow-hidden">
                     <Avatar className="h-9 w-9">
-                      <AvatarImage src="https://github.com/shadcn.png" alt="@admin" />
+                      <AvatarImage src={avatarUrl} alt={displayName} />
                       <AvatarFallback>AD</AvatarFallback>
                     </Avatar>
                   </div>
                   <div className="flex flex-col overflow-hidden text-left group-data-[collapsible=icon]:hidden">
                     <span className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                      Admin User
+                      {displayName}
                     </span>
-                    <span className="text-[10px] text-muted-foreground">Pro License</span>
+                    <span className="text-[10px] text-muted-foreground">{role || "viewer"}</span>
                   </div>
                   <Settings className="w-4 h-4 ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity group-data-[collapsible=icon]:hidden" />
                 </div>
@@ -186,12 +263,12 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                 <DropdownMenuLabel className="p-0 font-normal">
                   <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                     <Avatar className="h-8 w-8 rounded-lg">
-                      <AvatarImage src="https://github.com/shadcn.png" alt="@admin" />
+                      <AvatarImage src={avatarUrl} alt={displayName} />
                       <AvatarFallback className="rounded-lg">AD</AvatarFallback>
                     </Avatar>
                     <div className="grid flex-1 text-left text-sm leading-tight">
-                      <span className="truncate font-semibold">Admin User</span>
-                      <span className="truncate text-xs">admin@thefesta.com</span>
+                      <span className="truncate font-semibold">{displayName}</span>
+                      <span className="truncate text-xs">{displayEmail}</span>
                     </div>
                   </div>
                 </DropdownMenuLabel>
@@ -203,7 +280,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
                   </DropdownMenuItem>
                 </DropdownMenuGroup>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSignOut}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>
@@ -220,17 +297,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           {/* Top Left Sidebar Trigger (Mobile Only) */}
           <div className="absolute top-6 left-6 md:top-10 md:left-10 z-50 md:hidden">
             <SidebarTrigger className="w-10 h-10 rounded-full bg-background border border-border shadow-sm hover:shadow-md transition-all hover:bg-surface text-muted-foreground hover:text-primary" />
-          </div>
-
-          {/* Top Right Theme Toggle */}
-          <div className="absolute top-6 right-6 md:top-10 md:right-10 z-50">
-            <button
-              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-background border border-border shadow-sm hover:shadow-md transition-all hover:bg-surface text-muted-foreground hover:text-primary"
-              aria-label="Toggle theme"
-            >
-              {mounted && theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
-            </button>
           </div>
 
           <div className="p-6 pt-20 md:p-10 max-w-[1600px] mx-auto min-h-full relative z-10 animate-in fade-in duration-500">

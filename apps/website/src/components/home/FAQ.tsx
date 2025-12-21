@@ -9,33 +9,13 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { useContent } from "@/context/ContentContext";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const FAQS = [
-  {
-    question: "What is TheFesta?",
-    answer: "TheFesta is a comprehensive wedding and event planning platform that connects couples with curated venues and vendors, while providing powerful tools to manage guest lists, budgets, and timelines."
-  },
-  {
-    question: "Is TheFesta free to use?",
-    answer: "Yes, TheFesta is free for couples planning their wedding. We offer a suite of planning tools, including our budget tracker, guest list manager, and checklist, at no cost."
-  },
-  {
-    question: "How do you vet your vendors?",
-    answer: "We have a rigorous vetting process. Every vendor on our platform is reviewed for quality, reliability, and professionalism. We also verify reviews to ensure you're getting honest feedback from real couples."
-  },
-  {
-    question: "Can I use TheFesta for events other than weddings?",
-    answer: "Absolutely! While our tools are optimized for weddings, many of our users plan engagement parties, bridal showers, anniversary celebrations, and corporate events using our venue marketplace and vendor network."
-  },
-  {
-    question: "Do you offer support if I get stuck?",
-    answer: "Our support team is available 7 days a week to assist you. We also have an extensive library of articles and guides in our Advice section to help navigate common planning challenges."
-  }
-];
-
 export function FAQ() {
+  const { content } = useContent();
+  const faqs = content.faqs;
   const containerRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const accordionRef = useRef<HTMLDivElement>(null);
@@ -108,7 +88,7 @@ export function FAQ() {
         {/* Right Column: Accordion */}
         <div ref={accordionRef} className="w-full">
           <Accordion type="single" collapsible className="w-full">
-            {FAQS.map((faq, index) => (
+            {faqs.map((faq, index) => (
               <AccordionItem key={index} value={`item-${index}`} className="border-border/60 accordion-item-reveal opacity-0">
                 <AccordionTrigger className="text-lg md:text-xl py-6 font-medium text-primary hover:text-accent transition-colors hover:no-underline">
                   {faq.question}

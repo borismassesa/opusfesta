@@ -120,3 +120,4 @@ prisma/migrations/
 
 # Git backups from nested repos
 **/.git.bak/
+.vercel

@@ -11,6 +11,7 @@ import reviewer4 from "@assets/stock_images/portrait_of_a_happy__8aa4c718.jpg";
 import reviewer5 from "@assets/stock_images/portrait_of_a_happy__f02f3ebf.jpg";
 import reviewer6 from "@assets/stock_images/portrait_of_a_happy__7d5d47a1.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
+import { useContent, type ReviewItem } from "@/context/ContentContext";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -82,6 +83,8 @@ const REVIEWS = [
 ];
 
 export function Reviews() {
+  const { content } = useContent();
+  const reviews = content.reviews.length ? content.reviews : REVIEWS;
   const containerRef = useRef<HTMLElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const column1Ref = useRef<HTMLDivElement>(null);
@@ -184,8 +187,8 @@ export function Reviews() {
   }, []);
 
   // Split reviews into two columns
-  const column1Reviews = REVIEWS.filter((_, i) => i % 2 === 0);
-  const column2Reviews = REVIEWS.filter((_, i) => i % 2 !== 0);
+  const column1Reviews = reviews.filter((_, i) => i % 2 === 0);
+  const column2Reviews = reviews.filter((_, i) => i % 2 !== 0);
 
   // Triple items for seamless loop (Original + Copy + Copy) to ensure no gaps
   const col1Items = [...column1Reviews, ...column1Reviews, ...column1Reviews];
@@ -229,7 +232,7 @@ export function Reviews() {
 
         {/* Mobile: Static Vertical Stack */}
         <div className="mobile-reviews-stack md:hidden w-full flex flex-col gap-4">
-             {REVIEWS.slice(0, 4).map((review) => (
+             {reviews.slice(0, 4).map((review) => (
                <div key={`mobile-${review.id}`} className="mobile-review-card">
                  <ReviewCard review={review} />
                </div>
@@ -271,7 +274,7 @@ export function Reviews() {
   );
 }
 
-function ReviewCard({ review }: { review: typeof REVIEWS[0] }) {
+function ReviewCard({ review }: { review: ReviewItem }) {
   // Determine badge color based on role content - Updated to Neutral/Monochrome for consistency
   let badgeColor = "bg-primary/5 text-primary";
   if (review.role.includes("Married") || review.role.includes("Groom")) {

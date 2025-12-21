@@ -1,7 +1,9 @@
 "use client";
 
-import React, { createContext, useContext, useState, ReactNode } from "react";
-import type { AssetLike } from "@/lib/assets";
+import React, { createContext, useCallback, useContext, useEffect, useState, ReactNode } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
+import { resolveAssetSrc, type AssetLike } from "@/lib/assets";
+import { supabase } from "@/lib/supabaseClient";
 
 // Import images for initial state
 import planningImg from "@assets/stock_images/wedding_planning_che_871a1473.jpg";
@@ -17,6 +19,16 @@ import tableImg from "@assets/stock_images/wedding_table_settin_c7e6dce8.jpg";
 import bouquetImg from "@assets/stock_images/wedding_bouquet_mode_ab76e613.jpg";
 import cakeImg from "@assets/stock_images/wedding_cake_modern__2868fc7b.jpg";
 import receptionImg from "@assets/stock_images/wedding_reception_li_3a8fab49.jpg";
+
+const CMS_SLUG = "home";
+
+type CmsPageRow = {
+  draft_content: ContentState | null;
+  published_content: ContentState | null;
+  published: boolean;
+  updated_at: string | null;
+  published_at: string | null;
+};
 
 // Define Types
 export interface HeroSlide {
@@ -241,12 +253,34 @@ interface ContentContextType {
   content: ContentState;
   updateContent: (section: keyof ContentState, data: any) => void;
   resetContent: () => void;
+  isLoading: boolean;
+  isSaving: boolean;
+  error: string | null;
+  published: boolean;
+  lastUpdatedAt: string | null;
+  lastPublishedAt: string | null;
+  loadPublishedContent: () => Promise<void>;
+  loadAdminContent: () => Promise<void>;
+  saveDraft: () => Promise<void>;
+  publishContent: () => Promise<void>;
 }
 
 const ContentContext = createContext<ContentContextType | undefined>(undefined);
 
 export function ContentProvider({ children }: { children: ReactNode }) {
   const [content, setContent] = useState<ContentState>(INITIAL_CONTENT);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [published, setPublished] = useState(false);
+  const [lastUpdatedAt, setLastUpdatedAt] = useState<string | null>(null);
+  const [lastPublishedAt, setLastPublishedAt] = useState<string | null>(null);
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const previewParam = searchParams?.get("preview");
+  const isPreviewDraft =
+    previewParam === "draft" || previewParam === "1" || previewParam === "true";
+  const isAdminRoute = pathname?.startsWith("/admin");
 
   const updateContent = (section: keyof ContentState, data: any) => {
     setContent((prev) => {
@@ -269,8 +303,199 @@ export function ContentProvider({ children }: { children: ReactNode }) {
     setContent(INITIAL_CONTENT);
   };
 
+  const mergeContent = useCallback((incoming?: Partial<ContentState> | null) => {
+    if (!incoming) {
+      return INITIAL_CONTENT;
+    }
+
+    return {
+      ...INITIAL_CONTENT,
+      ...incoming,
+      hero: {
+        ...INITIAL_CONTENT.hero,
+        ...incoming.hero,
+        slides: incoming.hero?.slides ?? INITIAL_CONTENT.hero.slides,
+      },
+      about: {
+        ...INITIAL_CONTENT.about,
+        ...incoming.about,
+        stats: {
+          ...INITIAL_CONTENT.about.stats,
+          ...incoming.about?.stats,
+        },
+      },
+      services: incoming.services ?? INITIAL_CONTENT.services,
+      issues: incoming.issues ?? INITIAL_CONTENT.issues,
+      reviews: incoming.reviews ?? INITIAL_CONTENT.reviews,
+      faqs: incoming.faqs ?? INITIAL_CONTENT.faqs,
+    };
+  }, []);
+
+  const serializeContent = useCallback((current: ContentState) => {
+    return {
+      ...current,
+      services: current.services.map((service) => ({
+        ...service,
+        image: resolveAssetSrc(service.image),
+      })),
+      issues: current.issues.map((issue) => ({
+        ...issue,
+        img: resolveAssetSrc(issue.img),
+      })),
+      reviews: current.reviews.map((review) => ({
+        ...review,
+        avatar: resolveAssetSrc(review.avatar),
+      })),
+    };
+  }, []);
+
+  const applyRemoteContent = useCallback((row?: CmsPageRow | null, mode?: "published" | "admin") => {
+    if (!row) {
+      return;
+    }
+
+    setPublished(row.published ?? false);
+    setLastUpdatedAt(row.updated_at ?? null);
+    setLastPublishedAt(row.published_at ?? null);
+
+    const nextContent =
+      mode === "published"
+        ? row.published_content
+        : row.draft_content ?? row.published_content;
+
+    if (nextContent) {
+      setContent(mergeContent(nextContent));
+    }
+  }, [mergeContent]);
+
+  const loadPublishedContent = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    const { data, error: fetchError } = await supabase
+      .from("cms_pages")
+      .select("published_content, published, updated_at, published_at")
+      .eq("slug", CMS_SLUG)
+      .eq("published", true)
+      .maybeSingle();
+
+    if (fetchError) {
+      setError(fetchError.message);
+      setIsLoading(false);
+      return;
+    }
+
+    applyRemoteContent(data as CmsPageRow | null, "published");
+    setIsLoading(false);
+  }, [applyRemoteContent]);
+
+  const loadAdminContent = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    const { data, error: fetchError } = await supabase
+      .from("cms_pages")
+      .select("draft_content, published_content, published, updated_at, published_at")
+      .eq("slug", CMS_SLUG)
+      .maybeSingle();
+
+    if (fetchError) {
+      setError(fetchError.message);
+      setIsLoading(false);
+      return;
+    }
+
+    applyRemoteContent(data as CmsPageRow | null, "admin");
+    setIsLoading(false);
+  }, [applyRemoteContent]);
+
+  const saveDraft = useCallback(async () => {
+    setIsSaving(true);
+    setError(null);
+
+    const payload = serializeContent(content);
+    const { data, error: saveError } = await supabase
+      .from("cms_pages")
+      .upsert(
+        {
+          slug: CMS_SLUG,
+          draft_content: payload,
+        },
+        { onConflict: "slug" },
+      )
+      .select("published, updated_at, published_at")
+      .single();
+
+    if (saveError) {
+      setError(saveError.message);
+      setIsSaving(false);
+      return;
+    }
+
+    setPublished(data?.published ?? published);
+    setLastUpdatedAt(data?.updated_at ?? null);
+    setLastPublishedAt(data?.published_at ?? null);
+    setIsSaving(false);
+  }, [content, published, serializeContent]);
+
+  const publishContent = useCallback(async () => {
+    setIsSaving(true);
+    setError(null);
+
+    const payload = serializeContent(content);
+    const { data, error: publishError } = await supabase
+      .from("cms_pages")
+      .upsert(
+        {
+          slug: CMS_SLUG,
+          draft_content: payload,
+          published_content: payload,
+          published: true,
+        },
+        { onConflict: "slug" },
+      )
+      .select("published, updated_at, published_at")
+      .single();
+
+    if (publishError) {
+      setError(publishError.message);
+      setIsSaving(false);
+      return;
+    }
+
+    setPublished(data?.published ?? true);
+    setLastUpdatedAt(data?.updated_at ?? null);
+    setLastPublishedAt(data?.published_at ?? null);
+    setIsSaving(false);
+  }, [content, serializeContent]);
+
+  useEffect(() => {
+    if (isAdminRoute) {
+      return;
+    }
+    if (isPreviewDraft) {
+      loadAdminContent();
+      return;
+    }
+    loadPublishedContent();
+  }, [isAdminRoute, isPreviewDraft, loadAdminContent, loadPublishedContent]);
+
   return (
-    <ContentContext.Provider value={{ content, updateContent, resetContent }}>
+    <ContentContext.Provider
+      value={{
+        content,
+        updateContent,
+        resetContent,
+        isLoading,
+        isSaving,
+        error,
+        published,
+        lastUpdatedAt,
+        lastPublishedAt,
+        loadPublishedContent,
+        loadAdminContent,
+        saveDraft,
+        publishContent,
+      }}
+    >
       {children}
     </ContentContext.Provider>
   );

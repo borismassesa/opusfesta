@@ -5,19 +5,36 @@ import Link from "next/link";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
 import loginImg from "@assets/stock_images/romantic_couple_wedd_0c0b1d37.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function ForgotPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [email, setEmail] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate API call
-    setTimeout(() => {
+    setErrorMessage("");
+
+    const redirectTo =
+      typeof window !== "undefined"
+        ? `${window.location.origin}/reset-password`
+        : undefined;
+
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo,
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
       setIsLoading(false);
-      setIsSubmitted(true);
-    }, 2000);
+      return;
+    }
+
+    setIsLoading(false);
+    setIsSubmitted(true);
   };
 
   return (
@@ -85,6 +102,8 @@ export default function ForgotPassword() {
                   type="email"
                   placeholder="name@example.com"
                   className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
                 />
               </div>
@@ -103,6 +122,9 @@ export default function ForgotPassword() {
                   "Send Reset Link"
                 )}
               </button>
+              {errorMessage ? (
+                <p className="text-sm text-destructive text-center">{errorMessage}</p>
+              ) : null}
             </form>
           ) : (
             <div className="flex flex-col items-center justify-center space-y-4 p-8 border border-border rounded-xl bg-muted/30">

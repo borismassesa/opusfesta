@@ -2,19 +2,40 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import loginImg from "@assets/stock_images/romantic_couple_wedd_0c0b1d37.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function Login() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const unauthorized = searchParams.get("unauthorized");
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    // Simulate login delay
-    setTimeout(() => setIsLoading(false), 2000);
+    setErrorMessage("");
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setErrorMessage(error.message);
+      setIsLoading(false);
+      return;
+    }
+
+    const next = searchParams.get("next") || "/admin";
+    router.push(next);
   };
 
   return (
@@ -70,6 +91,11 @@ export default function Login() {
             <p className="text-muted-foreground">
               Enter your details to access your account.
             </p>
+            {unauthorized ? (
+              <p className="text-sm text-destructive">
+                Your account does not have admin access.
+              </p>
+            ) : null}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
@@ -81,6 +107,8 @@ export default function Login() {
                 type="email"
                 placeholder="name@example.com"
                 className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -93,6 +121,8 @@ export default function Login() {
                 <input
                   type={showPassword ? "text" : "password"}
                   className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 pr-10"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
                 />
@@ -128,6 +158,9 @@ export default function Login() {
                 "Sign In"
               )}
             </button>
+            {errorMessage ? (
+              <p className="text-sm text-destructive text-center">{errorMessage}</p>
+            ) : null}
           </form>
 
           <div className="relative">

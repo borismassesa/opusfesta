@@ -5,16 +5,14 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import tableImg from "@assets/stock_images/wedding_table_settin_c7e6dce8.jpg";
-import bouquetImg from "@assets/stock_images/wedding_bouquet_mode_ab76e613.jpg";
-import cakeImg from "@assets/stock_images/wedding_cake_modern__2868fc7b.jpg";
-
-import receptionImg from "@assets/stock_images/wedding_reception_li_3a8fab49.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
+import { useContent } from "@/context/ContentContext";
 
 gsap.registerPlugin(ScrollTrigger);
 
 export function Issues() {
+  const { content } = useContent();
+  const issues = content.issues;
   const containerRef = useRef<HTMLElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -82,33 +80,6 @@ export function Issues() {
 
     return () => ctx.revert();
   }, []);
-
-  const issues = [
-    {
-      id: 1,
-      title: "Table Scapes",
-      desc: "Creating the perfect dining atmosphere for your guests.",
-      img: tableImg
-    },
-    {
-      id: 2,
-      title: "Floral Art",
-      desc: "Modern bouquet trends for the contemporary bride.",
-      img: bouquetImg
-    },
-    {
-      id: 3,
-      title: "Sweet Minimal",
-      desc: "Why simple cakes are making a big comeback.",
-      img: cakeImg
-    },
-    {
-      id: 4,
-      title: "Mood Lighting",
-      desc: "Transforming your venue with the right illumination.",
-      img: receptionImg
-    }
-  ];
 
   return (
     <div className="relative w-full"> 
