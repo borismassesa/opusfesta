@@ -19,7 +19,8 @@ export function Services() {
 
   useEffect(() => {
     const ctx = gsap.context(() => {
-      // Pin the left side content
+      const sections = gsap.utils.toArray<HTMLElement>(".service-item");
+
       ScrollTrigger.matchMedia({
         // Desktop & Tablet
         "(min-width: 768px)": function() {
@@ -32,7 +33,6 @@ export function Services() {
           });
           
           // Detect active section for image swapping
-          const sections = gsap.utils.toArray<HTMLElement>(".service-item");
           sections.forEach((section, i) => {
             ScrollTrigger.create({
               trigger: section,
@@ -45,36 +45,53 @@ export function Services() {
               }
             });
           });
+          sections.forEach((section) => {
+            const content = section.querySelectorAll("h3, p, a, .service-mobile-img");
+
+            gsap.set(content, { clearProps: "transform,opacity,visibility" });
+
+            gsap.fromTo(
+              content,
+              { y: 50, opacity: 0 },
+              {
+                y: 0,
+                opacity: 1,
+                duration: 0.8,
+                stagger: 0.1,
+                ease: "power3.out",
+                scrollTrigger: {
+                  trigger: section,
+                  start: "top 85%",
+                  end: "top 50%",
+                  scrub: 1,
+                  toggleActions: "play none none reverse"
+                }
+              }
+            );
+          });
+        },
+        // Mobile
+        "(max-width: 767px)": function() {
+          sections.forEach((section) => {
+            const content = section.querySelectorAll("h3, p, a, .service-mobile-img");
+
+            gsap.set(content, { y: 32, autoAlpha: 0 });
+
+            gsap.to(content, {
+              y: 0,
+              autoAlpha: 1,
+              duration: 0.7,
+              stagger: 0.12,
+              ease: "power3.out",
+              scrollTrigger: {
+                trigger: section,
+                start: "top 85%",
+                toggleActions: "play none none reverse"
+              }
+            });
+          });
         }
       });
-
-      // Text reveal animation (works on all screens)
-      const sections = gsap.utils.toArray<HTMLElement>(".service-item");
-      sections.forEach((section) => {
-        const content = section.querySelectorAll("h3, p, a, .service-mobile-img");
-        
-        gsap.fromTo(content, 
-          { 
-            y: 50, 
-            opacity: 0
-          },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
-            stagger: 0.1,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: section,
-              start: "top 85%",
-              end: "top 50%",
-              scrub: 1,
-              toggleActions: "play none none reverse"
-            }
-          }
-        );
-      });
-      
     }, containerRef);
 
     return () => ctx.revert();

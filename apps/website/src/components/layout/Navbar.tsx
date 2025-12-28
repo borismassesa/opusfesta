@@ -43,7 +43,7 @@ const FlagTZ = ({ className = "w-5 h-5" }: { className?: string }) => (
   </svg>
 );
 
-export function Navbar({ onMenuClick, isOpen }: { onMenuClick: () => void; isOpen?: boolean }) {
+export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: () => void; isOpen?: boolean; sticky?: boolean }) {
   const { theme, setTheme } = useTheme();
   const { t, i18n } = useTranslation();
   const [mounted, setMounted] = useState(false);
@@ -74,8 +74,8 @@ export function Navbar({ onMenuClick, isOpen }: { onMenuClick: () => void; isOpe
 
   return (
     <nav 
-      className={`fixed top-0 w-full z-50 px-6 md:px-12 py-3 flex justify-between items-center transition-all duration-300 ${
-        scrolled ? "bg-background/80 backdrop-blur-md border-b border-border/50 py-2" : "bg-transparent py-4"
+      className={`${sticky ? 'fixed' : 'relative'} top-0 w-full z-50 px-6 md:px-12 pb-1 pt-3 flex justify-between items-center transition-all duration-300 ${
+        sticky && scrolled ? "bg-background/80 backdrop-blur-md border-b border-border/50 pb-0.5 pt-2" : sticky ? "bg-transparent pb-1 pt-3" : "bg-background pb-1 pt-3"
       }`}
     >
       {/* Logo */}

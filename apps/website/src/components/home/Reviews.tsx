@@ -160,23 +160,27 @@ export function Reviews() {
       });
 
       // Mobile Reviews Animation
-      const mobileReviews = containerRef.current?.querySelectorAll(".mobile-review-card");
-      if (mobileReviews) {
-        gsap.fromTo(mobileReviews,
-          { y: 50, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
-            stagger: 0.1,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: ".mobile-reviews-stack",
-              start: "top 80%",
-            }
-          }
-        );
-      }
+      ScrollTrigger.matchMedia({
+        "(max-width: 767px)": function() {
+          const mobileReviews = containerRef.current?.querySelectorAll<HTMLElement>(".mobile-review-card");
+          if (!mobileReviews) return;
+
+          mobileReviews.forEach((card) => {
+            gsap.set(card, { y: 32, autoAlpha: 0 });
+            gsap.to(card, {
+              y: 0,
+              autoAlpha: 1,
+              duration: 0.7,
+              ease: "power3.out",
+              scrollTrigger: {
+                trigger: card,
+                start: "top 85%",
+                toggleActions: "play none none reverse"
+              }
+            });
+          });
+        }
+      });
 
     }, containerRef);
 

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import type { ReactNode } from "react";
+import { type ReactNode, Suspense } from "react";
 import "@/app/globals.css";
 import { Providers } from "@/app/providers";
 
@@ -62,9 +62,15 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400&family=Pacifico&family=Sacramento&display=swap"
           rel="stylesheet"
         />
+        <link
+          href="https://api.mapbox.com/mapbox-gl-js/v3.0.1/mapbox-gl.css"
+          rel="stylesheet"
+        />
       </head>
       <body>
-        <Providers>{children}</Providers>
+        <Suspense fallback={null}>
+          <Providers>{children}</Providers>
+        </Suspense>
       </body>
     </html>
   );
