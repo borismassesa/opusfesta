@@ -152,7 +152,7 @@ export const VendorImageGallery = forwardRef<HTMLDivElement, VendorImageGalleryP
                   
                   // Fallback: show gradient background with play icon
                   return (
-                    <div className="w-full h-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                    <div className="w-full h-full bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center">
                       <div className="text-center">
                         <Play className="w-16 h-16 mx-auto mb-2 text-primary" fill="currentColor" />
                         <p className="text-sm font-medium text-foreground">

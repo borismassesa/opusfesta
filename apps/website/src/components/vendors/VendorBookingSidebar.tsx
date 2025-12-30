@@ -196,13 +196,13 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
         {(hasGoodDeal || isRareFind) && (
           <div className="bg-background border border-border rounded-2xl p-4 shadow-sm flex items-center gap-3">
             {/* Icon - Shows pricing tag if dates selected and good deal, otherwise shows rare find icon */}
-            <div className="flex-shrink-0">
+            <div className="shrink-0">
               {dateRange.from && dateRange.to && hasGoodDeal ? (
                 <Tag className="w-5 h-5 text-green-600" />
               ) : isRareFind && rareFindTier ? (
                 <>
                   {rareFindTier === 'diamond' && (
-                    <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L14.5 9L22 12L14.5 15L12 22L9.5 15L2 12L9.5 9L12 2Z" fill="url(#diamondGradient)" stroke="url(#diamondStroke)" strokeWidth="0.5"/>
                 <path d="M12 2L9.5 9L2 12L9.5 15L12 22" fill="url(#diamondShine)" opacity="0.3"/>
                 <defs>
@@ -223,7 +223,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                     </svg>
                   )}
                   {rareFindTier === 'gold' && (
-              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z" fill="url(#goldGradient)" stroke="url(#goldStroke)" strokeWidth="0.5"/>
                 <path d="M12 2L9 8L2 9L7 14L6 21L12 18" fill="url(#goldShine)" opacity="0.4"/>
                 <defs>
@@ -244,7 +244,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                     </svg>
                   )}
                   {rareFindTier === 'silver' && (
-              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z" fill="url(#silverGradient)" stroke="url(#silverStroke)" strokeWidth="0.5"/>
                 <path d="M12 2L9 8L2 9L7 14L6 21L12 18" fill="url(#silverShine)" opacity="0.5"/>
                 <defs>
@@ -265,7 +265,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                     </svg>
                   )}
                   {rareFindTier === 'bronze' && (
-              <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z" fill="url(#bronzeGradient)" stroke="url(#bronzeStroke)" strokeWidth="0.5"/>
                 <path d="M12 2L9 8L2 9L7 14L6 21L12 18" fill="url(#bronzeShine)" opacity="0.3"/>
                 <defs>
@@ -358,7 +358,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                     {dateRange.from ? format(dateRange.from, "yyyy-MM-dd") : "Add date"}
                   </span>
                   <svg
-                    className={`w-4 h-4 flex-shrink-0 transition-transform ${isCalendarOpen ? 'rotate-180' : ''} text-secondary group-hover:text-primary`}
+                    className={`w-4 h-4 shrink-0 transition-transform ${isCalendarOpen ? 'rotate-180' : ''} text-secondary group-hover:text-primary`}
                     viewBox="0 0 16 16"
                     fill="none"
                   >
@@ -378,7 +378,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                     {dateRange.to ? format(dateRange.to, "yyyy-MM-dd") : "Add date"}
                   </span>
                   <svg
-                    className={`w-4 h-4 flex-shrink-0 transition-transform ${isCalendarOpen ? 'rotate-180' : ''} text-secondary group-hover:text-primary`}
+                    className={`w-4 h-4 shrink-0 transition-transform ${isCalendarOpen ? 'rotate-180' : ''} text-secondary group-hover:text-primary`}
                     viewBox="0 0 16 16"
                     fill="none"
                   >
@@ -403,7 +403,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                     : "Add guests"}
                 </span>
                 <svg
-                  className={`w-4 h-4 flex-shrink-0 transition-transform ${isGuestSelectorOpen ? 'rotate-180' : ''} text-secondary group-hover:text-primary`}
+                  className={`w-4 h-4 shrink-0 transition-transform ${isGuestSelectorOpen ? 'rotate-180' : ''} text-secondary group-hover:text-primary`}
                   viewBox="0 0 16 16"
                   fill="none"
                 >
@@ -764,7 +764,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                     budget: ''
                   });
                 }}
-                className="p-2 hover:bg-surface rounded-lg transition-colors flex-shrink-0"
+                className="p-2 hover:bg-surface rounded-lg transition-colors shrink-0"
               >
                 <svg className="w-5 h-5" viewBox="0 0 16 16" fill="none">
                   <path d="M10 12L6 8L10 4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -803,7 +803,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                             : 'bg-background border border-border hover:border-primary'
                         }`}
                       >
-                        <div className="relative mt-0.5 flex-shrink-0">
+                        <div className="relative mt-0.5 shrink-0">
                           <input
                             type="radio"
                             name="payment"
@@ -832,7 +832,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                             : 'bg-background border border-border hover:border-primary'
                         }`}
                       >
-                        <div className="relative mt-0.5 flex-shrink-0">
+                        <div className="relative mt-0.5 shrink-0">
                           <input
                             type="radio"
                             name="payment"
@@ -865,7 +865,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                             : 'bg-background border border-border hover:border-primary'
                         }`}
                       >
-                        <div className="relative mt-0.5 flex-shrink-0">
+                        <div className="relative mt-0.5 shrink-0">
                           <input
                             type="radio"
                             name="payment"
@@ -936,7 +936,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                               : 'bg-background border border-border hover:border-primary'
                           }`}
                         >
-                          <div className="relative mt-0.5 flex-shrink-0">
+                          <div className="relative mt-0.5 shrink-0">
                             <input
                               type="radio"
                               name="paymentMethod"
@@ -971,7 +971,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                               : 'bg-background border border-border hover:border-primary'
                           }`}
                         >
-                          <div className="relative mt-0.5 flex-shrink-0">
+                          <div className="relative mt-0.5 shrink-0">
                             <input
                               type="radio"
                               name="paymentMethod"
@@ -1001,7 +1001,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                               : 'bg-background border border-border hover:border-primary'
                           }`}
                         >
-                          <div className="relative mt-0.5 flex-shrink-0">
+                          <div className="relative mt-0.5 shrink-0">
                             <input
                               type="radio"
                               name="paymentMethod"
@@ -1031,7 +1031,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                               : 'bg-background border border-border hover:border-primary'
                           }`}
                         >
-                          <div className="relative mt-0.5 flex-shrink-0">
+                          <div className="relative mt-0.5 shrink-0">
                             <input
                               type="radio"
                               name="paymentMethod"
@@ -1755,7 +1755,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                         setIsFormOpen(false);
                         setIsCalendarOpen(true);
                       }}
-                      className="text-xs sm:text-sm underline font-semibold ml-2 flex-shrink-0"
+                      className="text-xs sm:text-sm underline font-semibold ml-2 shrink-0"
                     >
                       Change
                     </button>
@@ -1774,7 +1774,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                         setIsFormOpen(false);
                         setIsGuestSelectorOpen(true);
                       }}
-                      className="text-xs sm:text-sm underline font-semibold ml-2 flex-shrink-0"
+                      className="text-xs sm:text-sm underline font-semibold ml-2 shrink-0"
                     >
                       Change
                     </button>
@@ -1783,10 +1783,10 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                   {/* Price Details */}
                   <div className="space-y-2 border-b border-border pb-3 sm:pb-4">
                     <div className="flex justify-between text-xs sm:text-sm">
-                      <span className="break-words pr-2">
+                      <span className="wrap-break-word pr-2">
                         {nights > 0 ? `${nights} ${nights === 1 ? "day" : "days"}` : "1 day"} × {getCalculatedPrice()} TZS
                       </span>
-                      <span className="flex-shrink-0">{getCalculatedPrice()} TZS</span>
+                      <span className="shrink-0">{getCalculatedPrice()} TZS</span>
                     </div>
                     <div className="flex justify-between text-xs sm:text-sm text-secondary">
                       <span>Service fee</span>
@@ -1803,7 +1803,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                   {isRareFind && rareFindTier && (
                     <div className="bg-pink-50 border border-pink-200 rounded-lg p-3 sm:p-4 flex items-center justify-center gap-2 sm:gap-3">
                       {rareFindTier === 'diamond' && (
-                        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2L14.5 9L22 12L14.5 15L12 22L9.5 15L2 12L9.5 9L12 2Z" fill="url(#diamondGradient)" stroke="url(#diamondStroke)" strokeWidth="0.5"/>
                           <defs>
                             <linearGradient id="diamondGradient" x1="0" y1="0" x2="24" y2="24">
@@ -1819,7 +1819,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                         </svg>
                       )}
                       {rareFindTier === 'gold' && (
-                        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z" fill="url(#goldGradient)" stroke="url(#goldStroke)" strokeWidth="0.5"/>
                           <defs>
                             <linearGradient id="goldGradient" x1="0" y1="0" x2="24" y2="24">
@@ -1835,7 +1835,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                         </svg>
                       )}
                       {rareFindTier === 'silver' && (
-                        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z" fill="url(#silverGradient)" stroke="url(#silverStroke)" strokeWidth="0.5"/>
                           <defs>
                             <linearGradient id="silverGradient" x1="0" y1="0" x2="24" y2="24">
@@ -1851,7 +1851,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                         </svg>
                       )}
                       {rareFindTier === 'bronze' && (
-                        <svg className="w-5 h-5 flex-shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M12 2L15 8L22 9L17 14L18 21L12 18L6 21L7 14L2 9L9 8L12 2Z" fill="url(#bronzeGradient)" stroke="url(#bronzeStroke)" strokeWidth="0.5"/>
                           <defs>
                             <linearGradient id="bronzeGradient" x1="0" y1="0" x2="24" y2="24">

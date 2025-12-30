@@ -313,7 +313,7 @@ export default function BlogPostPage() {
           </div>
 
           {/* CTA Section */}
-          <div className="mt-12 p-8 bg-gradient-to-br from-primary/5 to-accent/5 rounded-2xl border border-border text-center">
+          <div className="mt-12 p-8 bg-linear-to-br from-primary/5 to-accent/5 rounded-2xl border border-border text-center">
             <h3 className="text-2xl font-bold text-primary mb-3">
               Ready to Start Planning?
             </h3>
