@@ -283,7 +283,7 @@ export function Hero() {
       <section id="hero" className="w-full max-w-[1400px] mx-auto px-6 lg:px-12 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-16 items-center py-20 md:py-0">
         
         {/* Text Content */}
-        <div ref={contentRef} className="hero-content relative flex flex-col items-center md:items-start text-center md:text-left space-y-2 z-10 w-full max-w-xl mx-auto lg:mx-0">
+        <div ref={contentRef} className="hero-content relative flex flex-col items-center md:items-start text-center md:text-left space-y-2 z-10 w-full max-w-xl mx-auto md:mx-0">
           
           {/* Headline with Masked Reveal */}
           <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-primary leading-[1.1] tracking-tight max-w-full lg:max-w-none min-h-[100px] sm:min-h-[120px] md:min-h-[140px] lg:min-h-[160px]">
@@ -368,7 +368,8 @@ export function Hero() {
         </div>
 
         {/* Hero Visual - Video Carousel */}
-        <div ref={visualRef} className="hero-visual block relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group bg-surface border border-border z-20">
+        <div className="w-full flex items-center justify-center md:items-start lg:items-center">
+          <div ref={visualRef} className="hero-visual block relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group bg-surface border border-border z-20">
           
           {hero.slides.map((slide, index) => (
             <div 
@@ -417,6 +418,7 @@ export function Hero() {
               ))}
           </div>
 
+          </div>
         </div>
       </section>
     </div>

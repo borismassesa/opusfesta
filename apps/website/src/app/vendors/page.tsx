@@ -10,8 +10,6 @@ import {
   Camera,
   Calendar,
   ChefHat,
-  ChevronLeft,
-  ChevronRight,
   Clock,
   Eye,
   Filter,
@@ -31,6 +29,13 @@ import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
 import { resolveAssetSrc } from "@/lib/assets";
+import {
+  BUDGET_FRIENDLY,
+  MOST_BOOKED,
+  NEW_VENDORS,
+  PROMOTIONS,
+  QUICK_RESPONDERS,
+} from "@/lib/vendors/collections";
 
 import heroMain from "@assets/stock_images/elegant_wedding_venu_86ae752a.jpg";
 import vendorPlanning from "@assets/stock_images/wedding_planning_che_871a1473.jpg";
@@ -50,306 +55,13 @@ const STATS = [
   { label: "Average rating", value: "4.9/5" },
 ];
 
-const PROMOTIONS = [
-  {
-    id: "promo-1",
-    label: "Exclusive discount",
-    title: "10% off curated catering menus",
-    vendor: "Lush Table Catering",
-    rating: 5.0,
-    reviews: 42,
-    category: "Catering",
-    location: "Dar es Salaam",
-    image: vendorCatering,
-  },
-  {
-    id: "promo-2",
-    label: "Limited offer",
-    title: "Complimentary bridal film add-on",
-    vendor: "Kilimanjaro Films",
-    rating: 4.9,
-    reviews: 31,
-    category: "Videography",
-    location: "Arusha",
-    image: vendorVideo,
-  },
-  {
-    id: "promo-3",
-    label: "Seasonal deal",
-    title: "Venue styling package included",
-    vendor: "Sunset Estate",
-    rating: 4.7,
-    reviews: 18,
-    category: "Venues",
-    location: "Zanzibar",
-    image: vendorVenue,
-  },
-  {
-    id: "promo-4",
-    label: "Offer",
-    title: "Live band + DJ bundle",
-    vendor: "Sauti Events",
-    rating: 4.8,
-    reviews: 27,
-    category: "Music",
-    location: "Dar es Salaam",
-    image: vendorMusic,
-  },
-  {
-    id: "promo-5",
-    label: "Special package",
-    title: "Bridal bouquet + ceremony arch",
-    vendor: "Coastal Florals Studio",
-    rating: 4.9,
-    reviews: 52,
-    category: "Florals",
-    location: "Zanzibar",
-    image: vendorFlorals,
-  },
-];
+const DEFAULT_SPOTLIGHT_LOCATION = "Zanzibar";
 
-const NEW_VENDORS = [
-  {
-    id: "new-1",
-    name: "Elegant Affairs Tanzania",
-    category: "Wedding Planning",
-    location: "Dar es Salaam",
-    rating: 4.8,
-    reviews: 8,
-    image: vendorPlanning,
-  },
-  {
-    id: "new-2",
-    name: "Sunset Beach Photography",
-    category: "Photography",
-    location: "Zanzibar",
-    rating: 4.9,
-    reviews: 12,
-    image: vendorPhoto,
-  },
-  {
-    id: "new-3",
-    name: "Glamour Beauty Studio",
-    category: "Beauty & Makeup",
-    location: "Arusha",
-    rating: 4.7,
-    reviews: 6,
-    image: vendorBeauty,
-  },
-  {
-    id: "new-4",
-    name: "Divine Decorations",
-    category: "Decor",
-    location: "Mwanza",
-    rating: 4.8,
-    reviews: 10,
-    image: vendorDecor,
-  },
-  {
-    id: "new-5",
-    name: "Harmony Music Events",
-    category: "Music",
-    location: "Dar es Salaam",
-    rating: 4.9,
-    reviews: 15,
-    image: vendorMusic,
-  },
-];
-
-const MOST_BOOKED = [
-  {
-    id: "booked-1",
-    name: "Coastal Florals Studio",
-    category: "Florals",
-    location: "Zanzibar",
-    rating: 4.9,
-    reviews: 156,
-    image: vendorFlorals,
-  },
-  {
-    id: "booked-2",
-    name: "Kilimanjaro Films",
-    category: "Videography",
-    location: "Arusha",
-    rating: 4.9,
-    reviews: 143,
-    image: vendorVideo,
-  },
-  {
-    id: "booked-3",
-    name: "Sauti Events",
-    category: "Music",
-    location: "Dar es Salaam",
-    rating: 4.8,
-    reviews: 127,
-    image: vendorMusic,
-  },
-  {
-    id: "booked-4",
-    name: "Lush Table Catering",
-    category: "Catering",
-    location: "Dar es Salaam",
-    rating: 5.0,
-    reviews: 142,
-    image: vendorCatering,
-  },
-  {
-    id: "booked-5",
-    name: "Sunset Estate",
-    category: "Venues",
-    location: "Zanzibar",
-    rating: 4.7,
-    reviews: 118,
-    image: vendorVenue,
-  },
-];
-
-const BUDGET_FRIENDLY = [
-  {
-    id: "budget-1",
-    name: "Simple Elegance Decor",
-    category: "Decor",
-    location: "Mwanza",
-    rating: 4.7,
-    reviews: 89,
-    image: vendorDecor,
-  },
-  {
-    id: "budget-2",
-    name: "Affordable Events TZ",
-    category: "Wedding Planning",
-    location: "Dar es Salaam",
-    rating: 4.8,
-    reviews: 94,
-    image: vendorPlanning,
-  },
-  {
-    id: "budget-3",
-    name: "Natural Beauty Studio",
-    category: "Beauty & Makeup",
-    location: "Arusha",
-    rating: 4.6,
-    reviews: 76,
-    image: vendorBeauty,
-  },
-  {
-    id: "budget-4",
-    name: "Garden Blooms",
-    category: "Florals",
-    location: "Dodoma",
-    rating: 4.7,
-    reviews: 82,
-    image: vendorFlorals,
-  },
-  {
-    id: "budget-5",
-    name: "Moment Capture Photos",
-    category: "Photography",
-    location: "Mwanza",
-    rating: 4.8,
-    reviews: 91,
-    image: vendorPhoto,
-  },
-];
-
-const QUICK_RESPONDERS = [
-  {
-    id: "quick-1",
-    name: "Swift Events Co",
-    category: "Wedding Planning",
-    location: "Dar es Salaam",
-    rating: 4.9,
-    reviews: 124,
-    image: vendorPlanning,
-  },
-  {
-    id: "quick-2",
-    name: "Instant Catering Services",
-    category: "Catering",
-    location: "Zanzibar",
-    rating: 4.8,
-    reviews: 108,
-    image: vendorCatering,
-  },
-  {
-    id: "quick-3",
-    name: "Ready Cam Studios",
-    category: "Videography",
-    location: "Arusha",
-    rating: 4.9,
-    reviews: 115,
-    image: vendorVideo,
-  },
-  {
-    id: "quick-4",
-    name: "Express Florals",
-    category: "Florals",
-    location: "Dar es Salaam",
-    rating: 4.7,
-    reviews: 98,
-    image: vendorFlorals,
-  },
-  {
-    id: "quick-5",
-    name: "Fast Response Venues",
-    category: "Venues",
-    location: "Mwanza",
-    rating: 4.8,
-    reviews: 103,
-    image: vendorVenue,
-  },
-];
-
-const REGIONAL_SPOTLIGHT = {
-  region: "Zanzibar",
-  description: "Island paradise with stunning beachfront venues and ocean views",
-  vendors: [
-    {
-      id: "region-1",
-      name: "Zanzibar Beach Weddings",
-      category: "Wedding Planning",
-      location: "Zanzibar",
-      rating: 4.9,
-      reviews: 87,
-      image: vendorPlanning,
-    },
-    {
-      id: "region-2",
-      name: "Ocean View Venues",
-      category: "Venues",
-      location: "Zanzibar",
-      rating: 4.8,
-      reviews: 102,
-      image: vendorVenue,
-    },
-    {
-      id: "region-3",
-      name: "Island Blooms Florals",
-      category: "Florals",
-      location: "Zanzibar",
-      rating: 4.9,
-      reviews: 78,
-      image: vendorFlorals,
-    },
-    {
-      id: "region-4",
-      name: "Sunset Photography ZNZ",
-      category: "Photography",
-      location: "Zanzibar",
-      rating: 5.0,
-      reviews: 94,
-      image: vendorPhoto,
-    },
-    {
-      id: "region-5",
-      name: "Spice Island Catering",
-      category: "Catering",
-      location: "Zanzibar",
-      rating: 4.8,
-      reviews: 86,
-      image: vendorCatering,
-    },
-  ],
+const SPOTLIGHT_DESCRIPTIONS: Record<string, string> = {
+  Zanzibar: "Island paradise with stunning beachfront venues and ocean views",
+  "Dar es Salaam": "City energy meets coastal elegance with modern venues.",
+  Arusha: "Highland celebrations with lush gardens and safari-inspired style.",
+  Mwanza: "Lakefront romance with sweeping views and golden-hour venues.",
 };
 
 const AREA_HIGHLIGHTS = [
@@ -968,7 +680,6 @@ export default function VendorsPage() {
   const [priceFilter, setPriceFilter] = useState("Any budget");
   const pageRef = useRef<HTMLDivElement>(null);
   const categoryRowRef = useRef<HTMLDivElement>(null);
-  const promotionsRowRef = useRef<HTMLDivElement>(null);
   const areasRowRef = useRef<HTMLDivElement>(null);
   const vendorRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
@@ -996,18 +707,40 @@ export default function VendorsPage() {
     });
   }, [searchQuery, activeCategory, activeLocation, priceFilter]);
 
+  const spotlightLocation =
+    activeLocation === "All" ? DEFAULT_SPOTLIGHT_LOCATION : activeLocation;
+  const spotlightDescription =
+    SPOTLIGHT_DESCRIPTIONS[spotlightLocation] ??
+    `Top-rated vendors in ${spotlightLocation} for standout celebrations.`;
+  const spotlightLink =
+    spotlightLocation === "Zanzibar" ? "/vendors/zanzibar" : "/vendors/all";
+
+  const spotlightVendors = useMemo(() => {
+    const sortByScore = (a: (typeof VENDORS)[number], b: (typeof VENDORS)[number]) =>
+      b.rating - a.rating || b.reviews - a.reviews;
+    const primary = VENDORS.filter(
+      (vendor) => vendor.location === spotlightLocation
+    ).sort(sortByScore);
+    const fallback = VENDORS.filter(
+      (vendor) => vendor.location !== spotlightLocation
+    ).sort(sortByScore);
+    const unique: typeof VENDORS = [];
+
+    for (const vendor of [...primary, ...fallback]) {
+      if (unique.some((item) => item.id === vendor.id)) {
+        continue;
+      }
+      unique.push(vendor);
+      if (unique.length === 6) {
+        break;
+      }
+    }
+
+    return unique;
+  }, [spotlightLocation]);
+
   const scrollCategories = (direction: "left" | "right") => {
     const container = categoryRowRef.current;
-    if (!container) return;
-    const scrollAmount = container.clientWidth * 0.8;
-    container.scrollBy({
-      left: direction === "left" ? -scrollAmount : scrollAmount,
-      behavior: "smooth",
-    });
-  };
-
-  const scrollPromotions = (direction: "left" | "right") => {
-    const container = promotionsRowRef.current;
     if (!container) return;
     const scrollAmount = container.clientWidth * 0.8;
     container.scrollBy({
@@ -1084,8 +817,8 @@ export default function VendorsPage() {
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <main>
-        <section className="relative pt-20 pb-8 px-6 lg:pl-12 lg:pr-0 border-b border-border">
-          <div className="max-w-[1300px] mx-auto grid lg:grid-cols-[1.15fr_0.85fr] gap-8 items-center">
+        <section className="relative pt-20 pb-8 px-6 lg:px-12 xl:px-12 2xl:px-16 border-b border-border">
+          <div className="max-w-[1800px] mx-auto grid lg:grid-cols-[1.15fr_0.85fr] gap-8 items-center">
             <div>
               <nav className="vendors-hero-eyebrow flex items-center gap-3 text-xs font-mono uppercase tracking-[0.3em] text-secondary">
                 <Link href="/" className="hover:text-primary transition-colors">
@@ -1150,7 +883,7 @@ export default function VendorsPage() {
               </div>
             </div>
 
-            <div className="vendors-hero-media relative lg:w-[calc(100%+(100vw-1300px)/2)]">
+            <div className="vendors-hero-media relative lg:w-full">
               <div
                 className="relative h-[200px] md:h-[240px] lg:h-[300px] overflow-hidden shadow-xl"
                 style={{
@@ -1168,8 +901,8 @@ export default function VendorsPage() {
           </div>
         </section>
 
-        <section className="py-16 px-6 lg:px-12 border-t border-border">
-          <div className="max-w-[1280px] mx-auto">
+        <section className="py-16 px-6 lg:px-12 xl:px-12 2xl:px-16 border-t border-border">
+          <div className="max-w-[1800px] mx-auto">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
@@ -1185,7 +918,7 @@ export default function VendorsPage() {
                 </p>
               </div>
                 <Link
-                  href="/vendors"
+                  href="/vendors/all"
                   className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary transition-colors"
                 >
                 Browse all categories
@@ -1193,7 +926,7 @@ export default function VendorsPage() {
               </Link>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
                 {CATEGORIES.slice(0, 10).map((category) => {
                   const isActive = activeCategory === category.id;
                   return (
@@ -1231,8 +964,8 @@ export default function VendorsPage() {
           </div>
         </section>
 
-        <section className="py-14 px-6 lg:px-12 border-t border-border bg-surface/20">
-          <div className="max-w-[1280px] mx-auto">
+        <section className="py-14 px-6 lg:px-12 xl:px-12 2xl:px-16 border-t border-border bg-surface/20">
+          <div className="max-w-[1800px] mx-auto">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
@@ -1243,19 +976,16 @@ export default function VendorsPage() {
                   Promotions you might be interested in.
                 </h2>
               </div>
-                <Link
-                  href="/vendors"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary transition-colors"
-                >
+              <Link
+                href="/vendors/deals"
+                className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary transition-colors"
+              >
                 Explore all deals
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
-            <div
-                ref={promotionsRowRef}
-                className="promotions-grid grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5"
-              >
+            <div className="promotions-grid grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
                 {PROMOTIONS.map((promo, index) => {
                   const isRightEdge = index === PROMOTIONS.length - 1;
                   return (
@@ -1320,7 +1050,7 @@ export default function VendorsPage() {
                             >
                               <div className="p-5">
                                 <div className="flex items-center gap-4 mb-4">
-                                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
+                                  <div className="w-12 h-12 rounded-full bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
                                     <span className="text-lg font-bold text-primary">
                                       {promo.vendor.charAt(0)}
                                     </span>
@@ -1412,8 +1142,8 @@ export default function VendorsPage() {
         </section>
 
         {/* New Vendors Section */}
-        <section className="py-14 px-6 lg:px-12 border-t border-border bg-background">
-          <div className="max-w-[1280px] mx-auto">
+        <section className="py-14 px-6 lg:px-12 xl:px-12 2xl:px-16 border-t border-border bg-background">
+          <div className="max-w-[1800px] mx-auto">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
@@ -1425,7 +1155,7 @@ export default function VendorsPage() {
                 </h2>
               </div>
                 <Link
-                  href="/vendors"
+                  href="/vendors/new"
                   className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary transition-colors"
                 >
                 View all new vendors
@@ -1433,7 +1163,7 @@ export default function VendorsPage() {
               </Link>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
               {NEW_VENDORS.map((vendor, index) => {
                 const isRightEdge = index === NEW_VENDORS.length - 1;
                 return (
@@ -1486,7 +1216,7 @@ export default function VendorsPage() {
                           >
                             <div className="p-5">
                               <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
                                   <span className="text-lg font-bold text-primary">
                                     {vendor.name.charAt(0)}
                                   </span>
@@ -1576,8 +1306,8 @@ export default function VendorsPage() {
         </section>
 
         {/* Most Booked Section */}
-        <section className="py-14 px-6 lg:px-12 border-t border-border bg-surface/40">
-          <div className="max-w-[1280px] mx-auto">
+        <section className="py-14 px-6 lg:px-12 xl:px-12 2xl:px-16 border-t border-border bg-surface/40">
+          <div className="max-w-[1800px] mx-auto">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
@@ -1589,7 +1319,7 @@ export default function VendorsPage() {
                 </h2>
               </div>
                 <Link
-                  href="/vendors"
+                  href="/vendors/trending"
                   className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary transition-colors"
                 >
                 Explore trending vendors
@@ -1597,7 +1327,7 @@ export default function VendorsPage() {
               </Link>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
               {MOST_BOOKED.map((vendor, index) => {
                 const isRightEdge = index === MOST_BOOKED.length - 1;
                 return (
@@ -1641,7 +1371,7 @@ export default function VendorsPage() {
                           >
                             <div className="p-5">
                               <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
                                   <span className="text-lg font-bold text-primary">
                                     {vendor.name.charAt(0)}
                                   </span>
@@ -1731,8 +1461,8 @@ export default function VendorsPage() {
         </section>
 
         {/* Budget-Friendly Section */}
-        <section className="py-14 px-6 lg:px-12 border-t border-border bg-background">
-          <div className="max-w-[1280px] mx-auto">
+        <section className="py-14 px-6 lg:px-12 xl:px-12 2xl:px-16 border-t border-border bg-background">
+          <div className="max-w-[1800px] mx-auto">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
@@ -1744,7 +1474,7 @@ export default function VendorsPage() {
                 </h2>
               </div>
                 <Link
-                  href="/vendors"
+                  href="/vendors/budget"
                   className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary transition-colors"
                 >
                 View budget options
@@ -1752,7 +1482,7 @@ export default function VendorsPage() {
               </Link>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
               {BUDGET_FRIENDLY.map((vendor, index) => {
                 const isRightEdge = index === BUDGET_FRIENDLY.length - 1;
                 return (
@@ -1796,7 +1526,7 @@ export default function VendorsPage() {
                           >
                             <div className="p-5">
                               <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
                                   <span className="text-lg font-bold text-primary">
                                     {vendor.name.charAt(0)}
                                   </span>
@@ -1886,8 +1616,8 @@ export default function VendorsPage() {
         </section>
 
         {/* Quick Responders Section */}
-        <section className="py-14 px-6 lg:px-12 border-t border-border bg-surface/20">
-          <div className="max-w-[1280px] mx-auto">
+        <section className="py-14 px-6 lg:px-12 xl:px-12 2xl:px-16 border-t border-border bg-surface/20">
+          <div className="max-w-[1800px] mx-auto">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
@@ -1899,7 +1629,7 @@ export default function VendorsPage() {
                 </h2>
               </div>
                 <Link
-                  href="/vendors"
+                  href="/vendors/fast-responders"
                   className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary transition-colors"
                 >
                 View fast responders
@@ -1907,7 +1637,7 @@ export default function VendorsPage() {
               </Link>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
               {QUICK_RESPONDERS.map((vendor, index) => {
                 const isRightEdge = index === QUICK_RESPONDERS.length - 1;
                 return (
@@ -1951,7 +1681,7 @@ export default function VendorsPage() {
                           >
                             <div className="p-5">
                               <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
                                   <span className="text-lg font-bold text-primary">
                                     {vendor.name.charAt(0)}
                                   </span>
@@ -2041,30 +1771,30 @@ export default function VendorsPage() {
         </section>
 
         {/* Regional Spotlight Section */}
-        <section className="py-14 px-6 lg:px-12 border-t border-border bg-surface/40">
-          <div className="max-w-[1280px] mx-auto">
+        <section className="py-14 px-6 lg:px-12 xl:px-12 2xl:px-16 border-t border-border bg-surface/40">
+          <div className="max-w-[1800px] mx-auto">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
                   <span className="h-[1px] w-10 bg-accent" />
-                  {REGIONAL_SPOTLIGHT.region} spotlight
+                  {spotlightLocation} spotlight
                 </div>
                 <h2 className="text-2xl md:text-3xl font-semibold mt-4">
-                  {REGIONAL_SPOTLIGHT.description}
+                  {spotlightDescription}
                 </h2>
               </div>
                 <Link
-                  href="/vendors"
+                  href={spotlightLink}
                   className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary transition-colors"
                 >
-                Explore {REGIONAL_SPOTLIGHT.region}
+                Explore {spotlightLocation}
                 <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
-              {REGIONAL_SPOTLIGHT.vendors.map((vendor, index) => {
-                const isRightEdge = index === REGIONAL_SPOTLIGHT.vendors.length - 1;
+            <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
+              {spotlightVendors.map((vendor, index) => {
+                const isRightEdge = index === spotlightVendors.length - 1;
                 return (
                 <div key={vendor.id}>
                   <Link href={`/vendors/${generateSlug(vendor.name)}`} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
@@ -2106,7 +1836,7 @@ export default function VendorsPage() {
                           >
                             <div className="p-5">
                               <div className="flex items-center gap-4 mb-4">
-                                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
+                                <div className="w-12 h-12 rounded-full bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
                                   <span className="text-lg font-bold text-primary">
                                     {vendor.name.charAt(0)}
                                   </span>
@@ -2195,8 +1925,8 @@ export default function VendorsPage() {
           </div>
         </section>
 
-        <section className="py-12 px-6 lg:px-12 border-t border-border bg-surface/20">
-          <div className="max-w-[1400px] mx-auto">
+        <section className="py-12 px-6 lg:px-12 xl:px-12 2xl:px-16 border-t border-border bg-surface/20">
+          <div className="max-w-[1800px] mx-auto">
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-6">
               <div>
                 <h2 className="text-2xl md:text-3xl font-semibold">
@@ -2226,39 +1956,42 @@ export default function VendorsPage() {
           </div>
         </section>
 
-        <section className="py-20 px-6 lg:px-12 border-t border-border">
-          <div className="max-w-[1200px] mx-auto rounded-[32px] border border-border bg-gradient-to-br from-primary to-accent text-background p-10 md:p-16 relative overflow-hidden">
-            <div className="absolute top-[-80px] right-[-60px] w-56 h-56 bg-background/20 rounded-full blur-3xl" />
-            <div className="relative z-10 grid lg:grid-cols-[1.2fr_0.8fr] gap-10 items-center">
+        <section className="py-20 px-6 lg:px-12 xl:px-12 2xl:px-16 border-t border-border">
+          <div className="max-w-[1400px] mx-auto rounded-[28px] md:rounded-[36px] border border-white/10 bg-[radial-gradient(120%_120%_at_100%_0%,#2f2f34_0%,#141417_48%,#0b0b0d_100%)] text-white p-10 md:p-14 xl:p-12 relative overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
+            <div className="absolute -top-24 -right-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
+            <div className="absolute -bottom-24 right-24 h-40 w-40 rounded-full bg-white/5 blur-3xl" />
+            <div className="relative z-10 grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8 items-center">
               <div>
-                <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-background/70">
-                  <span className="h-[1px] w-10 bg-background/50" />
+                <div className="flex items-center gap-3 text-[11px] font-mono tracking-[0.4em] uppercase text-white/60">
+                  <span className="h-px w-10 bg-white/30" />
                   For vendors
                 </div>
-                <h2 className="text-3xl md:text-4xl font-semibold mt-4">
+                <h2 className="text-3xl md:text-5xl font-semibold mt-5 leading-tight">
                   Grow your business with couples ready to book.
                 </h2>
-                <p className="text-lg text-background/80 mt-4 leading-relaxed">
+                <p className="text-base md:text-lg text-white/70 mt-4 leading-relaxed max-w-2xl">
                   Join the curated marketplace trusted by modern couples across
                   East Africa. Highlight your portfolio and respond to qualified
                   leads.
                 </p>
               </div>
-              <div className="flex flex-col gap-4">
-                <Link
-                  href="/signup"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full bg-background text-primary font-semibold hover:bg-background/90 transition-colors"
-                >
-                  Apply to join
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-                <Link
-                  href="/inspiration"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 rounded-full border border-background/40 text-background font-semibold hover:bg-background/10 transition-colors"
-                >
-                  Browse inspiration
-                </Link>
-                <div className="text-xs text-background/70 text-center">
+              <div className="flex flex-col gap-3 sm:gap-4 items-start lg:items-end lg:text-right">
+                <div className="flex w-full flex-col gap-3 sm:w-auto">
+                  <Link
+                    href="/signup"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#0b0b0d] shadow-lg transition-all hover:bg-white/95 hover:shadow-xl sm:w-[280px] sm:text-base"
+                  >
+                    Apply to join
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link
+                    href="/inspiration"
+                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/30 bg-white/5 px-6 py-3 text-sm font-semibold text-white/90 backdrop-blur-sm transition-all hover:bg-white/10 sm:w-[280px] sm:text-base"
+                  >
+                    Browse inspiration
+                  </Link>
+                </div>
+                <div className="text-xs text-white/60 sm:text-sm">
                   Approval in 48 hours for qualified teams.
                 </div>
               </div>
