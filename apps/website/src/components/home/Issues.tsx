@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowUpRight } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -97,15 +98,15 @@ export function Issues() {
       <section ref={containerRef} id="advice-ideas" className="bg-surface text-primary min-h-screen pt-20 pb-12 md:py-24 overflow-hidden relative border-b border-border flex flex-col justify-center">
         
         {/* Editorial Header */}
-        <div className="editorial-header max-w-[1400px] mx-auto px-6 lg:px-12 mb-8 md:mb-12 w-full flex-shrink-0">
+        <div className="editorial-header max-w-[1400px] mx-auto px-6 lg:px-12 mb-8 md:mb-12 w-full shrink-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-end border-b border-border/50 pb-8 md:pb-12">
             <div className="text-center md:text-left">
               <div className="flex items-center justify-center md:justify-start gap-3 mb-4 md:mb-6">
-                <span className="w-12 h-[1px] bg-accent"></span>
+                <span className="w-12 h-px bg-accent"></span>
                 <span className="font-mono text-accent text-xs tracking-widest uppercase">
                   {content.advice?.label || "Advice & Ideas"}
                 </span>
-                <span className="md:hidden w-12 h-[1px] bg-accent"></span>
+                <span className="md:hidden w-12 h-px bg-accent"></span>
               </div>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-primary leading-[1.1]">
                 {content.advice?.headline || "Inspiration for"} <br/>
@@ -126,11 +127,13 @@ export function Issues() {
         {/* Mobile: Vertical Grid, Desktop: Horizontal Scroll */}
         <div className="mobile-issues-grid w-full md:hidden px-6 pb-12 flex flex-col gap-6">
            {issues.map((issue) => (
-              <div key={issue.id} className="mobile-issue-card w-full aspect-[4/5] relative group cursor-pointer overflow-hidden rounded-xl border border-border">
-                  <img 
+              <div key={issue.id} className="mobile-issue-card w-full aspect-4/5 relative group cursor-pointer overflow-hidden rounded-xl border border-border">
+                  <Image 
                     src={resolveAssetSrc(issue.img)} 
-                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" 
-                    alt={issue.title} 
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-105" 
+                    alt={issue.title}
+                    sizes="(max-width: 768px) 100vw, 50vw"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
                   <div className="absolute bottom-0 left-0 p-6 w-full text-white">
@@ -145,15 +148,17 @@ export function Issues() {
            ))}
         </div>
 
-        <div className="hidden md:flex horizontal-scroll-container w-full overflow-visible no-scrollbar flex-grow items-center">
+        <div className="hidden md:flex horizontal-scroll-container w-full overflow-visible no-scrollbar grow items-center">
           <div ref={wrapperRef} className="horizontal-wrapper flex gap-[4vw] px-[5vw] w-fit items-center h-full">
             {issues.map((issue) => (
-              <div key={issue.id} className="w-[26vw] h-[45vh] lg:h-[50vh] relative flex-shrink-0 group cursor-pointer">
+              <div key={issue.id} className="w-[26vw] h-[45vh] lg:h-[50vh] relative shrink-0 group cursor-pointer">
                 <div className="absolute inset-0 bg-background rounded-xl overflow-hidden border border-border">
-                  <img 
+                  <Image 
                     src={resolveAssetSrc(issue.img)} 
-                    className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" 
-                    alt={issue.title} 
+                    fill
+                    className="object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" 
+                    alt={issue.title}
+                    sizes="26vw"
                   />
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60 dark:to-black/90"></div>
                   <div className="absolute bottom-0 left-0 p-4 sm:p-5 md:p-6 w-full text-white">

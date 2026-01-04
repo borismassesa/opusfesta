@@ -220,9 +220,9 @@ const MENU_GROUPS = [
     items: [{ label: "Dashboard", icon: LayoutDashboard, href: "/" }],
   },
   {
-    label: "Content",
+    label: "Editor",
     items: [
-      { label: "Content", icon: FileText, href: "/content" },
+      { label: "Homepage Editor", icon: FileText, href: "/content" },
     ],
   },
   {
