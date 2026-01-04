@@ -1,0 +1,7 @@
+apps/website/.next
+apps/admin/.next
+apps/vendor-portal/.next
+node_modules
+.next
+dist
+build
