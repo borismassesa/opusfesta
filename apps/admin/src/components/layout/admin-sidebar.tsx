@@ -64,7 +64,7 @@ export function AdminSidebar() {
       {/* Header */}
       <div className="p-4 md:p-6 border-b border-sidebar-border flex items-center justify-between">
         <Link
-          href="/"
+          href={"/" as any}
           className="font-serif text-2xl md:text-3xl text-primary hover:text-primary/80 transition-colors select-none z-50"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         >
@@ -85,7 +85,7 @@ export function AdminSidebar() {
                 return (
                   <Link
                     key={item.label}
-                    href={item.href}
+                    href={item.href as any}
                     className={`
                       flex items-center gap-3 h-9 px-3 rounded-lg transition-all duration-160
                       ${

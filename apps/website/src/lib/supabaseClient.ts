@@ -16,10 +16,12 @@ function createSupabaseClient(): SupabaseClient {
   // During build time, if env vars are missing, create a client with placeholders
   // This allows the build to complete. The actual queries will fail gracefully
   // and return null/empty arrays, which the code already handles.
-  if (!supabaseUrl || !supabaseAnonKey) {
+  const url = supabaseUrl || (isBuildTime ? "https://placeholder.supabase.co" : "");
+  const key = supabaseAnonKey || (isBuildTime ? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTIwMDAsImV4cCI6MTk2MDc2ODAwMH0.placeholder" : "");
+  
+  if (!url || !key) {
     if (isBuildTime) {
       // During build, use placeholder values to prevent build failure
-      // The functions using this client already handle errors gracefully
       return createClient(
         "https://placeholder.supabase.co",
         "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InBsYWNlaG9sZGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE2NDUxOTIwMDAsImV4cCI6MTk2MDc2ODAwMH0.placeholder"
@@ -29,7 +31,7 @@ function createSupabaseClient(): SupabaseClient {
     throw new Error("Missing Supabase environment variables for the website app.");
   }
 
-  return createClient(supabaseUrl, supabaseAnonKey);
+  return createClient(url, key);
 }
 
 // Lazy initialization
