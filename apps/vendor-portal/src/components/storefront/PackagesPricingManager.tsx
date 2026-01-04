@@ -319,7 +319,6 @@ export function PackagesPricingManager({ vendor, onUpdate }: PackagesPricingMana
               </div>
             </div>
           </div>
-        )}
       </CardContent>
     </Card>
   );
