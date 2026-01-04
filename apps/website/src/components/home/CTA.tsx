@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { ArrowRight, Sparkles } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -88,29 +89,30 @@ export function CTA() {
 
   return (
     <section ref={containerRef} className="py-12 md:py-24 px-4 md:px-6 lg:px-12 bg-background flex justify-center">
-      <div ref={cardRef} className="relative w-full max-w-[1400px] rounded-[1.5rem] md:rounded-[2rem] overflow-hidden min-h-[450px] md:min-h-[600px] flex flex-col items-center justify-center text-center p-6 md:p-12 lg:p-20 shadow-2xl">
+      <div ref={cardRef} className="relative w-full max-w-[1400px] rounded-3xl md:rounded-4xl overflow-hidden min-h-[450px] md:min-h-[600px] flex flex-col items-center justify-center text-center p-6 md:p-12 lg:p-20 shadow-2xl">
 
         {/* Background Image with Overlay */}
-        <div className={cn("absolute inset-0 z-0", !cta?.backgroundImage && "bg-zinc-900")}>
+        <div className={cn("absolute inset-0 z-0 overflow-hidden", !cta?.backgroundImage && "bg-zinc-900")}>
           {cta?.backgroundImage ? (
-            <img
-              key={typeof cta.backgroundImage === 'string' ? cta.backgroundImage : 'static-bg'}
-              src={resolveAssetSrc(cta.backgroundImage)}
-              alt="Background"
-              className="cta-bg-image w-full h-[120%] object-cover -mt-[10%] opacity-80 mix-blend-overlay"
-              onError={(e) => {
-                const img = e.target as HTMLImageElement;
-                console.error("[CTA] Failed to load background image:", {
-                  src: img.src,
-                  originalValue: cta.backgroundImage,
-                  type: typeof cta.backgroundImage,
-                });
-                img.style.display = "none";
-              }}
-              onLoad={() => {
-                console.log("[CTA] Background image loaded successfully:", resolveAssetSrc(cta.backgroundImage));
-              }}
-            />
+            <div className="absolute -top-[10%] left-0 w-full h-[120%]">
+              <Image
+                key={typeof cta.backgroundImage === 'string' ? cta.backgroundImage : 'static-bg'}
+                src={resolveAssetSrc(cta.backgroundImage)}
+                alt="Background"
+                fill
+                className="cta-bg-image object-cover opacity-80 mix-blend-overlay"
+                sizes="100vw"
+                onError={() => {
+                  console.error("[CTA] Failed to load background image:", {
+                    originalValue: cta.backgroundImage,
+                    type: typeof cta.backgroundImage,
+                  });
+                }}
+                onLoad={() => {
+                  console.log("[CTA] Background image loaded successfully:", resolveAssetSrc(cta.backgroundImage));
+                }}
+              />
+            </div>
           ) : null}
           <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]"></div>
            {/* Gradient Overlay for text readability */}
@@ -120,7 +122,7 @@ export function CTA() {
         {/* Content */}
         <div className="relative z-10 flex flex-col items-center max-w-4xl mx-auto">
 
-          <h2 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-white mb-6 md:mb-8 leading-[1.0] md:leading-[0.9]">
+          <h2 className="text-3xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-white mb-6 md:mb-8 leading-none md:leading-[0.9]">
             {cta?.headline || "Plan the wedding"} <br />
             <span className="font-serif font-normal italic text-white/90">
               {cta?.subheadline || "of the century."}

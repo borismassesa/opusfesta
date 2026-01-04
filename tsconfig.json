@@ -1,4 +1,23 @@
 {
-  "compilerOptions": {},
-  "extends": "expo/tsconfig.base"
+  "compilerOptions": {
+    "target": "ES2017",
+    "lib": ["esnext", "dom", "dom.iterable"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "noEmit": true
+  },
+  "files": [],
+  "references": [
+    { "path": "./apps/website" },
+    { "path": "./apps/admin" },
+    { "path": "./apps/vendor-portal" },
+    { "path": "./packages/lib" }
+  ]
 }

@@ -134,12 +134,17 @@ export default function ContentPage() {
       >
         {/* Title Header */}
         <div className="px-4 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
-          <h2 className={cn(
-            "text-base font-semibold text-foreground transition-opacity duration-200 whitespace-nowrap",
+          <div className={cn(
+            "flex flex-col transition-opacity duration-200",
             isSecondarySidebarCollapsed && "opacity-0 w-0 overflow-hidden"
           )}>
-            Content
-          </h2>
+            <h2 className="text-base font-semibold text-foreground whitespace-nowrap">
+              Homepage Editor
+            </h2>
+            <p className="text-xs text-muted-foreground whitespace-nowrap mt-0.5">
+              Edit page sections
+            </p>
+          </div>
           <button
             onClick={() => setIsSecondarySidebarCollapsed(!isSecondarySidebarCollapsed)}
             className={cn(

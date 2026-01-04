@@ -72,7 +72,7 @@ export function Community() {
         
         {/* Vendor Grid - Dense and centered */}
         {vendors.length > 0 && (
-          <div className="flex flex-wrap justify-center gap-2 sm:gap-1.5 md:gap-2 max-w-[90rem] mx-auto mb-12 md:mb-16 mask-linear-fade">
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-1.5 md:gap-2 max-w-360 mx-auto mb-12 md:mb-16 mask-linear-fade">
             {vendors.map((vendor) => {
               const avatarSrc = vendor.avatar ? resolveAssetSrc(vendor.avatar) : "";
               
