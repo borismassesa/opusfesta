@@ -35,6 +35,13 @@ const nextConfig = {
       "@assets": path.resolve(__dirname, "attached_assets"),
     };
     
+    // Ensure webpack resolves modules from workspace root in monorepo
+    config.resolve.modules = [
+      path.resolve(__dirname, "node_modules"),
+      path.resolve(__dirname, "../../node_modules"),
+      "node_modules",
+    ];
+    
     // Fix for Mapbox GL
     if (!isServer) {
       config.resolve.fallback = {
