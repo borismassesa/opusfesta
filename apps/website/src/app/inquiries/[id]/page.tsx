@@ -5,22 +5,32 @@ import { InquiryPageClient } from "@/components/inquiries/InquiryPageClient";
 import { FileText, Calendar, Mail, Phone, MapPin, User, CheckCircle2, Clock, XCircle, MessageSquare } from "lucide-react";
 import { format } from "date-fns";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
+// Mark page as dynamic to prevent static generation
+export const dynamic = 'force-dynamic';
+
+// Lazy initialization of Supabase admin client
+function getSupabaseAdmin() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Missing required Supabase environment variables");
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-  }
-);
+  });
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
 export default async function InquiryPage({ params }: PageProps) {
+  const supabaseAdmin = getSupabaseAdmin();
   const { id: inquiryId } = await params;
 
   // Get inquiry with vendor and user info
