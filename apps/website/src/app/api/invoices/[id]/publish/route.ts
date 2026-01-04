@@ -1,0 +1,119 @@
+import { NextRequest, NextResponse } from "next/server";
+import { supabase } from "@/lib/supabaseClient";
+import { createClient } from "@supabase/supabase-js";
+
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  }
+);
+
+/**
+ * Publish an invoice (change status from DRAFT to PENDING)
+ * This makes the invoice visible to the customer and ready for payment
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id: invoiceId } = await params;
+
+    // Authenticate user (vendor)
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader) {
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
+    }
+
+    const token = authHeader.replace("Bearer ", "");
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+
+    if (authError || !user) {
+      return NextResponse.json(
+        { error: "Invalid authentication" },
+        { status: 401 }
+      );
+    }
+
+    // Get invoice and verify vendor ownership
+    const { data: invoice, error: invoiceError } = await supabaseAdmin
+      .from("invoices")
+      .select(`
+        id,
+        vendor_id,
+        status
+      `)
+      .eq("id", invoiceId)
+      .single();
+
+    if (invoiceError || !invoice) {
+      return NextResponse.json(
+        { error: "Invoice not found" },
+        { status: 404 }
+      );
+    }
+
+    // Verify the authenticated user is the vendor
+    const { data: vendor } = await supabaseAdmin
+      .from("vendors")
+      .select("user_id")
+      .eq("id", invoice.vendor_id)
+      .single();
+
+    if (!vendor || vendor.user_id !== user.id) {
+      return NextResponse.json(
+        { error: "Unauthorized: You can only publish your own invoices" },
+        { status: 403 }
+      );
+    }
+
+    // Only allow publishing DRAFT invoices
+    if (invoice.status !== 'DRAFT') {
+      return NextResponse.json(
+        { error: `Cannot publish invoice with status: ${invoice.status}. Only DRAFT invoices can be published.` },
+        { status: 400 }
+      );
+    }
+
+    // Update invoice status to PENDING
+    const { data: updatedInvoice, error: updateError } = await supabaseAdmin
+      .from("invoices")
+      .update({ status: 'PENDING' })
+      .eq("id", invoiceId)
+      .select()
+      .single();
+
+    if (updateError) {
+      console.error("Error publishing invoice:", updateError);
+      return NextResponse.json(
+        { error: "Failed to publish invoice", details: updateError.message },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      success: true,
+      invoice: {
+        id: updatedInvoice.id,
+        invoiceNumber: updatedInvoice.invoice_number,
+        status: updatedInvoice.status,
+        updatedAt: updatedInvoice.updated_at,
+      },
+      message: "Invoice published successfully. Customer can now view and pay the invoice.",
+    });
+  } catch (error) {
+    console.error("Unexpected error publishing invoice:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}

@@ -2,7 +2,10 @@
 
 import { useState, forwardRef, useMemo } from "react";
 import Image from "next/image";
-import { Play } from "lucide-react";
+import Link from "next/link";
+import { Play, X, ChevronLeft, ChevronRight, Grid3x3 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { resolveAssetSrc } from "@/lib/assets";
 import type { Vendor, PortfolioItem } from "@/lib/supabase/vendors";
 
@@ -36,6 +39,7 @@ export const VendorImageGallery = forwardRef<HTMLDivElement, VendorImageGalleryP
 }, ref) => {
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [lightboxIndex, setLightboxIndex] = useState(0);
 
   // Separate videos and images from portfolio
   const { videos, images } = useMemo(() => {
@@ -97,8 +101,19 @@ export const VendorImageGallery = forwardRef<HTMLDivElement, VendorImageGalleryP
     setSelectedImageIndex(originalIndex);
   };
 
-  const openLightbox = () => {
+  const openLightbox = (index: number = 0) => {
+    setLightboxIndex(index);
     setIsLightboxOpen(true);
+  };
+
+  const handleLightboxNext = () => {
+    const allMedia = [...videos, ...allImages];
+    setLightboxIndex((prev) => (prev + 1) % allMedia.length);
+  };
+
+  const handleLightboxPrevious = () => {
+    const allMedia = [...videos, ...allImages];
+    setLightboxIndex((prev) => (prev - 1 + allMedia.length) % allMedia.length);
   };
 
   const handleVideoClick = (e: React.MouseEvent) => {
@@ -126,7 +141,11 @@ export const VendorImageGallery = forwardRef<HTMLDivElement, VendorImageGalleryP
         {/* Main Large Card - Video or Image (Left Side 60%) */}
         <div
           className="relative h-[300px] md:h-[350px] lg:h-[400px] rounded-2xl overflow-hidden cursor-pointer group"
-          onClick={mainVideo ? handleVideoClick : openLightbox}
+          onClick={mainVideo ? handleVideoClick : () => {
+            // Open lightbox at the current selected image index
+            const imageIndex = videos.length + selectedImageIndex;
+            openLightbox(imageIndex);
+          }}
         >
           {mainVideo ? (
             <>
@@ -169,24 +188,6 @@ export const VendorImageGallery = forwardRef<HTMLDivElement, VendorImageGalleryP
                   </div>
                 </div>
               </div>
-              {/* Show all media button */}
-              {hasMoreImages && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openLightbox();
-                  }}
-                  className="absolute bottom-4 right-4 bg-background px-4 py-2 rounded-lg border border-border text-sm font-semibold flex items-center gap-2 shadow-sm hover:bg-surface transition-colors z-10"
-                >
-                  <svg
-                    viewBox="0 0 16 16"
-                    className="w-4 h-4 fill-current"
-                  >
-                    <path d="M5 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm6 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm-6 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm6-9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"></path>
-                  </svg>
-                  Show all {totalMediaCount} {totalMediaCount === 1 ? 'item' : 'items'}
-                </button>
-              )}
             </>
           ) : mainImage ? (
             <>
@@ -197,24 +198,6 @@ export const VendorImageGallery = forwardRef<HTMLDivElement, VendorImageGalleryP
                 className="object-cover group-hover:scale-105 transition-transform duration-300"
                 priority
               />
-              {/* Show all photos button on main image if there are more images */}
-              {hasMoreImages && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openLightbox();
-                  }}
-                  className="absolute bottom-4 right-4 bg-background px-4 py-2 rounded-lg border border-border text-sm font-semibold flex items-center gap-2 shadow-sm hover:bg-surface transition-colors z-10"
-                >
-                  <svg
-                    viewBox="0 0 16 16"
-                    className="w-4 h-4 fill-current"
-                  >
-                    <path d="M5 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm6 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm-6 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm6-9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"></path>
-                  </svg>
-                  Show all {allImages.length} {allImages.length === 1 ? 'photo' : 'photos'}
-                </button>
-              )}
             </>
           ) : null}
         </div>
@@ -233,7 +216,12 @@ export const VendorImageGallery = forwardRef<HTMLDivElement, VendorImageGalleryP
                 key={`${img.url}-${index}`}
                 className="relative h-[145px] md:h-[170px] lg:h-[195px] rounded-2xl overflow-hidden cursor-pointer group"
                 onClick={() => {
-                  handleThumbnailClick(originalIndex);
+                  // Update main image and open lightbox at this image's index
+                  if (!isLastThumbnail || !hasMoreImages) {
+                    handleThumbnailClick(originalIndex);
+                    const imageIndex = videos.length + originalIndex;
+                    openLightbox(imageIndex);
+                  }
                 }}
               >
                 <Image
@@ -242,23 +230,28 @@ export const VendorImageGallery = forwardRef<HTMLDivElement, VendorImageGalleryP
                   fill
                   className="object-cover group-hover:scale-105 transition-transform duration-300"
                 />
-                {/* Show all media button overlay on bottom right image */}
+                {/* Show all button on last thumbnail card */}
                 {isLastThumbnail && hasMoreImages && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      openLightbox();
-                    }}
-                    className="absolute bottom-4 right-4 bg-background px-4 py-2 rounded-lg border border-border text-sm font-semibold flex items-center gap-2 shadow-sm hover:bg-surface transition-colors z-10"
-                  >
-                    <svg
-                      viewBox="0 0 16 16"
-                      className="w-4 h-4 fill-current"
+                  <>
+                    {/* Semi-transparent overlay to darken image but keep it visible */}
+                    <div className="absolute inset-0 bg-black/40 group-hover:bg-black/50 transition-colors z-[1]" />
+                    
+                    {/* Show all button positioned at bottom-right - navigates to gallery page */}
+                    <Link
+                      href={`/vendors/${vendor.slug}/gallery`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                      }}
+                      className="absolute bottom-3 right-3 z-10 group/button"
                     >
-                      <path d="M5 2a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm6 9a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm-6 0a3 3 0 1 1 0 6 3 3 0 0 1 0-6zm6-9a3 3 0 1 1 0 6 3 3 0 0 1 0-6z"></path>
-                    </svg>
-                    Show all {totalMediaCount} {totalMediaCount === 1 ? 'item' : 'items'}
-                  </button>
+                      <div className="bg-background/95 backdrop-blur-sm px-3.5 py-2 rounded-lg border border-border/50 text-xs font-semibold flex items-center gap-2 shadow-lg hover:shadow-xl hover:bg-background transition-all hover:scale-105 group-hover/button:border-primary/30">
+                        <Grid3x3 className="w-3.5 h-3.5 text-primary" />
+                        <span className="text-foreground whitespace-nowrap">
+                          Show all {totalMediaCount}
+                        </span>
+                      </div>
+                    </Link>
+                  </>
                 )}
               </div>
             );
@@ -274,6 +267,109 @@ export const VendorImageGallery = forwardRef<HTMLDivElement, VendorImageGalleryP
             ))}
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      <Dialog open={isLightboxOpen} onOpenChange={setIsLightboxOpen}>
+        <DialogContent className="max-w-7xl w-full h-[90vh] p-0 bg-black/95 border-none">
+          <DialogTitle className="sr-only">
+            {(() => {
+              const allMedia = [...videos, ...allImages];
+              const currentMedia = allMedia[lightboxIndex];
+              return currentMedia?.portfolioItem?.title || `${vendor.business_name} - Image ${lightboxIndex + 1} of ${allMedia.length}`;
+            })()}
+          </DialogTitle>
+          <div className="relative w-full h-full flex items-center justify-center">
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 z-50 text-background hover:bg-white/20"
+              onClick={() => setIsLightboxOpen(false)}
+            >
+              <X className="w-6 h-6" />
+            </Button>
+
+            {/* Media Display */}
+            {(() => {
+              const allMedia = [...videos, ...allImages];
+              const currentMedia = allMedia[lightboxIndex];
+              
+              if (!currentMedia) return null;
+
+              const isVideo = videos.some(v => v.url === currentMedia.url);
+
+              if (isVideo) {
+                return (
+                  <div className="relative w-full h-full flex items-center justify-center">
+                    <div className="text-center">
+                      <Play className="w-16 h-16 mx-auto mb-4 text-background" fill="currentColor" />
+                      <p className="text-background text-lg font-medium mb-4">
+                        {currentMedia.portfolioItem?.title || "Video"}
+                      </p>
+                      <Button
+                        onClick={() => window.open(currentMedia.url, '_blank')}
+                        className="bg-background text-foreground hover:bg-surface"
+                      >
+                        Open Video
+                      </Button>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <Image
+                    src={resolveAssetSrc(currentMedia.url)}
+                    alt={currentMedia.portfolioItem?.title || "Gallery image"}
+                    fill
+                    className="object-contain"
+                  />
+                </div>
+              );
+            })()}
+
+            {/* Navigation Buttons */}
+            {(() => {
+              const allMedia = [...videos, ...allImages];
+              if (allMedia.length <= 1) return null;
+
+              return (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute left-4 z-50 text-background hover:bg-white/20"
+                    onClick={handleLightboxPrevious}
+                  >
+                    <ChevronLeft className="w-8 h-8" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-4 z-50 text-background hover:bg-white/20"
+                    onClick={handleLightboxNext}
+                  >
+                    <ChevronRight className="w-8 h-8" />
+                  </Button>
+                </>
+              );
+            })()}
+
+            {/* Media Counter */}
+            {(() => {
+              const allMedia = [...videos, ...allImages];
+              if (allMedia.length <= 1) return null;
+
+              return (
+                <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-background bg-black/50 px-4 py-2 rounded-full text-sm">
+                  {lightboxIndex + 1} / {allMedia.length}
+                </div>
+              );
+            })()}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 });

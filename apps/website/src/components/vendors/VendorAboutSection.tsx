@@ -8,8 +8,14 @@ import {
   MessageCircle, 
   Send,
   Loader2,
-  X
+  X,
+  Globe,
+  Phone,
+  Calendar,
+  Users,
+  MessageSquare
 } from 'lucide-react';
+import Image from 'next/image';
 import IconWrapper from './IconWrapper';
 import { getGeminiResponse } from '@/lib/services/geminiService';
 import type { Vendor } from '@/lib/supabase/vendors';
@@ -72,38 +78,128 @@ export const VendorAboutSection: React.FC<VendorAboutSectionProps> = ({ vendor }
     ? fullDescription 
     : truncatedText + (truncatedText.length < fullDescription.length ? '...' : '');
 
+  // Get team size label
+  const getTeamSizeLabel = () => {
+    if (!vendor.team_size) return null;
+    if (vendor.team_size <= 2) return 'Small team (1-2 members)';
+    if (vendor.team_size <= 10) return 'Small team (2-10 members)';
+    if (vendor.team_size <= 50) return 'Medium team (11-50 members)';
+    return 'Large team (50+ members)';
+  };
+
+  // Get years in business label
+  const getYearsLabel = () => {
+    if (!vendor.years_in_business) return null;
+    return `${vendor.years_in_business}+ years in business`;
+  };
+
   return (
     <>
       <div id="section-about" className="pt-6 scroll-mt-32 lg:scroll-mt-40">
         {/* Header Section */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
-          <h2 className="text-3xl font-bold text-foreground">About</h2>
+          <h2 className="text-3xl font-bold text-foreground">About this venue</h2>
           
-          <div className="flex items-center gap-3">
-            <IconWrapper href={vendor.social_links?.facebook || '#'}>
-              <Facebook size={20} />
-            </IconWrapper>
-            <IconWrapper href={vendor.social_links?.twitter || '#'}>
-              <Twitter size={20} />
-            </IconWrapper>
-            <IconWrapper href={vendor.social_links?.instagram || '#'}>
-              <Instagram size={20} />
-            </IconWrapper>
+          <div className="flex items-center gap-2">
+            {vendor.social_links?.facebook && (
+              <a
+                href={vendor.social_links.facebook}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full border-2 border-foreground flex items-center justify-center hover:bg-surface transition-colors"
+              >
+                <Facebook size={18} className="text-foreground" />
+              </a>
+            )}
+            {vendor.social_links?.twitter && (
+              <a
+                href={vendor.social_links.twitter}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full border-2 border-foreground flex items-center justify-center hover:bg-surface transition-colors"
+              >
+                <Twitter size={18} className="text-foreground" />
+              </a>
+            )}
+            {vendor.social_links?.instagram && (
+              <a
+                href={vendor.social_links.instagram}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full border-2 border-foreground flex items-center justify-center hover:bg-surface transition-colors"
+              >
+                <Instagram size={18} className="text-foreground" />
+              </a>
+            )}
+            {vendor.contact_info?.website && (
+              <a
+                href={vendor.contact_info.website}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="w-10 h-10 rounded-full border-2 border-foreground flex items-center justify-center hover:bg-surface transition-colors"
+              >
+                <Globe size={18} className="text-foreground" />
+              </a>
+            )}
+            {vendor.contact_info?.phone && (
+              <a
+                href={`tel:${vendor.contact_info.phone}`}
+                className="w-10 h-10 rounded-full border-2 border-foreground flex items-center justify-center hover:bg-surface transition-colors"
+              >
+                <Phone size={18} className="text-foreground" />
+              </a>
+            )}
           </div>
         </div>
 
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Contact Person Card */}
+          <div className="lg:col-span-1">
+            <div className="bg-background border border-border rounded-2xl p-6 text-center">
+              {vendor.logo ? (
+                <div className="relative w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden border-2 border-border">
+                  <Image
+                    src={vendor.logo}
+                    alt={vendor.business_name}
+                    fill
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="w-24 h-24 mx-auto mb-4 rounded-full bg-surface border-2 border-border flex items-center justify-center">
+                  <span className="text-3xl font-semibold text-foreground">
+                    {vendor.business_name.charAt(0).toUpperCase()}
+                  </span>
+                </div>
+              )}
+              <h3 className="text-lg font-semibold text-primary mb-1">
+                {vendor.business_name}
+              </h3>
+              <p className="text-sm text-secondary uppercase mb-6">
+                {vendor.category}
+              </p>
+              <button
+                onClick={() => setIsChatOpen(true)}
+                className="w-full border-2 border-primary text-primary px-4 py-2.5 rounded-lg font-semibold text-sm hover:bg-primary hover:text-primary-foreground transition-colors"
+              >
+                Message Vendor
+              </button>
+            </div>
+          </div>
 
-        {/* Content Section */}
+          {/* Right Column - Description and Business Details */}
+          <div className="lg:col-span-2">
         {fullDescription && (
-          <div className="space-y-6 text-foreground leading-relaxed text-lg">
-            <p>
+              <div className="space-y-4 mb-6">
+                <p className="text-foreground leading-relaxed text-base">
               {displayDescription}
             </p>
             
             {shouldTruncate && (
               <button 
                 onClick={toggleExpand}
-                className="text-foreground font-semibold border-b-2 border-foreground hover:text-secondary hover:border-secondary transition-all text-base pb-0.5"
+                    className="text-primary underline font-medium hover:text-primary/80 transition-colors text-sm"
               >
                 {isExpanded ? 'Show less' : 'Read more'}
               </button>
@@ -111,6 +207,27 @@ export const VendorAboutSection: React.FC<VendorAboutSectionProps> = ({ vendor }
           </div>
         )}
 
+            {/* Business Attributes */}
+            <div className="space-y-3 pt-4 border-t border-border">
+              {getYearsLabel() && (
+                <div className="flex items-center gap-3">
+                  <Calendar className="w-5 h-5 text-secondary" />
+                  <span className="text-sm text-foreground">{getYearsLabel()}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <MessageSquare className="w-5 h-5 text-secondary" />
+                <span className="text-sm text-foreground">Speaks English</span>
+              </div>
+              {getTeamSizeLabel() && (
+                <div className="flex items-center gap-3">
+                  <Users className="w-5 h-5 text-secondary" />
+                  <span className="text-sm text-primary">{getTeamSizeLabel()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Floating AI Helper Button */}

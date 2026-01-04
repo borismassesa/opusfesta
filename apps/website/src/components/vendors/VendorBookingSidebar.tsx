@@ -1,7 +1,9 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { Flag, Sparkles, Calendar as CalendarIcon, Tag, Send } from "lucide-react";
+import { useState, useMemo, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
+import { Flag, Sparkles, Calendar as CalendarIcon, Tag, Send, CheckCircle2, XCircle, Star, MapPin } from "lucide-react";
+import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -9,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format, startOfDay, isBefore, differenceInDays, isSameMonth } from "date-fns";
 import Image from "next/image";
 import type { Vendor } from "@/lib/supabase/vendors";
+import { supabase } from "@/lib/supabaseClient";
 
 interface VendorBookingSidebarProps {
   vendor: Vendor;
@@ -18,13 +21,17 @@ interface VendorBookingSidebarProps {
 }
 
 export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = [] }: VendorBookingSidebarProps) {
+  const router = useRouter();
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
     to: undefined,
   });
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [bookingStep, setBookingStep] = useState<'payment' | 'method' | 'message' | 'review' | 'confirmation'>('payment');
+  const [bookingStep, setBookingStep] = useState<'customer' | 'payment' | 'method' | 'review' | 'success' | 'error'>('customer');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [unavailableDates, setUnavailableDates] = useState<Date[]>([]);
+  const [isLoadingAvailability, setIsLoadingAvailability] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState<string>('full');
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string | null>('card');
   const [cardDetails, setCardDetails] = useState({
@@ -34,8 +41,16 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
     postalCode: '',
     country: 'Tanzania'
   });
-  const [mobilePhone, setMobilePhone] = useState('');
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<string | null>(null);
+  const [receiptNumber, setReceiptNumber] = useState('');
+  const [thefestaAccounts, setThefestaAccounts] = useState<any[]>([]);
+  const [selectedLipaNamba, setSelectedLipaNamba] = useState<string | null>(null);
+  const [mobileMoneyStep, setMobileMoneyStep] = useState<'lipa-namba' | 'receipt'>('lipa-namba');
+  const [loadingMobileMoneyAccounts, setLoadingMobileMoneyAccounts] = useState(false);
   const [message, setMessage] = useState('');
+  const [createdInquiryId, setCreatedInquiryId] = useState<string | null>(null);
+  const confettiTriggered = useRef(false);
   const [reviewForm, setReviewForm] = useState({
     name: '',
     email: '',
@@ -46,6 +61,12 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
   const [isReviewCalendarOpen, setIsReviewCalendarOpen] = useState(false);
   const [isGuestSelectorOpen, setIsGuestSelectorOpen] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [reportReason, setReportReason] = useState('');
+  const [reportDetails, setReportDetails] = useState('');
+  const [isSubmittingReport, setIsSubmittingReport] = useState(false);
+  const [showReportConfirmation, setShowReportConfirmation] = useState(false);
   const [adults, setAdults] = useState(1);
   const [children, setChildren] = useState(0);
   const [infants, setInfants] = useState(0);
@@ -60,12 +81,107 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
   // Get today's date at start of day for comparison
   const today = useMemo(() => startOfDay(new Date()), []);
 
-  // Convert booked dates to start of day for comparison
+  // Fetch availability from API
+  useEffect(() => {
+    const fetchAvailability = async () => {
+      setIsLoadingAvailability(true);
+      try {
+        // Get next 12 months of availability
+        const startDate = new Date();
+        const endDate = new Date();
+        endDate.setFullYear(endDate.getFullYear() + 1);
+        
+        const response = await fetch(
+          `/api/vendors/${vendor.id}/availability?startDate=${startDate.toISOString().split("T")[0]}&endDate=${endDate.toISOString().split("T")[0]}`
+        );
+        
+        if (response.ok) {
+          const data = await response.json();
+          // Convert unavailable date strings to Date objects
+          const unavailable = (data.unavailableDates || []).map((dateStr: string) => new Date(dateStr));
+          setUnavailableDates(unavailable);
+        } else {
+          console.error("Failed to fetch availability");
+        }
+      } catch (error) {
+        console.error("Error fetching availability:", error);
+      } finally {
+        setIsLoadingAvailability(false);
+      }
+    };
+
+    fetchAvailability();
+  }, [vendor.id]);
+
+  // Fetch TheFesta's mobile money accounts when mobile money is selected
+  useEffect(() => {
+    const fetchAccounts = async () => {
+      setLoadingMobileMoneyAccounts(true);
+      // Always set step to lipa-namba when mobile payment is selected
+      setMobileMoneyStep('lipa-namba');
+      try {
+        const response = await fetch("/api/platform/mobile-money");
+        if (response.ok) {
+          const data = await response.json();
+          setThefestaAccounts(data.accounts || []);
+          // Set default LIPA NAMBA based on selected payment method
+          if (data.accounts && data.accounts.length > 0) {
+            const providerMap: Record<string, string> = {
+              'mpesa': 'MPESA',
+              'tigopesa': 'TIGO_PESA',
+              'airtelmoney': 'AIRTEL_MONEY',
+              'halopesa': 'HALO_PESA'
+            };
+            const account = data.accounts.find((acc: any) => 
+              acc.provider === providerMap[selectedPaymentMethod || '']
+            );
+            if (account) {
+              setSelectedLipaNamba(account.lipaNamba);
+            } else {
+              // If no account found for this provider, try to use primary account
+              const primaryAccount = data.accounts.find((acc: any) => acc.isPrimary);
+              if (primaryAccount) {
+                setSelectedLipaNamba(primaryAccount.lipaNamba);
+              }
+            }
+          }
+        } else {
+          const errorData = await response.json().catch(() => ({ error: response.statusText }));
+          console.error("Failed to fetch mobile money accounts:", {
+            status: response.status,
+            statusText: response.statusText,
+            error: errorData
+          });
+          // Still show the UI, but with error message
+          setSelectedLipaNamba(null);
+        }
+      } catch (err) {
+        console.error("Error fetching TheFesta mobile money accounts:", err);
+      } finally {
+        setLoadingMobileMoneyAccounts(false);
+      }
+    };
+
+    if (selectedPaymentMethod && (selectedPaymentMethod === 'mpesa' || selectedPaymentMethod === 'tigopesa' || selectedPaymentMethod === 'airtelmoney')) {
+      fetchAccounts();
+    } else {
+      // Reset when switching away from mobile money
+      setSelectedLipaNamba(null);
+      setMobileMoneyStep('lipa-namba');
+      setLoadingMobileMoneyAccounts(false);
+    }
+  }, [selectedPaymentMethod]);
+
+  // Convert booked dates and unavailable dates to start of day for comparison
   const bookedDatesSet = useMemo(() => {
+    const allUnavailable = [
+      ...bookedDates,
+      ...unavailableDates,
+    ];
     return new Set(
-      bookedDates.map(date => startOfDay(date).getTime())
+      allUnavailable.map(date => startOfDay(date).getTime())
     );
-  }, [bookedDates]);
+  }, [bookedDates, unavailableDates]);
 
   // Check if a date is disabled
   const isDateDisabled = (date: Date): boolean => {
@@ -124,35 +240,53 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
     return "1,500,000";
   };
 
-  // Calculate dynamic price based on selected dates
+  // Calculate dynamic price based on selected dates, guest count, and budget
   const getCalculatedPrice = () => {
-    const basePrice = parseFloat(getStartingPrice().replace(/,/g, ''));
+    // Get base price from vendor's price range or selected budget
+    let basePriceStr = getStartingPrice();
+    
+    // If budget is selected in the form, use that instead of vendor's price range
+    if (reviewForm.budget) {
+      if (reviewForm.budget === "$") basePriceStr = "500,000";
+      if (reviewForm.budget === "$$") basePriceStr = "1,500,000";
+      if (reviewForm.budget === "$$$") basePriceStr = "3,000,000";
+      if (reviewForm.budget === "$$$$") basePriceStr = "5,000,000";
+    }
+    
+    const basePrice = parseFloat(basePriceStr.replace(/,/g, ''));
+    
+    // Apply guest count multiplier (if more than 10 guests, add 10% per 5 additional guests)
+    let guestMultiplier = 1;
+    if (totalGuests > 10) {
+      const additionalGuests = totalGuests - 10;
+      const extraGroups = Math.floor(additionalGuests / 5);
+      guestMultiplier = 1 + (extraGroups * 0.1); // 10% per 5 additional guests
+    }
+    
+    // Calculate base price with guest multiplier
+    let adjustedPrice = basePrice * guestMultiplier;
     
     // If dates are selected, calculate price based on duration
     if (dateRange.from && dateRange.to && nights > 0) {
-      // For multi-day events, you might want to apply different pricing logic
-      // For now, we'll use a simple calculation: base price + (nights * daily rate)
-      // You can adjust this logic based on your pricing model
-      const dailyRate = basePrice * 0.3; // 30% of base price per additional day
-      const totalPrice = basePrice + (dailyRate * (nights - 1));
+      // For multi-day events: base price + (nights * daily rate)
+      const dailyRate = adjustedPrice * 0.3; // 30% of adjusted price per additional day
+      const totalPrice = adjustedPrice + (dailyRate * (nights - 1));
       return Math.round(totalPrice).toLocaleString();
     }
     
-    // If only start date is selected, show base price
+    // If only start date is selected, show adjusted price
     if (dateRange.from) {
-      return getStartingPrice();
+      return Math.round(adjustedPrice).toLocaleString();
     }
     
-    // No dates selected, show starting price
-    return getStartingPrice();
+    // No dates selected, show starting price (with guest multiplier if guests > 10)
+    return Math.round(adjustedPrice).toLocaleString();
   };
 
-  // Calculate pricing information based on selected dates
+  // Calculate pricing information based on selected dates, guests, and budget
   const getCurrentPrice = () => {
-    if (dateRange.from && dateRange.to && nights > 0) {
+    // Use the calculated price which already accounts for dates, guests, and budget
       return parseFloat(getCalculatedPrice().replace(/,/g, ''));
-    }
-    return parseFloat(getStartingPrice().replace(/,/g, ''));
   };
 
   const currentPrice = getCurrentPrice();
@@ -332,14 +466,20 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
         )}
 
         <div className="bg-background border border-border rounded-2xl p-6 shadow-xl flex flex-col gap-4">
-          <div className="flex justify-between items-baseline">
-            <div>
-              <span className="text-2xl font-bold underline">{getCalculatedPrice()} TZS</span>
-              <span className="text-secondary">
-                {dateRange.from && dateRange.to && nights > 0
-                  ? ` for ${nights} ${nights === 1 ? 'day' : 'days'}`
-                  : ' per event'}
-              </span>
+          {/* Start the Conversation Section */}
+          <div className="border-b border-border pb-4 mb-2">
+            <div className="mb-3">
+              <h3 className="text-lg sm:text-xl font-bold text-foreground">
+                Start the conversation
+              </h3>
+            </div>
+            
+            {/* Starting Price */}
+            <div className="flex items-end justify-between">
+              <div className="text-sm text-secondary">Starting price</div>
+              <div className="text-2xl font-bold text-foreground">
+                {getStartingPrice()} TZS
+              </div>
             </div>
           </div>
 
@@ -441,7 +581,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                   </div>
 
                   <div 
-                    className="p-6 overflow-y-auto flex-1" 
+                    className="px-6 pt-6 pb-4 overflow-y-auto flex-1" 
                     style={{ maxHeight: 'calc(100vh - 350px)' }}
                     onWheel={(e) => {
                       // Allow scrolling within calendar
@@ -449,7 +589,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                     }}
                   >
                     {/* Calendar with multiple months */}
-                    <div className="flex flex-col md:flex-row gap-4 mb-6">
+                    <div className="flex flex-col md:flex-row gap-4 mb-8">
                       <Calendar
                         mode="range"
                         selected={dateRange}
@@ -527,7 +667,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                       />
                     </div>
                     
-                    <div className="flex justify-between items-center pt-4 border-t border-border">
+                    <div className="flex justify-between items-center pt-6 pb-2 border-t border-border mt-4">
                       <button
                         onClick={() => {
                           setDateRange({ from: undefined, to: undefined });
@@ -539,7 +679,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                       </button>
                       <button
                         onClick={() => setIsCalendarOpen(false)}
-                        className="bg-primary text-background px-6 py-2 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
+                        className="bg-primary text-background px-6 py-2.5 rounded-lg text-sm font-semibold hover:bg-primary/90 transition-colors"
                       >
                         Close
                       </button>
@@ -705,34 +845,37 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
           </p>
           )}
 
-          <div className="border-t border-border pt-4 mt-2 space-y-3">
+          <div className="border-t border-border pt-2 mt-1 space-y-1.5">
             {isEventDateValid ? (
               <>
-            <div className="flex justify-between text-secondary text-sm">
+            <div className="flex justify-between text-secondary text-xs">
               <span className="underline">Starting price</span>
                   <span>{getCalculatedPrice()} TZS</span>
             </div>
-            <div className="flex justify-between text-secondary text-sm">
+            <div className="flex justify-between text-secondary text-xs">
               <span className="underline">Service fee</span>
               <span>Included</span>
             </div>
-            <div className="border-t border-border pt-4 flex justify-between font-bold text-primary">
+            <div className="border-t border-border pt-2 flex justify-between font-bold text-primary text-sm">
               <span>Total estimate</span>
                   <span>{getCalculatedPrice()} TZS</span>
                 </div>
               </>
             ) : (
-              <div className="text-center text-sm text-secondary py-2">
+              <div className="text-center text-xs text-secondary py-1">
                 Select event date to see pricing
             </div>
             )}
           </div>
         </div>
 
-        <div className="flex justify-center items-center gap-2 text-secondary py-4 cursor-pointer hover:text-primary">
-          <Flag className="w-4 h-4" />
-          <span className="text-sm underline font-semibold">Report this listing</span>
-        </div>
+        <button 
+          onClick={() => setIsReportModalOpen(true)}
+          className="flex justify-center items-center gap-2 text-secondary py-2 cursor-pointer hover:text-primary transition-colors w-full"
+        >
+          <Flag className="w-3 h-3" />
+          <span className="text-xs underline font-semibold">Report this listing</span>
+        </button>
       </div>
 
       {/* Booking Confirmation Page */}
@@ -744,17 +887,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
               <button
                 onClick={() => {
                   setIsFormOpen(false);
-                  setBookingStep('payment');
-                  setSelectedPayment('full');
-                  setSelectedPaymentMethod('card');
-                  setCardDetails({
-                    number: '',
-                    expiry: '',
-                    cvv: '',
-                    postalCode: '',
-                    country: 'Tanzania'
-                  });
-                  setMobilePhone('');
+                  setBookingStep('customer');
                   setMessage('');
                   setReviewForm({
                     name: '',
@@ -776,559 +909,33 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 lg:gap-8">
               {/* Left Column - Booking Steps - Scrollable */}
               <div className="space-y-3 sm:space-y-4 lg:max-h-[calc(100vh-8rem)] lg:overflow-y-auto lg:overflow-x-hidden scroll-smooth [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                {/* Step 1: Choose when to pay */}
+                {/* Step 1: Customer Personal Information and choices and message to vendor */}
                 <div className={`rounded-xl sm:rounded-2xl transition-all ${
-                  bookingStep === 'payment' 
+                  bookingStep === 'customer' 
                     ? 'bg-background shadow-sm p-4 sm:p-5 lg:p-6' 
                     : 'bg-surface p-4 sm:p-5 lg:p-6'
                 }`}>
                   <div className="flex items-center justify-between mb-3 sm:mb-4 flex-wrap gap-2">
-                    <h2 className="text-lg sm:text-xl font-semibold text-foreground">1. Choose when to pay</h2>
-                    {bookingStep !== 'payment' && (
+                    <h2 className="text-lg sm:text-xl font-semibold text-foreground">1. Your information</h2>
+                    {bookingStep !== 'customer' && (
                       <button
-                        onClick={() => setBookingStep('payment')}
+                        onClick={() => setBookingStep('customer')}
                         className="text-xs sm:text-sm font-medium text-secondary hover:text-foreground px-2 sm:px-3 py-1.5 rounded-lg bg-background border border-border hover:border-primary transition-colors"
                       >
                         Change
                       </button>
                     )}
                   </div>
-                  {bookingStep === 'payment' && (
-                    <div className="space-y-2 sm:space-y-3">
-                      <label 
-                        onClick={() => setSelectedPayment('full')}
-                        className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg cursor-pointer transition-all ${
-                          selectedPayment === 'full' 
-                            ? 'bg-surface border border-primary' 
-                            : 'bg-background border border-border hover:border-primary'
-                        }`}
-                      >
-                        <div className="relative mt-0.5 shrink-0">
-                          <input
-                            type="radio"
-                            name="payment"
-                            value="full"
-                            checked={selectedPayment === 'full'}
-                            onChange={() => setSelectedPayment('full')}
-                            className="sr-only"
-                          />
-                          <div className={`w-5 h-5 border-2 rounded-full bg-background flex items-center justify-center ${
-                            selectedPayment === 'full' ? 'border-primary' : 'border-border'
-                          }`}>
-                            {selectedPayment === 'full' && (
-                              <div className="w-3 h-3 bg-primary rounded-full"></div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-base text-foreground">Pay {getCalculatedPrice()} TZS now</div>
-                        </div>
-                      </label>
-                      <label 
-                        onClick={() => setSelectedPayment('partial')}
-                        className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg cursor-pointer transition-all ${
-                          selectedPayment === 'partial' 
-                            ? 'bg-surface border border-primary' 
-                            : 'bg-background border border-border hover:border-primary'
-                        }`}
-                      >
-                        <div className="relative mt-0.5 shrink-0">
-                          <input
-                            type="radio"
-                            name="payment"
-                            value="partial"
-                            checked={selectedPayment === 'partial'}
-                            onChange={() => setSelectedPayment('partial')}
-                            className="sr-only"
-                          />
-                          <div className={`w-5 h-5 border-2 rounded-full bg-background flex items-center justify-center ${
-                            selectedPayment === 'partial' ? 'border-primary' : 'border-border'
-                          }`}>
-                            {selectedPayment === 'partial' && (
-                              <div className="w-3 h-3 bg-primary rounded-full"></div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-base mb-1 text-foreground">Pay part now, part later</div>
-                          <div className="text-sm text-secondary">
-                            {Math.round(currentPrice * 0.5).toLocaleString()} TZS now, {Math.round(currentPrice * 0.5).toLocaleString()} TZS charged on {dateRange.from ? format(new Date(dateRange.from.getTime() - 7 * 24 * 60 * 60 * 1000), "MMM d, yyyy") : "event date"}. No extra fees.
-                          </div>
-                          <button className="text-sm underline mt-1 text-primary hover:text-primary/80">More info</button>
-                        </div>
-                      </label>
-                      <label 
-                        onClick={() => setSelectedPayment('installments')}
-                        className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg cursor-pointer transition-all ${
-                          selectedPayment === 'installments' 
-                            ? 'bg-surface border border-primary' 
-                            : 'bg-background border border-border hover:border-primary'
-                        }`}
-                      >
-                        <div className="relative mt-0.5 shrink-0">
-                          <input
-                            type="radio"
-                            name="payment"
-                            value="installments"
-                            checked={selectedPayment === 'installments'}
-                            onChange={() => setSelectedPayment('installments')}
-                            className="sr-only"
-                          />
-                          <div className={`w-5 h-5 border-2 rounded-full bg-background flex items-center justify-center ${
-                            selectedPayment === 'installments' ? 'border-primary' : 'border-border'
-                          }`}>
-                            {selectedPayment === 'installments' && (
-                              <div className="w-3 h-3 bg-primary rounded-full"></div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-base mb-1 text-foreground">Pay in installments</div>
-                          <div className="text-sm text-secondary">
-                            4 payments of {Math.round(currentPrice / 4).toLocaleString()} TZS every 2 weeks. Interest-free.
-                          </div>
-                          <button className="text-sm underline mt-1 text-primary hover:text-primary/80">More info</button>
-                        </div>
-                      </label>
-                      <div className="flex justify-end mt-4 sm:mt-6">
-                      <button
-                        onClick={() => setBookingStep('method')}
-                          className="bg-primary text-primary-foreground px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold text-sm sm:text-base hover:bg-primary/90 transition-colors w-full sm:w-auto"
-                      >
-                        Next
-                      </button>
-                      </div>
-                    </div>
-                  )}
-                  {bookingStep !== 'payment' && (
-                    <div className="text-base font-medium text-foreground">
-                      Pay {getCalculatedPrice()} TZS now
-                    </div>
-                  )}
-                </div>
-
-                {/* Step 2: Add payment method */}
-                <div className={`rounded-xl sm:rounded-2xl transition-all ${
-                  bookingStep === 'method'
-                    ? 'bg-background shadow-sm border-2 border-primary p-4 sm:p-5 lg:p-6'
-                    : 'bg-surface p-4 sm:p-5 lg:p-6'
-                }`}>
-                  <div className="flex items-center justify-between mb-3 sm:mb-4 flex-wrap gap-2">
-                    <h2 className="text-lg sm:text-xl font-semibold text-foreground">2. Add a payment method</h2>
-                    {bookingStep !== 'method' && bookingStep !== 'payment' && (
-                      <button
-                        onClick={() => setBookingStep('method')}
-                        className="text-xs sm:text-sm font-medium text-secondary hover:text-foreground px-2 sm:px-3 py-1.5 rounded-lg bg-background border border-border hover:border-primary transition-colors"
-                      >
-                        Change
-                      </button>
-                    )}
-                      </div>
-                  {bookingStep === 'method' && (
-                    <div className="space-y-3 sm:space-y-4">
-                      {/* Payment Method Options */}
-                      <div className="space-y-2 sm:space-y-3">
-                        <label 
-                          onClick={() => setSelectedPaymentMethod('card')}
-                          className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg cursor-pointer transition-all ${
-                            selectedPaymentMethod === 'card' 
-                              ? 'bg-surface' 
-                              : 'bg-background border border-border hover:border-primary'
-                          }`}
-                        >
-                          <div className="relative mt-0.5 shrink-0">
-                            <input
-                              type="radio"
-                              name="paymentMethod"
-                              value="card"
-                              checked={selectedPaymentMethod === 'card'}
-                              onChange={() => setSelectedPaymentMethod('card')}
-                              className="sr-only"
-                            />
-                            <div className={`w-5 h-5 border-2 rounded-full bg-background flex items-center justify-center ${
-                              selectedPaymentMethod === 'card' ? 'border-primary' : 'border-border'
-                            }`}>
-                              {selectedPaymentMethod === 'card' && (
-                                <div className="w-3 h-3 bg-primary rounded-full"></div>
-                              )}
-                            </div>
-                          </div>
-                            <div className="flex-1">
-                            <div className="font-semibold text-base mb-1 text-foreground">Credit or debit card</div>
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="px-2 py-0.5 bg-surface text-foreground text-xs font-medium rounded-full">VISA</span>
-                              <span className="px-2 py-0.5 bg-surface text-foreground text-xs font-medium rounded-full">Mastercard</span>
-                              <span className="px-2 py-0.5 bg-surface text-foreground text-xs font-medium rounded-full">AMEX</span>
-                            </div>
-                          </div>
-                        </label>
-
-                        <label 
-                          onClick={() => setSelectedPaymentMethod('mpesa')}
-                          className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg cursor-pointer transition-all ${
-                            selectedPaymentMethod === 'mpesa' 
-                              ? 'bg-surface' 
-                              : 'bg-background border border-border hover:border-primary'
-                          }`}
-                        >
-                          <div className="relative mt-0.5 shrink-0">
-                            <input
-                              type="radio"
-                              name="paymentMethod"
-                              value="mpesa"
-                              checked={selectedPaymentMethod === 'mpesa'}
-                              onChange={() => setSelectedPaymentMethod('mpesa')}
-                              className="sr-only"
-                            />
-                            <div className={`w-5 h-5 border-2 rounded-full bg-background flex items-center justify-center ${
-                              selectedPaymentMethod === 'mpesa' ? 'border-primary' : 'border-border'
-                            }`}>
-                              {selectedPaymentMethod === 'mpesa' && (
-                                <div className="w-3 h-3 bg-primary rounded-full"></div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex-1 flex items-center gap-3">
-                            <div className="text-base font-semibold text-green-600">M-Pesa</div>
-                          </div>
-                        </label>
-
-                        <label 
-                          onClick={() => setSelectedPaymentMethod('tigopesa')}
-                          className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg cursor-pointer transition-all ${
-                            selectedPaymentMethod === 'tigopesa' 
-                              ? 'bg-surface' 
-                              : 'bg-background border border-border hover:border-primary'
-                          }`}
-                        >
-                          <div className="relative mt-0.5 shrink-0">
-                            <input
-                              type="radio"
-                              name="paymentMethod"
-                              value="tigopesa"
-                              checked={selectedPaymentMethod === 'tigopesa'}
-                              onChange={() => setSelectedPaymentMethod('tigopesa')}
-                              className="sr-only"
-                            />
-                            <div className={`w-5 h-5 border-2 rounded-full bg-background flex items-center justify-center ${
-                              selectedPaymentMethod === 'tigopesa' ? 'border-primary' : 'border-border'
-                            }`}>
-                              {selectedPaymentMethod === 'tigopesa' && (
-                                <div className="w-3 h-3 bg-primary rounded-full"></div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex-1 flex items-center gap-3">
-                            <div className="text-base font-semibold text-blue-600">Tigo Pesa</div>
-                          </div>
-                        </label>
-
-                        <label 
-                          onClick={() => setSelectedPaymentMethod('airtelmoney')}
-                          className={`flex items-start gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg cursor-pointer transition-all ${
-                            selectedPaymentMethod === 'airtelmoney' 
-                              ? 'bg-surface' 
-                              : 'bg-background border border-border hover:border-primary'
-                          }`}
-                        >
-                          <div className="relative mt-0.5 shrink-0">
-                            <input
-                              type="radio"
-                              name="paymentMethod"
-                              value="airtelmoney"
-                              checked={selectedPaymentMethod === 'airtelmoney'}
-                              onChange={() => setSelectedPaymentMethod('airtelmoney')}
-                              className="sr-only"
-                            />
-                            <div className={`w-5 h-5 border-2 rounded-full bg-background flex items-center justify-center ${
-                              selectedPaymentMethod === 'airtelmoney' ? 'border-primary' : 'border-border'
-                            }`}>
-                              {selectedPaymentMethod === 'airtelmoney' && (
-                                <div className="w-3 h-3 bg-primary rounded-full"></div>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex-1 flex items-center gap-3">
-                            <div className="text-base font-semibold text-red-600">Airtel Money</div>
-                          </div>
-                        </label>
-                      </div>
-
-                      {/* Card Details Form */}
-                      {selectedPaymentMethod === 'card' && (
-                        <div className="mt-4 sm:mt-6 space-y-3 sm:space-y-4">
-                          <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Card number</label>
-                            <div className="relative">
-                            <Input
-                              type="text"
-                              placeholder="1234 5678 9012 3456"
-                              value={cardDetails.number}
-                              onChange={(e) => {
-                                const value = e.target.value.replace(/\s/g, '').replace(/\D/g, '');
-                                const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
-                                setCardDetails({ ...cardDetails, number: formatted });
-                              }}
-                              maxLength={19}
-                                className="w-full border-border bg-background focus:border-primary focus:ring-primary pl-9 sm:pl-10 text-sm sm:text-base"
-                            />
-                              <svg className="w-4 h-4 sm:w-5 sm:h-5 absolute left-2.5 sm:left-3 top-1/2 -translate-y-1/2 text-secondary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                              </svg>
-                          </div>
-                          </div>
-                          <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                            <div>
-                              <label className="block text-sm font-medium text-foreground mb-2">Expiration</label>
-                              <Input
-                                type="text"
-                                placeholder="MM/YY"
-                                value={cardDetails.expiry}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(/\D/g, '');
-                                  let formatted = value;
-                                  if (value.length >= 2) {
-                                    formatted = value.slice(0, 2) + '/' + value.slice(2, 4);
-                                  }
-                                  setCardDetails({ ...cardDetails, expiry: formatted });
-                                }}
-                                maxLength={5}
-                                className="w-full border-border bg-background focus:border-primary focus:ring-primary"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-sm font-medium text-foreground mb-2">CVV</label>
-                              <Input
-                                type="text"
-                                placeholder="123"
-                                value={cardDetails.cvv}
-                                onChange={(e) => {
-                                  const value = e.target.value.replace(/\D/g, '').slice(0, 3);
-                                  setCardDetails({ ...cardDetails, cvv: value });
-                                }}
-                                maxLength={3}
-                                className="w-full border-border bg-background focus:border-primary focus:ring-primary"
-                              />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Postal code</label>
-                            <Input
-                              type="text"
-                              placeholder="Enter postal code"
-                              value={cardDetails.postalCode}
-                              onChange={(e) => setCardDetails({ ...cardDetails, postalCode: e.target.value })}
-                              className="w-full border-border bg-background focus:border-primary focus:ring-primary"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Country/region</label>
-                            <select
-                              value={cardDetails.country}
-                              onChange={(e) => setCardDetails({ ...cardDetails, country: e.target.value })}
-                              className="w-full border border-border bg-background rounded-md px-3 py-2 text-sm text-foreground focus:border-primary focus:ring-primary focus:outline-none"
-                            >
-                              <option value="Tanzania">Tanzania</option>
-                              <option value="Kenya">Kenya</option>
-                              <option value="Uganda">Uganda</option>
-                              <option value="Rwanda">Rwanda</option>
-                              <option value="South Africa">South Africa</option>
-                              <option value="Nigeria">Nigeria</option>
-                              <option value="Ghana">Ghana</option>
-                              <option value="Egypt">Egypt</option>
-                              <option value="Morocco">Morocco</option>
-                              <option value="United States">United States</option>
-                              <option value="Canada">Canada</option>
-                              <option value="United Kingdom">United Kingdom</option>
-                              <option value="Germany">Germany</option>
-                              <option value="France">France</option>
-                              <option value="Italy">Italy</option>
-                              <option value="Spain">Spain</option>
-                              <option value="Netherlands">Netherlands</option>
-                              <option value="Belgium">Belgium</option>
-                              <option value="Switzerland">Switzerland</option>
-                              <option value="Austria">Austria</option>
-                              <option value="Sweden">Sweden</option>
-                              <option value="Norway">Norway</option>
-                              <option value="Denmark">Denmark</option>
-                              <option value="Finland">Finland</option>
-                              <option value="Poland">Poland</option>
-                              <option value="Portugal">Portugal</option>
-                              <option value="Ireland">Ireland</option>
-                              <option value="Australia">Australia</option>
-                              <option value="New Zealand">New Zealand</option>
-                              <option value="Japan">Japan</option>
-                              <option value="South Korea">South Korea</option>
-                              <option value="China">China</option>
-                              <option value="India">India</option>
-                              <option value="Singapore">Singapore</option>
-                              <option value="Malaysia">Malaysia</option>
-                              <option value="Thailand">Thailand</option>
-                              <option value="Indonesia">Indonesia</option>
-                              <option value="Philippines">Philippines</option>
-                              <option value="United Arab Emirates">United Arab Emirates</option>
-                              <option value="Saudi Arabia">Saudi Arabia</option>
-                              <option value="Israel">Israel</option>
-                              <option value="Turkey">Turkey</option>
-                              <option value="Brazil">Brazil</option>
-                              <option value="Mexico">Mexico</option>
-                              <option value="Argentina">Argentina</option>
-                              <option value="Chile">Chile</option>
-                              <option value="Colombia">Colombia</option>
-                              <option value="Peru">Peru</option>
-                              <option value="Other">Other</option>
-                            </select>
-                          </div>
-                        </div>
-                      )}
-
-                      {/* Mobile Money Phone Number Input */}
-                      {(selectedPaymentMethod === 'mpesa' || selectedPaymentMethod === 'tigopesa' || selectedPaymentMethod === 'airtelmoney') && (
-                        <div className="mt-4 sm:mt-6">
-                          <label className="block text-sm font-medium text-foreground mb-2">
-                            {selectedPaymentMethod === 'mpesa' && 'M-Pesa'}
-                            {selectedPaymentMethod === 'tigopesa' && 'Tigo Pesa'}
-                            {selectedPaymentMethod === 'airtelmoney' && 'Airtel Money'}
-                            {' '}Phone Number
-                          </label>
-                          <Input
-                            type="tel"
-                            placeholder="0712 345 678"
-                            value={mobilePhone}
-                            onChange={(e) => {
-                              // Remove all non-digits
-                              let digits = e.target.value.replace(/\D/g, '');
-                              // Limit to 10 digits
-                              if (digits.length > 10) {
-                                digits = digits.slice(0, 10);
-                              }
-                              // Format: 0XXX XXX XXX
-                              let formatted = '';
-                              if (digits.length > 0) {
-                                formatted = digits[0]; // First digit (0)
-                                if (digits.length > 1) {
-                                  formatted += ' ' + digits.slice(1, 4); // Next 3 digits
-                                  if (digits.length > 4) {
-                                    formatted += ' ' + digits.slice(4, 7); // Next 3 digits
-                                    if (digits.length > 7) {
-                                      formatted += ' ' + digits.slice(7, 10); // Last 3 digits
-                                    }
-                                  }
-                                }
-                              }
-                              setMobilePhone(formatted);
-                            }}
-                            maxLength={13}
-                            className="w-full border-border bg-background focus:border-primary focus:ring-primary"
-                          />
-                          <p className="text-xs text-secondary mt-2">
-                            You'll receive a payment prompt on your phone
-                          </p>
-                    </div>
-                  )}
-
-                      <div className="flex justify-end mt-4 sm:mt-6">
-                        <button
-                          onClick={() => {
-                            if (selectedPaymentMethod === 'card') {
-                              if (cardDetails.number && cardDetails.expiry && cardDetails.cvv) {
-                                setBookingStep('message');
-                              }
-                            } else if (selectedPaymentMethod === 'mpesa' || selectedPaymentMethod === 'tigopesa' || selectedPaymentMethod === 'airtelmoney') {
-                              const phoneDigits = mobilePhone.replace(/\D/g, '');
-                              if (phoneDigits.length === 10) {
-                                setBookingStep('message');
-                              }
-                            } else {
-                              setBookingStep('message');
-                            }
-                          }}
-                          disabled={
-                            (selectedPaymentMethod === 'card' && (!cardDetails.number || !cardDetails.expiry || !cardDetails.cvv)) ||
-                            ((selectedPaymentMethod === 'mpesa' || selectedPaymentMethod === 'tigopesa' || selectedPaymentMethod === 'airtelmoney') && mobilePhone.replace(/\D/g, '').length !== 10)
-                          }
-                          className="bg-primary text-primary-foreground px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold text-sm sm:text-base hover:bg-primary/90 transition-colors disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed w-full sm:w-auto"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                  {bookingStep !== 'method' && bookingStep !== 'payment' && (
-                    <div className="text-base font-medium text-foreground">
-                      {selectedPaymentMethod === 'card' && 'Credit or debit card'}
-                      {selectedPaymentMethod === 'mpesa' && 'M-Pesa'}
-                      {selectedPaymentMethod === 'tigopesa' && 'Tigo Pesa'}
-                      {selectedPaymentMethod === 'airtelmoney' && 'Airtel Money'}
-                    </div>
-                  )}
-                </div>
-
-                {/* Step 3: Write a message to the host */}
-                <div className={`rounded-xl sm:rounded-2xl transition-all ${
-                  bookingStep === 'message'
-                    ? 'bg-background shadow-sm p-4 sm:p-5 lg:p-6'
-                    : 'bg-surface p-4 sm:p-5 lg:p-6'
-                }`}>
-                  <div className="flex items-center justify-between mb-3 sm:mb-4 flex-wrap gap-2">
-                    <h2 className="text-lg sm:text-xl font-semibold text-foreground">3. Write a message to the host</h2>
-                    {bookingStep !== 'message' && bookingStep !== 'payment' && bookingStep !== 'method' && (
-                        <button
-                        onClick={() => setBookingStep('message')}
-                        className="text-xs sm:text-sm font-medium text-secondary hover:text-foreground px-2 sm:px-3 py-1.5 rounded-lg bg-background border border-border hover:border-primary transition-colors"
-                        >
-                        Change
-                        </button>
-                    )}
-                        </div>
-                  {bookingStep === 'message' && (
-                    <div className="space-y-3 sm:space-y-4">
-                      <textarea
-                        value={message}
-                        onChange={(e) => setMessage(e.target.value)}
-                        placeholder="Tell the host about your event and any special requests..."
-                        className="w-full min-h-[100px] sm:min-h-[120px] border border-border bg-background rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-sm text-foreground focus:border-primary focus:ring-primary focus:outline-none resize-none placeholder:text-secondary"
-                      />
-                      <div className="flex justify-end">
-                        <button
-                          onClick={() => setBookingStep('review')}
-                          className="bg-primary text-primary-foreground px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold text-sm sm:text-base hover:bg-primary/90 transition-colors w-full sm:w-auto"
-                        >
-                          Next
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Step 4: Review your request */}
-                <div className={`rounded-xl sm:rounded-2xl transition-all ${
-                  bookingStep === 'review'
-                    ? 'bg-background shadow-sm p-4 sm:p-5 lg:p-6'
-                    : 'bg-surface p-4 sm:p-5 lg:p-6'
-                }`}>
-                  <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-2">
-                    <h2 className="text-lg sm:text-xl font-semibold text-foreground">4. Review your request</h2>
-                    {bookingStep === 'confirmation' && (
-                      <button
-                        onClick={() => setBookingStep('review')}
-                        className="text-xs sm:text-sm font-medium text-secondary hover:text-foreground px-2 sm:px-3 py-1.5 rounded-lg bg-background border border-border hover:border-primary transition-colors"
-                      >
-                        Change
-                      </button>
-                    )}
-                  </div>
-                  {bookingStep === 'review' && (
+                  {bookingStep === 'customer' && (
                     <form className="space-y-4 sm:space-y-5" onSubmit={(e) => {
                       e.preventDefault();
-                      // Validate required fields
                       if (reviewForm.name && reviewForm.email) {
-                        setBookingStep('confirmation');
+                        setBookingStep('review');
                       }
                     }}>
                       {/* Name */}
                       <div>
-                        <label className="block text-sm font-semibold text-foreground mb-2">Name</label>
+                        <label className="block text-sm font-semibold text-foreground mb-2">Name <span className="text-red-500">*</span></label>
                         <Input
                           type="text"
                           value={reviewForm.name}
@@ -1341,7 +948,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
 
                       {/* Email */}
                       <div>
-                        <label className="block text-sm font-semibold text-foreground mb-2">Email</label>
+                        <label className="block text-sm font-semibold text-foreground mb-2">Email <span className="text-red-500">*</span></label>
                         <Input
                           type="email"
                           value={reviewForm.email}
@@ -1368,7 +975,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                       <div>
                         <label className="block text-sm font-semibold text-foreground mb-2">Event Dates</label>
                         <div className="relative">
-                        <button
+                          <button
                             type="button"
                             onClick={() => setIsReviewCalendarOpen(!isReviewCalendarOpen)}
                             className="w-full border border-border rounded-lg px-4 py-3 text-left bg-background flex items-center justify-between hover:border-primary transition-colors"
@@ -1383,7 +990,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                                 : "Select dates"}
                             </span>
                             <CalendarIcon className="w-5 h-5 text-secondary" />
-                        </button>
+                          </button>
                           {isReviewCalendarOpen && (
                             <>
                               <div 
@@ -1397,7 +1004,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                                 <div className="flex items-center gap-2 mb-3 sm:mb-4">
                                   <CalendarIcon className="w-4 h-4 sm:w-5 sm:h-5 text-primary" />
                                   <h3 className="text-base sm:text-lg font-semibold text-foreground">Select Dates</h3>
-                      </div>
+                                </div>
                                 <div className="hidden sm:block">
                                   <Calendar
                                     mode="range"
@@ -1414,7 +1021,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                                     numberOfMonths={2}
                                     className="w-full"
                                   />
-                    </div>
+                                </div>
                                 <div className="block sm:hidden">
                                   <Calendar
                                     mode="range"
@@ -1439,16 +1046,16 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                                     className="px-3 sm:px-4 py-2 bg-primary text-primary-foreground rounded-lg font-semibold text-sm sm:text-base hover:bg-primary/90 transition-colors w-full sm:w-auto"
                                   >
                                     Done
-                        </button>
-                      </div>
-                    </div>
+                                  </button>
+                                </div>
+                              </div>
                             </>
-                  )}
-                </div>
-              </div>
+                          )}
+                        </div>
+                      </div>
 
                       {/* Event Type */}
-              <div>
+                      <div>
                         <label className="block text-sm font-semibold text-foreground mb-2">Event Type</label>
                         <Select
                           value={reviewForm.eventType}
@@ -1466,7 +1073,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                             <SelectItem value="other">Other</SelectItem>
                           </SelectContent>
                         </Select>
-                        </div>
+                      </div>
 
                       {/* Guest Count */}
                       <div>
@@ -1502,39 +1109,166 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                             <SelectItem value="$$$$">5,000,000 TZS - Luxury</SelectItem>
                           </SelectContent>
                         </Select>
-                    </div>
+                      </div>
 
                       {/* Message */}
                       <div>
-                        <label className="block text-sm font-semibold text-foreground mb-2">Message</label>
+                        <label className="block text-sm font-semibold text-foreground mb-2">Message to vendor</label>
                         <textarea
                           value={message}
                           onChange={(e) => setMessage(e.target.value)}
-                          placeholder="Tell the vendor about your event..."
+                          placeholder="Tell the vendor about your event and any special requests..."
                           className="w-full min-h-[100px] sm:min-h-[120px] border border-border rounded-lg px-3 sm:px-4 py-2.5 sm:py-3 text-sm bg-background text-foreground focus:border-primary focus:ring-primary focus:outline-none resize-y placeholder:text-secondary"
                         />
                       </div>
 
-                      {/* Send Inquiry Button */}
-                      <Button
-                        type="submit"
-                        className="w-full bg-primary text-primary-foreground py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
-                      >
-                        Send Inquiry
-                        <Send className="w-4 h-4 sm:w-5 sm:h-5" />
-                      </Button>
-
-                      {/* Disclaimer */}
-                      <p className="text-xs text-secondary text-center">
-                        You won't be charged yet. This is just an inquiry.
-                      </p>
+                      {/* Next Button */}
+                      <div className="flex justify-end">
+                        <button
+                          type="submit"
+                          disabled={!reviewForm.name || !reviewForm.email}
+                          className="bg-primary text-primary-foreground px-4 sm:px-6 py-2.5 sm:py-3 rounded-lg font-semibold text-sm sm:text-base hover:bg-primary/90 transition-colors disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed w-full sm:w-auto"
+                        >
+                          Review Inquiry
+                        </button>
+                      </div>
                     </form>
+                  )}
+                  {bookingStep !== 'customer' && (
+                    <div className="text-sm text-secondary">
+                      {reviewForm.name && reviewForm.email ? `${reviewForm.name} (${reviewForm.email})` : 'Not completed'}
+                    </div>
                   )}
                 </div>
 
-                {/* Confirmation/Receipt Screen */}
-                {bookingStep === 'confirmation' && (
-                  <div className="rounded-xl sm:rounded-2xl bg-background shadow-sm p-4 sm:p-5 lg:p-6 mt-3 sm:mt-4">
+                {/* Payment steps removed - payment will happen after vendor confirms inquiry */}
+
+                {/* Step 2: Review and Confirm */}
+                <div className={`rounded-xl sm:rounded-2xl transition-all ${
+                  bookingStep === 'review' || bookingStep === 'confirmation'
+                    ? 'bg-background shadow-sm p-4 sm:p-5 lg:p-6'
+                    : 'bg-surface p-4 sm:p-5 lg:p-6'
+                }`}>
+                  <div className="flex items-center justify-between mb-4 sm:mb-6 flex-wrap gap-2">
+                    <h2 className="text-lg sm:text-xl font-semibold text-foreground">2. Review your inquiry</h2>
+                    {bookingStep === 'confirmation' && (
+                      <button
+                        onClick={() => setBookingStep('review')}
+                        className="text-xs sm:text-sm font-medium text-secondary hover:text-foreground px-2 sm:px-3 py-1.5 rounded-lg bg-background border border-border hover:border-primary transition-colors"
+                      >
+                        Change
+                      </button>
+                    )}
+                  </div>
+                  {bookingStep === 'review' && (
+                    <div className="space-y-4 sm:space-y-5">
+                      {/* Review Summary */}
+                      <div className="space-y-4 sm:space-y-5 border-b border-border pb-4 sm:pb-5">
+                        {/* Personal Information */}
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground mb-3">Personal Information</h3>
+                          <div className="space-y-2 text-sm">
+                            <div className="flex justify-between">
+                              <span className="text-secondary">Name:</span>
+                              <span className="font-medium text-foreground">{reviewForm.name || 'Not provided'}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-secondary">Email:</span>
+                              <span className="font-medium text-foreground">{reviewForm.email || 'Not provided'}</span>
+                            </div>
+                            {reviewForm.phone && (
+                              <div className="flex justify-between">
+                                <span className="text-secondary">Phone:</span>
+                                <span className="font-medium text-foreground">{reviewForm.phone}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Event Details */}
+                        <div>
+                          <h3 className="text-sm font-semibold text-foreground mb-3">Event Details</h3>
+                          <div className="space-y-2 text-sm">
+                            {dateRange.from && (
+                              <div className="flex justify-between">
+                                <span className="text-secondary">Event Date:</span>
+                                <span className="font-medium text-foreground">
+                                  {dateRange.from.toLocaleDateString('en-US', { 
+                                    weekday: 'long', 
+                                    year: 'numeric', 
+                                    month: 'long', 
+                                    day: 'numeric' 
+                                  })}
+                                  {dateRange.to && dateRange.from.getTime() !== dateRange.to.getTime() && 
+                                    ` - ${dateRange.to.toLocaleDateString('en-US', { 
+                                      weekday: 'long', 
+                                      year: 'numeric', 
+                                      month: 'long', 
+                                      day: 'numeric' 
+                                    })}`
+                                  }
+                                </span>
+                              </div>
+                            )}
+                            {totalGuests && (
+                              <div className="flex justify-between">
+                                <span className="text-secondary">Guest Count:</span>
+                                <span className="font-medium text-foreground">{totalGuests} guests</span>
+                              </div>
+                            )}
+                            {reviewForm.eventType && (
+                              <div className="flex justify-between">
+                                <span className="text-secondary">Event Type:</span>
+                                <span className="font-medium text-foreground">
+                                  {reviewForm.eventType === 'wedding' && 'Wedding'}
+                                  {reviewForm.eventType === 'engagement' && 'Engagement'}
+                                  {reviewForm.eventType === 'anniversary' && 'Anniversary'}
+                                  {reviewForm.eventType === 'corporate' && 'Corporate'}
+                                  {reviewForm.eventType === 'birthday' && 'Birthday'}
+                                  {reviewForm.eventType === 'other' && 'Other'}
+                                </span>
+                              </div>
+                            )}
+                            {reviewForm.budget && (
+                              <div className="flex justify-between">
+                                <span className="text-secondary">Budget Range:</span>
+                                <span className="font-medium text-foreground">
+                                  {reviewForm.budget === '$' && '500,000 TZS - Budget-friendly'}
+                                  {reviewForm.budget === '$$' && '1,500,000 TZS - Moderate'}
+                                  {reviewForm.budget === '$$$' && '3,000,000 TZS - Premium'}
+                                  {reviewForm.budget === '$$$$' && '5,000,000 TZS - Luxury'}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Message */}
+                        {message && (
+                          <div>
+                            <h3 className="text-sm font-semibold text-foreground mb-3">Your Message</h3>
+                            <p className="text-sm text-foreground bg-surface rounded-lg p-4 border border-border">
+                              {message}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Action Button */}
+                      <button
+                        type="button"
+                        onClick={() => setBookingStep('confirmation')}
+                        className="w-full bg-primary text-primary-foreground py-3 sm:py-4 rounded-lg font-semibold text-sm sm:text-base hover:bg-primary/90 transition-colors flex items-center justify-center gap-2"
+                      >
+                        Review & Confirm
+                        <Send className="w-4 h-4 sm:w-5 sm:h-5" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Confirmation/Receipt Screen */}
+                  {bookingStep === 'confirmation' && (
+                    <div className="rounded-xl sm:rounded-2xl bg-background shadow-sm p-4 sm:p-5 lg:p-6 mt-3 sm:mt-4">
                     <div className="mb-4 sm:mb-6">
                       <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-foreground">Confirm Your Inquiry</h2>
                       <p className="text-xs sm:text-sm text-secondary">Please review your information before sending</p>
@@ -1593,30 +1327,6 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                         </div>
                       </div>
 
-                      {/* Payment Information */}
-                      <div>
-                        <h3 className="text-sm font-semibold text-foreground mb-3">Payment Information</h3>
-                        <div className="space-y-2 text-sm">
-                          <div className="flex justify-between">
-                            <span className="text-secondary">Payment Plan:</span>
-                            <span className="font-medium text-foreground">
-                              {selectedPayment === 'full' && `Pay ${getCalculatedPrice()} TZS now`}
-                              {selectedPayment === 'partial' && 'Pay part now, part later'}
-                              {selectedPayment === 'installments' && 'Pay in installments'}
-                            </span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-secondary">Payment Method:</span>
-                            <span className="font-medium text-foreground">
-                              {selectedPaymentMethod === 'card' && 'Credit or debit card'}
-                              {selectedPaymentMethod === 'mpesa' && 'M-Pesa'}
-                              {selectedPaymentMethod === 'tigopesa' && 'Tigo Pesa'}
-                              {selectedPaymentMethod === 'airtelmoney' && 'Airtel Money'}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-
                       {/* Message */}
                       {message && (
                         <div>
@@ -1641,38 +1351,108 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                         type="button"
                         onClick={async () => {
                           setIsSubmitting(true);
+                          setSubmitError(null);
+                          
                           try {
-                            // TODO: Implement actual API call to submit inquiry
-                            console.log('Submitting inquiry:', {
-                              ...reviewForm,
-                              message,
-                              dates: dateRange,
-                              guests: totalGuests,
-                              payment: {
-                                plan: selectedPayment,
-                                method: selectedPaymentMethod,
-                                cardDetails: selectedPaymentMethod === 'card' ? cardDetails : null,
-                                mobilePhone: (selectedPaymentMethod === 'mpesa' || selectedPaymentMethod === 'tigopesa' || selectedPaymentMethod === 'airtelmoney') ? mobilePhone : null
+                            // Get authentication token
+                            const { data: { session } } = await supabase.auth.getSession();
+                            const headers: HeadersInit = {
+                              "Content-Type": "application/json",
+                            };
+                            
+                            if (session) {
+                              headers["Authorization"] = `Bearer ${session.access_token}`;
+                            }
+
+                            // Prepare inquiry data
+                            const inquiryData = {
+                              vendorId: vendor.id,
+                              name: reviewForm.name,
+                              email: reviewForm.email,
+                              phone: reviewForm.phone || undefined,
+                              eventType: reviewForm.eventType,
+                              eventDate: dateRange.from ? dateRange.from.toISOString() : undefined,
+                              guestCount: totalGuests || undefined,
+                              budget: reviewForm.budget || undefined,
+                              location: vendor.location?.city ? `${vendor.location.city}, ${vendor.location.country || "Tanzania"}` : undefined,
+                              message: message || `I'm interested in booking ${vendor.business_name} for my ${reviewForm.eventType} event.`,
+                              // Payment information removed - payment will happen after vendor confirms inquiry
+                            };
+
+                            // Submit inquiry
+                            const response = await fetch("/api/bookings", {
+                              method: "POST",
+                              headers,
+                              body: JSON.stringify(inquiryData),
+                            });
+
+                            let data;
+                            try {
+                              data = await response.json();
+                            } catch (jsonError) {
+                              // If response is not JSON, get text
+                              const text = await response.text();
+                              throw new Error(`Server error: ${text || response.statusText}`);
+                            }
+
+                            if (!response.ok) {
+                              // Handle authentication error
+                              if (response.status === 401) {
+                                router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+                                return;
                               }
-                            });
+                              
+                              const errorMessage = data?.error || data?.details || `Failed to submit inquiry (${response.status})`;
+                              console.error('Inquiry submission error:', {
+                                status: response.status,
+                                statusText: response.statusText,
+                                error: data
+                              });
+                              throw new Error(errorMessage);
+                            }
+
+                            // Success - show success state
+                            if (data?.inquiry?.id) {
+                              setCreatedInquiryId(data.inquiry.id);
+                            }
+                            setBookingStep('success');
                             
-                            // Simulate API call
-                            await new Promise(resolve => setTimeout(resolve, 1500));
+                            // Reset form after a delay
+                            setTimeout(() => {
+                              setIsFormOpen(false);
+                              setBookingStep('customer');
+                              setReviewForm({
+                                name: '',
+                                email: '',
+                                phone: '',
+                                eventType: '',
+                                budget: ''
+                              });
+                              setMessage('');
+                              setDateRange({ from: undefined, to: undefined });
+                              setSubmitError(null);
+                              setCreatedInquiryId(null);
+                              confettiTriggered.current = false;
+                              // Reset payment-related state (not used in inquiry but kept for cleanup)
+                              setSelectedPayment('full');
+                              setSelectedPaymentMethod(null);
+                              setCardDetails({
+                                number: '',
+                                expiry: '',
+                                cvv: '',
+                                postalCode: '',
+                                country: 'Tanzania'
+                              });
+                              setReceiptFile(null);
+                              setReceiptPreview(null);
+                              setReceiptNumber('');
+                              setSelectedLipaNamba(null);
+                            }, 10000); // Increased delay to allow user to see success state
                             
-                            // Show success and close
-                            setIsFormOpen(false);
-                            setBookingStep('payment');
-                            // Reset form
-                            setReviewForm({
-                              name: '',
-                              email: '',
-                              phone: '',
-                              eventType: '',
-                              budget: ''
-                            });
-                            setMessage('');
                           } catch (error) {
                             console.error('Error submitting inquiry:', error);
+                            setSubmitError(error instanceof Error ? error.message : "An unexpected error occurred");
+                            setBookingStep('error');
                           } finally {
                             setIsSubmitting(false);
                           }
@@ -1690,7 +1470,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                           </>
                         ) : (
                           <>
-                            Confirm & Send Inquiry
+                            Send Inquiry
                             <Send className="w-5 h-5" />
                           </>
                         )}
@@ -1702,6 +1482,119 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                     </p>
                     </div>
                   )}
+
+                {/* Success State */}
+                {bookingStep === 'success' && (() => {
+                  // Trigger confetti once when success state is shown
+                  if (!confettiTriggered.current) {
+                    confettiTriggered.current = true;
+                    // Trigger confetti animation
+                    confetti({
+                      particleCount: 100,
+                      spread: 70,
+                      origin: { y: 0.6 },
+                      colors: ['#667eea', '#764ba2', '#f093fb', '#4facfe'],
+                    });
+                    // Additional burst after a short delay
+                    setTimeout(() => {
+                      confetti({
+                        particleCount: 50,
+                        angle: 60,
+                        spread: 55,
+                        origin: { x: 0 },
+                        colors: ['#667eea', '#764ba2'],
+                      });
+                      confetti({
+                        particleCount: 50,
+                        angle: 120,
+                        spread: 55,
+                        origin: { x: 1 },
+                        colors: ['#f093fb', '#4facfe'],
+                      });
+                    }, 250);
+                  }
+                  
+                  return (
+                    <div className="rounded-xl sm:rounded-2xl bg-background shadow-sm p-4 sm:p-5 lg:p-6 mt-3 sm:mt-4">
+                      <div className="text-center py-6 sm:py-8">
+                        <CheckCircle2 className="w-16 h-16 sm:w-20 sm:h-20 text-green-500 mx-auto mb-4" />
+                        <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-foreground">Inquiry Sent Successfully! 🎉</h2>
+                        <p className="text-sm sm:text-base text-secondary mb-4">
+                          Your inquiry has been sent to <strong>{vendor.business_name}</strong>. They will respond to you soon.
+                        </p>
+                        {createdInquiryId && (
+                          <p className="text-xs text-muted-foreground mb-6">
+                            Inquiry ID: <span className="font-mono">{createdInquiryId.substring(0, 8)}...</span>
+                          </p>
+                        )}
+                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                          <Button
+                            onClick={() => {
+                              router.push('/my-inquiries');
+                            }}
+                            className="bg-primary text-primary-foreground"
+                          >
+                            View My Inquiries
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => {
+                              setIsFormOpen(false);
+                              setBookingStep('customer');
+                              setReviewForm({
+                                name: '',
+                                email: '',
+                                phone: '',
+                                eventType: '',
+                                budget: ''
+                              });
+                              setMessage('');
+                              setDateRange({ from: undefined, to: undefined });
+                              setCreatedInquiryId(null);
+                              confettiTriggered.current = false;
+                            }}
+                          >
+                            Close
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+                </div>
+
+                {/* Error State */}
+                {bookingStep === 'error' && (
+                  <div className="rounded-xl sm:rounded-2xl bg-background shadow-sm p-4 sm:p-5 lg:p-6 mt-3 sm:mt-4">
+                    <div className="text-center py-6 sm:py-8">
+                      <XCircle className="w-16 h-16 sm:w-20 sm:h-20 text-red-500 mx-auto mb-4" />
+                      <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-foreground">Failed to Send Inquiry</h2>
+                      <p className="text-sm sm:text-base text-secondary mb-6">
+                        {submitError || "An error occurred while submitting your inquiry. Please try again."}
+                      </p>
+                      <div className="flex gap-3 justify-center">
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            setBookingStep('confirmation');
+                            setSubmitError(null);
+                          }}
+                        >
+                          Try Again
+                        </Button>
+                        <Button
+                          onClick={() => {
+                            setIsFormOpen(false);
+                            setBookingStep('customer');
+                            setSubmitError(null);
+                          }}
+                        >
+                          Close
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Right Column - Booking Details */}
@@ -1722,20 +1615,64 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                       )}
                     </div>
                     <div className="p-3 sm:p-4">
-                      <h3 className="font-semibold text-base sm:text-lg mb-1">{vendor.business_name}</h3>
-                      <div className="text-xs sm:text-sm text-secondary mb-2">
+                      <h3 className="font-bold text-xl sm:text-2xl mb-3">{vendor.business_name}</h3>
+                      <div className="text-sm sm:text-base text-secondary mb-3">
                         {vendor.category}
+                      </div>
+                      
+                      {/* Rating, Reviews, and Location - Single Line */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-0.5">
+                          {[1, 2, 3, 4, 5].map((star) => (
+                            <Star
+                              key={star}
+                              className={`w-4 h-4 ${
+                                star <= Math.round(rating)
+                                  ? "text-amber-500 fill-amber-500"
+                                  : "text-secondary/30"
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-base font-semibold text-foreground">
+                          {rating.toFixed(1)}
+                        </span>
+                        <span className="text-base text-foreground underline">
+                          {reviewCount} {reviewCount === 1 ? 'review' : 'reviews'}
+                        </span>
+                        {vendor.location?.city && (
+                          <span className="text-base text-foreground underline">
+                            {vendor.location.city}
+                            {vendor.location.country && `, ${vendor.location.country}`}
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Cancellation Policy */}
                   <div className="border-b border-border pb-3 sm:pb-4">
-                    <div className="font-semibold text-sm sm:text-base mb-1">Free cancellation</div>
-                    <div className="text-xs sm:text-sm text-secondary">
-                      Cancel before {dateRange.from ? format(dateRange.from, "MMM d") : "event date"} for a full refund.
+                    <div className="font-semibold text-sm sm:text-base mb-2">Cancellation Policy</div>
+                    <div className="text-xs sm:text-sm text-secondary space-y-2">
+                      <div>
+                        <strong>Before vendor confirmation:</strong> 100% refund
                     </div>
-                    <button className="text-xs sm:text-sm underline mt-2">Full policy</button>
+                      <div>
+                        <strong>After vendor confirmation (before work starts):</strong> 85% refund (15% platform fee retained)
+                      </div>
+                      <div>
+                        <strong>After work starts:</strong> Partial refund based on work completed (vendor keeps 42.5% work initiation fee)
+                      </div>
+                      <div>
+                        <strong>Vendor cancellation:</strong> 100% refund to customer
+                      </div>
+                    </div>
+                    <button 
+                      onClick={() => setIsPolicyModalOpen(true)}
+                      className="text-xs sm:text-sm underline mt-2 text-primary hover:text-primary/80"
+                    >
+                      View full policy
+                    </button>
                   </div>
 
                   {/* Dates */}
@@ -1782,21 +1719,33 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
 
                   {/* Price Details */}
                   <div className="space-y-2 border-b border-border pb-3 sm:pb-4">
+                    {dateRange.from ? (
+                      <>
                     <div className="flex justify-between text-xs sm:text-sm">
                       <span className="wrap-break-word pr-2">
-                        {nights > 0 ? `${nights} ${nights === 1 ? "day" : "days"}` : "1 day"} × {getCalculatedPrice()} TZS
+                            {nights > 0 ? `${nights} ${nights === 1 ? "day" : "days"}` : "1 day"}
+                            {totalGuests > 10 && ` • ${totalGuests} guests`}
+                            {reviewForm.budget && ` • ${reviewForm.budget === '$' ? 'Budget' : reviewForm.budget === '$$' ? 'Moderate' : reviewForm.budget === '$$$' ? 'Premium' : 'Luxury'} tier`}
                       </span>
                       <span className="shrink-0">{getCalculatedPrice()} TZS</span>
                     </div>
                     <div className="flex justify-between text-xs sm:text-sm text-secondary">
-                      <span>Service fee</span>
-                      <span>Included</span>
+                          <span>Service fee (15%)</span>
+                          <span>Included in total</span>
                     </div>
                     <div className="flex justify-between font-bold text-base sm:text-lg pt-2">
-                      <span>Total</span>
+                          <span>Estimated Total</span>
                       <span>{getCalculatedPrice()} TZS</span>
                     </div>
-                    <button className="text-xs sm:text-sm underline">Price breakdown</button>
+                        <div className="text-xs text-secondary pt-1">
+                          Final price will be confirmed after vendor accepts your inquiry
+                        </div>
+                      </>
+                    ) : (
+                      <div className="text-xs sm:text-sm text-secondary text-center py-2">
+                        Select dates to see pricing
+                      </div>
+                    )}
                   </div>
 
                   {/* Rare Find Banner */}
@@ -1876,6 +1825,303 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
             </div>
           </div>
         </div>
+      )}
+
+      {/* Cancellation Policy Modal */}
+      {isPolicyModalOpen && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-50"
+            onClick={() => setIsPolicyModalOpen(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className="bg-background border border-border rounded-2xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-foreground">Cancellation & Refund Policy</h2>
+                  <button
+                    onClick={() => setIsPolicyModalOpen(false)}
+                    className="p-2 hover:bg-surface rounded-lg transition-colors"
+                  >
+                    <XCircle className="w-5 h-5 text-secondary" />
+                  </button>
+                </div>
+              </div>
+              
+              <div className="p-6 space-y-6">
+                <div>
+                  <h3 className="text-lg font-semibold text-foreground mb-3">Cancellation & Refund Rules</h3>
+                  
+                  <div className="space-y-4">
+                    <div>
+                      <h4 className="font-semibold text-foreground mb-2">1. Customer Cancels Before Vendor Confirmation</h4>
+                      <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
+                        <li>100% refund to the customer</li>
+                        <li>No charges applied</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-foreground mb-2">2. Customer Cancels After Vendor Confirmation (Before Work Starts)</h4>
+                      <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
+                        <li>Vendor advance not released yet</li>
+                        <li>Customer receives: 85% refund</li>
+                        <li>15% retained by TheFesta (platform & processing fee)</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-foreground mb-2">3. Customer Cancels After Work Has Started</h4>
+                      <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
+                        <li>Vendor has received 50% of their share</li>
+                        <li>Vendor keeps 42.5% (work initiation fee)</li>
+                        <li>Remaining balance is refunded to the customer, excluding TheFesta's 15%</li>
+                        <li>TheFesta mediates and determines fairness based on work completed</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-foreground mb-2">4. Vendor Cancels the Booking</h4>
+                      <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
+                        <li>100% refund to the customer</li>
+                        <li>Vendor may be penalized or restricted based on cancellation reason</li>
+                        <li>TheFesta resolves payment reversals</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-foreground mb-2">5. Vendor Fails to Complete the Job</h4>
+                      <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
+                        <li>TheFesta investigates the issue</li>
+                        <li>Possible outcomes: Partial or full refund to the customer</li>
+                        <li>Vendor may forfeit the remaining payout</li>
+                        <li>TheFesta may issue compensation or arrange a replacement vendor</li>
+                      </ul>
+                    </div>
+
+                    <div>
+                      <h4 className="font-semibold text-foreground mb-2">6. Customer Dissatisfied After Completion</h4>
+                      <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
+                        <li>Customer raises an issue within a defined review period</li>
+                        <li>TheFesta reviews: Service quality, Contracted scope, Evidence from both parties</li>
+                        <li>Refund or partial refund may be issued at TheFesta's discretion</li>
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4 border-t border-border">
+                  <h3 className="font-semibold text-foreground mb-2">Key Principles</h3>
+                  <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
+                    <li>All payments are handled by TheFesta</li>
+                    <li>TheFesta acts as escrow and mediator</li>
+                    <li>Final refund decisions rest with TheFesta</li>
+                    <li>Goal: Fairness to vendors + protection for customers</li>
+                  </ul>
+                </div>
+              </div>
+
+              <div className="p-6 border-t border-border flex justify-end">
+                <button
+                  onClick={() => setIsPolicyModalOpen(false)}
+                  className="px-6 py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Report Listing Modal */}
+      {isReportModalOpen && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-50"
+            onClick={() => setIsReportModalOpen(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className="bg-background border border-border rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-6 border-b border-border">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-2xl font-bold text-foreground">Report This Listing</h2>
+                  <button
+                    onClick={() => {
+                      setIsReportModalOpen(false);
+                      setReportReason('');
+                      setReportDetails('');
+                    }}
+                    className="p-2 hover:bg-surface rounded-lg transition-colors"
+                  >
+                    <XCircle className="w-5 h-5 text-secondary" />
+                  </button>
+                </div>
+                <p className="text-sm text-secondary mt-2">
+                  Help us understand what's wrong with this listing. Your report will be reviewed by our team.
+                </p>
+              </div>
+              
+              <form 
+                className="p-6 space-y-6"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!reportReason) {
+                    alert('Please select a reason for reporting');
+                    return;
+                  }
+                  
+                  setIsSubmittingReport(true);
+                  try {
+                    const { data: { session } } = await supabase.auth.getSession();
+                    const headers: HeadersInit = {
+                      "Content-Type": "application/json",
+                    };
+                    
+                    if (session) {
+                      headers["Authorization"] = `Bearer ${session.access_token}`;
+                    }
+
+                    const response = await fetch("/api/reports/vendors", {
+                      method: "POST",
+                      headers,
+                      body: JSON.stringify({
+                        vendorId: vendor.id,
+                        reason: reportReason,
+                        details: reportDetails,
+                      }),
+                    });
+
+                    const data = await response.json();
+
+                    if (!response.ok) {
+                      throw new Error(data.error || "Failed to submit report");
+                    }
+
+                    // Show confirmation modal
+                    setIsReportModalOpen(false);
+                    setShowReportConfirmation(true);
+                    setReportReason('');
+                    setReportDetails('');
+                  } catch (error) {
+                    console.error("Error submitting report:", error);
+                    alert(error instanceof Error ? error.message : "Failed to submit report. Please try again.");
+                  } finally {
+                    setIsSubmittingReport(false);
+                  }
+                }}
+              >
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-3">
+                    Reason for reporting <span className="text-red-500">*</span>
+                  </label>
+                  <div className="space-y-2">
+                    {[
+                      { value: 'spam', label: 'Spam or misleading content' },
+                      { value: 'inappropriate', label: 'Inappropriate content' },
+                      { value: 'fraud', label: 'Fraudulent or scam' },
+                      { value: 'duplicate', label: 'Duplicate listing' },
+                      { value: 'wrong_info', label: 'Incorrect information' },
+                      { value: 'other', label: 'Other' },
+                    ].map((option) => (
+                      <label
+                        key={option.value}
+                        className="flex items-start gap-3 p-3 border border-border rounded-lg cursor-pointer hover:border-primary transition-colors"
+                      >
+                        <input
+                          type="radio"
+                          name="reportReason"
+                          value={option.value}
+                          checked={reportReason === option.value}
+                          onChange={(e) => setReportReason(e.target.value)}
+                          className="mt-1"
+                        />
+                        <span className="text-sm text-foreground flex-1">{option.label}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-semibold text-foreground mb-2">
+                    Additional details (optional)
+                  </label>
+                  <textarea
+                    value={reportDetails}
+                    onChange={(e) => setReportDetails(e.target.value)}
+                    placeholder="Please provide any additional information that might help us understand the issue..."
+                    className="w-full min-h-[120px] border border-border rounded-lg px-4 py-3 text-sm bg-background text-foreground focus:border-primary focus:ring-primary focus:outline-none resize-y placeholder:text-secondary"
+                    maxLength={1000}
+                  />
+                  <div className="text-xs text-secondary mt-1">
+                    {reportDetails.length}/1000 characters
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-border">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsReportModalOpen(false);
+                      setReportReason('');
+                      setReportDetails('');
+                    }}
+                    className="flex-1 px-4 py-2.5 border border-border rounded-lg font-semibold text-sm text-foreground hover:bg-surface transition-colors"
+                    disabled={isSubmittingReport}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!reportReason || isSubmittingReport}
+                    className="flex-1 px-4 py-2.5 bg-primary text-primary-foreground rounded-lg font-semibold text-sm hover:bg-primary/90 transition-colors disabled:bg-muted disabled:text-muted-foreground disabled:cursor-not-allowed"
+                  >
+                    {isSubmittingReport ? 'Submitting...' : 'Submit Report'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Report Confirmation Modal */}
+      {showReportConfirmation && (
+        <>
+          <div 
+            className="fixed inset-0 bg-black/50 z-50"
+            onClick={() => setShowReportConfirmation(false)}
+          />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div 
+              className="bg-background border border-border rounded-2xl shadow-xl max-w-md w-full"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="p-8">
+                <h2 className="text-2xl font-bold text-foreground mb-4">
+                  We got your report
+                </h2>
+                <p className="text-base text-secondary mb-6 leading-relaxed">
+                  Thanks for taking the time to let us know what's going on. Reports like yours are helping us learn how to make it easier to find what you're looking for.
+                </p>
+                <div className="border-t border-border pt-6">
+                  <button
+                    onClick={() => setShowReportConfirmation(false)}
+                    className="w-full bg-foreground text-background px-6 py-3 rounded-lg font-semibold text-sm hover:bg-foreground/90 transition-colors uppercase"
+                  >
+                    OK
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </>
   );

@@ -43,7 +43,7 @@ export interface Vendor {
   };
   years_in_business: number | null;
   team_size: number | null;
-  services_offered: string[];
+  services_offered: Array<{ title: string; description: string }>;
   created_at: string;
   updated_at: string;
 }
@@ -84,6 +84,15 @@ export interface Review {
   };
 }
 
+export interface VendorAward {
+  title: string;
+  year: string;
+  description: string;
+  icon: string;
+  image?: string | null;
+  display_order?: number;
+}
+
 export async function getVendorBySlug(slug: string): Promise<Vendor | null> {
   const { data, error } = await supabase
     .from("vendors")
@@ -116,37 +125,37 @@ export async function getVendorPortfolio(
 }
 
 export async function getVendorReviews(vendorId: string): Promise<Review[]> {
-  const { data, error } = await supabase
-    .from("reviews")
-    .select("*")
-    .eq("vendor_id", vendorId)
-    .eq("verified", true)
-    .order("created_at", { ascending: false });
+  // Use RPC function to get reviews with user data in a single query (fixes N+1 issue)
+  const { data, error } = await supabase.rpc("get_vendor_reviews_with_users", {
+    vendor_id_param: vendorId,
+  });
 
   if (error || !data) {
     return [];
   }
 
-  // Fetch user data for each review
-  const reviewsWithUsers = await Promise.all(
-    data.map(async (review) => {
-      const { data: userData } = await supabase
-        .from("users")
-        .select("name, avatar")
-        .eq("id", review.user_id)
-        .single();
-
-      return {
-        ...review,
-        user: {
-          name: userData?.name || "Anonymous",
-          avatar: userData?.avatar || null,
-        },
-      };
-    })
-  );
-
-  return reviewsWithUsers as Review[];
+  // Transform the RPC result to match the Review interface
+  return data.map((row: any) => ({
+    id: row.id,
+    vendor_id: row.vendor_id,
+    user_id: row.user_id,
+    rating: row.rating,
+    title: row.title,
+    content: row.content,
+    images: row.images || [],
+    event_type: row.event_type,
+    event_date: row.event_date,
+    verified: row.verified,
+    helpful: row.helpful,
+    vendor_response: row.vendor_response,
+    vendor_responded_at: row.vendor_responded_at,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+    user: {
+      name: row.user_name || "Anonymous",
+      avatar: row.user_avatar || null,
+    },
+  })) as Review[];
 }
 
 export async function getSimilarVendors(
@@ -171,24 +180,22 @@ export async function getSimilarVendors(
 }
 
 export async function incrementVendorViewCount(vendorId: string): Promise<void> {
-  // Get current stats
-  const { data } = await supabase
-    .from("vendors")
-    .select("stats")
-    .eq("id", vendorId)
-    .single();
-
-  if (data?.stats) {
-    const currentCount = (data.stats as any).viewCount || 0;
-    await supabase
-      .from("vendors")
-      .update({
-        stats: {
-          ...(data.stats as any),
-          viewCount: currentCount + 1,
-        },
-      })
-      .eq("id", vendorId);
-  }
+  // Use atomic increment function to avoid race conditions
+  await supabase.rpc("increment_vendor_view_count", {
+    vendor_id_param: vendorId,
+  });
 }
 
+export async function getVendorAwards(vendorId: string): Promise<VendorAward[]> {
+  const { data, error } = await supabase
+    .from('vendors')
+    .select('awards')
+    .eq('id', vendorId)
+    .single();
+
+  if (error || !data || !data.awards) {
+    return [];
+  }
+
+  return data.awards as VendorAward[];
+}

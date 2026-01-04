@@ -11,11 +11,17 @@ import {
   Search,
   Sparkles,
   Star,
+  Tag,
+  TrendingUp,
+  Wallet,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
 import { resolveAssetSrc } from "@/lib/assets";
+import { useSaveVendor } from "@/hooks/useSaveVendor";
 import {
   BUDGET_FRIENDLY,
   DEALS,
@@ -28,11 +34,12 @@ import {
 
 import heroMain from "@assets/stock_images/elegant_wedding_venu_86ae752a.jpg";
 
-const STATS = [
-  { label: "Vetted vendors", value: "15k+" },
-  { label: "Cities covered", value: "120+" },
-  { label: "Average rating", value: "4.9/5" },
-];
+// Stats will be fetched dynamically from the API
+interface VendorStats {
+  vendorCount: string;
+  cityCount: string;
+  rating: string;
+}
 
 const PAGE_SIZE = 12;
 
@@ -116,6 +123,41 @@ const COLLECTIONS: Record<string, CollectionConfig> = {
   },
 };
 
+const COLLECTION_BADGE_ICONS: Record<string, LucideIcon> = {
+  deals: Tag,
+  new: Sparkles,
+  trending: TrendingUp,
+  budget: Wallet,
+  "fast-responders": Zap,
+  zanzibar: Star,
+};
+
+// Vendor Save Button Component
+function VendorSaveButton({ vendorId }: { vendorId: string }) {
+  const { isSaved, isLoading, toggleSave } = useSaveVendor({
+    vendorId,
+    redirectToLogin: true,
+  });
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSave();
+      }}
+      disabled={isLoading}
+      className={`p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors ${
+        isSaved ? "text-red-500" : "text-primary"
+      } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+      aria-label={isSaved ? "Remove from saved" : "Save vendor"}
+    >
+      <Bookmark className={`w-4 h-4 ${isSaved ? "fill-current" : ""}`} />
+    </button>
+  );
+}
+
 type VendorCollectionViewProps = {
   collectionKey: string;
 };
@@ -124,64 +166,167 @@ export function VendorCollectionView({
   collectionKey,
 }: VendorCollectionViewProps) {
   const collection = COLLECTIONS[collectionKey] ?? null;
+  const BadgeIcon = collection
+    ? COLLECTION_BADGE_ICONS[collection.id] ?? Sparkles
+    : Sparkles;
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeLocation, setActiveLocation] = useState("All");
-  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+  // Using infinite scroll with intersection observer
+  const [stats, setStats] = useState<VendorStats>({
+    vendorCount: "15k+",
+    cityCount: "120+",
+    rating: "4.9/5",
+  });
+  const [vendors, setVendors] = useState<VendorCollectionItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
-  const locations = useMemo(() => {
-    if (!collection) {
-      return ["All"];
+  // Map collection keys to search API parameters
+  const getSearchParams = (collectionKey: string, page: number, searchQuery: string, activeLocation: string) => {
+    const params = new URLSearchParams();
+    params.set("page", page.toString());
+    params.set("limit", PAGE_SIZE.toString());
+    params.set("verified", "true");
+    
+    // Add search query if provided
+    if (searchQuery.trim()) {
+      params.set("q", searchQuery.trim());
     }
-    return ["All", ...new Set(collection.items.map((item) => item.location))];
-  }, [collection]);
-
-  const filteredItems = useMemo(() => {
-    if (!collection) {
-      return [];
+    
+    // Add location filter if not "All"
+    if (activeLocation !== "All") {
+      params.set("location", activeLocation);
     }
-    const query = searchQuery.trim().toLowerCase();
-    return collection.items.filter((item) => {
-      const matchesQuery =
-        query.length === 0 ||
-        item.name.toLowerCase().includes(query) ||
-        item.category.toLowerCase().includes(query) ||
-        item.location.toLowerCase().includes(query);
-      const matchesLocation =
-        activeLocation === "All" || item.location === activeLocation;
-      return matchesQuery && matchesLocation;
-    });
-  }, [collection, searchQuery, activeLocation]);
+    
+    // Map collection-specific filters
+    switch (collectionKey) {
+      case "budget":
+        params.set("priceRange", "$");
+        params.set("sort", "rating");
+        break;
+      case "zanzibar":
+        params.set("location", "Zanzibar");
+        params.set("sort", "rating");
+        break;
+      case "trending":
+      case "most-booked":
+        params.set("sort", "bookings");
+        break;
+      case "new":
+        params.set("sort", "newest");
+        break;
+      case "deals":
+        params.set("sort", "rating");
+        break;
+      case "fast-responders":
+        params.set("sort", "bookings");
+        break;
+      default:
+        params.set("sort", "recommended");
+    }
+    
+    return params.toString();
+  };
 
-  const visibleItems = useMemo(
-    () => filteredItems.slice(0, visibleCount),
-    [filteredItems, visibleCount]
-  );
+  // Helper function to transform vendor data
+  const transformVendor = (vendor: any): VendorCollectionItem => {
+    const location = typeof vendor.location === 'string' 
+      ? JSON.parse(vendor.location) 
+      : vendor.location || {};
+    const stats = typeof vendor.stats === 'string'
+      ? JSON.parse(vendor.stats)
+      : vendor.stats || {};
+    
+    return {
+      id: vendor.id,
+      name: vendor.business_name || vendor.name,
+      category: vendor.category,
+      location: location?.city || "Unknown",
+      rating: stats.averageRating || vendor.rating || 0,
+      reviews: stats.reviewCount || vendor.reviews || 0,
+      image: vendor.cover_image || vendor.logo || "",
+      slug: vendor.slug || generateSlug(vendor.business_name || vendor.name),
+    };
+  };
 
-  const hasMore = visibleCount < filteredItems.length;
-
+  // Fetch initial vendors when filters change
   useEffect(() => {
-    setActiveLocation("All");
-    setSearchQuery("");
-    setVisibleCount(PAGE_SIZE);
-  }, [collectionKey]);
+    const fetchVendors = async () => {
+      setLoading(true);
+      setError(null);
+      setCurrentPage(1);
+      
+      try {
+        const searchParams = getSearchParams(collectionKey, 1, searchQuery, activeLocation);
+        const response = await fetch(`/api/vendors/search?${searchParams}`);
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch vendors");
+        }
+        const data = await response.json();
+        
+        const transformedVendors: VendorCollectionItem[] = (data.vendors || []).map(transformVendor);
+        
+        setVendors(transformedVendors);
+        setTotalPages(data.totalPages || 1);
+        setTotal(data.total || 0);
+      } catch (err) {
+        console.error("Failed to fetch vendors:", err);
+        setError("Failed to load vendors. Please try again later.");
+        setVendors([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  useEffect(() => {
-    setVisibleCount(PAGE_SIZE);
-  }, [searchQuery, activeLocation]);
+    if (collection) {
+      fetchVendors();
+    } else {
+      setLoading(false);
+    }
+  }, [collectionKey, collection, searchQuery, activeLocation]);
 
+  // Load more vendors when page changes (infinite scroll)
   useEffect(() => {
-    if (!sentinelRef.current || !hasMore) {
+    if (currentPage > 1 && !loading && collection) {
+      const fetchMore = async () => {
+        setLoadingMore(true);
+        try {
+          const searchParams = getSearchParams(collectionKey, currentPage, searchQuery, activeLocation);
+          const response = await fetch(`/api/vendors/search?${searchParams}`);
+          
+          if (response.ok) {
+            const data = await response.json();
+            const transformedVendors: VendorCollectionItem[] = (data.vendors || []).map(transformVendor);
+            setVendors((prev) => [...prev, ...transformedVendors]);
+          }
+        } catch (err) {
+          console.error("Failed to load more vendors:", err);
+        } finally {
+          setLoadingMore(false);
+        }
+      };
+      
+      fetchMore();
+    }
+  }, [currentPage, collectionKey, searchQuery, activeLocation, collection, loading]);
+
+  // Infinite scroll intersection observer
+  useEffect(() => {
+    if (!sentinelRef.current || loading || loadingMore || currentPage >= totalPages) {
       return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setVisibleCount((prev) =>
-            Math.min(prev + PAGE_SIZE, filteredItems.length)
-          );
+        if (entries[0]?.isIntersecting && !loadingMore && currentPage < totalPages) {
+          setCurrentPage((prev) => prev + 1);
         }
       },
       { rootMargin: "200px" }
@@ -192,7 +337,53 @@ export function VendorCollectionView({
     return () => {
       observer.disconnect();
     };
-  }, [filteredItems.length, hasMore]);
+  }, [loading, loadingMore, currentPage, totalPages]);
+
+  // Fetch vendor statistics on mount
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("/api/vendors/statistics");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.formatted) {
+            setStats({
+              vendorCount: data.formatted.vendorCount,
+              cityCount: data.formatted.cityCount,
+              rating: data.formatted.rating,
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch vendor statistics:", error);
+        // Keep default values on error
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // Server-side filtering means we don't need client-side filtering anymore
+  // But we still need to track locations for the filter dropdown
+  // We'll fetch unique locations separately or use a static list
+  const locations = useMemo(() => {
+    // For now, use common locations - could be enhanced to fetch from API
+    return ["All", "Dar es Salaam", "Zanzibar", "Arusha", "Mwanza", "Dodoma", "Bagamoyo"];
+  }, []);
+
+  // Since filtering is now server-side, vendors are already filtered
+  const visibleItems = useMemo(
+    () => vendors,
+    [vendors]
+  );
+
+  // Pagination state is managed by currentPage and totalPages
+
+  useEffect(() => {
+    setActiveLocation("All");
+    setSearchQuery("");
+    setCurrentPage(1);
+  }, [collectionKey]);
 
   if (!collection) {
     return (
@@ -283,14 +474,24 @@ export function VendorCollectionView({
               </div>
 
               <div className="vendors-hero-stats mt-6 flex flex-wrap gap-5 text-sm text-secondary">
-                {STATS.map((stat) => (
-                  <div key={stat.label} className="flex items-baseline gap-2">
-                    <span className="text-base font-semibold text-primary">
-                      {stat.value}
-                    </span>
-                    <span className="text-xs">{stat.label}</span>
-                  </div>
-                ))}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base font-semibold text-primary">
+                    {stats.vendorCount}
+                  </span>
+                  <span className="text-xs">Vetted vendors</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base font-semibold text-primary">
+                    {stats.cityCount}
+                  </span>
+                  <span className="text-xs">Cities covered</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base font-semibold text-primary">
+                    {stats.rating}
+                  </span>
+                  <span className="text-xs">Average rating</span>
+                </div>
               </div>
             </div>
 
@@ -326,18 +527,27 @@ export function VendorCollectionView({
               </div>
             </div>
 
-            {filteredItems.length === 0 ? (
+            {loading ? (
+              <div className="rounded-3xl border border-dashed border-border bg-surface/70 p-12 text-center text-secondary">
+                Loading vendors...
+              </div>
+            ) : error ? (
+              <div className="rounded-3xl border border-dashed border-border bg-surface/70 p-12 text-center text-secondary">
+                {error}
+              </div>
+            ) : visibleItems.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-border bg-surface/70 p-12 text-center text-secondary">
                 No vendors match your search yet. Try another location or name.
               </div>
             ) : (
-              <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
-                {visibleItems.map((vendor, index) => {
+              <>
+                <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
+                  {visibleItems.map((vendor, index) => {
                   const isRightEdge = index === visibleItems.length - 1;
                   return (
                     <div key={vendor.id}>
                       <Link
-                        href={`/vendors/${generateSlug(vendor.name)}`}
+                        href={`/vendors/${vendor.slug || generateSlug(vendor.name)}`}
                         className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
                       >
                         <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
@@ -349,7 +559,7 @@ export function VendorCollectionView({
                           <div
                             className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${collection.badgeClassName} text-background text-[0.6rem] font-semibold`}
                           >
-                            <Sparkles className="w-2.5 h-2.5" />
+                            <BadgeIcon className="w-2.5 h-2.5" />
                             {collection.badgeLabel}
                           </div>
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
@@ -360,20 +570,7 @@ export function VendorCollectionView({
                                 </h4>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <button
-                                  type="button"
-                                  className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors"
-                                  onClick={(event) => event.preventDefault()}
-                                >
-                                  <Heart className="w-4 h-4 text-primary" />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors"
-                                  onClick={(event) => event.preventDefault()}
-                                >
-                                  <Bookmark className="w-4 h-4 text-primary" />
-                                </button>
+                                <VendorSaveButton vendorId={vendor.id} />
                               </div>
                             </div>
                           </div>
@@ -483,23 +680,26 @@ export function VendorCollectionView({
                   );
                 })}
               </div>
+              
+              {/* Infinite scroll loading indicator */}
+              {loadingMore && (
+                <div className="mt-10 flex justify-center">
+                  <div className="rounded-full border border-border bg-background px-6 py-2.5 text-sm font-semibold text-primary">
+                    Loading more vendors...
+                  </div>
+                </div>
+              )}
+              
+              {/* Results count */}
+              {total > 0 && (
+                <div className="mt-4 text-center text-sm text-secondary">
+                  Showing {vendors.length} of {total} vendors
+                </div>
+              )}
+            </>
             )}
-
-            {hasMore && (
-              <div className="mt-10 flex justify-center">
-                <button
-                  type="button"
-                  onClick={() =>
-                    setVisibleCount((prev) =>
-                      Math.min(prev + PAGE_SIZE, filteredItems.length)
-                    )
-                  }
-                  className="rounded-full border border-border bg-background px-6 py-2.5 text-sm font-semibold text-primary hover:bg-surface transition-colors"
-                >
-                  Load more vendors
-                </button>
-              </div>
-            )}
+            
+            {/* Infinite scroll sentinel */}
             <div ref={sentinelRef} className="h-1" />
           </div>
         </section>

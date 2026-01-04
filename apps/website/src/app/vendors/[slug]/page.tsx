@@ -7,12 +7,8 @@ import {
   getVendorReviews,
   getSimilarVendors,
   incrementVendorViewCount,
+  getVendorAwards,
 } from "@/lib/supabase/vendors";
-import {
-  getMockVendorBySlug,
-  getMockVendorPortfolio,
-  getMockVendorReviews,
-} from "@/lib/vendors/mockVendors";
 
 export async function generateMetadata({
   params,
@@ -61,32 +57,23 @@ export default async function VendorPage({
     notFound();
   }
 
-  // Try to get vendor from database first, fallback to mock data
-  let vendor = await getVendorBySlug(slug);
-  let portfolio: any[] = [];
-  let reviews: any[] = [];
-  let similarVendors: any[] = [];
+  // Get vendor from database - no mock fallback in production
+  const vendor = await getVendorBySlug(slug);
 
   if (!vendor) {
-    // Fallback to mock data
-    vendor = getMockVendorBySlug(slug);
-    if (!vendor) {
-      notFound();
-    }
-    // Use mock portfolio and reviews
-    portfolio = getMockVendorPortfolio(vendor.id);
-    reviews = getMockVendorReviews(vendor.id);
-  } else {
-    // Load related data from database in parallel
-    [portfolio, reviews, similarVendors] = await Promise.all([
-      getVendorPortfolio(vendor.id),
-      getVendorReviews(vendor.id),
-      getSimilarVendors(vendor.category, vendor.id),
-    ]);
-
-    // Increment view count (fire and forget)
-    incrementVendorViewCount(vendor.id).catch(console.error);
+    notFound();
   }
+
+  // Load related data from database in parallel
+  const [portfolio, reviews, similarVendors, awards] = await Promise.all([
+    getVendorPortfolio(vendor.id),
+    getVendorReviews(vendor.id),
+    getSimilarVendors(vendor.category, vendor.id),
+    getVendorAwards(vendor.id),
+  ]);
+
+  // Increment view count (fire and forget)
+  incrementVendorViewCount(vendor.id).catch(console.error);
 
   // Structured data for SEO
   const structuredData = {
@@ -119,6 +106,7 @@ export default async function VendorPage({
         portfolio={portfolio}
         reviews={reviews}
         similarVendors={similarVendors}
+        awards={awards}
       />
     </>
   );

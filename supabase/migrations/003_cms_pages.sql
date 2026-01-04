@@ -41,18 +41,22 @@ FOR EACH ROW EXECUTE FUNCTION set_cms_pages_audit();
 ALTER TABLE cms_pages ENABLE ROW LEVEL SECURITY;
 ALTER TABLE cms_pages FORCE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "public read published cms pages" ON cms_pages;
 CREATE POLICY "public read published cms pages" ON cms_pages
   FOR SELECT TO anon, authenticated
   USING (published = true);
 
+DROP POLICY IF EXISTS "staff read cms pages" ON cms_pages;
 CREATE POLICY "staff read cms pages" ON cms_pages
   FOR SELECT TO authenticated
   USING (cms_role() IN ('owner', 'admin', 'editor', 'viewer'));
 
+DROP POLICY IF EXISTS "owner/admin insert cms pages" ON cms_pages;
 CREATE POLICY "owner/admin insert cms pages" ON cms_pages
   FOR INSERT TO authenticated
   WITH CHECK (cms_role() IN ('owner', 'admin'));
 
+DROP POLICY IF EXISTS "owner/admin update cms pages" ON cms_pages;
 CREATE POLICY "owner/admin update cms pages" ON cms_pages
   FOR UPDATE TO authenticated
   USING (cms_role() IN ('owner', 'admin'))

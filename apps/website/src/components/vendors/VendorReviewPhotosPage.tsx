@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { ChevronLeft, ChevronRight, Star, X } from "lucide-react";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
@@ -27,8 +29,6 @@ interface VendorReviewPhotosPageProps {
   reviewCount: number;
 }
 
-const ASPECT_RATIOS = ["4/5", "3/4", "1/1", "4/3", "2/3", "16/9", "5/7", "3/5"];
-
 export function VendorReviewPhotosPage({
   vendor,
   reviewImages,
@@ -42,6 +42,57 @@ export function VendorReviewPhotosPage({
   const searchParams = useSearchParams();
   const photoCount = reviewImages.length;
   const backHref = `/vendors/${vendor.slug}#section-reviews`;
+
+  // Create bento grid layout with varied sizes
+  const bentoGrid = useMemo(() => {
+    if (reviewImages.length === 0) return [];
+
+    const grid: Array<Array<{ item: ReviewImage; span: number }>> = [];
+    let currentRow: Array<{ item: ReviewImage; span: number }> = [];
+    let currentRowSpan = 0;
+    const rowSize = 4; // 4 columns per row
+
+    reviewImages.forEach((item, index) => {
+      let span = 1;
+
+      // Create varied layout patterns for visual interest
+      // Pattern: large items at strategic positions
+      if (index % 8 === 0) {
+        // Large horizontal item (2 columns)
+        span = 2;
+      } else if (index % 11 === 0 && currentRowSpan <= 2) {
+        // Large horizontal item if there's space
+        span = 2;
+      }
+
+      // Check if item fits in current row
+      if (currentRowSpan + span > rowSize) {
+        // Start new row
+        if (currentRow.length > 0) {
+          grid.push(currentRow);
+        }
+        currentRow = [{ item, span }];
+        currentRowSpan = span;
+      } else {
+        currentRow.push({ item, span });
+        currentRowSpan += span;
+      }
+
+      // If row is full, start new row
+      if (currentRowSpan >= rowSize) {
+        grid.push(currentRow);
+        currentRow = [];
+        currentRowSpan = 0;
+      }
+    });
+
+    // Add last row if it has items
+    if (currentRow.length > 0) {
+      grid.push(currentRow);
+    }
+
+    return grid;
+  }, [reviewImages]);
 
   useEffect(() => {
     const photoParam = searchParams.get("photo");
@@ -137,57 +188,58 @@ export function VendorReviewPhotosPage({
               </Link>
             </div>
           ) : (
-            <div className="mt-10 columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4">
-              {reviewImages.map((item, index) => {
-                const ratio = ASPECT_RATIOS[index % ASPECT_RATIOS.length];
-                const reviewDate = new Date(item.reviewDate).toLocaleDateString(
-                  "en-US",
-                  {
-                    month: "short",
-                    year: "numeric",
-                  }
-                );
+            <div className="mt-10 space-y-2">
+              {bentoGrid.map((row, rowIndex) => (
+                <div
+                  key={rowIndex}
+                  className="grid grid-cols-4 gap-2 auto-rows-fr"
+                >
+                  {row.map((gridItem, itemIndex) => {
+                    const originalIndex = reviewImages.findIndex(
+                      (img) => img.url === gridItem.item.url && img.reviewId === gridItem.item.reviewId
+                    );
+                    const reviewDate = new Date(gridItem.item.reviewDate).toLocaleDateString(
+                      "en-US",
+                      {
+                        month: "short",
+                        year: "numeric",
+                      }
+                    );
 
-                return (
-                  <article
-                    key={`${item.reviewId}-${index}`}
-                    className="mb-4 break-inside-avoid rounded-2xl overflow-hidden border border-border bg-surface/40 shadow-sm group"
-                  >
-                    <button
-                      type="button"
-                      onClick={() => openLightbox(index)}
-                      className="block w-full text-left"
-                      aria-label="Open review photo"
-                    >
-                      <div className="relative w-full" style={{ aspectRatio: ratio }}>
-                      <Image
-                        src={resolveAssetSrc(item.url)}
-                        alt={`Review photo by ${item.reviewUserName}`}
-                        fill
-                        sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
-                        className="object-cover transition-transform duration-500 group-hover:scale-105"
-                      />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-black/10 to-transparent opacity-90" />
-                      <div className="absolute bottom-3 left-3 flex items-center gap-2 text-xs text-white">
-                        <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1">
-                          <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
-                          {item.reviewRating.toFixed(1)}
-                        </span>
-                        <span className="rounded-full bg-black/60 px-2 py-1">
-                          {item.reviewUserName}
-                        </span>
+                    return (
+                      <div
+                        key={`${gridItem.item.reviewId}-${itemIndex}`}
+                        className={`relative overflow-hidden rounded-2xl cursor-pointer group ${
+                          gridItem.span === 2 ? 'col-span-2' : 'col-span-1'
+                        }`}
+                        style={{
+                          aspectRatio: gridItem.span === 2 ? '2/1' : '1/1',
+                          minHeight: '200px',
+                        }}
+                        onClick={() => openLightbox(originalIndex >= 0 ? originalIndex : 0)}
+                      >
+                        <Image
+                          src={resolveAssetSrc(gridItem.item.url)}
+                          alt={`Review photo by ${gridItem.item.reviewUserName}`}
+                          fill
+                          className="object-cover group-hover:scale-110 transition-transform duration-300"
+                          sizes={gridItem.span === 2 ? "(max-width: 768px) 100vw, 50vw" : "(max-width: 768px) 50vw, 25vw"}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                        <div className="absolute bottom-3 left-3 right-3 flex items-center gap-2 text-xs text-white opacity-0 group-hover:opacity-100 transition-opacity">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-black/60 px-2 py-1">
+                            <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                            {gridItem.item.reviewRating.toFixed(1)}
+                          </span>
+                          <span className="rounded-full bg-black/60 px-2 py-1 truncate">
+                            {gridItem.item.reviewUserName}
+                          </span>
+                        </div>
                       </div>
-                      </div>
-                    </button>
-                    <div className="p-3">
-                      <div className="text-xs text-secondary">{reviewDate}</div>
-                      <p className="mt-1 text-sm text-foreground line-clamp-2">
-                        {item.reviewContent}
-                      </p>
-                    </div>
-                  </article>
-                );
-              })}
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -195,123 +247,96 @@ export function VendorReviewPhotosPage({
 
       <Footer />
 
-      {lightboxOpen && reviewImages[lightboxIndex] && (
-        <div
-          className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 md:p-8"
-          onClick={closeLightbox}
-        >
-          <button
-            onClick={(event) => {
-              event.stopPropagation();
-              closeLightbox();
-            }}
-            className="absolute top-6 right-6 md:top-8 md:right-8 text-white/90 hover:text-white transition-all z-30 w-10 h-10 flex items-center justify-center"
-            aria-label="Close lightbox"
-          >
-            <X className="w-6 h-6" strokeWidth={2.5} />
-          </button>
+      {/* Lightbox Modal */}
+      <Dialog open={lightboxOpen} onOpenChange={setLightboxOpen}>
+        <DialogContent className="max-w-[95vw] w-full h-[95vh] p-0 bg-black border-none rounded-none sm:rounded-lg">
+          <DialogTitle className="sr-only">
+            {reviewImages[lightboxIndex] 
+              ? `Review photo by ${reviewImages[lightboxIndex].reviewUserName} - ${lightboxIndex + 1} of ${reviewImages.length}`
+              : 'Review photo'}
+          </DialogTitle>
+          <div className="relative w-full h-full flex items-center justify-center overflow-hidden">
+            {/* Close Button */}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute top-4 right-4 z-50 w-10 h-10 rounded-full bg-black/50 hover:bg-black/70 text-background backdrop-blur-sm border border-white/10 transition-all"
+              onClick={closeLightbox}
+            >
+              <X className="w-5 h-5" />
+            </Button>
 
-          <div className="relative w-full max-w-6xl mx-auto h-full flex flex-col md:flex-row items-center justify-center gap-0 md:gap-6">
-            <div className="relative w-full md:flex-1 flex items-center justify-center mb-4 md:mb-0">
-              {lightboxIndex > 0 && (
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    const nextIndex = lightboxIndex - 1;
-                    setLightboxIndex(nextIndex);
-                    router.replace(`${pathname}?photo=${nextIndex}`, {
-                      scroll: false,
-                    });
+            {/* Navigation Buttons */}
+            {reviewImages.length > 1 && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-4 top-1/2 -translate-y-1/2 z-50 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-background backdrop-blur-sm border border-white/10 transition-all hover:scale-110"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (lightboxIndex > 0) {
+                      const nextIndex = lightboxIndex - 1;
+                      setLightboxIndex(nextIndex);
+                      router.replace(`${pathname}?photo=${nextIndex}`, { scroll: false });
+                    }
                   }}
-                  className="absolute left-0 md:-left-14 top-1/2 -translate-y-1/2 text-white hover:text-white/80 transition-all z-20 w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm flex items-center justify-center shadow-lg"
-                  aria-label="Previous image"
+                  disabled={lightboxIndex === 0}
                 >
-                  <ChevronLeft className="w-6 h-6" strokeWidth={2.5} />
-                </button>
-              )}
-
-              <div className="relative w-full aspect-[4/3] md:aspect-[16/10] max-h-[65vh] md:max-h-[85vh] rounded-2xl overflow-hidden shadow-2xl">
-                <Image
-                  src={resolveAssetSrc(reviewImages[lightboxIndex].url)}
-                  alt={`Review photo by ${reviewImages[lightboxIndex].reviewUserName}`}
-                  fill
-                  className="object-cover"
-                  onClick={(event) => event.stopPropagation()}
-                />
-              </div>
-            </div>
-
-            <div className="relative w-full md:w-[420px] md:max-h-[85vh]">
-              {lightboxIndex < reviewImages.length - 1 && (
-                <button
-                  onClick={(event) => {
-                    event.stopPropagation();
-                    const nextIndex = lightboxIndex + 1;
-                    setLightboxIndex(nextIndex);
-                    router.replace(`${pathname}?photo=${nextIndex}`, {
-                      scroll: false,
-                    });
+                  <ChevronLeft className="w-6 h-6" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 z-50 w-12 h-12 rounded-full bg-black/50 hover:bg-black/70 text-background backdrop-blur-sm border border-white/10 transition-all hover:scale-110"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (lightboxIndex < reviewImages.length - 1) {
+                      const nextIndex = lightboxIndex + 1;
+                      setLightboxIndex(nextIndex);
+                      router.replace(`${pathname}?photo=${nextIndex}`, { scroll: false });
+                    }
                   }}
-                  className="absolute right-0 md:-right-14 top-1/2 -translate-y-1/2 text-white hover:text-white/80 transition-all z-20 w-12 h-12 rounded-full bg-black/60 hover:bg-black/80 backdrop-blur-sm flex items-center justify-center shadow-lg"
-                  aria-label="Next image"
+                  disabled={lightboxIndex === reviewImages.length - 1}
                 >
-                  <ChevronRight className="w-6 h-6" strokeWidth={2.5} />
-                </button>
-              )}
+                  <ChevronRight className="w-6 h-6" />
+                </Button>
+              </>
+            )}
 
-              <div
-                className="relative bg-white rounded-2xl p-6 md:p-8 border border-gray-200 shadow-[0_20px_40px_rgba(0,0,0,0.12)] md:max-h-[85vh] overflow-y-auto overflow-x-hidden"
-                onClick={(event) => event.stopPropagation()}
-              >
-                <div className="mb-4">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="flex items-center gap-0.5">
-                      {[1, 2, 3, 4, 5].map((star) => (
-                        <Star
-                          key={star}
-                          className={`w-4 h-4 ${
-                            star <= reviewImages[lightboxIndex].reviewRating
-                              ? "fill-[#FFB400] text-[#FFB400]"
-                              : "text-gray-300"
-                          }`}
-                          strokeWidth={1.5}
-                        />
-                      ))}
-                    </div>
-                    <span className="text-lg font-semibold text-gray-900 ml-1">
-                      {reviewImages[lightboxIndex].reviewRating.toFixed(1)}
-                    </span>
-                  </div>
-                  <h3 className="text-xl font-semibold text-gray-900 mb-1">
-                    {reviewImages[lightboxIndex].reviewUserName}
-                  </h3>
-                  <p className="text-sm text-gray-500">
-                    {new Date(
-                      reviewImages[lightboxIndex].reviewDate
-                    ).toLocaleDateString("en-US", {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </p>
-                </div>
-
-                <div className="pt-4 border-t border-gray-200">
-                  <p
-                    className="text-gray-700 leading-relaxed"
-                    style={{
-                      fontSize: "15px",
-                      maxWidth: "65ch",
-                      lineHeight: "1.6",
-                    }}
-                  >
-                    {reviewImages[lightboxIndex].reviewContent}
-                  </p>
+            {/* Image Display */}
+            {reviewImages[lightboxIndex] && (
+              <div className="relative w-full h-full flex items-center justify-center p-4 md:p-8">
+                <div className="relative w-full h-full flex items-center justify-center">
+                  <Image
+                    src={resolveAssetSrc(reviewImages[lightboxIndex].url)}
+                    alt={`Review photo by ${reviewImages[lightboxIndex].reviewUserName}`}
+                    fill
+                    className="object-contain"
+                    sizes="95vw"
+                    priority
+                  />
                 </div>
               </div>
-            </div>
+            )}
+
+            {/* Image Counter and Info */}
+            {reviewImages.length > 1 && reviewImages[lightboxIndex] && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3">
+                <div className="bg-black/70 backdrop-blur-md px-4 py-2 rounded-full text-background text-sm font-medium border border-white/10">
+                  {lightboxIndex + 1} of {reviewImages.length}
+                </div>
+                <div className="bg-black/70 backdrop-blur-md px-4 py-2 rounded-full text-background text-xs border border-white/10 flex items-center gap-2">
+                  <Star className="w-3 h-3 text-amber-400 fill-amber-400" />
+                  <span>{reviewImages[lightboxIndex].reviewRating.toFixed(1)}</span>
+                  <span className="text-background/70">•</span>
+                  <span className="max-w-xs truncate">{reviewImages[lightboxIndex].reviewUserName}</span>
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
