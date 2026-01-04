@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { MapPin, Share2, Heart, BadgeCheck, Sparkles, Clock, Star } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { resolveAssetSrc } from "@/lib/assets";
 import type { Vendor } from "@/lib/supabase/vendors";
 import Image from "next/image";
+import { useSaveVendor } from "@/hooks/useSaveVendor";
 
 interface VendorHeroProps {
   vendor: Vendor;
@@ -16,12 +17,20 @@ interface VendorHeroProps {
 }
 
 export function VendorHero({ vendor, coverImage }: VendorHeroProps) {
-  const [isSaved, setIsSaved] = useState(false);
+  const { isSaved, isLoading, toggleSave, checkSavedStatus } = useSaveVendor({
+    vendorId: vendor.id,
+    redirectToLogin: true,
+  });
 
   const rating = vendor.stats.averageRating || 0;
   const reviewCount = vendor.stats.reviewCount || 0;
   const isGuestFavourite = rating >= 4.8;
   const isFastResponder = true; // TODO: Get from vendor stats
+
+  // Check saved status on mount
+  useEffect(() => {
+    checkSavedStatus();
+  }, [checkSavedStatus]);
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -41,8 +50,7 @@ export function VendorHero({ vendor, coverImage }: VendorHeroProps) {
   };
 
   const handleSave = () => {
-    setIsSaved(!isSaved);
-    // TODO: Implement save functionality
+    toggleSave();
   };
 
   const locationText = vendor.location?.city
@@ -94,10 +102,11 @@ export function VendorHero({ vendor, coverImage }: VendorHeroProps) {
               variant="ghost"
               size="sm"
               onClick={handleSave}
-              className={`border border-border ${isSaved ? "text-red-500" : ""}`}
+              disabled={isLoading}
+              className={`border border-border ${isSaved ? "text-red-500" : ""} ${isLoading ? "opacity-50" : ""}`}
             >
               <Heart className={`w-4 h-4 mr-2 ${isSaved ? "fill-current" : ""}`} />
-              Save
+              {isSaved ? "Saved" : "Save"}
             </Button>
           </div>
         </div>

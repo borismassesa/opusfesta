@@ -12,7 +12,16 @@ gsap.registerPlugin(ScrollTrigger);
 
 export function Issues() {
   const { content } = useContent();
-  const issues = content.issues;
+  // Use advice articles if available, otherwise fall back to issues
+  const adviceArticles = content.advice?.articles || [];
+  const issues = adviceArticles.length > 0 
+    ? adviceArticles.map((article, index) => ({
+        id: index + 1,
+        title: article.title,
+        desc: article.description,
+        img: article.image
+      }))
+    : content.issues;
   const containerRef = useRef<HTMLElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -94,19 +103,21 @@ export function Issues() {
               <div className="flex items-center justify-center md:justify-start gap-3 mb-4 md:mb-6">
                 <span className="w-12 h-[1px] bg-accent"></span>
                 <span className="font-mono text-accent text-xs tracking-widest uppercase">
-                  Advice & Ideas
+                  {content.advice?.label || "Advice & Ideas"}
                 </span>
                 <span className="md:hidden w-12 h-[1px] bg-accent"></span>
               </div>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-primary leading-[1.1]">
-                Inspiration for <br/>
-                <span className="font-serif italic font-normal text-secondary">your big day.</span>
+                {content.advice?.headline || "Inspiration for"} <br/>
+                <span className="font-serif italic font-normal text-secondary">
+                  {content.advice?.subheadline || "your big day."}
+                </span>
               </h2>
             </div>
             
             <div className="flex flex-col items-center md:items-end gap-6 md:gap-8">
               <p className="text-secondary text-base md:text-lg max-w-md text-center md:text-right leading-relaxed font-light">
-                Expert guides, trending styles, and real wedding stories to help you plan a celebration that's uniquely yours.
+                {content.advice?.description || "Expert guides, trending styles, and real wedding stories to help you plan a celebration that's uniquely yours."}
               </p>
             </div>
           </div>
@@ -170,10 +181,10 @@ export function Issues() {
 
         <div className="max-w-[1400px] mx-auto w-full px-6 lg:px-12 pt-8 md:pt-10 pb-4 flex justify-center md:justify-end">
           <Link
-            href="/services/advice"
+            href={content.advice?.buttonLink || "/services/advice"}
             className="group inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-background text-sm font-medium transition-all hover:bg-primary/90 hover:scale-105"
           >
-            Browse All Articles
+            {content.advice?.buttonText || "Browse All Articles"}
             <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
           </Link>
         </div>

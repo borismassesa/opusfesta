@@ -1,11 +1,12 @@
 "use client";
 
-import { forwardRef, useState } from "react";
-import { Star, ShieldCheck, Clock, Sparkles, User, Check, Heart, Share2, ChevronRight, ChevronLeft } from "lucide-react";
+import { forwardRef, useState, useEffect } from "react";
+import { Star, ShieldCheck, Clock, Sparkles, Award, User, Check, Heart, Share2, ChevronRight, ChevronLeft } from "lucide-react";
 import { VendorAboutSection } from "./VendorAboutSection";
-import type { Vendor, PortfolioItem, Review } from "@/lib/supabase/vendors";
+import type { Vendor, PortfolioItem, Review, VendorAward } from "@/lib/supabase/vendors";
 import { formatCurrency } from "@/lib/utils";
 import { addMonths, subMonths, startOfMonth, endOfMonth, eachDayOfInterval, format, isSameMonth, getYear, getMonth, setMonth, setYear, isPast, startOfDay, isSameDay } from "date-fns";
+import { useSaveVendor } from "@/hooks/useSaveVendor";
 
 interface VendorContentProps {
   vendor: Vendor;
@@ -19,15 +20,23 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
   portfolio,
   reviews,
   ratingSectionRef,
+  awards = [],
 }, connectSectionRef) => {
   const [expandedPackages, setExpandedPackages] = useState<{ [key: string]: boolean }>({});
-  const [isSaved, setIsSaved] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  
+  const { isSaved, isLoading, toggleSave, checkSavedStatus } = useSaveVendor({
+    vendorId: vendor.id,
+    redirectToLogin: true,
+  });
+
+  // Check saved status on mount
+  useEffect(() => {
+    checkSavedStatus();
+  }, [checkSavedStatus]);
 
   const handleSave = () => {
-    setIsSaved(!isSaved);
-    // TODO: Implement save functionality with backend
-    // This could call an API to save/unsave the vendor
+    toggleSave();
   };
 
   const handleShare = async () => {
@@ -77,26 +86,16 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
     "Full dance party setup",
   ];
 
-  const awards = [
-    {
-      title: "TheFesta Couples' Choice",
-      year: "2024",
-      description: "Top-tier ratings for responsiveness, service, and event delivery.",
-      icon: Sparkles,
-    },
-    {
-      title: "Best Live Entertainment",
-      year: "2023",
-      description: "Recognized by Tanzania Wedding Awards for standout performances.",
-      icon: Star,
-    },
-    {
-      title: "Trusted Vendor Badge",
-      year: "2022",
-      description: "100+ verified bookings completed with zero cancellations.",
-      icon: ShieldCheck,
-    },
-  ];
+  // Map award icons from string to component
+  const getAwardIcon = (iconName: string) => {
+    const iconMap: { [key: string]: typeof Star } = {
+      Star,
+      Sparkles,
+      ShieldCheck,
+      Award,
+    };
+    return iconMap[iconName] || Star;
+  };
 
   const togglePackage = (packageId: string) => {
     setExpandedPackages(prev => ({
@@ -118,13 +117,6 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
           <div>
             <h3 className="font-bold text-lg text-foreground">{vendor.business_name}</h3>
             <div className="text-sm text-secondary mb-1">{vendor.category}</div>
-            {vendor.verified && (
-              <div className="flex items-center gap-2 mt-1">
-                <span className="bg-primary text-background text-xs font-semibold px-2 py-1 rounded-full">
-                  Verified
-                </span>
-              </div>
-            )}
           </div>
           </div>
         
@@ -140,7 +132,8 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
           </button>
           <button 
             onClick={handleSave}
-            className="flex items-center gap-2 text-foreground hover:text-primary transition-colors underline"
+            disabled={isLoading}
+            className={`flex items-center gap-2 text-foreground hover:text-primary transition-colors underline ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
             aria-label={isSaved ? "Remove from saved" : "Save vendor"}
           >
             <Heart 
@@ -150,7 +143,7 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
                   : "text-foreground"
               }`} 
             />
-            <span className="text-sm font-medium">Save</span>
+            <span className="text-sm font-medium">{isSaved ? "Saved" : "Save"}</span>
           </button>
         </div>
       </div>
@@ -160,30 +153,50 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
 
       {/* Services Section */}
       {(() => {
+        // Handle both old string array format and new object format for backward compatibility
+        const getServiceTitle = (service: string | { title: string; description: string }): string => {
+          return typeof service === 'string' ? service : service.title;
+        };
+
+        const getServiceDescription = (service: string | { title: string; description: string }): string | undefined => {
+          return typeof service === 'object' ? service.description : undefined;
+        };
+
         const services = vendor.services_offered?.length > 0
           ? vendor.services_offered
           : vendor.subcategories?.length > 0
-            ? vendor.subcategories
+            ? vendor.subcategories.map((sub) => ({ title: sub, description: '' }))
             : [
-                `${vendor.category} consultations`,
-                "Custom proposals and packages",
-                "On-site coordination",
-                "Flexible scheduling",
-                "Trusted local partners",
-                "Event-day support",
+                { title: `${vendor.category} consultations`, description: '' },
+                { title: "Custom proposals and packages", description: '' },
+                { title: "On-site coordination", description: '' },
+                { title: "Flexible scheduling", description: '' },
+                { title: "Trusted local partners", description: '' },
+                { title: "Event-day support", description: '' },
               ];
         
         return (
           <div id="section-services" className="pt-6 scroll-mt-32 lg:scroll-mt-40">
             <h2 className="text-2xl font-bold text-foreground mb-6">What this vendor offers</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {services.map((service, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <Check className="w-5 h-5 text-foreground flex-shrink-0" strokeWidth={2} />
-                  <span className="text-foreground">{service}</span>
-          </div>
-              ))}
-        </div>
+              {services.map((service, index) => {
+                const title = getServiceTitle(service);
+                const description = getServiceDescription(service);
+                return (
+                  <div key={index} className="space-y-1">
+                    <div className="flex items-start gap-3">
+                      <Check className="w-5 h-5 text-foreground flex-shrink-0 mt-0.5" strokeWidth={2} />
+                      <div className="flex-1">
+                        <span className="text-foreground font-medium">{title}</span>
+                        {description && (
+                          <p className="text-sm text-muted-foreground mt-1">{description}</p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         );
       })()}
@@ -412,28 +425,44 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {awards.map((award) => {
-            const Icon = award.icon;
-            return (
-              <div
-                key={`${award.title}-${award.year}`}
-                className="border border-border rounded-lg p-5 bg-background flex flex-col gap-3"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-surface border border-border flex items-center justify-center">
-                    <Icon className="w-5 h-5 text-foreground" />
+        {awards.length > 0 ? (
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {awards.map((award, index) => {
+              const Icon = getAwardIcon(award.icon);
+              return (
+                <div
+                  key={`${award.title}-${award.year}-${index}`}
+                  className="border border-border rounded-lg p-5 bg-background flex flex-col gap-3"
+                >
+                  <div className="flex items-center gap-3">
+                    {award.image ? (
+                      <div className="w-16 h-16 rounded-lg overflow-hidden border border-border shrink-0">
+                        <img
+                          src={award.image}
+                          alt={award.title}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-surface border border-border flex items-center justify-center">
+                        <Icon className="w-5 h-5 text-foreground" />
+                      </div>
+                    )}
+                    <div>
+                      <div className="text-xs font-semibold text-secondary">{award.year}</div>
+                      <div className="text-base font-semibold text-foreground">{award.title}</div>
+                    </div>
                   </div>
-                  <div>
-                    <div className="text-xs font-semibold text-secondary">{award.year}</div>
-                    <div className="text-base font-semibold text-foreground">{award.title}</div>
-                  </div>
+                  <p className="text-sm text-secondary leading-relaxed">{award.description}</p>
                 </div>
-                <p className="text-sm text-secondary leading-relaxed">{award.description}</p>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-8 text-muted-foreground">
+            <p>No awards available at this time.</p>
+          </div>
+        )}
       </div>
 
 

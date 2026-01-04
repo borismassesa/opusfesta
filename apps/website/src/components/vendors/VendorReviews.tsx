@@ -7,9 +7,13 @@ import {
   Star,
   Clock,
   Shield,
+  Plus,
 } from "lucide-react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { VendorReviewForm } from "./VendorReviewForm";
 import type { Vendor, Review } from "@/lib/supabase/vendors";
 import { resolveAssetSrc } from "@/lib/assets";
 
@@ -31,6 +35,7 @@ export function VendorReviews({ vendor, reviews }: VendorReviewsProps) {
   const [sortBy] = useState("recent");
   const [expandedReviews, setExpandedReviews] = useState<Set<string>>(new Set());
   const [displayCount, setDisplayCount] = useState(4); // Show 4 reviews initially
+  const [isReviewFormOpen, setIsReviewFormOpen] = useState(false);
 
   const rating = vendor.stats.averageRating || 0;
   const reviewCount = vendor.stats.reviewCount || 0;
@@ -419,11 +424,36 @@ export function VendorReviews({ vendor, reviews }: VendorReviewsProps) {
             <Star className="w-8 h-8 text-secondary" />
           </div>
           <h3 className="text-xl font-semibold text-foreground mb-2">No reviews yet</h3>
-          <p className="text-secondary">
+          <p className="text-secondary mb-4">
             Be the first to review this vendor!
           </p>
+          <Button
+            onClick={() => setIsReviewFormOpen(true)}
+            className="bg-primary text-primary-foreground"
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Write the First Review
+          </Button>
         </div>
       )}
+
+      {/* Review Submission Dialog */}
+      <Dialog open={isReviewFormOpen} onOpenChange={setIsReviewFormOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Write a Review for {vendor.business_name}</DialogTitle>
+          </DialogHeader>
+          <VendorReviewForm
+            vendor={vendor}
+            onSuccess={() => {
+              setIsReviewFormOpen(false);
+              // Refresh the page or update reviews
+              window.location.reload();
+            }}
+            onCancel={() => setIsReviewFormOpen(false)}
+          />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

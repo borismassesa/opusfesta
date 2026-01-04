@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Twitter, Instagram, Linkedin } from "lucide-react";
+import { Twitter, Instagram, Linkedin, Facebook, Youtube, Music2 } from "lucide-react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useContent } from "@/context/ContentContext";
 
 // Custom Icon Components for those missing in Lucide (or specific versions)
 const XIcon = ({ size = 18 }: { size?: number }) => (
@@ -17,7 +18,26 @@ const TiktokIcon = ({ size = 18 }: { size?: number }) => (
   </svg>
 );
 
+const PinterestIcon = ({ size = 18 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 2C6.48 2 2 6.48 2 12c0 4.84 3.05 8.97 7.35 10.58-.1-.95-.19-2.4.04-3.43.17-1.05 1.1-7.05 1.1-7.05s-.28-.56-.28-1.39c0-1.3.75-2.27 1.69-2.27.8 0 1.18.6 1.18 1.32 0 .8-.51 2-1.01 3.11-.29.61.58 1.11 1.18 1.11 1.42 0 2.51-1.5 2.51-3.66 0-1.91-1.38-3.25-3.36-3.25-2.29 0-3.63 1.72-3.63 3.5 0 .68.26 1.41.59 1.81.07.08.08.15.06.23l-.24.94c-.03.12-.1.15-.23.09-1.09-.51-1.77-2.1-1.77-3.38 0-2.77 2.01-5.31 5.79-5.31 3.04 0 5.41 2.17 5.41 5.07 0 3.02-1.9 5.45-4.54 5.45-.89 0-1.73-.46-2.02-1.06l-.55 2.1c-.2.78-.74 1.75-1.1 2.35.83.26 1.71.4 2.61.4 5.52 0 10-4.48 10-10S17.52 2 12 2z" />
+  </svg>
+);
+
 export function Footer() {
+  const { content } = useContent();
+  const { social } = content;
+
+  const socialLinks = [
+    { key: "twitter" as const, url: social?.twitter, icon: XIcon, label: "X (Twitter)", size: 16 },
+    { key: "instagram" as const, url: social?.instagram, icon: Instagram, label: "Instagram", size: 18 },
+    { key: "linkedin" as const, url: social?.linkedin, icon: Linkedin, label: "LinkedIn", size: 18 },
+    { key: "tiktok" as const, url: social?.tiktok, icon: TiktokIcon, label: "TikTok", size: 18 },
+    { key: "facebook" as const, url: social?.facebook, icon: Facebook, label: "Facebook", size: 18 },
+    { key: "youtube" as const, url: social?.youtube, icon: Youtube, label: "YouTube", size: 18 },
+    { key: "pinterest" as const, url: social?.pinterest, icon: PinterestIcon, label: "Pinterest", size: 18 },
+  ].filter((link) => link.url && link.url.trim() !== "");
+
   return (
     <footer className="bg-surface border-t border-border pt-12 pb-10 md:pt-20">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
@@ -35,12 +55,21 @@ export function Footer() {
             <p className="text-secondary text-sm leading-relaxed max-w-xs">
               The all-in-one platform for modern couples to plan, design, and celebrate their dream weddings effortlessly.
             </p>
-            <div className="flex items-center gap-4 mt-2">
-              <SocialLink href="#" icon={<XIcon size={16} />} label="X (Twitter)" />
-              <SocialLink href="#" icon={<Instagram size={18} />} label="Instagram" />
-              <SocialLink href="#" icon={<Linkedin size={18} />} label="LinkedIn" />
-              <SocialLink href="#" icon={<TiktokIcon size={18} />} label="TikTok" />
-            </div>
+            {socialLinks.length > 0 && (
+              <div className="flex items-center gap-4 mt-2">
+                {socialLinks.map((link) => {
+                  const Icon = link.icon;
+                  return (
+                    <SocialLink
+                      key={link.key}
+                      href={link.url!}
+                      icon={<Icon size={link.size} />}
+                      label={link.label}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* Mobile Accordion Links */}

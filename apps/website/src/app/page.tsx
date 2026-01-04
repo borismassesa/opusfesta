@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import Lenis from "lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -22,8 +23,18 @@ gsap.registerPlugin(ScrollTrigger);
 export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const loaderRef = useRef<HTMLDivElement>(null);
+  const searchParams = useSearchParams();
+  const isPreview = searchParams?.get("preview") === "draft";
 
   useEffect(() => {
+    // Skip loader animation in preview mode for faster loading
+    if (isPreview) {
+      if (loaderRef.current) {
+        loaderRef.current.style.display = 'none';
+      }
+      return;
+    }
+
     // Loader Animation
     const ctx = gsap.context(() => {
       const loadTl = gsap.timeline();
@@ -58,22 +69,24 @@ export default function Home() {
       lenis.destroy();
       gsap.ticker.remove(lenis.raf);
     };
-  }, []);
+  }, [isPreview]);
 
   return (
     <div className="bg-background text-primary min-h-screen selection:bg-accent/20 selection:text-primary overflow-hidden">
-      {/* Loader */}
-      <div ref={loaderRef} className="loader fixed top-0 left-0 w-full h-screen bg-background z-[9999] flex flex-col justify-center items-center">
+      {/* Loader - Hidden in preview mode */}
+      {!isPreview && (
+        <div ref={loaderRef} className="loader fixed top-0 left-0 w-full h-screen bg-background z-9999 flex flex-col justify-center items-center">
         <div className="font-serif text-4xl md:text-5xl text-primary mb-4 relative">
             TheFesta
         </div>
         <div className="uppercase text-[10px] text-secondary tracking-[0.3em] font-medium mb-8 opacity-70">
           Gathering Inspiration
         </div>
-        <div className="loader-bar-bg w-[200px] h-[1px] bg-primary/10 relative overflow-hidden">
+        <div className="loader-bar-bg w-[200px] h-px bg-primary/10 relative overflow-hidden">
           <div className="loader-bar absolute left-0 top-0 h-full bg-primary w-0"></div>
         </div>
-      </div>
+        </div>
+      )}
 
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />

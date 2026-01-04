@@ -14,7 +14,7 @@ import { VendorReviews } from "./VendorReviews";
 import { VendorLocation } from "./VendorLocation";
 import { VendorProfile } from "./VendorProfile";
 import { SimilarVendors } from "./SimilarVendors";
-import type { Vendor, PortfolioItem, Review } from "@/lib/supabase/vendors";
+import type { Vendor, PortfolioItem, Review, VendorAward } from "@/lib/supabase/vendors";
 import { resolveAssetSrc } from "@/lib/assets";
 import celebrationImg from "@assets/stock_images/happy_wedding_couple_e3561dd1.jpg";
 
@@ -23,6 +23,7 @@ interface VendorDetailsPageProps {
   portfolio: PortfolioItem[];
   reviews: Review[];
   similarVendors: Vendor[];
+  awards: VendorAward[];
 }
 
 export function VendorDetailsPage({
@@ -30,6 +31,7 @@ export function VendorDetailsPage({
   portfolio,
   reviews,
   similarVendors,
+  awards,
 }: VendorDetailsPageProps) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("about");
@@ -205,6 +207,7 @@ export function VendorDetailsPage({
                 portfolio={portfolio}
                 reviews={reviews}
                 ratingSectionRef={ratingSectionRef}
+                awards={awards}
               />
             </div>
 
@@ -230,47 +233,6 @@ export function VendorDetailsPage({
                   To help protect your payment, always use TheFesta to send money and communicate with vendors.
                 </p>
               </div>
-            </div>
-          </div>
-
-          {/* Things to know */}
-          <div id="section-things-to-know" className="pt-12 scroll-mt-32 lg:scroll-mt-40">
-            <h2 className="text-2xl md:text-3xl font-semibold mb-8">Things to know</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pb-6">
-            <div className="space-y-3">
-              <h4 className="font-semibold">Booking policy</h4>
-              <p className="text-secondary text-sm">
-                Request a custom quote tailored to your guest count and event
-                timeline.
-              </p>
-              <button className="font-semibold underline text-sm">
-                Learn more
-              </button>
-            </div>
-            <div className="space-y-3">
-              <h4 className="font-semibold">Availability</h4>
-              <p className="text-secondary text-sm">
-                Dates fill quickly during peak wedding season.
-              </p>
-              <p className="text-secondary text-sm">
-                Secure your date early for priority service.
-              </p>
-              <button className="font-semibold underline text-sm">
-                Check availability
-              </button>
-            </div>
-            <div className="space-y-3">
-              <h4 className="font-semibold">Service details</h4>
-              <p className="text-secondary text-sm">
-                On-site coordination and remote planning options available.
-              </p>
-              <p className="text-secondary text-sm">
-                Flexible packages for weddings, proposals, and celebrations.
-              </p>
-              <button className="font-semibold underline text-sm">
-                View service guide
-              </button>
-            </div>
             </div>
           </div>
         </div>

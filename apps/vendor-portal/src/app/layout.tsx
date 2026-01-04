@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Providers } from '@/components/providers';
-import { ThemeProvider } from 'next-themes';
+import { ConditionalVendorLayout } from '@/components/layout/conditional-vendor-layout';
 
 export const metadata: Metadata = {
   title: 'The Festa - Vendor Portal',
@@ -17,17 +17,20 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="font-sans">
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="light"
-          enableSystem
-          disableTransitionOnChange
-        >
-          <Providers>
-            {children}
-          </Providers>
-        </ThemeProvider>
+      <head>
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=General+Sans:wght@400;500;600;700&family=Pacifico&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body>
+        <Providers>
+          <ConditionalVendorLayout>{children}</ConditionalVendorLayout>
+        </Providers>
       </body>
     </html>
   );

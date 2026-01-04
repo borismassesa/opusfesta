@@ -1,14 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
   ArrowUpDown,
   Bookmark,
   ChevronDown,
+  Clock,
   Eye,
   Heart,
+  Loader2,
   MapPin,
   Search,
   Sparkles,
@@ -18,6 +21,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
 import { resolveAssetSrc } from "@/lib/assets";
+import { useSaveVendor } from "@/hooks/useSaveVendor";
 
 import vendorPlanning from "@assets/stock_images/wedding_planning_che_871a1473.jpg";
 import vendorFlorals from "@assets/stock_images/wedding_bouquet_mode_ab76e613.jpg";
@@ -210,6 +214,37 @@ const SORT_OPTIONS = [
   { label: "Price: high to low", value: "priceDesc" },
 ];
 
+// Helper function to determine vendor badge
+// Priority: Featured > Limited > New > Verified
+const getVendorBadge = (vendor: VendorFromAPI): { label: string; className: string; icon: typeof Sparkles } | null => {
+  // Check if vendor is featured (premium tier or verified with high stats)
+  const isFeatured = vendor.tier === 'premium' || (vendor.verified && (vendor.stats?.averageRating || 0) >= 4.5 && (vendor.stats?.reviewCount || 0) >= 10);
+
+  // Check if vendor is limited (pro tier with good stats)
+  const isLimited = vendor.tier === 'pro' && (vendor.stats?.averageRating || 0) >= 4.0;
+
+  // Check if vendor is new (created within last 7 days AND has low review count)
+  // Only show "New" for vendors that are actually new and haven't built up reviews yet
+  const createdDate = new Date(vendor.created_at);
+  const daysSinceCreation = (Date.now() - createdDate.getTime()) / (1000 * 60 * 60 * 24);
+  const isNew = daysSinceCreation <= 7 && (vendor.stats?.reviewCount || 0) < 5;
+
+  // Priority order: Featured > Limited > New > Verified
+  if (isFeatured) {
+    return { label: "Featured", className: "bg-indigo-500", icon: Star };
+  }
+  if (isLimited) {
+    return { label: "Limited", className: "bg-purple-500", icon: Clock };
+  }
+  if (isNew) {
+    return { label: "New", className: "bg-blue-500", icon: Sparkles };
+  }
+  if (vendor.verified) {
+    return { label: "Verified", className: "bg-emerald-500", icon: Sparkles };
+  }
+  return null;
+};
+
 const PRICE_ORDER: Record<string, number> = {
   "$": 1,
   "$$": 2,
@@ -224,69 +259,232 @@ const generateSlug = (name: string): string => {
     .replace(/(^-|-$)/g, "");
 };
 
+// Vendor Save Button Component
+function VendorSaveButton({ vendorId }: { vendorId: string }) {
+  const { isSaved, isLoading, toggleSave } = useSaveVendor({
+    vendorId,
+    redirectToLogin: true,
+  });
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSave();
+      }}
+      disabled={isLoading}
+      className={`p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors ${
+        isSaved ? "text-red-500" : "text-primary"
+      } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+      aria-label={isSaved ? "Remove from saved" : "Save vendor"}
+    >
+      <Bookmark className={`w-4 h-4 ${isSaved ? "fill-current" : ""}`} />
+    </button>
+  );
+}
+
+// All available vendor categories from the database enum
+const ALL_CATEGORIES = [
+  "All",
+  "Venues",
+  "Photographers",
+  "Videographers",
+  "Caterers",
+  "Wedding Planners",
+  "Florists",
+  "DJs & Music",
+  "Beauty & Makeup",
+  "Bridal Salons",
+  "Cake & Desserts",
+  "Decorators",
+  "Officiants",
+  "Rentals",
+  "Transportation",
+];
+
 export default function AllVendorsPage() {
+  const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [activeCategory, setActiveCategory] = useState("All");
-  const [activeLocation, setActiveLocation] = useState("All");
-  const [activePrice, setActivePrice] = useState("Any budget");
-  const [sortBy, setSortBy] = useState("recommended");
-
-  const categories = useMemo(
-    () => ["All", ...new Set(VENDORS.map((vendor) => vendor.category))],
-    []
+  const [searchQuery, setSearchQuery] = useState(
+    searchParams.get("q") || ""
   );
-
-  const locations = useMemo(
-    () => ["All", ...new Set(VENDORS.map((vendor) => vendor.location))],
-    []
+  const [activeCategory, setActiveCategory] = useState(
+    searchParams.get("category") || "All"
   );
+  const [activeLocation, setActiveLocation] = useState(
+    searchParams.get("location") || "All"
+  );
+  const [activePrice, setActivePrice] = useState(
+    searchParams.get("priceRange") || "Any budget"
+  );
+  const [sortBy, setSortBy] = useState(
+    searchParams.get("sort") || "recommended"
+  );
+  const [page, setPage] = useState(
+    parseInt(searchParams.get("page") || "1", 10)
+  );
+  const [vendors, setVendors] = useState<VendorFromAPI[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [total, setTotal] = useState(0);
+  const [categories, setCategories] = useState<string[]>(["All"]);
+  const [locations, setLocations] = useState<string[]>(["All"]);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
 
-  const filteredVendors = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    return VENDORS.filter((vendor) => {
-      const matchesQuery =
-        query.length === 0 ||
-        vendor.name.toLowerCase().includes(query) ||
-        vendor.category.toLowerCase().includes(query) ||
-        vendor.location.toLowerCase().includes(query) ||
-        vendor.tags.some((tag) => tag.toLowerCase().includes(query));
-      const matchesCategory =
-        activeCategory === "All" || vendor.category === activeCategory;
-      const matchesLocation =
-        activeLocation === "All" || vendor.location === activeLocation;
-      const matchesPrice =
-        activePrice === "Any budget" || vendor.price === activePrice;
-      return matchesQuery && matchesCategory && matchesLocation && matchesPrice;
-    });
-  }, [searchQuery, activeCategory, activeLocation, activePrice]);
+  // Fetch initial vendors when filters change
+  useEffect(() => {
+    const fetchVendors = async () => {
+      setLoading(true);
+      setVendors([]);
+      setPage(1);
+      setHasMore(true);
 
-  const sortedVendors = useMemo(() => {
-    const list = [...filteredVendors];
-    switch (sortBy) {
-      case "rating":
-        return list.sort(
-          (a, b) => b.rating - a.rating || b.reviews - a.reviews
-        );
-      case "reviews":
-        return list.sort((a, b) => b.reviews - a.reviews);
-      case "priceAsc":
-        return list.sort(
-          (a, b) => PRICE_ORDER[a.price] - PRICE_ORDER[b.price]
-        );
-      case "priceDesc":
-        return list.sort(
-          (a, b) => PRICE_ORDER[b.price] - PRICE_ORDER[a.price]
-        );
-      default:
-        return list.sort(
-          (a, b) =>
-            Number(b.featured) - Number(a.featured) ||
-            b.rating - a.rating ||
-            b.reviews - a.reviews
-        );
+      try {
+        // Build API params (always include all params for API call)
+        const apiParams = new URLSearchParams();
+        if (searchQuery) apiParams.set("q", searchQuery);
+        if (activeCategory !== "All") apiParams.set("category", activeCategory);
+        if (activeLocation !== "All") apiParams.set("location", activeLocation);
+        if (activePrice !== "Any budget") apiParams.set("priceRange", activePrice);
+        apiParams.set("sort", sortBy);
+        apiParams.set("page", "1");
+        apiParams.set("limit", "24");
+
+        const response = await fetch(`/api/vendors/search?${apiParams.toString()}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch vendors");
+        }
+
+        const data = await response.json();
+        setVendors(data.vendors || []);
+        setTotal(data.total || 0);
+        setHasMore((data.vendors?.length || 0) === 24 && (data.vendors?.length || 0) < (data.total || 0));
+
+        // Build clean URL params (only include non-default values)
+        const urlParams = new URLSearchParams();
+        if (searchQuery) urlParams.set("q", searchQuery);
+        if (activeCategory !== "All") urlParams.set("category", activeCategory);
+        if (activeLocation !== "All") urlParams.set("location", activeLocation);
+        if (activePrice !== "Any budget") urlParams.set("priceRange", activePrice);
+        if (sortBy !== "recommended") urlParams.set("sort", sortBy);
+        // Don't include page=1 or limit=24 in URL (they're defaults)
+
+        // Update URL without navigation (only if there are params, otherwise use clean URL)
+        const newUrl = urlParams.toString() 
+          ? `/vendors/all?${urlParams.toString()}`
+          : `/vendors/all`;
+        window.history.replaceState({}, "", newUrl);
+      } catch (error) {
+        console.error("Error fetching vendors:", error);
+        setVendors([]);
+        setTotal(0);
+        setHasMore(false);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVendors();
+  }, [searchQuery, activeCategory, activeLocation, activePrice, sortBy]);
+
+  // Load more vendors when scrolling
+  useEffect(() => {
+    const loadMore = async () => {
+      if (loading || loadingMore || !hasMore) return;
+
+      setLoadingMore(true);
+      const nextPage = page + 1;
+
+      try {
+        const params = new URLSearchParams();
+        if (searchQuery) params.set("q", searchQuery);
+        if (activeCategory !== "All") params.set("category", activeCategory);
+        if (activeLocation !== "All") params.set("location", activeLocation);
+        if (activePrice !== "Any budget") params.set("priceRange", activePrice);
+        params.set("sort", sortBy);
+        params.set("page", nextPage.toString());
+        params.set("limit", "24");
+
+        const response = await fetch(`/api/vendors/search?${params.toString()}`);
+        if (!response.ok) {
+          throw new Error("Failed to fetch vendors");
+        }
+
+        const data = await response.json();
+        const newVendors = data.vendors || [];
+        setVendors((prev) => {
+          const updated = [...prev, ...newVendors];
+          setHasMore(newVendors.length === 24 && updated.length < (data.total || 0));
+          return updated;
+        });
+        setPage(nextPage);
+      } catch (error) {
+        console.error("Error loading more vendors:", error);
+        setHasMore(false);
+      } finally {
+        setLoadingMore(false);
+      }
+    };
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          loadMore();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const currentRef = loadMoreRef.current;
+    if (currentRef) {
+      observer.observe(currentRef);
     }
-  }, [filteredVendors, sortBy]);
+
+    return () => {
+      if (currentRef) {
+        observer.unobserve(currentRef);
+      }
+    };
+  }, [hasMore, loading, loadingMore, page, searchQuery, activeCategory, activeLocation, activePrice, sortBy, vendors.length, total]);
+
+  // Fetch available locations
+  useEffect(() => {
+    const fetchLocations = async () => {
+      try {
+        // Fetch all vendors to extract unique locations
+        const response = await fetch("/api/vendors/search?limit=1000");
+        if (response.ok) {
+          const data = await response.json();
+          const uniqueLocations = new Set<string>(["All"]);
+
+          data.vendors?.forEach((vendor: VendorFromAPI) => {
+            if (vendor.location?.city) uniqueLocations.add(vendor.location.city);
+          });
+
+          setLocations(Array.from(uniqueLocations).sort());
+        }
+      } catch (error) {
+        console.error("Error fetching locations:", error);
+      }
+    };
+
+    fetchLocations();
+    // Set categories to all available categories
+    setCategories(ALL_CATEGORIES);
+  }, []);
+
+  const handleFilterChange = (
+    filterType: "category" | "location" | "price" | "sort",
+    value: string
+  ) => {
+    if (filterType === "category") setActiveCategory(value);
+    else if (filterType === "location") setActiveLocation(value);
+    else if (filterType === "price") setActivePrice(value);
+    else if (filterType === "sort") setSortBy(value);
+  };
 
   return (
     <div className="bg-background text-primary min-h-screen">
@@ -303,7 +501,9 @@ export default function AllVendorsPage() {
                   <input
                     type="search"
                     value={searchQuery}
-                    onChange={(event) => setSearchQuery(event.target.value)}
+                    onChange={(event) => {
+                      setSearchQuery(event.target.value);
+                    }}
                     placeholder="Search vendors, categories, locations..."
                     className="w-full bg-transparent text-sm text-primary placeholder:text-secondary focus:outline-none"
                   />
@@ -314,7 +514,9 @@ export default function AllVendorsPage() {
                     <ArrowUpDown className="h-3.5 w-3.5 text-secondary" />
                     <select
                       value={sortBy}
-                      onChange={(event) => setSortBy(event.target.value)}
+                      onChange={(event) =>
+                        handleFilterChange("sort", event.target.value)
+                      }
                       className="appearance-none bg-transparent pr-6 text-xs font-semibold text-primary focus:outline-none"
                     >
                       {SORT_OPTIONS.map((option) => (
@@ -330,7 +532,9 @@ export default function AllVendorsPage() {
                     <MapPin className="h-3.5 w-3.5 text-secondary" />
                     <select
                       value={activeLocation}
-                      onChange={(event) => setActiveLocation(event.target.value)}
+                      onChange={(event) =>
+                        handleFilterChange("location", event.target.value)
+                      }
                       className="appearance-none bg-transparent pr-6 text-xs font-semibold text-primary focus:outline-none"
                     >
                       {locations.map((location) => (
@@ -348,7 +552,9 @@ export default function AllVendorsPage() {
                     </span>
                     <select
                       value={activePrice}
-                      onChange={(event) => setActivePrice(event.target.value)}
+                      onChange={(event) =>
+                        handleFilterChange("price", event.target.value)
+                      }
                       className="appearance-none bg-transparent pr-6 text-xs font-semibold text-primary focus:outline-none"
                     >
                       <option value="Any budget">Any budget</option>
@@ -369,7 +575,7 @@ export default function AllVendorsPage() {
                       <button
                         key={category}
                         type="button"
-                        onClick={() => setActiveCategory(category)}
+                        onClick={() => handleFilterChange("category", category)}
                         className={`whitespace-nowrap rounded-full border px-3.5 py-1.5 text-xs font-semibold transition-colors ${
                           activeCategory === category
                             ? "border-primary/40 bg-primary/10 text-primary"
@@ -382,7 +588,11 @@ export default function AllVendorsPage() {
                   </div>
                 </div>
                 <span className="inline-flex items-center rounded-full border border-border bg-background px-3 py-1 text-xs font-semibold text-secondary">
-                  {sortedVendors.length} vendors available
+                  {loading ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    `${total} vendors available`
+                  )}
                 </span>
               </div>
             </div>
@@ -391,30 +601,50 @@ export default function AllVendorsPage() {
 
         <section className="px-6 lg:px-12 xl:px-12 2xl:px-16 pt-10 pb-20">
           <div className="max-w-[1700px] mx-auto">
-            {sortedVendors.length === 0 ? (
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              </div>
+            ) : vendors.length === 0 ? (
               <div className="rounded-3xl border border-dashed border-border bg-surface/70 p-12 text-center text-secondary">
                 No vendors match your filters yet. Try a different city or category.
               </div>
             ) : (
+              <>
               <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
-                {sortedVendors.map((vendor, index) => {
-                  const isRightEdge = index === sortedVendors.length - 1;
+                  {vendors.map((vendor, index) => {
+                    const isRightEdge = index === vendors.length - 1;
+                    const vendorImage = vendor.cover_image
+                      ? vendor.cover_image
+                      : "/placeholder-vendor.jpg";
+                    const vendorName = vendor.business_name;
+                    const vendorCity = vendor.location?.city || "Unknown";
+                    const vendorRating = vendor.stats?.averageRating || 0;
+                    const vendorReviews = vendor.stats?.reviewCount || 0;
+                    const vendorPrice = vendor.price_range || "$$";
+                    const badge = getVendorBadge(vendor);
+                    const BadgeIcon = badge?.icon || Sparkles;
+
                   return (
                     <div key={vendor.id}>
                       <Link
-                        href={`/vendors/${generateSlug(vendor.name)}`}
+                          href={`/vendors/${vendor.slug}`}
                         className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
                       >
                         <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
                           <img
-                            src={resolveAssetSrc(vendor.image)}
-                            alt={vendor.name}
+                              src={vendorImage}
+                              alt={vendorName}
                             className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src =
+                                  "/placeholder-vendor.jpg";
+                              }}
                           />
-                          {vendor.featured && (
-                            <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-indigo-500 text-background text-[0.6rem] font-semibold">
-                              <Sparkles className="w-2.5 h-2.5" />
-                              Featured
+                            {badge && (
+                            <div className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${badge.className} text-background text-[0.6rem] font-semibold`}>
+                              <BadgeIcon className="w-2.5 h-2.5" />
+                              {badge.label}
                             </div>
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
@@ -425,20 +655,7 @@ export default function AllVendorsPage() {
                                 </h4>
                               </div>
                               <div className="flex items-center gap-2 shrink-0">
-                                <button
-                                  type="button"
-                                  className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors"
-                                  onClick={(event) => event.preventDefault()}
-                                >
-                                  <Heart className="w-4 h-4 text-primary" />
-                                </button>
-                                <button
-                                  type="button"
-                                  className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors"
-                                  onClick={(event) => event.preventDefault()}
-                                >
-                                  <Bookmark className="w-4 h-4 text-primary" />
-                                </button>
+                                <VendorSaveButton vendorId={vendor.id} />
                               </div>
                             </div>
                           </div>
@@ -449,7 +666,7 @@ export default function AllVendorsPage() {
                           <div className="flex items-center gap-2">
                             <div className="group/avatar">
                               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs cursor-pointer transition-all hover:scale-110 hover:bg-primary/20">
-                                {vendor.name.charAt(0)}
+                                  {vendorName.charAt(0).toUpperCase()}
                               </div>
                               <div
                                 className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-[9999] ${
@@ -460,7 +677,7 @@ export default function AllVendorsPage() {
                                   <div className="flex items-center gap-4 mb-4">
                                     <div className="w-12 h-12 rounded-full bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
                                       <span className="text-lg font-bold text-primary">
-                                        {vendor.name.charAt(0)}
+                                          {vendorName.charAt(0).toUpperCase()}
                                       </span>
                                     </div>
                                     <div className="flex-1 min-w-0">
@@ -468,15 +685,15 @@ export default function AllVendorsPage() {
                                         {vendor.category}
                                       </h4>
                                       <p className="text-[0.65rem] text-secondary mb-1">
-                                        {vendor.location}, Tanzania
+                                          {vendorCity}, Tanzania
                                       </p>
                                       <div className="flex items-center gap-2 text-[0.65rem]">
                                         <div className="flex items-center gap-0.5 font-semibold">
                                           <Star className="w-2.5 h-2.5 text-amber-500 fill-amber-500" />
-                                          {vendor.rating}
+                                            {vendorRating.toFixed(1)}
                                         </div>
                                         <span className="text-secondary">
-                                          ({vendor.reviews})
+                                            ({vendorReviews})
                                         </span>
                                       </div>
                                     </div>
@@ -504,23 +721,38 @@ export default function AllVendorsPage() {
                                   <div className="grid grid-cols-3 gap-2">
                                     <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                       <img
-                                        src={resolveAssetSrc(vendor.image)}
+                                          src={vendorImage}
                                         alt=""
                                         className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            (
+                                              e.target as HTMLImageElement
+                                            ).src = "/placeholder-vendor.jpg";
+                                          }}
                                       />
                                     </div>
                                     <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                       <img
-                                        src={resolveAssetSrc(vendor.image)}
+                                          src={vendorImage}
                                         alt=""
                                         className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            (
+                                              e.target as HTMLImageElement
+                                            ).src = "/placeholder-vendor.jpg";
+                                          }}
                                       />
                                     </div>
                                     <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                       <img
-                                        src={resolveAssetSrc(vendor.image)}
+                                          src={vendorImage}
                                         alt=""
                                         className="w-full h-full object-cover"
+                                          onError={(e) => {
+                                            (
+                                              e.target as HTMLImageElement
+                                            ).src = "/placeholder-vendor.jpg";
+                                          }}
                                       />
                                     </div>
                                   </div>
@@ -533,17 +765,17 @@ export default function AllVendorsPage() {
                               </div>
                             </div>
                             <span className="text-xs font-medium text-secondary">
-                              {vendor.name}
+                                {vendorName}
                             </span>
                           </div>
                           <div className="flex items-center gap-1.5 text-[0.65rem] font-semibold shrink-0">
                             <div className="flex items-center gap-0.5">
                               <Star className="w-3 h-3 text-amber-500 fill-amber-500" />
-                              {vendor.rating}
+                                {vendorRating.toFixed(1)}
                             </div>
                             <div className="flex items-center gap-0.5">
                               <Eye className="w-3 h-3 text-secondary" />
-                              {vendor.reviews}
+                                {vendorReviews}
                             </div>
                           </div>
                         </div>
@@ -552,6 +784,17 @@ export default function AllVendorsPage() {
                   );
                 })}
               </div>
+
+                {/* Infinite scroll trigger */}
+                <div ref={loadMoreRef} className="mt-10 flex items-center justify-center py-8">
+                  {loadingMore && (
+                    <div className="flex items-center gap-2 text-secondary">
+                      <Loader2 className="w-5 h-5 animate-spin" />
+                      <span className="text-sm">Loading more vendors...</span>
+                    </div>
+                  )}
+                </div>
+              </>
             )}
           </div>
         </section>

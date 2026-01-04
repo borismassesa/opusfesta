@@ -21,6 +21,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
+      "@assets/*": ["../website/attached_assets/*"],
       "@thefesta/lib": ["../../packages/lib"],
       "@thefesta/ui": ["../../packages/ui"]
     }

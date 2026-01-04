@@ -136,6 +136,7 @@ CREATE POLICY "owner/admin update cms pages" ON cms_pages
   USING (cms_role() IN ('owner', 'admin'))
   WITH CHECK (cms_role() IN ('owner', 'admin'));
 
+DROP POLICY IF EXISTS "editor update draft cms pages" ON cms_pages;
 CREATE POLICY "editor update draft cms pages" ON cms_pages
   FOR UPDATE TO authenticated
   USING (cms_role() = 'editor')

@@ -6,10 +6,6 @@ import {
   getVendorReviews,
 } from "@/lib/supabase/vendors";
 import type { Review } from "@/lib/supabase/vendors";
-import {
-  getMockVendorBySlug,
-  getMockVendorReviews,
-} from "@/lib/vendors/mockVendors";
 
 const isVideoUrl = (url: string): boolean => {
   const videoExtensions = [".mp4", ".webm", ".mov", ".avi", ".mkv", ".m4v"];
@@ -37,18 +33,14 @@ export default async function VendorReviewPhotosRoute({
     notFound();
   }
 
-  let vendor = await getVendorBySlug(slug);
-  let reviews: Review[] = [];
+  // Get vendor from database - no mock fallback in production
+  const vendor = await getVendorBySlug(slug);
 
   if (!vendor) {
-    vendor = getMockVendorBySlug(slug);
-    if (!vendor) {
-      notFound();
-    }
-    reviews = getMockVendorReviews(vendor.id);
-  } else {
-    reviews = await getVendorReviews(vendor.id);
+    notFound();
   }
+
+  const reviews = await getVendorReviews(vendor.id);
 
   const sortedReviews = [...reviews].sort(
     (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()

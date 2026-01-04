@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Menu, Bell, Search, User } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ThemeSwitcher } from './theme-switcher';
 
 interface HeaderProps {
   onMenuClick?: () => void;
@@ -16,58 +17,93 @@ export function Header({ onMenuClick }: HeaderProps) {
   ]);
 
   return (
-    <header className="bg-card border-b border-border">
-      <div className="flex h-16 items-center justify-between px-6">
-        {/* Left side */}
-        <div className="flex items-center">
+    <header className="header">
+      {/* Left side */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+        <button
+          onClick={onMenuClick}
+          className="sidebar__toggle"
+          style={{ display: 'flex', alignItems: 'center', padding: '8px' }}
+        >
+          <Menu size={20} />
+        </button>
+        <Link
+          href="/"
+          className="font-serif text-2xl md:text-3xl text-primary hover:text-primary/80 transition-colors select-none"
+        >
+          TheFesta
+        </Link>
+      </div>
+
+      {/* Center - Search */}
+      <div style={{ flex: 1, maxWidth: '400px', margin: '0 24px', position: 'relative', display: 'none' }}>
+        <Search
+          style={{
+            position: 'absolute',
+            left: '12px',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: '18px',
+            height: '18px',
+            color: 'var(--muted)',
+          }}
+        />
+        <input
+          type="text"
+          placeholder="Search bookings, clients..."
+          className="input"
+          style={{ paddingLeft: '40px' }}
+        />
+      </div>
+
+      {/* Right side */}
+      <div className="header__actions">
+        {/* Theme Switcher */}
+        <ThemeSwitcher />
+
+        {/* Notifications */}
+        <div style={{ position: 'relative' }}>
           <button
-            onClick={onMenuClick}
-            className="lg:hidden text-foreground hover:text-primary"
+            className="sidebar__toggle"
+            style={{ position: 'relative', padding: '8px' }}
           >
-            <Menu className="h-6 w-6" />
+            <Bell size={20} />
+            {notifications.length > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: '4px',
+                  right: '4px',
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: 'var(--accent)',
+                  border: '2px solid var(--surface)',
+                }}
+              />
+            )}
           </button>
-          <div className="ml-4 lg:ml-0">
-            <h1 className="text-xl font-semibold text-foreground">
-              Vendor Dashboard
-            </h1>
-          </div>
         </div>
 
-        {/* Center - Search */}
-        <div className="hidden md:flex flex-1 max-w-md mx-8">
-          <div className="relative w-full">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Search bookings, clients..."
-              className="w-full pl-10 pr-4 py-2 border border-border rounded-lg bg-input text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-            />
+        {/* Profile */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ textAlign: 'right', display: 'none' }}>
+            <p style={{ fontSize: '14px', fontWeight: 600, margin: 0, color: 'var(--text)' }}>John Doe</p>
+            <p style={{ fontSize: '12px', margin: 0, color: 'var(--muted)' }}>Photographer</p>
           </div>
-        </div>
-
-        {/* Right side */}
-        <div className="flex items-center space-x-4">
-          {/* Notifications */}
-          <div className="relative">
-            <button className="relative p-2 text-foreground hover:text-primary">
-              <Bell className="h-5 w-5" />
-              {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 h-4 w-4 bg-destructive text-destructive-foreground text-xs rounded-full flex items-center justify-center">
-                  {notifications.length}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Profile */}
-          <div className="flex items-center space-x-3">
-            <div className="hidden md:block text-right">
-              <p className="text-sm font-medium text-foreground">John Doe</p>
-              <p className="text-xs text-muted-foreground">Photographer</p>
-            </div>
-            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-              <User className="h-4 w-4 text-primary-foreground" />
-            </div>
+          <div
+            style={{
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: 'linear-gradient(135deg, var(--primary), var(--primary-strong))',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              color: '#04120c',
+            }}
+          >
+            <User size={18} />
           </div>
         </div>
       </div>

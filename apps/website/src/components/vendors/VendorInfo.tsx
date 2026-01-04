@@ -21,18 +21,27 @@ export const VendorInfo = forwardRef<HTMLDivElement, VendorInfoProps>(({ vendor 
     ? new Date(vendor.created_at).getFullYear()
     : new Date().getFullYear();
 
+  // Handle both old string array format and new object format for backward compatibility
+  const getServiceTitle = (service: string | { title: string; description: string }): string => {
+    return typeof service === 'string' ? service : service.title;
+  };
+
+  const getServiceDescription = (service: string | { title: string; description: string }): string | undefined => {
+    return typeof service === 'object' ? service.description : undefined;
+  };
+
   const serviceHighlights =
     vendor.services_offered?.length > 0
       ? vendor.services_offered
       : vendor.subcategories?.length > 0
-        ? vendor.subcategories
+        ? vendor.subcategories.map((sub) => ({ title: sub, description: '' }))
         : [
-            `${vendor.category} consultations`,
-            "Custom proposals and packages",
-            "On-site coordination",
-            "Flexible scheduling",
-            "Trusted local partners",
-            "Event-day support",
+            { title: `${vendor.category} consultations`, description: '' },
+            { title: "Custom proposals and packages", description: '' },
+            { title: "On-site coordination", description: '' },
+            { title: "Flexible scheduling", description: '' },
+            { title: "Trusted local partners", description: '' },
+            { title: "Event-day support", description: '' },
           ];
 
   return (
@@ -135,12 +144,23 @@ export const VendorInfo = forwardRef<HTMLDivElement, VendorInfoProps>(({ vendor 
         <div className="border border-border rounded-2xl bg-background p-6">
           <h3 className="text-2xl font-semibold mb-6">What this vendor offers</h3>
           <div className="grid md:grid-cols-2 gap-4">
-            {serviceHighlights.map((service, index) => (
-              <div key={index} className="flex items-center gap-3">
-                <Check className="w-5 h-5 text-primary shrink-0" />
-                <span>{service}</span>
-              </div>
-            ))}
+            {serviceHighlights.map((service, index) => {
+              const title = getServiceTitle(service);
+              const description = getServiceDescription(service);
+              return (
+                <div key={index} className="space-y-1">
+                  <div className="flex items-start gap-3">
+                    <Check className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+                    <div className="flex-1">
+                      <span className="font-medium">{title}</span>
+                      {description && (
+                        <p className="text-sm text-secondary mt-1">{description}</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       )}

@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Review Submission</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        button {
+            background: #3ad1a9;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background: #0fb68b;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .result.success {
+            background: #d4edda;
+            border: 1px solid #c3e6cb;
+            color: #155724;
+        }
+        .result.error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+        }
+        .result pre {
+            margin: 10px 0 0 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .info {
+            background: #e7f3ff;
+            border: 1px solid #b3d9ff;
+            color: #004085;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+        }
+        .info code {
+            background: rgba(0,0,0,0.05);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Test Review Submission</h1>
+        <p class="subtitle">Submit a test review for Bella Photography Studio</p>
+
+        <div class="info">
+            <strong>ℹ️ Instructions:</strong><br>
+            1. Make sure your website app is running (<code>cd apps/website && npm run dev</code>)<br>
+            2. Log in to your app first (so you have a session)<br>
+            3. Fill in the form below and click "Submit Review"
+        </div>
+
+        <form id="reviewForm">
+            <div class="form-group">
+                <label for="token">Auth Token (optional - will try to get from localStorage)</label>
+                <input type="text" id="token" placeholder="Leave empty to auto-detect from browser session">
+            </div>
+
+            <div class="form-group">
+                <label for="vendorId">Vendor ID</label>
+                <input type="text" id="vendorId" value="b0000002-0002-4002-8002-000000000002" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="inquiryId">Inquiry ID</label>
+                <input type="text" id="inquiryId" value="ba0f7d62-5cdf-4018-ae62-81bf935a2156" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="rating">Rating *</label>
+                <input type="number" id="rating" min="1" max="5" value="5" required>
+            </div>
+
+            <div class="form-group">
+                <label for="title">Title</label>
+                <input type="text" id="title" value="Amazing Photography Service!">
+            </div>
+
+            <div class="form-group">
+                <label for="content">Review Content *</label>
+                <textarea id="content" required>Bella Photography Studio provided exceptional service for our wedding. The photos turned out beautifully and the team was professional throughout the entire event.</textarea>
+            </div>
+
+            <div class="form-group">
+                <label for="eventType">Event Type</label>
+                <input type="text" id="eventType" value="wedding">
+            </div>
+
+            <div class="form-group">
+                <label for="eventDate">Event Date</label>
+                <input type="date" id="eventDate" value="2025-12-24">
+            </div>
+
+            <button type="submit" id="submitBtn">Submit Review</button>
+        </form>
+
+        <div id="result" class="result"></div>
+    </div>
+
+    <script>
+        const form = document.getElementById('reviewForm');
+        const result = document.getElementById('result');
+        const submitBtn = document.getElementById('submitBtn');
+
+        // Try to get token from localStorage
+        function getTokenFromStorage() {
+            // Try different possible keys
+            const keys = Object.keys(localStorage);
+            for (const key of keys) {
+                if (key.includes('supabase') && key.includes('auth')) {
+                    try {
+                        const data = JSON.parse(localStorage.getItem(key));
+                        if (data?.access_token) {
+                            return data.access_token;
+                        }
+                    } catch (e) {
+                        // Not JSON, might be a token directly
+                        const value = localStorage.getItem(key);
+                        if (value && value.startsWith('eyJ')) {
+                            return value;
+                        }
+                    }
+                }
+            }
+            return null;
+        }
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            submitBtn.disabled = true;
+            result.style.display = 'none';
+
+            // Get token
+            let token = document.getElementById('token').value.trim();
+            if (!token) {
+                token = getTokenFromStorage();
+                if (token) {
+                    console.log('✅ Found token in localStorage');
+                } else {
+                    showResult('error', '❌ No token found. Please:\n1. Log in to your app first\n2. Or paste your token in the token field');
+                    submitBtn.disabled = false;
+                    return;
+                }
+            }
+
+            // Prepare data
+            const data = {
+                vendorId: document.getElementById('vendorId').value,
+                inquiryId: document.getElementById('inquiryId').value,
+                rating: parseInt(document.getElementById('rating').value),
+                title: document.getElementById('title').value,
+                content: document.getElementById('content').value,
+                eventType: document.getElementById('eventType').value,
+                eventDate: document.getElementById('eventDate').value,
+            };
+
+            try {
+                const response = await fetch('http://localhost:3000/api/reviews', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                const responseData = await response.json();
+
+                if (response.ok) {
+                    showResult('success', `✅ Review submitted successfully!\n\n${JSON.stringify(responseData, null, 2)}`);
+                } else {
+                    showResult('error', `❌ Failed to submit review (${response.status})\n\n${JSON.stringify(responseData, null, 2)}`);
+                }
+            } catch (error) {
+                showResult('error', `❌ Request failed: ${error.message}\n\nMake sure your website app is running on http://localhost:3000`);
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+
+        function showResult(type, message) {
+            result.className = `result ${type}`;
+            result.innerHTML = `<pre>${message}</pre>`;
+            result.style.display = 'block';
+        }
+
+        // Auto-detect token on load
+        window.addEventListener('load', () => {
+            const token = getTokenFromStorage();
+            if (token) {
+                document.getElementById('token').value = token.substring(0, 50) + '...';
+                console.log('✅ Auto-detected token from localStorage');
+            }
+        });
+    </script>
+</body>
+</html>

@@ -7,14 +7,12 @@ interface VendorNavigationTabsProps {
 
 export const vendorNavigationTabs = [
   { id: "about", label: "About" },
+  { id: "profile", label: "Vendor Profile" },
   { id: "services", label: "Services" },
   { id: "pricing", label: "Pricing" },
   { id: "availability", label: "Availability" },
   { id: "awards", label: "Awards" },
   { id: "reviews", label: "Reviews" },
-  { id: "location", label: "Location" },
-  { id: "profile", label: "Vendor Profile" },
-  { id: "things-to-know", label: "Things to know" },
 ];
 
 export function VendorNavigationTabs({

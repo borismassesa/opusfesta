@@ -14,28 +14,30 @@ import {
   Eye,
   Filter,
   Flower2,
+  Gift,
   Heart,
+  Leaf,
   MapPin,
   Music,
   Palette,
+  Percent,
   Search,
   ShieldCheck,
   Sparkles,
   Star,
+  Tag,
+  TrendingUp,
   Users,
   Video,
+  Wallet,
+  Zap,
+  type LucideIcon,
 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
 import { resolveAssetSrc } from "@/lib/assets";
-import {
-  BUDGET_FRIENDLY,
-  MOST_BOOKED,
-  NEW_VENDORS,
-  PROMOTIONS,
-  QUICK_RESPONDERS,
-} from "@/lib/vendors/collections";
+import { useSaveVendor } from "@/hooks/useSaveVendor";
 
 import heroMain from "@assets/stock_images/elegant_wedding_venu_86ae752a.jpg";
 import vendorPlanning from "@assets/stock_images/wedding_planning_che_871a1473.jpg";
@@ -49,11 +51,13 @@ import vendorDecor from "@assets/stock_images/wedding_table_settin_c7e6dce8.jpg"
 import vendorVenueTwo from "@assets/stock_images/elegant_wedding_venu_86ae752a.jpg";
 import vendorVideo from "@assets/stock_images/happy_bride_and_groo_e2e2dc27.jpg";
 
-const STATS = [
-  { label: "Vetted vendors", value: "15k+" },
-  { label: "Cities covered", value: "120+" },
-  { label: "Average rating", value: "4.9/5" },
-];
+// Stats will be fetched dynamically from the API
+interface VendorStats {
+  vendorCount: string;
+  cityCount: string;
+  rating: string;
+  categoryCounts?: Record<string, string>;
+}
 
 const DEFAULT_SPOTLIGHT_LOCATION = "Zanzibar";
 
@@ -440,6 +444,60 @@ const generateSlug = (name: string): string => {
     .replace(/(^-|-$)/g, "");
 };
 
+// Helper function to resolve image source (handles both string URLs and imported images)
+const getImageSrc = (image: string | typeof vendorPhoto): string => {
+  if (typeof image === 'string') {
+    return image;
+  }
+  return resolveAssetSrc(image);
+};
+
+const BADGE_ICON_MAP: Record<string, LucideIcon> = {
+  "exclusive discount": Percent,
+  "limited offer": Clock,
+  "seasonal deal": Leaf,
+  offer: Tag,
+  "special package": Gift,
+  "new vendor": Sparkles,
+  new: Sparkles,
+  trending: TrendingUp,
+  "great value": Wallet,
+  "fast reply": Zap,
+  featured: Star,
+};
+
+const getBadgeIcon = (label: string | undefined | null): LucideIcon => {
+  if (!label) return Sparkles;
+  const key = label.trim().toLowerCase();
+  return BADGE_ICON_MAP[key] ?? Sparkles;
+};
+
+// Vendor Save Button Component
+function VendorSaveButton({ vendorId }: { vendorId: string }) {
+  const { isSaved, isLoading, toggleSave } = useSaveVendor({
+    vendorId,
+    redirectToLogin: true,
+  });
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleSave();
+      }}
+      disabled={isLoading}
+      className={`p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors ${
+        isSaved ? "text-red-500" : "text-primary"
+      } ${isLoading ? "opacity-50 cursor-not-allowed" : ""}`}
+      aria-label={isSaved ? "Remove from saved" : "Save vendor"}
+    >
+      <Bookmark className={`w-4 h-4 ${isSaved ? "fill-current" : ""}`} />
+    </button>
+  );
+}
+
 const VENDORS = [
   {
     id: "zuri-lens",
@@ -672,10 +730,226 @@ const STEPS = [
   },
 ];
 
+// Vendor data types for the page
+interface VendorItem {
+  id: string;
+  name: string;
+  category: string;
+  location: string;
+  price: string;
+  rating: number;
+  reviews: number;
+  image: string | typeof vendorPhoto;
+  tags?: string[];
+  featured?: boolean;
+  fastResponse?: boolean;
+  recentBookings?: number;
+  deal?: string;
+  slug?: string;
+}
+
+interface VendorRowSection {
+  id: string;
+  title: string;
+  description: string;
+  items: VendorItem[];
+}
+
 export default function VendorsPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("All");
+  const [stats, setStats] = useState<VendorStats>({
+    vendorCount: "15k+",
+    cityCount: "120+",
+    rating: "4.9/5",
+  });
+  const [featuredVendors, setFeaturedVendors] = useState<VendorItem[]>([]);
+  const [vendorRowSections, setVendorRowSections] = useState<VendorRowSection[]>([]);
+  const [spotlightVendors, setSpotlightVendors] = useState<VendorItem[]>([]);
+  const [promotions, setPromotions] = useState<any[]>([]);
+  const [newVendors, setNewVendors] = useState<any[]>([]);
+  const [mostBooked, setMostBooked] = useState<any[]>([]);
+  const [budgetFriendly, setBudgetFriendly] = useState<any[]>([]);
+  const [quickResponders, setQuickResponders] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch vendor statistics on mount
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("/api/vendors/statistics");
+        if (response.ok) {
+          const data = await response.json();
+          if (data.formatted) {
+            setStats({
+              vendorCount: data.formatted.vendorCount,
+              cityCount: data.formatted.cityCount,
+              rating: data.formatted.rating,
+              categoryCounts: data.formatted.categoryCounts || {},
+            });
+          }
+        }
+      } catch (error) {
+        console.error("Failed to fetch vendor statistics:", error);
+        // Keep default values on error
+      }
+    };
+
+    fetchStats();
+  }, []);
+
+  // Fetch all vendor data from Supabase
+  useEffect(() => {
+    const fetchVendorData = async () => {
+      setLoading(true);
+      try {
+        // Fetch featured vendors (high-rated, verified vendors)
+        const featuredResponse = await fetch("/api/vendors/search?verified=true&sort=rating&limit=12");
+        const featuredData = featuredResponse.ok ? await featuredResponse.json() : { vendors: [] };
+        
+        // Fetch vendors by category for category rows
+        // Map frontend category IDs to database category values
+        const categoryMap: Record<string, string> = {
+          "planners": "Wedding Planners",
+          "venues": "Venues",
+          "photographers": "Photographers",
+          "beauty": "Beauty & Makeup",
+          "bridal-shops": "Bridal Salons",
+          "officiants": "Officiants",
+        };
+        
+        // Map database categories to frontend category IDs for display
+        const categoryDisplayMap: Record<string, string> = {
+          "Wedding Planners": "Planning",
+          "Venues": "Venues",
+          "Photographers": "Photography",
+          "Videographers": "Videography",
+          "Caterers": "Catering",
+          "Florists": "Florals",
+          "DJs & Music": "Music",
+          "Beauty & Makeup": "Beauty",
+          "Bridal Salons": "Bridal shops",
+          "Officiants": "Officiants",
+          "Decorators": "Decor",
+        };
+        
+        const categoryPromises = Object.entries(categoryMap).map(async ([id, category]) => {
+          const response = await fetch(`/api/vendors/search?category=${encodeURIComponent(category)}&limit=4`);
+          const data = response.ok ? await response.json() : { vendors: [] };
+          const sectionConfig = VENDOR_ROW_SECTIONS.find(s => s.id === id);
+          const transformedVendors = transformVendors(data.vendors || []).map(v => ({
+            ...v,
+            category: categoryDisplayMap[v.category] || v.category,
+          }));
+          return {
+            id,
+            title: sectionConfig?.title || category,
+            description: sectionConfig?.description || "",
+            items: transformedVendors,
+          };
+        });
+        
+        const categoryRows = await Promise.all(categoryPromises);
+        
+        // Fetch collections
+        const [promosRes, newRes, trendingRes, budgetRes, fastRes] = await Promise.all([
+          fetch("/api/vendors/collections/deals?limit=6"),
+          fetch("/api/vendors/collections/new?limit=6"),
+          fetch("/api/vendors/collections/trending?limit=6"),
+          fetch("/api/vendors/collections/budget?limit=6"),
+          fetch("/api/vendors/collections/fast-responders?limit=6"),
+        ]);
+        
+        const [promosData, newData, trendingData, budgetData, fastData] = await Promise.all([
+          promosRes.ok ? promosRes.json() : { vendors: [] },
+          newRes.ok ? newRes.json() : { vendors: [] },
+          trendingRes.ok ? trendingRes.json() : { vendors: [] },
+          budgetRes.ok ? budgetRes.json() : { vendors: [] },
+          fastRes.ok ? fastRes.json() : { vendors: [] },
+        ]);
+        
+        // Transform and set data
+        setFeaturedVendors(transformVendors(featuredData.vendors || []).slice(0, 12));
+        setVendorRowSections(categoryRows);
+        setPromotions(transformCollectionVendors(promosData.vendors || []));
+        setNewVendors(transformCollectionVendors(newData.vendors || []));
+        setMostBooked(transformCollectionVendors(trendingData.vendors || []));
+        setBudgetFriendly(transformCollectionVendors(budgetData.vendors || []));
+        setQuickResponders(transformCollectionVendors(fastData.vendors || []));
+        
+        // Fetch spotlight vendors based on default location
+        const spotlightRes = await fetch(`/api/vendors/search?location=${encodeURIComponent(DEFAULT_SPOTLIGHT_LOCATION)}&limit=6`);
+        const spotlightData = spotlightRes.ok ? await spotlightRes.json() : { vendors: [] };
+        setSpotlightVendors(transformVendors(spotlightData.vendors || []).slice(0, 6));
+      } catch (error) {
+        console.error("Failed to fetch vendor data:", error);
+        // Fallback to empty arrays on error
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchVendorData();
+  }, []);
+
+  // Helper function to transform API vendor data to VendorItem format
+  const transformVendors = (vendors: any[]): VendorItem[] => {
+    return vendors.map((vendor) => {
+      const location = typeof vendor.location === 'string' 
+        ? JSON.parse(vendor.location) 
+        : vendor.location || {};
+      const stats = typeof vendor.stats === 'string'
+        ? JSON.parse(vendor.stats)
+        : vendor.stats || {};
+      
+      // Map database category to frontend category ID
+      const categoryDisplayMap: Record<string, string> = {
+        "Wedding Planners": "Planning",
+        "Venues": "Venues",
+        "Photographers": "Photography",
+        "Videographers": "Videography",
+        "Caterers": "Catering",
+        "Florists": "Florals",
+        "DJs & Music": "Music",
+        "Beauty & Makeup": "Beauty",
+        "Bridal Salons": "Bridal shops",
+        "Officiants": "Officiants",
+        "Decorators": "Decor",
+      };
+      
+      const displayCategory = categoryDisplayMap[vendor.category] || vendor.category;
+      
+      return {
+        id: vendor.id,
+        name: vendor.business_name || vendor.name,
+        category: displayCategory,
+        location: location?.city || "Unknown",
+        price: vendor.price_range || "$$",
+        rating: stats.averageRating || vendor.rating || 0,
+        reviews: stats.reviewCount || vendor.reviews || 0,
+        image: vendor.cover_image || vendor.logo || vendor.image || vendorPhoto,
+        slug: vendor.slug,
+        featured: vendor.tier === "premium" || vendor.tier === "pro",
+        fastResponse: (stats.inquiryCount || 0) > 10,
+      };
+    });
+  };
+
+  // Helper function to transform collection vendor data
+  const transformCollectionVendors = (vendors: any[]): any[] => {
+    return vendors.map((vendor) => ({
+      id: vendor.id,
+      name: vendor.name,
+      category: vendor.category,
+      location: vendor.location,
+      rating: vendor.rating || 0,
+      reviews: vendor.reviews || 0,
+      image: vendor.image || vendorPhoto,
+      slug: vendor.slug,
+    }));
+  };
+
   const [activeLocation, setActiveLocation] = useState("All");
   const [priceFilter, setPriceFilter] = useState("Any budget");
   const pageRef = useRef<HTMLDivElement>(null);
@@ -683,20 +957,42 @@ export default function VendorsPage() {
   const areasRowRef = useRef<HTMLDivElement>(null);
   const vendorRowRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
-  const featuredVendors = useMemo(
-    () => VENDORS.filter((vendor) => vendor.featured),
-    []
-  );
+  // Merge static categories with dynamic counts from API
+  const categoriesWithCounts = useMemo(() => {
+    return CATEGORIES.map((category) => ({
+      ...category,
+      count: stats.categoryCounts?.[category.id] || category.count,
+    }));
+  }, [stats.categoryCounts]);
+
+  // Update spotlight vendors when location changes
+  useEffect(() => {
+    const fetchSpotlightVendors = async () => {
+      const location = activeLocation === "All" ? DEFAULT_SPOTLIGHT_LOCATION : activeLocation;
+      try {
+        const response = await fetch(`/api/vendors/search?location=${encodeURIComponent(location)}&limit=6`);
+        if (response.ok) {
+          const data = await response.json();
+          setSpotlightVendors(transformVendors(data.vendors || []).slice(0, 6));
+        }
+      } catch (error) {
+        console.error("Failed to fetch spotlight vendors:", error);
+      }
+    };
+    
+    if (!loading) {
+      fetchSpotlightVendors();
+    }
+  }, [activeLocation, loading]);
 
   const filteredVendors = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
-    return VENDORS.filter((vendor) => {
+    return featuredVendors.filter((vendor) => {
       const matchesQuery =
         query.length === 0 ||
         vendor.name.toLowerCase().includes(query) ||
         vendor.category.toLowerCase().includes(query) ||
-        vendor.location.toLowerCase().includes(query) ||
-        vendor.tags.some((tag) => tag.toLowerCase().includes(query));
+        vendor.location.toLowerCase().includes(query);
       const matchesCategory =
         activeCategory === "All" || vendor.category === activeCategory;
       const matchesLocation =
@@ -705,7 +1001,7 @@ export default function VendorsPage() {
         priceFilter === "Any budget" || vendor.price === priceFilter;
       return matchesQuery && matchesCategory && matchesLocation && matchesPrice;
     });
-  }, [searchQuery, activeCategory, activeLocation, priceFilter]);
+  }, [searchQuery, activeCategory, activeLocation, priceFilter, featuredVendors]);
 
   const spotlightLocation =
     activeLocation === "All" ? DEFAULT_SPOTLIGHT_LOCATION : activeLocation;
@@ -714,30 +1010,6 @@ export default function VendorsPage() {
     `Top-rated vendors in ${spotlightLocation} for standout celebrations.`;
   const spotlightLink =
     spotlightLocation === "Zanzibar" ? "/vendors/zanzibar" : "/vendors/all";
-
-  const spotlightVendors = useMemo(() => {
-    const sortByScore = (a: (typeof VENDORS)[number], b: (typeof VENDORS)[number]) =>
-      b.rating - a.rating || b.reviews - a.reviews;
-    const primary = VENDORS.filter(
-      (vendor) => vendor.location === spotlightLocation
-    ).sort(sortByScore);
-    const fallback = VENDORS.filter(
-      (vendor) => vendor.location !== spotlightLocation
-    ).sort(sortByScore);
-    const unique: typeof VENDORS = [];
-
-    for (const vendor of [...primary, ...fallback]) {
-      if (unique.some((item) => item.id === vendor.id)) {
-        continue;
-      }
-      unique.push(vendor);
-      if (unique.length === 6) {
-        break;
-      }
-    }
-
-    return unique;
-  }, [spotlightLocation]);
 
   const scrollCategories = (direction: "left" | "right") => {
     const container = categoryRowRef.current;
@@ -872,14 +1144,24 @@ export default function VendorsPage() {
               </div>
 
               <div className="vendors-hero-stats mt-6 flex flex-wrap gap-5 text-sm text-secondary">
-                {STATS.map((stat) => (
-                  <div key={stat.label} className="flex items-baseline gap-2">
-                    <span className="text-base font-semibold text-primary">
-                      {stat.value}
-                    </span>
-                    <span className="text-xs">{stat.label}</span>
-                  </div>
-                ))}
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base font-semibold text-primary">
+                    {stats.vendorCount}
+                  </span>
+                  <span className="text-xs">Vetted vendors</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base font-semibold text-primary">
+                    {stats.cityCount}
+                  </span>
+                  <span className="text-xs">Cities covered</span>
+                </div>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-base font-semibold text-primary">
+                    {stats.rating}
+                  </span>
+                  <span className="text-xs">Average rating</span>
+                </div>
               </div>
             </div>
 
@@ -927,7 +1209,7 @@ export default function VendorsPage() {
             </div>
 
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
-                {CATEGORIES.slice(0, 10).map((category) => {
+                {categoriesWithCounts.slice(0, 10).map((category) => {
                   const isActive = activeCategory === category.id;
                   return (
                     <button
@@ -986,23 +1268,24 @@ export default function VendorsPage() {
             </div>
 
             <div className="promotions-grid grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
-                {PROMOTIONS.map((promo, index) => {
-                  const isRightEdge = index === PROMOTIONS.length - 1;
+                {promotions.map((promo, index) => {
+                  const isRightEdge = index === promotions.length - 1;
+                  const BadgeIcon = getBadgeIcon("Deal");
                   return (
                   <div key={promo.id}>
                     <Link
-                      href={`/vendors/${generateSlug(promo.vendor)}`}
+                      href={`/vendors/${promo.slug || generateSlug(promo.name)}`}
                       className="promo-card group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
                     >
                       <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
                         <img
-                          src={resolveAssetSrc(promo.image)}
-                          alt={promo.title}
+                          src={getImageSrc(promo.image)}
+                          alt={promo.name}
                           className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
                         />
                         <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-amber-500 text-background text-[0.6rem] font-semibold">
-                          <Sparkles className="w-2.5 h-2.5" />
-                          {promo.label}
+                          <BadgeIcon className="w-2.5 h-2.5" />
+                          Deal
                         </div>
 
                         {/* Hover overlay */}
@@ -1010,26 +1293,11 @@ export default function VendorsPage() {
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <div className="flex-1">
                               <h4 className="text-background font-bold text-base line-clamp-2">
-                                {promo.title}
+                                {promo.category}
                               </h4>
                             </div>
                             <div className="flex items-center gap-2 shrink-0">
-                              <button
-                                type="button"
-                                className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors"
-                                onClick={(e) => e.preventDefault()}
-                                aria-label="Like"
-                              >
-                                <Heart className="w-4 h-4 text-primary" />
-                              </button>
-                              <button
-                                type="button"
-                                className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors"
-                                onClick={(e) => e.preventDefault()}
-                                aria-label="Save"
-                              >
-                                <Bookmark className="w-4 h-4 text-primary" />
-                              </button>
+                              <VendorSaveButton vendorId={promo.id} />
                             </div>
                           </div>
                         </div>
@@ -1040,7 +1308,7 @@ export default function VendorsPage() {
                         <div className="flex items-center gap-2">
                           <div className="group/avatar">
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs cursor-pointer transition-all hover:scale-110 hover:bg-primary/20">
-                              {promo.vendor.charAt(0)}
+                              {(promo.name || "V").charAt(0).toUpperCase()}
                             </div>
                             {/* Rich hover card */}
                             <div
@@ -1052,7 +1320,7 @@ export default function VendorsPage() {
                                 <div className="flex items-center gap-4 mb-4">
                                   <div className="w-12 h-12 rounded-full bg-linear-to-br from-primary/20 to-primary/5 flex items-center justify-center border-2 border-primary/20 shrink-0">
                                     <span className="text-lg font-bold text-primary">
-                                      {promo.vendor.charAt(0)}
+                                      {(promo.name || "V").charAt(0).toUpperCase()}
                                     </span>
                                   </div>
                                   <div className="flex-1 min-w-0">
@@ -1090,21 +1358,21 @@ export default function VendorsPage() {
                                 <div className="grid grid-cols-3 gap-2">
                                   <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                     <img
-                                      src={resolveAssetSrc(promo.image)}
+                                      src={getImageSrc(promo.image)}
                                       alt=""
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
                                   <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                     <img
-                                      src={resolveAssetSrc(promo.image)}
+                                      src={getImageSrc(promo.image)}
                                       alt=""
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
                                   <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                     <img
-                                      src={resolveAssetSrc(promo.image)}
+                                      src={getImageSrc(promo.image)}
                                       alt=""
                                       className="w-full h-full object-cover"
                                     />
@@ -1119,7 +1387,7 @@ export default function VendorsPage() {
                             </div>
                           </div>
                           <span className="text-xs font-medium text-secondary">
-                            {promo.vendor}
+                            {promo.name}
                           </span>
                         </div>
                         <div className="flex items-center gap-1.5 text-[0.65rem] font-semibold shrink-0">
@@ -1164,8 +1432,9 @@ export default function VendorsPage() {
             </div>
 
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
-              {NEW_VENDORS.map((vendor, index) => {
-                const isRightEdge = index === NEW_VENDORS.length - 1;
+              {newVendors.map((vendor, index) => {
+                const isRightEdge = index === newVendors.length - 1;
+                const BadgeIcon = getBadgeIcon("New");
                 return (
                 <div key={vendor.id}>
                   <Link
@@ -1174,12 +1443,12 @@ export default function VendorsPage() {
                   >
                     <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
                       <img
-                        src={resolveAssetSrc(vendor.image)}
+                        src={getImageSrc(vendor.image)}
                         alt={vendor.name}
                         className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
                       />
                       <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-blue-500 text-background text-[0.6rem] font-semibold">
-                        <Sparkles className="w-2.5 h-2.5" />
+                        <BadgeIcon className="w-2.5 h-2.5" />
                         New
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
@@ -1190,12 +1459,7 @@ export default function VendorsPage() {
                             </h4>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <button type="button" className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors" onClick={(e) => e.preventDefault()}>
-                              <Heart className="w-4 h-4 text-primary" />
-                            </button>
-                            <button type="button" className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors" onClick={(e) => e.preventDefault()}>
-                              <Bookmark className="w-4 h-4 text-primary" />
-                            </button>
+                            <VendorSaveButton vendorId={vendor.id} />
                           </div>
                         </div>
                       </div>
@@ -1256,21 +1520,21 @@ export default function VendorsPage() {
                               <div className="grid grid-cols-3 gap-2">
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
@@ -1328,15 +1592,16 @@ export default function VendorsPage() {
             </div>
 
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
-              {MOST_BOOKED.map((vendor, index) => {
-                const isRightEdge = index === MOST_BOOKED.length - 1;
+              {mostBooked.map((vendor, index) => {
+                const isRightEdge = index === mostBooked.length - 1;
+                const BadgeIcon = getBadgeIcon("Trending");
                 return (
                 <div key={vendor.id}>
                   <Link href={`/vendors/${generateSlug(vendor.name)}`} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
                     <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
                       <img src={resolveAssetSrc(vendor.image)} alt={vendor.name} className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105" />
                       <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-purple-500 text-background text-[0.6rem] font-semibold">
-                        <Sparkles className="w-2.5 h-2.5" />
+                        <BadgeIcon className="w-2.5 h-2.5" />
                         Trending
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
@@ -1345,12 +1610,7 @@ export default function VendorsPage() {
                             <h4 className="text-background font-bold text-base line-clamp-2">{vendor.category}</h4>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <button type="button" className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors" onClick={(e) => e.preventDefault()}>
-                              <Heart className="w-4 h-4 text-primary" />
-                            </button>
-                            <button type="button" className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors" onClick={(e) => e.preventDefault()}>
-                              <Bookmark className="w-4 h-4 text-primary" />
-                            </button>
+                            <VendorSaveButton vendorId={vendor.id} />
                           </div>
                         </div>
                       </div>
@@ -1411,21 +1671,21 @@ export default function VendorsPage() {
                               <div className="grid grid-cols-3 gap-2">
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
@@ -1483,15 +1743,16 @@ export default function VendorsPage() {
             </div>
 
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
-              {BUDGET_FRIENDLY.map((vendor, index) => {
-                const isRightEdge = index === BUDGET_FRIENDLY.length - 1;
+              {budgetFriendly.map((vendor, index) => {
+                const isRightEdge = index === budgetFriendly.length - 1;
+                const BadgeIcon = getBadgeIcon("Great value");
                 return (
                 <div key={vendor.id}>
                   <Link href={`/vendors/${generateSlug(vendor.name)}`} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
                     <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
                       <img src={resolveAssetSrc(vendor.image)} alt={vendor.name} className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105" />
                       <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-emerald-500 text-background text-[0.6rem] font-semibold">
-                        <Sparkles className="w-2.5 h-2.5" />
+                        <BadgeIcon className="w-2.5 h-2.5" />
                         Great value
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
@@ -1500,12 +1761,7 @@ export default function VendorsPage() {
                             <h4 className="text-background font-bold text-base line-clamp-2">{vendor.category}</h4>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <button type="button" className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors" onClick={(e) => e.preventDefault()}>
-                              <Heart className="w-4 h-4 text-primary" />
-                            </button>
-                            <button type="button" className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors" onClick={(e) => e.preventDefault()}>
-                              <Bookmark className="w-4 h-4 text-primary" />
-                            </button>
+                            <VendorSaveButton vendorId={vendor.id} />
                           </div>
                         </div>
                       </div>
@@ -1566,21 +1822,21 @@ export default function VendorsPage() {
                               <div className="grid grid-cols-3 gap-2">
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
@@ -1638,15 +1894,16 @@ export default function VendorsPage() {
             </div>
 
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
-              {QUICK_RESPONDERS.map((vendor, index) => {
-                const isRightEdge = index === QUICK_RESPONDERS.length - 1;
+              {quickResponders.map((vendor, index) => {
+                const isRightEdge = index === quickResponders.length - 1;
+                const BadgeIcon = getBadgeIcon("Fast reply");
                 return (
                 <div key={vendor.id}>
                   <Link href={`/vendors/${generateSlug(vendor.name)}`} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
                     <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
                       <img src={resolveAssetSrc(vendor.image)} alt={vendor.name} className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105" />
                       <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-orange-500 text-background text-[0.6rem] font-semibold">
-                        <Sparkles className="w-2.5 h-2.5" />
+                        <BadgeIcon className="w-2.5 h-2.5" />
                         Fast reply
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
@@ -1655,12 +1912,7 @@ export default function VendorsPage() {
                             <h4 className="text-background font-bold text-base line-clamp-2">{vendor.category}</h4>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <button type="button" className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors" onClick={(e) => e.preventDefault()}>
-                              <Heart className="w-4 h-4 text-primary" />
-                            </button>
-                            <button type="button" className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors" onClick={(e) => e.preventDefault()}>
-                              <Bookmark className="w-4 h-4 text-primary" />
-                            </button>
+                            <VendorSaveButton vendorId={vendor.id} />
                           </div>
                         </div>
                       </div>
@@ -1721,21 +1973,21 @@ export default function VendorsPage() {
                               <div className="grid grid-cols-3 gap-2">
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
@@ -1795,13 +2047,14 @@ export default function VendorsPage() {
             <div className="grid gap-3 sm:gap-4 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 xl:gap-3">
               {spotlightVendors.map((vendor, index) => {
                 const isRightEdge = index === spotlightVendors.length - 1;
+                const BadgeIcon = getBadgeIcon("Featured");
                 return (
                 <div key={vendor.id}>
                   <Link href={`/vendors/${generateSlug(vendor.name)}`} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
                     <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
                       <img src={resolveAssetSrc(vendor.image)} alt={vendor.name} className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105" />
                       <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-indigo-500 text-background text-[0.6rem] font-semibold">
-                        <Sparkles className="w-2.5 h-2.5" />
+                        <BadgeIcon className="w-2.5 h-2.5" />
                         Featured
                       </div>
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
@@ -1810,12 +2063,7 @@ export default function VendorsPage() {
                             <h4 className="text-background font-bold text-base line-clamp-2">{vendor.category}</h4>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <button type="button" className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors" onClick={(e) => e.preventDefault()}>
-                              <Heart className="w-4 h-4 text-primary" />
-                            </button>
-                            <button type="button" className="p-1.5 rounded-full bg-background/90 backdrop-blur-sm hover:bg-background transition-colors" onClick={(e) => e.preventDefault()}>
-                              <Bookmark className="w-4 h-4 text-primary" />
-                            </button>
+                            <VendorSaveButton vendorId={vendor.id} />
                           </div>
                         </div>
                       </div>
@@ -1876,21 +2124,21 @@ export default function VendorsPage() {
                               <div className="grid grid-cols-3 gap-2">
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
-                                    src={resolveAssetSrc(vendor.image)}
+                                    src={getImageSrc(vendor.image)}
                                     alt=""
                                     className="w-full h-full object-cover"
                                   />
