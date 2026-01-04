@@ -1,17 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabaseClient";
 import { createClient } from "@supabase/supabase-js";
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
+// Mark route as dynamic to prevent static analysis during build
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+// Lazy initialization of Supabase admin client
+function getSupabaseAdmin() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!supabaseUrl || !serviceRoleKey) {
+    throw new Error("Missing required Supabase environment variables");
+  }
+
+  return createClient(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
-  }
-);
+  });
+}
 
 interface MobileMoneyAccount {
   provider: string;
@@ -29,6 +38,7 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     const { id: vendorId } = await params;
 
     // Get vendor
@@ -67,6 +77,7 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     const { id: vendorId } = await params;
     const body: { accounts: MobileMoneyAccount[] } = await request.json();
     const { accounts } = body;
