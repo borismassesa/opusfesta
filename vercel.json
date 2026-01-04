@@ -1,5 +1,5 @@
 {
-  "buildCommand": "turbo run build --filter=rest-express",
+  "buildCommand": "cd apps/website && npm run build",
   "outputDirectory": "apps/website/.next",
   "framework": "nextjs",
   "installCommand": "npm install"
