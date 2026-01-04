@@ -7,6 +7,7 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // basePath is required for rewrites from main domain (thefestaevents.com/admin)
   basePath: '/admin',
   experimental: {
     typedRoutes: true,
