@@ -162,7 +162,7 @@ function HoverOverlaySidebar({
                   return (
                     <Link
                       key={item.label}
-                      href={item.href}
+                      href={item.href as any}
                       className={cn(
                         "flex items-center gap-3 h-10 rounded-lg px-3 transition-all duration-200",
                         isActive
@@ -603,7 +603,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                                       : "text-muted-foreground hover:bg-muted/50 hover:text-sidebar-foreground group-data-[collapsible=icon]:hover:bg-background group-data-[collapsible=icon]:hover:border-border"
                                   )}
                                 >
-                                  <Link href={item.href} className="flex items-center gap-3 w-full group-data-[collapsible=icon]:justify-center">
+                                  <Link href={item.href as any} className="flex items-center gap-3 w-full group-data-[collapsible=icon]:justify-center">
                                     <item.icon
                                       className={cn(
                                         "w-[18px] h-[18px] shrink-0",
@@ -644,7 +644,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                           <Avatar className="h-8 w-8 group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:w-9">
                             <AvatarImage src={avatarUrl} alt={displayName} />
                             <AvatarFallback>
-                              {displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              {displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                         </div>
@@ -668,7 +668,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                           <Avatar className="h-8 w-8 rounded-lg">
                             <AvatarImage src={avatarUrl} alt={displayName} />
                             <AvatarFallback className="rounded-lg">
-                              {displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                              {displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
                           <div className="grid flex-1 text-left text-sm leading-tight">

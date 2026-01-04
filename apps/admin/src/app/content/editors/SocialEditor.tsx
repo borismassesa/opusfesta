@@ -104,7 +104,10 @@ export function SocialEditor() {
             <Label className="text-sm font-medium mb-3 block">Footer Preview</Label>
             <div className="flex items-center gap-4 p-4 bg-background rounded-lg border border-border">
               {socialPlatforms
-                .filter((platform) => social[platform.key] && social[platform.key].trim() !== "")
+                .filter((platform) => {
+                  const value = social[platform.key];
+                  return value && typeof value === 'string' && value.trim() !== "";
+                })
                 .map((platform) => {
                   const Icon = platform.icon;
                   return (
@@ -120,7 +123,10 @@ export function SocialEditor() {
                     </a>
                   );
                 })}
-              {socialPlatforms.filter((platform) => social[platform.key] && social[platform.key].trim() !== "").length === 0 && (
+              {socialPlatforms.filter((platform) => {
+                const value = social[platform.key];
+                return value && typeof value === 'string' && value.trim() !== "";
+              }).length === 0 && (
                 <p className="text-sm text-muted-foreground">No social media links added yet.</p>
               )}
             </div>

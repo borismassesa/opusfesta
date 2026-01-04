@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Eye, PanelLeftClose, PanelLeftOpen, Sparkles, Info, Briefcase, Users, Lightbulb, MessageSquare, HelpCircle, Megaphone, Share2 } from "lucide-react";
-import PageEditor from "./pages/page";
+import { PageEditor } from "./components/PageEditor";
 import { ResponsivePreview } from "@/components/preview/ResponsivePreview";
 import { useContent } from "@/context/ContentContext";
 import { cn } from "@/lib/utils";
