@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Share2, Heart, ShieldCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Share2, Heart, ShieldCheck, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
@@ -17,6 +18,7 @@ import { SimilarVendors } from "./SimilarVendors";
 import type { Vendor, PortfolioItem, Review, VendorAward } from "@/lib/supabase/vendors";
 import { resolveAssetSrc } from "@/lib/assets";
 import celebrationImg from "@assets/stock_images/happy_wedding_couple_e3561dd1.jpg";
+import { supabase } from "@/lib/supabaseClient";
 
 interface VendorDetailsPageProps {
   vendor: Vendor;
@@ -33,10 +35,12 @@ export function VendorDetailsPage({
   similarVendors,
   awards,
 }: VendorDetailsPageProps) {
+  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("about");
   const [showNavBar, setShowNavBar] = useState(false);
   const [isSidebarSticky, setIsSidebarSticky] = useState(true);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const galleryRef = useRef<HTMLDivElement>(null);
   const connectSectionRef = useRef<HTMLDivElement>(null);
   const ratingSectionRef = useRef<HTMLDivElement>(null);
@@ -45,6 +49,42 @@ export function VendorDetailsPage({
   const locationText = vendor.location?.city
     ? `${vendor.location.city}, ${vendor.location.country || "Tanzania"}`
     : "Tanzania";
+
+  // Check authentication on mount
+  useEffect(() => {
+    async function checkAuth() {
+      try {
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError || !session) {
+          const currentPath = window.location.pathname;
+          router.push(`/login?next=${encodeURIComponent(currentPath)}`);
+          return;
+        }
+
+        // Verify user exists in the database
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (userError || !userData) {
+          const currentPath = window.location.pathname;
+          router.push(`/login?next=${encodeURIComponent(currentPath)}`);
+          return;
+        }
+
+        setIsCheckingAuth(false);
+      } catch (err) {
+        console.error("Error checking auth:", err);
+        const currentPath = window.location.pathname;
+        router.push(`/login?next=${encodeURIComponent(currentPath)}`);
+      }
+    }
+
+    checkAuth();
+  }, [router]);
 
   const getStartingPrice = () => {
     if (vendor.price_range === "$") return "$200";
@@ -144,6 +184,18 @@ export function VendorDetailsPage({
       return () => window.removeEventListener("scroll", handleScroll);
     }
   }, []);
+
+  // Show loading state while checking authentication
+  if (isCheckingAuth) {
+    return (
+      <div className="bg-background text-primary min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
+          <p className="text-secondary">Verifying authentication...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-background text-primary min-h-screen">

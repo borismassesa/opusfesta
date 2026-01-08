@@ -294,3 +294,17 @@ body {
   opacity: 1 !important;
   pointer-events: all !important;
 }
+
+/* Admin Loading Bar Animation */
+@keyframes admin-loading-bar {
+  0% {
+    width: 0%;
+  }
+  100% {
+    width: 100%;
+  }
+}
+
+.admin-loading-bar {
+  animation: admin-loading-bar 1.2s ease-in-out forwards;
+}

@@ -9,9 +9,7 @@ const nextConfig = {
   reactStrictMode: true,
   // basePath is required for rewrites from main domain (thefestaevents.com/admin)
   basePath: '/admin',
-  experimental: {
-    typedRoutes: true,
-  },
+  typedRoutes: true,
   webpack: (config) => {
     config.resolve.alias = {
       ...(config.resolve.alias || {}),

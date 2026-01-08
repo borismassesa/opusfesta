@@ -14,14 +14,12 @@ import {
   PenTool,
   Image as ImageIcon,
   ListTodo,
-  Moon,
-  Sun,
   LogOut,
   Eye,
+  BarChart3,
 } from "lucide-react";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
-import { useTheme } from "next-themes";
 import { supabase } from "@/lib/supabaseClient";
 import {
   SidebarProvider,
@@ -49,6 +47,8 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Providers } from "@/components/providers";
 import { cn } from "@/lib/utils";
+import { CareersContentProvider } from "@/context/CareersContentContext";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import "./globals.css";
 
 // Component to control sidebar state based on secondary sidebar visibility
@@ -108,9 +108,6 @@ function HoverOverlaySidebar({
   displayEmail,
   avatarUrl,
   role,
-  theme,
-  mounted,
-  setTheme,
 }: {
   isVisible: boolean;
   onMouseEnter: () => void;
@@ -122,9 +119,6 @@ function HoverOverlaySidebar({
   displayEmail: string;
   avatarUrl: string;
   role: string;
-  theme: string | undefined;
-  mounted: boolean;
-  setTheme: (theme: string) => void;
 }) {
   return (
     <div 
@@ -186,14 +180,7 @@ function HoverOverlaySidebar({
         </div>
 
         <div className="mt-auto p-2 border-t border-border/40 m-2 flex flex-col gap-2">
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="flex items-center justify-center gap-2 w-full rounded-xl border border-border/60 bg-card/70 px-3 py-2 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card transition-colors"
-            aria-label="Toggle theme"
-          >
-            {mounted && theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
-            <span>Theme</span>
-          </button>
+          <ThemeSwitcher />
           <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-card/50 transition-colors cursor-pointer">
             <div className="w-9 h-9 rounded-full bg-muted border border-border flex items-center justify-center text-xs font-medium text-muted-foreground overflow-hidden">
               <Avatar className="h-9 w-9">
@@ -223,6 +210,7 @@ const MENU_GROUPS = [
     label: "Editor",
     items: [
       { label: "Homepage Editor", icon: FileText, href: "/content" },
+      { label: "Careers Editor", icon: Briefcase, href: "/editor/careers" },
     ],
   },
   {
@@ -244,20 +232,35 @@ const MENU_GROUPS = [
     label: "Organization",
     items: [{ label: "Employees", icon: Users, href: "/org/employees" }],
   },
+  {
+    label: "Careers",
+    items: [
+      { label: "Careers", icon: Briefcase, href: "/careers" },
+    ],
+  },
 ];
 
 function isActiveRoute(pathname: string, href: string) {
   if (href === "/") {
     return pathname === "/";
   }
-  return pathname.startsWith(href);
+  // For exact matches
+  if (pathname === href) {
+    return true;
+  }
+  // Special case for /careers - should be active for all /careers/* routes
+  if (href === "/careers") {
+    return pathname.startsWith("/careers");
+  }
+  // For sub-paths: only match if pathname starts with href + "/"
+  // This ensures /careers matches /careers but not /careers/applications
+  // And /careers/applications matches /careers/applications but not /careers
+  return pathname.startsWith(href + "/");
 }
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState("");
@@ -266,7 +269,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   
   // Check if we're on a route that should show secondary sidebar
-  const hasSecondarySidebar = pathname.startsWith("/content");
+  const hasSecondarySidebar = pathname.startsWith("/content") || pathname.startsWith("/careers") || pathname.startsWith("/editor/careers");
   
   // Attach hover listeners to sidebar container and gap
   useEffect(() => {
@@ -337,10 +340,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   const allowedRoles = ["owner", "admin", "editor", "viewer"];
   const isAllowed = session && allowedRoles.includes(role);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
 
   useEffect(() => {
     let mountedRef = true;
@@ -503,11 +502,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     return (
       <html lang="en" suppressHydrationWarning>
         <body>
-          <div className="flex h-screen items-center justify-center flex-col gap-4 text-muted-foreground">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            <div>Checking access...</div>
-            <div className="text-xs text-muted-foreground/60 mt-4 max-w-md text-center px-4">
-              If this takes too long, check your browser console for errors or verify your Supabase configuration.
+          <div className="fixed top-0 left-0 w-full h-screen bg-background z-[9999] flex flex-col justify-center items-center">
+            <div className="font-serif text-4xl md:text-5xl text-primary mb-4 relative">
+              TheFesta
+            </div>
+            <div className="uppercase text-[10px] text-muted-foreground tracking-[0.3em] font-medium mb-8 opacity-70">
+              Checking Access
+            </div>
+            <div className="w-[200px] h-px bg-primary/10 relative overflow-hidden">
+              <div className="admin-loading-bar absolute left-0 top-0 h-full bg-primary w-0"></div>
             </div>
           </div>
         </body>
@@ -629,14 +632,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
                 {/* User Profile Dropdown */}
                 <div className="mt-auto p-1.5 border-t border-border/40 m-1.5 flex flex-col gap-1.5 group-data-[collapsible=icon]:m-0 group-data-[collapsible=icon]:border-none group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:gap-2">
-                  <button
-                    onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-                    className="flex items-center justify-center gap-1.5 w-full rounded-lg border border-border/60 bg-card/70 px-2 py-1.5 text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-card transition-colors group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:bg-background/50 group-data-[collapsible=icon]:border-border/50"
-                    aria-label="Toggle theme"
-                  >
-                    {mounted && theme === "dark" ? <Sun size={16} className="group-data-[collapsible=icon]:w-4 group-data-[collapsible=icon]:h-4" /> : <Moon size={16} className="group-data-[collapsible=icon]:w-4 group-data-[collapsible=icon]:h-4" />}
-                    <span className="group-data-[collapsible=icon]:hidden">Theme</span>
-                  </button>
+                  <ThemeSwitcher 
+                    className="group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-9 group-data-[collapsible=icon]:px-2 group-data-[collapsible=icon]:bg-background/50 group-data-[collapsible=icon]:border-border/50"
+                    iconClassName="group-data-[collapsible=icon]:w-4 group-data-[collapsible=icon]:h-4"
+                  />
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <div className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-card/50 transition-colors cursor-pointer group data-[state=open]:bg-card/50 w-full group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:p-2 group-data-[collapsible=icon]:bg-transparent group-data-[collapsible=icon]:w-full group-data-[collapsible=icon]:h-auto">
@@ -708,9 +707,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                     displayEmail={displayEmail}
                     avatarUrl={avatarUrl}
                     role={role}
-                    theme={theme}
-                    mounted={mounted}
-                    setTheme={setTheme}
                   />
                 )}
 
@@ -718,11 +714,13 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <main className="flex-1 overflow-auto bg-background relative">
                 <div className={cn(
                   "min-h-full relative z-10 animate-in fade-in duration-500",
-                  pathname.startsWith("/content") 
+                  pathname.startsWith("/content") || pathname.startsWith("/editor/careers")
                     ? "p-0" 
                     : "p-6 pt-20 md:p-10 max-w-[1600px] mx-auto"
                 )}>
-                  {children}
+                  <CareersContentProvider>
+                    {children}
+                  </CareersContentProvider>
                 </div>
               </main>
             </div>

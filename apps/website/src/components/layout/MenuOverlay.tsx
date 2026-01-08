@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { useTranslation } from "react-i18next";
+import { supabase } from "@/lib/supabaseClient";
 
 export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { t } = useTranslation();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const overlayRef = useRef<HTMLDivElement>(null);
   const linksRef = useRef<HTMLDivElement>(null);
 
@@ -18,6 +21,78 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     { name: t('nav.inspiration'), href: "/inspiration" },
     { name: t('nav.shop'), href: "/shop" },
   ];
+
+  // Check authentication state
+  useEffect(() => {
+    let mounted = true;
+
+    async function checkAuth() {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        
+        if (!mounted) return;
+
+        if (!session) {
+          setIsAuthenticated(false);
+          setIsCheckingAuth(false);
+          return;
+        }
+
+        // Verify user exists in database
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (mounted) {
+          setIsAuthenticated(!userError && !!userData);
+          setIsCheckingAuth(false);
+        }
+      } catch (error) {
+        console.error("Error checking auth in MenuOverlay:", error);
+        if (mounted) {
+          setIsAuthenticated(false);
+          setIsCheckingAuth(false);
+        }
+      }
+    }
+
+    checkAuth();
+
+    // Listen to auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (!mounted) return;
+
+      if (!session) {
+        setIsAuthenticated(false);
+        return;
+      }
+
+      // Verify user exists in database
+      try {
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("id")
+          .eq("id", session.user.id)
+          .single();
+
+        if (mounted) {
+          setIsAuthenticated(!userError && !!userData);
+        }
+      } catch (error) {
+        console.error("Error verifying user in MenuOverlay:", error);
+        if (mounted) {
+          setIsAuthenticated(false);
+        }
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     if (isOpen) {
@@ -86,20 +161,45 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         <div className="h-px w-20 bg-border mx-auto my-4"></div>
 
         <div className="flex flex-col gap-3">
-          <Link
-            href="/login"
-            onClick={onClose}
-            className="text-lg font-medium text-primary"
-          >
-            {t("nav.login")}
-          </Link>
-          <Link
-            href="/signup"
-            onClick={onClose}
-            className="text-lg font-medium bg-primary text-background px-6 py-2 rounded-full hover:bg-primary/90 transition-colors"
-          >
-            {t("nav.getStarted")}
-          </Link>
+          {isCheckingAuth ? (
+            <div className="text-lg font-medium text-muted-foreground">
+              Loading...
+            </div>
+          ) : isAuthenticated ? (
+            <>
+              <Link
+                href="/my-inquiries"
+                onClick={onClose}
+                className="text-lg font-medium text-primary"
+              >
+                My Inquiries
+              </Link>
+              <Link
+                href="/careers/my-applications"
+                onClick={onClose}
+                className="text-lg font-medium text-primary"
+              >
+                My Applications
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                onClick={onClose}
+                className="text-lg font-medium text-primary"
+              >
+                {t("nav.login")}
+              </Link>
+              <Link
+                href="/signup"
+                onClick={onClose}
+                className="text-lg font-medium bg-primary text-background px-6 py-2 rounded-full hover:bg-primary/90 transition-colors"
+              >
+                {t("nav.getStarted")}
+              </Link>
+            </>
+          )}
         </div>
       </div>
 

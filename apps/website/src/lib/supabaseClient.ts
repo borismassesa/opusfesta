@@ -31,7 +31,14 @@ function createSupabaseClient(): SupabaseClient {
     throw new Error("Missing Supabase environment variables for the website app.");
   }
 
-  return createClient(url, key);
+  return createClient(url, key, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true, // Important for OAuth callbacks
+      storage: typeof window !== "undefined" ? window.localStorage : undefined,
+    },
+  });
 }
 
 // Lazy initialization

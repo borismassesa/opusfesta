@@ -1,22 +1,28 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
 import loginImg from "@assets/stock_images/romantic_couple_wedd_0c0b1d37.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
 import { supabase } from "@/lib/supabaseClient";
+import { toast } from "@/hooks/use-toast";
+import { getRandomSignInQuote, type Quote } from "@/lib/quotes";
 
 export default function ForgotPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [email, setEmail] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [quote, setQuote] = useState<Quote>(() => getRandomSignInQuote());
+
+  useEffect(() => {
+    // Set a new random sign in quote on mount
+    setQuote(getRandomSignInQuote());
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setErrorMessage("");
 
     const redirectTo =
       typeof window !== "undefined"
@@ -28,10 +34,19 @@ export default function ForgotPassword() {
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      toast({
+        variant: "destructive",
+        title: "Failed to send reset email",
+        description: error.message,
+      });
       setIsLoading(false);
       return;
     }
+
+    toast({
+      title: "Reset link sent!",
+      description: "Check your email for the password reset link.",
+    });
 
     setIsLoading(false);
     setIsSubmitted(true);
@@ -60,12 +75,12 @@ export default function ForgotPassword() {
           
           <div className="backdrop-blur-md bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl max-w-lg">
             <h2 className="text-3xl font-serif mb-4 leading-normal text-white">
-              "The highest happiness on earth is the happiness of marriage."
+              "{quote.text}"
             </h2>
             <div className="flex items-center gap-3">
                <div className="h-px w-8 bg-white/60"></div>
                <p className="text-white/80 text-sm tracking-wider uppercase font-medium">
-                 William Lyon Phelps
+                 {quote.author}
                </p>
             </div>
           </div>
@@ -73,21 +88,21 @@ export default function ForgotPassword() {
       </div>
 
       {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center items-center p-8 sm:p-12 lg:p-24 pt-24 lg:pt-0 relative bg-background h-full overflow-y-auto">
-        <div className="w-full max-w-sm space-y-10 pb-8">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 sm:p-12 lg:p-24 relative bg-background h-full overflow-y-auto">
+        <div className="w-full max-w-sm space-y-6 pb-8">
           
           {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
+          <div className="lg:hidden text-center mb-6 -mt-8">
             <Link href="/" className="font-serif text-3xl text-primary">
               TheFesta
             </Link>
           </div>
 
-          <div className="space-y-2 text-center">
+          <div className="space-y-1.5 text-center">
             <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
               Forgot password?
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Enter your email address and we'll send you a link to reset your password.
             </p>
           </div>
@@ -95,13 +110,13 @@ export default function ForgotPassword() {
           {!isSubmitted ? (
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="relative group">
-                <label className="absolute -top-2 left-2 bg-background px-1 text-xs font-medium text-primary/80 group-focus-within:text-primary transition-colors z-10">
+                <label className="absolute -top-2.5 left-2.5 bg-background px-1.5 text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors z-10">
                   Email
                 </label>
                 <input
                   type="email"
                   placeholder="name@example.com"
-                  className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -111,7 +126,7 @@ export default function ForgotPassword() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-12 w-full"
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-11 w-full mt-1"
               >
                 {isLoading ? (
                   <>
@@ -122,9 +137,6 @@ export default function ForgotPassword() {
                   "Send Reset Link"
                 )}
               </button>
-              {errorMessage ? (
-                <p className="text-sm text-destructive text-center">{errorMessage}</p>
-              ) : null}
             </form>
           ) : (
             <div className="flex flex-col items-center justify-center space-y-4 p-8 border border-border rounded-xl bg-muted/30">
@@ -146,12 +158,12 @@ export default function ForgotPassword() {
             </div>
           )}
 
-          <div className="absolute top-8 left-8 lg:top-12 lg:left-12">
+          <div className="absolute top-6 left-6 lg:top-8 lg:left-8">
             <Link
               href="/login"
               className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
               Back to login
             </Link>
           </div>
