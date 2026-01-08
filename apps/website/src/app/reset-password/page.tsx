@@ -4,22 +4,47 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+import { toast } from "@/hooks/use-toast";
 
 export default function ResetPassword() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
   const [hasSession, setHasSession] = useState<boolean | null>(null);
 
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setHasSession(Boolean(data.session));
-    });
+    // Check for access token in URL hash (Supabase sends it this way)
+    const hashParams = new URLSearchParams(window.location.hash.substring(1));
+    const accessToken = hashParams.get("access_token");
+    const refreshToken = hashParams.get("refresh_token");
+
+    if (accessToken && refreshToken) {
+      // Set the session from URL hash
+      supabase.auth.setSession({
+        access_token: accessToken,
+        refresh_token: refreshToken,
+      }).then(({ data, error }) => {
+        if (!mounted) return;
+        if (error) {
+          console.error("Error setting session:", error);
+          setHasSession(false);
+        } else {
+          setHasSession(Boolean(data.session));
+          // Clean up URL hash
+          window.history.replaceState(null, "", window.location.pathname);
+        }
+      });
+    } else {
+      // Check existing session
+      supabase.auth.getSession().then(({ data }) => {
+        if (!mounted) return;
+        setHasSession(Boolean(data.session));
+      });
+    }
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
@@ -34,16 +59,22 @@ export default function ResetPassword() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMessage("");
-    setSuccessMessage("");
 
     if (password.length < 8) {
-      setErrorMessage("Password must be at least 8 characters long.");
+      toast({
+        variant: "destructive",
+        title: "Invalid password",
+        description: "Password must be at least 8 characters long.",
+      });
       return;
     }
 
     if (password !== confirmPassword) {
-      setErrorMessage("Passwords do not match.");
+      toast({
+        variant: "destructive",
+        title: "Passwords don't match",
+        description: "Please make sure both passwords are the same.",
+      });
       return;
     }
 
@@ -51,13 +82,26 @@ export default function ResetPassword() {
     const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
-      setErrorMessage(error.message);
+      toast({
+        variant: "destructive",
+        title: "Password update failed",
+        description: error.message,
+      });
       setIsLoading(false);
       return;
     }
 
-    setSuccessMessage("Password updated. You can now sign in.");
+    toast({
+      title: "Password updated successfully!",
+      description: "Redirecting to login page...",
+    });
+    
     setIsLoading(false);
+    
+    // Redirect to login after 2 seconds
+    setTimeout(() => {
+      router.push("/login");
+    }, 2000);
   };
 
   return (
@@ -116,12 +160,6 @@ export default function ResetPassword() {
               )}
             </button>
 
-            {errorMessage ? (
-              <p className="text-sm text-destructive text-center">{errorMessage}</p>
-            ) : null}
-            {successMessage ? (
-              <p className="text-sm text-primary text-center">{successMessage}</p>
-            ) : null}
           </form>
         )}
       </div>

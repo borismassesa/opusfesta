@@ -16,6 +16,14 @@ export function ResponsivePreview({ previewUrl, previewNonce = 0, onRefresh }: R
   const [activeDevice, setActiveDevice] = useState<DeviceSize>('desktop');
   const [containerWidth, setContainerWidth] = useState(0);
   const [manualScale, setManualScale] = useState<number | null>(null);
+  const [iframeKey, setIframeKey] = useState(`${previewUrl}-${previewNonce}`);
+
+  // Update iframe key when previewNonce changes to force reload
+  useEffect(() => {
+    const newKey = `${previewUrl}-${previewNonce}-${Date.now()}`;
+    console.log('[ResponsivePreview] Updating iframe key:', newKey);
+    setIframeKey(newKey);
+  }, [previewNonce, previewUrl]);
 
   useEffect(() => {
     const updateWidth = () => {
@@ -100,18 +108,18 @@ export function ResponsivePreview({ previewUrl, previewNonce = 0, onRefresh }: R
   const Icon = deviceConfig.icon;
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col min-h-0 bg-background">
       {/* Device Selector and Zoom Controls */}
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-border pb-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-6 py-4 border-b border-border flex-shrink-0 bg-background">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">Preview</h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h2 className="text-xl font-semibold text-foreground">Preview</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
             See how your content appears on different devices
           </p>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-2 flex-wrap">
           {/* Zoom Controls */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <Button
               variant="outline"
               size="sm"
@@ -122,7 +130,7 @@ export function ResponsivePreview({ previewUrl, previewNonce = 0, onRefresh }: R
             >
               <ZoomOut className="w-4 h-4" />
             </Button>
-            <div className="flex items-center gap-2 min-w-[100px] max-w-[150px]">
+            <div className="flex items-center gap-2 min-w-[80px] max-w-[120px]">
               <input
                 type="range"
                 min="0.2"
@@ -130,7 +138,7 @@ export function ResponsivePreview({ previewUrl, previewNonce = 0, onRefresh }: R
                 step="0.05"
                 value={deviceConfig.scale}
                 onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
-                className="flex-1 h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                className="flex-1 h-1.5 bg-muted rounded-full appearance-none cursor-pointer accent-primary"
                 style={{
                   background: `linear-gradient(to right, hsl(var(--primary)) 0%, hsl(var(--primary)) ${((deviceConfig.scale - 0.2) / 1.8) * 100}%, hsl(var(--muted)) ${((deviceConfig.scale - 0.2) / 1.8) * 100}%, hsl(var(--muted)) 100%)`
                 }}
@@ -151,24 +159,20 @@ export function ResponsivePreview({ previewUrl, previewNonce = 0, onRefresh }: R
               size="sm"
               onClick={handleReset}
               disabled={manualScale === null}
-              className="h-8 w-8 p-0 sm:w-auto sm:px-3"
+              className="h-8 w-8 p-0"
               title="Reset to auto scale"
             >
               <RotateCcw className="w-4 h-4" />
-              <span className="hidden sm:inline ml-2">Reset</span>
             </Button>
-            <div className="flex items-center gap-1 px-2">
-              <span className="text-sm font-medium text-foreground">
+            <div className="flex items-center gap-1 px-2 min-w-[45px]">
+              <span className="text-xs font-medium text-foreground">
                 {Math.round(deviceConfig.scale * 100)}%
               </span>
-              {manualScale !== null && (
-                <span className="text-xs text-muted-foreground">(m)</span>
-              )}
             </div>
           </div>
 
           {/* Separator */}
-          <div className="h-6 w-px bg-border"></div>
+          <div className="h-5 w-px bg-border mx-1"></div>
 
           {/* Refresh Button */}
           {onRefresh && (
@@ -177,18 +181,17 @@ export function ResponsivePreview({ previewUrl, previewNonce = 0, onRefresh }: R
                 variant="outline"
                 size="sm"
                 onClick={onRefresh}
-                className="h-8 w-8 p-0 sm:w-auto sm:px-3"
+                className="h-8 w-8 p-0"
                 title="Refresh preview"
               >
                 <RefreshCw className="w-4 h-4" />
-                <span className="hidden sm:inline ml-2">Refresh</span>
               </Button>
-              <div className="h-6 w-px bg-border"></div>
+              <div className="h-5 w-px bg-border mx-1"></div>
             </>
           )}
 
           {/* Device Size Switchers */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {(['desktop', 'tablet', 'mobile'] as DeviceSize[]).map((device) => {
               const DeviceIcon = device === 'desktop' ? Monitor : device === 'tablet' ? Tablet : Smartphone;
               const isActive = activeDevice === device;
@@ -214,31 +217,31 @@ export function ResponsivePreview({ previewUrl, previewNonce = 0, onRefresh }: R
       {/* Preview Container */}
       <div 
         id="preview-container"
-        className="flex items-start justify-center bg-gradient-to-br from-muted/50 to-muted/30 p-2 sm:p-4 md:p-8 rounded-lg border border-border overflow-x-auto overflow-y-auto w-full flex-1 min-h-0"
+        className="flex items-start justify-center bg-muted/30 p-4 overflow-x-auto overflow-y-auto w-full h-full flex-1 min-h-0"
       >
         <div
-          className="relative bg-background rounded-[1.5rem] sm:rounded-[2rem] shadow-2xl transition-all duration-300 overflow-hidden flex-shrink-0"
+          className="relative bg-background rounded-lg shadow-lg transition-all duration-300 overflow-hidden flex-shrink-0"
           style={{
             width: `${deviceConfig.width}px`,
             height: `${deviceConfig.height}px`,
             transform: `scale(${deviceConfig.scale})`,
             transformOrigin: 'top center',
-            border: '6px solid hsl(var(--foreground))',
+            border: '1px solid hsl(var(--border))',
             marginBottom: `${(deviceConfig.height * (1 - deviceConfig.scale))}px`,
-            marginTop: activeDevice === 'mobile' ? '20px' : '40px',
+            marginTop: activeDevice === 'mobile' ? '16px' : '24px',
           }}
         >
           {/* Device Frame Header */}
           <div 
-            className="absolute flex items-center gap-2 bg-foreground text-background px-3 sm:px-4 py-1.5 sm:py-2 rounded-t-lg z-50 whitespace-nowrap"
+            className="absolute flex items-center gap-1.5 bg-muted text-foreground px-2.5 py-1 rounded-t-md z-50 whitespace-nowrap border border-b-0 border-border"
             style={{
-              top: activeDevice === 'mobile' ? '-28px' : '-40px',
+              top: activeDevice === 'mobile' ? '-24px' : '-28px',
               left: '50%',
               transform: 'translateX(-50%)',
             }}
           >
-            <Icon className="w-3 h-3 sm:w-4 sm:h-4" />
-            <span className="text-[10px] sm:text-xs font-medium">{deviceConfig.label}</span>
+            <Icon className="w-3 h-3" />
+            <span className="text-[10px] font-medium">{deviceConfig.label}</span>
           </div>
 
           {/* Browser Bar (Desktop) */}
@@ -301,10 +304,12 @@ export function ResponsivePreview({ previewUrl, previewNonce = 0, onRefresh }: R
               }}
             >
               <iframe
-                key={`${previewNonce}-${activeDevice}`}
-                src={previewUrl}
+                key={iframeKey}
+                src={`${previewUrl}${previewUrl.includes('?') ? '&' : '?'}_t=${Date.now()}`}
                 className="w-full h-full bg-white border-0"
                 title="Preview"
+                // Ensure the iframe uses an absolute URL and doesn't inherit basePath
+                sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-modals"
                 style={{
                   width: `${deviceConfig.width}px`,
                   height: activeDevice === 'desktop' 
@@ -312,6 +317,22 @@ export function ResponsivePreview({ previewUrl, previewNonce = 0, onRefresh }: R
                     : activeDevice === 'tablet' 
                     ? `${deviceConfig.height - 32}px` 
                     : `${deviceConfig.height - 28}px`,
+                }}
+                onLoad={(e) => {
+                  console.log('[ResponsivePreview] Iframe loaded, sending reload message');
+                  // When iframe loads, try to send a message to reload content
+                  const iframe = e.currentTarget as HTMLIFrameElement;
+                  if (iframe?.contentWindow) {
+                    try {
+                      // Small delay to ensure iframe is fully ready
+                      setTimeout(() => {
+                        iframe.contentWindow?.postMessage({ type: 'reload-content', timestamp: Date.now() }, '*');
+                        console.log('[ResponsivePreview] Reload message sent to iframe');
+                      }, 100);
+                    } catch (e) {
+                      console.warn('[ResponsivePreview] Could not postMessage to iframe:', e);
+                    }
+                  }
                 }}
               />
             </div>

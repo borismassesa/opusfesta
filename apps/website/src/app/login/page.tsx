@@ -1,12 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import loginImg from "@assets/stock_images/romantic_couple_wedd_0c0b1d37.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
+import { getRandomSignInQuote, type Quote } from "@/lib/quotes";
 import { supabase } from "@/lib/supabaseClient";
+import { ensureUserRecord, getRedirectPath, getUserTypeFromSession } from "@/lib/auth";
+import { toast } from "@/hooks/use-toast";
 
 export default function Login() {
   const router = useRouter();
@@ -16,26 +19,104 @@ export default function Login() {
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
+  const [quote, setQuote] = useState<Quote>(() => getRandomSignInQuote());
+
+  useEffect(() => {
+    // Set a new random sign in quote on mount (client-side only)
+    setQuote(getRandomSignInQuote());
+  }, []);
+
+  useEffect(() => {
+    if (unauthorized) {
+      toast({
+        variant: "destructive",
+        title: "Access denied",
+        description: "Your account does not have admin access.",
+      });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [unauthorized]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setErrorMessage("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
     if (error) {
-      setErrorMessage(error.message);
+      // Check for email confirmation errors
+      const isEmailNotConfirmed = 
+        error.message?.toLowerCase().includes("email not confirmed") ||
+        error.message?.toLowerCase().includes("email_not_confirmed") ||
+        error.message?.toLowerCase().includes("confirm your email");
+      
+      if (isEmailNotConfirmed) {
+        toast({
+          variant: "destructive",
+          title: "Email not verified",
+          description: "Please check your email and click the confirmation link before signing in. Check your spam folder if you don't see it.",
+        });
+      } else {
+        // Show user-friendly error messages
+        let errorMessage = error.message;
+        
+        // Sanitize technical error messages
+        if (error.message?.toLowerCase().includes("invalid login")) {
+          errorMessage = "Invalid email or password. Please check your credentials and try again.";
+        } else if (error.message?.toLowerCase().includes("user not found")) {
+          errorMessage = "No account found with this email. Please sign up first.";
+        } else if (error.message?.toLowerCase().includes("wrong password")) {
+          errorMessage = "Incorrect password. Please try again or use 'Forgot password' to reset it.";
+        }
+        
+        toast({
+          variant: "destructive",
+          title: "Sign in failed",
+          description: errorMessage,
+        });
+      }
       setIsLoading(false);
       return;
     }
 
-    const next = searchParams.get("next") || "/admin";
-    router.push(next);
+    if (!data.session) {
+      toast({
+        variant: "destructive",
+        title: "Sign in failed",
+        description: "No session created. Please try again.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Ensure user record exists in database
+    const ensureResult = await ensureUserRecord(data.session);
+    
+    if (!ensureResult.success) {
+      // Show user-friendly error message (technical errors are already sanitized in ensureUserRecord)
+      toast({
+        variant: "destructive",
+        title: "Account setup issue",
+        description: ensureResult.error || "Unable to complete sign in. Please try again or contact support.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    // Get user type and redirect appropriately
+    const userType = await getUserTypeFromSession(data.session);
+    const next = searchParams.get("next");
+    const redirectPath = getRedirectPath(userType || undefined, undefined, next);
+    
+    toast({
+      title: "Welcome back!",
+      description: "Successfully signed in. Redirecting you now...",
+    });
+    
+    router.push(redirectPath);
   };
 
   return (
@@ -60,13 +141,13 @@ export default function Login() {
           </Link>
           
           <div className="backdrop-blur-md bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl max-w-lg">
-            <h2 className="text-3xl font-serif mb-4 leading-normal text-white">
-              "The highest happiness on earth is the happiness of marriage."
+            <h2 className="text-3xl font-serif mb-4 leading-normal text-white" suppressHydrationWarning>
+              "{quote.text}"
             </h2>
             <div className="flex items-center gap-3">
                <div className="h-px w-8 bg-white/60"></div>
-               <p className="text-white/80 text-sm tracking-wider uppercase font-medium">
-                 William Lyon Phelps
+               <p className="text-white/80 text-sm tracking-wider uppercase font-medium" suppressHydrationWarning>
+                 {quote.author}
                </p>
             </div>
           </div>
@@ -74,53 +155,48 @@ export default function Login() {
       </div>
 
       {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center items-center p-8 sm:p-12 lg:p-24 pt-24 lg:pt-0 relative bg-background h-full overflow-y-auto">
-        <div className="w-full max-w-sm space-y-10 pb-8">
+      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 sm:p-12 lg:p-24 relative h-full overflow-y-auto">
+        <div className="w-full max-w-sm space-y-6 pb-8">
           
           {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
+          <div className="lg:hidden text-center mb-6 -mt-8">
             <Link href="/" className="font-serif text-3xl text-primary">
               TheFesta
             </Link>
           </div>
 
-          <div className="space-y-2 text-center">
+          <div className="space-y-1.5 text-center">
             <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
               Welcome back
             </h1>
-            <p className="text-muted-foreground">
+            <p className="text-sm text-muted-foreground">
               Enter your details to access your account.
             </p>
-            {unauthorized ? (
-              <p className="text-sm text-destructive">
-                Your account does not have admin access.
-              </p>
-            ) : null}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="relative group">
-              <label className="absolute -top-2 left-2 bg-background px-1 text-xs font-medium text-primary/80 group-focus-within:text-primary transition-colors z-10">
+              <label className="absolute -top-2.5 left-2.5 bg-background px-1.5 text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors z-10">
                 Email
               </label>
               <input
                 type="email"
                 placeholder="name@example.com"
-                className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="relative group">
-                 <label className="absolute -top-2 left-2 bg-background px-1 text-xs font-medium text-primary/80 group-focus-within:text-primary transition-colors z-10">
+                 <label className="absolute -top-2.5 left-2.5 bg-background px-1.5 text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors z-10">
                   Password
                 </label>
                 <input
                   type={showPassword ? "text" : "password"}
-                  className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 pr-10"
+                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -129,15 +205,15 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
                 >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
               <div className="flex justify-end">
                 <Link
                   href="/forgot-password"
-                  className="text-xs text-primary/60 hover:text-primary transition-colors"
+                  className="text-xs text-primary hover:underline underline-offset-4 transition-colors"
                 >
                   Forgot password?
                 </Link>
@@ -147,7 +223,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={isLoading}
-              className="inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-12 w-full"
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-11 w-full mt-1"
             >
               {isLoading ? (
                 <>
@@ -158,80 +234,36 @@ export default function Login() {
                 "Sign In"
               )}
             </button>
-            {errorMessage ? (
-              <p className="text-sm text-destructive text-center">{errorMessage}</p>
-            ) : null}
           </form>
 
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-             <button className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-11">
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                  <path
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.26.81-.58z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    fill="#EA4335"
-                  />
-                </svg>
-                Google
-             </button>
-             <button className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-11">
-                <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-.98-.42-2.05-.42-3.01 0-1.07.47-2.09.55-3.23-.4-4.44-4.19-3.8-11.19 1.74-11.38 1.4.05 2.37.8 3.15.82.71.02 1.96-.85 3.37-.7 1.8.15 3.12.82 3.96 2.05-3.5 1.76-2.9 6.57.54 7.9-.69 1.76-1.68 3.48-3.44 5.3zM14.47 5.25c.82-1.05 1.35-2.48 1.2-3.77-1.2.07-2.65.82-3.5 1.85-.75.92-1.4 2.38-1.2 3.7 1.35.1 2.7-.75 3.5-1.78z" />
-                </svg>
-                Apple
-             </button>
-          </div>
-
-          <div className="text-center text-sm text-muted-foreground">
+          <div className="text-center text-sm text-muted-foreground pt-2">
             Don't have an account?{" "}
             <Link
               href="/signup"
-              className="font-semibold text-primary hover:underline underline-offset-4"
+              className="font-semibold text-primary hover:underline underline-offset-4 transition-colors"
             >
               Sign up
             </Link>
           </div>
 
-          <p className="px-8 text-center text-xs text-muted-foreground">
+          <p className="text-center text-xs text-muted-foreground leading-relaxed pt-1">
             By continuing, you agree to TheFesta's{" "}
-            <a href="#" className="underline underline-offset-4 hover:text-primary">
+            <Link href="/terms" className="underline underline-offset-4 hover:text-primary transition-colors">
               Terms of Service
-            </a>{" "}
+            </Link>{" "}
             and{" "}
-            <a href="#" className="underline underline-offset-4 hover:text-primary">
+            <Link href="/privacy" className="underline underline-offset-4 hover:text-primary transition-colors">
               Privacy Policy
-            </a>
+            </Link>
             , and to receive periodic emails with updates.
           </p>
           
-          <div className="absolute top-8 left-8 lg:top-12 lg:left-12">
+          <div className="absolute top-6 left-6 lg:top-8 lg:left-8">
             <Link
               href="/"
               className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
             >
-              <ArrowLeft className="mr-2 h-4 w-4" />
+              <ArrowLeft className="mr-1.5 h-4 w-4" />
               Back to home
             </Link>
           </div>

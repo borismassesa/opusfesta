@@ -18,8 +18,8 @@ cd apps/admin
 Copy the Supabase variables from `apps/website/.env.local` to `apps/admin/.env.local`:
 
 ```bash
-# Copy Supabase variables
-grep "NEXT_PUBLIC_SUPABASE" apps/website/.env.local >> apps/admin/.env.local
+# Copy Supabase variables (including service role key for admin API routes)
+grep -E "NEXT_PUBLIC_SUPABASE|SUPABASE_SERVICE_ROLE_KEY" apps/website/.env.local >> apps/admin/.env.local
 ```
 
 **Option 3: Create manually**
@@ -27,7 +27,10 @@ Create `apps/admin/.env.local` with:
 ```env
 NEXT_PUBLIC_SUPABASE_URL=your-supabase-url-from-website-app
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY=your-supabase-anon-key-from-website-app
+SUPABASE_SERVICE_ROLE_KEY=your-service-role-key-from-supabase-dashboard
 ```
+
+**Note:** The `SUPABASE_SERVICE_ROLE_KEY` is required for admin API routes. You can find it in your Supabase project dashboard under Settings > API > service_role key (keep this secret!).
 
 ### Install Dependencies
 

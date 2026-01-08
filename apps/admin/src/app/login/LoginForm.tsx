@@ -63,7 +63,7 @@ export function LoginForm() {
           </Link>
           
           <div className="backdrop-blur-md bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl max-w-lg">
-            <h2 className="text-3xl font-serif mb-4 leading-normal text-white">
+            <h2 className="text-3xl font-serif mb-4 leading-normal text-white" suppressHydrationWarning>
               "The highest happiness on earth is the happiness of marriage."
             </h2>
             <div className="flex items-center gap-3">
@@ -219,13 +219,13 @@ export function LoginForm() {
 
           <p className="px-8 text-center text-xs text-muted-foreground">
             By continuing, you agree to TheFesta's{" "}
-            <a href="#" className="underline underline-offset-4 hover:text-primary">
+            <Link href="/terms" className="underline underline-offset-4 hover:text-primary">
               Terms of Service
-            </a>{" "}
+            </Link>{" "}
             and{" "}
-            <a href="#" className="underline underline-offset-4 hover:text-primary">
+            <Link href="/privacy" className="underline underline-offset-4 hover:text-primary">
               Privacy Policy
-            </a>
+            </Link>
             , and to receive periodic emails with updates.
           </p>
           

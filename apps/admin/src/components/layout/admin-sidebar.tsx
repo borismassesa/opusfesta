@@ -8,13 +8,10 @@ import {
   DollarSign,
   FileText,
   Settings,
-  Moon,
-  Sun,
   MoreVertical,
   Eye,
 } from "lucide-react";
-import { useEffect, useState } from "react";
-import { useTheme } from "next-themes";
+import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 
 const MENU_GROUPS = [
   {
@@ -49,13 +46,6 @@ function isActiveRoute(pathname: string, href: string) {
 
 export function AdminSidebar() {
   const pathname = usePathname();
-  const { theme, setTheme } = useTheme();
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const displayName = "Admin User";
   const displayEmail = "admin@thefesta.com";
 
@@ -125,17 +115,7 @@ export function AdminSidebar() {
             </span>
             <span className="text-xs text-muted-foreground truncate">{displayEmail}</span>
           </div>
-          <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="w-8 h-8 rounded-lg hover:bg-muted/50 transition-colors flex items-center justify-center text-sidebar-foreground"
-            aria-label="Toggle theme"
-          >
-            {mounted && theme === "dark" ? (
-              <Sun className="w-4 h-4" />
-            ) : (
-              <Moon className="w-4 h-4" />
-            )}
-          </button>
+          <ThemeSwitcher variant="compact" showLabel={false} />
         </div>
       </div>
     </aside>

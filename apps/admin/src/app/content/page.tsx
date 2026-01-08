@@ -127,9 +127,8 @@ export default function ContentPage() {
       {/* Secondary Sidebar - Supabase Style */}
       <aside 
         className={cn(
-          "border-r border-border bg-background flex-shrink-0 flex flex-col transition-all duration-200 ease-in-out",
-          isSecondarySidebarCollapsed ? "w-0 border-r-0 overflow-hidden" : "w-56 lg:w-64 xl:w-72",
-          !isSecondarySidebarCollapsed && "h-auto lg:self-start lg:max-h-[calc(100vh-4rem)]"
+          "border-r border-border bg-background flex-shrink-0 flex flex-col transition-all duration-200 ease-in-out h-full",
+          isSecondarySidebarCollapsed ? "w-0 border-r-0 overflow-hidden" : "w-56 lg:w-64 xl:w-72"
         )}
       >
         {/* Title Header */}
@@ -163,10 +162,9 @@ export default function ContentPage() {
         
         {/* Navigation Groups */}
         <nav className={cn(
-          "px-3 py-3 transition-opacity duration-200",
+          "px-3 py-3 transition-opacity duration-200 flex-1",
           isSecondarySidebarCollapsed && "opacity-0 overflow-hidden",
-          !isSecondarySidebarCollapsed && "overflow-y-auto",
-          "lg:max-h-[calc(100vh-12rem)]"
+          !isSecondarySidebarCollapsed && "overflow-y-auto"
         )}>
           {CONTENT_NAV_GROUPS.map((group, groupIndex) => (
             <div key={group.label} className={cn(groupIndex < CONTENT_NAV_GROUPS.length - 1 ? "mb-5" : "mb-0")}>
