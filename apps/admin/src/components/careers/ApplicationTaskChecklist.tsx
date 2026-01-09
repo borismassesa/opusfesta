@@ -63,14 +63,19 @@ export function ApplicationTaskChecklist({ applicationId }: ApplicationTaskCheck
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch tasks");
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.details || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       setTasks(data.tasks || []);
+      // Clear any previous errors on successful fetch
+      setError(null);
     } catch (err) {
       console.error("Error fetching tasks:", err);
-      setError(err instanceof Error ? err.message : "Failed to load tasks");
+      const errorMessage = err instanceof Error ? err.message : "Failed to load tasks";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -99,6 +104,9 @@ export function ApplicationTaskChecklist({ applicationId }: ApplicationTaskCheck
 
       // Refresh tasks
       fetchTasks();
+      
+      // Trigger activity timeline refresh
+      window.dispatchEvent(new Event('refresh-activity-timeline'));
     } catch (err) {
       console.error("Error updating task:", err);
       alert(err instanceof Error ? err.message : "Failed to update task");
@@ -133,6 +141,9 @@ export function ApplicationTaskChecklist({ applicationId }: ApplicationTaskCheck
       setNewTaskTitle("");
       setNewTaskType("custom");
       fetchTasks();
+      
+      // Trigger activity timeline refresh
+      window.dispatchEvent(new Event('refresh-activity-timeline'));
     } catch (err) {
       console.error("Error creating task:", err);
       alert(err instanceof Error ? err.message : "Failed to create task");
@@ -163,6 +174,9 @@ export function ApplicationTaskChecklist({ applicationId }: ApplicationTaskCheck
       }
 
       fetchTasks();
+      
+      // Trigger activity timeline refresh
+      window.dispatchEvent(new Event('refresh-activity-timeline'));
     } catch (err) {
       console.error("Error deleting task:", err);
       alert(err instanceof Error ? err.message : "Failed to delete task");

@@ -113,7 +113,7 @@ export function FilePreview({
       </div>
 
       <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-[95vw] w-full max-h-[95vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center justify-between">
               <span>{fileName}</span>
@@ -142,7 +142,7 @@ export function FilePreview({
                 {detectedType === "pdf" ? (
                   <iframe
                     src={previewUrl}
-                    className="w-full h-full min-h-[600px] border-0"
+                    className="w-full h-full min-h-[80vh] border-0"
                     title={fileName}
                   />
                 ) : detectedType === "image" ? (
@@ -150,7 +150,7 @@ export function FilePreview({
                     <img
                       src={previewUrl}
                       alt={fileName}
-                      className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                      className="max-w-full max-h-[85vh] object-contain rounded-lg"
                     />
                   </div>
                 ) : (

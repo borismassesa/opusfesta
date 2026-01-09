@@ -2,8 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Download, Save, Loader2, Mail, Phone, Link as LinkIcon, FileText, ExternalLink, Calendar, User, Briefcase, GraduationCap, Users } from "lucide-react";
-import { FilePreview } from "@/components/careers/FilePreview";
+import { ArrowLeft, Save, Loader2, Mail, Phone, Link as LinkIcon, FileText, ExternalLink, Calendar, User, Briefcase, GraduationCap, Users } from "lucide-react";
 import { ApplicationTaskChecklist } from "@/components/careers/ApplicationTaskChecklist";
 import { ApplicationActivityTimeline } from "@/components/careers/ApplicationActivityTimeline";
 import { Button } from "@/components/ui/button";
@@ -114,7 +113,7 @@ export default function ApplicationDetailPage() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = async (saveStatus?: boolean, saveNotes?: boolean) => {
     if (!application) return;
 
     setIsSaving(true);
@@ -125,6 +124,11 @@ export default function ApplicationDetailPage() {
         return;
       }
 
+      // Build update payload - only include what needs to be saved
+      const updatePayload: any = { id: applicationId };
+      if (saveStatus !== false) updatePayload.status = status;
+      if (saveNotes !== false) updatePayload.notes = notes;
+
       // Use absolute URL with basePath to call admin app's own API
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications`), {
         method: "PATCH",
@@ -132,18 +136,40 @@ export default function ApplicationDetailPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          id: applicationId,
-          status,
-          notes,
-        }),
+        body: JSON.stringify(updatePayload),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to update application");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to update application");
       }
 
-      await fetchApplication();
+      const responseData = await response.json();
+      
+      // Update application state immediately from response
+      if (responseData.application) {
+        const updatedApp = responseData.application;
+        setApplication(updatedApp);
+        // Sync status and notes with the updated application
+        setStatus(updatedApp.status);
+        setNotes(updatedApp.notes || "");
+      } else {
+        // Fallback: refetch if response doesn't have application
+        await fetchApplication();
+      }
+      
+      // Trigger activity timeline refresh
+      window.dispatchEvent(new Event('refresh-activity-timeline'));
+      
+      // Show success feedback
+      if (saveNotes && !saveStatus) {
+        // Only show feedback for notes-only saves
+        const successMsg = document.createElement('div');
+        successMsg.className = 'fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded shadow-lg z-50';
+        successMsg.textContent = 'Notes saved successfully';
+        document.body.appendChild(successMsg);
+        setTimeout(() => successMsg.remove(), 2000);
+      }
     } catch (err: any) {
       console.error("Error updating application:", err);
       alert(err.message || "Failed to update application");
@@ -151,6 +177,9 @@ export default function ApplicationDetailPage() {
       setIsSaving(false);
     }
   };
+
+  const handleSaveStatus = () => handleSave(true, false);
+  const handleSaveNotes = () => handleSave(false, true);
 
   const handleDownloadFile = async (filePath: string, fileName: string) => {
     try {
@@ -265,23 +294,7 @@ export default function ApplicationDetailPage() {
           </Button>
         </Link>
         <div className="flex gap-2 flex-wrap">
-          {application.resume_url && (
-            <FilePreview
-              fileUrl={application.resume_url}
-              fileName="Resume"
-              fileType="pdf"
-              onDownload={() => handleDownloadFile(application.resume_url!, "Resume")}
-            />
-          )}
-          {application.cover_letter_url && (
-            <FilePreview
-              fileUrl={application.cover_letter_url}
-              fileName="Cover Letter"
-              fileType="pdf"
-              onDownload={() => handleDownloadFile(application.cover_letter_url!, "Cover Letter")}
-            />
-          )}
-          <Button onClick={handleSave} disabled={isSaving}>
+          <Button onClick={() => handleSave(true, true)} disabled={isSaving}>
             {isSaving ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -290,7 +303,7 @@ export default function ApplicationDetailPage() {
             ) : (
               <>
                 <Save className="w-4 h-4 mr-2" />
-                Save Changes
+                Save All Changes
               </>
             )}
           </Button>
@@ -377,30 +390,21 @@ export default function ApplicationDetailPage() {
           </Card>
 
           {/* Cover Letter */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="w-5 h-5" />
-                Cover Letter
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {application.cover_letter_url ? (
-                <div className="space-y-3">
-                  <FilePreview
-                    fileUrl={application.cover_letter_url}
-                    fileName="Cover Letter"
-                    fileType="pdf"
-                    onDownload={() => handleDownloadFile(application.cover_letter_url!, "Cover Letter")}
-                  />
-                </div>
-              ) : (
+          {application.cover_letter && !application.cover_letter_url && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Cover Letter
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
                 <div className="p-4 border rounded-lg bg-muted/50 whitespace-pre-wrap text-sm">
-                  {application.cover_letter || "No cover letter provided"}
+                  {application.cover_letter}
                 </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Experience */}
           {application.experience && (
@@ -463,7 +467,23 @@ export default function ApplicationDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <Label className="text-sm font-medium mb-2 block">Application Status</Label>
+                <div className="flex items-center justify-between mb-2">
+                  <Label className="text-sm font-medium">Application Status</Label>
+                  <Button
+                    onClick={handleSaveStatus}
+                    disabled={isSaving}
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs"
+                    title="Save status change"
+                  >
+                    {isSaving ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                    ) : (
+                      <Save className="w-3 h-3" />
+                    )}
+                  </Button>
+                </div>
                 <Select value={status} onValueChange={setStatus}>
                   <SelectTrigger>
                     <SelectValue />
@@ -491,28 +511,6 @@ export default function ApplicationDetailPage() {
                     Send Email
                   </a>
                 </Button>
-                {application.resume_url && (
-                  <div className="w-full">
-                    <FilePreview
-                      fileUrl={application.resume_url}
-                      fileName="Resume"
-                      fileType="pdf"
-                      onDownload={() => handleDownloadFile(application.resume_url!, "Resume")}
-                      className="w-full"
-                    />
-                  </div>
-                )}
-                {application.cover_letter_url && (
-                  <div className="w-full">
-                    <FilePreview
-                      fileUrl={application.cover_letter_url}
-                      fileName="Cover Letter"
-                      fileType="pdf"
-                      onDownload={() => handleDownloadFile(application.cover_letter_url!, "Cover Letter")}
-                      className="w-full"
-                    />
-                  </div>
-                )}
               </div>
             </CardContent>
           </Card>
@@ -560,7 +558,7 @@ export default function ApplicationDetailPage() {
                   <Label className="text-xs text-muted-foreground">Department</Label>
                   <p className="font-medium">{application.job_postings.department}</p>
                 </div>
-                <Link href={`/careers/${application.job_postings.id}`}>
+                <Link href={`/careers/jobs/${application.job_postings.id}`}>
                   <Button variant="outline" size="sm" className="w-full mt-2">
                     View Job Posting
                   </Button>
@@ -574,10 +572,31 @@ export default function ApplicationDetailPage() {
       {/* Admin Notes */}
       <Card>
         <CardHeader>
-          <CardTitle>Admin Notes</CardTitle>
-          <CardDescription>
-            Add private notes about this application. These notes are only visible to admins.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Admin Notes</CardTitle>
+              <CardDescription>
+                Add private notes about this application. These notes are only visible to admins.
+              </CardDescription>
+            </div>
+            <Button
+              onClick={handleSaveNotes}
+              disabled={isSaving}
+              size="sm"
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="w-4 h-4 mr-2" />
+                  Save Notes
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Textarea
@@ -585,7 +604,17 @@ export default function ApplicationDetailPage() {
             onChange={(e) => setNotes(e.target.value)}
             placeholder="Add notes about this application..."
             className="min-h-[120px]"
+            onKeyDown={(e) => {
+              // Save on Ctrl/Cmd + Enter
+              if ((e.ctrlKey || e.metaKey) && e.key === "Enter") {
+                e.preventDefault();
+                handleSaveNotes();
+              }
+            }}
           />
+          <p className="text-xs text-muted-foreground mt-2">
+            Press Ctrl+Enter (or Cmd+Enter on Mac) to save quickly
+          </p>
         </CardContent>
       </Card>
 

@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { ensureUserRecord } from '@/lib/auth';
 import { Loader2 } from 'lucide-react';
 
 interface AuthGuardProps {
@@ -19,6 +20,7 @@ export function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
   useEffect(() => {
     let mounted = true;
     let subscription: { unsubscribe: () => void } | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
 
     const checkAuth = async (retryCount = 0) => {
       try {
@@ -69,6 +71,23 @@ export function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
           return;
         }
 
+        // CRITICAL: Verify user exists in database and create if needed
+        const ensureResult = await ensureUserRecord(session);
+        
+        if (!ensureResult.success) {
+          console.error('[AuthGuard] Failed to ensure user record:', ensureResult.error);
+          setIsAuthenticated(false);
+          setIsChecking(false);
+          // Redirect to login with error message
+          if (pathname !== redirectTo && !pathname.startsWith('/login')) {
+            const redirectUrl = new URL(redirectTo, window.location.origin);
+            redirectUrl.searchParams.set('next', pathname);
+            redirectUrl.searchParams.set('error', 'account_setup_failed');
+            window.location.href = redirectUrl.toString();
+          }
+          return;
+        }
+
         // Clear the flag on successful auth
         sessionStorage.removeItem('justLoggedIn');
         setIsAuthenticated(true);
@@ -89,11 +108,26 @@ export function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
       }
     };
 
+    // Set a timeout to prevent infinite loading (10 seconds max)
+    timeoutId = setTimeout(() => {
+      if (mounted && isChecking) {
+        console.warn('[AuthGuard] Authentication check timed out after 10 seconds');
+        setIsAuthenticated(false);
+        setIsChecking(false);
+        if (pathname !== redirectTo && !pathname.startsWith('/login')) {
+          const redirectUrl = new URL(redirectTo, window.location.origin);
+          redirectUrl.searchParams.set('next', pathname);
+          redirectUrl.searchParams.set('error', 'auth_timeout');
+          window.location.href = redirectUrl.toString();
+        }
+      }
+    }, 10000);
+
     // Initial check
     checkAuth();
 
     // Listen to auth state changes
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!mounted) return;
 
       if (event === 'SIGNED_OUT' || !session) {
@@ -107,8 +141,16 @@ export function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
           window.location.href = redirectUrl.toString();
         }
       } else if (session) {
-        setIsAuthenticated(true);
-        setIsChecking(false);
+        // Verify user record exists when session is available
+        const ensureResult = await ensureUserRecord(session);
+        if (ensureResult.success) {
+          setIsAuthenticated(true);
+          setIsChecking(false);
+        } else {
+          console.error('[AuthGuard] Failed to ensure user record on auth state change:', ensureResult.error);
+          setIsAuthenticated(false);
+          setIsChecking(false);
+        }
       }
     });
 
@@ -116,6 +158,9 @@ export function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
 
     return () => {
       mounted = false;
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
       if (subscription) {
         subscription.unsubscribe();
       }

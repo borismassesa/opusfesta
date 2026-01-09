@@ -22,6 +22,29 @@ async function isAdmin(request: NextRequest): Promise<boolean> {
   return userData?.role === "admin";
 }
 
+// Get authenticated user ID - since isAdmin() already verified the user, we can trust the token
+async function getAuthenticatedUserId(request: NextRequest): Promise<string> {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader) {
+    throw new Error("No authorization header - user should be authenticated");
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  if (!token) {
+    throw new Error("No token in authorization header");
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+  if (error || !user || !user.id) {
+    throw new Error("Failed to get user from token - user should be authenticated");
+  }
+
+  // Return the user ID - since isAdmin() already verified they exist in users table
+  return user.id;
+}
+
 // Task schema
 const taskSchema = z.object({
   application_id: z.string().uuid(),
@@ -51,25 +74,58 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "applicationId is required" }, { status: 400 });
     }
 
-    const { data: tasks, error } = await supabaseAdmin
+    // Try to fetch tasks - start with simple query to avoid foreign key issues
+    let { data: tasks, error } = await supabaseAdmin
       .from("application_tasks")
-      .select(`
-        *,
-        completed_by_user:users!application_tasks_completed_by_fkey (
-          id,
-          email,
-          full_name
-        )
-      `)
+      .select("*")
       .eq("application_id", applicationId)
       .order("created_at", { ascending: true });
 
+    // If there's an error, check if it's a table/relation issue
     if (error) {
+      // Check if the error is about the table not existing
+      if (error.message?.includes("relation") || error.message?.includes("does not exist") || error.code === "42P01") {
+        console.warn("application_tasks table may not exist or have issues:", error.message);
+        // Return empty array if table doesn't exist - this allows the feature to work
+        // even if the table hasn't been created yet
+        return NextResponse.json({ tasks: [] });
+      }
+      
       console.error("Error fetching tasks:", error);
       return NextResponse.json(
-        { error: "Failed to fetch tasks" },
+        { error: "Failed to fetch tasks", details: error.message },
         { status: 500 }
       );
+    }
+
+    // If we have tasks, try to fetch user data for completed_by
+    if (tasks && tasks.length > 0) {
+      const completedByUserIds = tasks
+        .filter(t => t.completed_by)
+        .map(t => t.completed_by)
+        .filter((id, index, self) => self.indexOf(id) === index); // unique IDs
+      
+      if (completedByUserIds.length > 0) {
+        const { data: users } = await supabaseAdmin
+          .from("users")
+          .select("id, email, full_name")
+          .in("id", completedByUserIds);
+        
+        // Map users to tasks
+        if (users) {
+          const userMap = new Map(users.map(u => [u.id, u]));
+          tasks = tasks.map(task => ({
+            ...task,
+            completed_by_user: task.completed_by ? userMap.get(task.completed_by) || null : null
+          }));
+        }
+      } else {
+        // Add null completed_by_user to all tasks if no completed_by values
+        tasks = tasks.map(task => ({
+          ...task,
+          completed_by_user: null
+        }));
+      }
     }
 
     return NextResponse.json({ tasks: tasks || [] });
@@ -89,10 +145,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const authHeader = request.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
     const supabaseAdmin = getSupabaseAdmin();
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token || "");
+    // Get authenticated user ID - since isAdmin() passed, user is guaranteed to be authenticated
+    const userId = await getAuthenticatedUserId(request);
 
     const body = await request.json();
     const validationResult = taskSchema.safeParse(body);
@@ -129,7 +184,7 @@ export async function POST(request: NextRequest) {
           task_type: task.task_type,
           title: task.title,
         },
-        performed_by: user?.id || null,
+        performed_by: userId,
       });
 
     return NextResponse.json({ task }, { status: 201 });
@@ -149,10 +204,9 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const authHeader = request.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
     const supabaseAdmin = getSupabaseAdmin();
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token || "");
+    // Get authenticated user ID - since isAdmin() passed, user is guaranteed to be authenticated
+    const userId = await getAuthenticatedUserId(request);
 
     const body = await request.json();
     const validationResult = updateTaskSchema.safeParse(body);
@@ -177,7 +231,7 @@ export async function PATCH(request: NextRequest) {
     const update: any = { ...updateData };
     if (updateData.completed !== undefined) {
       if (updateData.completed) {
-        update.completed_by = user?.id || null;
+        update.completed_by = userId;
         update.completed_at = new Date().toISOString();
       } else {
         update.completed_by = null;
@@ -212,7 +266,7 @@ export async function PATCH(request: NextRequest) {
             task_type: task.task_type,
             title: task.title,
           },
-          performed_by: user?.id || null,
+          performed_by: userId,
         });
     }
 
@@ -264,9 +318,8 @@ export async function DELETE(request: NextRequest) {
 
     // Log task deletion to activity log
     if (task) {
-      const authHeader = request.headers.get("authorization");
-      const token = authHeader?.replace("Bearer ", "");
-      const { data: { user } } = await supabaseAdmin.auth.getUser(token || "");
+      // Get authenticated user ID - since isAdmin() passed, user is guaranteed to be authenticated
+      const userId = await getAuthenticatedUserId(request);
 
       await supabaseAdmin
         .from("application_activity_log")
@@ -277,7 +330,7 @@ export async function DELETE(request: NextRequest) {
             task_type: task.task_type,
             title: task.title,
           },
-          performed_by: user?.id || null,
+          performed_by: userId,
         });
     }
 

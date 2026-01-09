@@ -21,6 +21,29 @@ async function isAdmin(request: NextRequest): Promise<boolean> {
   return userData?.role === "admin";
 }
 
+// Get authenticated user ID - since isAdmin() already verified the user, we can trust the token
+async function getAuthenticatedUserId(request: NextRequest): Promise<string> {
+  const authHeader = request.headers.get("authorization");
+  if (!authHeader) {
+    throw new Error("No authorization header - user should be authenticated");
+  }
+
+  const token = authHeader.replace("Bearer ", "");
+  if (!token) {
+    throw new Error("No token in authorization header");
+  }
+
+  const supabaseAdmin = getSupabaseAdmin();
+  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+
+  if (error || !user || !user.id) {
+    throw new Error("Failed to get user from token - user should be authenticated");
+  }
+
+  // Return the user ID - since isAdmin() already verified they exist in users table
+  return user.id;
+}
+
 // GET - List all applications (admin only)
 export async function GET(request: NextRequest) {
   try {
@@ -86,10 +109,10 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ error: "Application ID is required" }, { status: 400 });
     }
 
-    const authHeader = request.headers.get("authorization");
-    const token = authHeader?.replace("Bearer ", "");
     const supabaseAdmin = getSupabaseAdmin();
-    const { data: { user } } = await supabaseAdmin.auth.getUser(token || "");
+    
+    // Get authenticated user ID - since isAdmin() passed, user is guaranteed to be authenticated
+    const userId = await getAuthenticatedUserId(request);
 
     // Get current application state before update
     const { data: currentApplication } = await supabaseAdmin
@@ -156,7 +179,7 @@ export async function PATCH(request: NextRequest) {
             old_status: currentApplication.status,
             new_status: status,
           },
-          performed_by: user?.id || null,
+          performed_by: userId,
         });
     }
 
@@ -171,7 +194,7 @@ export async function PATCH(request: NextRequest) {
             new_notes: notes,
             has_notes: notes !== null && notes !== "",
           },
-          performed_by: user?.id || null,
+          performed_by: userId,
         });
     }
 

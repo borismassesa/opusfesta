@@ -192,7 +192,7 @@ export default function EditJobPostingPage() {
         throw new Error(errorData.error || "Failed to update job posting");
       }
 
-      router.push("/careers");
+      router.push("/careers/jobs");
     } catch (err: any) {
       console.error("Error updating job posting:", err);
       setError(err.message || "Failed to update job posting");
@@ -245,10 +245,10 @@ export default function EditJobPostingPage() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <Link href="/careers">
+        <Link href={`/careers/jobs/${jobId}`}>
           <Button variant="ghost">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Job Postings
+            Back to View
           </Button>
         </Link>
         <div className="flex items-center gap-2">
@@ -741,13 +741,13 @@ export default function EditJobPostingPage() {
                 </>
               )}
             </Button>
-            <Link href="/careers">
+            <Link href={`/careers/jobs/${jobId}`}>
               <Button type="button" variant="outline" size="lg">
                 Cancel
               </Button>
             </Link>
             <div className="flex-1" />
-            <Link href={`/careers/${jobId}/preview`} target="_blank">
+            <Link href={`/careers/jobs/${jobId}/preview`} target="_blank">
               <Button type="button" variant="ghost" size="lg">
                 <Eye className="w-4 h-4 mr-2" />
                 Preview

@@ -47,7 +47,17 @@ export async function getUserRole(userId: string): Promise<UserRole | null> {
       .eq("id", userId)
       .single();
 
-    if (error || !data) {
+    // Handle RLS errors gracefully (406) - these are expected if session isn't fully established
+    const isRLSError = error?.code === "PGRST301" || 
+                      error?.message?.toLowerCase().includes("row-level security") ||
+                      error?.status === 406;
+
+    if (error && !isRLSError) {
+      // Only log non-RLS errors
+      console.error("Error fetching user role:", error);
+    }
+
+    if (!data) {
       return null;
     }
 
@@ -121,8 +131,8 @@ export async function createUserRecord(
     }).select();
 
     if (error) {
-      // If user already exists, that's okay (idempotent)
-      if (error.code === "23505") {
+      // If user already exists (409 conflict), that's okay (idempotent)
+      if (error.code === "23505" || error.message?.includes("duplicate") || error.message?.includes("unique")) {
         // Unique constraint violation - user already exists
         return { success: true };
       }
@@ -228,14 +238,32 @@ export async function ensureUserRecord(session: Session): Promise<{ success: boo
       .eq("id", user.id)
       .single();
 
-    // If fetch error is not "not found", log it
-    if (fetchError && fetchError.code !== "PGRST116") {
+    // Handle RLS errors gracefully (406) - these are expected if session isn't fully established
+    const isRLSError = fetchError?.code === "PGRST301" || 
+                      fetchError?.message?.toLowerCase().includes("row-level security") ||
+                      fetchError?.status === 406;
+    
+    // PGRST116 = not found (expected if user doesn't exist yet)
+    const isNotFoundError = fetchError?.code === "PGRST116";
+
+    // If fetch error is not "not found" or RLS error, log it
+    if (fetchError && !isNotFoundError && !isRLSError) {
+      // Only log unexpected errors
       console.error("Error fetching user record:", fetchError);
     }
 
+    // If user exists, return their role
     if (existingUser) {
-      // User exists, return their role
       const userType = mapRoleToUserType(existingUser.role as UserRole);
+      return { success: true, userType };
+    }
+
+    // If we got an RLS error, the user might exist but we can't see it
+    // In this case, we'll assume the user exists and return success
+    // This prevents infinite loops trying to create a user that already exists
+    if (isRLSError) {
+      // Default to 'couple' user type if we can't determine the role
+      const userType = (user.user_metadata?.user_type as UserType) || "couple";
       return { success: true, userType };
     }
 

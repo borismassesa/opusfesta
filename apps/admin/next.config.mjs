@@ -7,8 +7,8 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // basePath is required for rewrites from main domain (thefestaevents.com/admin)
-  basePath: '/admin',
+  // basePath removed - using subdomain (admin.thefestaevents.com) instead of path-based routing
+  // basePath: '/admin',
   typedRoutes: true,
   webpack: (config) => {
     config.resolve.alias = {

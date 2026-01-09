@@ -140,7 +140,14 @@ export default function AuthCallback() {
 
           // Get user type and redirect
           const userType = await getUserTypeFromSession(data.session);
-          const redirectPath = getRedirectPath(userType || userTypeParam || undefined);
+          // Check sessionStorage for redirect path (set before OAuth redirect)
+          const next = sessionStorage.getItem("auth_redirect");
+          const redirectPath = getRedirectPath(userType || userTypeParam || undefined, undefined, next);
+
+          // Clear sessionStorage after use
+          if (next) {
+            sessionStorage.removeItem("auth_redirect");
+          }
 
           toast({
             title: "Successfully authenticated!",
@@ -224,7 +231,14 @@ export default function AuthCallback() {
 
             // Get user type and redirect
             const userType = await getUserTypeFromSession(data.session);
-            const redirectPath = getRedirectPath(userType || userTypeParam || undefined);
+            // Check sessionStorage for redirect path (set before OAuth redirect)
+            const next = sessionStorage.getItem("auth_redirect");
+            const redirectPath = getRedirectPath(userType || userTypeParam || undefined, undefined, next);
+
+            // Clear sessionStorage after use
+            if (next) {
+              sessionStorage.removeItem("auth_redirect");
+            }
 
             toast({
               title: "Successfully authenticated!",

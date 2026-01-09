@@ -118,15 +118,12 @@ export function JobListingCard({ job }: JobListingCardProps) {
 
         {/* Footer */}
         <div className="mt-auto pt-4">
-          <Link 
-            href={job.description ? `/careers/${job.id}/apply` : `/login?next=${encodeURIComponent(`/careers/${job.id}/apply`)}`} 
-            className="block"
-          >
+          <Link href={`/careers/${job.id}`} className="block">
             <Button 
               className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300"
               size="lg"
             >
-              {job.description ? "Apply Now" : "Log in to Apply"}
+              View Details
               <ArrowRight className="w-4 h-4 ml-2 group-hover/btn:translate-x-1 transition-transform" />
             </Button>
           </Link>

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import signupImg from "@assets/stock_images/happy_wedding_couple_e3561dd1.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
@@ -13,6 +13,7 @@ import { toast } from "@/hooks/use-toast";
 
 export default function Signup() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [userType, setUserType] = useState<"couple" | "vendor">("couple");
@@ -25,7 +26,13 @@ export default function Signup() {
   useEffect(() => {
     // Set a new random sign up quote on mount
     setQuote(getRandomSignUpQuote());
-  }, []);
+    
+    // Store next parameter in sessionStorage (for email confirmation flows)
+    const next = searchParams.get("next");
+    if (next) {
+      sessionStorage.setItem("auth_redirect", next);
+    }
+  }, [searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -73,7 +80,14 @@ export default function Signup() {
 
       // Get user type and redirect appropriately
       const userTypeFromSession = await getUserTypeFromSession(data.session);
-      const redirectPath = getRedirectPath(userTypeFromSession || userType);
+      // Check sessionStorage for redirect path
+      const next = sessionStorage.getItem("auth_redirect");
+      const redirectPath = getRedirectPath(userTypeFromSession || userType, undefined, next);
+      
+      // Clear sessionStorage after use
+      if (next) {
+        sessionStorage.removeItem("auth_redirect");
+      }
       
       toast({
         title: "Account created successfully!",

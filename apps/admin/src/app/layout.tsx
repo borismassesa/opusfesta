@@ -49,6 +49,7 @@ import { Providers } from "@/components/providers";
 import { cn } from "@/lib/utils";
 import { CareersContentProvider } from "@/context/CareersContentContext";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
+import { UnauthorizedPage } from "@/components/UnauthorizedPage";
 import "./globals.css";
 
 // Component to control sidebar state based on secondary sidebar visibility
@@ -235,7 +236,7 @@ const MENU_GROUPS = [
   {
     label: "Careers",
     items: [
-      { label: "Careers", icon: Briefcase, href: "/careers" },
+      { label: "Careers", icon: Briefcase, href: "/careers/jobs" },
     ],
   },
 ];
@@ -248,13 +249,13 @@ function isActiveRoute(pathname: string, href: string) {
   if (pathname === href) {
     return true;
   }
-  // Special case for /careers - should be active for all /careers/* routes
-  if (href === "/careers") {
+  // Special case for /careers/jobs - should be active for all /careers/jobs/* routes
+  if (href === "/careers/jobs") {
     return pathname.startsWith("/careers");
   }
   // For sub-paths: only match if pathname starts with href + "/"
-  // This ensures /careers matches /careers but not /careers/applications
-  // And /careers/applications matches /careers/applications but not /careers
+  // This ensures /careers/jobs matches /careers/jobs but not /careers/applications
+  // And /careers/applications matches /careers/applications but not /careers/jobs
   return pathname.startsWith(href + "/");
 }
 
@@ -457,17 +458,14 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!authChecked) return;
-    // Don't redirect if we're already on the login page
-    if (pathname === "/login") return;
+    // Don't redirect if we're already on the login, forgot-password, or reset-password page
+    if (pathname === "/login" || pathname === "/forgot-password" || pathname === "/reset-password") return;
     if (!session) {
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
-    if (role && !allowedRoles.includes(role)) {
-      console.warn(`User role "${role}" is not in allowed roles:`, allowedRoles);
-      router.replace("/login?unauthorized=1");
-      return;
-    }
+    // If role is set and not in allowed roles, the unauthorized page will be shown
+    // (handled by the !isAllowed check below)
     // If role is empty but session exists, allow access (role might be loading)
     // The role check will happen again once it's loaded
   }, [authChecked, pathname, role, router, session]);
@@ -477,8 +475,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     router.replace("/login");
   };
 
-  // Don't block login page - allow it to render
-  if (pathname === "/login") {
+  // Don't block login, forgot-password, and reset-password pages - allow them to render
+  if (pathname === "/login" || pathname === "/forgot-password" || pathname === "/reset-password") {
     return (
       <html lang="en" suppressHydrationWarning>
         <head>
@@ -521,10 +519,21 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   if (!isAllowed) {
     return (
       <html lang="en" suppressHydrationWarning>
+        <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+          <link
+            href="https://fonts.googleapis.com/css2?family=General+Sans:wght@400;500;600;700&family=Pacifico&display=swap"
+            rel="stylesheet"
+          />
+        </head>
         <body>
-          <div className="flex h-screen items-center justify-center text-muted-foreground">
-            Unauthorized
-          </div>
+          <Providers>
+            <UnauthorizedPage 
+              session={session} 
+              userEmail={session?.user?.email}
+            />
+          </Providers>
         </body>
       </html>
     );
@@ -540,6 +549,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5" />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
         <link
@@ -713,10 +723,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               {/* Main Content Area */}
               <main className="flex-1 overflow-auto bg-background relative">
                 <div className={cn(
-                  "min-h-full relative z-10 animate-in fade-in duration-500",
-                  pathname.startsWith("/content") || pathname.startsWith("/editor/careers")
-                    ? "p-0" 
-                    : "p-6 pt-20 md:p-10 max-w-[1600px] mx-auto"
+                  "relative z-10 animate-in fade-in duration-500",
+                  pathname.startsWith("/content") || pathname.startsWith("/editor/careers") || pathname.startsWith("/careers")
+                    ? "h-full p-0" 
+                    : "min-h-full p-4 sm:p-6 pt-16 sm:pt-20 md:p-8 lg:p-10 max-w-[1600px] mx-auto"
                 )}>
                   <CareersContentProvider>
                     {children}

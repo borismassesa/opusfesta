@@ -20,26 +20,54 @@ export interface JobPosting {
   equal_opportunity_statement?: string | null;
 }
 
-export async function fetchJobPostings(sessionToken?: string): Promise<JobPosting[]> {
+export async function fetchJobPostings(): Promise<JobPosting[]> {
   try {
-    const headers: HeadersInit = {};
-    if (sessionToken) {
-      headers["Authorization"] = `Bearer ${sessionToken}`;
+    const headers: HeadersInit = {
+      "Content-Type": "application/json",
+    };
+
+    // Use absolute URL if available, otherwise relative
+    const baseUrl = typeof window !== "undefined" ? window.location.origin : "";
+    const apiUrl = `${baseUrl}/api/careers/jobs`;
+
+    // Create abort controller for timeout
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
+
+    try {
+      const response = await fetch(apiUrl, {
+        cache: "no-store",
+        headers,
+        signal: controller.signal,
+      });
+
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => "Unknown error");
+        console.error("API response error:", response.status, errorText);
+        throw new Error(`Failed to fetch job postings: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.jobs) {
+        console.warn("No jobs array in response:", data);
+        return [];
+      }
+      
+      return data.jobs || [];
+    } catch (fetchError: any) {
+      clearTimeout(timeoutId);
+      if (fetchError.name === "AbortError") {
+        console.error("Request timed out");
+        throw new Error("Request timed out. Please try again.");
+      }
+      throw fetchError;
     }
-
-    const response = await fetch("/api/careers/jobs", {
-      cache: "no-store",
-      headers,
-    });
-
-    if (!response.ok) {
-      throw new Error("Failed to fetch job postings");
-    }
-
-    const data = await response.json();
-    return data.jobs || [];
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error fetching job postings:", error);
+    // Return empty array so UI can show "no positions found" instead of infinite loading
     return [];
   }
 }

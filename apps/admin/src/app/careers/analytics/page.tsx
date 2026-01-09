@@ -94,7 +94,7 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-background relative w-full">
+    <div className="flex h-full overflow-hidden bg-background relative w-full">
       <CareersSidebar />
       <main className="flex-1 min-w-0 overflow-auto bg-background">
         <div className="p-6 space-y-6">
