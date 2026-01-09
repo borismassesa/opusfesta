@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // basePath is required for rewrites from main domain (thefestaevents.com/vendors)
-  basePath: '/vendors',
+  // basePath removed - using subdomain (vendors.thefestaevents.com) instead of path-based routing
+  // basePath: '/vendors',
   typescript: {
     ignoreBuildErrors: true,
   },

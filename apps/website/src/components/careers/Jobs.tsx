@@ -5,68 +5,15 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { fetchJobPostings, JobPosting } from "@/lib/careers/jobs";
 import { useState, useEffect } from 'react';
-import { supabase } from "@/lib/supabaseClient";
 
 const Jobs: React.FC = () => {
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  useEffect(() => {
-    async function checkAuth() {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session) {
-          setIsAuthenticated(false);
-          return;
-        }
-
-        // Verify user exists in the database
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        setIsAuthenticated(!userError && !!userData);
-      } catch (error) {
-        console.error("Error checking auth:", error);
-        setIsAuthenticated(false);
-      }
-    }
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session) {
-        setIsAuthenticated(false);
-        return;
-      }
-
-      // Verify user exists in the database
-      try {
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        setIsAuthenticated(!userError && !!userData);
-      } catch (error) {
-        console.error("Error verifying user:", error);
-        setIsAuthenticated(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
 
   useEffect(() => {
     async function loadJobs() {
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        const jobPostings = await fetchJobPostings(token);
+        const jobPostings = await fetchJobPostings();
         setJobs(jobPostings.slice(0, 5)); // Show first 5 jobs
       } catch (err) {
         console.error("Error loading jobs:", err);
@@ -75,7 +22,7 @@ const Jobs: React.FC = () => {
       }
     }
     loadJobs();
-  }, [isAuthenticated]);
+  }, []);
 
   if (loading) {
     return (
@@ -120,8 +67,8 @@ const Jobs: React.FC = () => {
                transition={{ duration: 0.4, delay: i * 0.1 }}
              >
                <Link
-                 href={isAuthenticated ? `/careers/${job.id}/apply` : `/login?next=${encodeURIComponent(`/careers/${job.id}/apply`)}`}
-                 className="group flex items-center justify-between py-8 border-b border-border hover:bg-surface transition-all duration-300 px-6 -mx-6 rounded-xl cursor-pointer block"
+                 href={`/careers/${job.id}`}
+                 className="group w-full flex items-center justify-between py-8 border-b border-border hover:bg-surface transition-all duration-300 px-6 -mx-6 rounded-xl cursor-pointer block"
                >
                <div>
                  <h3 className="text-xl md:text-2xl font-medium text-primary group-hover:text-accent transition-colors tracking-tight">{job.title}</h3>
@@ -132,7 +79,7 @@ const Jobs: React.FC = () => {
                  </div>
                </div>
                <div className="flex items-center text-accent font-medium text-lg opacity-0 -translate-x-4 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-300">
-                  {isAuthenticated ? "Apply" : "Log in to Apply"} <span className="ml-2">&rarr;</span>
+                  View <span className="ml-2">&rarr;</span>
                </div>
                </Link>
              </motion.div>

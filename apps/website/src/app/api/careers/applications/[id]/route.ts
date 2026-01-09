@@ -47,21 +47,74 @@ async function getAuthenticatedUser(request: NextRequest): Promise<{ userId: str
   }
 }
 
+// Simple email regex for basic validation
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 // Validation schema for draft updates
 const draftUpdateSchema = z.object({
-  fullName: z.string().min(1, "Full name is required").optional(),
-  email: z.string().email("Invalid email address").optional(),
+  fullName: z.string().optional(),
+  email: z.preprocess(
+    (val) => {
+      // Convert empty strings and null to undefined
+      if (val === "" || val === null || val === undefined) {
+        return undefined;
+      }
+      // If value is a string, check if it's a valid email format
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        // If empty after trimming, return undefined
+        if (trimmed === "") {
+          return undefined;
+        }
+        // If not a valid email format, return undefined (don't fail validation)
+        if (!emailRegex.test(trimmed)) {
+          return undefined;
+        }
+        return trimmed;
+      }
+      return val;
+    },
+    z.string().email("Invalid email address").optional()
+  ),
   phone: z.string().optional(),
   resumeUrl: z.string().optional(),
-  coverLetter: z.string().optional().or(z.literal("")),
-  coverLetterUrl: z.string().optional().or(z.literal("")),
-  portfolioUrl: z.string().url("Invalid portfolio URL").optional().or(z.literal("")),
-  linkedinUrl: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
+  coverLetter: z.string().optional(),
+  coverLetterUrl: z.string().optional(),
+  portfolioUrl: z.preprocess(
+    (val) => val === "" ? undefined : val,
+    z.string().url("Invalid portfolio URL").optional()
+  ),
+  linkedinUrl: z.preprocess(
+    (val) => val === "" ? undefined : val,
+    z.string().url("Invalid LinkedIn URL").optional()
+  ),
   experience: z.string().optional(),
   education: z.string().optional(),
   referenceInfo: z.string().optional(),
   is_draft: z.boolean().optional(), // Can be set to false to submit
 });
+
+// Helper function to validate and clean URL fields
+const cleanUrlForSubmission = (val: any): string | undefined => {
+  if (val === "" || val === null || val === undefined) {
+    return undefined;
+  }
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (trimmed === "") {
+      return undefined;
+    }
+    // Try to validate as URL - if invalid, exclude it
+    try {
+      new URL(trimmed);
+      return trimmed;
+    } catch {
+      // Invalid URL - exclude it rather than failing validation
+      return undefined;
+    }
+  }
+  return undefined;
+};
 
 // Validation schema for submitting draft
 const submitDraftSchema = z.object({
@@ -71,8 +124,14 @@ const submitDraftSchema = z.object({
   resumeUrl: z.string().optional(),
   coverLetter: z.string().optional().or(z.literal("")),
   coverLetterUrl: z.string().optional().or(z.literal("")),
-  portfolioUrl: z.string().url("Invalid portfolio URL").optional().or(z.literal("")),
-  linkedinUrl: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
+  portfolioUrl: z.preprocess(
+    cleanUrlForSubmission,
+    z.string().url("Invalid portfolio URL").optional()
+  ),
+  linkedinUrl: z.preprocess(
+    cleanUrlForSubmission,
+    z.string().url("Invalid LinkedIn URL").optional()
+  ),
   experience: z.string().optional(),
   education: z.string().optional(),
   referenceInfo: z.string().optional(),
@@ -144,8 +203,16 @@ export async function PATCH(
       : draftUpdateSchema.safeParse(body);
 
     if (!validationResult.success) {
+      console.error("Validation failed:", validationResult.error.errors);
+      const errorMessages = validationResult.error.errors.map(
+        (err) => `${err.path.join(".")}: ${err.message}`
+      ).join(", ");
       return NextResponse.json(
-        { error: "Validation failed", details: validationResult.error.errors },
+        { 
+          error: "Validation failed", 
+          details: validationResult.error.errors,
+          message: errorMessages
+        },
         { status: 400 }
       );
     }

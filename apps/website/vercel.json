@@ -2,23 +2,5 @@
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "framework": "nextjs",
-  "installCommand": "cd ../.. && npm install",
-  "rewrites": [
-    {
-      "source": "/admin",
-      "destination": "https://thefesta-admin.vercel.app/admin"
-    },
-    {
-      "source": "/admin/:path*",
-      "destination": "https://thefesta-admin.vercel.app/admin/:path*"
-    },
-    {
-      "source": "/vendors",
-      "destination": "https://thefesta-vendor-portal.vercel.app/vendors"
-    },
-    {
-      "source": "/vendors/:path*",
-      "destination": "https://thefesta-vendor-portal.vercel.app/vendors/:path*"
-    }
-  ]
+  "installCommand": "cd ../.. && npm install"
 }

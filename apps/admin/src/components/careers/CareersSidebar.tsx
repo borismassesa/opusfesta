@@ -7,14 +7,14 @@ import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
 const CAREERS_NAV_ITEMS = [
-  { label: "Job Postings", icon: Briefcase, href: "/careers" },
+  { label: "Job Postings", icon: Briefcase, href: "/careers/jobs" },
   { label: "Applications", icon: FileText, href: "/careers/applications" },
   { label: "Analytics", icon: BarChart3, href: "/careers/analytics" },
 ];
 
 function isActiveRoute(pathname: string, href: string) {
-  if (href === "/careers") {
-    return pathname === "/careers" || pathname === "/careers/";
+  if (href === "/careers/jobs") {
+    return pathname === "/careers/jobs" || pathname.startsWith("/careers/jobs/");
   }
   return pathname.startsWith(href + "/") || pathname === href;
 }
@@ -41,7 +41,7 @@ export function CareersSidebar() {
       <aside
         className={cn(
           "border-r border-border bg-background flex-shrink-0 flex flex-col transition-all duration-200 ease-in-out h-full",
-          isCollapsed ? "w-0 border-r-0 overflow-hidden" : "w-56 lg:w-64 xl:w-72"
+          isCollapsed ? "w-0 border-r-0 overflow-hidden" : "w-48 sm:w-56 lg:w-64"
         )}
       >
         {/* Title Header */}

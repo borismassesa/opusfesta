@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Clock,
   UserCheck,
@@ -63,9 +63,17 @@ function formatActionDescription(activity: ActivityLog): string {
     case "status_changed":
       return `Status changed from "${action_details?.old_status || "N/A"}" to "${action_details?.new_status || "N/A"}"`;
     case "note_added":
-      return action_details?.has_notes
-        ? "Note added or updated"
-        : "Note removed";
+      if (action_details?.has_notes) {
+        const notePreview = action_details?.new_notes 
+          ? (action_details.new_notes.length > 100 
+              ? action_details.new_notes.substring(0, 100) + "..." 
+              : action_details.new_notes)
+          : "";
+        return notePreview 
+          ? `Note added: "${notePreview}"`
+          : "Note added or updated";
+      }
+      return "Note cleared";
     case "task_completed":
       return `Task completed: "${action_details?.title || "Unknown task"}"`;
     case "task_created":
@@ -79,17 +87,83 @@ function formatActionDescription(activity: ActivityLog): string {
   }
 }
 
+function formatActionDetails(activity: ActivityLog): React.ReactNode | null {
+  const { action_type, action_details } = activity;
+
+  // Don't show raw JSON for most actions - the description is enough
+  if (!action_details || Object.keys(action_details).length === 0) {
+    return null;
+  }
+
+  // Only show formatted details for specific action types that need extra context
+  switch (action_type) {
+    case "note_added":
+      // Show full note content if it's longer than what's in the description
+      if (action_details?.has_notes && action_details?.new_notes && action_details.new_notes.length > 100) {
+        return (
+          <div className="mt-2 p-3 bg-muted/50 rounded border border-border">
+            <p className="text-xs font-semibold text-muted-foreground mb-1">Note Content:</p>
+            <p className="text-sm whitespace-pre-wrap">{action_details.new_notes}</p>
+          </div>
+        );
+      }
+      return null;
+    
+    case "status_changed":
+      // Status changes are already well-described, no need for extra details
+      return null;
+    
+    default:
+      // For other actions, don't show raw JSON unless it's really needed
+      return null;
+  }
+}
+
 function getInitials(name: string | null | undefined, email: string | null | undefined): string {
-  if (name) {
-    const parts = name.split(" ");
+  if (name && name.trim().length > 0) {
+    // Remove extra spaces and split
+    const parts = name.trim().split(/\s+/).filter(p => p.length > 0);
+    
+    // If we have multiple words (first and last name), use first letter of each
     if (parts.length >= 2) {
-      return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+      const first = parts[0][0]?.toUpperCase() || '';
+      const last = parts[parts.length - 1][0]?.toUpperCase() || '';
+      if (first && last) {
+        return `${first}${last}`;
+      }
     }
-    return name.substring(0, 2).toUpperCase();
+    
+    // If single word or initials are too short, use first 2 letters of the name
+    // But skip if it's already 2 characters (likely already initials)
+    if (name.length === 2 && name === name.toUpperCase()) {
+      // This might already be initials, try to get better from email
+      if (email) {
+        const emailParts = email.split('@')[0].split(/[._-]/);
+        if (emailParts.length >= 2) {
+          return `${emailParts[0][0]?.toUpperCase() || ''}${emailParts[emailParts.length - 1][0]?.toUpperCase() || ''}`;
+        }
+      }
+      return name.toUpperCase();
+    }
+    
+    // Use first 2 meaningful characters
+    const meaningful = name.replace(/[^a-zA-Z]/g, '').substring(0, 2);
+    if (meaningful.length >= 2) {
+      return meaningful.toUpperCase();
+    }
   }
+  
+  // Fallback to email
   if (email) {
-    return email.substring(0, 2).toUpperCase();
+    const emailLocal = email.split('@')[0];
+    // Try to split email by common separators
+    const emailParts = emailLocal.split(/[._-]/);
+    if (emailParts.length >= 2) {
+      return `${emailParts[0][0]?.toUpperCase() || ''}${emailParts[emailParts.length - 1][0]?.toUpperCase() || ''}`;
+    }
+    return emailLocal.substring(0, 2).toUpperCase();
   }
+  
   return "??";
 }
 
@@ -97,10 +171,23 @@ export function ApplicationActivityTimeline({ applicationId }: ApplicationActivi
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     fetchActivities();
-  }, [applicationId]);
+  }, [applicationId, refreshKey]);
+
+  // Expose refresh function via window event for external triggers
+  useEffect(() => {
+    const handleRefresh = () => {
+      setRefreshKey(prev => prev + 1);
+    };
+    
+    window.addEventListener('refresh-activity-timeline', handleRefresh);
+    return () => {
+      window.removeEventListener('refresh-activity-timeline', handleRefresh);
+    };
+  }, []);
 
   const fetchActivities = async () => {
     setLoading(true);
@@ -122,14 +209,19 @@ export function ApplicationActivityTimeline({ applicationId }: ApplicationActivi
       );
 
       if (!response.ok) {
-        throw new Error("Failed to fetch activity log");
+        const errorData = await response.json().catch(() => ({}));
+        const errorMessage = errorData.error || errorData.details || `HTTP ${response.status}: ${response.statusText}`;
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       setActivities(data.activities || []);
+      // Clear any previous errors on successful fetch
+      setError(null);
     } catch (err) {
       console.error("Error fetching activities:", err);
-      setError(err instanceof Error ? err.message : "Failed to load activity log");
+      const errorMessage = err instanceof Error ? err.message : "Failed to load activity log";
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -209,11 +301,7 @@ export function ApplicationActivityTimeline({ applicationId }: ApplicationActivi
                         <p className="text-sm font-medium text-foreground mb-1">
                           {formatActionDescription(activity)}
                         </p>
-                        {activity.action_details && Object.keys(activity.action_details).length > 0 && (
-                          <div className="mt-2 p-2 bg-muted/50 rounded text-xs text-muted-foreground font-mono">
-                            {JSON.stringify(activity.action_details, null, 2)}
-                          </div>
-                        )}
+                        {formatActionDetails(activity)}
                       </div>
                       <div className="flex-shrink-0 text-right">
                         <div className="flex items-center gap-2 mb-2">
@@ -231,8 +319,19 @@ export function ApplicationActivityTimeline({ applicationId }: ApplicationActivi
                                 {activity.performed_by_user.full_name || activity.performed_by_user.email}
                               </span>
                             </>
+                          ) : activity.performed_by ? (
+                            <>
+                              <Avatar className="h-6 w-6">
+                                <AvatarFallback className="text-xs">
+                                  {activity.performed_by.substring(0, 2).toUpperCase()}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs text-muted-foreground">
+                                Admin User
+                              </span>
+                            </>
                           ) : (
-                            <span className="text-xs text-muted-foreground">System</span>
+                            <span className="text-xs text-muted-foreground italic">Legacy Entry</span>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground">

@@ -87,6 +87,11 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
         .eq("id", userId)
         .single();
 
+      // Handle RLS errors gracefully (406) - these are expected if session isn't fully established
+      const isRLSError = error?.code === "PGRST301" || 
+                        error?.message?.toLowerCase().includes("row-level security") ||
+                        error?.status === 406;
+
       if (!error && data) {
         // If database has name, use it
         if (data.name) {
@@ -100,7 +105,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
         }
       }
 
-      // If database doesn't have name, try to get from auth session metadata
+      // If database doesn't have name or we got an RLS error, try to get from auth session metadata
       const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         const metadata = session.user.user_metadata;
@@ -132,6 +137,9 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
           email: data.email,
           avatar: data.avatar,
         });
+      } else if (error && !isRLSError) {
+        // Only log non-RLS errors
+        console.error("Error fetching user data:", error);
       }
     } catch (error) {
       console.error("Error fetching user data:", error);

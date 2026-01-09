@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, Download, Search, Mail, Phone, FileText, ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -87,6 +87,7 @@ export default function ApplicationsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [sortBy, setSortBy] = useState<string>("created_at");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("desc");
+  const isFetchingRef = useRef(false);
 
   // Initialize filters from URL params
   useEffect(() => {
@@ -96,11 +97,20 @@ export default function ApplicationsPage() {
     }
   }, [searchParams]);
 
+  // Fetch applications only when filters change (no auto-refresh)
   useEffect(() => {
-    fetchApplications();
+    if (!isFetchingRef.current) {
+      fetchApplications();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [statusFilter, jobFilter]);
 
   const fetchApplications = async () => {
+    // Prevent duplicate fetches
+    if (isFetchingRef.current) {
+      return;
+    }
+    isFetchingRef.current = true;
     setLoading(true);
     setError(null);
     try {
@@ -183,6 +193,7 @@ export default function ApplicationsPage() {
       setApplications([]);
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   };
 
@@ -445,7 +456,7 @@ export default function ApplicationsPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-background relative w-full">
+    <div className="flex h-full overflow-hidden bg-background relative w-full">
       <CareersSidebar />
       <main className="flex-1 min-w-0 overflow-auto bg-background">
         <div className="p-3 md:p-6 space-y-6">
@@ -470,7 +481,7 @@ export default function ApplicationsPage() {
               created_at: app.created_at,
             }))}
           />
-          <Link href="/careers">
+          <Link href="/careers/jobs">
             <Button variant="outline">Back to Job Postings</Button>
           </Link>
         </div>

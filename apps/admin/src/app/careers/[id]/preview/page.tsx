@@ -2,12 +2,13 @@
 
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, ExternalLink } from "lucide-react";
+import { ArrowLeft, ExternalLink, FileText, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabaseClient";
 import { getAdminApiUrl } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
+import { exportJobPostingToPDF, exportJobPostingToWord, JobPostingForExport } from "@/lib/careers/export";
 
 interface JobPosting {
   id: string;
@@ -77,6 +78,16 @@ export default function PreviewPage() {
     }
   };
 
+  const handleExportPDF = () => {
+    if (!job) return;
+    exportJobPostingToPDF(job as JobPostingForExport);
+  };
+
+  const handleExportWord = () => {
+    if (!job) return;
+    exportJobPostingToWord(job as JobPostingForExport);
+  };
+
 
   if (loading) {
     return (
@@ -119,6 +130,22 @@ export default function PreviewPage() {
           </Link>
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground">Preview Mode</span>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Export PDF
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportWord}
+            >
+              <File className="w-4 h-4 mr-2" />
+              Export Word
+            </Button>
             <Link href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/apply`} target="_blank">
               <Button variant="outline" size="sm">
                 <ExternalLink className="w-4 h-4 mr-2" />

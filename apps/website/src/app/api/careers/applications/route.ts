@@ -49,6 +49,28 @@ async function getAuthenticatedUser(request: NextRequest): Promise<{ userId: str
   }
 }
 
+// Helper function to validate and clean URL fields
+const cleanUrlForSubmission = (val: any): string | undefined => {
+  if (val === "" || val === null || val === undefined) {
+    return undefined;
+  }
+  if (typeof val === "string") {
+    const trimmed = val.trim();
+    if (trimmed === "") {
+      return undefined;
+    }
+    // Try to validate as URL - if invalid, exclude it
+    try {
+      new URL(trimmed);
+      return trimmed;
+    } catch {
+      // Invalid URL - exclude it rather than failing validation
+      return undefined;
+    }
+  }
+  return undefined;
+};
+
 // Validation schema for submitted applications
 const applicationSchema = z.object({
   jobPostingId: z.string().uuid(),
@@ -58,8 +80,14 @@ const applicationSchema = z.object({
   resumeUrl: z.string().optional(),
   coverLetter: z.string().optional().or(z.literal("")),
   coverLetterUrl: z.string().optional().or(z.literal("")),
-  portfolioUrl: z.string().url("Invalid portfolio URL").optional().or(z.literal("")),
-  linkedinUrl: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
+  portfolioUrl: z.preprocess(
+    cleanUrlForSubmission,
+    z.string().url("Invalid portfolio URL").optional()
+  ),
+  linkedinUrl: z.preprocess(
+    cleanUrlForSubmission,
+    z.string().url("Invalid LinkedIn URL").optional()
+  ),
   experience: z.string().optional(),
   education: z.string().optional(),
   referenceInfo: z.string().optional(),
@@ -76,19 +104,51 @@ const applicationSchema = z.object({
 );
 
 // Validation schema for drafts (more lenient)
+// For drafts, we allow empty strings, null, and undefined for all optional fields
+// Simple email regex for basic validation
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 const draftSchema = z.object({
   jobPostingId: z.string().uuid(),
-  fullName: z.string().optional(),
-  email: z.string().email("Invalid email address").optional(),
-  phone: z.string().optional(),
-  resumeUrl: z.string().optional(),
-  coverLetter: z.string().optional().or(z.literal("")),
-  coverLetterUrl: z.string().optional().or(z.literal("")),
-  portfolioUrl: z.string().url("Invalid portfolio URL").optional().or(z.literal("")),
-  linkedinUrl: z.string().url("Invalid LinkedIn URL").optional().or(z.literal("")),
-  experience: z.string().optional(),
-  education: z.string().optional(),
-  referenceInfo: z.string().optional(),
+  fullName: z.string().optional().nullable(),
+  email: z.preprocess(
+    (val) => {
+      // Convert empty strings and null to undefined
+      if (val === "" || val === null || val === undefined) {
+        return undefined;
+      }
+      // If value is a string, check if it's a valid email format
+      if (typeof val === "string") {
+        const trimmed = val.trim();
+        // If empty after trimming, return undefined
+        if (trimmed === "") {
+          return undefined;
+        }
+        // If not a valid email format, return undefined (don't fail validation)
+        if (!emailRegex.test(trimmed)) {
+          return undefined;
+        }
+        return trimmed;
+      }
+      return val;
+    },
+    z.string().email("Invalid email address").optional()
+  ),
+  phone: z.string().optional().nullable(),
+  resumeUrl: z.string().optional().nullable(),
+  coverLetter: z.string().optional().nullable(),
+  coverLetterUrl: z.string().optional().nullable(),
+  portfolioUrl: z.preprocess(
+    (val) => val === "" || val === null ? undefined : val,
+    z.string().url("Invalid portfolio URL").optional()
+  ),
+  linkedinUrl: z.preprocess(
+    (val) => val === "" || val === null ? undefined : val,
+    z.string().url("Invalid LinkedIn URL").optional()
+  ),
+  experience: z.string().optional().nullable(),
+  education: z.string().optional().nullable(),
+  referenceInfo: z.string().optional().nullable(),
   is_draft: z.boolean().optional().default(true),
 });
 
@@ -141,8 +201,16 @@ export async function POST(request: NextRequest) {
       : applicationSchema.safeParse(body);
     
     if (!validationResult.success) {
+      console.error("Validation failed:", validationResult.error.errors);
+      const errorMessages = validationResult.error.errors.map(
+        (err) => `${err.path.join(".")}: ${err.message}`
+      ).join(", ");
       return NextResponse.json(
-        { error: "Validation failed", details: validationResult.error.errors },
+        { 
+          error: "Validation failed", 
+          details: validationResult.error.errors,
+          message: errorMessages
+        },
         { status: 400 }
       );
     }
@@ -323,14 +391,6 @@ export async function POST(request: NextRequest) {
     if (!application) {
       return NextResponse.json(
         { error: "Failed to process application" },
-        { status: 500 }
-      );
-    }
-
-    if (insertError) {
-      console.error("Error inserting application:", insertError);
-      return NextResponse.json(
-        { error: "Failed to submit application" },
         { status: 500 }
       );
     }

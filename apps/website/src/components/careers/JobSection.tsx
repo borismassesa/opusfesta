@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useMemo, useEffect, useRef } from "react";
-import { Search, Briefcase, MapPin, Clock, X, Loader2, ArrowRight, Lock } from "lucide-react";
+import { Search, Briefcase, MapPin, Clock, X, Loader2, ArrowRight } from "lucide-react";
 import { fetchJobPostings, JobPosting } from "@/lib/careers/jobs";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { supabase } from "@/lib/supabaseClient";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -42,78 +41,60 @@ function JobCardSkeleton() {
 export function JobSection() {
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedDept, setSelectedDept] = useState("All departments");
   const [searchQuery, setSearchQuery] = useState("");
   const containerRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
-    async function checkAuth() {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session || !session.user) {
-          setIsAuthenticated(false);
-          return;
-        }
-
-        // Verify user exists in the database
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        // Only set authenticated if user exists in database
-        setIsAuthenticated(!userError && !!userData);
-      } catch (error) {
-        console.error("Error checking auth:", error);
-        setIsAuthenticated(false);
-      }
-    }
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session || !session.user) {
-        setIsAuthenticated(false);
-        return;
-      }
-
-      // Verify user exists in the database
-      try {
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        setIsAuthenticated(!userError && !!userData);
-      } catch (error) {
-        console.error("Error verifying user:", error);
-        setIsAuthenticated(false);
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
+    let isMounted = true;
+    let timeoutId: NodeJS.Timeout;
+    
     async function loadJobs() {
       try {
-        // Always fetch jobs - API will return descriptions only if authenticated
-        // For unauthenticated users, API returns jobs without descriptions
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        const jobPostings = await fetchJobPostings(token);
-        setJobs(jobPostings);
-      } catch (err) {
+        setLoading(true);
+        setError(null);
+        
+        // Add timeout to prevent infinite loading
+        timeoutId = setTimeout(() => {
+          if (isMounted) {
+            console.error("Job fetch timeout - taking too long");
+            setLoading(false);
+            setJobs([]);
+            setError("Loading is taking longer than expected. Please refresh the page.");
+          }
+        }, 10000); // 10 second timeout
+        
+        // Fetch jobs - descriptions are now PUBLIC, no authentication needed
+        const jobPostings = await fetchJobPostings();
+        
+        // Clear timeout if successful
+        clearTimeout(timeoutId);
+        
+        // Only update state if component is still mounted
+        if (isMounted) {
+          setJobs(jobPostings);
+          setLoading(false);
+        }
+      } catch (err: any) {
         console.error("Error loading jobs:", err);
-      } finally {
-        setLoading(false);
+        clearTimeout(timeoutId);
+        // Set empty array on error to show "no positions found" instead of infinite loading
+        if (isMounted) {
+          setJobs([]);
+          setLoading(false);
+          setError(err.message || "Failed to load job postings. Please try refreshing the page.");
+        }
       }
     }
+    
     loadJobs();
-  }, [isAuthenticated]);
+    
+    return () => {
+      isMounted = false;
+      clearTimeout(timeoutId);
+    };
+  }, []); // Fetch jobs on mount - no authentication needed
 
   // GSAP animations for job cards
   useEffect(() => {
@@ -207,12 +188,53 @@ export function JobSection() {
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-primary mb-3">
             Open Positions
           </h2>
-          <p className="text-secondary text-base font-light">Loading positions...</p>
+          <div className="flex items-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin text-primary" />
+            <p className="text-secondary text-base font-light">Loading positions...</p>
+          </div>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {[...Array(6)].map((_, i) => (
             <JobCardSkeleton key={i} />
           ))}
+        </div>
+      </section>
+    );
+  }
+
+  if (error) {
+    return (
+      <section className="careers-section px-6 lg:px-12 max-w-6xl mx-auto py-24 border-t border-primary/10">
+        <div className="mb-12">
+          <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
+            <span className="w-12 h-px bg-accent"></span>
+            <span className="font-mono text-accent text-xs tracking-widest uppercase">
+              Opportunities
+            </span>
+            <span className="md:hidden w-12 h-px bg-accent"></span>
+          </div>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-primary mb-3">
+            Open Positions
+          </h2>
+        </div>
+        <div className="text-center py-24 bg-surface border border-border rounded-xl">
+          <div className="max-w-md mx-auto">
+            <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-3xl">⚠️</span>
+            </div>
+            <h3 className="text-xl font-semibold text-primary mb-3">
+              Unable to Load Positions
+            </h3>
+            <p className="text-secondary mb-6 leading-relaxed font-light">
+              {error}
+            </p>
+            <button
+              onClick={() => window.location.reload()}
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-primary border border-border rounded-full transition-colors hover:bg-primary/5"
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
       </section>
     );
@@ -309,7 +331,7 @@ export function JobSection() {
                     >
                       <div className="mb-4">
                         <Link
-                          href={isAuthenticated ? `/careers/${job.id}/apply` : `/login?next=${encodeURIComponent(`/careers/${job.id}/apply`)}`}
+                          href={`/careers/${job.id}`}
                           className="block group"
                         >
                           <h4 className="font-semibold text-lg text-primary group-hover:underline mb-3 leading-tight">
@@ -342,50 +364,19 @@ export function JobSection() {
                           {getJobPreview(job.description)}
                         </p>
                       ) : (
-                        <div 
-                          className="mb-6 p-4 bg-surface border border-border rounded-lg cursor-pointer hover:bg-primary/5 transition-colors"
-                          onClick={() => {
-                            if (!isAuthenticated) {
-                              window.location.href = `/login?next=${encodeURIComponent('/careers')}`;
-                            }
-                          }}
-                        >
-                          <div className="flex items-center gap-3 text-sm">
-                            <Lock className="w-4 h-4 text-primary" />
-                            <div className="flex-1">
-                              <p className="text-secondary font-medium mb-1">
-                                Job description available after login
-                              </p>
-                              <Link
-                                href={`/login?next=${encodeURIComponent('/careers')}`}
-                                className="text-primary hover:underline text-xs"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                Log in to view full details
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
+                        <p className="text-sm text-secondary mb-6 line-clamp-2 leading-relaxed font-light">
+                          Join our {job.department} team as a {job.title} in {job.location}.
+                        </p>
                       )}
 
                       <div className="pt-4 border-t border-border">
-                        {isAuthenticated ? (
-                          <Link
-                            href={`/careers/${job.id}/apply`}
-                            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-accent transition-colors group"
-                          >
-                            Apply now
-                            <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
-                          </Link>
-                        ) : (
-                          <Link
-                            href={`/login?next=${encodeURIComponent(`/careers/${job.id}/apply`)}`}
-                            className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-accent transition-colors group"
-                          >
-                            Log in to apply
-                            <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
-                          </Link>
-                        )}
+                        <Link
+                          href={`/careers/${job.id}`}
+                          className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-accent transition-colors group"
+                        >
+                          View details
+                          <ArrowRight size={14} className="transition-transform group-hover:translate-x-1" />
+                        </Link>
                       </div>
                     </div>
                   );

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Share2, Heart, ShieldCheck, Loader2 } from "lucide-react";
+import { Share2, Heart, ShieldCheck, Loader2, MapPin, Star } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
@@ -41,6 +41,7 @@ export function VendorDetailsPage({
   const [showNavBar, setShowNavBar] = useState(false);
   const [isSidebarSticky, setIsSidebarSticky] = useState(true);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   const galleryRef = useRef<HTMLDivElement>(null);
   const connectSectionRef = useRef<HTMLDivElement>(null);
   const ratingSectionRef = useRef<HTMLDivElement>(null);
@@ -50,15 +51,15 @@ export function VendorDetailsPage({
     ? `${vendor.location.city}, ${vendor.location.country || "Tanzania"}`
     : "Tanzania";
 
-  // Check authentication on mount
+  // Check authentication on mount (but don't redirect - show teaser instead)
   useEffect(() => {
     async function checkAuth() {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError || !session) {
-          const currentPath = window.location.pathname;
-          router.push(`/login?next=${encodeURIComponent(currentPath)}`);
+          setIsAuthenticated(false);
+          setIsCheckingAuth(false);
           return;
         }
 
@@ -70,16 +71,17 @@ export function VendorDetailsPage({
           .single();
 
         if (userError || !userData) {
-          const currentPath = window.location.pathname;
-          router.push(`/login?next=${encodeURIComponent(currentPath)}`);
+          setIsAuthenticated(false);
+          setIsCheckingAuth(false);
           return;
         }
 
+        setIsAuthenticated(true);
         setIsCheckingAuth(false);
       } catch (err) {
         console.error("Error checking auth:", err);
-        const currentPath = window.location.pathname;
-        router.push(`/login?next=${encodeURIComponent(currentPath)}`);
+        setIsAuthenticated(false);
+        setIsCheckingAuth(false);
       }
     }
 
@@ -191,8 +193,99 @@ export function VendorDetailsPage({
       <div className="bg-background text-primary min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
-          <p className="text-secondary">Verifying authentication...</p>
+          <p className="text-secondary">Loading vendor profile...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Show teaser for unauthenticated users
+  if (!isAuthenticated) {
+    const truncatedBio = vendor.bio && vendor.bio.length > 100 
+      ? vendor.bio.substring(0, 100) + "..." 
+      : vendor.bio;
+
+    return (
+      <div className="bg-background text-primary min-h-screen">
+        <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} sticky={false} />
+        <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+
+        <main className="pt-12 lg:pt-16 pb-24">
+          {/* Image Gallery - Show first image only */}
+          <div className="relative h-[400px] lg:h-[500px] overflow-hidden">
+            <img
+              src={vendor.cover_image || resolveAssetSrc(celebrationImg)}
+              alt={vendor.business_name}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
+          </div>
+
+          {/* Teaser Content */}
+          <div className="max-w-4xl mx-auto px-6 lg:px-12 mt-8">
+            <div className="bg-surface border border-border rounded-2xl p-8 lg:p-12">
+              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-primary mb-4">
+                {vendor.business_name}
+              </h1>
+              
+              <div className="flex flex-wrap items-center gap-4 text-base text-secondary mb-6">
+                <span>{vendor.category}</span>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <MapPin size={16} />
+                  <span>{locationText}</span>
+                </div>
+                <span>•</span>
+                <div className="flex items-center gap-1">
+                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                  <span className="font-semibold">{rating.toFixed(1)}</span>
+                  <span>({reviewCount} reviews)</span>
+                </div>
+              </div>
+
+              {truncatedBio && (
+                <p className="text-lg text-secondary leading-relaxed mb-8">
+                  {truncatedBio}
+                </p>
+              )}
+
+              {/* CTA to View Full Profile */}
+              <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 mb-6">
+                <h3 className="text-xl font-semibold text-primary mb-2">
+                  View Full Profile
+                </h3>
+                <p className="text-secondary mb-4">
+                  Sign in to see complete portfolio, all reviews, pricing details, and contact this vendor.
+                </p>
+                <button
+                  onClick={() => {
+                    const currentPath = window.location.pathname;
+                    router.push(`/login?next=${encodeURIComponent(currentPath)}`);
+                  }}
+                  className="w-full sm:w-auto px-8 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
+                >
+                  Sign In to View Full Profile
+                </button>
+              </div>
+
+              {/* Additional Info */}
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <span className="text-secondary">Price Range:</span>
+                  <span className="ml-2 font-semibold">{vendor.price_range || "Contact for pricing"}</span>
+                </div>
+                {vendor.verified && (
+                  <div>
+                    <span className="text-secondary">Status:</span>
+                    <span className="ml-2 font-semibold text-emerald-500">Verified</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </main>
+
+        <Footer />
       </div>
     );
   }

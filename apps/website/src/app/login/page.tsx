@@ -24,7 +24,13 @@ export default function Login() {
   useEffect(() => {
     // Set a new random sign in quote on mount (client-side only)
     setQuote(getRandomSignInQuote());
-  }, []);
+    
+    // Store next parameter in sessionStorage for OAuth flows
+    const next = searchParams.get("next");
+    if (next) {
+      sessionStorage.setItem("auth_redirect", next);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (unauthorized) {
@@ -108,8 +114,14 @@ export default function Login() {
 
     // Get user type and redirect appropriately
     const userType = await getUserTypeFromSession(data.session);
-    const next = searchParams.get("next");
+    // Check both URL param and sessionStorage (for OAuth flows)
+    const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
     const redirectPath = getRedirectPath(userType || undefined, undefined, next);
+    
+    // Clear sessionStorage after use
+    if (sessionStorage.getItem("auth_redirect")) {
+      sessionStorage.removeItem("auth_redirect");
+    }
     
     toast({
       title: "Welcome back!",

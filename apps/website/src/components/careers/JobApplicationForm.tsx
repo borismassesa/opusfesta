@@ -314,33 +314,61 @@ export function JobApplicationForm({
       
       const method = draftId ? "PATCH" : "POST";
 
+      // Build request body, converting empty strings and nulls to undefined
+      const requestBody: any = {
+        jobPostingId,
+        is_draft: true,
+      };
+      
+      // Only include fields that have values (not empty strings or null)
+      if (data.fullName && data.fullName.trim()) requestBody.fullName = data.fullName;
+      if (data.email && data.email.trim()) requestBody.email = data.email;
+      if (data.phone && data.phone.trim()) requestBody.phone = data.phone;
+      if (resumeUrl) requestBody.resumeUrl = resumeUrl;
+      if (data.coverLetter && data.coverLetter.trim()) requestBody.coverLetter = data.coverLetter;
+      if (coverLetterUrl) requestBody.coverLetterUrl = coverLetterUrl;
+      if (data.portfolioUrl && data.portfolioUrl.trim()) requestBody.portfolioUrl = data.portfolioUrl;
+      if (data.linkedinUrl && data.linkedinUrl.trim()) requestBody.linkedinUrl = data.linkedinUrl;
+      if (data.experience && data.experience.trim()) requestBody.experience = data.experience;
+      if (data.education && data.education.trim()) requestBody.education = data.education;
+      if (data.referenceInfo && data.referenceInfo.trim()) requestBody.referenceInfo = data.referenceInfo;
+
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          jobPostingId,
-          fullName: data.fullName || undefined,
-          email: data.email || undefined,
-          phone: data.phone || undefined,
-          resumeUrl: resumeUrl || undefined,
-          coverLetter: data.coverLetter || null,
-          coverLetterUrl: coverLetterUrl || null,
-          portfolioUrl: data.portfolioUrl || undefined,
-          linkedinUrl: data.linkedinUrl || undefined,
-          experience: data.experience || undefined,
-          education: data.education || undefined,
-          referenceInfo: data.referenceInfo || undefined,
-          is_draft: true,
-        }),
+        body: JSON.stringify(requestBody),
       });
 
-      const result = await response.json();
+      // Try to parse JSON, but handle cases where response might not be JSON
+      let result: any = {};
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          result = await response.json();
+        } catch (parseError) {
+          console.error("Failed to parse JSON response:", parseError);
+          const text = await response.text();
+          console.error("Response text:", text);
+          throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        }
+      } else {
+        const text = await response.text();
+        console.error("Non-JSON response:", text);
+        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+      }
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to save draft");
+        // Show more detailed error message if available
+        const errorMsg = result.message || result.error || `Failed to save draft (${response.status})`;
+        console.error("Draft save error:", {
+          status: response.status,
+          statusText: response.statusText,
+          result,
+        });
+        throw new Error(errorMsg);
       }
 
       if (result.application?.id) {
@@ -393,33 +421,75 @@ export function JobApplicationForm({
       
       const method = draftId ? "PATCH" : "POST";
 
+      // Helper function to validate and clean URL fields
+      const cleanUrl = (url: string | undefined): string | undefined => {
+        if (!url || url.trim() === "") {
+          return undefined;
+        }
+        const trimmed = url.trim();
+        // If it's a valid URL, return it; otherwise return undefined
+        try {
+          new URL(trimmed);
+          return trimmed;
+        } catch {
+          // Invalid URL - return undefined to exclude it
+          return undefined;
+        }
+      };
+
+      // Build request body with proper URL validation
+      const requestBody: any = {
+        jobPostingId,
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        is_draft: false, // Submit, not draft
+      };
+
+      // Only include optional fields if they have valid values
+      if (resumeUrl) requestBody.resumeUrl = resumeUrl;
+      if (data.coverLetter && data.coverLetter.trim()) {
+        requestBody.coverLetter = data.coverLetter;
+      }
+      if (coverLetterUrl) requestBody.coverLetterUrl = coverLetterUrl;
+      
+      // Validate and clean URL fields
+      const cleanedPortfolioUrl = cleanUrl(data.portfolioUrl);
+      if (cleanedPortfolioUrl) requestBody.portfolioUrl = cleanedPortfolioUrl;
+      
+      const cleanedLinkedinUrl = cleanUrl(data.linkedinUrl);
+      if (cleanedLinkedinUrl) requestBody.linkedinUrl = cleanedLinkedinUrl;
+      
+      if (data.experience && data.experience.trim()) {
+        requestBody.experience = data.experience;
+      }
+      if (data.education && data.education.trim()) {
+        requestBody.education = data.education;
+      }
+      if (data.referenceInfo && data.referenceInfo.trim()) {
+        requestBody.referenceInfo = data.referenceInfo;
+      }
+
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({
-          jobPostingId,
-          fullName: data.fullName,
-          email: data.email,
-          phone: data.phone,
-          resumeUrl,
-          coverLetter: data.coverLetter || null,
-          coverLetterUrl: coverLetterUrl || null,
-          portfolioUrl: data.portfolioUrl || undefined,
-          linkedinUrl: data.linkedinUrl || undefined,
-          experience: data.experience || undefined,
-          education: data.education || undefined,
-          referenceInfo: data.referenceInfo || undefined,
-          is_draft: false, // Submit, not draft
-        }),
+        body: JSON.stringify(requestBody),
       });
 
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || "Failed to submit application");
+        // Show more detailed error message if available
+        const errorMsg = result.message || result.error || "Failed to submit application";
+        console.error("Application submission error:", {
+          status: response.status,
+          statusText: response.statusText,
+          result,
+        });
+        throw new Error(errorMsg);
       }
 
       // Clear draft from localStorage and reset draft ID
