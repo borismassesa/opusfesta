@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Check if user is admin
@@ -21,51 +22,25 @@ async function isAdmin(request: NextRequest): Promise<boolean> {
   return userData?.role === "admin";
 }
 
-// Validation helper
-function validateJobPosting(body: any): { valid: boolean; data?: any; error?: string } {
-  const errors: string[] = [];
-  
-  if (!body.title || typeof body.title !== "string" || body.title.trim().length === 0) {
-    errors.push("Title is required");
-  }
-  if (!body.department || typeof body.department !== "string" || body.department.trim().length === 0) {
-    errors.push("Department is required");
-  }
-  if (!body.location || typeof body.location !== "string" || body.location.trim().length === 0) {
-    errors.push("Location is required");
-  }
-  if (!body.employment_type || typeof body.employment_type !== "string" || body.employment_type.trim().length === 0) {
-    errors.push("Employment type is required");
-  }
-  if (!body.description || typeof body.description !== "string" || body.description.trim().length === 0) {
-    errors.push("Description is required");
-  }
-  
-  if (errors.length > 0) {
-    return { valid: false, error: errors.join(", ") };
-  }
-  
-  // Prepare data with defaults
-  const data = {
-    title: body.title?.trim(),
-    department: body.department?.trim(),
-    location: body.location?.trim(),
-    employment_type: body.employment_type?.trim(),
-    description: body.description?.trim(),
-    requirements: Array.isArray(body.requirements) ? body.requirements : [],
-    responsibilities: Array.isArray(body.responsibilities) ? body.responsibilities : [],
-    salary_range: body.salary_range || null,
-    is_active: body.is_active !== undefined ? Boolean(body.is_active) : true,
-    about_thefesta: body.about_thefesta || null,
-    benefits: Array.isArray(body.benefits) ? body.benefits : [],
-    growth_description: body.growth_description || null,
-    hiring_process: Array.isArray(body.hiring_process) ? body.hiring_process : [],
-    how_to_apply: body.how_to_apply || null,
-    equal_opportunity_statement: body.equal_opportunity_statement || null,
-  };
-  
-  return { valid: true, data };
-}
+// Job posting schema
+const jobPostingSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  department: z.string().min(1, "Department is required"),
+  location: z.string().min(1, "Location is required"),
+  employment_type: z.string().min(1, "Employment type is required"),
+  description: z.string().min(1, "Description is required"),
+  requirements: z.array(z.string()).default([]),
+  responsibilities: z.array(z.string()).default([]),
+  salary_range: z.string().nullable().optional(),
+  is_active: z.boolean().default(true),
+  // New template fields
+  about_thefesta: z.string().nullable().optional(),
+  benefits: z.array(z.string()).default([]),
+  growth_description: z.string().nullable().optional(),
+  hiring_process: z.array(z.string()).default([]),
+  how_to_apply: z.string().nullable().optional(),
+  equal_opportunity_statement: z.string().nullable().optional(),
+});
 
 // GET - List all job postings (admin only)
 export async function GET(request: NextRequest) {
@@ -146,11 +121,11 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const validation = validateJobPosting(body);
+    const validationResult = jobPostingSchema.safeParse(body);
 
-    if (!validation.valid) {
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: validation.error },
+        { error: "Validation failed", details: validationResult.error.issues },
         { status: 400 }
       );
     }
@@ -158,7 +133,7 @@ export async function POST(request: NextRequest) {
     const supabaseAdmin = getSupabaseAdmin();
     const { data: job, error } = await supabaseAdmin
       .from("job_postings")
-      .insert(validation.data!)
+      .insert(validationResult.data)
       .select()
       .single();
 
@@ -194,73 +169,19 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: "Job posting ID is required" }, { status: 400 });
     }
 
-    // For updates, we allow partial data - just validate what's provided
-    const update: any = {};
-    if (updateData.title !== undefined) {
-      if (typeof updateData.title !== "string" || updateData.title.trim().length === 0) {
-        return NextResponse.json({ error: "Title cannot be empty" }, { status: 400 });
-      }
-      update.title = updateData.title.trim();
-    }
-    if (updateData.department !== undefined) {
-      if (typeof updateData.department !== "string" || updateData.department.trim().length === 0) {
-        return NextResponse.json({ error: "Department cannot be empty" }, { status: 400 });
-      }
-      update.department = updateData.department.trim();
-    }
-    if (updateData.location !== undefined) {
-      if (typeof updateData.location !== "string" || updateData.location.trim().length === 0) {
-        return NextResponse.json({ error: "Location cannot be empty" }, { status: 400 });
-      }
-      update.location = updateData.location.trim();
-    }
-    if (updateData.employment_type !== undefined) {
-      if (typeof updateData.employment_type !== "string" || updateData.employment_type.trim().length === 0) {
-        return NextResponse.json({ error: "Employment type cannot be empty" }, { status: 400 });
-      }
-      update.employment_type = updateData.employment_type.trim();
-    }
-    if (updateData.description !== undefined) {
-      if (typeof updateData.description !== "string" || updateData.description.trim().length === 0) {
-        return NextResponse.json({ error: "Description cannot be empty" }, { status: 400 });
-      }
-      update.description = updateData.description.trim();
-    }
-    if (updateData.requirements !== undefined) {
-      update.requirements = Array.isArray(updateData.requirements) ? updateData.requirements : [];
-    }
-    if (updateData.responsibilities !== undefined) {
-      update.responsibilities = Array.isArray(updateData.responsibilities) ? updateData.responsibilities : [];
-    }
-    if (updateData.salary_range !== undefined) {
-      update.salary_range = updateData.salary_range || null;
-    }
-    if (updateData.is_active !== undefined) {
-      update.is_active = Boolean(updateData.is_active);
-    }
-    if (updateData.about_thefesta !== undefined) {
-      update.about_thefesta = updateData.about_thefesta || null;
-    }
-    if (updateData.benefits !== undefined) {
-      update.benefits = Array.isArray(updateData.benefits) ? updateData.benefits : [];
-    }
-    if (updateData.growth_description !== undefined) {
-      update.growth_description = updateData.growth_description || null;
-    }
-    if (updateData.hiring_process !== undefined) {
-      update.hiring_process = Array.isArray(updateData.hiring_process) ? updateData.hiring_process : [];
-    }
-    if (updateData.how_to_apply !== undefined) {
-      update.how_to_apply = updateData.how_to_apply || null;
-    }
-    if (updateData.equal_opportunity_statement !== undefined) {
-      update.equal_opportunity_statement = updateData.equal_opportunity_statement || null;
+    const validationResult = jobPostingSchema.partial().safeParse(updateData);
+
+    if (!validationResult.success) {
+      return NextResponse.json(
+        { error: "Validation failed", details: validationResult.error.issues },
+        { status: 400 }
+      );
     }
 
     const supabaseAdmin = getSupabaseAdmin();
     const { data: job, error } = await supabaseAdmin
       .from("job_postings")
-      .update(update)
+      .update(validationResult.data)
       .eq("id", id)
       .select()
       .single();

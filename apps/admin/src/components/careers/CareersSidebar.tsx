@@ -88,7 +88,7 @@ export function CareersSidebar() {
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={item.href as any}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-all duration-200",
                     isActive

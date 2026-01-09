@@ -24,16 +24,23 @@ export function ValuesInActionEditor() {
   };
 
   const handleNestedChange = (section: string, field: string, value: any) => {
-    updateContent((prev) => ({
-      ...prev,
-      valuesInAction: {
-        ...prev.valuesInAction,
-        [section]: {
-          ...prev.valuesInAction[section as keyof typeof prev.valuesInAction],
-          [field]: value,
+    updateContent((prev) => {
+      const sectionValue = prev.valuesInAction[section as keyof typeof prev.valuesInAction];
+      const sectionObj = (sectionValue && typeof sectionValue === 'object' && !Array.isArray(sectionValue)) 
+        ? sectionValue as Record<string, any>
+        : {} as Record<string, any>;
+      
+      return {
+        ...prev,
+        valuesInAction: {
+          ...prev.valuesInAction,
+          [section]: {
+            ...sectionObj,
+            [field]: value,
+          },
         },
-      },
-    }));
+      };
+    });
   };
 
   const addProgram = () => {
