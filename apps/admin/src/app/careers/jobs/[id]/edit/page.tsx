@@ -3,8 +3,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
 import { ArrowLeft, Save, Loader2, Eye, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -33,26 +31,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const jobPostingSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  department: z.string().min(1, "Department is required"),
-  location: z.string().min(1, "Location is required"),
-  employment_type: z.string().min(1, "Employment type is required"),
-  description: z.string().min(10, "Description must be at least 10 characters"),
-  requirements: z.array(z.string()).optional().default([]),
-  responsibilities: z.array(z.string()).optional().default([]),
-  salary_range: z.string().optional(),
-  is_active: z.boolean().default(true),
-  // New template fields
-  about_thefesta: z.string().optional().nullable(),
-  benefits: z.array(z.string()).optional().default([]),
-  growth_description: z.string().optional().nullable(),
-  hiring_process: z.array(z.string()).optional().default([]),
-  how_to_apply: z.string().optional().nullable(),
-  equal_opportunity_statement: z.string().optional().nullable(),
-});
-
-type JobPostingFormData = z.infer<typeof jobPostingSchema>;
+type JobPostingFormData = {
+  title: string;
+  department: string;
+  location: string;
+  employment_type: string;
+  description: string;
+  requirements: string[];
+  responsibilities: string[];
+  salary_range?: string | null;
+  is_active: boolean;
+  about_thefesta?: string | null;
+  benefits: string[];
+  growth_description?: string | null;
+  hiring_process: string[];
+  how_to_apply?: string | null;
+  equal_opportunity_statement?: string | null;
+};
 
 export default function EditJobPostingPage() {
   const router = useRouter();
@@ -66,7 +61,6 @@ export default function EditJobPostingPage() {
   );
 
   const form = useForm<JobPostingFormData>({
-    resolver: zodResolver(jobPostingSchema),
     defaultValues: {
       title: "",
       department: "",

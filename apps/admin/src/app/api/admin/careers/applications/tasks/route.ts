@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Check if user is admin
@@ -45,19 +44,71 @@ async function getAuthenticatedUserId(request: NextRequest): Promise<string> {
   return user.id;
 }
 
-// Task schema
-const taskSchema = z.object({
-  application_id: z.string().uuid(),
-  task_type: z.string().min(1, "Task type is required"),
-  title: z.string().min(1, "Title is required"),
-});
+// Validation helpers
+function validateTask(body: any): { valid: boolean; data?: any; error?: string } {
+  const errors: string[] = [];
+  
+  if (!body.application_id || typeof body.application_id !== "string") {
+    errors.push("Application ID is required");
+  } else {
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(body.application_id)) {
+      errors.push("Invalid application ID format");
+    }
+  }
+  
+  if (!body.task_type || typeof body.task_type !== "string" || body.task_type.trim().length === 0) {
+    errors.push("Task type is required");
+  }
+  
+  if (!body.title || typeof body.title !== "string" || body.title.trim().length === 0) {
+    errors.push("Title is required");
+  }
+  
+  if (errors.length > 0) {
+    return { valid: false, error: errors.join(", ") };
+  }
+  
+  return {
+    valid: true,
+    data: {
+      application_id: body.application_id,
+      task_type: body.task_type.trim(),
+      title: body.title.trim(),
+    },
+  };
+}
 
-const updateTaskSchema = z.object({
-  id: z.string().uuid(),
-  completed: z.boolean().optional(),
-  title: z.string().optional(),
-  task_type: z.string().optional(),
-});
+function validateUpdateTask(body: any): { valid: boolean; data?: any; error?: string } {
+  if (!body.id || typeof body.id !== "string") {
+    return { valid: false, error: "Task ID is required" };
+  }
+  
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(body.id)) {
+    return { valid: false, error: "Invalid task ID format" };
+  }
+  
+  const update: any = { id: body.id };
+  
+  if (body.completed !== undefined) {
+    update.completed = Boolean(body.completed);
+  }
+  if (body.title !== undefined) {
+    if (typeof body.title !== "string" || body.title.trim().length === 0) {
+      return { valid: false, error: "Title cannot be empty" };
+    }
+    update.title = body.title.trim();
+  }
+  if (body.task_type !== undefined) {
+    if (typeof body.task_type !== "string" || body.task_type.trim().length === 0) {
+      return { valid: false, error: "Task type cannot be empty" };
+    }
+    update.task_type = body.task_type.trim();
+  }
+  
+  return { valid: true, data: update };
+}
 
 // GET - Get all tasks for an application
 export async function GET(request: NextRequest) {
@@ -150,18 +201,18 @@ export async function POST(request: NextRequest) {
     const userId = await getAuthenticatedUserId(request);
 
     const body = await request.json();
-    const validationResult = taskSchema.safeParse(body);
+    const validation = validateTask(body);
 
-    if (!validationResult.success) {
+    if (!validation.valid) {
       return NextResponse.json(
-        { error: "Validation failed", details: validationResult.error.issues },
+        { error: "Validation failed", details: validation.error },
         { status: 400 }
       );
     }
 
     const { data: task, error } = await supabaseAdmin
       .from("application_tasks")
-      .insert(validationResult.data)
+      .insert(validation.data!)
       .select()
       .single();
 
@@ -177,7 +228,7 @@ export async function POST(request: NextRequest) {
     await supabaseAdmin
       .from("application_activity_log")
       .insert({
-        application_id: validationResult.data.application_id,
+        application_id: validation.data!.application_id,
         action_type: "task_created",
         action_details: {
           task_id: task.id,
@@ -209,16 +260,16 @@ export async function PATCH(request: NextRequest) {
     const userId = await getAuthenticatedUserId(request);
 
     const body = await request.json();
-    const validationResult = updateTaskSchema.safeParse(body);
+    const validation = validateUpdateTask(body);
 
-    if (!validationResult.success) {
+    if (!validation.valid) {
       return NextResponse.json(
-        { error: "Validation failed", details: validationResult.error.issues },
+        { error: "Validation failed", details: validation.error },
         { status: 400 }
       );
     }
 
-    const { id, ...updateData } = validationResult.data;
+    const { id, ...updateData } = validation.data!;
 
     // Get current task to check if completion status changed
     const { data: currentTask } = await supabaseAdmin
