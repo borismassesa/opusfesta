@@ -1,10 +1,10 @@
 module.exports = {
   root: true,
+  // Only apply this config to non-Next.js apps
+  // Next.js apps have their own .eslintrc.json files
+  ignorePatterns: ["apps/**"],
   extends: [
-    "@turbo/eslint-config/base",
-    "@turbo/eslint-config/typescript",
-    "@turbo/eslint-config/react",
-    "@turbo/eslint-config/react-native",
+    "eslint:recommended",
     "prettier"
   ],
   parserOptions: {
@@ -16,8 +16,6 @@ module.exports = {
     es2022: true,
   },
   rules: {
-    "@typescript-eslint/no-unused-vars": ["error", { "argsIgnorePattern": "^_" }],
-    "@typescript-eslint/no-explicit-any": "warn",
     "prefer-const": "error",
     "no-var": "error",
   },
