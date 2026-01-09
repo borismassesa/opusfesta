@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Check if user is admin
@@ -21,6 +22,11 @@ async function isAdmin(request: NextRequest): Promise<boolean> {
   return userData?.role === "admin";
 }
 
+const bulkActionSchema = z.object({
+  action: z.enum(["delete", "activate", "deactivate"]),
+  jobIds: z.array(z.string().uuid()).min(1, "At least one job ID is required"),
+});
+
 export async function POST(request: NextRequest) {
   try {
     if (!(await isAdmin(request))) {
@@ -28,33 +34,16 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { action, jobIds } = body;
+    const validationResult = bulkActionSchema.safeParse(body);
 
-    // Validate action
-    if (!action || !["delete", "activate", "deactivate"].includes(action)) {
+    if (!validationResult.success) {
       return NextResponse.json(
-        { error: "Validation failed", details: "Action must be 'delete', 'activate', or 'deactivate'" },
+        { error: "Validation failed", details: validationResult.error.issues },
         { status: 400 }
       );
     }
 
-    // Validate jobIds
-    if (!Array.isArray(jobIds) || jobIds.length === 0) {
-      return NextResponse.json(
-        { error: "Validation failed", details: "At least one job ID is required" },
-        { status: 400 }
-      );
-    }
-
-    // Basic UUID validation (simple check)
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    const invalidIds = jobIds.filter((id: any) => typeof id !== "string" || !uuidRegex.test(id));
-    if (invalidIds.length > 0) {
-      return NextResponse.json(
-        { error: "Validation failed", details: "Invalid job ID format" },
-        { status: 400 }
-      );
-    }
+    const { action, jobIds } = validationResult.data;
     const ids = jobIds;
     
     const supabaseAdmin = getSupabaseAdmin();

@@ -146,12 +146,16 @@ export default function PreviewPage() {
               <File className="w-4 h-4 mr-2" />
               Export Word
             </Button>
-            <Link href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/apply`} target="_blank">
+            <a 
+              href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/apply`} 
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <Button variant="outline" size="sm">
                 <ExternalLink className="w-4 h-4 mr-2" />
                 View on Website
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </div>
@@ -306,11 +310,15 @@ export default function PreviewPage() {
 
         {/* Apply Button */}
         <div className="pt-8 border-t">
-          <Link href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/apply`} target="_blank">
+          <a 
+            href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/apply`} 
+            target="_blank"
+            rel="noopener noreferrer"
+          >
             <Button size="lg" className="w-full md:w-auto">
               Apply Now
             </Button>
-          </Link>
+          </a>
         </div>
       </div>
     </div>

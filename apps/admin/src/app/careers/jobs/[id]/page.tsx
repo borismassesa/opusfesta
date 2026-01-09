@@ -163,12 +163,16 @@ export default function JobPostingViewPage() {
                 Edit
               </Button>
             </Link>
-            <Link href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/apply`} target="_blank">
+            <a 
+              href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/apply`} 
+              target="_blank"
+              rel="noopener noreferrer"
+            >
               <Button variant="outline" size="sm">
                 <ExternalLink className="w-4 h-4 mr-2" />
                 View on Website
               </Button>
-            </Link>
+            </a>
           </div>
         </div>
       </div>

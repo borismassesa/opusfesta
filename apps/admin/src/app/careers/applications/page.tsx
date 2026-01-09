@@ -382,7 +382,7 @@ export default function ApplicationsPage() {
       if (!session) return;
 
       // Use absolute URL with basePath to call admin app's own API
-      for (const id of selectedIds) {
+      for (const id of Array.from(selectedIds)) {
         const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications`), {
           method: "PATCH",
           headers: {
