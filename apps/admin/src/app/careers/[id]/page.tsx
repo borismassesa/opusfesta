@@ -39,17 +39,17 @@ const jobPostingSchema = z.object({
   location: z.string().min(1, "Location is required"),
   employment_type: z.string().min(1, "Employment type is required"),
   description: z.string().min(10, "Description must be at least 10 characters"),
-  requirements: z.array(z.string()).optional().default([]),
-  responsibilities: z.array(z.string()).optional().default([]),
-  salary_range: z.string().optional(),
+  requirements: z.array(z.string()).default([]),
+  responsibilities: z.array(z.string()).default([]),
+  salary_range: z.string().nullable().optional(),
   is_active: z.boolean().default(true),
   // New template fields
-  about_thefesta: z.string().optional().nullable(),
-  benefits: z.array(z.string()).optional().default([]),
-  growth_description: z.string().optional().nullable(),
-  hiring_process: z.array(z.string()).optional().default([]),
-  how_to_apply: z.string().optional().nullable(),
-  equal_opportunity_statement: z.string().optional().nullable(),
+  about_thefesta: z.string().nullable().optional(),
+  benefits: z.array(z.string()).default([]),
+  growth_description: z.string().nullable().optional(),
+  hiring_process: z.array(z.string()).default([]),
+  how_to_apply: z.string().nullable().optional(),
+  equal_opportunity_statement: z.string().nullable().optional(),
 });
 
 type JobPostingFormData = z.infer<typeof jobPostingSchema>;
