@@ -4,8 +4,7 @@ module.exports = {
   // Next.js apps have their own .eslintrc.json files
   ignorePatterns: ["apps/**"],
   extends: [
-    "eslint:recommended",
-    "prettier"
+    "eslint:recommended"
   ],
   parserOptions: {
     ecmaVersion: 2022,
