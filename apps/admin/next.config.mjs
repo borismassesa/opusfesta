@@ -7,7 +7,7 @@ const __dirname = path.dirname(__filename);
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // basePath removed - using subdomain (admin.thefestaevents.com) instead of path-based routing
+  // basePath removed - using subdomain (admin.opusfestaevents.com) instead of path-based routing
   // basePath: '/admin',
   typedRoutes: true,
   typescript: {

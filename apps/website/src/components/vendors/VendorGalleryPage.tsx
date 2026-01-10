@@ -235,7 +235,7 @@ export function VendorGalleryPage({
   const handleShare = async () => {
     const shareData = {
       title: `${vendor.business_name} Gallery`,
-      text: `Check out ${vendor.business_name}'s portfolio gallery on TheFesta`,
+      text: `Check out ${vendor.business_name}'s portfolio gallery on OpusFesta`,
       url: typeof window !== 'undefined' ? window.location.href : '',
     };
 

@@ -2,13 +2,13 @@
 
 ## Overview
 
-TheFesta uses an **escrow/hold system** where all payments are held by TheFesta until work is completed. This ensures vendor accountability and quality service delivery, similar to Uber and Airbnb.
+OpusFesta uses an **escrow/hold system** where all payments are held by OpusFesta until work is completed. This ensures vendor accountability and quality service delivery, similar to Uber and Airbnb.
 
 ## Payment Flow
 
 ### 1. Customer Payment
 - Customer pays invoice (card or mobile money)
-- Payment is **held in escrow** by TheFesta
+- Payment is **held in escrow** by OpusFesta
 - Status: `HELD`
 
 ### 2. Work Completion
@@ -18,7 +18,7 @@ TheFesta uses an **escrow/hold system** where all payments are held by TheFesta 
 
 ### 3. Fund Release
 - Admin or automatic system releases funds
-- 10% platform fee → TheFesta (collected immediately)
+- 10% platform fee → OpusFesta (collected immediately)
 - 90% vendor amount → Released to vendor
 - Status: `RELEASED`
 
@@ -47,7 +47,7 @@ TheFesta uses an **escrow/hold system** where all payments are held by TheFesta 
 ## Database Schema
 
 ### `escrow_holds` Table
-Tracks all funds held by TheFesta:
+Tracks all funds held by OpusFesta:
 - `total_amount` - Full payment amount
 - `platform_fee` - 10% platform fee
 - `vendor_amount` - 90% vendor amount (held)
@@ -121,7 +121,7 @@ Body: {
 - ✅ Professional platform
 - ✅ Builds trust with customers
 
-### For TheFesta
+### For OpusFesta
 - ✅ Platform fee collected immediately
 - ✅ Vendor accountability
 - ✅ Quality control

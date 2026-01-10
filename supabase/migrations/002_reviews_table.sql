@@ -1,4 +1,4 @@
--- Add Reviews Table to TheFesta Platform
+-- Add Reviews Table to OpusFesta Platform
 -- This migration creates the reviews table and related triggers
 
 -- Reviews Table

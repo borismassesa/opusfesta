@@ -1,4 +1,4 @@
-# Escrow Model Comparison & TheFesta Implementation
+# Escrow Model Comparison & OpusFesta Implementation
 
 ## Model Comparison
 
@@ -28,26 +28,26 @@
 - More like payment intermediary
 - Faster settlement
 
-### TheFesta Model (Airbnb-style) ✅
+### OpusFesta Model (Airbnb-style) ✅
 **How it works:**
-1. Customer pays TheFesta at booking/invoice
-2. TheFesta holds the money (not immediately to vendor)
+1. Customer pays OpusFesta at booking/invoice
+2. OpusFesta holds the money (not immediately to vendor)
 3. Vendor completes work/service
 4. Work is verified (vendor/customer/admin)
 5. **Funds released** to vendor after verification
-6. If problem → TheFesta can hold/refund
+6. If problem → OpusFesta can hold/refund
 
 **Characteristics:**
 - ✅ Funds held temporarily (escrow)
 - ✅ Release is conditional (work completion + verification)
 - ✅ Dispute resolution capability
-- ✅ Platform-controlled (TheFesta manages rules)
+- ✅ Platform-controlled (OpusFesta manages rules)
 - ✅ 10% platform fee collected immediately
 - ✅ 90% vendor amount held until completion
 
 ## Key Differences
 
-| Aspect | Airbnb | Uber | TheFesta |
+| Aspect | Airbnb | Uber | OpusFesta |
 |--------|--------|------|----------|
 | **Holding Period** | Until check-in + 24h | Minimal (post-ride) | Until work completion |
 | **Release Trigger** | Check-in + time delay | Ride completion | Work completion + verification |
@@ -55,7 +55,7 @@
 | **Platform Fee** | ~3% | ~25% | 10% |
 | **Vendor Payout** | After check-in | Daily/weekly | After work completion |
 
-## Why Airbnb Model for TheFesta?
+## Why Airbnb Model for OpusFesta?
 
 ### ✅ Perfect Fit
 - **Service-based** (like Airbnb's accommodation service)
@@ -67,13 +67,13 @@
 1. **Customer Trust**: Payment protected until work done
 2. **Quality Assurance**: Vendors motivated to complete work well
 3. **Dispute Resolution**: Platform can mediate issues
-4. **Platform Control**: TheFesta manages the process
+4. **Platform Control**: OpusFesta manages the process
 
 ## Implementation Details
 
 ### Current Flow
 ```
-1. Customer Payment → TheFesta Account (HELD)
+1. Customer Payment → OpusFesta Account (HELD)
 2. Platform Fee (10%) → Collected Immediately
 3. Vendor Amount (90%) → Held in Escrow
 4. Work Completed → Verification
@@ -155,7 +155,7 @@
 
 ## Conclusion
 
-TheFesta uses an **Airbnb-style escrow model** which is:
+OpusFesta uses an **Airbnb-style escrow model** which is:
 - ✅ Appropriate for service-based marketplace
 - ✅ Protects customers
 - ✅ Ensures vendor accountability
@@ -163,4 +163,4 @@ TheFesta uses an **Airbnb-style escrow model** which is:
 - ✅ Faster than true escrow
 - ✅ More cost-effective
 
-This model balances customer protection, vendor accountability, and platform efficiency perfectly for TheFesta's use case.
+This model balances customer protection, vendor accountability, and platform efficiency perfectly for OpusFesta's use case.

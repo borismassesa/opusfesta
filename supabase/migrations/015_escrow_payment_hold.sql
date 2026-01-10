@@ -1,5 +1,5 @@
 -- Escrow Payment Hold System
--- Payments are held by TheFesta and released to vendors after work completion
+-- Payments are held by OpusFesta and released to vendors after work completion
 -- Similar to Uber/Airbnb model for vendor accountability
 
 -- Update payments table to track escrow status
@@ -18,7 +18,7 @@ ALTER TABLE vendor_revenue
   ADD COLUMN IF NOT EXISTS work_completed_at TIMESTAMP WITH TIME ZONE,
   ADD COLUMN IF NOT EXISTS work_verified_by UUID REFERENCES users(id) ON DELETE SET NULL;
 
--- Escrow holds table (tracks all funds held by TheFesta)
+-- Escrow holds table (tracks all funds held by OpusFesta)
 CREATE TABLE IF NOT EXISTS escrow_holds (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   payment_id UUID NOT NULL REFERENCES payments(id) ON DELETE CASCADE,

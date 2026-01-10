@@ -125,7 +125,7 @@ async function initiateMobileMoneyPayment(
   const payments = at.payments;
   
   const result = await payments.mobileCheckout({
-    productName: 'TheFesta Payment',
+    productName: 'OpusFesta Payment',
     phoneNumber: phoneNumber,
     currencyCode: 'TZS',
     amount: amount,

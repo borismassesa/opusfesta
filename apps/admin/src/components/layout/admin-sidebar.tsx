@@ -47,7 +47,7 @@ function isActiveRoute(pathname: string, href: string) {
 export function AdminSidebar() {
   const pathname = usePathname();
   const displayName = "Admin User";
-  const displayEmail = "admin@thefesta.com";
+  const displayEmail = "admin@opusfesta.com";
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-sidebar border-r border-sidebar-border flex flex-col z-50">
@@ -58,7 +58,7 @@ export function AdminSidebar() {
           className="font-serif text-2xl md:text-3xl text-primary hover:text-primary/80 transition-colors select-none z-50"
           onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
         >
-          TheFesta
+          OpusFesta
         </Link>
       </div>
 

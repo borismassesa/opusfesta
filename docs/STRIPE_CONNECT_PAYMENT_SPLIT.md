@@ -3,7 +3,7 @@
 ## Overview
 
 The payment system implements a **10% platform fee** model where:
-- **TheFesta receives 10%** of each payment as platform revenue
+- **OpusFesta receives 10%** of each payment as platform revenue
 - **Vendors receive 90%** of each payment
 - Payments are automatically split and tracked
 - Vendors can connect their Stripe accounts to receive direct transfers
@@ -18,7 +18,7 @@ The payment system implements a **10% platform fee** model where:
    - Platform fee: 10% of payment
    - Vendor amount: 90% of payment
 4. **Revenue Records**: Creates records in:
-   - `platform_revenue` table (TheFesta's 10%)
+   - `platform_revenue` table (OpusFesta's 10%)
    - `vendor_revenue` table (Vendor's 90%)
 5. **Transfer to Vendor**: If vendor has Stripe Connect:
    - Transfers 90% to vendor's connected account
@@ -27,7 +27,7 @@ The payment system implements a **10% platform fee** model where:
 ### Database Tables
 
 #### `platform_revenue`
-Tracks TheFesta's platform fees (10% of each payment).
+Tracks OpusFesta's platform fees (10% of each payment).
 
 #### `vendor_revenue`
 Tracks vendor earnings (90% of each payment) and transfer status.
@@ -57,8 +57,8 @@ Vendors connect their Stripe accounts via Stripe Connect Express:
 ```typescript
 POST /api/vendors/[id]/stripe-connect
 {
-  "returnUrl": "https://thefesta.com/vendor/settings",
-  "refreshUrl": "https://thefesta.com/vendor/settings"
+  "returnUrl": "https://opusfesta.com/vendor/settings",
+  "refreshUrl": "https://opusfesta.com/vendor/settings"
 }
 ```
 
@@ -83,7 +83,7 @@ When a payment succeeds:
 1. Payment is split (10% platform, 90% vendor)
 2. If vendor has connected account, transfer is created
 3. Vendor receives 90% directly to their Stripe account
-4. TheFesta keeps 10% in platform account
+4. OpusFesta keeps 10% in platform account
 
 ## Revenue Tracking
 

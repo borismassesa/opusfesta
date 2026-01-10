@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-Based on research of industry best practices and analysis of TheFesta's current careers implementation, this document identifies gaps and provides recommendations for improvement.
+Based on research of industry best practices and analysis of OpusFesta's current careers implementation, this document identifies gaps and provides recommendations for improvement.
 
 ---
 
@@ -110,7 +110,7 @@ CREATE TABLE saved_jobs (
   "employmentType": job.employment_type,
   "hiringOrganization": {
     "@type": "Organization",
-    "name": "TheFesta"
+    "name": "OpusFesta"
   },
   "jobLocation": {
     "@type": "Place",

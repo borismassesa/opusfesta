@@ -38,7 +38,7 @@ export function InquiryVendorEmail({
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Inquiry - TheFesta</title>
+  <title>New Inquiry - OpusFesta</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -48,7 +48,7 @@ export function InquiryVendorEmail({
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">TheFesta</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">OpusFesta</h1>
               ${isUrgent ? `
               <div style="margin-top: 16px; padding: 12px; background-color: rgba(255,255,255,0.2); border-radius: 6px;">
                 <p style="margin: 0; color: #ffffff; font-size: 14px; font-weight: 600;">⚠️ Urgent: Event is ${daysUntilEvent} day${daysUntilEvent === 1 ? '' : 's'} away</p>
@@ -133,7 +133,7 @@ export function InquiryVendorEmail({
               </div>
               
               <p style="margin: 24px 0 0; color: #666; font-size: 14px; line-height: 1.6;">
-                Quick tip: Responding promptly to inquiries increases your chances of booking and improves your vendor rating on TheFesta.
+                Quick tip: Responding promptly to inquiries increases your chances of booking and improves your vendor rating on OpusFesta.
               </p>
             </td>
           </tr>
@@ -142,10 +142,10 @@ export function InquiryVendorEmail({
           <tr>
             <td style="padding: 24px 40px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; text-align: center;">
               <p style="margin: 0 0 8px; color: #666; font-size: 12px;">
-                Need help? Contact us at <a href="mailto:support@thefesta.com" style="color: #667eea; text-decoration: none;">support@thefesta.com</a>
+                Need help? Contact us at <a href="mailto:support@opusfesta.com" style="color: #667eea; text-decoration: none;">support@opusfesta.com</a>
               </p>
               <p style="margin: 0; color: #999; font-size: 12px;">
-                © ${new Date().getFullYear()} TheFesta. All rights reserved.
+                © ${new Date().getFullYear()} OpusFesta. All rights reserved.
               </p>
             </td>
           </tr>

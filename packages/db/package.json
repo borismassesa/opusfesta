@@ -1,5 +1,5 @@
 {
-  "name": "@thefesta/db",
+  "name": "@opusfesta/db",
   "version": "1.0.0",
   "description": "Database schema and utilities for The Festa",
   "main": "index.ts",

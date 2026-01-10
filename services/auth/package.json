@@ -1,5 +1,5 @@
 {
-  "name": "@thefesta/auth",
+  "name": "@opusfesta/auth",
   "version": "1.0.0",
   "description": "Authentication service for The Festa",
   "main": "index.ts",
@@ -9,8 +9,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@thefesta/lib": "*",
-    "@thefesta/db": "*",
+    "@opusfesta/lib": "*",
+    "@opusfesta/db": "*",
     "@aws-sdk/client-cognito-identity-provider": "^3.450.0",
     "@aws-sdk/client-ses": "^3.450.0",
     "jsonwebtoken": "^9.0.2",

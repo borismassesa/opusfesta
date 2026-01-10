@@ -23,7 +23,7 @@ const Values: React.FC = () => {
   const { content } = useCareersContent();
   const { values } = content;
 
-  // Use values from CMS or default - updated to reflect TheFesta's mission
+  // Use values from CMS or default - updated to reflect OpusFesta's mission
   const valuesList = values.items.length > 0 ? values.items.slice(0, 3) : [
     {
       title: "Celebrate Tanzanian culture",

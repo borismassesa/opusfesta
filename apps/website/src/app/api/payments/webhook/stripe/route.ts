@@ -119,7 +119,7 @@ async function handlePaymentSuccess(paymentIntent: any) {
   console.log(`Payment ${payment.id} marked as succeeded`);
 
   // The database trigger will automatically:
-  // 1. Create escrow_hold record (funds held by TheFesta)
+  // 1. Create escrow_hold record (funds held by OpusFesta)
   // 2. Calculate payment split (10% platform, 90% vendor)
   // 3. Create platform_revenue record (10% - collected immediately)
   // 4. Create vendor_revenue record (90% - held in escrow)

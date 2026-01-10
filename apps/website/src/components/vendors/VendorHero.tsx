@@ -37,7 +37,7 @@ export function VendorHero({ vendor, coverImage }: VendorHeroProps) {
       try {
         await navigator.share({
           title: vendor.business_name,
-          text: `Check out ${vendor.business_name} on TheFesta`,
+          text: `Check out ${vendor.business_name} on OpusFesta`,
           url: window.location.href,
         });
       } catch (err) {

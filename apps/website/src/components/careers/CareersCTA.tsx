@@ -52,7 +52,7 @@ const CareersCTA: React.FC = () => {
         </div>
       </div>
       <p className="mt-6 text-sm text-secondary">
-        Don't see your role? <a href="mailto:careers@thefesta.com" className="underline hover:text-primary transition-colors">Email us</a>.
+        Don't see your role? <a href="mailto:careers@opusfesta.com" className="underline hover:text-primary transition-colors">Email us</a>.
       </p>
     </div>
   );

@@ -52,15 +52,15 @@ If you're seeing the error: `{"code":400,"error_code":"validation_failed","msg":
 3. Create a **Services ID**:
    - Click the "+" button to create a new identifier
    - Select "Services IDs" and continue
-   - Enter a description (e.g., "TheFesta Web App")
-   - Enter an identifier in reverse-domain format: `com.yourcompany.thefesta` (NOT an email address)
+   - Enter a description (e.g., "OpusFesta Web App")
+   - Enter an identifier in reverse-domain format: `com.yourcompany.opusfesta` (NOT an email address)
    - Register the Services ID
 4. Configure **Sign in with Apple**:
    - Click on your Services ID
    - Check "Sign in with Apple"
    - Click "Configure"
    - Select your Primary App ID (or create one if needed)
-   - Add your domain (e.g., `thefesta.com` or `localhost:3000` for development)
+   - Add your domain (e.g., `opusfesta.com` or `localhost:3000` for development)
    - Add redirect URLs:
      - Development: `http://localhost:3000/auth/callback`
      - Production: `https://yourdomain.com/auth/callback`
@@ -68,7 +68,7 @@ If you're seeing the error: `{"code":400,"error_code":"validation_failed","msg":
 5. Create a **Key** for Sign in with Apple:
    - Go to **Keys** section
    - Click the "+" button to create a new key
-   - Enter a key name (e.g., "TheFesta Sign in with Apple")
+   - Enter a key name (e.g., "OpusFesta Sign in with Apple")
    - Check "Sign in with Apple"
    - Click "Configure" and select your Primary App ID
    - Click "Continue" and then "Register"
@@ -79,7 +79,7 @@ If you're seeing the error: `{"code":400,"error_code":"validation_failed","msg":
    - Use the following information:
      - **Team ID**: Found in your Apple Developer account membership
      - **Key ID**: From step 5
-     - **Client ID**: Your Services ID from step 3 (e.g., `com.yourcompany.thefesta`)
+     - **Client ID**: Your Services ID from step 3 (e.g., `com.yourcompany.opusfesta`)
      - **Private Key**: Contents of the `.p8` file
    - You can use online tools or libraries to generate the JWT, or use this Node.js script:
    ```javascript
@@ -88,7 +88,7 @@ If you're seeing the error: `{"code":400,"error_code":"validation_failed","msg":
    
    const teamId = 'YOUR_TEAM_ID';
    const keyId = 'YOUR_KEY_ID';
-   const clientId = 'com.yourcompany.thefesta'; // Your Services ID
+   const clientId = 'com.yourcompany.opusfesta'; // Your Services ID
    const privateKey = fs.readFileSync('path/to/your/key.p8');
    
    const token = jwt.sign(
@@ -106,7 +106,7 @@ If you're seeing the error: `{"code":400,"error_code":"validation_failed","msg":
    console.log(token); // This is your Secret Key
    ```
 7. Copy to Supabase:
-   - **Client IDs**: Your Services ID (e.g., `com.yourcompany.thefesta`) - NOT an email address
+   - **Client IDs**: Your Services ID (e.g., `com.yourcompany.opusfesta`) - NOT an email address
    - **Secret Key (for OAuth)**: The JWT token generated in step 6
 
 ## Testing
@@ -138,7 +138,7 @@ After enabling the providers:
   - Client IDs must be in reverse-domain format: `com.yourcompany.appname`
   - Do NOT use an email address (e.g., `user@gmail.com` is invalid)
   - Use your Services ID from Apple Developer Portal
-  - Example: `com.thefesta.webapp` or `com.yourcompany.thefesta`
+  - Example: `com.opusfesta.webapp` or `com.yourcompany.opusfesta`
 
 ### Apple OAuth: "Secret key should be a JWT"
 - **Error**: "Secret key should be a JWT"

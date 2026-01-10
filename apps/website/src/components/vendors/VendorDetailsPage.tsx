@@ -375,7 +375,7 @@ export function VendorDetailsPage({
               <ShieldCheck className="w-5 h-5 text-foreground shrink-0 mt-0.5" strokeWidth={2} />
               <div>
                 <p className="text-sm text-foreground">
-                  To help protect your payment, always use TheFesta to send money and communicate with vendors.
+                  To help protect your payment, always use OpusFesta to send money and communicate with vendors.
                 </p>
               </div>
             </div>
@@ -391,12 +391,12 @@ export function VendorDetailsPage({
           />
         </div>
 
-        {/* TheFesta CTA Banner */}
+        {/* OpusFesta CTA Banner */}
         <div className="bg-surface/70 py-16 px-6 mt-12">
           <div className="max-w-[1280px] mx-auto flex flex-col lg:flex-row items-center bg-background rounded-3xl overflow-hidden border border-border shadow-sm">
             <div className="p-10 lg:p-12 lg:w-1/2 space-y-5">
               <h2 className="text-3xl md:text-4xl font-semibold tracking-tight">
-                Plan every detail with TheFesta
+                Plan every detail with OpusFesta
               </h2>
               <p className="text-lg text-secondary">
                 Build your vendor short list, track quotes, and keep your
@@ -409,7 +409,7 @@ export function VendorDetailsPage({
             <div className="lg:w-1/2 w-full h-full min-h-[320px] relative">
               <Image
                 src={resolveAssetSrc(celebrationImg)}
-                alt="TheFesta wedding planning"
+                alt="OpusFesta wedding planning"
                 fill
                 sizes="(min-width: 1024px) 50vw, 100vw"
                 className="object-cover"

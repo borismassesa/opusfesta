@@ -25,7 +25,7 @@ export function StorefrontPreview({ vendor }: StorefrontPreviewProps) {
   }
 
   const publicUrl = vendor.slug
-    ? `https://thefesta.com/vendors/${vendor.slug}`
+    ? `https://opusfesta.com/vendors/${vendor.slug}`
     : null;
 
   return (

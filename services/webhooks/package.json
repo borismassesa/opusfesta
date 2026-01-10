@@ -1,5 +1,5 @@
 {
-  "name": "@thefesta/webhooks",
+  "name": "@opusfesta/webhooks",
   "version": "1.0.0",
   "description": "Webhook handlers for The Festa",
   "main": "index.ts",
@@ -9,10 +9,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@thefesta/payments": "*",
-    "@thefesta/auth": "*",
-    "@thefesta/lib": "*",
-    "@thefesta/db": "*",
+    "@opusfesta/payments": "*",
+    "@opusfesta/auth": "*",
+    "@opusfesta/lib": "*",
+    "@opusfesta/db": "*",
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "helmet": "^7.1.0",

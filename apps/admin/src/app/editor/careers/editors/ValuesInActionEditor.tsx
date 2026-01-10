@@ -119,7 +119,7 @@ export function ValuesInActionEditor() {
               <Input
                 value={valuesInAction.nonprofits.title}
                 onChange={(e) => handleNestedChange("nonprofits", "title", e.target.value)}
-                placeholder="TheFesta for Nonprofits"
+                placeholder="OpusFesta for Nonprofits"
               />
             </div>
             <div className="space-y-2">

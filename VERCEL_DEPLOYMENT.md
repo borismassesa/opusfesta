@@ -1,9 +1,9 @@
 # Vercel Monorepo Deployment Guide
 
 This monorepo contains three Next.js applications sharing the same Supabase instance:
-- **Website** (`apps/website`) - Main public website at `thefestaevents.com`
-- **Admin** (`apps/admin`) - Admin portal at `thefestaevents.com/admin`
-- **Vendor Portal** (`apps/vendor-portal`) - Vendor portal at `thefestaevents.com/vendors`
+- **Website** (`apps/website`) - Main public website at `opusfestaevents.com`
+- **Admin** (`apps/admin`) - Admin portal at `opusfestaevents.com/admin`
+- **Vendor Portal** (`apps/vendor-portal`) - Vendor portal at `opusfestaevents.com/vendors`
 
 ## Deployment Setup: Same Domain with Paths
 
@@ -15,13 +15,13 @@ All three apps will be accessible on the same domain using different paths. This
 1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
 2. Use your existing website project or create new one
 3. **Root Directory**: `apps/website`
-4. **Domain**: `thefestaevents.com` (your main domain)
+4. **Domain**: `opusfestaevents.com` (your main domain)
 5. **Environment Variables**: Your existing Supabase variables
 
 #### Project 2: Admin
 1. Create a new project in Vercel Dashboard
 2. Import repository: `borismassesa/thefesta`
-3. **Project Name**: `thefesta-admin` (or any name)
+3. **Project Name**: `opusfesta-admin` (or any name)
 4. **Root Directory**: `apps/admin`
 5. **Framework**: Next.js (auto-detected)
 6. **Build Command**: `npm run build` (uses `apps/admin/vercel.json`)
@@ -35,7 +35,7 @@ All three apps will be accessible on the same domain using different paths. This
 #### Project 3: Vendor Portal
 1. Create a new project in Vercel Dashboard
 2. Import repository: `borismassesa/thefesta`
-3. **Project Name**: `thefesta-vendor-portal` (or any name)
+3. **Project Name**: `opusfesta-vendor-portal` (or any name)
 4. **Root Directory**: `apps/vendor-portal`
 5. **Framework**: Next.js (auto-detected)
 6. **Build Command**: `npm run build` (uses `apps/vendor-portal/vercel.json`)
@@ -46,8 +46,8 @@ All three apps will be accessible on the same domain using different paths. This
 ### Step 2: Get Deployment URLs
 
 After deploying admin and vendor-portal projects, note their Vercel deployment URLs:
-- Admin: `https://thefesta-admin.vercel.app` (or your custom name)
-- Vendor Portal: `https://thefesta-vendor-portal.vercel.app` (or your custom name)
+- Admin: `https://opusfesta-admin.vercel.app` (or your custom name)
+- Vendor Portal: `https://opusfesta-vendor-portal.vercel.app` (or your custom name)
 
 ### Step 3: Configure Rewrites in Main Website Project
 
@@ -58,11 +58,11 @@ Update the root `vercel.json` (or website project's vercel.json) with rewrites p
   "rewrites": [
     {
       "source": "/admin/:path*",
-      "destination": "https://thefesta-admin.vercel.app/admin/:path*"
+      "destination": "https://opusfesta-admin.vercel.app/admin/:path*"
     },
     {
       "source": "/vendors/:path*",
-      "destination": "https://thefesta-vendor-portal.vercel.app/vendors/:path*"
+      "destination": "https://opusfesta-vendor-portal.vercel.app/vendors/:path*"
     }
   ]
 }
@@ -80,9 +80,9 @@ Update the root `vercel.json` (or website project's vercel.json) with rewrites p
 ### Access URLs
 
 After deployment:
-- Website: `https://thefestaevents.com`
-- Admin: `https://thefestaevents.com/admin`
-- Vendor Portal: `https://thefestaevents.com/vendors`
+- Website: `https://opusfestaevents.com`
+- Admin: `https://opusfestaevents.com/admin`
+- Vendor Portal: `https://opusfestaevents.com/vendors`
 
 ## Configuration Files
 

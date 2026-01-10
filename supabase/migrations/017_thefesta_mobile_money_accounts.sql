@@ -1,12 +1,12 @@
--- TheFesta Mobile Money Accounts
+-- OpusFesta Mobile Money Accounts
 -- Platform mobile money payment numbers (LIPA Namba) for receiving payments
 
--- Create table for TheFesta's mobile money accounts
+-- Create table for OpusFesta's mobile money accounts
 CREATE TABLE IF NOT EXISTS platform_mobile_money_accounts (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   provider VARCHAR(50) NOT NULL, -- MPESA, AIRTEL_MONEY, TIGO_PESA, HALO_PESA
   lipa_namba VARCHAR(20) NOT NULL UNIQUE, -- Payment code (e.g., "57020159", "12802655")
-  account_name VARCHAR(255) NOT NULL DEFAULT 'TheFesta',
+  account_name VARCHAR(255) NOT NULL DEFAULT 'OpusFesta',
   is_active BOOLEAN DEFAULT true,
   is_primary BOOLEAN DEFAULT false, -- Primary account for each provider
   description TEXT,
@@ -69,8 +69,8 @@ CREATE POLICY "Admins can manage mobile money accounts" ON platform_mobile_money
 -- Insert default accounts (to be updated by admin)
 -- These are placeholders - admin should update with actual LIPA NAMBA codes
 INSERT INTO platform_mobile_money_accounts (provider, lipa_namba, account_name, is_active, is_primary) VALUES
-  ('MPESA', '00000000', 'TheFesta', true, true),
-  ('AIRTEL_MONEY', '00000000', 'TheFesta', true, true),
-  ('TIGO_PESA', '00000000', 'TheFesta', true, true),
-  ('HALO_PESA', '00000000', 'TheFesta', true, true)
+  ('MPESA', '00000000', 'OpusFesta', true, true),
+  ('AIRTEL_MONEY', '00000000', 'OpusFesta', true, true),
+  ('TIGO_PESA', '00000000', 'OpusFesta', true, true),
+  ('HALO_PESA', '00000000', 'OpusFesta', true, true)
 ON CONFLICT (lipa_namba) DO NOTHING;

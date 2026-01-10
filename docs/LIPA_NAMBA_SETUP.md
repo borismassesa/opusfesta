@@ -12,14 +12,14 @@ Unlike phone numbers, LIPA NAMBA is:
 
 ## Database Schema
 
-The `platform_mobile_money_accounts` table stores TheFesta's LIPA NAMBA codes:
+The `platform_mobile_money_accounts` table stores OpusFesta's LIPA NAMBA codes:
 
 ```sql
 CREATE TABLE platform_mobile_money_accounts (
   id UUID PRIMARY KEY,
   provider VARCHAR(50) NOT NULL, -- MPESA, AIRTEL_MONEY, TIGO_PESA, HALO_PESA
   lipa_namba VARCHAR(20) NOT NULL UNIQUE, -- Payment code (e.g., "57020159")
-  account_name VARCHAR(255) NOT NULL DEFAULT 'TheFesta',
+  account_name VARCHAR(255) NOT NULL DEFAULT 'OpusFesta',
   is_active BOOLEAN DEFAULT true,
   is_primary BOOLEAN DEFAULT false,
   ...
@@ -43,25 +43,25 @@ Contact each provider to register for a merchant account and get your LIPA NAMBA
 -- Update M-PESA LIPA NAMBA
 UPDATE platform_mobile_money_accounts
 SET lipa_namba = '57020159', -- Replace with actual code
-    account_name = 'TheFesta'
+    account_name = 'OpusFesta'
 WHERE provider = 'MPESA';
 
 -- Update Airtel Money LIPA NAMBA
 UPDATE platform_mobile_money_accounts
 SET lipa_namba = '12802655', -- Replace with actual code
-    account_name = 'TheFesta'
+    account_name = 'OpusFesta'
 WHERE provider = 'AIRTEL_MONEY';
 
 -- Update Tigo Pesa LIPA NAMBA
 UPDATE platform_mobile_money_accounts
 SET lipa_namba = '15050478', -- Replace with actual code
-    account_name = 'TheFesta'
+    account_name = 'OpusFesta'
 WHERE provider = 'TIGO_PESA';
 
 -- Update Halo Pesa LIPA NAMBA
 UPDATE platform_mobile_money_accounts
 SET lipa_namba = '12345678', -- Replace with actual code
-    account_name = 'TheFesta'
+    account_name = 'OpusFesta'
 WHERE provider = 'HALO_PESA';
 ```
 
@@ -74,13 +74,13 @@ LIPA NAMBA
 [5] [7] [0] [2] [0] [1] [5] [9]
 
 JINA (Name)
-[TheFesta]
+[OpusFesta]
 ```
 
 ## Payment Flow
 
 1. Customer selects mobile money provider
-2. System displays TheFesta's LIPA NAMBA in digit boxes
+2. System displays OpusFesta's LIPA NAMBA in digit boxes
 3. Customer dials USSD code (e.g., *150*60# for M-PESA)
 4. Customer enters LIPA NAMBA when prompted
 5. Customer enters payment amount
@@ -118,7 +118,7 @@ Returns:
     {
       "provider": "MPESA",
       "lipaNamba": "57020159",
-      "accountName": "TheFesta",
+      "accountName": "OpusFesta",
       "isPrimary": true
     }
   ]

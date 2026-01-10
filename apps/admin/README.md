@@ -1,6 +1,6 @@
-# TheFesta Admin App
+# OpusFesta Admin App
 
-Admin portal for managing TheFesta platform.
+Admin portal for managing OpusFesta platform.
 
 ## Setup
 

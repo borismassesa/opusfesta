@@ -23,7 +23,7 @@ class SMSService {
     this.config = {
       apiKey: process.env.AFRICASTALKING_API_KEY!,
       username: process.env.AFRICASTALKING_USERNAME!,
-      senderId: process.env.AFRICASTALKING_SENDER_ID || 'THEFESTA',
+      senderId: process.env.AFRICASTALKING_SENDER_ID || 'OPUSFESTA',
       baseUrl: process.env.AFRICASTALKING_BASE_URL || 'https://api.africastalking.com',
     };
   }

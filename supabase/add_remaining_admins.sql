@@ -25,21 +25,21 @@ $$ LANGUAGE plpgsql;
 INSERT INTO admin_whitelist (user_id, email, full_name, role, is_active, added_at)
 SELECT 
   u.id as user_id,
-  'norah.kinunda@thefestaevents.com' as email,
+  'norah.kinunda@opusfestaevents.com' as email,
   COALESCE(
     u.name,
-    format_name_from_email('norah.kinunda@thefestaevents.com'),
+    format_name_from_email('norah.kinunda@opusfestaevents.com'),
     (SELECT COALESCE(
       au.raw_user_meta_data->>'full_name',
       au.raw_user_meta_data->>'name',
-      format_name_from_email('norah.kinunda@thefestaevents.com')
-    ) FROM auth.users au WHERE au.email = 'norah.kinunda@thefestaevents.com' LIMIT 1)
+      format_name_from_email('norah.kinunda@opusfestaevents.com')
+    ) FROM auth.users au WHERE au.email = 'norah.kinunda@opusfestaevents.com' LIMIT 1)
   ) as full_name,
   'admin' as role,
   true as is_active,
   COALESCE(u.created_at, CURRENT_TIMESTAMP) as added_at
 FROM users u
-WHERE u.email = 'norah.kinunda@thefestaevents.com'
+WHERE u.email = 'norah.kinunda@opusfestaevents.com'
 ON CONFLICT (email) DO UPDATE
 SET 
   full_name = COALESCE(EXCLUDED.full_name, admin_whitelist.full_name),
@@ -50,21 +50,21 @@ SET
 INSERT INTO admin_whitelist (user_id, email, full_name, role, is_active, added_at)
 SELECT 
   u.id as user_id,
-  'peace.msechu@thefestaevents.com' as email,
+  'peace.msechu@opusfestaevents.com' as email,
   COALESCE(
     u.name,
-    format_name_from_email('peace.msechu@thefestaevents.com'),
+    format_name_from_email('peace.msechu@opusfestaevents.com'),
     (SELECT COALESCE(
       au.raw_user_meta_data->>'full_name',
       au.raw_user_meta_data->>'name',
-      format_name_from_email('peace.msechu@thefestaevents.com')
-    ) FROM auth.users au WHERE au.email = 'peace.msechu@thefestaevents.com' LIMIT 1)
+      format_name_from_email('peace.msechu@opusfestaevents.com')
+    ) FROM auth.users au WHERE au.email = 'peace.msechu@opusfestaevents.com' LIMIT 1)
   ) as full_name,
   'admin' as role,
   true as is_active,
   COALESCE(u.created_at, CURRENT_TIMESTAMP) as added_at
 FROM users u
-WHERE u.email = 'peace.msechu@thefestaevents.com'
+WHERE u.email = 'peace.msechu@opusfestaevents.com'
 ON CONFLICT (email) DO UPDATE
 SET 
   full_name = COALESCE(EXCLUDED.full_name, admin_whitelist.full_name),
@@ -74,44 +74,44 @@ SET
 -- If users don't exist in users table, create entries anyway (they might exist only in auth.users)
 INSERT INTO admin_whitelist (email, full_name, role, is_active, added_at)
 SELECT 
-  'norah.kinunda@thefestaevents.com' as email,
+  'norah.kinunda@opusfestaevents.com' as email,
   COALESCE(
     (SELECT COALESCE(
       au.raw_user_meta_data->>'full_name',
       au.raw_user_meta_data->>'name',
-      format_name_from_email('norah.kinunda@thefestaevents.com')
-    ) FROM auth.users au WHERE au.email = 'norah.kinunda@thefestaevents.com' LIMIT 1),
-    format_name_from_email('norah.kinunda@thefestaevents.com')
+      format_name_from_email('norah.kinunda@opusfestaevents.com')
+    ) FROM auth.users au WHERE au.email = 'norah.kinunda@opusfestaevents.com' LIMIT 1),
+    format_name_from_email('norah.kinunda@opusfestaevents.com')
   ) as full_name,
   'admin' as role,
   true as is_active,
   COALESCE(
-    (SELECT created_at FROM auth.users WHERE email = 'norah.kinunda@thefestaevents.com' LIMIT 1),
+    (SELECT created_at FROM auth.users WHERE email = 'norah.kinunda@opusfestaevents.com' LIMIT 1),
     CURRENT_TIMESTAMP
   ) as added_at
 WHERE NOT EXISTS (
-  SELECT 1 FROM admin_whitelist WHERE email = 'norah.kinunda@thefestaevents.com'
+  SELECT 1 FROM admin_whitelist WHERE email = 'norah.kinunda@opusfestaevents.com'
 );
 
 INSERT INTO admin_whitelist (email, full_name, role, is_active, added_at)
 SELECT 
-  'peace.msechu@thefestaevents.com' as email,
+  'peace.msechu@opusfestaevents.com' as email,
   COALESCE(
     (SELECT COALESCE(
       au.raw_user_meta_data->>'full_name',
       au.raw_user_meta_data->>'name',
-      format_name_from_email('peace.msechu@thefestaevents.com')
-    ) FROM auth.users au WHERE au.email = 'peace.msechu@thefestaevents.com' LIMIT 1),
-    format_name_from_email('peace.msechu@thefestaevents.com')
+      format_name_from_email('peace.msechu@opusfestaevents.com')
+    ) FROM auth.users au WHERE au.email = 'peace.msechu@opusfestaevents.com' LIMIT 1),
+    format_name_from_email('peace.msechu@opusfestaevents.com')
   ) as full_name,
   'admin' as role,
   true as is_active,
   COALESCE(
-    (SELECT created_at FROM auth.users WHERE email = 'peace.msechu@thefestaevents.com' LIMIT 1),
+    (SELECT created_at FROM auth.users WHERE email = 'peace.msechu@opusfestaevents.com' LIMIT 1),
     CURRENT_TIMESTAMP
   ) as added_at
 WHERE NOT EXISTS (
-  SELECT 1 FROM admin_whitelist WHERE email = 'peace.msechu@thefestaevents.com'
+  SELECT 1 FROM admin_whitelist WHERE email = 'peace.msechu@opusfestaevents.com'
 );
 
 -- Update user_id for entries that were created without it

@@ -42,7 +42,7 @@ If you want to set specific admins as "owner" (instead of "admin"):
 ```sql
 UPDATE admin_whitelist 
 SET role = 'owner' 
-WHERE email = 'boris.massesa@thefestaevents.com';
+WHERE email = 'boris.massesa@opusfestaevents.com';
 ```
 
 ## Troubleshooting

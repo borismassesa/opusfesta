@@ -27,8 +27,8 @@
       "@/types/*": ["./src/types/*"],
       "@/hooks/*": ["./src/hooks/*"],
       "@/services/*": ["./src/services/*"],
-      "@thefesta/lib": ["../../packages/lib"],
-      "@thefesta/db": ["../../packages/db"]
+      "@opusfesta/lib": ["../../packages/lib"],
+      "@opusfesta/db": ["../../packages/db"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

@@ -3,7 +3,7 @@
 ## Option 1: Get Token from Supabase Dashboard (Easiest) ⭐
 
 1. Go to **Supabase Dashboard** → **Authentication** → **Users**
-2. Find your user: `boris.massesa@thefestaevents.com`
+2. Find your user: `boris.massesa@opusfestaevents.com`
 3. Click on the user
 4. In the user details, look for **"Access Token"** or **"Generate new token"**
 5. Copy the token
@@ -35,7 +35,7 @@ curl -X POST http://localhost:3000/api/reviews \
 
 2. Open browser: `http://localhost:3000`
 
-3. Log in with: `boris.massesa@thefestaevents.com`
+3. Log in with: `boris.massesa@opusfestaevents.com`
 
 4. Open DevTools (F12) → **Console** tab
 
@@ -82,7 +82,7 @@ curl -X POST "${SUPABASE_URL}/auth/v1/token?grant_type=password" \
   -H "apikey: ${SUPABASE_ANON_KEY}" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "boris.massesa@thefestaevents.com",
+    "email": "boris.massesa@opusfestaevents.com",
     "password": "YOUR_PASSWORD"
   }' | jq -r '.access_token'
 ```

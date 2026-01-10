@@ -21,7 +21,7 @@ const REVIEWS = [
     name: "Sarah & James",
     role: "Married June 2024",
     avatar: reviewer1,
-    content: "TheFesta made our wedding planning incredibly smooth. The vendor marketplace is a game-changer!",
+    content: "OpusFesta made our wedding planning incredibly smooth. The vendor marketplace is a game-changer!",
     rating: 5
   },
   {
@@ -217,7 +217,7 @@ export function Reviews() {
               <span className="font-serif italic font-normal text-secondary">& professionals.</span>
             </h2>
             <p className="text-secondary text-lg leading-relaxed max-w-md font-light">
-              Join thousands of happy users who have transformed their wedding planning experience with TheFesta.
+              Join thousands of happy users who have transformed their wedding planning experience with OpusFesta.
             </p>
           </div>
 

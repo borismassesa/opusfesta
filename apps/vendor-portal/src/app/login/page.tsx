@@ -76,7 +76,7 @@ export default function LoginPage() {
             href="/"
             className="font-serif text-4xl tracking-wide text-slate-700 dark:text-slate-200 hover:opacity-80 transition-opacity w-fit"
           >
-            TheFesta
+            OpusFesta
           </Link>
           
           <div className="backdrop-blur-sm bg-white/40 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 p-8 rounded-3xl shadow-xl max-w-lg">
@@ -100,7 +100,7 @@ export default function LoginPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
             <Link href="/" className="font-serif text-3xl text-primary hover:opacity-80 transition-opacity">
-              TheFesta
+              OpusFesta
             </Link>
           </div>
 
@@ -246,7 +246,7 @@ export default function LoginPage() {
           </div>
 
           <p className="px-8 text-center text-xs text-muted-foreground">
-            By continuing, you agree to TheFesta's{" "}
+            By continuing, you agree to OpusFesta's{" "}
             <a href="#" className="underline underline-offset-4 hover:text-primary">
               Terms of Service
             </a>{" "}

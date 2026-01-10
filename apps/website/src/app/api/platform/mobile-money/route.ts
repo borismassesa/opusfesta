@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 /**
  * GET /api/platform/mobile-money
- * Get TheFesta's active mobile money accounts (public endpoint)
+ * Get OpusFesta's active mobile money accounts (public endpoint)
  */
 export async function GET(request: NextRequest) {
   try {

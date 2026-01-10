@@ -1,7 +1,7 @@
 # Visa Card Payment Testing Guide
 
 ## Overview
-TheFesta uses Stripe for processing card payments, including Visa cards. This guide explains how to test Visa card payments in the system.
+OpusFesta uses Stripe for processing card payments, including Visa cards. This guide explains how to test Visa card payments in the system.
 
 ## Stripe Configuration
 

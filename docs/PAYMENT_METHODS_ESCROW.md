@@ -2,14 +2,14 @@
 
 ## Overview
 
-**ALL payment methods** (card payments and mobile money) use the same escrow system where funds are held by TheFesta and released after work completion.
+**ALL payment methods** (card payments and mobile money) use the same escrow system where funds are held by OpusFesta and released after work completion.
 
 ## Payment Methods Supported
 
 ### 1. Card Payments (Debit/Credit Cards) ✅
 - **Provider:** Stripe
 - **Methods:** STRIPE_CARD, STRIPE_BANK
-- **Flow:** Payment → TheFesta Account → Escrow Hold → Release
+- **Flow:** Payment → OpusFesta Account → Escrow Hold → Release
 
 ### 2. Mobile Money ✅
 - **Providers:** M-PESA, Airtel Money, Tigo Pesa, Halo Pesa
@@ -19,21 +19,21 @@
 
 ### Step 1: Payment Intent Creation
 ```typescript
-// Payment intent created on TheFesta's Stripe account
+// Payment intent created on OpusFesta's Stripe account
 stripe.paymentIntents.create({
   amount: 1000, // in cents
   currency: 'usd',
-  // NO transfer_data - goes to TheFesta
+  // NO transfer_data - goes to OpusFesta
   // NO application_fee - handled in escrow
   metadata: { invoice_id, inquiry_id }
 });
 ```
 
-**Result:** Payment goes to **TheFesta's Stripe account** (not vendor's)
+**Result:** Payment goes to **OpusFesta's Stripe account** (not vendor's)
 
 ### Step 2: Payment Success
 - Customer's card is charged
-- Funds captured to TheFesta's account
+- Funds captured to OpusFesta's account
 - Webhook fires: `payment_intent.succeeded`
 
 ### Step 3: Escrow Hold Created
@@ -79,13 +79,13 @@ stripe.paymentIntents.create({
 | **Escrow Creation** | Automatic on success | Automatic after verification |
 | **Release** | Same (after work completion) | Same (after work completion) |
 
-## Verification: Card Payments Go to TheFesta
+## Verification: Card Payments Go to OpusFesta
 
 ### ✅ Confirmed
 1. **Payment Intent Creation** (`stripe.ts`)
    - No `transfer_data` parameter
    - No `application_fee_amount` parameter
-   - Payment goes to TheFesta's account
+   - Payment goes to OpusFesta's account
 
 2. **Webhook Handler** (`webhook/stripe/route.ts`)
    - Updates payment status to `SUCCEEDED`
@@ -98,7 +98,7 @@ stripe.paymentIntents.create({
 
 ## Code Verification
 
-### Payment Intent (Correct - Goes to TheFesta)
+### Payment Intent (Correct - Goes to OpusFesta)
 ```typescript
 // apps/website/src/lib/payments/stripe.ts
 stripe.paymentIntents.create({
@@ -106,7 +106,7 @@ stripe.paymentIntents.create({
   currency: request.currency.toLowerCase(),
   // ✅ NO transfer_data
   // ✅ NO application_fee_amount
-  // ✅ Payment goes to TheFesta's account
+  // ✅ Payment goes to OpusFesta's account
 });
 ```
 
@@ -135,7 +135,7 @@ stripe.transfers.create({
 ### Card Payment Escrow Test
 - [ ] Create invoice
 - [ ] Process card payment
-- [ ] Verify payment in TheFesta's Stripe dashboard
+- [ ] Verify payment in OpusFesta's Stripe dashboard
 - [ ] Verify `escrow_holds` record created
 - [ ] Verify `vendor_revenue.escrow_status = 'held'`
 - [ ] Mark work as completed
@@ -155,7 +155,7 @@ stripe.transfers.create({
 ## Summary
 
 **Both card payments and mobile money:**
-1. ✅ Payments go to TheFesta first
+1. ✅ Payments go to OpusFesta first
 2. ✅ Funds held in escrow automatically
 3. ✅ 10% platform fee collected immediately
 4. ✅ 90% vendor amount held until work completion

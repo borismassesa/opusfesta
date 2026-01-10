@@ -1,4 +1,4 @@
--- TheFesta Platform - Phase 1 MVP Database Schema
+-- OpusFesta Platform - Phase 1 MVP Database Schema
 -- This migration creates all tables needed for the initial marketplace launch
 
 -- Enable UUID extension

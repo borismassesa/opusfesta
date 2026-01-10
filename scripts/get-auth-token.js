@@ -17,7 +17,7 @@ console.log('============================\n');
 console.log('Options:');
 console.log('1. Get token from Supabase Dashboard');
 console.log('   - Go to: Supabase Dashboard → Authentication → Users');
-console.log('   - Find your user: boris.massesa@thefestaevents.com');
+console.log('   - Find your user: boris.massesa@opusfestaevents.com');
 console.log('   - Click on user → Copy access token\n');
 console.log('2. Get token from browser (if logged in)');
 console.log('   - Open DevTools → Application → Local Storage');

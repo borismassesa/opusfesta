@@ -1,6 +1,6 @@
-# Supabase Setup Guide for TheFesta
+# Supabase Setup Guide for OpusFesta
 
-This guide will help you set up Supabase for the TheFesta marketplace platform.
+This guide will help you set up Supabase for the OpusFesta marketplace platform.
 
 ## Prerequisites
 
@@ -13,7 +13,7 @@ This guide will help you set up Supabase for the TheFesta marketplace platform.
 1. Go to [app.supabase.com](https://app.supabase.com)
 2. Click "New Project"
 3. Fill in the details:
-   - **Name**: TheFesta
+   - **Name**: OpusFesta
    - **Database Password**: Choose a strong password (save this!)
    - **Region**: Choose closest to your target users
 4. Click "Create new project" and wait for setup to complete (~2 minutes)

@@ -1,6 +1,6 @@
 # Stripe Integration - Step-by-Step Setup Guide
 
-This guide will walk you through connecting your TheFesta application with Stripe for payment processing.
+This guide will walk you through connecting your OpusFesta application with Stripe for payment processing.
 
 ## Prerequisites
 

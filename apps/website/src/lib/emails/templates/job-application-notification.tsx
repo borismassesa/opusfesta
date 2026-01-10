@@ -13,7 +13,7 @@ export function JobApplicationNotification({
   jobTitle,
   applicationId,
 }: JobApplicationNotificationProps): string {
-  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://thefesta.com";
+  const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "https://opusfesta.com";
   const adminUrl = `${baseUrl}/admin/careers/applications/${applicationId}`;
 
   return `
@@ -22,7 +22,7 @@ export function JobApplicationNotification({
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>New Job Application - TheFesta</title>
+  <title>New Job Application - OpusFesta</title>
 </head>
 <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f5f5f5;">
   <table role="presentation" style="width: 100%; border-collapse: collapse;">
@@ -81,7 +81,7 @@ export function JobApplicationNotification({
           <tr>
             <td style="padding: 24px 40px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; text-align: center;">
               <p style="margin: 0; color: #999; font-size: 12px;">
-                © ${new Date().getFullYear()} TheFesta. All rights reserved.
+                © ${new Date().getFullYear()} OpusFesta. All rights reserved.
               </p>
             </td>
           </tr>

@@ -113,7 +113,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
     fetchAvailability();
   }, [vendor.id]);
 
-  // Fetch TheFesta's mobile money accounts when mobile money is selected
+  // Fetch OpusFesta's mobile money accounts when mobile money is selected
   useEffect(() => {
     const fetchAccounts = async () => {
       setLoadingMobileMoneyAccounts(true);
@@ -156,7 +156,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
           setSelectedLipaNamba(null);
         }
       } catch (err) {
-        console.error("Error fetching TheFesta mobile money accounts:", err);
+        console.error("Error fetching OpusFesta mobile money accounts:", err);
       } finally {
         setLoadingMobileMoneyAccounts(false);
       }
@@ -1869,7 +1869,7 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                       <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
                         <li>Vendor advance not released yet</li>
                         <li>Customer receives: 85% refund</li>
-                        <li>15% retained by TheFesta (platform & processing fee)</li>
+                        <li>15% retained by OpusFesta (platform & processing fee)</li>
                       </ul>
                     </div>
 
@@ -1878,8 +1878,8 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                       <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
                         <li>Vendor has received 50% of their share</li>
                         <li>Vendor keeps 42.5% (work initiation fee)</li>
-                        <li>Remaining balance is refunded to the customer, excluding TheFesta's 15%</li>
-                        <li>TheFesta mediates and determines fairness based on work completed</li>
+                        <li>Remaining balance is refunded to the customer, excluding OpusFesta's 15%</li>
+                        <li>OpusFesta mediates and determines fairness based on work completed</li>
                       </ul>
                     </div>
 
@@ -1888,17 +1888,17 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                       <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
                         <li>100% refund to the customer</li>
                         <li>Vendor may be penalized or restricted based on cancellation reason</li>
-                        <li>TheFesta resolves payment reversals</li>
+                        <li>OpusFesta resolves payment reversals</li>
                       </ul>
                     </div>
 
                     <div>
                       <h4 className="font-semibold text-foreground mb-2">5. Vendor Fails to Complete the Job</h4>
                       <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
-                        <li>TheFesta investigates the issue</li>
+                        <li>OpusFesta investigates the issue</li>
                         <li>Possible outcomes: Partial or full refund to the customer</li>
                         <li>Vendor may forfeit the remaining payout</li>
-                        <li>TheFesta may issue compensation or arrange a replacement vendor</li>
+                        <li>OpusFesta may issue compensation or arrange a replacement vendor</li>
                       </ul>
                     </div>
 
@@ -1906,8 +1906,8 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                       <h4 className="font-semibold text-foreground mb-2">6. Customer Dissatisfied After Completion</h4>
                       <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
                         <li>Customer raises an issue within a defined review period</li>
-                        <li>TheFesta reviews: Service quality, Contracted scope, Evidence from both parties</li>
-                        <li>Refund or partial refund may be issued at TheFesta's discretion</li>
+                        <li>OpusFesta reviews: Service quality, Contracted scope, Evidence from both parties</li>
+                        <li>Refund or partial refund may be issued at OpusFesta's discretion</li>
                       </ul>
                     </div>
                   </div>
@@ -1916,9 +1916,9 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                 <div className="pt-4 border-t border-border">
                   <h3 className="font-semibold text-foreground mb-2">Key Principles</h3>
                   <ul className="text-sm text-secondary space-y-1 ml-4 list-disc">
-                    <li>All payments are handled by TheFesta</li>
-                    <li>TheFesta acts as escrow and mediator</li>
-                    <li>Final refund decisions rest with TheFesta</li>
+                    <li>All payments are handled by OpusFesta</li>
+                    <li>OpusFesta acts as escrow and mediator</li>
+                    <li>Final refund decisions rest with OpusFesta</li>
                     <li>Goal: Fairness to vendors + protection for customers</li>
                   </ul>
                 </div>

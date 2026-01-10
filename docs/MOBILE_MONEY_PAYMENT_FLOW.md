@@ -90,15 +90,15 @@
 └─────────────────────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────────┐
-│ TheFesta Account:                                           │
+│ OpusFesta Account:                                           │
 │ - TZS 1,000,000 held (from customer payment)               │
 │ - TZS 100,000 → Platform fee (collected)                    │
 │ - TZS 900,000 → Vendor amount (held in escrow)             │
 │                                                              │
 │ Vendor's Mobile Money Account:                              │
 │ - TZS 1,000,000 received (from customer)                   │
-│ - BUT: Vendor must return TZS 900,000 to TheFesta           │
-│   OR: TheFesta deducts from future payouts                  │
+│ - BUT: Vendor must return TZS 900,000 to OpusFesta           │
+│   OR: OpusFesta deducts from future payouts                  │
 │                                                              │
 │ ⚠️ IMPORTANT: This is a reconciliation issue!              │
 │ The customer paid directly to vendor, but we need to        │
@@ -145,27 +145,27 @@
 
 When customer pays via mobile money:
 1. Customer sends TZS 1,000,000 → **Vendor's mobile money account** (direct)
-2. TheFesta needs to hold TZS 900,000 in escrow
+2. OpusFesta needs to hold TZS 900,000 in escrow
 3. But vendor already received the full amount!
 
 ### Solution Options
 
 #### Option 1: Vendor Returns Funds (Recommended)
 - Vendor receives TZS 1,000,000 in their mobile money
-- Vendor must return TZS 900,000 to TheFesta's mobile money account
-- TheFesta holds TZS 900,000 until work completion
-- On release: TheFesta returns TZS 900,000 to vendor (or keeps if already returned)
+- Vendor must return TZS 900,000 to OpusFesta's mobile money account
+- OpusFesta holds TZS 900,000 until work completion
+- On release: OpusFesta returns TZS 900,000 to vendor (or keeps if already returned)
 
 #### Option 2: Deduct from Future Payouts
 - Vendor keeps TZS 1,000,000 (already received)
-- TheFesta tracks: "Vendor owes TZS 900,000 to escrow"
+- OpusFesta tracks: "Vendor owes TZS 900,000 to escrow"
 - Deduct from future card payments or other transactions
 - Reconciliation happens over time
 
 #### Option 3: Vendor Pre-funds Escrow
-- Vendor deposits TZS 900,000 to TheFesta's account upfront
+- Vendor deposits TZS 900,000 to OpusFesta's account upfront
 - When customer pays, vendor keeps their 90% share
-- TheFesta uses pre-funded amount for escrow
+- OpusFesta uses pre-funded amount for escrow
 
 ## Recommended Flow (Option 1)
 
@@ -177,8 +177,8 @@ When customer pays via mobile money:
 3. Vendor verifies receipt
 4. Payment status → SUCCEEDED
 5. Escrow hold created (TZS 900,000)
-6. Vendor returns TZS 900,000 → TheFesta's mobile money account
-7. TheFesta confirms receipt of TZS 900,000
+6. Vendor returns TZS 900,000 → OpusFesta's mobile money account
+7. OpusFesta confirms receipt of TZS 900,000
 8. Escrow status → CONFIRMED (funds actually held)
 9. Work completion
 10. Escrow release → Return TZS 900,000 to vendor
@@ -186,8 +186,8 @@ When customer pays via mobile money:
 
 ## Implementation Needed
 
-### 1. TheFesta Mobile Money Account
-- Set up TheFesta's mobile money numbers:
+### 1. OpusFesta Mobile Money Account
+- Set up OpusFesta's mobile money numbers:
   - M-PESA: +255 XXX XXX XXX
   - Airtel Money: +255 XXX XXX XXX
   - Tigo Pesa: +255 XXX XXX XXX
@@ -218,16 +218,16 @@ Body: {
 - Escrow release mechanism
 
 ### ⚠️ What Needs Work
-- **Reconciliation**: Vendor returns 90% to TheFesta
-- **Confirmation**: TheFesta confirms receipt of funds
-- **Actual Holding**: Ensure funds are actually in TheFesta's account
+- **Reconciliation**: Vendor returns 90% to OpusFesta
+- **Confirmation**: OpusFesta confirms receipt of funds
+- **Actual Holding**: Ensure funds are actually in OpusFesta's account
 
 ## Next Steps
 
-1. **Set up TheFesta mobile money accounts**
+1. **Set up OpusFesta mobile money accounts**
 2. **Create reconciliation API**
 3. **Add escrow confirmation step**
-4. **Update vendor instructions** (return 90% to TheFesta)
+4. **Update vendor instructions** (return 90% to OpusFesta)
 5. **Add reconciliation tracking** in escrow_holds table
 
 Would you like me to implement the reconciliation system?

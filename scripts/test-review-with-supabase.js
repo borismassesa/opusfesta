@@ -29,7 +29,7 @@ if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Test data
-const USER_EMAIL = 'boris.massesa@thefestaevents.com';
+const USER_EMAIL = 'boris.massesa@opusfestaevents.com';
 const USER_PASSWORD = process.env.USER_PASSWORD; // You'll need to provide this
 const VENDOR_ID = 'b0000002-0002-4002-8002-000000000002'; // Bella Photography
 const INQUIRY_ID = 'ba0f7d62-5cdf-4018-ae62-81bf935a2156';

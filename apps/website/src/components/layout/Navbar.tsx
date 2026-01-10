@@ -423,7 +423,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
           window.scrollTo({ top: 0, behavior: "smooth" });
         }}
       >
-        TheFesta
+        OpusFesta
       </Link>
 
       {/* Desktop Navigation */}

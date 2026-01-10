@@ -9,10 +9,10 @@ Create an Open Graph image at: `apps/admin/public/opengraph-admin.png`
 - **Dimensions**: 1200x630 pixels (recommended OG image size)
 - **Format**: PNG or JPG
 - **Content**: Should include:
-  - TheFesta logo/branding
+  - OpusFesta logo/branding
   - "Admin Portal" text
   - Professional, clean design
-  - Matches TheFesta brand colors
+  - Matches OpusFesta brand colors
 
 ## Quick Creation
 

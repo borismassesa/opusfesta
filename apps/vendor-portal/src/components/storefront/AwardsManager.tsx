@@ -200,7 +200,7 @@ function AwardForm({ onSave, onCancel, isSaving, initialData }: AwardFormProps) 
                 id="award_title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g., TheFesta Couples' Choice"
+                placeholder="e.g., OpusFesta Couples' Choice"
                 required
               />
             </div>

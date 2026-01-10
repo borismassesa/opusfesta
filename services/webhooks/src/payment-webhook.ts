@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { paymentProcessor } from '@thefesta/payments';
+import { paymentProcessor } from '@opusfesta/payments';
 import { errorHandler } from './middleware/error-handler';
 
 export async function paymentWebhookHandler(req: Request, res: Response) {

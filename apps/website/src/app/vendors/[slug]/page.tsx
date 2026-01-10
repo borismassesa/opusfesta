@@ -24,17 +24,17 @@ export async function generateMetadata({
   const image = vendor.cover_image || vendor.logo || "";
 
   return {
-    title: `${vendor.business_name} | TheFesta`,
+    title: `${vendor.business_name} | OpusFesta`,
     description,
     openGraph: {
-      title: `${vendor.business_name} | TheFesta`,
+      title: `${vendor.business_name} | OpusFesta`,
       description,
       images: image ? [image] : [],
       type: "website",
     },
     twitter: {
       card: "summary_large_image",
-      title: `${vendor.business_name} | TheFesta`,
+      title: `${vendor.business_name} | OpusFesta`,
       description,
       images: image ? [image] : [],
     },

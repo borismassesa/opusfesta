@@ -31,7 +31,7 @@ export function Header({ onMenuClick }: HeaderProps) {
           href="/"
           className="font-serif text-2xl md:text-3xl text-primary hover:text-primary/80 transition-colors select-none"
         >
-          TheFesta
+          OpusFesta
         </Link>
       </div>
 

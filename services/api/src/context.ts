@@ -1,4 +1,4 @@
-import { prisma } from '@thefesta/db';
+import { prisma } from '@opusfesta/db';
 import { CognitoIdentityProviderClient } from '@aws-sdk/client-cognito-identity-provider';
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient } from '@aws-sdk/lib-dynamodb';

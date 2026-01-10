@@ -1,5 +1,5 @@
 import { africasTalkingPayments } from './africas-talking';
-import { prisma } from '@thefesta/db';
+import { prisma } from '@opusfesta/db';
 import { z } from 'zod';
 
 // Validation schemas

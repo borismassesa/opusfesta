@@ -280,10 +280,10 @@ export async function POST(request: NextRequest) {
     // No need to manually update stats
 
     // Send emails asynchronously (don't block the response)
-    const baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('/rest/v1', '') || 'https://thefesta.com';
+    const baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_SUPABASE_URL?.replace('/rest/v1', '') || 'https://opusfesta.com';
     const vendorContactInfo = (vendor.contact_info as any) || {};
     const vendorEmail = vendorContactInfo.email;
-    const platformEmail = process.env.PLATFORM_ADMIN_EMAIL || 'admin@thefesta.com';
+    const platformEmail = process.env.PLATFORM_ADMIN_EMAIL || 'admin@opusfesta.com';
     
     // Calculate if inquiry is urgent (event date within 7 days)
     const isUrgent = eventDate && (new Date(eventDate).getTime() - Date.now()) < 7 * 24 * 60 * 60 * 1000;

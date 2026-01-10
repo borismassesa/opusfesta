@@ -92,7 +92,7 @@ This document provides a comprehensive analysis of the complete flow from bookin
                     ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │ Customer confirms payment in Stripe CardElement                  │
-│ Stripe processes payment → TheFesta's Stripe account            │
+│ Stripe processes payment → OpusFesta's Stripe account            │
 └─────────────────────────────────────────────────────────────────┘
                     ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -101,8 +101,8 @@ This document provides a comprehensive analysis of the complete flow from bookin
                     ↓
 ┌─────────────────────────────────────────────────────────────────┐
 │ Customer:                                                       │
-│ 1. Sees TheFesta's LIPA NAMBA (e.g., "57020159")              │
-│ 2. Pays to TheFesta's mobile money account                     │
+│ 1. Sees OpusFesta's LIPA NAMBA (e.g., "57020159")              │
+│ 2. Pays to OpusFesta's mobile money account                     │
 │ 3. Uploads receipt                                             │
 │ API: POST /api/payments/receipts                               │
 │ Creates:                                                        │

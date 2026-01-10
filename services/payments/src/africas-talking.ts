@@ -373,9 +373,9 @@ class AfricasTalkingPaymentService {
   private getProductName(currency: string): string {
     // Map currency to Africa's Talking product name
     const products = {
-      TZS: process.env.AFRICASTALKING_PRODUCT_NAME_TZS || 'TheFestaTZ',
-      KES: process.env.AFRICASTALKING_PRODUCT_NAME_KES || 'TheFestaKE',
-      UGX: process.env.AFRICASTALKING_PRODUCT_NAME_UGX || 'TheFestaUG',
+      TZS: process.env.AFRICASTALKING_PRODUCT_NAME_TZS || 'OpusFestaTZ',
+      KES: process.env.AFRICASTALKING_PRODUCT_NAME_KES || 'OpusFestaKE',
+      UGX: process.env.AFRICASTALKING_PRODUCT_NAME_UGX || 'OpusFestaUG',
     };
 
     return products[currency as keyof typeof products] || products.TZS;

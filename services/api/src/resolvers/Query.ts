@@ -1,5 +1,5 @@
 import { GraphQLContext } from '../context';
-import { NotFoundError, UnauthorizedError } from '@thefesta/lib';
+import { NotFoundError, UnauthorizedError } from '@opusfesta/lib';
 
 export const Query = {
   // User queries
