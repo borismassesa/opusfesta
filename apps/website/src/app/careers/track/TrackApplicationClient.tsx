@@ -8,9 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Navbar } from "@/components/layout/Navbar";
-import { MenuOverlay } from "@/components/layout/MenuOverlay";
-import { Footer } from "@/components/layout/Footer";
+import { CareersNavbar } from "@/components/careers/CareersNavbar";
+import { CareersFooter } from "@/components/careers/CareersFooter";
 
 interface ApplicationStatus {
   id: string;
@@ -26,7 +25,6 @@ interface ApplicationStatus {
 }
 
 export function TrackApplicationClient() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [applicationId, setApplicationId] = useState("");
   const [email, setEmail] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -122,8 +120,7 @@ export function TrackApplicationClient() {
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-      <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
-      <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+      <CareersNavbar />
       <main className="flex-1">
         <div className="container mx-auto px-4 pt-16 pb-12 md:pt-20 md:pb-16 max-w-4xl">
           <div className="text-center mb-8">
@@ -289,7 +286,7 @@ export function TrackApplicationClient() {
           )}
         </div>
       </main>
-      <Footer />
+      <CareersFooter />
     </div>
   );
 }

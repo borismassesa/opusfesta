@@ -140,7 +140,10 @@ export function Hero() {
         const initAnimation = () => {
              if (!visualRef.current || !containerRef.current) return;
              
-             // Ensure visual is visible and in flow
+             // Ensure visual is visible and in flow - make sure it's displayed
+             if (visualRef.current) {
+               visualRef.current.style.display = 'block';
+             }
              gsap.set(visualRef.current, { opacity: 1, clearProps: "position,left,top,width,height,transform" });
              
              scrollTl.clear();
@@ -368,57 +371,55 @@ export function Hero() {
         </div>
 
         {/* Hero Visual - Video Carousel */}
-        <div className="hidden md:flex w-full items-center justify-center md:items-start lg:items-center">
-          <div ref={visualRef} className="hero-visual block relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group bg-surface border border-border z-20">
-          
-          {hero.slides.map((slide, index) => (
-            <div 
-              key={slide.id}
-              className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
-                index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
-              }`}
-              style={{ backgroundColor: slide.color }}
+        <div ref={visualRef} className="hero-visual relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group bg-surface border border-border z-20 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto">
+        
+        {hero.slides.map((slide, index) => (
+          <div 
+            key={slide.id}
+            className={`absolute inset-0 w-full h-full transition-opacity duration-1000 ease-in-out ${
+              index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+            }`}
+            style={{ backgroundColor: slide.color }}
+          >
+            <video
+              autoPlay
+              muted
+              loop
+              playsInline
+              poster={slide.poster}
+              className="hero-video w-full h-full object-cover"
             >
-              <video
-                autoPlay
-                muted
-                loop
-                playsInline
-                poster={slide.poster}
-                className="hero-video w-full h-full object-cover"
-              >
-                <source src={slide.video} type="video/mp4" />
-              </video>
-              {/* Dark overlay for better text contrast if needed */}
-              <div className="absolute inset-0 bg-black/10"></div>
-            </div>
-          ))}
-          
-          {/* Dynamic Artist Credit */}
-          <div className="absolute bottom-4 right-4 lg:bottom-6 lg:right-6 flex items-center gap-2 lg:gap-3 bg-surface/90 backdrop-blur-sm px-3 py-1.5 lg:px-4 lg:py-2 rounded-full shadow-lg hover:scale-105 transition-all cursor-pointer z-20 border border-border">
-            <span className="text-xs lg:text-sm font-semibold text-primary transition-all duration-300">
-              {hero.slides[currentSlide].author}
-            </span>
-            <img 
-              src={hero.slides[currentSlide].avatar} 
-              alt="Artist" 
-              className="w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-border" 
-            />
+              <source src={slide.video} type="video/mp4" />
+            </video>
+            {/* Dark overlay for better text contrast if needed */}
+            <div className="absolute inset-0 bg-black/10"></div>
           </div>
-          
-          {/* Slide Indicators */}
-          <div className="absolute bottom-4 left-4 lg:bottom-6 lg:left-6 flex gap-2 z-20">
-              {hero.slides.map((_, idx) => (
-                  <div 
-                      key={idx} 
-                      className={`h-1.5 rounded-full transition-all duration-300 ${
-                          idx === currentSlide ? 'w-6 bg-white shadow-[0_0_10px_rgba(0,0,0,0.3)]' : 'w-1.5 bg-white/50'
-                      }`}
-                  />
-              ))}
-          </div>
+        ))}
+        
+        {/* Dynamic Artist Credit */}
+        <div className="absolute bottom-4 right-4 lg:bottom-6 lg:right-6 flex items-center gap-2 lg:gap-3 bg-surface/90 backdrop-blur-sm px-3 py-1.5 lg:px-4 lg:py-2 rounded-full shadow-lg hover:scale-105 transition-all cursor-pointer z-20 border border-border">
+          <span className="text-xs lg:text-sm font-semibold text-primary transition-all duration-300">
+            {hero.slides[currentSlide].author}
+          </span>
+          <img 
+            src={hero.slides[currentSlide].avatar} 
+            alt="Artist" 
+            className="w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-border" 
+          />
+        </div>
+        
+        {/* Slide Indicators */}
+        <div className="absolute bottom-4 left-4 lg:bottom-6 lg:left-6 flex gap-2 z-20">
+            {hero.slides.map((_, idx) => (
+                <div 
+                    key={idx} 
+                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                        idx === currentSlide ? 'w-6 bg-white shadow-[0_0_10px_rgba(0,0,0,0.3)]' : 'w-1.5 bg-white/50'
+                    }`}
+                />
+            ))}
+        </div>
 
-          </div>
         </div>
       </section>
     </div>

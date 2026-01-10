@@ -80,15 +80,21 @@ export function getRedirectPath(userType?: UserType, role?: UserRole, next?: str
   // Determine user type from role if userType not provided
   const effectiveUserType = userType || (role ? mapRoleToUserType(role) : "couple");
 
+  // Check if we're in a careers context (next parameter contains /careers)
+  const isCareersContext = next?.includes("/careers") || 
+                          (typeof window !== "undefined" && window.location.pathname.includes("/careers"));
+
   switch (effectiveUserType) {
     case "couple":
-      return "/";
+      // If in careers context, redirect to careers page
+      return isCareersContext ? "/careers" : "/";
     case "vendor":
       return "/vendor-portal";
     case "admin":
       return "/admin";
     default:
-      return "/";
+      // Default user type (job applicants) should go to careers
+      return isCareersContext ? "/careers" : "/";
   }
 }
 

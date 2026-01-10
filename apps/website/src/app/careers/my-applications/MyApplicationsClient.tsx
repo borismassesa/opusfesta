@@ -9,9 +9,8 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
-import { Navbar } from "@/components/layout/Navbar";
-import { MenuOverlay } from "@/components/layout/MenuOverlay";
-import { Footer } from "@/components/layout/Footer";
+import { CareersNavbar } from "@/components/careers/CareersNavbar";
+import { CareersFooter } from "@/components/careers/CareersFooter";
 
 interface Application {
   id: string;
@@ -39,7 +38,6 @@ export function MyApplicationsClient() {
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState("");
-  const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     fetchApplications();
@@ -158,23 +156,21 @@ export function MyApplicationsClient() {
   if (loading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
-        <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+        <CareersNavbar />
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
             <Loader2 className="w-12 h-12 text-primary mx-auto mb-4 animate-spin" />
             <p className="text-secondary">Loading your applications...</p>
           </div>
         </div>
-        <Footer />
+        <CareersFooter />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
-      <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+      <CareersNavbar />
       
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
         {/* Header */}
@@ -311,7 +307,7 @@ export function MyApplicationsClient() {
         )}
       </div>
 
-      <Footer />
+      <CareersFooter />
     </div>
   );
 }

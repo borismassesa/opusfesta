@@ -5,9 +5,8 @@ import { useSearchParams } from "next/navigation";
 import Lenis from "lenis";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Navbar } from "@/components/layout/Navbar";
-import { MenuOverlay } from "@/components/layout/MenuOverlay";
-import { Footer } from "@/components/layout/Footer";
+import { CareersNavbar } from "@/components/careers/CareersNavbar";
+import { CareersFooter } from "@/components/careers/CareersFooter";
 import { CareersHero } from "@/components/careers/CareersHero";
 import { CultureValues } from "@/components/careers/CultureValues";
 import Link from "next/link";
@@ -30,7 +29,6 @@ function StickyCTA() {
 }
 
 export function CareersClient() {
-  const [menuOpen, setMenuOpen] = useState(false);
   const [showStickyCTA, setShowStickyCTA] = useState(false);
   const searchParams = useSearchParams();
   const isPreview = searchParams?.get("preview") === "draft";
@@ -73,8 +71,7 @@ export function CareersClient() {
 
   return (
     <div className="bg-background text-primary min-h-screen selection:bg-accent/20 selection:text-primary overflow-hidden">
-      <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
-      <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+      <CareersNavbar />
       
       <main>
         <div id="hero-section">
@@ -83,7 +80,7 @@ export function CareersClient() {
         <CultureValues />
       </main>
       
-      <Footer />
+      <CareersFooter />
       {showStickyCTA && <StickyCTA />}
     </div>
   );

@@ -6,9 +6,8 @@ import { fetchJobPostings } from "@/lib/careers/jobs";
 import { ArrowLeft, MapPin, Briefcase, Clock, Share2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Navbar } from "@/components/layout/Navbar";
-import { MenuOverlay } from "@/components/layout/MenuOverlay";
-import { Footer } from "@/components/layout/Footer";
+import { CareersNavbar } from "@/components/careers/CareersNavbar";
+import { CareersFooter } from "@/components/careers/CareersFooter";
 
 function formatSalary(salaryRange: string | null): string | null {
   if (!salaryRange) return null;
@@ -30,7 +29,6 @@ export function JobDescriptionClient({
   const [job, setJob] = useState<JobPosting | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   // Load job details - PUBLIC, no authentication required
   useEffect(() => {
@@ -81,15 +79,14 @@ export function JobDescriptionClient({
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
-        <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+        <CareersNavbar />
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-24">
           <div className="text-center">
             <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
             <p className="text-secondary">Loading job details...</p>
           </div>
         </div>
-        <Footer />
+        <CareersFooter />
       </div>
     );
   }
@@ -97,8 +94,7 @@ export function JobDescriptionClient({
   if (error || !job || !jobId) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
-        <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+        <CareersNavbar />
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-24">
           <Link href="/careers/positions">
             <Button variant="ghost" className="mb-8">
@@ -119,7 +115,7 @@ export function JobDescriptionClient({
             </Link>
           </div>
         </div>
-        <Footer />
+        <CareersFooter />
       </div>
     );
   }
@@ -168,8 +164,7 @@ export function JobDescriptionClient({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
         />
       )}
-      <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
-      <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+      <CareersNavbar />
       
       {/* Main Content */}
       <section className="pt-24 pb-20 md:pt-32 md:pb-32">
@@ -377,7 +372,7 @@ export function JobDescriptionClient({
         </div>
       </section>
 
-      <Footer />
+      <CareersFooter />
     </div>
   );
 }

@@ -7,9 +7,8 @@ import { JobPosting } from "@/lib/careers/jobs";
 import { ArrowLeft, Loader2, Briefcase, MapPin, Clock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { Navbar } from "@/components/layout/Navbar";
-import { MenuOverlay } from "@/components/layout/MenuOverlay";
-import { Footer } from "@/components/layout/Footer";
+import { CareersNavbar } from "@/components/careers/CareersNavbar";
+import { CareersFooter } from "@/components/careers/CareersFooter";
 import { supabase } from "@/lib/supabaseClient";
 import { ensureUserRecord } from "@/lib/auth";
 
@@ -36,7 +35,6 @@ export function ApplyClient({
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [authStatus, setAuthStatus] = useState<"restoring" | "verifying" | "authenticated" | "failed">("restoring");
   const [error, setError] = useState<string | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
 
   // Improved authentication check with session restoration wait and retry logic
   useEffect(() => {
@@ -48,7 +46,8 @@ export function ApplyClient({
     const redirectToLogin = (currentPath: string) => {
       if (!mounted) return;
       sessionStorage.setItem("auth_redirect", currentPath);
-      router.replace(`/login?next=${encodeURIComponent(currentPath)}`);
+      // Redirect to careers signup instead of main login
+      router.replace(`/careers/signup?next=${encodeURIComponent(currentPath)}`);
     };
 
     const verifyUserRecord = async (session: any, retryAttempt = 0): Promise<boolean> => {
@@ -258,8 +257,7 @@ export function ApplyClient({
   if (error || !job || !jobId) {
     return (
       <div className="min-h-screen bg-background">
-        <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
-        <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+        <CareersNavbar />
         <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-8 sm:py-12">
           <div className="max-w-2xl mx-auto">
             <Link href="/careers">
@@ -279,7 +277,7 @@ export function ApplyClient({
             </div>
           </div>
         </div>
-        <Footer />
+        <CareersFooter />
       </div>
     );
   }
@@ -288,8 +286,7 @@ export function ApplyClient({
 
   return (
     <div className="min-h-screen bg-background">
-      <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
-      <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+      <CareersNavbar />
       
       {/* Main Content */}
       <section className="pt-20 pb-12 sm:pt-24 sm:pb-16 md:pt-32 md:pb-20">
@@ -343,7 +340,7 @@ export function ApplyClient({
         </div>
       </section>
 
-      <Footer />
+      <CareersFooter />
     </div>
   );
 }
