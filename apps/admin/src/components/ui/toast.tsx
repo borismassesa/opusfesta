@@ -81,10 +81,10 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
   };
 
   const styles = {
-    success: 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-900 dark:text-green-100',
-    error: 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-900 dark:text-red-100',
-    info: 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800 text-blue-900 dark:text-blue-100',
-    loading: 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800 text-gray-900 dark:text-gray-100',
+    success: 'bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800/50 text-emerald-900 dark:text-emerald-100 shadow-emerald-100 dark:shadow-emerald-950',
+    error: 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800/50 text-red-900 dark:text-red-100 shadow-red-100 dark:shadow-red-950',
+    info: 'bg-blue-50 dark:bg-blue-950/30 border-blue-200 dark:border-blue-800/50 text-blue-900 dark:text-blue-100 shadow-blue-100 dark:shadow-blue-950',
+    loading: 'bg-gray-50 dark:bg-gray-900/30 border-gray-200 dark:border-gray-800/50 text-gray-900 dark:text-gray-100 shadow-gray-100 dark:shadow-gray-950',
   };
 
   const Icon = icons[toast.type];
@@ -92,23 +92,37 @@ function ToastItem({ toast, onRemove }: { toast: Toast; onRemove: (id: string) =
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-4 rounded-lg border shadow-lg animate-in slide-in-from-right-full fade-in-0 zoom-in-95 pointer-events-auto',
-        'backdrop-blur-sm',
+        'flex items-start gap-3 p-4 rounded-xl border-2 shadow-xl animate-in slide-in-from-right-full fade-in-0 zoom-in-95 pointer-events-auto',
+        'backdrop-blur-md transition-all duration-300 hover:shadow-2xl',
         styles[toast.type]
       )}
       role="alert"
     >
-      <Icon 
-        className={cn(
-          "h-5 w-5 flex-shrink-0 mt-0.5",
-          toast.type === 'loading' && "animate-spin"
-        )} 
-      />
-      <p className="flex-1 text-sm font-medium leading-relaxed">{toast.message}</p>
+      <div className={cn(
+        "flex-shrink-0 rounded-full p-1.5",
+        toast.type === 'success' && "bg-emerald-100 dark:bg-emerald-900/50",
+        toast.type === 'error' && "bg-red-100 dark:bg-red-900/50",
+        toast.type === 'info' && "bg-blue-100 dark:bg-blue-900/50",
+        toast.type === 'loading' && "bg-gray-100 dark:bg-gray-900/50"
+      )}>
+        <Icon 
+          className={cn(
+            "h-4 w-4",
+            toast.type === 'success' && "text-emerald-600 dark:text-emerald-400",
+            toast.type === 'error' && "text-red-600 dark:text-red-400",
+            toast.type === 'info' && "text-blue-600 dark:text-blue-400",
+            toast.type === 'loading' && "text-gray-600 dark:text-gray-400",
+            toast.type === 'loading' && "animate-spin"
+          )} 
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold leading-relaxed break-words">{toast.message}</p>
+      </div>
       {toast.type !== 'loading' && (
         <button
           onClick={() => onRemove(toast.id)}
-          className="flex-shrink-0 text-current opacity-70 hover:opacity-100 transition-opacity rounded-sm p-0.5 hover:bg-black/5 dark:hover:bg-white/5"
+          className="flex-shrink-0 text-current opacity-60 hover:opacity-100 transition-opacity rounded-md p-1 hover:bg-black/10 dark:hover:bg-white/10"
           aria-label="Close toast"
         >
           <X className="h-4 w-4" />
