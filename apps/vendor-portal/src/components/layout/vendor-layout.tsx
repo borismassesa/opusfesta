@@ -86,7 +86,7 @@ function HoverOverlaySidebar({
             className="font-serif text-2xl md:text-3xl text-primary hover:text-primary/80 transition-colors select-none z-50"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
-            TheFesta
+            OpusFesta
           </Link>
         </div>
 

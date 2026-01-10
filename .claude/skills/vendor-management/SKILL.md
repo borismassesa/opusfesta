@@ -5,7 +5,7 @@ description: Manage wedding vendors including registration, profiles, services, 
 
 # Vendor Management Skill
 
-This skill helps manage wedding vendors in TheFesta Events platform, including vendor registration, profile management, service listings, and communication.
+This skill helps manage wedding vendors in OpusFesta Events platform, including vendor registration, profile management, service listings, and communication.
 
 ## Core Vendor Operations
 
@@ -143,11 +143,11 @@ Common vendor categories for wedding events:
 
 **Welcome Email:**
 ```
-Subject: Welcome to TheFesta Events - Vendor Partnership
+Subject: Welcome to OpusFesta Events - Vendor Partnership
 
 Dear [Vendor Name],
 
-Welcome to TheFesta Events! We're excited to have you join our platform
+Welcome to OpusFesta Events! We're excited to have you join our platform
 connecting couples with exceptional wedding vendors.
 
 Your vendor profile is now live at: [Profile URL]
@@ -158,10 +158,10 @@ Next steps:
 3. Configure your availability calendar
 4. Review and respond to inquiries promptly
 
-Our team is here to support you. Contact us at vendor-support@thefestaevents.com
+Our team is here to support you. Contact us at vendor-support@opusfestaevents.com
 
 Best regards,
-The TheFesta Team
+The OpusFesta Team
 ```
 
 **Inquiry Response Template:**

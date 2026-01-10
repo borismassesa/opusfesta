@@ -397,19 +397,19 @@ const INITIAL_CONTENT: ContentState = {
   reviews: [], // Initially empty, will be populated if needed or kept dynamic in component for now
   faqs: [
     {
-      question: "What is TheFesta?",
-      answer: "TheFesta is a comprehensive wedding and event planning platform that connects couples with curated venues and vendors, while providing powerful tools to manage guest lists, budgets, and timelines."
+      question: "What is OpusFesta?",
+      answer: "OpusFesta is a comprehensive wedding and event planning platform that connects couples with curated venues and vendors, while providing powerful tools to manage guest lists, budgets, and timelines."
     },
     {
-      question: "Is TheFesta free to use?",
-      answer: "Yes, TheFesta is free for couples planning their wedding. We offer a suite of planning tools, including our budget tracker, guest list manager, and checklist, at no cost."
+      question: "Is OpusFesta free to use?",
+      answer: "Yes, OpusFesta is free for couples planning their wedding. We offer a suite of planning tools, including our budget tracker, guest list manager, and checklist, at no cost."
     },
     {
       question: "How do you vet your vendors?",
       answer: "We have a rigorous vetting process. Every vendor on our platform is reviewed for quality, reliability, and professionalism. We also verify reviews to ensure you're getting honest feedback from real couples."
     },
     {
-      question: "Can I use TheFesta for events other than weddings?",
+      question: "Can I use OpusFesta for events other than weddings?",
       answer: "Absolutely! While our tools are optimized for weddings, many of our users plan engagement parties, bridal showers, anniversary celebrations, and corporate events using our venue marketplace and vendor network."
     },
     {
@@ -473,14 +473,14 @@ const INITIAL_CONTENT: ContentState = {
     label: "Testimonials",
     headline: "Loved by couples",
     subheadline: "& professionals.",
-    description: "Join thousands of happy users who have transformed their wedding planning experience with TheFesta.",
+    description: "Join thousands of happy users who have transformed their wedding planning experience with OpusFesta.",
     items: [
       {
         id: "testimonial-1",
         name: "Sarah & James",
         role: "Married June 2024",
         avatar: reviewer1,
-        content: "TheFesta made our wedding planning incredibly smooth. The vendor marketplace is a game-changer!",
+        content: "OpusFesta made our wedding planning incredibly smooth. The vendor marketplace is a game-changer!",
         rating: 5
       },
       {
@@ -770,7 +770,7 @@ const INITIAL_CONTENT: ContentState = {
     twitter: "https://twitter.com/thefesta",
     instagram: "https://instagram.com/thefesta",
     linkedin: "https://linkedin.com/company/thefesta",
-    tiktok: "https://tiktok.com/@thefesta",
+    tiktok: "https://tiktok.com/@opusfesta",
     facebook: "",
     youtube: "",
     pinterest: ""

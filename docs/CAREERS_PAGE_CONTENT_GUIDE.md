@@ -1,12 +1,12 @@
 # Careers Page Content Guide
 
 ## Overview
-This guide provides authentic, TheFesta-specific content recommendations for the careers page. All content should reflect that TheFesta is **Tanzania's go-to wedding & events marketplace** that connects couples with vendors and streamlines event planning.
+This guide provides authentic, OpusFesta-specific content recommendations for the careers page. All content should reflect that OpusFesta is **Tanzania's go-to wedding & events marketplace** that connects couples with vendors and streamlines event planning.
 
 ## Hero Section
 
 ### Current (Generic)
-- Title: "Careers at TheFesta"
+- Title: "Careers at OpusFesta"
 - Description: "If every person and business can tailor event planning to their needs, the world will be better at celebrating life's moments..."
 
 ### Recommended (Authentic)
@@ -34,7 +34,7 @@ This guide provides authentic, TheFesta-specific content recommendations for the
    - "We offer competitive medical, dental, and vision insurance for employees and dependents across Tanzania."
 
 2. **Flexible time off**
-   - "We want you to take time off to rest and celebrate. TheFesta offers flexible paid vacation as well as Tanzanian public holidays."
+   - "We want you to take time off to rest and celebrate. OpusFesta offers flexible paid vacation as well as Tanzanian public holidays."
 
 3. **Mental health & wellbeing**
    - "You and your dependents will have access to providers that create personalized treatment plans, including therapy and EAP services."
@@ -53,7 +53,7 @@ This guide provides authentic, TheFesta-specific content recommendations for the
 ### Recommended Testimonials
 
 1. **Amina Hassan - Senior Product Designer**
-   - "Working at TheFesta means building tools that help real families celebrate life's biggest moments. Every feature we ship makes someone's wedding or event a little easier to plan. That purpose drives everything we do."
+   - "Working at OpusFesta means building tools that help real families celebrate life's biggest moments. Every feature we ship makes someone's wedding or event a little easier to plan. That purpose drives everything we do."
 
 2. **James Kipchoge - Software Engineer**
    - "The best part is seeing couples use what we build. When a vendor gets booked through our platform or a family manages their guest list with our tools, that's when I know we're making a difference."
@@ -82,7 +82,7 @@ This guide provides authentic, TheFesta-specific content recommendations for the
 
 ## Key Messaging Points
 
-### What Makes TheFesta Different
+### What Makes OpusFesta Different
 
 1. **Tanzania-First**
    - We're built for Tanzanians, by Tanzanians
@@ -117,13 +117,13 @@ This guide provides authentic, TheFesta-specific content recommendations for the
 1. Update hero description in CMS to reflect Tanzania's wedding & events marketplace
 2. Update values to be Tanzania and celebration-focused
 3. Update benefits to mention Tanzania-specific context
-4. Update testimonials to reference actual TheFesta work
+4. Update testimonials to reference actual OpusFesta work
 5. Update hiring process to mention Tanzanian market understanding
 
 ## Next Steps
 
 1. Review this guide with your team
 2. Update the CMS content through the admin panel
-3. Replace generic content with TheFesta-specific content
+3. Replace generic content with OpusFesta-specific content
 4. Test the careers page to ensure all content flows naturally
 5. Get feedback from team members on authenticity

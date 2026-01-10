@@ -42,7 +42,7 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
   const handleShare = async () => {
     const shareData = {
       title: vendor.business_name,
-      text: `Check out ${vendor.business_name} on TheFesta`,
+      text: `Check out ${vendor.business_name} on OpusFesta`,
       url: typeof window !== 'undefined' ? window.location.href : '',
     };
 
@@ -421,7 +421,7 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
           </div>
           <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-secondary bg-surface border border-border px-3 py-2 rounded-full">
             <Sparkles className="w-4 h-4 text-primary" />
-            Vetted by TheFesta
+            Vetted by OpusFesta
           </div>
         </div>
 

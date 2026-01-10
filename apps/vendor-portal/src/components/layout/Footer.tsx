@@ -22,7 +22,7 @@ export function Footer() {
               href="/"
               className="font-serif text-xl text-foreground hover:opacity-80 transition-opacity inline-block mb-3"
             >
-              TheFesta
+              OpusFesta
             </Link>
             <p className="text-sm text-muted-foreground leading-relaxed mb-4">
               Your all-in-one platform for managing wedding services and connecting with couples.
@@ -100,7 +100,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://thefesta.com"
+                  href="https://opusfesta.com"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-sm text-muted-foreground hover:text-foreground transition-colors inline-flex items-center gap-1"

@@ -21,7 +21,7 @@ export default function Dashboard() {
       <div className="flex justify-between items-end">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Overview of TheFesta platform performance.</p>
+          <p className="text-muted-foreground mt-1">Overview of OpusFesta platform performance.</p>
         </div>
       </div>
 

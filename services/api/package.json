@@ -1,5 +1,5 @@
 {
-  "name": "@thefesta/api",
+  "name": "@opusfesta/api",
   "version": "1.0.0",
   "description": "GraphQL API for The Festa",
   "main": "index.js",
@@ -10,8 +10,8 @@
     "generate": "graphql-codegen --config codegen.yml"
   },
   "dependencies": {
-    "@thefesta/db": "*",
-    "@thefesta/lib": "*",
+    "@opusfesta/db": "*",
+    "@opusfesta/lib": "*",
     "@aws-sdk/client-cognito-identity-provider": "^3.450.0",
     "@aws-sdk/client-dynamodb": "^3.450.0",
     "@aws-sdk/lib-dynamodb": "^3.450.0",

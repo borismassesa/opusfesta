@@ -21,7 +21,7 @@ SET
       },
       {
         "title": "Time off",
-        "description": "We want you to take time off to rest and rejuvenate. TheFesta offers flexible paid vacation as well as 10+ observed holidays by country.",
+        "description": "We want you to take time off to rest and rejuvenate. OpusFesta offers flexible paid vacation as well as 10+ observed holidays by country.",
         "icon": "☂️"
       },
       {
@@ -41,7 +41,7 @@ SET
       },
       {
         "title": "Retirement matching",
-        "description": "TheFesta makes it easy to save money for retirement. There''s also employer matching!",
+        "description": "OpusFesta makes it easy to save money for retirement. There''s also employer matching!",
         "icon": "🐷"
       }
     ]'::jsonb
@@ -68,7 +68,7 @@ SET
       },
       {
         "title": "Time off",
-        "description": "We want you to take time off to rest and rejuvenate. TheFesta offers flexible paid vacation as well as 10+ observed holidays by country.",
+        "description": "We want you to take time off to rest and rejuvenate. OpusFesta offers flexible paid vacation as well as 10+ observed holidays by country.",
         "icon": "☂️"
       },
       {
@@ -88,7 +88,7 @@ SET
       },
       {
         "title": "Retirement matching",
-        "description": "TheFesta makes it easy to save money for retirement. There''s also employer matching!",
+        "description": "OpusFesta makes it easy to save money for retirement. There''s also employer matching!",
         "icon": "🐷"
       }
     ]'::jsonb

@@ -4,7 +4,7 @@
 -- Update Boris's name
 UPDATE admin_whitelist
 SET full_name = 'Boris Massesa'
-WHERE email = 'boris.massesa@thefestaevents.com';
+WHERE email = 'boris.massesa@opusfestaevents.com';
 
 -- Function to format name from email (capitalize and replace dots/underscores with spaces)
 CREATE OR REPLACE FUNCTION format_name_from_email(email_address TEXT)

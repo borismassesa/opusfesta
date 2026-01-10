@@ -316,10 +316,10 @@ export default function JobViewClient() {
             )}
           </div>
 
-          {/* About TheFesta */}
+          {/* About OpusFesta */}
           {job.about_thefesta && (
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold">About TheFesta</h2>
+              <h2 className="text-2xl font-bold">About OpusFesta</h2>
               <div 
                 className="prose prose-lg max-w-none text-muted-foreground"
                 dangerouslySetInnerHTML={{ __html: job.about_thefesta }}
@@ -364,10 +364,10 @@ export default function JobViewClient() {
             </div>
           )}
 
-          {/* Why You'll Love Working at TheFesta */}
+          {/* Why You'll Love Working at OpusFesta */}
           {job.benefits && job.benefits.length > 0 && (
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Why You'll Love Working at TheFesta</h2>
+              <h2 className="text-2xl font-bold">Why You'll Love Working at OpusFesta</h2>
               <ul className="space-y-2 list-disc list-inside">
                 {job.benefits.map((benefit, index) => (
                   <li key={index} className="text-muted-foreground">
@@ -387,10 +387,10 @@ export default function JobViewClient() {
             </ul>
           </div>
 
-          {/* Growth at TheFesta */}
+          {/* Growth at OpusFesta */}
           {job.growth_description && (
             <div className="space-y-4">
-              <h2 className="text-2xl font-bold">Growth at TheFesta</h2>
+              <h2 className="text-2xl font-bold">Growth at OpusFesta</h2>
               <div 
                 className="prose prose-lg max-w-none text-muted-foreground"
                 dangerouslySetInnerHTML={{ __html: job.growth_description }}

@@ -21,7 +21,7 @@ app.get('/health', (req, res) => {
   res.status(200).json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
-    service: 'thefesta-webhooks',
+    service: 'opusfesta-webhooks',
   });
 });
 

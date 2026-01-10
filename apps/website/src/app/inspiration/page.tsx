@@ -11,7 +11,7 @@ import { Footer } from "@/components/layout/Footer";
 
 gsap.registerPlugin(ScrollTrigger);
 
-// Blog post data with TheFesta wedding inspiration content
+// Blog post data with OpusFesta wedding inspiration content
 const BLOG_POSTS = [
   {
     id: 1,

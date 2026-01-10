@@ -71,7 +71,7 @@ export const VendorInfo = forwardRef<HTMLDivElement, VendorInfoProps>(({ vendor 
               <h4 className="text-2xl font-semibold">{vendor.business_name}</h4>
               <p className="flex justify-center items-center gap-2 text-sm font-semibold text-secondary">
                 <ShieldCheck className="w-4 h-4" />
-                {vendor.verified ? "TheFesta Verified" : "On TheFesta"}
+                {vendor.verified ? "OpusFesta Verified" : "On OpusFesta"}
               </p>
             </div>
 
@@ -134,7 +134,7 @@ export const VendorInfo = forwardRef<HTMLDivElement, VendorInfoProps>(({ vendor 
           <div className="border-t border-border pt-6 flex gap-4">
             <ShieldCheck className="w-5 h-5 text-primary shrink-0" />
             <p className="text-xs text-secondary leading-relaxed">
-              To protect your payment, keep messages and payments on TheFesta.
+              To protect your payment, keep messages and payments on OpusFesta.
             </p>
           </div>
         </div>

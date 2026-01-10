@@ -63,7 +63,7 @@ export function JobDescriptionClient({
   const handleShare = () => {
     if (navigator.share && job) {
       navigator.share({
-        title: `${job.title} at TheFesta`,
+        title: `${job.title} at OpusFesta`,
         text: `Check out this job opportunity: ${job.title}`,
         url: window.location.href,
       }).catch(() => {
@@ -136,8 +136,8 @@ export function JobDescriptionClient({
     "employmentType": job.employment_type,
     "hiringOrganization": {
       "@type": "Organization",
-      "name": "TheFesta",
-      "sameAs": process.env.NEXT_PUBLIC_WEBSITE_URL || "https://thefesta.com"
+      "name": "OpusFesta",
+      "sameAs": process.env.NEXT_PUBLIC_WEBSITE_URL || "https://opusfesta.com"
     },
     "jobLocation": {
       "@type": "Place",
@@ -224,10 +224,10 @@ export function JobDescriptionClient({
 
           {/* Job Details Content */}
           <div className="space-y-10 text-secondary leading-relaxed mb-12">
-            {/* About TheFesta */}
+            {/* About OpusFesta */}
             {job.about_thefesta && (
               <div>
-                <h2 className="text-2xl md:text-3xl font-semibold text-primary mb-4">About TheFesta</h2>
+                <h2 className="text-2xl md:text-3xl font-semibold text-primary mb-4">About OpusFesta</h2>
                 <div 
                   className="text-base md:text-lg leading-relaxed prose prose-lg max-w-none prose-p:text-secondary prose-p:leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: job.about_thefesta }}
@@ -245,7 +245,7 @@ export function JobDescriptionClient({
                 />
               ) : (
                 <p className="text-base md:text-lg text-secondary leading-relaxed">
-                  We are looking for a {job.title} to join our {job.department} team at TheFesta. 
+                  We are looking for a {job.title} to join our {job.department} team at OpusFesta. 
                   In this role, you will play a key part in delivering high-quality solutions while working closely with cross-functional teams.
                 </p>
               )}
@@ -281,10 +281,10 @@ export function JobDescriptionClient({
               </div>
             )}
 
-            {/* Why You'll Love Working at TheFesta */}
+            {/* Why You'll Love Working at OpusFesta */}
             {job.benefits && job.benefits.length > 0 && (
               <div>
-                <h2 className="text-2xl md:text-3xl font-semibold text-primary mb-4">Why You'll Love Working at TheFesta</h2>
+                <h2 className="text-2xl md:text-3xl font-semibold text-primary mb-4">Why You'll Love Working at OpusFesta</h2>
                 <ul className="space-y-3 text-base md:text-lg">
                   {job.benefits.map((benefit, idx) => (
                     <li key={idx} className="flex items-start gap-3">
@@ -311,10 +311,10 @@ export function JobDescriptionClient({
               </div>
             </div>
 
-            {/* Growth at TheFesta */}
+            {/* Growth at OpusFesta */}
             {job.growth_description && (
               <div>
-                <h2 className="text-2xl md:text-3xl font-semibold text-primary mb-4">Growth at TheFesta</h2>
+                <h2 className="text-2xl md:text-3xl font-semibold text-primary mb-4">Growth at OpusFesta</h2>
                 <div 
                   className="text-base md:text-lg leading-relaxed prose prose-lg max-w-none prose-p:text-secondary prose-p:leading-relaxed"
                   dangerouslySetInnerHTML={{ __html: job.growth_description }}

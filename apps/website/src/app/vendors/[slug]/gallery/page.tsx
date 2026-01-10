@@ -21,7 +21,7 @@ export async function generateMetadata({
   }
 
   return {
-    title: `${vendor.business_name} - Gallery | TheFesta`,
+    title: `${vendor.business_name} - Gallery | OpusFesta`,
     description: `View the complete portfolio gallery for ${vendor.business_name}`,
   };
 }

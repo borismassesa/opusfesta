@@ -5,34 +5,34 @@ import { Providers } from "@/app/providers";
 
 export const metadata: Metadata = {
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://thefestaevents.com",
+    process.env.NEXT_PUBLIC_SITE_URL || "https://opusfestaevents.com",
   ),
-  title: "THE FESTA | Plan Your Perfect Wedding",
+  title: "OPUS FESTA | Plan Your Perfect Wedding",
   description:
     "The all-in-one marketplace for venues, vendors, and planning tools. Discover inspiration and manage every detail in one place.",
   openGraph: {
-    title: "THE FESTA | Plan Your Perfect Wedding",
+    title: "OPUS FESTA | Plan Your Perfect Wedding",
     description:
       "The all-in-one marketplace for venues, vendors, and planning tools. Discover inspiration and manage every detail in one place.",
     type: "website",
-    url: "https://thefestaevents.com",
-    siteName: "THE FESTA",
+    url: "https://opusfestaevents.com",
+    siteName: "OPUS FESTA",
     images: [
       {
         url: "/opengraph.png",
         width: 765,
         height: 259,
-        alt: "THE FESTA - Plan Your Perfect Wedding",
+        alt: "OPUS FESTA - Plan Your Perfect Wedding",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "THE FESTA | Plan Your Perfect Wedding",
+    title: "OPUS FESTA | Plan Your Perfect Wedding",
     description:
       "The all-in-one marketplace for venues, vendors, and planning tools. Discover inspiration and manage every detail in one place.",
     images: ["/opengraph.png"],
-    creator: "@thefesta",
+    creator: "@opusfesta",
   },
   icons: {
     icon: [

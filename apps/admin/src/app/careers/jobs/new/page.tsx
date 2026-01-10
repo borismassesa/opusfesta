@@ -76,12 +76,12 @@ export default function NewJobPostingPage() {
       salary_range: "",
       is_active: true,
       // New template fields with defaults
-      about_thefesta: "At TheFesta, we build meaningful experiences and solutions that bring people, businesses, and communities together. We are a growing, people-first company driven by creativity, collaboration, and a passion for excellence. Our culture is built on trust, ownership, and continuous learning—where every voice matters and every team member has the opportunity to grow.",
+      about_thefesta: "At OpusFesta, we build meaningful experiences and solutions that bring people, businesses, and communities together. We are a growing, people-first company driven by creativity, collaboration, and a passion for excellence. Our culture is built on trust, ownership, and continuous learning—where every voice matters and every team member has the opportunity to grow.",
       benefits: [],
-      growth_description: "At TheFesta, we believe in investing in our people. You'll have opportunities to learn new skills, take on new challenges, and grow your career alongside a talented and motivated team.",
+      growth_description: "At OpusFesta, we believe in investing in our people. You'll have opportunities to learn new skills, take on new challenges, and grow your career alongside a talented and motivated team.",
       hiring_process: ["Application review", "Initial conversation with our team", "Role-specific interview", "Final discussion and offer"],
-      how_to_apply: "If you're excited about this opportunity and believe you'd be a great fit for TheFesta, we'd love to hear from you. 👉 Apply by submitting your resume through our careers page.",
-      equal_opportunity_statement: "TheFesta is an equal opportunity employer. We celebrate diversity and are committed to creating an inclusive environment for all employees.",
+      how_to_apply: "If you're excited about this opportunity and believe you'd be a great fit for OpusFesta, we'd love to hear from you. 👉 Apply by submitting your resume through our careers page.",
+      equal_opportunity_statement: "OpusFesta is an equal opportunity employer. We celebrate diversity and are committed to creating an inclusive environment for all employees.",
     },
   });
 
@@ -333,7 +333,7 @@ export default function NewJobPostingPage() {
                         <RichTextEditor
                           content={field.value}
                           onChange={field.onChange}
-                          placeholder="We are looking for a [Job Title] to join our [Department] team at TheFesta. In this role, you will play a key part in delivering high-quality solutions while working closely with cross-functional teams. This is an opportunity to make a real impact, take ownership of your work, and grow your career in a supportive and dynamic environment."
+                          placeholder="We are looking for a [Job Title] to join our [Department] team at OpusFesta. In this role, you will play a key part in delivering high-quality solutions while working closely with cross-functional teams. This is an opportunity to make a real impact, take ownership of your work, and grow your career in a supportive and dynamic environment."
                         />
                       </FormControl>
                       <FormDescription>
@@ -417,12 +417,12 @@ export default function NewJobPostingPage() {
             )}
           </Card>
 
-          {/* About TheFesta */}
+          {/* About OpusFesta */}
           <Card>
             <CardHeader>
               <SectionHeader
                 id="about"
-                title="About TheFesta"
+                title="About OpusFesta"
                 description="Company mission and culture description"
               />
             </CardHeader>
@@ -437,11 +437,11 @@ export default function NewJobPostingPage() {
                         <RichTextEditor
                           content={field.value || ""}
                           onChange={field.onChange}
-                          placeholder="At TheFesta, we build meaningful experiences and solutions that bring people, businesses, and communities together..."
+                          placeholder="At OpusFesta, we build meaningful experiences and solutions that bring people, businesses, and communities together..."
                         />
                       </FormControl>
                       <FormDescription>
-                        This will appear in the "About TheFesta" section. Describe the company mission, culture, and values.
+                        This will appear in the "About OpusFesta" section. Describe the company mission, culture, and values.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -451,12 +451,12 @@ export default function NewJobPostingPage() {
             )}
           </Card>
 
-          {/* Why You'll Love Working at TheFesta */}
+          {/* Why You'll Love Working at OpusFesta */}
           <Card>
             <CardHeader>
               <SectionHeader
                 id="benefits"
-                title="Why You'll Love Working at TheFesta"
+                title="Why You'll Love Working at OpusFesta"
                 description="Benefits and culture highlights"
               />
             </CardHeader>
@@ -476,7 +476,7 @@ export default function NewJobPostingPage() {
                         />
                       </FormControl>
                       <FormDescription>
-                        These will appear as bullet points in the "Why You'll Love Working at TheFesta" section. Drag items to reorder. Click the X button to remove.
+                        These will appear as bullet points in the "Why You'll Love Working at OpusFesta" section. Drag items to reorder. Click the X button to remove.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -486,12 +486,12 @@ export default function NewJobPostingPage() {
             )}
           </Card>
 
-          {/* Growth at TheFesta */}
+          {/* Growth at OpusFesta */}
           <Card>
             <CardHeader>
               <SectionHeader
                 id="growth"
-                title="Growth at TheFesta"
+                title="Growth at OpusFesta"
                 description="Career development information"
               />
             </CardHeader>
@@ -506,11 +506,11 @@ export default function NewJobPostingPage() {
                         <RichTextEditor
                           content={field.value || ""}
                           onChange={field.onChange}
-                          placeholder="At TheFesta, we believe in investing in our people. You'll have opportunities to learn new skills, take on new challenges, and grow your career alongside a talented and motivated team."
+                          placeholder="At OpusFesta, we believe in investing in our people. You'll have opportunities to learn new skills, take on new challenges, and grow your career alongside a talented and motivated team."
                         />
                       </FormControl>
                       <FormDescription>
-                        This will appear in the "Growth at TheFesta" section. Describe career development opportunities.
+                        This will appear in the "Growth at OpusFesta" section. Describe career development opportunities.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -575,7 +575,7 @@ export default function NewJobPostingPage() {
                         <RichTextEditor
                           content={field.value || ""}
                           onChange={field.onChange}
-                          placeholder="If you're excited about this opportunity and believe you'd be a great fit for TheFesta, we'd love to hear from you. 👉 Apply by submitting your resume through our careers page."
+                          placeholder="If you're excited about this opportunity and believe you'd be a great fit for OpusFesta, we'd love to hear from you. 👉 Apply by submitting your resume through our careers page."
                         />
                       </FormControl>
                       <FormDescription>
@@ -609,7 +609,7 @@ export default function NewJobPostingPage() {
                         <RichTextEditor
                           content={field.value || ""}
                           onChange={field.onChange}
-                          placeholder="TheFesta is an equal opportunity employer. We celebrate diversity and are committed to creating an inclusive environment for all employees."
+                          placeholder="OpusFesta is an equal opportunity employer. We celebrate diversity and are committed to creating an inclusive environment for all employees."
                         />
                       </FormControl>
                       <FormDescription>

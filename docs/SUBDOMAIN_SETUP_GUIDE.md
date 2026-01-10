@@ -5,9 +5,9 @@ This guide will help you set up subdomains for your admin and vendor portals usi
 ## Overview
 
 After setup, you'll have:
-- **Main Website**: `thefestaevents.com` (or your domain)
-- **Admin Portal**: `admin.thefestaevents.com`
-- **Vendor Portal**: `vendors.thefestaevents.com` (or `vendor.thefestaevents.com`)
+- **Main Website**: `opusfestaevents.com` (or your domain)
+- **Admin Portal**: `admin.opusfestaevents.com`
+- **Vendor Portal**: `vendors.opusfestaevents.com` (or `vendor.opusfestaevents.com`)
 
 ## Prerequisites
 
@@ -44,7 +44,7 @@ The `basePath: '/vendors'` needs to be removed from `apps/vendor-portal/next.con
 ### 2.1 Access Hostinger DNS Management
 
 1. Log in to your Hostinger account
-2. Go to **Domains** → Select your domain (e.g., `thefestaevents.com`)
+2. Go to **Domains** → Select your domain (e.g., `opusfestaevents.com`)
 3. Click on **DNS / Name Servers** or **DNS Zone Editor**
 
 ### 2.2 Add CNAME Records for Subdomains
@@ -53,13 +53,13 @@ You need to add two CNAME records pointing to Vercel:
 
 #### For Admin Portal:
 - **Type**: CNAME
-- **Name/Host**: `admin` (or `admin.thefestaevents.com` depending on Hostinger's interface)
+- **Name/Host**: `admin` (or `admin.opusfestaevents.com` depending on Hostinger's interface)
 - **Value/Target**: `cname.vercel-dns.com`
 - **TTL**: 3600 (or leave default)
 
 #### For Vendor Portal:
 - **Type**: CNAME
-- **Name/Host**: `vendors` (or `vendors.thefestaevents.com`)
+- **Name/Host**: `vendors` (or `vendors.opusfestaevents.com`)
 - **Value/Target**: `cname.vercel-dns.com`
 - **TTL**: 3600 (or leave default)
 
@@ -85,8 +85,8 @@ CNAME   vendors       cname.vercel-dns.com
 Before adding domains, make sure both projects are deployed in Vercel:
 1. Go to [Vercel Dashboard](https://vercel.com/dashboard)
 2. Check your projects list - you should see:
-   - Your admin project (might be named `thefesta-admin` or similar)
-   - Your vendor portal project (might be named `thefesta-vendor-portal` or similar)
+   - Your admin project (might be named `opusfesta-admin` or similar)
+   - Your vendor portal project (might be named `opusfesta-vendor-portal` or similar)
    - Your main website project
 
 If a project is missing, you'll need to deploy it first (see Step 3.2 for instructions).
@@ -100,7 +100,7 @@ If a project is missing, you'll need to deploy it first (see Step 3.2 for instru
    - If you have multiple teams, select the one where your projects are deployed
    - The team name appears in a dropdown at the top-left
 3. In the **Projects** list (main dashboard page), click on your **Admin project**
-   - Project names might be: `thefesta-admin`, `admin`, `thefesta-admin-portal`, etc.
+   - Project names might be: `opusfesta-admin`, `admin`, `opusfesta-admin-portal`, etc.
    - If you can't find it, use the search bar at the top to search for "admin"
 4. Once inside the project page, look for the **horizontal navigation tabs** at the top:
    - You should see tabs like: **Deployments**, **Analytics**, **Settings**, **Storage**, etc.
@@ -117,7 +117,7 @@ If a project is missing, you'll need to deploy it first (see Step 3.2 for instru
 8. On the Domains page, you should see:
    - A list of existing domains (if any)
    - A button that says **"Add Domain"**, **"Add"**, or **"Add Custom Domain"** - click it
-9. In the popup/modal that appears, enter: `admin.thefestaevents.com` (replace with your actual domain)
+9. In the popup/modal that appears, enter: `admin.opusfestaevents.com` (replace with your actual domain)
 10. Click **Add**, **Continue**, or **Save**
 
 **If you still can't find "Domains":**
@@ -132,13 +132,13 @@ If a project is missing, you'll need to deploy it first (see Step 3.2 for instru
 1. Go back to the [Vercel Dashboard](https://vercel.com/dashboard)
    - Or click the Vercel logo/icon at the top to return to the main dashboard
 2. In the **Projects** list, click on your **Vendor Portal project**
-   - Project names might be: `thefesta-vendor-portal`, `vendor-portal`, `vendors`, etc.
+   - Project names might be: `opusfesta-vendor-portal`, `vendor-portal`, `vendors`, etc.
    - Use the search bar if you can't find it
    - **If the project doesn't exist yet**, you'll need to create it first (see "Creating a New Project" below)
 3. Once inside the project, click on the **Settings** tab (top navigation)
 4. In the **left sidebar** under Settings, scroll down and click on **"Domains"**
 5. Click the **"Add Domain"**, **"Add"**, or **"Add Custom Domain"** button
-6. In the input field, enter: `vendors.thefestaevents.com` (replace with your actual domain)
+6. In the input field, enter: `vendors.opusfestaevents.com` (replace with your actual domain)
 7. Click **Add**, **Continue**, or **Save**
 
 **If the Vendor Portal project doesn't exist yet:**
@@ -146,7 +146,7 @@ If a project is missing, you'll need to deploy it first (see Step 3.2 for instru
 1. In Vercel Dashboard, click **"Add New..."** → **"Project"**
 2. Import your repository (e.g., `borismassesa/thefesta`)
 3. Configure the project:
-   - **Project Name**: `thefesta-vendor-portal` (or any name)
+   - **Project Name**: `opusfesta-vendor-portal` (or any name)
    - **Root Directory**: `apps/vendor-portal`
    - **Framework**: Next.js (auto-detected)
    - **Build Command**: `npm run build`
@@ -202,8 +202,8 @@ The `apps/admin/vercel.json` and `apps/vendor-portal/vercel.json` files should r
 
 If your apps reference the domain in environment variables or configuration, update them:
 
-- `NEXT_PUBLIC_APP_URL` → `https://admin.thefestaevents.com` (for admin)
-- `NEXT_PUBLIC_APP_URL` → `https://vendors.thefestaevents.com` (for vendor portal)
+- `NEXT_PUBLIC_APP_URL` → `https://admin.opusfestaevents.com` (for admin)
+- `NEXT_PUBLIC_APP_URL` → `https://vendors.opusfestaevents.com` (for vendor portal)
 
 Check your apps for any hardcoded domain references that need updating.
 
@@ -218,16 +218,16 @@ Use online tools to verify DNS propagation:
 - [dnschecker.org](https://dnschecker.org/)
 
 Enter your subdomains:
-- `admin.thefestaevents.com`
-- `vendors.thefestaevents.com`
+- `admin.opusfestaevents.com`
+- `vendors.opusfestaevents.com`
 
 Look for CNAME records pointing to `cname.vercel-dns.com`.
 
 ### 6.2 Test in Browser
 
 Once DNS has propagated:
-- Visit `https://admin.thefestaevents.com`
-- Visit `https://vendors.thefestaevents.com`
+- Visit `https://admin.opusfestaevents.com`
+- Visit `https://vendors.opusfestaevents.com`
 
 Both should load your Vercel-deployed applications.
 
@@ -271,12 +271,12 @@ Both should load your Vercel-deployed applications.
    vercel link
    
    # Add domain for admin
-   vercel domains add admin.thefestaevents.com
+   vercel domains add admin.opusfestaevents.com
    
    # For vendor portal
    cd ../vendor-portal
    vercel link
-   vercel domains add vendors.thefestaevents.com
+   vercel domains add vendors.opusfestaevents.com
    ```
 
 5. **Check Vercel Plan**
@@ -332,8 +332,8 @@ If you must use A records, contact Vercel support for current IP addresses.
 - [ ] Removed `basePath` from `apps/vendor-portal/next.config.js`
 - [ ] Added CNAME record for `admin` subdomain in Hostinger
 - [ ] Added CNAME record for `vendors` subdomain in Hostinger
-- [ ] Added `admin.thefestaevents.com` domain in Vercel Admin project
-- [ ] Added `vendors.thefestaevents.com` domain in Vercel Vendor Portal project
+- [ ] Added `admin.opusfestaevents.com` domain in Vercel Admin project
+- [ ] Added `vendors.opusfestaevents.com` domain in Vercel Vendor Portal project
 - [ ] Removed rewrites from `apps/website/vercel.json`
 - [ ] Verified DNS propagation
 - [ ] Tested both subdomains in browser
@@ -344,8 +344,8 @@ If you must use A records, contact Vercel support for current IP addresses.
 ## After Setup
 
 Your applications will be accessible at:
-- **Website**: `https://thefestaevents.com`
-- **Admin**: `https://admin.thefestaevents.com`
-- **Vendor Portal**: `https://vendors.thefestaevents.com`
+- **Website**: `https://opusfestaevents.com`
+- **Admin**: `https://admin.opusfestaevents.com`
+- **Vendor Portal**: `https://vendors.opusfestaevents.com`
 
 All three apps can still share the same Supabase instance and environment variables.

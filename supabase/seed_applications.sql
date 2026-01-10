@@ -29,9 +29,9 @@ INSERT INTO job_applications (
     '+255 712 345 678',
     'Dear Hiring Manager,
 
-I am writing to express my strong interest in the Senior Software Engineer position at TheFesta. With over 6 years of experience in full-stack development, I am excited about the opportunity to contribute to your innovative event planning platform.
+I am writing to express my strong interest in the Senior Software Engineer position at OpusFesta. With over 6 years of experience in full-stack development, I am excited about the opportunity to contribute to your innovative event planning platform.
 
-In my current role at TechSolutions Ltd, I have led the development of several scalable web applications using TypeScript, React, and Node.js. I am particularly drawn to TheFesta because of its mission to help couples create memorable events, and I would love to bring my technical expertise to help build features that make a real difference in people''s lives.
+In my current role at TechSolutions Ltd, I have led the development of several scalable web applications using TypeScript, React, and Node.js. I am particularly drawn to OpusFesta because of its mission to help couples create memorable events, and I would love to bring my technical expertise to help build features that make a real difference in people''s lives.
 
 I am confident that my experience with modern web technologies, database design, and cloud platforms aligns well with your requirements. I look forward to discussing how I can contribute to your team.
 
@@ -76,11 +76,11 @@ Phone: +255 713 000 000',
     'Amina Hassan',
     'amina.hassan@example.com',
     '+255 755 123 456',
-    'Hello TheFesta Team,
+    'Hello OpusFesta Team,
 
 I am thrilled to apply for the Product Designer position. As someone who is passionate about creating meaningful user experiences, I am excited about the opportunity to help couples plan their special events through thoughtful design.
 
-With 4 years of experience in product design, I have worked on various projects ranging from mobile apps to web platforms. My design philosophy centers around empathy and user-centric thinking, which I believe aligns perfectly with TheFesta''s mission.
+With 4 years of experience in product design, I have worked on various projects ranging from mobile apps to web platforms. My design philosophy centers around empathy and user-centric thinking, which I believe aligns perfectly with OpusFesta''s mission.
 
 I would love to bring my skills in UX/UI design, user research, and design systems to your team. Thank you for considering my application.
 
@@ -120,7 +120,7 @@ Phone: +255 714 111 222',
     'Peter Omondi',
     'peter.omondi@example.com',
     '+255 768 987 654',
-    'Dear TheFesta Team,
+    'Dear OpusFesta Team,
 
 I am writing to apply for the Senior Software Engineer position. With 7 years of experience building scalable applications, I am excited about the opportunity to contribute to your platform.
 
@@ -159,9 +159,9 @@ Email: j.otieno@fintech.co.ke',
     '+255 711 222 333',
     'Dear Hiring Manager,
 
-I am excited to apply for the Marketing Manager position at TheFesta. With 6 years of experience in digital marketing, I am confident that I can help grow your brand and reach more couples planning their special events.
+I am excited to apply for the Marketing Manager position at OpusFesta. With 6 years of experience in digital marketing, I am confident that I can help grow your brand and reach more couples planning their special events.
 
-I have successfully managed marketing campaigns that resulted in significant growth in brand awareness and customer acquisition. I am particularly drawn to TheFesta because of its unique value proposition in the event planning space.
+I have successfully managed marketing campaigns that resulted in significant growth in brand awareness and customer acquisition. I am particularly drawn to OpusFesta because of its unique value proposition in the event planning space.
 
 I look forward to discussing how I can contribute to your marketing efforts.
 
@@ -195,7 +195,7 @@ Email: m.kariuki@eventco.co.ke',
     'Mary Achieng',
     'mary.achieng@example.com',
     '+255 744 555 666',
-    'Hello TheFesta Team,
+    'Hello OpusFesta Team,
 
 I am writing to express my interest in the Customer Success Specialist position. I am passionate about helping customers succeed and believe that exceptional customer support is key to building lasting relationships.
 
@@ -235,7 +235,7 @@ Email: j.kamau@saascompany.co.ke',
     '+255 733 777 888',
     'Dear Hiring Manager,
 
-I am excited to apply for the Sales Development Representative position. As someone who thrives in a fast-paced environment, I am eager to help grow TheFesta''s vendor network.
+I am excited to apply for the Sales Development Representative position. As someone who thrives in a fast-paced environment, I am eager to help grow OpusFesta''s vendor network.
 
 With 2 years of experience in sales and business development, I have a proven track record of prospecting, qualifying leads, and building relationships. I am confident that I can contribute to your sales team''s success.
 
@@ -271,11 +271,11 @@ Email: r.mutua@b2bcompany.co.ke',
     'Sarah Njoroge',
     'sarah.njoroge@example.com',
     '+255 722 999 000',
-    'Dear TheFesta Team,
+    'Dear OpusFesta Team,
 
 I am writing to apply for the Product Manager position. With 4 years of experience in product management, I am excited about the opportunity to help shape the future of your platform.
 
-I have successfully led product initiatives from conception to launch, working closely with engineering, design, and business teams. I am particularly drawn to TheFesta because of its mission to help couples create memorable events.
+I have successfully led product initiatives from conception to launch, working closely with engineering, design, and business teams. I am particularly drawn to OpusFesta because of its mission to help couples create memorable events.
 
 I would love to discuss how I can contribute to your product team.
 
@@ -311,7 +311,7 @@ Email: l.wambui@techstartup.co.ke',
     '+255 755 111 222',
     'Hello,
 
-I am interested in the Operations Coordinator position at TheFesta. With 3 years of experience in operations and administration, I am confident that I can help ensure smooth day-to-day operations.
+I am interested in the Operations Coordinator position at OpusFesta. With 3 years of experience in operations and administration, I am confident that I can help ensure smooth day-to-day operations.
 
 I am organized, detail-oriented, and enjoy working on various projects to improve efficiency. I would love to contribute to your growing team.
 
@@ -350,7 +350,7 @@ Email: p.ochieng@logistics.co.ke',
 
 I am excited to apply for the Frontend Developer position. As a frontend developer with 4 years of experience, I am passionate about creating beautiful and responsive user interfaces.
 
-I have extensive experience with React, TypeScript, and Next.js, and I am always eager to learn new technologies. I am particularly drawn to TheFesta because of its focus on creating exceptional user experiences.
+I have extensive experience with React, TypeScript, and Next.js, and I am always eager to learn new technologies. I am particularly drawn to OpusFesta because of its focus on creating exceptional user experiences.
 
 I look forward to discussing this opportunity.
 
@@ -384,7 +384,7 @@ Email: b.ochieng@webagency.co.ke',
     'Lucy Wanjala',
     'lucy.wanjala@example.com',
     '+255 744 555 777',
-    'Hello TheFesta Team,
+    'Hello OpusFesta Team,
 
 I am writing to apply for the Content Writer position. As a content writer with 3 years of experience, I am passionate about creating engaging content that resonates with audiences.
 
@@ -422,7 +422,7 @@ Email: a.muthoni@marketingagency.co.ke',
     'Michael Otieno',
     'michael.otieno@example.com',
     '+255 733 888 999',
-    'Dear TheFesta Team,
+    'Dear OpusFesta Team,
 
 I am writing to express my interest in the Backend Developer position. With 5 years of experience building robust backend systems, I am excited about the opportunity to work on your platform.
 
@@ -464,7 +464,7 @@ Email: k.mwangi@fintech.co.ke',
 
 I am excited to apply for the Senior Software Engineer position. With 6 years of experience in software development, I am confident that I can contribute to your engineering team.
 
-I have worked on various projects using TypeScript, React, and Node.js, and I am always eager to take on new challenges. I am particularly drawn to TheFesta because of its innovative approach to event planning.
+I have worked on various projects using TypeScript, React, and Node.js, and I am always eager to take on new challenges. I am particularly drawn to OpusFesta because of its innovative approach to event planning.
 
 Thank you for considering my application.
 

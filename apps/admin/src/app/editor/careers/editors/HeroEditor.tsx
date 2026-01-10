@@ -38,7 +38,7 @@ export function HeroEditor() {
               id="hero-title"
               value={hero.title}
               onChange={(e) => handleChange("title", e.target.value)}
-              placeholder="Careers at TheFesta"
+              placeholder="Careers at OpusFesta"
             />
           </div>
 

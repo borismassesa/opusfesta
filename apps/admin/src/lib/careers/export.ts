@@ -209,7 +209,7 @@ export function exportJobPostingToPDF(job: JobPostingForExport): void {
   });
   y += 5;
 
-  // About TheFesta
+  // About OpusFesta
   if (job.about_thefesta) {
     if (y > 270) {
       doc.addPage();
@@ -217,7 +217,7 @@ export function exportJobPostingToPDF(job: JobPostingForExport): void {
     }
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("About TheFesta", margin, y);
+    doc.text("About OpusFesta", margin, y);
     y += 8;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
@@ -291,7 +291,7 @@ export function exportJobPostingToPDF(job: JobPostingForExport): void {
     y += 3;
   }
 
-  // Why You'll Love Working at TheFesta
+  // Why You'll Love Working at OpusFesta
   if (job.benefits && job.benefits.length > 0) {
     if (y > 270) {
       doc.addPage();
@@ -299,7 +299,7 @@ export function exportJobPostingToPDF(job: JobPostingForExport): void {
     }
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("Why You'll Love Working at TheFesta", margin, y);
+    doc.text("Why You'll Love Working at OpusFesta", margin, y);
     y += 8;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
@@ -331,7 +331,7 @@ export function exportJobPostingToPDF(job: JobPostingForExport): void {
   doc.text(`Employment Type: ${job.employment_type}`, margin, y);
   y += 8;
 
-  // Growth at TheFesta
+  // Growth at OpusFesta
   if (job.growth_description) {
     if (y > 270) {
       doc.addPage();
@@ -339,7 +339,7 @@ export function exportJobPostingToPDF(job: JobPostingForExport): void {
     }
     doc.setFontSize(14);
     doc.setFont("helvetica", "bold");
-    doc.text("Growth at TheFesta", margin, y);
+    doc.text("Growth at OpusFesta", margin, y);
     y += 8;
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
@@ -483,9 +483,9 @@ export function exportJobPostingToWord(job: JobPostingForExport): void {
   }
   wordXml += '<w:p><w:r><w:t></w:t></w:r></w:p>'; // Empty line
 
-  // About TheFesta
+  // About OpusFesta
   if (job.about_thefesta) {
-    wordXml += createWordParagraph("About TheFesta", true, 28);
+    wordXml += createWordParagraph("About OpusFesta", true, 28);
     wordXml += '<w:p><w:r><w:t></w:t></w:r></w:p>'; // Empty line
     const aboutText = htmlToPlainText(job.about_thefesta);
     // Split by newlines and create paragraphs
@@ -528,9 +528,9 @@ export function exportJobPostingToWord(job: JobPostingForExport): void {
     wordXml += '<w:p><w:r><w:t></w:t></w:r></w:p>'; // Empty line
   }
 
-  // Why You'll Love Working at TheFesta
+  // Why You'll Love Working at OpusFesta
   if (job.benefits && job.benefits.length > 0) {
-    wordXml += createWordParagraph("Why You'll Love Working at TheFesta", true, 28);
+    wordXml += createWordParagraph("Why You'll Love Working at OpusFesta", true, 28);
     wordXml += '<w:p><w:r><w:t></w:t></w:r></w:p>'; // Empty line
     job.benefits.forEach((benefit) => {
       wordXml += createWordListItem(benefit);
@@ -545,9 +545,9 @@ export function exportJobPostingToWord(job: JobPostingForExport): void {
   wordXml += createWordParagraph(`Employment Type: ${job.employment_type}`, false, 24);
   wordXml += '<w:p><w:r><w:t></w:t></w:r></w:p>'; // Empty line
 
-  // Growth at TheFesta
+  // Growth at OpusFesta
   if (job.growth_description) {
-    wordXml += createWordParagraph("Growth at TheFesta", true, 28);
+    wordXml += createWordParagraph("Growth at OpusFesta", true, 28);
     wordXml += '<w:p><w:r><w:t></w:t></w:r></w:p>'; // Empty line
     const growthText = htmlToPlainText(job.growth_description);
     growthText.split('\n').forEach(line => {

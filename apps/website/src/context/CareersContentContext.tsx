@@ -124,22 +124,22 @@ const INITIAL_CONTENT: CareersContentState = {
   story: {
     headline: "Our story",
     paragraphs: [
-      "Early event planning pioneers envisioned a future where technology could amplify our ability to celebrate life's moments, extend our creativity, and help us organize events in ways never before seen. This is the type of platform we want to build together at TheFesta — one that gives you the tools you can mold and shape to solve your event planning needs your way.",
-      "We've heard TheFesta described many ways. It can be as simple as finding the perfect vendor for your wedding. It can be as complex as managing a multi-day event with hundreds of guests. But at its core, TheFesta is a toolbox of event planning tools that let you manage your celebrations however you find most useful. To make this possible, we've brought together a diverse team of individuals passionate about events, technology, culture, design, music, and craft. Today, we're growing faster than ever across Tanzania 🇹🇿",
+      "Early event planning pioneers envisioned a future where technology could amplify our ability to celebrate life's moments, extend our creativity, and help us organize events in ways never before seen. This is the type of platform we want to build together at OpusFesta — one that gives you the tools you can mold and shape to solve your event planning needs your way.",
+      "We've heard OpusFesta described many ways. It can be as simple as finding the perfect vendor for your wedding. It can be as complex as managing a multi-day event with hundreds of guests. But at its core, OpusFesta is a toolbox of event planning tools that let you manage your celebrations however you find most useful. To make this possible, we've brought together a diverse team of individuals passionate about events, technology, culture, design, music, and craft. Today, we're growing faster than ever across Tanzania 🇹🇿",
     ],
     image: null,
     linkText: "Browse open positions",
     linkUrl: "/careers/positions",
   },
   diversity: {
-    quote: "We believe the best companies bring together diversity in race, age, physical and mental ability, sexuality, gender identity, ethnicity, perspectives and ideas. And people do their best work when they feel like they belong — included, valued, and equal. This is the TheFesta we want to build, where everyone brings their full selves to work knowing that they'll be heard, championed, and supported to succeed. We hope you'll join us.",
+    quote: "We believe the best companies bring together diversity in race, age, physical and mental ability, sexuality, gender identity, ethnicity, perspectives and ideas. And people do their best work when they feel like they belong — included, valued, and equal. This is the OpusFesta we want to build, where everyone brings their full selves to work knowing that they'll be heard, championed, and supported to succeed. We hope you'll join us.",
     backgroundImage: null,
   },
   testimonials: {
     headline: "Employee Experience",
     items: [
       {
-        quote: "Working at TheFesta has been an incredible journey. The team's passion for making event planning accessible to everyone in Tanzania is truly inspiring.",
+        quote: "Working at OpusFesta has been an incredible journey. The team's passion for making event planning accessible to everyone in Tanzania is truly inspiring.",
         name: "Sarah Mwangi",
         role: "Senior Product Designer",
         avatar: null,
@@ -149,7 +149,7 @@ const INITIAL_CONTENT: CareersContentState = {
   culture: {
     headline: "☕ Office culture",
     paragraphs: [
-      "TheFesta is an in-person company, and currently requires its employees to come to the office for two Anchor Days (Mondays & Thursdays) and requests that employees spend the majority of the week in the office (including a third day).",
+      "OpusFesta is an in-person company, and currently requires its employees to come to the office for two Anchor Days (Mondays & Thursdays) and requests that employees spend the majority of the week in the office (including a third day).",
       "Being an in-office-focused company enables us to capitalize on the energy that comes from us being in the same place. This is a great opportunity to build relationships, work with your teammates, and collaborate on projects. Teams have started adding a third in-office day for team-based work for things such as group maker time, brainstorm sessions, team bonding, and more!",
     ],
   },
@@ -176,7 +176,7 @@ const INITIAL_CONTENT: CareersContentState = {
   },
   perks: {
     headline: "The upside",
-    description: "TheFesta is committed to providing highly competitive, innovative, and inclusive benefits offering that attracts the best talent from diverse backgrounds. We aim for all our programs to promote overall employee health.*",
+    description: "OpusFesta is committed to providing highly competitive, innovative, and inclusive benefits offering that attracts the best talent from diverse backgrounds. We aim for all our programs to promote overall employee health.*",
     items: [
       {
         title: "Medical, dental & vision",
@@ -185,7 +185,7 @@ const INITIAL_CONTENT: CareersContentState = {
       },
       {
         title: "Time off",
-        description: "We want you to take time off to rest and rejuvenate. TheFesta offers flexible paid vacation as well as 10+ observed holidays by country.",
+        description: "We want you to take time off to rest and rejuvenate. OpusFesta offers flexible paid vacation as well as 10+ observed holidays by country.",
         icon: "☂️",
       },
       {
@@ -205,7 +205,7 @@ const INITIAL_CONTENT: CareersContentState = {
       },
       {
         title: "Retirement matching",
-        description: "TheFesta makes it easy to save money for retirement. There's also employer matching!",
+        description: "OpusFesta makes it easy to save money for retirement. There's also employer matching!",
         icon: "🐷",
       },
     ],
@@ -214,11 +214,11 @@ const INITIAL_CONTENT: CareersContentState = {
     headline: "Our values in action",
     affinityGroups: {
       title: "Affinity groups",
-      description: "TheFesta is home to a number of employee-led groups that foster a diverse and inclusive workplace. So far, these include: Accessibility at TheFesta, All Asians and Pacific Islanders at TheFesta, Black Thought at TheFesta, Gente (LatinX) at TheFesta, Immigrants at TheFesta, Queers & Allies at TheFesta, Parents at TheFesta, Women at TheFesta.",
+      description: "OpusFesta is home to a number of employee-led groups that foster a diverse and inclusive workplace. So far, these include: Accessibility at OpusFesta, All Asians and Pacific Islanders at OpusFesta, Black Thought at OpusFesta, Gente (LatinX) at OpusFesta, Immigrants at OpusFesta, Queers & Allies at OpusFesta, Parents at OpusFesta, Women at OpusFesta.",
     },
     nonprofits: {
-      title: "TheFesta for Nonprofits",
-      description: "It's vital that we also support our beliefs with the TheFesta product itself. That's why we give 501(c)3 organizations working to solve the world's toughest problems 50% off our team plan.",
+      title: "OpusFesta for Nonprofits",
+      description: "It's vital that we also support our beliefs with the OpusFesta product itself. That's why we give 501(c)3 organizations working to solve the world's toughest problems 50% off our team plan.",
     },
     socialImpact: {
       title: "Social impact",
@@ -251,7 +251,7 @@ const INITIAL_CONTENT: CareersContentState = {
     ],
   },
   video: {
-    title: "Life at TheFesta",
+    title: "Life at OpusFesta",
     image: null,
     videoUrl: null,
   },

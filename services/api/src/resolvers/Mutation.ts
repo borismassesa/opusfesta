@@ -1,6 +1,6 @@
 import { GraphQLContext } from '../context';
-import { NotFoundError, UnauthorizedError, ValidationError } from '@thefesta/lib';
-import { generateRandomString } from '@thefesta/lib';
+import { NotFoundError, UnauthorizedError, ValidationError } from '@opusfesta/lib';
+import { generateRandomString } from '@opusfesta/lib';
 
 export const Mutation = {
   // Event mutations

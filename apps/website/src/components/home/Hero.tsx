@@ -368,7 +368,7 @@ export function Hero() {
         </div>
 
         {/* Hero Visual - Video Carousel */}
-        <div className="w-full flex items-center justify-center md:items-start lg:items-center">
+        <div className="hidden md:flex w-full items-center justify-center md:items-start lg:items-center">
           <div ref={visualRef} className="hero-visual block relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group bg-surface border border-border z-20">
           
           {hero.slides.map((slide, index) => (

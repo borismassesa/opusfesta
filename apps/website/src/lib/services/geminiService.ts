@@ -20,7 +20,7 @@ export const getGeminiResponse = async (userPrompt: string, vendorBio: string): 
       body: JSON.stringify({
         contents: [{
           parts: [{
-            text: `You are an assistant for a wedding vendor on TheFesta. 
+            text: `You are an assistant for a wedding vendor on OpusFesta. 
             Based on the following vendor bio, answer the user's question politely and professionally.
             
             Vendor Bio: ${vendorBio}

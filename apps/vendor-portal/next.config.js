@@ -1,6 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // basePath removed - using subdomain (vendors.thefestaevents.com) instead of path-based routing
+  // basePath removed - using subdomain (vendors.opusfestaevents.com) instead of path-based routing
   // basePath: '/vendors',
   typescript: {
     ignoreBuildErrors: true,

@@ -1,4 +1,4 @@
--- Seed data for TheFesta Platform
+-- Seed data for OpusFesta Platform
 -- This populates the database with 100 sample vendors for testing and development
 
 -- Create sample users (vendors) - 100 vendor accounts

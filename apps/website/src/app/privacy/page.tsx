@@ -25,7 +25,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">1. Introduction</h2>
               <p className="text-muted-foreground leading-relaxed">
-                TheFesta ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, 
+                OpusFesta ("we," "our," or "us") is committed to protecting your privacy. This Privacy Policy explains how we collect, 
                 use, disclose, and safeguard your information when you use our platform.
               </p>
             </section>
@@ -113,7 +113,7 @@ export default function PrivacyPolicy() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">8. Third-Party Services</h2>
               <p className="text-muted-foreground leading-relaxed">
-                Our platform may contain links to third-party websites or services that are not owned or controlled by TheFesta. 
+                Our platform may contain links to third-party websites or services that are not owned or controlled by OpusFesta. 
                 We are not responsible for the privacy practices of these third parties. We encourage you to review their privacy policies.
               </p>
             </section>

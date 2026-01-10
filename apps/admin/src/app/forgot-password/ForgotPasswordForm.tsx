@@ -108,7 +108,7 @@ export function ForgotPasswordForm() {
             href="/"
             className="font-serif text-4xl tracking-wide drop-shadow-sm hover:opacity-80 transition-opacity w-fit"
           >
-            TheFesta
+            OpusFesta
           </Link>
           
           <div className="backdrop-blur-md bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl max-w-lg">
@@ -132,7 +132,7 @@ export function ForgotPasswordForm() {
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-8">
             <Link href="/" className="font-serif text-3xl text-primary">
-              TheFesta
+              OpusFesta
             </Link>
           </div>
 

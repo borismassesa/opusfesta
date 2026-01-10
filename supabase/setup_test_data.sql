@@ -19,7 +19,7 @@ RETURNING id, email, name, role;
 INSERT INTO users (id, email, name, role, password)
 VALUES (
   'admin-uuid-here',  -- Use the UUID from auth.users
-  'admin@thefesta.com',
+  'admin@opusfesta.com',
   'Admin User',
   'admin',
   '$2a$10$hashedpassword'  -- Or use Supabase Auth

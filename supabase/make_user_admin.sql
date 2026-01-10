@@ -1,6 +1,6 @@
 -- Make User Admin
 -- User ID: ebbe9f4d-b5aa-4e59-aa03-f0a8acdc265e
--- Email: boris.massesa@thefestaevents.com
+-- Email: boris.massesa@opusfestaevents.com
 
 -- ============================================
 -- STEP 1: Ensure user exists in public.users and set role to admin

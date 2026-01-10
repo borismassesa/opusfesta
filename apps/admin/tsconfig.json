@@ -22,8 +22,8 @@
     "paths": {
       "@/*": ["./src/*"],
       "@assets/*": ["../website/attached_assets/*"],
-      "@thefesta/lib": ["../../packages/lib"],
-      "@thefesta/ui": ["../../packages/ui"]
+      "@opusfesta/lib": ["../../packages/lib"],
+      "@opusfesta/ui": ["../../packages/ui"]
     }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

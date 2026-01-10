@@ -141,7 +141,7 @@ function HoverOverlaySidebar({
             className="font-serif text-2xl md:text-3xl text-primary hover:text-primary/80 transition-colors select-none z-50"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
-            TheFesta
+            OpusFesta
           </Link>
         </div>
 
@@ -488,7 +488,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
     return (
       <div className="fixed top-0 left-0 w-full h-screen bg-background z-[9999] flex flex-col justify-center items-center">
         <div className="font-serif text-4xl md:text-5xl text-primary mb-4 relative">
-          TheFesta
+          OpusFesta
         </div>
         <div className="uppercase text-[10px] text-muted-foreground tracking-[0.3em] font-medium mb-8 opacity-70">
           Checking Access
@@ -515,7 +515,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
     session?.user?.user_metadata?.full_name ??
     session?.user?.email ??
     "Admin User";
-  const displayEmail = session?.user?.email ?? "admin@thefesta.com";
+  const displayEmail = session?.user?.email ?? "admin@opusfesta.com";
   const avatarUrl = session?.user?.user_metadata?.avatar_url ?? "https://github.com/shadcn.png";
 
   return (
@@ -547,7 +547,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
                     className="font-serif text-2xl md:text-3xl text-primary hover:text-primary/80 transition-colors select-none z-50 group-data-[collapsible=icon]:hidden"
                     onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                   >
-                    TheFesta
+                    OpusFesta
                   </Link>
                   <SidebarTrigger className="w-8 h-8 rounded-lg bg-card border border-border/50 shadow-none hover:bg-card/80 hover:border-border text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:w-11 group-data-[collapsible=icon]:h-11 group-data-[collapsible=icon]:bg-background/50 group-data-[collapsible=icon]:mx-auto" />
                 </SidebarHeader>

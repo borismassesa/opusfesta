@@ -1,5 +1,5 @@
 {
-  "name": "thefesta",
+  "name": "opusfesta",
   "version": "1.0.0",
   "description": "Tanzania's go-to wedding & events marketplace",
   "private": true,
@@ -40,11 +40,11 @@
   "overrides": {
     "@types/react": "^18.3.0",
     "@types/react-dom": "^18.3.0",
-    "@thefesta/admin": {
+    "@opusfesta/admin": {
       "react": "18.3.1",
       "react-dom": "18.3.1"
     },
-    "@thefesta/vendor-portal": {
+    "@opusfesta/vendor-portal": {
       "react": "18.3.1",
       "react-dom": "18.3.1"
     },

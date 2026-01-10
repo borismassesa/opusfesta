@@ -91,7 +91,7 @@ export default function Signup() {
       
       toast({
         title: "Account created successfully!",
-        description: "Welcome to TheFesta! Redirecting you now...",
+        description: "Welcome to OpusFesta! Redirecting you now...",
       });
       
       router.push(redirectPath);
@@ -124,7 +124,7 @@ export default function Signup() {
             href="/"
             className="font-serif text-4xl tracking-wide drop-shadow-sm hover:opacity-80 transition-opacity w-fit"
           >
-            TheFesta
+            OpusFesta
           </Link>
           
           <div className="backdrop-blur-md bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl max-w-lg">
@@ -148,7 +148,7 @@ export default function Signup() {
           {/* Mobile Logo */}
           <div className="lg:hidden text-center mb-6">
             <Link href="/" className="font-serif text-3xl text-primary">
-              TheFesta
+              OpusFesta
             </Link>
           </div>
 
@@ -285,7 +285,7 @@ export default function Signup() {
           </div>
 
           <p className="text-center text-xs text-muted-foreground leading-relaxed pt-1">
-            By continuing, you agree to TheFesta's{" "}
+            By continuing, you agree to OpusFesta's{" "}
             <Link href="/terms" className="underline underline-offset-4 hover:text-primary transition-colors">
               Terms of Service
             </Link>{" "}

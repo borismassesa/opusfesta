@@ -68,7 +68,7 @@ INSERT INTO job_postings (
     'Marketing',
     'Dar es Salaam, Tanzania',
     'Full-time',
-    'We are seeking a creative and data-driven Marketing Manager to lead our marketing efforts and help grow TheFesta brand across Tanzania and East Africa.',
+    'We are seeking a creative and data-driven Marketing Manager to lead our marketing efforts and help grow OpusFesta brand across Tanzania and East Africa.',
     ARRAY[
       '5+ years of marketing experience',
       'Experience with digital marketing channels',

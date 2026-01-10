@@ -47,7 +47,7 @@ export function MobileMoneyPaymentInstructions({
   const [success, setSuccess] = useState(false);
   const [loadingAccounts, setLoadingAccounts] = useState(true);
 
-  // Fetch TheFesta's mobile money accounts
+  // Fetch OpusFesta's mobile money accounts
   useEffect(() => {
     const fetchAccounts = async () => {
       try {
@@ -62,7 +62,7 @@ export function MobileMoneyPaymentInstructions({
           }
         }
       } catch (err) {
-        console.error("Error fetching TheFesta mobile money accounts:", err);
+        console.error("Error fetching OpusFesta mobile money accounts:", err);
       } finally {
         setLoadingAccounts(false);
       }
@@ -343,7 +343,7 @@ export function MobileMoneyPaymentInstructions({
           </div>
 
           <div className="mt-3 p-2 bg-blue-100 dark:bg-blue-900/30 rounded text-xs text-blue-800 dark:text-blue-200">
-            <strong>Note:</strong> Your payment will be held securely by TheFesta and released to the vendor after work completion.
+            <strong>Note:</strong> Your payment will be held securely by OpusFesta and released to the vendor after work completion.
           </div>
         </div>
       )}

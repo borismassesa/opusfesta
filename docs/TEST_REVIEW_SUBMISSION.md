@@ -1,7 +1,7 @@
 # Test Review Submission - Ready to Go! ✅
 
 Your test data is now set up correctly:
-- ✅ User: `boris.massesa@thefestaevents.com` (role: user)
+- ✅ User: `boris.massesa@opusfestaevents.com` (role: user)
 - ✅ Inquiries: 2 eligible inquiries for Bella Photography Studio
 - ✅ Event dates: In the past (2025-12-24)
 - ✅ Status: Accepted
@@ -14,7 +14,7 @@ You'll need a JWT token for your user. You can get this by:
 
 **Option A: Via Supabase Dashboard**
 1. Go to Supabase Dashboard → Authentication → Users
-2. Find your user (`boris.massesa@thefestaevents.com`)
+2. Find your user (`boris.massesa@opusfestaevents.com`)
 3. Click on the user → Copy the access token (or generate a new one)
 
 **Option B: Via your app**
@@ -28,7 +28,7 @@ curl -X POST 'https://YOUR_PROJECT.supabase.co/auth/v1/token?grant_type=password
   -H "apikey: YOUR_ANON_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "boris.massesa@thefestaevents.com",
+    "email": "boris.massesa@opusfestaevents.com",
     "password": "YOUR_PASSWORD"
   }'
 ```

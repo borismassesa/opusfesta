@@ -175,7 +175,7 @@ slideSubtitle: {
 - ✅ **Progressive Disclosure**: Information revealed gradually
 - ✅ **Visual Storytelling**: Images tell the story
 - ✅ **Clear CTAs**: Obvious next steps
-- ✅ **Brand Consistency**: Consistent "THE FESTA" branding
+- ✅ **Brand Consistency**: Consistent "OPUS FESTA" branding
 
 ## Status
 

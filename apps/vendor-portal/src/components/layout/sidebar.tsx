@@ -121,7 +121,7 @@ export function VendorSidebar() {
 
   // Mock user data - in production, get from auth
   const displayName = "Vendor User";
-  const displayEmail = "vendor@thefesta.com";
+  const displayEmail = "vendor@opusfesta.com";
   const avatarUrl = "";
 
   const handleSignOut = async () => {
@@ -140,7 +140,7 @@ export function VendorSidebar() {
             className="font-serif text-2xl md:text-3xl text-primary hover:text-primary/80 transition-colors select-none z-50 group-data-[collapsible=icon]:hidden"
             onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
           >
-            TheFesta
+            OpusFesta
           </Link>
           <SidebarTrigger className="w-8 h-8 rounded-lg bg-card border border-border/50 shadow-none hover:bg-card/80 hover:border-border text-muted-foreground hover:text-foreground group-data-[collapsible=icon]:w-11 group-data-[collapsible=icon]:h-11 group-data-[collapsible=icon]:bg-background/50 group-data-[collapsible=icon]:mx-auto" />
         </SidebarHeader>

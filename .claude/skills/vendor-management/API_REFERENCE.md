@@ -762,4 +762,4 @@ export const createServiceSchema = z.object({
 });
 ```
 
-This API reference provides all the endpoints, schemas, and code examples needed for vendor management in TheFesta Events platform.
+This API reference provides all the endpoints, schemas, and code examples needed for vendor management in OpusFesta Events platform.

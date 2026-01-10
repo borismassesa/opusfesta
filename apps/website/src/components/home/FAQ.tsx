@@ -81,7 +81,7 @@ export function FAQ() {
             <span className="font-serif italic font-normal text-secondary">We have answers.</span>
           </h2>
           <p className="text-secondary text-lg leading-relaxed max-w-md mx-auto md:mx-0 font-light">
-            Everything you need to know about planning your perfect celebration with TheFesta.
+            Everything you need to know about planning your perfect celebration with OpusFesta.
           </p>
         </div>
 

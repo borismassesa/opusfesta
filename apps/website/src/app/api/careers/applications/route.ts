@@ -463,7 +463,7 @@ export async function POST(request: NextRequest) {
 
       // Send email notification to admin
       try {
-        const adminEmail = process.env.ADMIN_EMAIL || "admin@thefesta.com";
+        const adminEmail = process.env.ADMIN_EMAIL || "admin@opusfesta.com";
         await sendEmail({
           to: adminEmail,
           subject: `New Job Application: ${data.fullName} - ${jobPosting.title}`,

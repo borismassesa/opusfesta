@@ -25,7 +25,7 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">1. Acceptance of Terms</h2>
               <p className="text-muted-foreground leading-relaxed">
-                By accessing and using TheFesta platform, you accept and agree to be bound by the terms and provision of this agreement. 
+                By accessing and using OpusFesta platform, you accept and agree to be bound by the terms and provision of this agreement. 
                 If you do not agree to abide by the above, please do not use this service.
               </p>
             </section>
@@ -33,13 +33,13 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">2. Use License</h2>
               <p className="text-muted-foreground leading-relaxed mb-4">
-                Permission is granted to temporarily access the materials on TheFesta's platform for personal, non-commercial transitory viewing only. 
+                Permission is granted to temporarily access the materials on OpusFesta's platform for personal, non-commercial transitory viewing only. 
                 This is the grant of a license, not a transfer of title, and under this license you may not:
               </p>
               <ul className="list-disc list-inside space-y-2 text-muted-foreground ml-4">
                 <li>Modify or copy the materials</li>
                 <li>Use the materials for any commercial purpose or for any public display</li>
-                <li>Attempt to reverse engineer any software contained on TheFesta's platform</li>
+                <li>Attempt to reverse engineer any software contained on OpusFesta's platform</li>
                 <li>Remove any copyright or other proprietary notations from the materials</li>
               </ul>
             </section>
@@ -85,7 +85,7 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">7. Disclaimer</h2>
               <p className="text-muted-foreground leading-relaxed">
-                The materials on TheFesta's platform are provided on an 'as is' basis. TheFesta makes no warranties, expressed or implied, 
+                The materials on OpusFesta's platform are provided on an 'as is' basis. OpusFesta makes no warranties, expressed or implied, 
                 and hereby disclaims and negates all other warranties including without limitation, implied warranties or conditions of merchantability, 
                 fitness for a particular purpose, or non-infringement of intellectual property or other violation of rights.
               </p>
@@ -94,16 +94,16 @@ export default function TermsOfService() {
             <section>
               <h2 className="text-2xl font-semibold mb-4">8. Limitations</h2>
               <p className="text-muted-foreground leading-relaxed">
-                In no event shall TheFesta or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, 
-                or due to business interruption) arising out of the use or inability to use the materials on TheFesta's platform, 
-                even if TheFesta or a TheFesta authorized representative has been notified orally or in writing of the possibility of such damage.
+                In no event shall OpusFesta or its suppliers be liable for any damages (including, without limitation, damages for loss of data or profit, 
+                or due to business interruption) arising out of the use or inability to use the materials on OpusFesta's platform, 
+                even if OpusFesta or a OpusFesta authorized representative has been notified orally or in writing of the possibility of such damage.
               </p>
             </section>
 
             <section>
               <h2 className="text-2xl font-semibold mb-4">9. Revisions</h2>
               <p className="text-muted-foreground leading-relaxed">
-                TheFesta may revise these terms of service for its platform at any time without notice. 
+                OpusFesta may revise these terms of service for its platform at any time without notice. 
                 By using this platform you are agreeing to be bound by the then current version of these terms of service.
               </p>
             </section>

@@ -15,7 +15,7 @@ For each admin user in the whitelist, the following information should be tracke
 ### 1. **Email** (Primary Identifier) ✅
 - **Purpose**: Used for authentication and whitelist verification
 - **Format**: Valid email address
-- **Example**: `boris.massesa@thefestaevents.com`
+- **Example**: `boris.massesa@opusfestaevents.com`
 - **Required**: Yes
 - **Current Implementation**: Stored in env var
 
@@ -80,13 +80,13 @@ For each admin user in the whitelist, the following information should be tracke
 {
   "admins": [
     {
-      "email": "boris.massesa@thefestaevents.com",
+      "email": "boris.massesa@opusfestaevents.com",
       "name": "Boris Massesa",
       "role": "owner",
       "active": true
     },
     {
-      "email": "norah.kinunda@thefestaevents.com",
+      "email": "norah.kinunda@opusfestaevents.com",
       "name": "Norah Kinunda",
       "role": "admin",
       "active": true

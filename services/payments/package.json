@@ -1,5 +1,5 @@
 {
-  "name": "@thefesta/payments",
+  "name": "@opusfesta/payments",
   "version": "1.0.0",
   "description": "Payment processing service for The Festa",
   "main": "index.ts",
@@ -9,8 +9,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@thefesta/lib": "*",
-    "@thefesta/db": "*",
+    "@opusfesta/lib": "*",
+    "@opusfesta/db": "*",
     "axios": "^1.6.0",
     "crypto": "^1.0.1",
     "zod": "^3.22.4"

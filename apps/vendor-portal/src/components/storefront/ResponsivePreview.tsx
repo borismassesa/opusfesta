@@ -234,7 +234,7 @@ export function ResponsivePreview({ vendor }: ResponsivePreviewProps) {
                 <div className="w-3 h-3 rounded-full bg-green-500"></div>
               </div>
               <div className="flex-1 bg-background border border-border rounded px-3 py-1.5 text-xs text-muted-foreground mx-4 truncate">
-                thefesta.com/vendors/{vendor?.slug || 'your-vendor'}
+                opusfesta.com/vendors/{vendor?.slug || 'your-vendor'}
               </div>
             </div>
           )}

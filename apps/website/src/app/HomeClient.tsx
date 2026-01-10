@@ -77,7 +77,7 @@ export function HomeClient() {
       {!isPreview && (
         <div ref={loaderRef} className="loader fixed top-0 left-0 w-full h-screen bg-background z-9999 flex flex-col justify-center items-center">
         <div className="font-serif text-4xl md:text-5xl text-primary mb-4 relative">
-            TheFesta
+            OpusFesta
         </div>
         <div className="uppercase text-[10px] text-secondary tracking-[0.3em] font-medium mb-8 opacity-70">
           Gathering Inspiration

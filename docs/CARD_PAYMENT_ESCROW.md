@@ -2,21 +2,21 @@
 
 ## Overview
 
-All card payments (debit and credit cards) are processed through TheFesta's Stripe account and held in escrow, just like mobile money payments. This ensures consistent behavior across all payment methods.
+All card payments (debit and credit cards) are processed through OpusFesta's Stripe account and held in escrow, just like mobile money payments. This ensures consistent behavior across all payment methods.
 
 ## Payment Flow for Cards
 
 ### 1. Customer Payment
 - Customer enters card details
-- Payment intent created on **TheFesta's Stripe account**
+- Payment intent created on **OpusFesta's Stripe account**
 - Payment processed via Stripe
-- Funds captured to **TheFesta's account** (not vendor's)
+- Funds captured to **OpusFesta's account** (not vendor's)
 
 ### 2. Payment Success
 - Webhook receives `payment_intent.succeeded`
 - Payment status updated to `SUCCEEDED`
 - **Database trigger creates escrow hold**
-- Funds held in TheFesta's account
+- Funds held in OpusFesta's account
 
 ### 3. Escrow Hold
 - 10% platform fee → Collected immediately
@@ -35,15 +35,15 @@ All card payments (debit and credit cards) are processed through TheFesta's Stri
 
 ## Key Points
 
-### ✅ All Payments to TheFesta First
-- Card payments go to **TheFesta's Stripe account**
+### ✅ All Payments to OpusFesta First
+- Card payments go to **OpusFesta's Stripe account**
 - NOT directly to vendor's Stripe Connect account
 - Ensures escrow protection
 
 ### ✅ No Direct Charges
 - We do NOT use Stripe Connect's `transfer_data` on payment intent
 - We do NOT use `application_fee_amount` (old method)
-- All payments captured to TheFesta, then transferred later
+- All payments captured to OpusFesta, then transferred later
 
 ### ✅ Consistent with Mobile Money
 - Same escrow flow for cards and mobile money
@@ -54,11 +54,11 @@ All card payments (debit and credit cards) are processed through TheFesta's Stri
 
 ### Payment Intent Creation
 ```typescript
-// Payment intent created on TheFesta's account
+// Payment intent created on OpusFesta's account
 stripe.paymentIntents.create({
   amount: amountInCents,
   currency: currency,
-  // NO transfer_data - payment goes to TheFesta
+  // NO transfer_data - payment goes to OpusFesta
   // NO application_fee - we handle split in escrow
   metadata: {
     invoice_id: invoiceId,
@@ -98,10 +98,10 @@ stripe.paymentIntents.create({
 
 ### ✅ New Way (Escrow - CURRENT)
 ```typescript
-// Payment goes to TheFesta first
+// Payment goes to OpusFesta first
 stripe.paymentIntents.create({
   amount: 1000,
-  // No transfer_data - goes to TheFesta
+  // No transfer_data - goes to OpusFesta
 });
 
 // Later, when escrow is released:
@@ -114,7 +114,7 @@ stripe.transfers.create({
 
 ## Verification Checklist
 
-- [x] Payment intents created on TheFesta's account
+- [x] Payment intents created on OpusFesta's account
 - [x] No `transfer_data` in payment intent creation
 - [x] No `application_fee_amount` in payment intent
 - [x] Webhook creates escrow hold (not immediate transfer)
@@ -126,14 +126,14 @@ stripe.transfers.create({
 ### Test Card Payment Flow
 1. Create invoice
 2. Process card payment
-3. Verify payment goes to TheFesta's Stripe account
+3. Verify payment goes to OpusFesta's Stripe account
 4. Verify escrow hold created
 5. Mark work as completed
 6. Release escrow
 7. Verify transfer to vendor
 
 ### Verify No Direct Transfer
-- Check Stripe dashboard: Payment should be in TheFesta's account
+- Check Stripe dashboard: Payment should be in OpusFesta's account
 - Check escrow_holds table: Should have record
 - Check vendor_revenue: Should show `escrow_status: 'held'`
 
@@ -150,14 +150,14 @@ stripe.transfers.create({
 - Professional service delivery
 
 ### ✅ Platform Control
-- TheFesta manages all funds
+- OpusFesta manages all funds
 - Consistent across payment methods
 - Better dispute handling
 
 ## Summary
 
 **All card payments (debit/credit) are:**
-1. ✅ Processed to TheFesta's Stripe account
+1. ✅ Processed to OpusFesta's Stripe account
 2. ✅ Held in escrow automatically
 3. ✅ Released only after work completion
 4. ✅ Transferred to vendor via Stripe Connect on release

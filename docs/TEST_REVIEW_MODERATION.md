@@ -41,14 +41,14 @@ AND column_name IN ('moderation_status', 'inquiry_id', 'moderation_notes', 'flag
 -- Find or create an admin user
 UPDATE users 
 SET role = 'admin' 
-WHERE email = 'admin@thefesta.com';
+WHERE email = 'admin@opusfesta.com';
 
 -- Or create a new admin user (if using Supabase Auth)
 -- Then update the users table:
 INSERT INTO users (id, email, name, role)
 VALUES (
   'admin-user-uuid-here',
-  'admin@thefesta.com',
+  'admin@opusfesta.com',
   'Admin User',
   'admin'
 )

@@ -457,7 +457,7 @@ export function VendorDetailsClient({
               <ShieldCheck className="w-5 h-5 text-foreground shrink-0 mt-0.5" strokeWidth={2} />
               <div>
                 <p className="text-sm text-foreground">
-                  To help protect your payment, always use TheFesta to send money and communicate with vendors.
+                  To help protect your payment, always use OpusFesta to send money and communicate with vendors.
                 </p>
               </div>
             </div>

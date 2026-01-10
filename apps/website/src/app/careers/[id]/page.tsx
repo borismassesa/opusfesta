@@ -23,13 +23,13 @@ export async function generateMetadata({
       
       if (job) {
         return {
-          title: `${job.title} | Careers at TheFesta`,
+          title: `${job.title} | Careers at OpusFesta`,
           description: job.description 
             ? job.description.replace(/<[^>]*>/g, '').substring(0, 160) + "..."
-            : `Join TheFesta as a ${job.title} in ${job.department}. ${job.location} - ${job.employment_type}`,
+            : `Join OpusFesta as a ${job.title} in ${job.department}. ${job.location} - ${job.employment_type}`,
           openGraph: {
-            title: `${job.title} | TheFesta Careers`,
-            description: `Apply for ${job.title} at TheFesta. ${job.department} - ${job.location}`,
+            title: `${job.title} | OpusFesta Careers`,
+            description: `Apply for ${job.title} at OpusFesta. ${job.department} - ${job.location}`,
             type: "website",
           },
         };
@@ -40,8 +40,8 @@ export async function generateMetadata({
   }
   
   return {
-    title: "Job Posting | Careers at TheFesta",
-    description: "View job posting details at TheFesta",
+    title: "Job Posting | Careers at OpusFesta",
+    description: "View job posting details at OpusFesta",
   };
 }
 

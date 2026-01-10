@@ -31,11 +31,11 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
     console.log('[EMAIL] Attempting to send email', {
       to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
       subject: options.subject,
-      from: options.from || 'TheFesta <noreply@thefesta.com>',
+      from: options.from || 'OpusFesta <noreply@opusfesta.com>',
     });
 
     const result = await resend.emails.send({
-      from: options.from || 'TheFesta <noreply@thefesta.com>',
+      from: options.from || 'OpusFesta <noreply@opusfesta.com>',
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,
       html: options.html,

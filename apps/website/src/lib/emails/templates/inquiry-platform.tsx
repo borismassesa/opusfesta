@@ -38,7 +38,7 @@ export function InquiryPlatformEmail({
           <!-- Header -->
           <tr>
             <td style="padding: 40px 40px 20px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 8px 8px 0 0;">
-              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">TheFesta Admin</h1>
+              <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 600;">OpusFesta Admin</h1>
             </td>
           </tr>
           
@@ -96,7 +96,7 @@ export function InquiryPlatformEmail({
           <tr>
             <td style="padding: 24px 40px; background-color: #f8f9fa; border-radius: 0 0 8px 8px; text-align: center;">
               <p style="margin: 0; color: #999; font-size: 12px;">
-                © ${new Date().getFullYear()} TheFesta. All rights reserved.
+                © ${new Date().getFullYear()} OpusFesta. All rights reserved.
               </p>
             </td>
           </tr>

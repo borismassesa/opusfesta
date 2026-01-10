@@ -1,11 +1,11 @@
 ---
 name: inspiration-builder
-description: Generate wedding advice, planning ideas, and inspiration content for TheFesta Events platform. Use when creating blog posts, planning guides, inspiration galleries, wedding tips, or advice content.
+description: Generate wedding advice, planning ideas, and inspiration content for OpusFesta Events platform. Use when creating blog posts, planning guides, inspiration galleries, wedding tips, or advice content.
 ---
 
 # Wedding Inspiration Builder Skill
 
-This skill helps create compelling wedding advice, planning ideas, and inspiration content for TheFesta Events platform. It generates culturally-relevant content for Tanzanian and East African couples planning their special day.
+This skill helps create compelling wedding advice, planning ideas, and inspiration content for OpusFesta Events platform. It generates culturally-relevant content for Tanzanian and East African couples planning their special day.
 
 ## Core Content Categories
 
@@ -332,7 +332,7 @@ Title: [Season] Wedding Planning in Tanzania
 
 ### 9. Tone & Voice Guidelines
 
-**Brand Voice for TheFesta:**
+**Brand Voice for OpusFesta:**
 - **Warm & Approachable**: Like a knowledgeable friend
 - **Culturally Aware**: Respectful and inclusive
 - **Practical**: Real advice, not just pretty pictures
@@ -359,7 +359,7 @@ Title: [Season] Wedding Planning in Tanzania
 
 **For Blog Posts:**
 - "Browse our [vendor category] to find the perfect match for your wedding"
-- "Start planning your dream wedding with TheFesta's vendor directory"
+- "Start planning your dream wedding with OpusFesta's vendor directory"
 - "Get personalized recommendations from our wedding planning tools"
 - "Connect with top-rated [vendor type] in [location]"
 - "Save this guide to your wedding planning board"
@@ -411,7 +411,7 @@ Before publishing any inspiration content, ensure:
 - [ ] Proofread for grammar and spelling
 - [ ] Represents diverse couples and styles
 - [ ] Provides actionable value to readers
-- [ ] Aligns with TheFesta brand voice
+- [ ] Aligns with OpusFesta brand voice
 
 ## Integration with Vendor Management
 

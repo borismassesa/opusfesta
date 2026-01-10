@@ -1004,7 +1004,7 @@ export function VendorDetailsPreview({ vendor }: VendorDetailsPreviewProps) {
                     </div>
                     <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-muted-foreground bg-surface border border-border px-3 py-2 rounded-full">
                       <Sparkles className="w-4 h-4 text-primary" />
-                      Vetted by TheFesta
+                      Vetted by OpusFesta
                     </div>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1339,7 +1339,7 @@ export function VendorDetailsPreview({ vendor }: VendorDetailsPreviewProps) {
               <ShieldCheck className="w-5 h-5 text-foreground shrink-0 mt-0.5" strokeWidth={2} />
               <div>
                 <p className="text-sm text-foreground">
-                  To help protect your payment, always use TheFesta to send money and communicate with vendors.
+                  To help protect your payment, always use OpusFesta to send money and communicate with vendors.
                 </p>
               </div>
             </div>

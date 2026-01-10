@@ -1,5 +1,5 @@
 {
-  "name": "@thefesta/lib",
+  "name": "@opusfesta/lib",
   "version": "1.0.0",
   "description": "Shared utilities and types for The Festa",
   "main": "index.ts",
