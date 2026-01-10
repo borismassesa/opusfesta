@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { 
   Table, 
   TableBody, 
@@ -15,8 +16,7 @@ import {
   DialogDescription, 
   DialogFooter, 
   DialogHeader, 
-  DialogTitle, 
-  DialogTrigger 
+  DialogTitle
 } from "@/components/ui/dialog";
 import { 
   Card, 
@@ -30,14 +30,16 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
-  Plus, 
   Search, 
   MoreHorizontal, 
   FileText, 
   Trash2, 
   Pencil, 
   UserPlus,
-  Upload
+  Upload,
+  Loader2,
+  X,
+  Download
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -49,19 +51,30 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/lib/supabaseClient";
+import { getAdminApiUrl } from "@/lib/api";
+import { toast } from "@/lib/toast";
 
-// Mock Employee Data Interface
+// Employee Data Interfaces
 interface EmergencyContact {
-  fullName: string;
-  phone: string;
-  address: string;
-  relationship: string;
-  email: string;
+  fullName?: string;
+  phone?: string;
+  address?: string;
+  relationship?: string;
+  email?: string;
+}
+
+interface EmployeeDocuments {
+  resume?: string;
+  introLetter?: string;
+  photoId?: string;
+  birthCert?: string;
+  schoolCert?: string;
 }
 
 interface Employee {
   id: string;
+  employeeId: string;
   firstName: string;
   lastName: string;
   email: string;
@@ -72,88 +85,220 @@ interface Employee {
   tin: string;
   govId: string;
   emergencyContact: EmergencyContact;
-  documents: {
-    resume: boolean;
-    introLetter: boolean;
-    photoId: boolean;
-    birthCert: boolean;
-    schoolCert: boolean;
-  };
+  documents: EmployeeDocuments;
 }
 
-const MOCK_EMPLOYEES: Employee[] = [
-  {
-    id: "EMP-001",
-    firstName: "Juma",
-    lastName: "Mkwawa",
-    email: "juma.mkwawa@thefesta.com",
-    phone: "+255 712 345 678",
-    address: "123 Masaki, Dar es Salaam",
-    title: "Senior Event Coordinator",
-    startDate: "2023-01-15",
-    tin: "123-456-789",
-    govId: "NIDA-123456789",
-    emergencyContact: {
-      fullName: "Fatuma Mkwawa",
-      phone: "+255 755 123 456",
-      address: "123 Masaki, Dar es Salaam",
-      relationship: "Spouse",
-      email: "fatuma@email.com"
-    },
-    documents: {
-      resume: true,
-      introLetter: true,
-      photoId: true,
-      birthCert: true,
-      schoolCert: true
-    }
-  },
-  {
-    id: "EMP-002",
-    firstName: "Sarah",
-    lastName: "Kimani",
-    email: "sarah.k@thefesta.com",
-    phone: "+255 655 987 654",
-    address: "45 Mikocheni B, Dar es Salaam",
-    title: "Marketing Manager",
-    startDate: "2023-03-01",
-    tin: "987-654-321",
-    govId: "NIDA-987654321",
-    emergencyContact: {
-      fullName: "John Kimani",
-      phone: "+255 688 111 222",
-      address: "Arusha",
-      relationship: "Father",
-      email: "john.k@email.com"
-    },
-    documents: {
-      resume: true,
-      introLetter: false,
-      photoId: true,
-      birthCert: false,
-      schoolCert: true
-    }
-  }
-];
-
 export default function Employees() {
-  const [employees, setEmployees] = useState<Employee[]>(MOCK_EMPLOYEES);
+  const router = useRouter();
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
-  const filteredEmployees = employees.filter(emp => 
-    emp.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    emp.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  useEffect(() => {
+    fetchEmployees();
+  }, []);
 
-  const handleDelete = (id: string) => {
-    if (confirm("Are you sure you want to delete this employee?")) {
-      setEmployees(employees.filter(e => e.id !== id));
+  const fetchEmployees = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+
+      const url = searchTerm 
+        ? getAdminApiUrl(`/api/admin/employees?search=${encodeURIComponent(searchTerm)}`)
+        : getAdminApiUrl(`/api/admin/employees`);
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch employees");
+      }
+
+      const data = await response.json();
+      // Transform database format to frontend format
+      const transformedEmployees = (data.employees || []).map((emp: any) => ({
+        id: emp.id,
+        employeeId: emp.employee_id || "",
+        firstName: emp.first_name,
+        lastName: emp.last_name,
+        email: emp.email,
+        phone: emp.phone || "",
+        address: emp.address || "",
+        title: emp.title || "",
+        startDate: emp.start_date || "",
+        tin: emp.tin || "",
+        govId: emp.gov_id || "",
+        emergencyContact: emp.emergency_contact || {},
+        documents: emp.documents || {},
+      }));
+      setEmployees(transformedEmployees);
+    } catch (err) {
+      console.error("Error fetching employees:", err);
+      setError(err instanceof Error ? err.message : "Failed to load employees");
+    } finally {
+      setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // Debounce search
+    const timer = setTimeout(() => {
+      if (!loading) {
+        fetchEmployees();
+      }
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [searchTerm]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this employee?")) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+
+      const response = await fetch(getAdminApiUrl(`/api/admin/employees?id=${id}`), {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete employee");
+      }
+
+      // Show success toast
+      toast.success("Employee deleted successfully!", 3000);
+      
+      // Refresh list
+      fetchEmployees();
+    } catch (err) {
+      console.error("Error deleting employee:", err);
+      toast.error(
+        err instanceof Error ? err.message : "Failed to delete employee",
+        5000
+      );
+    }
+  };
+
+  const handleSubmit = async (data: Employee) => {
+    setSubmitting(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        router.push("/login");
+        return;
+      }
+
+      // Clean up documents - ensure empty strings are used instead of undefined
+      const cleanedDocuments: EmployeeDocuments = {};
+      if (data.documents) {
+        Object.keys(data.documents).forEach(key => {
+          const value = data.documents[key as keyof EmployeeDocuments];
+          cleanedDocuments[key as keyof EmployeeDocuments] = value || "";
+        });
+      }
+
+      // Clean up emergency contact - ensure empty strings for optional fields
+      const cleanedEmergencyContact: EmergencyContact = {};
+      if (data.emergencyContact) {
+        cleanedEmergencyContact.fullName = data.emergencyContact.fullName || "";
+        cleanedEmergencyContact.phone = data.emergencyContact.phone || "";
+        cleanedEmergencyContact.address = data.emergencyContact.address || "";
+        cleanedEmergencyContact.relationship = data.emergencyContact.relationship || "";
+        cleanedEmergencyContact.email = data.emergencyContact.email || "";
+      }
+
+      // Clean up optional fields - convert empty strings to null for optional fields
+      const cleanedData = {
+        ...data,
+        employeeId: data.employeeId && data.employeeId.trim() !== "" ? data.employeeId : null,
+        phone: data.phone && data.phone.trim() !== "" ? data.phone : null,
+        address: data.address && data.address.trim() !== "" ? data.address : null,
+        title: data.title && data.title.trim() !== "" ? data.title : null,
+        startDate: data.startDate && data.startDate.trim() !== "" ? data.startDate : null,
+        tin: data.tin && data.tin.trim() !== "" ? data.tin : null,
+        govId: data.govId && data.govId.trim() !== "" ? data.govId : null,
+        documents: cleanedDocuments,
+        emergencyContact: cleanedEmergencyContact,
+      };
+
+      const url = getAdminApiUrl(`/api/admin/employees`);
+      const method = editingEmployee ? "PUT" : "POST";
+      const body = editingEmployee ? { ...cleanedData, id: editingEmployee.id } : cleanedData;
+
+      const response = await fetch(url, {
+        method,
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(body),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        
+        // Format detailed error message
+        let errorMessage = errorData.error || "Failed to save employee";
+        if (errorData.message) {
+          errorMessage = errorData.message;
+        } else if (errorData.details && Array.isArray(errorData.details)) {
+          const details = errorData.details.map((d: any) => {
+            const field = d.path?.join('.') || 'unknown';
+            return `${field}: ${d.message}`;
+          }).join('; ');
+          errorMessage = `Validation failed: ${details}`;
+        }
+        
+        throw new Error(errorMessage);
+      }
+
+      const result = await response.json();
+      
+      setIsAddDialogOpen(false);
+      setEditingEmployee(null);
+      
+      // Show success toast
+      toast.success(
+        editingEmployee 
+          ? "Employee updated successfully!" 
+          : "Employee added successfully!",
+        3000
+      );
+      
+      fetchEmployees();
+    } catch (err) {
+      console.error("Error saving employee:", err);
+      const errorMessage = err instanceof Error ? err.message : "Failed to save employee";
+      
+      // Show error toast with detailed message
+      toast.error(errorMessage, 5000);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
 
   return (
     <div className="flex flex-col gap-6 animate-in fade-in duration-500">
@@ -162,17 +307,29 @@ export default function Employees() {
           <h1 className="text-3xl font-bold tracking-tight">Employees</h1>
           <p className="text-muted-foreground mt-1">Manage organization staff and records.</p>
         </div>
-        <Button onClick={() => { setEditingEmployee(null); setIsAddDialogOpen(true); }} className="gap-2 w-full sm:w-auto">
+        <Button 
+          onClick={() => { 
+            setEditingEmployee(null); 
+            setIsAddDialogOpen(true); 
+          }} 
+          className="gap-2 w-full sm:w-auto"
+        >
           <UserPlus className="w-4 h-4" /> Add Employee
         </Button>
       </div>
+
+      {error && (
+        <div className="rounded-md bg-destructive/15 border border-destructive/50 p-4">
+          <p className="text-sm text-destructive">{error}</p>
+        </div>
+      )}
 
       <Card>
         <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 space-y-0 pb-4">
           <div className="space-y-1">
             <CardTitle>Staff Directory</CardTitle>
             <CardDescription>
-              Total Employees: {employees.length}
+              Total Employees: {loading ? "..." : employees.length}
             </CardDescription>
           </div>
           <div className="relative w-full sm:w-64">
@@ -186,84 +343,102 @@ export default function Employees() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border overflow-x-auto">
-            <Table className="min-w-[600px]">
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Contact</TableHead>
-                  <TableHead>Start Date</TableHead>
-                  <TableHead>Docs Status</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredEmployees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell className="font-medium">
-                      <div className="flex flex-col">
-                        <span>{employee.firstName} {employee.lastName}</span>
-                        <span className="text-xs text-muted-foreground">{employee.id}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{employee.title}</TableCell>
-                    <TableCell>
-                      <div className="flex flex-col text-sm">
-                        <span>{employee.email}</span>
-                        <span className="text-muted-foreground text-xs">{employee.phone}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>{employee.startDate}</TableCell>
-                    <TableCell>
-                      <CircularProgress 
-                        current={Object.values(employee.documents).filter(Boolean).length} 
-                        total={5} 
-                      />
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" className="h-8 w-8 p-0">
-                            <span className="sr-only">Open menu</span>
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem onClick={() => { setEditingEmployee(employee); setIsAddDialogOpen(true); }}>
-                            <Pencil className="mr-2 h-4 w-4" /> Edit Details
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <FileText className="mr-2 h-4 w-4" /> View Documents
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive focus:text-destructive" onClick={() => handleDelete(employee.id)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete Employee
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="rounded-md border overflow-x-auto">
+              <Table className="min-w-[600px]">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Contact</TableHead>
+                    <TableHead>Start Date</TableHead>
+                    <TableHead>Docs Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {employees.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                        No employees found
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    employees.map((employee) => (
+                      <TableRow key={employee.id}>
+                        <TableCell className="font-medium">
+                          <div className="flex flex-col">
+                            <span>{employee.firstName} {employee.lastName}</span>
+                            <span className="text-xs text-muted-foreground">
+                              {employee.employeeId || `ID: ${employee.id.slice(0, 8)}...`}
+                            </span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{employee.title}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col text-sm">
+                            <span>{employee.email}</span>
+                            <span className="text-muted-foreground text-xs">{employee.phone}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>{employee.startDate}</TableCell>
+                        <TableCell>
+                          <CircularProgress 
+                            current={Object.values(employee.documents).filter((url): url is string => !!url).length} 
+                            total={5} 
+                          />
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" className="h-8 w-8 p-0">
+                                <span className="sr-only">Open menu</span>
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => { 
+                                setEditingEmployee(employee); 
+                                setIsAddDialogOpen(true); 
+                              }}>
+                                <Pencil className="mr-2 h-4 w-4" /> Edit Details
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-destructive focus:text-destructive" 
+                                onClick={() => handleDelete(employee.id)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Employee
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
       <EmployeeDialog 
         open={isAddDialogOpen} 
-        onOpenChange={setIsAddDialogOpen}
-        initialData={editingEmployee}
-        onSubmit={(data) => {
-          if (editingEmployee) {
-            setEmployees(employees.map(e => e.id === editingEmployee.id ? { ...data, id: e.id } : e));
-          } else {
-            setEmployees([...employees, { ...data, id: `EMP-${String(employees.length + 1).padStart(3, '0')}` }]);
+        onOpenChange={(open) => {
+          setIsAddDialogOpen(open);
+          if (!open) {
+            setEditingEmployee(null);
           }
-          setIsAddDialogOpen(false);
         }}
+        initialData={editingEmployee}
+        onSubmit={handleSubmit}
+        submitting={submitting}
       />
     </div>
   );
@@ -273,59 +448,88 @@ function EmployeeDialog({
   open, 
   onOpenChange, 
   initialData, 
-  onSubmit 
+  onSubmit,
+  submitting
 }: { 
   open: boolean; 
   onOpenChange: (open: boolean) => void;
   initialData: Employee | null;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: Employee) => void;
+  submitting: boolean;
 }) {
-  const [formData, setFormData] = useState<any>({});
+  const [formData, setFormData] = useState<Employee>({
+    id: "",
+    employeeId: "",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    address: "",
+    title: "",
+    startDate: "",
+    tin: "",
+    govId: "",
+    emergencyContact: {},
+    documents: {},
+  });
 
   // Reset form when dialog opens/closes or initialData changes
-  useState(() => {
+  useEffect(() => {
     if (open) {
-      setFormData(initialData || {
-        firstName: "",
-        lastName: "",
-        email: "",
-        phone: "",
-        address: "",
-        title: "",
-        startDate: "",
-        tin: "",
-        govId: "",
-        emergencyContact: {
-          fullName: "",
+      if (initialData) {
+        setFormData(initialData);
+      } else {
+        setFormData({
+          id: "",
+          employeeId: "",
+          firstName: "",
+          lastName: "",
+          email: "",
           phone: "",
           address: "",
-          relationship: "",
-          email: ""
-        },
-        documents: {
-          resume: false,
-          introLetter: false,
-          photoId: false,
-          birthCert: false,
-          schoolCert: false
-        }
-      });
+          title: "",
+          startDate: "",
+          tin: "",
+          govId: "",
+          emergencyContact: {
+            fullName: "",
+            phone: "",
+            address: "",
+            relationship: "",
+            email: ""
+          },
+          documents: {
+            resume: "",
+            introLetter: "",
+            photoId: "",
+            birthCert: "",
+            schoolCert: ""
+          }
+        });
+      }
     }
-  });
+  }, [open, initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSubmit(formData);
   };
 
-  const updateField = (field: string, value: any) => {
-    setFormData((prev: any) => ({ ...prev, [field]: value }));
+  const updateField = (field: keyof Employee, value: any) => {
+    setFormData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const updateEmergency = (field: string, value: any) => {
-    setFormData((prev: any) => ({ 
+  const updateEmergency = (field: keyof EmergencyContact, value: any) => {
+    setFormData((prev) => ({ 
       ...prev, 
       emergencyContact: { ...prev.emergencyContact, [field]: value } 
+    }));
+  };
+
+  const updateDocument = (field: keyof EmployeeDocuments, value: string) => {
+    setFormData((prev) => ({
+      ...prev,
+      documents: { ...prev.documents, [field]: value }
     }));
   };
 
@@ -341,7 +545,6 @@ function EmployeeDialog({
         
         <ScrollArea className="flex-1 px-6 py-4">
           <form id="employee-form" onSubmit={handleSubmit} className="space-y-6">
-            
             <Tabs defaultValue="personal" className="w-full">
               <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto">
                 <TabsTrigger value="personal">Personal Info</TabsTrigger>
@@ -352,50 +555,102 @@ function EmployeeDialog({
               <TabsContent value="personal" className="space-y-4 py-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>First Name</Label>
-                    <Input required placeholder="Juma" defaultValue={initialData?.firstName} onChange={e => updateField('firstName', e.target.value)} />
+                    <Label>First Name *</Label>
+                    <Input 
+                      required 
+                      placeholder="Juma" 
+                      value={formData.firstName}
+                      onChange={e => updateField('firstName', e.target.value)} 
+                    />
                   </div>
                   <div className="space-y-2">
-                    <Label>Last Name</Label>
-                    <Input required placeholder="Mkwawa" defaultValue={initialData?.lastName} onChange={e => updateField('lastName', e.target.value)} />
+                    <Label>Last Name *</Label>
+                    <Input 
+                      required 
+                      placeholder="Mkwawa" 
+                      value={formData.lastName}
+                      onChange={e => updateField('lastName', e.target.value)} 
+                    />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Employee ID</Label>
+                  <Input 
+                    placeholder="EMP-001" 
+                    value={formData.employeeId}
+                    onChange={e => updateField('employeeId', e.target.value)} 
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Organization-specific employee identification number
+                  </p>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Title / Position</Label>
-                    <Input placeholder="Event Manager" defaultValue={initialData?.title} onChange={e => updateField('title', e.target.value)} />
+                    <Input 
+                      placeholder="Event Manager" 
+                      value={formData.title}
+                      onChange={e => updateField('title', e.target.value)} 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Start Date</Label>
-                    <Input type="date" defaultValue={initialData?.startDate} onChange={e => updateField('startDate', e.target.value)} />
+                    <Input 
+                      type="date" 
+                      value={formData.startDate}
+                      onChange={e => updateField('startDate', e.target.value)} 
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
-                    <Label>Email Address</Label>
-                    <Input type="email" placeholder="juma@example.com" defaultValue={initialData?.email} onChange={e => updateField('email', e.target.value)} />
+                    <Label>Email Address *</Label>
+                    <Input 
+                      type="email" 
+                      required
+                      placeholder="juma@example.com" 
+                      value={formData.email}
+                      onChange={e => updateField('email', e.target.value)} 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Phone Number</Label>
-                    <Input placeholder="+255..." defaultValue={initialData?.phone} onChange={e => updateField('phone', e.target.value)} />
+                    <Input 
+                      placeholder="+255..." 
+                      value={formData.phone}
+                      onChange={e => updateField('phone', e.target.value)} 
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Physical Address</Label>
-                  <Input placeholder="Street, City, Region" defaultValue={initialData?.address} onChange={e => updateField('address', e.target.value)} />
+                  <Input 
+                    placeholder="Street, City, Region" 
+                    value={formData.address}
+                    onChange={e => updateField('address', e.target.value)} 
+                  />
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Government ID (NIDA)</Label>
-                    <Input placeholder="NIDA Number" defaultValue={initialData?.govId} onChange={e => updateField('govId', e.target.value)} />
+                    <Input 
+                      placeholder="NIDA Number" 
+                      value={formData.govId}
+                      onChange={e => updateField('govId', e.target.value)} 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>TIN Number</Label>
-                    <Input placeholder="TRA TIN" defaultValue={initialData?.tin} onChange={e => updateField('tin', e.target.value)} />
+                    <Input 
+                      placeholder="TRA TIN" 
+                      value={formData.tin}
+                      onChange={e => updateField('tin', e.target.value)} 
+                    />
                   </div>
                 </div>
               </TabsContent>
@@ -403,63 +658,243 @@ function EmployeeDialog({
               <TabsContent value="emergency" className="space-y-4 py-4">
                 <div className="space-y-2">
                   <Label>Full Name</Label>
-                  <Input placeholder="Contact Person Name" defaultValue={initialData?.emergencyContact?.fullName} onChange={e => updateEmergency('fullName', e.target.value)} />
+                  <Input 
+                    placeholder="Contact Person Name" 
+                    value={formData.emergencyContact?.fullName || ""}
+                    onChange={e => updateEmergency('fullName', e.target.value)} 
+                  />
                 </div>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Relationship</Label>
-                    <Input placeholder="Spouse, Parent, etc." defaultValue={initialData?.emergencyContact?.relationship} onChange={e => updateEmergency('relationship', e.target.value)} />
+                    <Input 
+                      placeholder="Spouse, Parent, etc." 
+                      value={formData.emergencyContact?.relationship || ""}
+                      onChange={e => updateEmergency('relationship', e.target.value)} 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Phone Number</Label>
-                    <Input placeholder="+255..." defaultValue={initialData?.emergencyContact?.phone} onChange={e => updateEmergency('phone', e.target.value)} />
+                    <Input 
+                      placeholder="+255..." 
+                      value={formData.emergencyContact?.phone || ""}
+                      onChange={e => updateEmergency('phone', e.target.value)} 
+                    />
                   </div>
                 </div>
 
                 <div className="space-y-2">
                   <Label>Email Address</Label>
-                  <Input type="email" placeholder="contact@email.com" defaultValue={initialData?.emergencyContact?.email} onChange={e => updateEmergency('email', e.target.value)} />
+                  <Input 
+                    type="email" 
+                    placeholder="contact@email.com" 
+                    value={formData.emergencyContact?.email || ""}
+                    onChange={e => updateEmergency('email', e.target.value)} 
+                  />
                 </div>
 
                 <div className="space-y-2">
                   <Label>Physical Address</Label>
-                  <Input placeholder="Contact Address" defaultValue={initialData?.emergencyContact?.address} onChange={e => updateEmergency('address', e.target.value)} />
+                  <Input 
+                    placeholder="Contact Address" 
+                    value={formData.emergencyContact?.address || ""}
+                    onChange={e => updateEmergency('address', e.target.value)} 
+                  />
                 </div>
               </TabsContent>
 
               <TabsContent value="documents" className="space-y-6 py-4">
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {[
-                      { id: "resume", label: "Resume / CV" },
-                      { id: "introLetter", label: "Barua ya Utambulisho" },
-                      { id: "photoId", label: "Photo ID (Passport/NIDA)" },
-                      { id: "birthCert", label: "Birth Certificate" },
-                      { id: "schoolCert", label: "School Certificates" }
-                    ].map((doc) => (
-                      <div key={doc.id} className="border rounded-lg p-4 flex flex-col gap-2 bg-muted/20">
-                         <div className="flex justify-between items-center">
-                            <Label className="font-medium">{doc.label}</Label>
-                            {/* Mock Status for visual feedback */}
-                            <Badge variant="outline" className="text-xs">Pending</Badge>
-                         </div>
-                         <div className="flex items-center gap-2 mt-2">
-                           <Input type="file" className="text-xs h-8 cursor-pointer" />
-                         </div>
-                      </div>
-                    ))}
-                 </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {[
+                    { id: "resume" as const, label: "Resume / CV" },
+                    { id: "introLetter" as const, label: "Barua ya Utambulisho" },
+                    { id: "photoId" as const, label: "Photo ID (Passport/NIDA)" },
+                    { id: "birthCert" as const, label: "Birth Certificate" },
+                    { id: "schoolCert" as const, label: "School Certificates" }
+                  ].map((doc) => (
+                    <DocumentUpload
+                      key={doc.id}
+                      label={doc.label}
+                      documentType={doc.id}
+                      value={formData.documents[doc.id] || ""}
+                      onChange={(url) => updateDocument(doc.id, url)}
+                      employeeId={initialData?.id || "new"}
+                    />
+                  ))}
+                </div>
               </TabsContent>
             </Tabs>
           </form>
         </ScrollArea>
 
         <DialogFooter className="px-6 py-4 border-t bg-muted/10">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button type="submit" form="employee-form">{initialData ? "Save Changes" : "Add Employee"}</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
+            Cancel
+          </Button>
+          <Button type="submit" form="employee-form" disabled={submitting}>
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              initialData ? "Save Changes" : "Add Employee"
+            )}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function DocumentUpload({
+  label,
+  documentType,
+  value,
+  onChange,
+  employeeId,
+}: {
+  label: string;
+  documentType: keyof EmployeeDocuments;
+  value: string;
+  onChange: (url: string) => void;
+  employeeId: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const allowedTypes = [
+      "application/pdf",
+      "application/msword",
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      "image/jpeg",
+      "image/png",
+      "image/webp"
+    ];
+    if (!allowedTypes.includes(file.type)) {
+      setError("File must be PDF, Word document, or image (JPG, PNG, WebP)");
+      return;
+    }
+
+    // Validate file size (10MB)
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError("File size must be less than 10MB");
+      return;
+    }
+
+    setError(null);
+    setUploading(true);
+
+    try {
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 15);
+      const fileExt = file.name.split(".").pop() || "pdf";
+      // Use "temp" folder for new employees, actual employee ID for existing
+      const folderId = employeeId === "new" ? `temp-${timestamp}` : employeeId;
+      const fileName = `${folderId}/${documentType}/${timestamp}-${randomStr}.${fileExt}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from("employees")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          contentType: file.type,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message || "Failed to upload document");
+      }
+
+      if (!data) {
+        throw new Error("Upload failed: No data returned");
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("employees")
+        .getPublicUrl(data.path);
+
+      onChange(urlData.publicUrl);
+    } catch (err: any) {
+      console.error("Error uploading document:", err);
+      setError(err.message || "Failed to upload document");
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemove = () => {
+    onChange("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const hasDocument = !!value;
+
+  return (
+    <div className="border rounded-lg p-4 flex flex-col gap-2 bg-muted/20">
+      <div className="flex justify-between items-center">
+        <Label className="font-medium">{label}</Label>
+        {hasDocument ? (
+          <Badge variant="default" className="text-xs">Uploaded</Badge>
+        ) : (
+          <Badge variant="outline" className="text-xs">Pending</Badge>
+        )}
+      </div>
+      
+      {error && (
+        <p className="text-xs text-destructive">{error}</p>
+      )}
+
+      {hasDocument ? (
+        <div className="flex items-center gap-2 mt-2">
+          <a
+            href={value}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm text-primary hover:underline flex items-center gap-1"
+          >
+            <Download className="h-3 w-3" />
+            View Document
+          </a>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={handleRemove}
+            className="h-6 px-2"
+          >
+            <X className="h-3 w-3" />
+          </Button>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2 mt-2">
+          <Input
+            ref={fileInputRef}
+            type="file"
+            className="text-xs h-8 cursor-pointer"
+            onChange={handleFileSelect}
+            disabled={uploading}
+            accept=".pdf,.doc,.docx,.jpg,.jpeg,.png,.webp"
+          />
+          {uploading && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

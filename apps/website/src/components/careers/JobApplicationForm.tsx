@@ -23,24 +23,37 @@ import { uploadResume, uploadCoverLetter } from "@/lib/careers/applications";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
 
+// Helper to validate optional URL fields - allows empty string, undefined, or valid URL
+// This pattern matches what's used elsewhere in the codebase
+const optionalUrlSchema = (message: string) => 
+  z.union([
+    z.string().url(message),
+    z.string().length(0), // Empty string
+    z.undefined()
+  ]).optional();
+
 const applicationSchema = z.object({
   fullName: z.string().min(1, "Full name is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(1, "Phone number is required"),
   coverLetter: z.string().max(2000, "Cover letter must be less than 2000 characters").optional().or(z.literal("")),
-  portfolioUrl: z
-    .string()
-    .url("Invalid URL")
-    .optional()
-    .or(z.literal("")),
-  linkedinUrl: z
-    .string()
-    .url("Invalid LinkedIn URL")
-    .optional()
-    .or(z.literal("")),
-  experience: z.string().max(1000, "Experience must be less than 1000 characters").optional(),
-  education: z.string().max(1000, "Education must be less than 1000 characters").optional(),
-  referenceInfo: z.string().max(500, "References must be less than 500 characters").optional(),
+  portfolioUrl: optionalUrlSchema("Invalid portfolio URL"),
+  linkedinUrl: optionalUrlSchema("Invalid LinkedIn URL"),
+  experience: z.union([
+    z.string().max(1000, "Experience must be less than 1000 characters"),
+    z.string().length(0), // Empty string
+    z.undefined()
+  ]).optional(),
+  education: z.union([
+    z.string().max(1000, "Education must be less than 1000 characters"),
+    z.string().length(0), // Empty string
+    z.undefined()
+  ]).optional(),
+  referenceInfo: z.union([
+    z.string().max(500, "References must be less than 500 characters"),
+    z.string().length(0), // Empty string
+    z.undefined()
+  ]).optional(),
 }).refine(
   (data) => {
     // At least one of cover letter text or file must be provided
@@ -185,17 +198,18 @@ export function JobApplicationForm({
   // Watch form values for progress calculation
   const watchedValues = form.watch();
 
-  // Calculate form progress
+  // Calculate form progress based on required fields only
+  // Optional fields (portfolioUrl, linkedinUrl, experience, education, referenceInfo) are NOT counted
   const formProgress = useMemo(() => {
-    const fields = [
+    const requiredFields = [
       watchedValues.fullName,
       watchedValues.email,
       watchedValues.phone,
-      watchedValues.coverLetter || coverLetterUrl,
+      watchedValues.coverLetter || coverLetterUrl, // At least one cover letter (text or file) is required
       resumeUrl,
     ];
-    const filled = fields.filter(Boolean).length;
-    return Math.round((filled / fields.length) * 100);
+    const filled = requiredFields.filter(Boolean).length;
+    return Math.round((filled / requiredFields.length) * 100);
   }, [watchedValues.fullName, watchedValues.email, watchedValues.phone, watchedValues.coverLetter, coverLetterUrl, resumeUrl]);
 
   const handleResumeSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
