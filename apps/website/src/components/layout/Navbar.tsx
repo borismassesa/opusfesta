@@ -19,36 +19,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
-// Simple Flag Components
-const FlagUK = ({ className = "w-5 h-5" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 60 30" xmlns="http://www.w3.org/2000/svg">
-    <clipPath id="t">
-      <path d="M30,15 h30 v15 z v15 h-30 z h-30 v-15 z v-15 h30 z"/>
-    </clipPath>
-    <path d="M0,0 v30 h60 v-30 z" fill="#012169"/>
-    <path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" strokeWidth="6"/>
-    <path d="M0,0 L60,30 M60,0 L0,30" clipPath="url(#t)" stroke="#C8102E" strokeWidth="4"/>
-    <path d="M30,0 v30 M0,15 h60" stroke="#fff" strokeWidth="10"/>
-    <path d="M30,0 v30 M0,15 h60" stroke="#C8102E" strokeWidth="6"/>
-  </svg>
-);
-
-const FlagTZ = ({ className = "w-5 h-5" }: { className?: string }) => (
-  <svg className={className} viewBox="0 0 60 40" xmlns="http://www.w3.org/2000/svg">
-    <defs>
-      <clipPath id="tz-clip">
-        <rect width="60" height="40"/>
-      </clipPath>
-    </defs>
-    <g clipPath="url(#tz-clip)">
-      <rect width="60" height="40" fill="#1eb53a"/>
-      <path d="M0,40 L60,40 L60,0 Z" fill="#00a3dd"/>
-      <path d="M-10,50 L70,-10" stroke="#fcd116" strokeWidth="14"/>
-      <path d="M-10,50 L70,-10" stroke="#000" strokeWidth="9"/>
-    </g>
-  </svg>
-);
-
 interface UserData {
   id: string;
   name: string | null;
@@ -486,12 +456,6 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
     };
   }, []);
 
-  const toggleLanguage = (lang: string) => {
-    i18n.changeLanguage(lang);
-  };
-
-  const CurrentFlag = i18n.language.startsWith('sw') ? FlagTZ : FlagUK;
-
   return (
     <nav 
       className={`${sticky ? 'fixed' : 'relative'} top-0 w-full z-50 px-6 md:px-12 pb-1 pt-3 flex justify-between items-center transition-all duration-300 ${
@@ -527,15 +491,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
 
       {/* Right Actions */}
       <div className="flex items-center gap-4 z-50">
-        <button
-          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-          className="text-secondary hover:text-primary transition-colors cursor-pointer p-2 rounded-full hover:bg-primary/5 order-1"
-          aria-label="Toggle theme"
-        >
-          {mounted && theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-        </button>
-
-        <div className="hidden md:flex items-center gap-4 order-3">
+        <div className="hidden md:flex items-center gap-4">
           {isCheckingAuth || isAuthenticated === null ? (
             // Show nothing or a subtle loading state while checking
             <div className="w-20 h-8" /> // Placeholder to prevent layout shift
@@ -668,32 +624,19 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
           )}
         </div>
 
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button 
-              className="text-secondary hover:text-primary transition-colors cursor-pointer p-2 rounded-full hover:bg-primary/5 flex items-center gap-2 order-2"
-              aria-label="Change Language"
-            >
-              <CurrentFlag className="h-5 w-auto rounded-sm shadow-sm" />
-              <span className="text-xs font-medium uppercase hidden sm:inline-block">{i18n.language.split('-')[0]}</span>
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[150px]">
-            <DropdownMenuItem onClick={() => toggleLanguage('en')} className="gap-2 cursor-pointer">
-              <FlagUK className="h-4 w-auto rounded-sm" />
-              <span>English</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => toggleLanguage('sw')} className="gap-2 cursor-pointer">
-              <FlagTZ className="h-4 w-auto rounded-sm" />
-              <span>Swahili</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        
-        {/* Mobile Menu Button */}
+        {/* Theme Toggle and Mobile Menu - Right end */}
+        <button
+          onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+          className="text-secondary hover:text-primary transition-colors cursor-pointer p-2 rounded-full hover:bg-primary/5"
+          aria-label="Toggle theme"
+        >
+          {mounted && theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+        </button>
+
+        {/* Mobile Menu Button - Right end */}
         <button 
           onClick={onMenuClick}
-          className={`lg:hidden group relative z-50 w-11 h-11 flex items-center justify-center rounded-full border transition-all duration-500 order-4 ${
+          className={`lg:hidden group relative z-50 w-11 h-11 flex items-center justify-center rounded-full border transition-all duration-500 ${
             isOpen 
               ? "bg-primary border-primary rotate-90" 
               : "bg-background/50 backdrop-blur-md border-border/60 hover:bg-primary/5"

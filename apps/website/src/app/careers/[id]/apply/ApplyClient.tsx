@@ -40,8 +40,11 @@ export function ApplyClient({
   useEffect(() => {
     let mounted = true;
     let sessionRestored = false;
+    let verificationInProgress = false;
+    let verificationTimeoutId: NodeJS.Timeout | null = null;
     const maxRetries = 3;
     const sessionRestoreTimeout = 3000; // 3 seconds max wait for session restoration
+    const verificationTimeout = 10000; // 10 seconds max for verification
 
     const redirectToLogin = (currentPath: string) => {
       if (!mounted) return;
@@ -51,22 +54,42 @@ export function ApplyClient({
     };
 
     const verifyUserRecord = async (session: any, retryAttempt = 0): Promise<boolean> => {
-      if (!mounted) return false;
+      if (!mounted || verificationInProgress) return false;
+      verificationInProgress = true;
+
+      // Set up a timeout that will redirect if verification takes too long
+      const setupVerificationTimeout = () => {
+        if (verificationTimeoutId) clearTimeout(verificationTimeoutId);
+        verificationTimeoutId = setTimeout(() => {
+          if (mounted && verificationInProgress) {
+            console.warn("Verification timeout - redirecting to login");
+            verificationInProgress = false;
+            const currentPath = window.location.pathname;
+            redirectToLogin(currentPath);
+          }
+        }, verificationTimeout);
+      };
 
       try {
         setAuthStatus("verifying");
+        setupVerificationTimeout();
         
         // CRITICAL: First verify user still exists in Supabase Auth
-        const userExistsInAuth = await supabase.auth.getUser()
-          .then(({ data, error }) => {
-            if (error || !data.user || data.user.id !== session.user.id) {
-              return false;
-            }
-            return true;
-          })
-          .catch(() => false);
+        const userCheckResult = await supabase.auth.getUser();
+        
+        if (verificationTimeoutId) {
+          clearTimeout(verificationTimeoutId);
+          verificationTimeoutId = null;
+        }
 
-        if (!mounted) return false;
+        if (!mounted) {
+          verificationInProgress = false;
+          return false;
+        }
+
+        const userExistsInAuth = !userCheckResult.error && 
+                                userCheckResult.data?.user && 
+                                userCheckResult.data.user.id === session.user.id;
 
         if (!userExistsInAuth) {
           // User was deleted from Auth - sign out
@@ -76,22 +99,37 @@ export function ApplyClient({
             const currentPath = window.location.pathname;
             redirectToLogin(currentPath);
           }
+          verificationInProgress = false;
           return false;
         }
         
+        setupVerificationTimeout();
+        
         // Use ensureUserRecord which creates the record if it doesn't exist
         const result = await ensureUserRecord(session);
+        
+        if (verificationTimeoutId) {
+          clearTimeout(verificationTimeoutId);
+          verificationTimeoutId = null;
+        }
+        
+        if (!mounted) {
+          verificationInProgress = false;
+          return false;
+        }
         
         if (result.success) {
           if (mounted) {
             setIsCheckingAuth(false);
             setAuthStatus("authenticated");
           }
+          verificationInProgress = false;
           return true;
         } else {
           // If it's a transient error and we haven't exceeded retries, try again
           if (retryAttempt < maxRetries) {
             console.log(`User record verification failed, retrying... (attempt ${retryAttempt + 1}/${maxRetries})`);
+            verificationInProgress = false;
             await new Promise(resolve => setTimeout(resolve, 1000 * (retryAttempt + 1))); // Exponential backoff
             return verifyUserRecord(session, retryAttempt + 1);
           } else {
@@ -100,10 +138,16 @@ export function ApplyClient({
               const currentPath = window.location.pathname;
               redirectToLogin(currentPath);
             }
+            verificationInProgress = false;
             return false;
           }
         }
       } catch (err) {
+        if (verificationTimeoutId) {
+          clearTimeout(verificationTimeoutId);
+          verificationTimeoutId = null;
+        }
+        
         console.error("Error verifying user record:", err);
         
         // Retry on transient errors
@@ -115,6 +159,7 @@ export function ApplyClient({
           
           if (isTransientError) {
             console.log(`Transient error detected, retrying... (attempt ${retryAttempt + 1}/${maxRetries})`);
+            verificationInProgress = false;
             await new Promise(resolve => setTimeout(resolve, 1000 * (retryAttempt + 1)));
             return verifyUserRecord(session, retryAttempt + 1);
           }
@@ -124,13 +169,14 @@ export function ApplyClient({
           const currentPath = window.location.pathname;
           redirectToLogin(currentPath);
         }
+        verificationInProgress = false;
         return false;
       }
     };
 
     // Set timeout for session restoration
     const timeout = setTimeout(() => {
-      if (!sessionRestored && mounted) {
+      if (!sessionRestored && mounted && !verificationInProgress) {
         console.warn("Session restoration timeout - checking current session");
         sessionRestored = true;
         
@@ -143,6 +189,12 @@ export function ApplyClient({
             redirectToLogin(currentPath);
           } else {
             verifyUserRecord(session);
+          }
+        }).catch((err) => {
+          console.error("Error getting session after timeout:", err);
+          if (mounted) {
+            const currentPath = window.location.pathname;
+            redirectToLogin(currentPath);
           }
         });
       }
@@ -195,19 +247,38 @@ export function ApplyClient({
       if (!session) {
         // No session - wait a bit for onAuthStateChange to fire
         // If it doesn't fire within timeout, we'll redirect
+        // Don't mark as restored yet - let timeout handle it
         return;
       }
 
       // We have a session - verify user record
-      sessionRestored = true;
-      clearTimeout(timeout);
-      verifyUserRecord(session);
+      if (!sessionRestored) {
+        sessionRestored = true;
+        clearTimeout(timeout);
+        verifyUserRecord(session).catch((err) => {
+          console.error("Error in verifyUserRecord from initial check:", err);
+          if (mounted) {
+            const currentPath = window.location.pathname;
+            redirectToLogin(currentPath);
+          }
+        });
+      }
+    }).catch((err) => {
+      console.error("Error getting initial session:", err);
+      if (mounted && !sessionRestored) {
+        const currentPath = window.location.pathname;
+        redirectToLogin(currentPath);
+      }
     });
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
       clearTimeout(timeout);
+      if (verificationTimeoutId) {
+        clearTimeout(verificationTimeoutId);
+        verificationTimeoutId = null;
+      }
     };
   }, [router]);
 

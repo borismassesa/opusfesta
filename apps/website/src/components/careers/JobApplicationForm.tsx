@@ -347,14 +347,25 @@ export function JobApplicationForm({
       if (data.education && data.education.trim()) requestBody.education = data.education;
       if (data.referenceInfo && data.referenceInfo.trim()) requestBody.referenceInfo = data.referenceInfo;
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(requestBody),
+        });
+      } catch (fetchError: any) {
+        // Network error - fetch itself failed
+        console.error("Network error during fetch:", fetchError);
+        throw new Error(
+          fetchError.message?.includes("Failed to fetch") || fetchError.message?.includes("NetworkError")
+            ? "Network error. Please check your internet connection and try again."
+            : `Failed to connect to server: ${fetchError.message || "Unknown error"}`
+        );
+      }
 
       // Try to parse JSON, but handle cases where response might not be JSON
       let result: any = {};
@@ -364,14 +375,16 @@ export function JobApplicationForm({
           result = await response.json();
         } catch (parseError) {
           console.error("Failed to parse JSON response:", parseError);
-          const text = await response.text();
+          const text = await response.text().catch(() => "Unable to read response");
           console.error("Response text:", text);
-          throw new Error(`Server error: ${response.status} ${response.statusText}`);
+          throw new Error(`Server error: ${response.status} ${response.statusText}. ${text.substring(0, 200)}`);
         }
       } else {
-        const text = await response.text();
+        const text = await response.text().catch(() => "Unable to read response");
         console.error("Non-JSON response:", text);
-        throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status} ${response.statusText}. ${text.substring(0, 200)}`);
+        }
       }
 
       if (!response.ok) {
@@ -484,20 +497,50 @@ export function JobApplicationForm({
         requestBody.referenceInfo = data.referenceInfo;
       }
 
-      const response = await fetch(url, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
+      let response: Response;
+      try {
+        response = await fetch(url, {
+          method,
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify(requestBody),
+        });
+      } catch (fetchError: any) {
+        // Network error - fetch itself failed
+        console.error("Network error during fetch:", fetchError);
+        throw new Error(
+          fetchError.message?.includes("Failed to fetch") || fetchError.message?.includes("NetworkError")
+            ? "Network error. Please check your internet connection and try again."
+            : `Failed to connect to server: ${fetchError.message || "Unknown error"}`
+        );
+      }
 
-      const result = await response.json();
+      // Try to parse JSON, but handle non-JSON responses
+      let result: any = {};
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        try {
+          result = await response.json();
+        } catch (parseError) {
+          console.error("Failed to parse JSON response:", parseError);
+          const text = await response.text().catch(() => "Unable to read response");
+          console.error("Response text:", text);
+          throw new Error(`Server error: ${response.status} ${response.statusText}. ${text.substring(0, 200)}`);
+        }
+      } else {
+        // Non-JSON response
+        const text = await response.text().catch(() => "Unable to read response");
+        console.error("Non-JSON response:", text);
+        if (!response.ok) {
+          throw new Error(`Server error: ${response.status} ${response.statusText}. ${text.substring(0, 200)}`);
+        }
+      }
 
       if (!response.ok) {
         // Show more detailed error message if available
-        const errorMsg = result.message || result.error || "Failed to submit application";
+        const errorMsg = result.message || result.error || `Failed to submit application (${response.status})`;
         console.error("Application submission error:", {
           status: response.status,
           statusText: response.statusText,

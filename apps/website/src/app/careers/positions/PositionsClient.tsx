@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { CareersNavbar } from "@/components/careers/CareersNavbar";
 import { CareersFooter } from "@/components/careers/CareersFooter";
 import { JobSection } from "@/components/careers/JobSection";
