@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
+import { toast } from '@/lib/toast';
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -17,6 +17,13 @@ export default function SignUpPage() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
+
+  useEffect(() => {
+    // Store next parameter in sessionStorage (for email confirmation flows)
+    if (next && next !== '/') {
+      sessionStorage.setItem('auth_redirect', next);
+    }
+  }, [next]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,28 +38,85 @@ export default function SignUpPage() {
     }
 
     // Validate password strength
-    if (password.length < 6) {
-      setErrorMessage('Password must be at least 6 characters long');
+    if (password.length < 8) {
+      setErrorMessage('Password must be at least 8 characters long');
       setIsLoading(false);
       return;
     }
 
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: typeof window !== 'undefined' ? `${window.location.origin}/` : undefined,
-      },
-    });
+    try {
+      const response = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          firstName: '', // Vendor portal doesn't collect name during signup
+          lastName: '',
+          userType: 'vendor', // Always vendor for vendor portal
+        }),
+      });
 
-    if (error) {
-      setErrorMessage(error.message);
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error('Failed to parse response JSON:', jsonError);
+        const text = await response.text();
+        console.error('Response text:', text);
+        toast.error('An unexpected error occurred. Please try again.');
+        setIsLoading(false);
+        return;
+      }
+
+      if (!response.ok) {
+        // Handle existing account cases
+        if (data?.error === 'An account with this email already exists' || data?.error?.includes('already exists')) {
+          // If email is not verified, redirect to verification page
+          if (data?.verified === false || data?.canResend) {
+            toast.info('Account already exists. Redirecting to verification page...');
+            setIsLoading(false);
+            router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+            return;
+          }
+          // If email is verified, redirect to login
+          if (data?.verified === true) {
+            toast.info('Account already exists. Please sign in instead.');
+            setIsLoading(false);
+            router.push(`/login?email=${encodeURIComponent(email)}`);
+            return;
+          }
+          // Generic existing account message
+          setErrorMessage(data?.message || 'Please sign in or use a different email.');
+          setIsLoading(false);
+          return;
+        }
+
+        console.error('Signup API error:', {
+          status: response.status,
+          statusText: response.statusText,
+          error: data?.error || 'Unknown error',
+          message: data?.message,
+          details: data?.details,
+          fullData: data,
+        });
+        setErrorMessage(data?.error || data?.message || `An error occurred during signup (${response.status})`);
+        setIsLoading(false);
+        return;
+      }
+
+      // Redirect to verification page immediately for seamless experience
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      
+      // Show toast after navigation starts
+      toast.success('Verification code sent! Please check your email.');
+    } catch (error) {
+      console.error('Signup error:', error);
+      setErrorMessage('An unexpected error occurred. Please try again.');
       setIsLoading(false);
-      return;
     }
-
-    // Redirect to login or show success message
-    router.push('/login?message=Check your email to confirm your account');
   };
 
   return (
