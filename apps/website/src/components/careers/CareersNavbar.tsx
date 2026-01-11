@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Moon, Sun, User, LogOut, Briefcase, FileText, ChevronRight } from "lucide-react";
+import { Moon, Sun, User, LogOut, Briefcase, FileText, ChevronRight, Menu, X } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
 import { ensureUserRecord } from "@/lib/auth";
 import {
@@ -31,13 +31,25 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [userData, setUserData] = useState<UserData | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
 
+  // Comprehensive navigation following industry best practices
+  // Based on research from Google, Stripe, Airbnb - clear, focused navigation
   const NAV_LINKS = [
     { name: "Open Positions", href: "/careers/positions" },
-    { name: "My Applications", href: "/careers/my-applications" },
-    { name: "About Us", href: "/careers#about" },
+    { name: "Why OpusFesta", href: "/careers/why-opusfesta" },
+    { name: "How We Hire", href: "/careers/how-we-hire" },
+    { name: "Benefits", href: "/careers/benefits" },
+    { name: "Life at OpusFesta", href: "/careers/life-at-opusfesta" },
   ];
+  
+  // Add "My Applications" to nav if authenticated (in addition to user menu)
+  const authenticatedNavLinks = isAuthenticated === true ? [
+    { name: "My Applications", href: "/careers/my-applications" },
+  ] : [];
+  
+  const allNavLinks = [...NAV_LINKS, ...authenticatedNavLinks];
 
   // Function to fetch user data
   const fetchUserData = async (userId: string) => {
@@ -126,6 +138,26 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
   }, []);
 
   useEffect(() => {
+    // Close mobile menu when clicking outside
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      if (mobileMenuOpen && !target.closest('nav') && !target.closest('button[aria-label="Toggle menu"]')) {
+        setMobileMenuOpen(false);
+      }
+    };
+
+    if (mobileMenuOpen) {
+      document.addEventListener('click', handleClickOutside);
+      return () => document.removeEventListener('click', handleClickOutside);
+    }
+  }, [mobileMenuOpen]);
+
+  useEffect(() => {
+    // Close mobile menu on route change
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
@@ -184,8 +216,32 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
           return;
         }
 
-        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
           if (session?.user) {
+            // CRITICAL: Verify user still exists in Supabase Auth
+            const userExistsInAuth = await supabase.auth.getUser()
+              .then(({ data, error }) => {
+                if (error || !data.user || data.user.id !== session.user.id) {
+                  return false;
+                }
+                return true;
+              })
+              .catch(() => false);
+
+            if (!mounted) return;
+
+            if (!userExistsInAuth) {
+              // User was deleted - sign out
+              console.warn("User deleted from Auth during state change, signing out");
+              await supabase.auth.signOut();
+              if (mounted) {
+                setIsAuthenticated(false);
+                setUserData(null);
+                setIsCheckingAuth(false);
+              }
+              return;
+            }
+
             setIsAuthenticated(true);
             await fetchUserData(session.user.id);
             setIsCheckingAuth(false);
@@ -216,19 +272,140 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
       </Link>
 
       {/* Desktop Navigation */}
-      <div className="hidden lg:flex items-center gap-8 bg-background/50 px-8 py-2.5 rounded-full border border-border/40 backdrop-blur-sm shadow-sm">
-        {NAV_LINKS.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={`text-sm font-medium transition-colors hover:text-primary ${
-              pathname === link.href || (link.href === "/careers#about" && pathname === "/careers") ? "text-primary" : "text-secondary"
-            }`}
-          >
-            {link.name}
-          </Link>
-        ))}
-      </div>
+      {allNavLinks.length > 0 && (
+        <div className="hidden lg:flex items-center gap-8 bg-background/50 px-8 py-2.5 rounded-full border border-border/40 backdrop-blur-sm shadow-sm">
+          {allNavLinks.map((link) => {
+            const isActive = pathname === link.href || 
+              (link.href === "/careers/positions" && pathname?.startsWith("/careers/positions")) ||
+              (link.href === "/careers/my-applications" && pathname === "/careers/my-applications") ||
+              (link.href === "/careers/why-opusfesta" && pathname === "/careers/why-opusfesta") ||
+              (link.href === "/careers/how-we-hire" && pathname === "/careers/how-we-hire") ||
+              (link.href === "/careers/benefits" && pathname === "/careers/benefits") ||
+              (link.href === "/careers/life-at-opusfesta" && pathname === "/careers/life-at-opusfesta");
+            
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`text-sm font-medium transition-colors hover:text-primary ${
+                  isActive ? "text-primary" : "text-secondary"
+                }`}
+              >
+                {link.name}
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Mobile Menu Button */}
+      <button
+        onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+        className="lg:hidden text-secondary hover:text-primary transition-colors p-2"
+        aria-label="Toggle menu"
+      >
+        {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Mobile Menu */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden fixed inset-0 top-[72px] bg-background/95 backdrop-blur-md z-40 border-t border-border">
+          <div className="flex flex-col h-full overflow-y-auto">
+            <nav className="flex flex-col p-6 gap-2">
+              {allNavLinks.map((link) => {
+                const isActive = pathname === link.href || 
+                  (link.href === "/careers/positions" && pathname?.startsWith("/careers/positions")) ||
+                  (link.href === "/careers/my-applications" && pathname === "/careers/my-applications") ||
+                  (link.href === "/careers/why-opusfesta" && pathname === "/careers/why-opusfesta") ||
+                  (link.href === "/careers/how-we-hire" && pathname === "/careers/how-we-hire") ||
+                  (link.href === "/careers/benefits" && pathname === "/careers/benefits") ||
+                  (link.href === "/careers/life-at-opusfesta" && pathname === "/careers/life-at-opusfesta");
+                
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`px-4 py-3 rounded-lg text-base font-medium transition-colors ${
+                      isActive 
+                        ? "bg-primary text-primary-foreground" 
+                        : "text-secondary hover:bg-surface hover:text-primary"
+                    }`}
+                  >
+                    {link.name}
+                  </Link>
+                );
+              })}
+            </nav>
+            
+            {/* Mobile Auth Section */}
+            <div className="mt-auto p-6 border-t border-border">
+              {isCheckingAuth || isAuthenticated === null ? (
+                <div className="h-10" />
+              ) : isAuthenticated === true ? (
+                <div className="flex items-center gap-3 mb-4">
+                  <Avatar className="h-10 w-10">
+                    {userData?.avatar ? (
+                      <AvatarImage src={userData.avatar} alt={userData.name || "User"} />
+                    ) : null}
+                    <AvatarFallback className="bg-secondary text-background font-semibold">
+                      {userData ? getUserInitials(userData.name, userData.email) : "U"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-primary truncate">
+                      {userData?.name || "User"}
+                    </p>
+                    {userData?.email && (
+                      <p className="text-xs text-secondary truncate">
+                        {userData.email}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <Link
+                    href="/careers/login"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors px-4 py-2.5 rounded-lg border border-border"
+                  >
+                    Sign in
+                  </Link>
+                  <Link
+                    href="/careers/signup"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="text-center text-sm font-semibold bg-primary text-background px-4 py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
+                  >
+                    Apply Now
+                  </Link>
+                </div>
+              )}
+              
+              {isAuthenticated === true && (
+                <>
+                  <Link
+                    href="/careers/my-applications"
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="block w-full text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors px-4 py-2.5 rounded-lg border border-border mb-3"
+                  >
+                    My Applications
+                  </Link>
+                  <button
+                    onClick={async () => {
+                      await handleLogout();
+                      setMobileMenuOpen(false);
+                    }}
+                    className="w-full text-center text-sm font-medium text-destructive hover:text-destructive/80 transition-colors px-4 py-2.5 rounded-lg border border-destructive/20"
+                  >
+                    Log out
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Right Actions */}
       <div className="flex items-center gap-4 z-50">
@@ -316,7 +493,7 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
           ) : (
             <>
               <Link
-                href="/login?next=/careers"
+                href="/careers/login"
                 className="text-sm font-medium text-primary hover:text-primary/80 transition-colors px-4 py-2"
               >
                 Sign in

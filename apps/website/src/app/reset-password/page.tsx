@@ -2,49 +2,64 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
 import { toast } from "@/hooks/use-toast";
 
 export default function ResetPassword() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [hasSession, setHasSession] = useState<boolean | null>(null);
+  const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
     let mounted = true;
 
-    // Check for access token in URL hash (Supabase sends it this way)
-    const hashParams = new URLSearchParams(window.location.hash.substring(1));
-    const accessToken = hashParams.get("access_token");
-    const refreshToken = hashParams.get("refresh_token");
+    // Check if user came from code verification
+    const verified = searchParams.get("verified");
+    const email = searchParams.get("email");
 
-    if (accessToken && refreshToken) {
-      // Set the session from URL hash
-      supabase.auth.setSession({
-        access_token: accessToken,
-        refresh_token: refreshToken,
-      }).then(({ data, error }) => {
-        if (!mounted) return;
-        if (error) {
-          console.error("Error setting session:", error);
-          setHasSession(false);
-        } else {
-          setHasSession(Boolean(data.session));
-          // Clean up URL hash
-          window.history.replaceState(null, "", window.location.pathname);
-        }
-      });
-    } else {
-      // Check existing session
-      supabase.auth.getSession().then(({ data }) => {
-        if (!mounted) return;
-        setHasSession(Boolean(data.session));
-      });
-    }
+    // Check for existing session (set by verify-reset-code page)
+    supabase.auth.getSession().then(({ data, error }) => {
+      if (!mounted) return;
+      
+      if (error) {
+        console.error("Error getting session:", error);
+        setHasSession(false);
+        setIsChecking(false);
+        return;
+      }
+
+      const hasValidSession = Boolean(data.session);
+      setHasSession(hasValidSession);
+      setIsChecking(false);
+
+      // If not verified via code and no session, redirect to forgot-password
+      if (!verified && !hasValidSession) {
+        toast({
+          variant: "destructive",
+          title: "Invalid reset link",
+          description: "Please request a new password reset code.",
+        });
+        router.push("/forgot-password");
+        return;
+      }
+
+      // If verified but no session, something went wrong
+      if (verified === "true" && !hasValidSession) {
+        toast({
+          variant: "destructive",
+          title: "Session expired",
+          description: "Please request a new password reset code.",
+        });
+        router.push("/forgot-password");
+        return;
+      }
+    });
 
     const { data } = supabase.auth.onAuthStateChange((_event, session) => {
       if (!mounted) return;
@@ -55,7 +70,7 @@ export default function ResetPassword() {
       mounted = false;
       data.subscription.unsubscribe();
     };
-  }, []);
+  }, [router, searchParams]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,6 +94,20 @@ export default function ResetPassword() {
     }
 
     setIsLoading(true);
+    
+    // Verify we have a session before updating password
+    const { data: sessionData } = await supabase.auth.getSession();
+    if (!sessionData.session) {
+      toast({
+        variant: "destructive",
+        title: "Session expired",
+        description: "Please request a new password reset code.",
+      });
+      setIsLoading(false);
+      router.push("/forgot-password");
+      return;
+    }
+
     const { error } = await supabase.auth.updateUser({ password });
 
     if (error) {
@@ -90,6 +119,9 @@ export default function ResetPassword() {
       setIsLoading(false);
       return;
     }
+
+    // Sign out after password reset (security best practice)
+    await supabase.auth.signOut();
 
     toast({
       title: "Password updated successfully!",
@@ -118,9 +150,13 @@ export default function ResetPassword() {
           </Link>
         </div>
 
-        {hasSession === false ? (
+        {isChecking ? (
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+          </div>
+        ) : hasSession === false ? (
           <div className="text-sm text-muted-foreground">
-            This reset link is invalid or expired. Please request a new one.
+            This reset link is invalid or expired. Please request a new password reset code.
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">

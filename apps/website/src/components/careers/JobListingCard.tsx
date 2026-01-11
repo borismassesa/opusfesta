@@ -64,7 +64,7 @@ export function JobListingCard({ job }: JobListingCardProps) {
             <div 
               className="p-4 bg-surface border border-border rounded-lg cursor-pointer hover:bg-primary/5 transition-colors"
               onClick={() => {
-                window.location.href = `/login?next=${encodeURIComponent('/careers')}`;
+                window.location.href = `/careers/login?next=${encodeURIComponent('/careers')}`;
               }}
             >
               <div className="flex items-center gap-3 text-sm">
@@ -74,7 +74,7 @@ export function JobListingCard({ job }: JobListingCardProps) {
                     Job description available after login
                   </p>
                   <Link
-                    href={`/login?next=${encodeURIComponent('/careers')}`}
+                    href={`/careers/login?next=${encodeURIComponent('/careers')}`}
                     className="text-primary hover:underline text-xs"
                     onClick={(e) => e.stopPropagation()}
                   >

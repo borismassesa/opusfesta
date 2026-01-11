@@ -71,6 +71,33 @@ export function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
           return;
         }
 
+        // CRITICAL: First verify user still exists in Supabase Auth
+        const userExistsInAuth = await supabase.auth.getUser()
+          .then(({ data, error }) => {
+            if (error || !data.user || data.user.id !== session.user.id) {
+              return false;
+            }
+            return true;
+          })
+          .catch(() => false);
+
+        if (!mounted) return;
+
+        if (!userExistsInAuth) {
+          // User was deleted from Auth - clear session and sign out
+          console.warn('[AuthGuard] User deleted from Auth, signing out');
+          await supabase.auth.signOut();
+          setIsAuthenticated(false);
+          setIsChecking(false);
+          if (pathname !== redirectTo && !pathname.startsWith('/login')) {
+            const redirectUrl = new URL(redirectTo, window.location.origin);
+            redirectUrl.searchParams.set('next', pathname);
+            redirectUrl.searchParams.set('error', 'user_deleted');
+            window.location.href = redirectUrl.toString();
+          }
+          return;
+        }
+
         // CRITICAL: Verify user exists in database and create if needed
         const ensureResult = await ensureUserRecord(session);
         
@@ -141,6 +168,33 @@ export function AuthGuard({ children, redirectTo = '/login' }: AuthGuardProps) {
           window.location.href = redirectUrl.toString();
         }
       } else if (session) {
+        // CRITICAL: First verify user still exists in Supabase Auth
+        const userExistsInAuth = await supabase.auth.getUser()
+          .then(({ data, error }) => {
+            if (error || !data.user || data.user.id !== session.user.id) {
+              return false;
+            }
+            return true;
+          })
+          .catch(() => false);
+
+        if (!mounted) return;
+
+        if (!userExistsInAuth) {
+          // User was deleted - sign out
+          console.warn('[AuthGuard] User deleted from Auth during state change, signing out');
+          await supabase.auth.signOut();
+          setIsAuthenticated(false);
+          setIsChecking(false);
+          if (pathname !== redirectTo && !pathname.startsWith('/login')) {
+            const redirectUrl = new URL(redirectTo, window.location.origin);
+            redirectUrl.searchParams.set('next', pathname);
+            redirectUrl.searchParams.set('error', 'user_deleted');
+            window.location.href = redirectUrl.toString();
+          }
+          return;
+        }
+
         // Verify user record exists when session is available
         const ensureResult = await ensureUserRecord(session);
         if (ensureResult.success) {

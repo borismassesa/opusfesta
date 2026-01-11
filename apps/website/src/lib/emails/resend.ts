@@ -14,6 +14,18 @@ export interface EmailOptions {
   replyTo?: string;
 }
 
+// Get the default from address, using environment variable or fallback to thefestaevents.com
+function getDefaultFromAddress(): string {
+  // Allow override via environment variable
+  if (process.env.RESEND_FROM_EMAIL) {
+    return process.env.RESEND_FROM_EMAIL;
+  }
+  
+  // Use thefestaevents.com domain for all environments
+  // Note: Make sure thefestaevents.com domain is verified in Resend
+  return 'OpusFesta <noreply@thefestaevents.com>';
+}
+
 export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
   if (!resend) {
     const errorMsg = 'Resend is not configured. RESEND_API_KEY is missing. Email not sent.';
@@ -27,15 +39,17 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
     return { success: false, error: errorMsg };
   }
 
+  const fromAddress = options.from || getDefaultFromAddress();
+
   try {
     console.log('[EMAIL] Attempting to send email', {
       to: Array.isArray(options.to) ? options.to.join(', ') : options.to,
       subject: options.subject,
-      from: options.from || 'OpusFesta <noreply@opusfesta.com>',
+      from: fromAddress,
     });
 
     const result = await resend.emails.send({
-      from: options.from || 'OpusFesta <noreply@opusfesta.com>',
+      from: fromAddress,
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,
       html: options.html,

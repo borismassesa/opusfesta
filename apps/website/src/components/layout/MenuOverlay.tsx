@@ -38,6 +38,28 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
           return;
         }
 
+        // CRITICAL: First verify user still exists in Supabase Auth
+        const userExistsInAuth = await supabase.auth.getUser()
+          .then(({ data, error }) => {
+            if (error || !data.user || data.user.id !== session.user.id) {
+              return false;
+            }
+            return true;
+          })
+          .catch(() => false);
+
+        if (!mounted) return;
+
+        if (!userExistsInAuth) {
+          // User was deleted - clear session
+          await supabase.auth.signOut();
+          if (mounted) {
+            setIsAuthenticated(false);
+            setIsCheckingAuth(false);
+          }
+          return;
+        }
+
         // Verify user exists in database
         const { data: userData, error: userError } = await supabase
           .from("users")
@@ -66,6 +88,42 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
 
       if (!session) {
         setIsAuthenticated(false);
+        return;
+      }
+
+      // CRITICAL: First verify user still exists in Supabase Auth
+      const userExistsInAuth = await supabase.auth.getUser()
+        .then(({ data, error }) => {
+          // 403 Forbidden means user was deleted - this is expected
+          if (error) {
+            // Suppress 403 errors (user deleted) - these are expected
+            if (error.status !== 403 && error.message !== "Invalid Refresh Token: Refresh Token Not Found") {
+              // Only log unexpected errors
+              console.warn("Error checking user in Auth:", error);
+            }
+            return false;
+          }
+          if (!data.user || data.user.id !== session.user.id) {
+            return false;
+          }
+          return true;
+        })
+        .catch((err) => {
+          // Suppress 403 errors (user deleted) - these are expected
+          if (err?.status !== 403 && err?.message !== "Invalid Refresh Token: Refresh Token Not Found") {
+            console.warn("Error checking user in Auth:", err);
+          }
+          return false;
+        });
+
+      if (!mounted) return;
+
+      if (!userExistsInAuth) {
+        // User was deleted - clear session
+        await supabase.auth.signOut();
+        if (mounted) {
+          setIsAuthenticated(false);
+        }
         return;
       }
 

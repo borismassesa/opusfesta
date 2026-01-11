@@ -50,7 +50,7 @@ export function MyApplicationsClient() {
 
       const { data: { session }, error: sessionError } = await supabase.auth.getSession();
       if (!session || sessionError) {
-        router.push(`/login?next=${encodeURIComponent('/careers/my-applications')}`);
+        router.push(`/careers/login?next=${encodeURIComponent('/careers/my-applications')}`);
         return;
       }
 

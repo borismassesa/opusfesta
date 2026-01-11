@@ -17,6 +17,8 @@ const InputOTP = React.forwardRef<
       containerClassName
     )}
     className={cn("disabled:cursor-not-allowed", className)}
+    inputMode="numeric"
+    autoFocus
     {...props}
   />
 ))
@@ -32,8 +34,8 @@ InputOTPGroup.displayName = "InputOTPGroup"
 
 const InputOTPSlot = React.forwardRef<
   React.ElementRef<"div">,
-  React.ComponentPropsWithoutRef<"div"> & { index: number }
->(({ index, className, ...props }, ref) => {
+  React.ElementRef<"div"> & { index: number; hasError?: boolean }
+>(({ index, className, hasError, ...props }, ref) => {
   const inputOTPContext = React.useContext(OTPInputContext)
   const { char, hasFakeCaret, isActive } = inputOTPContext.slots[index]
 
@@ -41,10 +43,12 @@ const InputOTPSlot = React.forwardRef<
     <div
       ref={ref}
       className={cn(
-        "relative flex h-9 w-9 items-center justify-center border-y border-r border-input text-sm shadow-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md",
-        isActive && "z-10 ring-1 ring-ring",
+        "relative flex h-12 w-12 items-center justify-center border-y border-r border-input text-base font-semibold shadow-sm transition-all first:rounded-l-md first:border-l last:rounded-r-md",
+        isActive && "z-10 ring-2 ring-primary border-primary",
+        hasError && "border-destructive ring-1 ring-destructive",
         className
       )}
+      aria-label={`Digit ${index + 1} of 6`}
       {...props}
     >
       {char}
