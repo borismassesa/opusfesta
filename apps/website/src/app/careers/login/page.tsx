@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Loader2, Briefcase, CheckCircle2, FileText, Bell } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
@@ -99,8 +100,22 @@ export default function CareersLogin() {
     <div className="min-h-screen w-full flex bg-background">
       {/* Left Side - Enhanced Visual Panel */}
       <div className="hidden lg:flex w-[45%] relative overflow-hidden bg-gradient-to-br from-primary/5 via-primary/2 to-background">
-        <div className="absolute inset-0 opacity-[0.02]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=2070&auto=format&fit=crop"
+            alt="Professional team collaboration"
+            fill
+            className="object-cover"
+            priority
+            quality={90}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/60 via-primary/40 to-primary/60" />
+        </div>
+        
+        {/* Overlay gradients */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
         
         <div className="relative z-10 p-12 flex flex-col justify-between h-full">
           <Link

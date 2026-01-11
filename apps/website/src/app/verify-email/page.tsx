@@ -37,6 +37,12 @@ export default function VerifyEmail() {
       return;
     }
     
+    // Store redirect path from URL params to sessionStorage if present
+    const next = searchParams.get("next");
+    if (next) {
+      sessionStorage.setItem("auth_redirect", next);
+    }
+    
     // Set code expiry time (10 minutes from now)
     const expiryTime = new Date(Date.now() + 10 * 60 * 1000);
     setCodeExpiresAt(expiryTime);
@@ -49,7 +55,7 @@ export default function VerifyEmail() {
         description: "Please check your email for the verification code.",
       });
     }
-  }, [email, router]);
+  }, [email, router, searchParams]);
 
   useEffect(() => {
     // Countdown timer for resend cooldown
@@ -149,7 +155,11 @@ export default function VerifyEmail() {
         const { data: sessionData } = await supabase.auth.getSession();
         if (sessionData.session) {
           const userType = await getUserTypeFromSession(sessionData.session);
-          const next = sessionStorage.getItem("auth_redirect");
+          // Get next from URL params first, then sessionStorage
+          const nextFromUrl = searchParams.get("next");
+          const nextFromStorage = sessionStorage.getItem("auth_redirect");
+          const next = nextFromUrl || nextFromStorage;
+          
           const redirectPath = getRedirectPath(
             userType || undefined,
             undefined,

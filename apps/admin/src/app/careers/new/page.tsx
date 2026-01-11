@@ -76,7 +76,7 @@ export default function NewJobPostingPage() {
       salary_range: "",
       is_active: true,
       // New template fields with defaults
-      about_thefesta: "At OpusFesta, we build meaningful experiences and solutions that bring people, businesses, and communities together. We are a growing, people-first company driven by creativity, collaboration, and a passion for excellence. Our culture is built on trust, ownership, and continuous learning—where every voice matters and every team member has the opportunity to grow.",
+      about_thefesta: "OpusFesta is a Tanzania-focused digital platform that makes event planning simpler and celebrations more joyful. We provide modern tools for creating digital invitations, managing RSVPs, building event websites, and connecting with trusted event vendors all in one seamless experience.\n\nBuilt with local culture, creativity, and community at its core, OpusFesta removes the complexity of planning so hosts can focus on what truly matters: celebrating meaningful moments. As a growing, people-first company, we are driven by storytelling, design, and collaboration to bring events to life and a passion for building both online and offline products people love.",
       benefits: [],
       growth_description: "At OpusFesta, we believe in investing in our people. You'll have opportunities to learn new skills, take on new challenges, and grow your career alongside a talented and motivated team.",
       hiring_process: ["Application review", "Initial conversation with our team", "Role-specific interview", "Final discussion and offer"],
@@ -437,7 +437,7 @@ export default function NewJobPostingPage() {
                         <RichTextEditor
                           content={field.value || ""}
                           onChange={field.onChange}
-                          placeholder="At OpusFesta, we build meaningful experiences and solutions that bring people, businesses, and communities together..."
+                          placeholder="OpusFesta is a Tanzania-focused digital platform that makes event planning simpler and celebrations more joyful..."
                         />
                       </FormControl>
                       <FormDescription>

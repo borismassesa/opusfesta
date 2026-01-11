@@ -188,11 +188,28 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
     let subscription: { unsubscribe: () => void } | null = null;
 
     async function checkAuth() {
+      let timeoutId: NodeJS.Timeout | null = null;
+      
       try {
         setIsCheckingAuth(true);
         
+        // Add timeout to prevent hanging - show buttons if check takes too long
+        timeoutId = setTimeout(() => {
+          if (mounted) {
+            console.warn("Auth check timeout - defaulting to not authenticated");
+            setIsAuthenticated(false);
+            setUserData(null);
+            setIsCheckingAuth(false);
+          }
+        }, 3000); // 3 second timeout
+        
         // Fast check: get session (this is cached by Supabase)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
         
         if (!mounted) return;
 
@@ -332,6 +349,10 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
           console.warn("User database check failed, but session is valid:", userCheckError);
         }
       } catch (error) {
+        // Clear timeout if it hasn't fired yet
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
         console.error("Error checking authentication:", error);
         if (mounted) {
           setIsAuthenticated(false);
@@ -492,10 +513,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
       {/* Right Actions */}
       <div className="flex items-center gap-4 z-50">
         <div className="hidden md:flex items-center gap-4">
-          {isCheckingAuth || isAuthenticated === null ? (
-            // Show nothing or a subtle loading state while checking
-            <div className="w-20 h-8" /> // Placeholder to prevent layout shift
-          ) : isAuthenticated === true ? (
+          {isAuthenticated === true ? (
             <>
               {/* Action Icons */}
               <button
@@ -606,6 +624,9 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
                 </DropdownMenuContent>
               </DropdownMenu>
             </>
+          ) : isCheckingAuth && isAuthenticated === null ? (
+            // Show placeholder while checking auth (only for first 3 seconds)
+            <div className="w-20 h-8" />
           ) : (
             <>
               <Link
