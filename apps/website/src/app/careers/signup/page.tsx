@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Loader2, Briefcase, CheckCircle2, FileText, Bell, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
@@ -61,7 +62,9 @@ export default function CareersSignup() {
             title: "Account exists",
             description: "Redirecting to verification page...",
           });
-          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+          const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
+          const verifyUrl = `/verify-email?email=${encodeURIComponent(email)}${next ? `&next=${encodeURIComponent(next)}` : ""}`;
+          router.push(verifyUrl);
           setIsLoading(false);
           return;
         }
@@ -96,8 +99,15 @@ export default function CareersSignup() {
         description: "Please check your email for the verification code.",
       });
 
+      // Preserve the redirect path for after verification
+      const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
+      if (next) {
+        sessionStorage.setItem("auth_redirect", next);
+      }
+      
       // Redirect to verification page immediately for seamless experience
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      const verifyUrl = `/verify-email?email=${encodeURIComponent(email)}${next ? `&next=${encodeURIComponent(next)}` : ""}`;
+      router.push(verifyUrl);
     } catch (error) {
       console.error("Signup error:", error);
       toast({
@@ -128,8 +138,22 @@ export default function CareersSignup() {
     <div className="min-h-screen w-full flex bg-background">
       {/* Left Side - Enhanced Visual Panel */}
       <div className="hidden lg:flex w-[45%] relative overflow-hidden bg-gradient-to-br from-primary/5 via-primary/2 to-background">
-        <div className="absolute inset-0 opacity-[0.02]" />
-        <div className="absolute inset-0 bg-gradient-to-t from-background/80 via-transparent to-transparent" />
+        {/* Background Image */}
+        <div className="absolute inset-0">
+          <Image
+            src="https://images.unsplash.com/photo-1552664730-d307ca884978?q=80&w=2070&auto=format&fit=crop"
+            alt="Diverse team working together"
+            fill
+            className="object-cover"
+            priority
+            quality={90}
+          />
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/60 via-primary/40 to-primary/60" />
+        </div>
+        
+        {/* Overlay gradients */}
+        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
         
         <div className="relative z-10 p-12 flex flex-col justify-between h-full">
           <Link

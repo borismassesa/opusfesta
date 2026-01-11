@@ -220,11 +220,7 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
         <div className="h-px w-20 bg-border mx-auto my-4"></div>
 
         <div className="flex flex-col gap-3">
-          {isCheckingAuth ? (
-            <div className="text-lg font-medium text-muted-foreground">
-              Loading...
-            </div>
-          ) : isAuthenticated ? (
+          {isAuthenticated ? (
             <>
               <Link
                 href="/my-inquiries"
@@ -241,6 +237,10 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
                 My Applications
               </Link>
             </>
+          ) : isCheckingAuth ? (
+            <div className="text-lg font-medium text-muted-foreground">
+              Loading...
+            </div>
           ) : (
             <>
               <Link

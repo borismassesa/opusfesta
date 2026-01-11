@@ -114,28 +114,39 @@ export async function getUserRole(userId: string): Promise<UserRole | null> {
  */
 export function getRedirectPath(userType?: UserType, role?: UserRole, next?: string | null): string {
   // If there's a next parameter and it's a valid path, use it
-  if (next && next.startsWith("/") && !next.startsWith("/admin") && !next.startsWith("/login") && !next.startsWith("/signup")) {
+  // Allow careers paths to pass through
+  if (next && next.startsWith("/") && !next.startsWith("/admin") && !next.startsWith("/login") && !next.startsWith("/signup") && !next.startsWith("/verify-email")) {
     return next;
   }
 
   // Determine user type from role if userType not provided
   const effectiveUserType = userType || (role ? mapRoleToUserType(role) : "couple");
 
-  // Check if we're in a careers context (next parameter contains /careers)
-  const isCareersContext = next?.includes("/careers") || 
+  // Check if we're in a careers context
+  // Check next parameter, sessionStorage, or current pathname
+  const nextFromStorage = typeof window !== "undefined" ? sessionStorage.getItem("auth_redirect") : null;
+  const effectiveNext = next || nextFromStorage;
+  const isCareersContext = effectiveNext?.includes("/careers") || 
                           (typeof window !== "undefined" && window.location.pathname.includes("/careers"));
 
   switch (effectiveUserType) {
     case "couple":
-      // If in careers context, redirect to careers page
-      return isCareersContext ? "/careers" : "/";
+      // If in careers context, redirect to careers page (or specific careers page if next was set)
+      if (isCareersContext) {
+        // If we have a specific careers page in next, use it; otherwise default to /careers
+        return effectiveNext?.startsWith("/careers") ? effectiveNext : "/careers";
+      }
+      return "/";
     case "vendor":
       return "/vendor-portal";
     case "admin":
       return "/admin";
     default:
       // Default user type (job applicants) should go to careers
-      return isCareersContext ? "/careers" : "/";
+      if (isCareersContext) {
+        return effectiveNext?.startsWith("/careers") ? effectiveNext : "/careers";
+      }
+      return "/";
   }
 }
 

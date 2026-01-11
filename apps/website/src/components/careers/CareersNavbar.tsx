@@ -185,8 +185,25 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
     let mounted = true;
 
     const checkAuth = async () => {
+      let timeoutId: NodeJS.Timeout | null = null;
+      
       try {
+        // Add timeout to prevent hanging - show buttons if check takes too long
+        timeoutId = setTimeout(() => {
+          if (mounted) {
+            console.warn("Auth check timeout - defaulting to not authenticated");
+            setIsAuthenticated(false);
+            setUserData(null);
+            setIsCheckingAuth(false);
+          }
+        }, 3000); // 3 second timeout
+        
         const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
         
         if (error) {
           console.error("Session error:", error);
@@ -210,6 +227,10 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
           }
         }
       } catch (error) {
+        // Clear timeout if it hasn't fired yet
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+        }
         console.error("Auth check error:", error);
         if (mounted) {
           setIsAuthenticated(false);
@@ -319,9 +340,7 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
         <div className="flex items-center gap-4 z-50">
           {/* Desktop Auth Section */}
           <div className="hidden md:flex items-center gap-4">
-            {isCheckingAuth || isAuthenticated === null ? (
-              <div className="w-20 h-8" />
-            ) : isAuthenticated === true ? (
+            {isAuthenticated === true ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button className="relative focus:outline-none focus:ring-0 rounded-full">
@@ -391,6 +410,8 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+            ) : isCheckingAuth && isAuthenticated === null ? (
+              <div className="w-20 h-8" />
             ) : (
               <>
                 <Link
@@ -462,9 +483,7 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
             
             {/* Mobile Auth Section */}
             <div className="mt-auto p-6 border-t border-border">
-              {isCheckingAuth || isAuthenticated === null ? (
-                <div className="h-10" />
-              ) : isAuthenticated === true ? (
+              {isAuthenticated === true ? (
                 <div className="flex items-center gap-3 mb-4">
                   <Avatar className="h-10 w-10">
                     {userData?.avatar ? (
@@ -485,6 +504,8 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
                     )}
                   </div>
                 </div>
+              ) : isCheckingAuth && isAuthenticated === null ? (
+                <div className="h-10" />
               ) : (
                 <div className="flex flex-col gap-3">
                   <Link
