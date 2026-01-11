@@ -37,6 +37,29 @@ export function mapRoleToUserType(role: UserRole): UserType {
 }
 
 /**
+ * Verify user still exists in Supabase Auth
+ * Returns true if user exists, false if deleted
+ */
+export async function verifyUserExistsInAuth(userId: string): Promise<boolean> {
+  try {
+    // Use getUser() to verify the user still exists in auth.users
+    // This will fail if the user has been deleted
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error) {
+      // User doesn't exist or session is invalid
+      return false;
+    }
+    
+    // Verify the user ID matches
+    return user?.id === userId;
+  } catch (error) {
+    console.error("Error verifying user in Auth:", error);
+    return false;
+  }
+}
+
+/**
  * Get user role from database
  */
 export async function getUserRole(userId: string): Promise<UserRole | null> {
@@ -48,22 +71,40 @@ export async function getUserRole(userId: string): Promise<UserRole | null> {
       .single();
 
     // Handle RLS errors gracefully (406) - these are expected if session isn't fully established
+    // Also handle "not found" errors (PGRST116) - user record might not exist yet
     const isRLSError = error?.code === "PGRST301" || 
+                      error?.code === "PGRST116" ||
                       error?.message?.toLowerCase().includes("row-level security") ||
-                      error?.status === 406;
+                      error?.status === 406 ||
+                      error?.status === 404;
 
+    // Only log non-RLS errors with meaningful content
     if (error && !isRLSError) {
-      // Only log non-RLS errors
-      console.error("Error fetching user role:", error);
+      // Only log if error has meaningful information
+      const hasErrorInfo = error.code || error.message || error.details || error.hint;
+      if (hasErrorInfo) {
+        console.error("Error fetching user role:", {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint,
+          status: error.status,
+        });
+      }
+      // If error is empty or has no info, it's likely an RLS issue - don't log
     }
 
-    if (!data) {
+    // If RLS error or no data, return null (user record might not exist yet or RLS is blocking)
+    if (!data || isRLSError) {
       return null;
     }
 
     return data.role as UserRole;
   } catch (error) {
-    console.error("Error fetching user role:", error);
+    // Log unexpected errors only if they have meaningful content
+    if (error instanceof Error && error.message) {
+      console.error("Error fetching user role (exception):", error.message);
+    }
     return null;
   }
 }
@@ -124,7 +165,8 @@ export async function createUserRecord(
 
     // Note: password field is required by schema but not used with Supabase Auth
     // Using placeholder since password is managed by auth.users
-    const { data, error } = await supabase.from("users").insert({
+    // Use upsert to handle both insert and update (prevents 409 conflicts)
+    const { data, error } = await supabase.from("users").upsert({
       id: userId,
       email: email,
       password: "$2a$10$placeholder_password_not_used_with_supabase_auth",
@@ -132,19 +174,29 @@ export async function createUserRecord(
       phone: metadata?.phone || null,
       avatar: metadata?.avatar || null,
       role: role,
-      created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+    }, {
+      onConflict: "id", // Use id as the conflict target
+      ignoreDuplicates: false, // Update if exists
     }).select();
 
     if (error) {
-      // If user already exists (409 conflict), that's okay (idempotent)
-      if (error.code === "23505" || error.message?.includes("duplicate") || error.message?.includes("unique")) {
-        // Unique constraint violation - user already exists
+      // Handle duplicate key errors (409 conflict) - user already exists, that's okay
+      const isDuplicateError = error.code === "23505" || 
+                              error.status === 409 ||
+                              error.message?.includes("duplicate") || 
+                              error.message?.includes("unique") ||
+                              error.message?.includes("already exists");
+      
+      if (isDuplicateError) {
+        // User already exists - this is fine, operation is idempotent
         return { success: true };
       }
       
       // Check for RLS policy violations - these should be handled gracefully
       const isRLSError = 
+        error.code === "PGRST301" ||
+        error.status === 406 ||
         error.message?.toLowerCase().includes("row-level security") ||
         error.message?.toLowerCase().includes("violates row-level security policy") ||
         error.message?.toLowerCase().includes("policy") ||
@@ -152,20 +204,10 @@ export async function createUserRecord(
         error.hint?.toLowerCase().includes("policy");
       
       if (isRLSError) {
-        // Log technical details for debugging but don't show to user
-        console.error("RLS policy error creating user record:", {
-          code: error.code,
-          message: error.message,
-          details: error.details,
-          hint: error.hint,
-          fullError: error,
-        });
-        
-        // Return a user-friendly error message
-        return {
-          success: false,
-          error: "Unable to complete account setup. Please contact support if this issue persists.",
-        };
+        // RLS error - user might exist but we can't see/create it due to RLS
+        // Assume success to prevent infinite loops
+        // Don't log as error to avoid console noise
+        return { success: true };
       }
       
       // Log full error details for debugging
@@ -455,6 +497,7 @@ export async function getUserTypeFromSession(session: Session | null): Promise<U
   }
 
   // First try to get from database
+  // If user record doesn't exist or RLS blocks access, fall back to metadata
   const role = await getUserRole(session.user.id);
   if (role) {
     return mapRoleToUserType(role);

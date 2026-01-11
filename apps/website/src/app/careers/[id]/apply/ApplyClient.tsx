@@ -46,8 +46,8 @@ export function ApplyClient({
     const redirectToLogin = (currentPath: string) => {
       if (!mounted) return;
       sessionStorage.setItem("auth_redirect", currentPath);
-      // Redirect to careers signup instead of main login
-      router.replace(`/careers/signup?next=${encodeURIComponent(currentPath)}`);
+      // Redirect to careers login (user can sign up from there if needed)
+      router.replace(`/careers/login?next=${encodeURIComponent(currentPath)}`);
     };
 
     const verifyUserRecord = async (session: any, retryAttempt = 0): Promise<boolean> => {
@@ -55,6 +55,29 @@ export function ApplyClient({
 
       try {
         setAuthStatus("verifying");
+        
+        // CRITICAL: First verify user still exists in Supabase Auth
+        const userExistsInAuth = await supabase.auth.getUser()
+          .then(({ data, error }) => {
+            if (error || !data.user || data.user.id !== session.user.id) {
+              return false;
+            }
+            return true;
+          })
+          .catch(() => false);
+
+        if (!mounted) return false;
+
+        if (!userExistsInAuth) {
+          // User was deleted from Auth - sign out
+          console.warn("User deleted from Auth, signing out");
+          await supabase.auth.signOut();
+          if (mounted) {
+            const currentPath = window.location.pathname;
+            redirectToLogin(currentPath);
+          }
+          return false;
+        }
         
         // Use ensureUserRecord which creates the record if it doesn't exist
         const result = await ensureUserRecord(session);

@@ -3,18 +3,17 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Eye, EyeOff, Loader2, Briefcase, CheckCircle2, FileText, Bell, Sparkles } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, Loader2, Briefcase, CheckCircle2, FileText, Bell } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
+import { ensureUserRecord, getRedirectPath, getUserTypeFromSession } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
 
-export default function CareersSignup() {
+export default function CareersLogin() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
 
   useEffect(() => {
@@ -28,99 +27,71 @@ export default function CareersSignup() {
     e.preventDefault();
     setIsLoading(true);
 
-    try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          ...(phone.trim() && { phone: phone.trim() }), // Only include phone if it's not empty
-          userType: "couple", // Careers signups are always "couple" type
-        }),
-      });
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        console.error("Signup API error:", {
-          status: response.status,
-          error: data.error,
-          details: data.details,
-          verified: data.verified,
-          canResend: data.canResend,
-        });
-        
-        // If user exists but not verified, redirect to verification page
-        if (data.canResend && !data.verified) {
-          toast({
-            title: "Account exists",
-            description: "Redirecting to verification page...",
-          });
-          router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-          setIsLoading(false);
-          return;
-        }
-        
-        // If user exists and is verified, suggest login
-        if (data.verified) {
-          toast({
-            variant: "destructive",
-            title: "Account already exists",
-            description: "Please sign in instead",
-          });
-          // Optionally redirect to login
-          setTimeout(() => {
-            router.push(`/careers/login?email=${encodeURIComponent(email)}`);
-          }, 2000);
-          setIsLoading(false);
-          return;
-        }
-        
-        toast({
-          variant: "destructive",
-          title: "Sign up failed",
-          description: data.error || data.message || "An error occurred during signup",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Show success message
-      toast({
-        title: "Verification code sent",
-        description: "Please check your email for the verification code.",
-      });
-
-      // Redirect to verification page immediately for seamless experience
-      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
-    } catch (error) {
-      console.error("Signup error:", error);
+    if (error) {
       toast({
         variant: "destructive",
-        title: "Sign up failed",
-        description: "An unexpected error occurred. Please try again.",
+        title: "Sign in failed",
+        description: error.message,
       });
       setIsLoading(false);
+      return;
     }
+
+    if (!data.session) {
+      toast({
+        variant: "destructive",
+        title: "Sign in failed",
+        description: "No session created. Please try again.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    const ensureResult = await ensureUserRecord(data.session);
+    
+    if (!ensureResult.success) {
+      toast({
+        variant: "destructive",
+        title: "Account setup issue",
+        description: ensureResult.error || "Unable to complete sign in. Please try again or contact support.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    const userType = await getUserTypeFromSession(data.session);
+    const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
+    const redirectPath = getRedirectPath(userType || undefined, undefined, next);
+    
+    if (sessionStorage.getItem("auth_redirect")) {
+      sessionStorage.removeItem("auth_redirect");
+    }
+    
+    toast({
+      title: "Welcome back!",
+      description: "Successfully signed in. Redirecting you now...",
+    });
+    
+    router.push(redirectPath);
   };
 
-  const benefits = [
+  const features = [
     {
       icon: FileText,
-      text: "Track all your applications"
+      text: "Track application status"
     },
     {
       icon: Bell,
-      text: "Get notified of updates"
+      text: "Get real-time updates"
     },
     {
       icon: CheckCircle2,
-      text: "Save jobs for later"
+      text: "Manage your job search"
     }
   ];
 
@@ -143,24 +114,24 @@ export default function CareersSignup() {
             <div className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20">
-                  <Sparkles className="w-6 h-6 text-primary" />
+                  <Briefcase className="w-6 h-6 text-primary" />
                 </div>
                 <h2 className="text-3xl font-semibold text-primary">
-                  Join our team
+                  Welcome back
                 </h2>
               </div>
               <p className="text-lg text-secondary leading-relaxed">
-                Create your account to start applying for positions and track your applications in real-time.
+                Sign in to access your applications, track their status, and continue exploring opportunities.
               </p>
             </div>
 
             <div className="space-y-3 pt-4 border-t border-border/50">
-              {benefits.map((benefit, i) => {
-                const Icon = benefit.icon;
+              {features.map((feature, i) => {
+                const Icon = feature.icon;
                 return (
                   <div key={i} className="flex items-center gap-3 text-secondary">
                     <Icon className="w-5 h-5 text-primary/60" />
-                    <span className="text-sm">{benefit.text}</span>
+                    <span className="text-sm">{feature.text}</span>
                   </div>
                 );
               })}
@@ -191,46 +162,15 @@ export default function CareersSignup() {
           {/* Header */}
           <div className="space-y-2">
             <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
-              Create your account
+              Sign in to your account
             </h1>
             <p className="text-base text-muted-foreground">
-              Start your journey with OpusFesta. We'll keep you updated on your application status.
+              Access your dashboard to track applications and manage your job search.
             </p>
           </div>
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <label htmlFor="firstName" className="text-sm font-medium text-primary">
-                  First name
-                </label>
-                <input
-                  id="firstName"
-                  type="text"
-                  placeholder="Jane"
-                  className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <label htmlFor="lastName" className="text-sm font-medium text-primary">
-                  Last name
-                </label>
-                <input
-                  id="lastName"
-                  type="text"
-                  placeholder="Doe"
-                  className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
-
             <div className="space-y-2">
               <label htmlFor="email" className="text-sm font-medium text-primary">
                 Email address
@@ -247,20 +187,6 @@ export default function CareersSignup() {
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="phone" className="text-sm font-medium text-primary">
-                Phone number <span className="text-muted-foreground font-normal">(optional)</span>
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                placeholder="+255 123 456 789"
-                className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
               <label htmlFor="password" className="text-sm font-medium text-primary">
                 Password
               </label>
@@ -268,12 +194,11 @@ export default function CareersSignup() {
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
-                  placeholder="Create a password"
+                  placeholder="Enter your password"
                   className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 pr-12 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  minLength={8}
                 />
                 <button
                   type="button"
@@ -284,9 +209,6 @@ export default function CareersSignup() {
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Must be at least 8 characters long
-              </p>
             </div>
 
             <button
@@ -297,10 +219,10 @@ export default function CareersSignup() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating account...
+                  Signing in...
                 </>
               ) : (
-                "Create account"
+                "Sign in"
               )}
             </button>
           </form>
@@ -308,18 +230,18 @@ export default function CareersSignup() {
           {/* Footer Links */}
           <div className="space-y-4 pt-4">
             <div className="text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
+              Don't have an account?{" "}
               <Link
-                href={`/careers/login${searchParams.get("next") ? `?next=${encodeURIComponent(searchParams.get("next")!)}` : ""}`}
+                href={`/careers/signup${searchParams.get("next") ? `?next=${encodeURIComponent(searchParams.get("next")!)}` : ""}`}
                 className="font-semibold text-primary hover:underline underline-offset-4 transition-colors"
               >
-                Sign in
+                Create account
               </Link>
             </div>
 
             <div className="pt-4 border-t border-border/50">
               <p className="text-xs text-center text-muted-foreground leading-relaxed">
-                By continuing, you agree to OpusFesta's{" "}
+                By signing in, you agree to OpusFesta's{" "}
                 <Link href="/terms" className="underline hover:text-primary transition-colors">
                   Terms of Service
                 </Link>{" "}
@@ -327,16 +249,16 @@ export default function CareersSignup() {
                 <Link href="/privacy" className="underline hover:text-primary transition-colors">
                   Privacy Policy
                 </Link>
-                , and to receive periodic emails with updates.
+                .
               </p>
             </div>
 
             <div className="text-center">
               <Link
-                href="/signup"
+                href="/login"
                 className="text-xs text-muted-foreground hover:text-primary transition-colors"
               >
-                Looking for wedding services? Sign up as a couple or vendor →
+                Looking for wedding services? Sign in to main site →
               </Link>
             </div>
           </div>

@@ -2,14 +2,15 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Mail } from "lucide-react";
 import loginImg from "@assets/stock_images/romantic_couple_wedd_0c0b1d37.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
-import { supabase } from "@/lib/supabaseClient";
 import { toast } from "@/hooks/use-toast";
 import { getRandomSignInQuote, type Quote } from "@/lib/quotes";
 
 export default function ForgotPassword() {
+  const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [email, setEmail] = useState("");
@@ -24,32 +25,44 @@ export default function ForgotPassword() {
     e.preventDefault();
     setIsLoading(true);
 
-    const redirectTo =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/reset-password`
-        : undefined;
+    try {
+      const response = await fetch("/api/auth/request-reset-code", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ email: email.trim() }),
+      });
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    });
+      const data = await response.json();
 
-    if (error) {
+      if (!response.ok) {
+        toast({
+          variant: "destructive",
+          title: "Failed to send reset code",
+          description: data.error || "An error occurred. Please try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      toast({
+        title: "Reset code sent!",
+        description: "Check your email for the password reset code.",
+      });
+
+      setIsLoading(false);
+      // Redirect to verify-reset-code page
+      router.push(`/verify-reset-code?email=${encodeURIComponent(email.trim())}`);
+    } catch (error) {
+      console.error("Request reset code error:", error);
       toast({
         variant: "destructive",
-        title: "Failed to send reset email",
-        description: error.message,
+        title: "Failed to send reset code",
+        description: "An unexpected error occurred. Please try again.",
       });
       setIsLoading(false);
-      return;
     }
-
-    toast({
-      title: "Reset link sent!",
-      description: "Check your email for the password reset link.",
-    });
-
-    setIsLoading(false);
-    setIsSubmitted(true);
   };
 
   return (
@@ -103,7 +116,7 @@ export default function ForgotPassword() {
               Forgot password?
             </h1>
             <p className="text-sm text-muted-foreground">
-              Enter your email address and we'll send you a link to reset your password.
+              Enter your email address and we'll send you a code to reset your password.
             </p>
           </div>
 
@@ -131,10 +144,10 @@ export default function ForgotPassword() {
                 {isLoading ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending link...
+                    Sending code...
                   </>
                 ) : (
-                  "Send Reset Link"
+                  "Send Reset Code"
                 )}
               </button>
             </form>
@@ -146,7 +159,7 @@ export default function ForgotPassword() {
               <div className="text-center space-y-2">
                 <h3 className="font-semibold text-lg">Check your email</h3>
                 <p className="text-sm text-muted-foreground">
-                  We've sent a password reset link to your email address.
+                  We've sent a password reset code to your email address.
                 </p>
               </div>
               <button 

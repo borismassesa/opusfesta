@@ -138,11 +138,17 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
           avatar: data.avatar,
         });
       } else if (error && !isRLSError) {
-        // Only log non-RLS errors
-        console.error("Error fetching user data:", error);
+        // Only log non-RLS errors (406, PGRST301, PGRST116 are expected)
+        // Also suppress 403 errors (user deleted) - these are handled by verifyUserExistsInAuth
+        if (error.status !== 403 && error.code !== "PGRST116") {
+          console.error("Error fetching user data:", error);
+        }
       }
     } catch (error) {
-      console.error("Error fetching user data:", error);
+      // Suppress expected errors (403 = user deleted, handled elsewhere)
+      if (error && typeof error === 'object' && 'status' in error && error.status !== 403) {
+        console.error("Error fetching user data:", error);
+      }
     }
   };
 
@@ -263,6 +269,46 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
           fetchUserData(session.user.id);
         }
 
+        // CRITICAL: First verify user still exists in Supabase Auth
+        // If user was deleted, clear session immediately
+        const userExistsInAuth = await supabase.auth.getUser()
+          .then(({ data, error }) => {
+            // 403 Forbidden means user was deleted - this is expected
+            if (error) {
+              // Suppress 403 errors (user deleted) - these are expected
+              if (error.status !== 403 && error.message !== "Invalid Refresh Token: Refresh Token Not Found") {
+                // Only log unexpected errors
+                console.warn("Error checking user in Auth:", error);
+              }
+              return false;
+            }
+            if (!data.user || data.user.id !== session.user.id) {
+              return false;
+            }
+            return true;
+          })
+          .catch((err) => {
+            // Suppress 403 errors (user deleted) - these are expected
+            if (err?.status !== 403 && err?.message !== "Invalid Refresh Token: Refresh Token Not Found") {
+              console.warn("Error checking user in Auth:", err);
+            }
+            return false;
+          });
+
+        if (!mounted) return;
+
+        if (!userExistsInAuth) {
+          // User was deleted from Auth - clear session and sign out
+          console.warn("User deleted from Auth, clearing session");
+          await supabase.auth.signOut();
+          if (mounted) {
+            setIsAuthenticated(false);
+            setUserData(null);
+            setIsCheckingAuth(false);
+          }
+          return;
+        }
+
         // Verify user exists in database in background (non-blocking)
         // This ensures the user record exists, but doesn't block the UI
         try {
@@ -337,6 +383,44 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
       if (!session || !session.user) {
         setIsAuthenticated(false);
         setUserData(null);
+        return;
+      }
+
+      // CRITICAL: First verify user still exists in Supabase Auth
+      const userExistsInAuth = await supabase.auth.getUser()
+        .then(({ data, error }) => {
+          // 403 Forbidden means user was deleted - this is expected
+          if (error) {
+            // Suppress 403 errors (user deleted) - these are expected
+            if (error.status !== 403 && error.message !== "Invalid Refresh Token: Refresh Token Not Found") {
+              // Only log unexpected errors
+              console.warn("Error checking user in Auth:", error);
+            }
+            return false;
+          }
+          if (!data.user || data.user.id !== session.user.id) {
+            return false;
+          }
+          return true;
+        })
+        .catch((err) => {
+          // Suppress 403 errors (user deleted) - these are expected
+          if (err?.status !== 403 && err?.message !== "Invalid Refresh Token: Refresh Token Not Found") {
+            console.warn("Error checking user in Auth:", err);
+          }
+          return false;
+        });
+
+      if (!mounted) return;
+
+      if (!userExistsInAuth) {
+        // User was deleted - sign out
+        console.warn("User deleted from Auth during state change, signing out");
+        await supabase.auth.signOut();
+        if (mounted) {
+          setIsAuthenticated(false);
+          setUserData(null);
+        }
         return;
       }
 

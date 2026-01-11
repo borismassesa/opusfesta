@@ -7,8 +7,6 @@ import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import signupImg from "@assets/stock_images/happy_wedding_couple_e3561dd1.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
 import { getRandomSignUpQuote, type Quote } from "@/lib/quotes";
-import { supabase } from "@/lib/supabaseClient";
-import { createUserRecord, ensureUserRecord, getRedirectPath, getUserTypeFromSession, type UserType } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
 
 export default function Signup() {
@@ -20,6 +18,7 @@ export default function Signup() {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [quote, setQuote] = useState<Quote>(() => getRandomSignUpQuote());
 
@@ -38,72 +37,105 @@ export default function Signup() {
     e.preventDefault();
     setIsLoading(true);
 
-    const redirectTo =
-      typeof window !== "undefined" ? `${window.location.origin}/login` : undefined;
-
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: {
-          full_name: `${firstName} ${lastName}`.trim(),
-          user_type: userType,
+    try {
+      const response = await fetch("/api/auth/signup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-        emailRedirectTo: redirectTo,
-      },
-    });
-
-    if (error) {
-      toast({
-        variant: "destructive",
-        title: "Sign up failed",
-        description: error.message,
+        body: JSON.stringify({
+          email: email.trim(),
+          password,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
+          ...(phone.trim() && { phone: phone.trim() }), // Only include phone if it's not empty
+          userType,
+        }),
       });
-      setIsLoading(false);
-      return;
-    }
 
-    // If session exists (email confirmation disabled), create user record and redirect
-    if (data.session) {
-      // Ensure user record exists in database
-      const ensureResult = await ensureUserRecord(data.session);
-      
-      if (!ensureResult.success) {
+      let data;
+      try {
+        data = await response.json();
+      } catch (jsonError) {
+        console.error("Failed to parse response JSON:", jsonError);
+        const text = await response.text();
+        console.error("Response text:", text);
         toast({
           variant: "destructive",
-          title: "Account creation failed",
-          description: ensureResult.error || "Failed to create user account",
+          title: "Sign up failed",
+          description: "An unexpected error occurred. Please try again.",
         });
         setIsLoading(false);
         return;
       }
 
-      // Get user type and redirect appropriately
-      const userTypeFromSession = await getUserTypeFromSession(data.session);
-      // Check sessionStorage for redirect path
-      const next = sessionStorage.getItem("auth_redirect");
-      const redirectPath = getRedirectPath(userTypeFromSession || userType, undefined, next);
-      
-      // Clear sessionStorage after use
-      if (next) {
-        sessionStorage.removeItem("auth_redirect");
-      }
-      
-      toast({
-        title: "Account created successfully!",
-        description: "Welcome to OpusFesta! Redirecting you now...",
-      });
-      
-      router.push(redirectPath);
-      return;
-    }
+      if (!response.ok) {
+        // Handle existing account cases
+        if (data?.error === "An account with this email already exists" || data?.error?.includes("already exists")) {
+          // If email is not verified, redirect to verification page
+          if (data?.verified === false || data?.canResend) {
+            toast({
+              title: "Account already exists",
+              description: "Redirecting to verification page...",
+            });
+            setIsLoading(false);
+            router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+            return;
+          }
+          // If email is verified, redirect to login
+          if (data?.verified === true) {
+            toast({
+              title: "Account already exists",
+              description: "Please sign in instead.",
+            });
+            setIsLoading(false);
+            router.push(`/login?email=${encodeURIComponent(email)}`);
+            return;
+          }
+          // Generic existing account message
+          toast({
+            variant: "destructive",
+            title: "Account already exists",
+            description: data?.message || "Please sign in or use a different email.",
+          });
+          setIsLoading(false);
+          return;
+        }
 
-    // If no session, email confirmation is required
-    toast({
-      title: "Check your email",
-      description: "We've sent you a confirmation link. Please check your email (including spam folder) to verify your account before signing in.",
-    });
-    setIsLoading(false);
+        console.error("Signup API error:", {
+          status: response.status,
+          statusText: response.statusText,
+          error: data?.error || "Unknown error",
+          message: data?.message,
+          details: data?.details,
+          fullData: data,
+        });
+        toast({
+          variant: "destructive",
+          title: "Sign up failed",
+          description: data?.error || data?.message || `An error occurred during signup (${response.status})`,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Redirect to verification page immediately for seamless experience
+      router.push(`/verify-email?email=${encodeURIComponent(email)}`);
+      
+      // Show toast after navigation starts
+      toast({
+        title: "Verification code sent",
+        description: "Please check your email for the verification code.",
+      });
+    } catch (error) {
+      console.error("Signup error:", error);
+      toast({
+        variant: "destructive",
+        title: "Sign up failed",
+        description: "An unexpected error occurred. Please try again.",
+      });
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -229,6 +261,19 @@ export default function Signup() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+              />
+            </div>
+
+            <div className="relative group">
+              <label className="absolute -top-2.5 left-2.5 bg-background px-1.5 text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors z-10">
+                Phone Number
+              </label>
+              <input
+                type="tel"
+                placeholder="+255 123 456 789"
+                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
               />
             </div>
 

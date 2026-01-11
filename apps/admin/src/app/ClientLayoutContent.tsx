@@ -268,6 +268,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [sidebarState, setSidebarState] = useState<"expanded" | "collapsed">("expanded");
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   
   // Check if we're on a route that should show secondary sidebar
   const hasSecondarySidebar = pathname.startsWith("/content") || pathname.startsWith("/careers") || pathname.startsWith("/editor/careers");
@@ -345,7 +346,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   useEffect(() => {
     let mountedRef = true;
     
-    // Timeout fallback to ensure authChecked is always set (reduced to 2 seconds)
+    // Timeout fallback to ensure authChecked is always set (reduced to 1 second for faster redirect)
     const timeoutId = setTimeout(() => {
       if (mountedRef) {
         console.warn("Auth check timeout - setting authChecked to true");
@@ -353,7 +354,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
         setRole("");
         setAuthChecked(true);
       }
-    }, 2000); // 2 second timeout
+    }, 1000); // 1 second timeout - faster redirect to login
     
     const fetchUserRole = async (currentSession: Session | null) => {
       if (!currentSession?.user?.id) return "";
@@ -384,10 +385,10 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
       }
     };
 
-    // Add timeout wrapper for getSession
+    // Add timeout wrapper for getSession (reduced to 800ms for faster failure)
     const sessionPromise = supabase.auth.getSession();
     const sessionTimeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Session timeout")), 1500)
+      setTimeout(() => reject(new Error("Session timeout")), 800)
     );
 
     Promise.race([sessionPromise, sessionTimeout])
@@ -459,11 +460,24 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   useEffect(() => {
     if (!authChecked) return;
     // Don't redirect if we're already on the login, forgot-password, or reset-password page
-    if (pathname === "/login" || pathname === "/forgot-password" || pathname === "/reset-password") return;
-    if (!session) {
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    if (pathname === "/login" || pathname === "/forgot-password" || pathname === "/reset-password") {
+      setIsRedirecting(false);
       return;
     }
+    if (!session) {
+      setIsRedirecting(true);
+      // Use replace to avoid adding to history, and ensure it happens immediately
+      const targetPath = `/login?next=${encodeURIComponent(pathname)}`;
+      router.replace(targetPath);
+      // Fallback: if router.replace doesn't work quickly, use window.location as backup
+      const timeoutId = setTimeout(() => {
+        if (window.location.pathname !== "/login") {
+          window.location.href = targetPath;
+        }
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+    setIsRedirecting(false);
     // If role is set and not in allowed roles, the unauthorized page will be shown
     // (handled by the !isAllowed check below)
     // If role is empty but session exists, allow access (role might be loading)
@@ -500,6 +514,31 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
     );
   }
 
+  // If no session and we're not on a public page, redirect to login immediately
+  // Don't show unauthorized page for users who aren't logged in yet
+  if (!session && authChecked && pathname !== "/login" && pathname !== "/forgot-password" && pathname !== "/reset-password") {
+    // Trigger redirect immediately - don't wait for useEffect
+    if (!isRedirecting) {
+      setIsRedirecting(true);
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    }
+    // Show minimal loading state while redirecting
+    return (
+      <div className="fixed top-0 left-0 w-full h-screen bg-background z-[9999] flex flex-col justify-center items-center">
+        <div className="font-serif text-4xl md:text-5xl text-primary mb-4 relative">
+          OpusFesta
+        </div>
+        <div className="uppercase text-[10px] text-muted-foreground tracking-[0.3em] font-medium mb-8 opacity-70">
+          Redirecting to Login
+        </div>
+        <div className="w-[200px] h-px bg-primary/10 relative overflow-hidden">
+          <div className="admin-loading-bar absolute left-0 top-0 h-full bg-primary w-0"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Only show unauthorized page if user is logged in but doesn't have a valid role
   if (!isAllowed) {
     return (
       <Providers>
