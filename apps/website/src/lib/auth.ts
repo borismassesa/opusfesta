@@ -166,6 +166,8 @@ export async function createUserRecord(
     // Note: password field is required by schema but not used with Supabase Auth
     // Using placeholder since password is managed by auth.users
     // Use upsert to handle both insert and update (prevents 409 conflicts)
+    // onConflict uses the primary key (id) - this handles most cases
+    // Email unique constraint conflicts are handled in error handling below
     const { data, error } = await supabase.from("users").upsert({
       id: userId,
       email: email,
@@ -176,20 +178,26 @@ export async function createUserRecord(
       role: role,
       updated_at: new Date().toISOString(),
     }, {
-      onConflict: "id", // Use id as the conflict target
+      onConflict: "id", // Primary key conflict resolution
       ignoreDuplicates: false, // Update if exists
     }).select();
 
     if (error) {
       // Handle duplicate key errors (409 conflict) - user already exists, that's okay
+      // This can happen due to:
+      // 1. Unique constraint on id (primary key)
+      // 2. Unique constraint on email
+      // 3. Race conditions where multiple upserts happen simultaneously
       const isDuplicateError = error.code === "23505" || 
                               error.status === 409 ||
                               error.message?.includes("duplicate") || 
                               error.message?.includes("unique") ||
-                              error.message?.includes("already exists");
+                              error.message?.includes("already exists") ||
+                              error.message?.includes("violates unique constraint");
       
       if (isDuplicateError) {
         // User already exists - this is fine, operation is idempotent
+        // Don't log as error to avoid console noise
         return { success: true };
       }
       

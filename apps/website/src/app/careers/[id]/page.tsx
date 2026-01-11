@@ -1,8 +1,27 @@
 import { Suspense } from "react";
 import { JobDescriptionClient } from "./JobDescriptionClient";
 import { Metadata } from "next";
+import { createClient } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
+
+// Get Supabase admin client for server-side queries
+function getSupabaseAdmin() {
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error("Missing Supabase configuration");
+  }
+
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
+      },
+    }
+  );
+}
 
 export async function generateMetadata({
   params,
@@ -11,29 +30,29 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   
-  // Try to fetch job for metadata
+  // Query database directly instead of HTTP fetch for better SSR reliability
   try {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/api/careers/jobs`, {
-      cache: "no-store",
-    });
+    const supabaseAdmin = getSupabaseAdmin();
     
-    if (response.ok) {
-      const data = await response.json();
-      const job = data.jobs?.find((j: any) => j.id === id);
-      
-      if (job) {
-        return {
-          title: `${job.title} | Careers at OpusFesta`,
-          description: job.description 
-            ? job.description.replace(/<[^>]*>/g, '').substring(0, 160) + "..."
-            : `Join OpusFesta as a ${job.title} in ${job.department}. ${job.location} - ${job.employment_type}`,
-          openGraph: {
-            title: `${job.title} | OpusFesta Careers`,
-            description: `Apply for ${job.title} at OpusFesta. ${job.department} - ${job.location}`,
-            type: "website",
-          },
-        };
-      }
+    const { data: job, error } = await supabaseAdmin
+      .from("job_postings")
+      .select("*")
+      .eq("id", id)
+      .eq("is_active", true)
+      .single();
+    
+    if (!error && job) {
+      return {
+        title: `${job.title} | Careers at OpusFesta`,
+        description: job.description 
+          ? job.description.replace(/<[^>]*>/g, '').substring(0, 160) + "..."
+          : `Join OpusFesta as a ${job.title} in ${job.department}. ${job.location} - ${job.employment_type}`,
+        openGraph: {
+          title: `${job.title} | OpusFesta Careers`,
+          description: `Apply for ${job.title} at OpusFesta. ${job.department} - ${job.location}`,
+          type: "website",
+        },
+      };
     }
   } catch (error) {
     console.error("Error generating metadata:", error);
