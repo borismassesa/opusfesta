@@ -1,6 +1,61 @@
 import { supabase } from "./supabase/client";
 import type { Session } from "@supabase/supabase-js";
 
+export type UserType = "couple" | "vendor" | "admin";
+export type UserRole = "user" | "vendor" | "admin";
+
+/**
+ * Get redirect path based on user type/role
+ * For vendor portal, always redirect to dashboard
+ */
+export function getRedirectPath(userType?: UserType, role?: UserRole, next?: string | null): string {
+  // If there's a next parameter and it's a valid path, use it
+  if (next && next.startsWith("/") && !next.startsWith("/login") && !next.startsWith("/signup")) {
+    return next;
+  }
+
+  // For vendor portal, always redirect to dashboard
+  return "/";
+}
+
+/**
+ * Get user type from session
+ */
+export async function getUserTypeFromSession(session: Session | null): Promise<UserType | null> {
+  if (!session?.user) {
+    return null;
+  }
+
+  // Try to get role from database first
+  try {
+    const { data, error } = await supabase
+      .from("users")
+      .select("role")
+      .eq("id", session.user.id)
+      .single();
+
+    if (!error && data?.role) {
+      // Map role to user type
+      switch (data.role) {
+        case "user":
+          return "couple";
+        case "vendor":
+          return "vendor";
+        case "admin":
+          return "admin";
+        default:
+          return "vendor"; // Default for vendor portal
+      }
+    }
+  } catch (error) {
+    // Ignore errors, fall back to metadata
+  }
+
+  // Fall back to user metadata
+  const userType = session.user.user_metadata?.user_type as UserType;
+  return userType || "vendor"; // Default to vendor for vendor portal
+}
+
 /**
  * Ensure user record exists in database
  * Creates it if it doesn't exist

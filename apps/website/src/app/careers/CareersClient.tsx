@@ -16,13 +16,14 @@ gsap.registerPlugin(ScrollTrigger);
 
 function StickyCTA() {
   return (
-    <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300">
+    <div className="fixed bottom-4 sm:bottom-6 left-1/2 -translate-x-1/2 z-50 animate-in fade-in slide-in-from-bottom-4 duration-300 px-4 w-full max-w-[calc(100%-2rem)] sm:max-w-none">
       <Link
         href="/careers/positions"
-        className="flex items-center gap-2 bg-primary text-primary-foreground px-6 py-3 rounded-full text-base font-medium hover:bg-primary/90 transition-colors shadow-lg"
+        className="flex items-center justify-center gap-2 bg-primary text-primary-foreground px-4 sm:px-6 py-2.5 sm:py-3 rounded-full text-sm sm:text-base font-medium hover:bg-primary/90 transition-colors shadow-lg w-full sm:w-auto"
       >
-        Browse openings
-        <ArrowRight className="w-4 h-4" />
+        <span className="sm:hidden">Openings</span>
+        <span className="hidden sm:inline">Browse openings</span>
+        <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
       </Link>
     </div>
   );

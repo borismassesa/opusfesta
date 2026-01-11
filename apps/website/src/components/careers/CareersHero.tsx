@@ -29,16 +29,16 @@ export function CareersHero() {
     : DEFAULT_SLIDES;
 
   return (
-    <section className="min-h-screen w-full flex flex-col items-center justify-center py-20 bg-background text-primary selection:bg-primary selection:text-primary-foreground overflow-hidden">
+    <section className="min-h-screen w-full flex flex-col items-center justify-center py-12 sm:py-16 md:py-20 bg-background text-primary selection:bg-primary selection:text-primary-foreground overflow-hidden">
       
       {/* Header Section */}
-      <div className="w-full max-w-4xl px-6 mb-8 md:mb-12 relative z-20">
+      <div className="w-full max-w-4xl px-4 sm:px-6 mb-6 sm:mb-8 md:mb-12 relative z-20">
         <div className="text-center flex flex-col items-center">
           <motion.h1 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight text-primary leading-[1.1] mb-6"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-primary leading-[1.1] mb-4 sm:mb-6 px-2"
           >
             {hero.title.split('\n').map((line, i) => (
               <React.Fragment key={i}>
@@ -52,7 +52,7 @@ export function CareersHero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.2, ease: "easeOut" }}
-            className="text-secondary text-base md:text-lg max-w-2xl mx-auto leading-relaxed font-light"
+            className="text-secondary text-sm sm:text-base md:text-lg max-w-2xl mx-auto leading-relaxed font-light px-4 sm:px-6"
           >
             {hero.description}
           </motion.p>
@@ -60,20 +60,20 @@ export function CareersHero() {
       </div>
 
       {/* 3D Carousel Section */}
-      <div className="w-full max-w-[1400px] px-0 md:px-4 py-8 mb-8 flex justify-center items-center h-[500px] md:h-[600px] relative z-10">
+      <div className="w-full max-w-[1400px] px-2 sm:px-4 md:px-4 py-4 sm:py-6 md:py-8 mb-4 sm:mb-6 md:mb-8 flex justify-center items-center h-[350px] sm:h-[450px] md:h-[500px] lg:h-[600px] relative z-10">
         <Carousel3D images={carouselImages} autoPlayInterval={2500} />
       </div>
 
       {/* Bottom CTA Section */}
-      <div className="w-full max-w-4xl px-6 mt-4 relative z-20">
-        <div className="relative flex flex-col items-center justify-center pt-8">
+      <div className="w-full max-w-4xl px-4 sm:px-6 mt-2 sm:mt-4 relative z-20">
+        <div className="relative flex flex-col items-center justify-center pt-4 sm:pt-6 md:pt-8">
           <div className="relative">
             <Link href={hero.buttonLink}>
               <button 
-                className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-full text-sm font-medium transition-all transform hover:scale-105 active:scale-95 shadow-lg z-20 relative group inline-flex items-center gap-2"
+                className="bg-primary hover:bg-primary/90 text-primary-foreground px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-medium transition-all transform hover:scale-105 active:scale-95 shadow-lg z-20 relative group inline-flex items-center gap-2"
               >
                 {hero.buttonText}
-                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4 transition-transform group-hover:translate-x-1" />
               </button>
             </Link>
 

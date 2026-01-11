@@ -20,6 +20,7 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     { name: t('nav.websites'), href: "/websites" },
     { name: t('nav.inspiration'), href: "/inspiration" },
     { name: t('nav.shop'), href: "/shop" },
+    { name: "Careers", href: "/careers" },
   ];
 
   // Check authentication state

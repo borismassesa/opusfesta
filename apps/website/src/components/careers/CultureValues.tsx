@@ -27,7 +27,7 @@ export function CultureValues() {
       <Process />
 
       {/* Bottom CTA */}
-      <div className="w-full max-w-4xl mx-auto px-6 mt-12 mb-20">
+      <div className="w-full max-w-4xl mx-auto px-4 sm:px-6 mt-8 sm:mt-12 mb-12 sm:mb-20">
         <CareersCTA />
       </div>
     </>
