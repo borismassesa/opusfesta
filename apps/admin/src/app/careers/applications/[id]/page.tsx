@@ -389,6 +389,27 @@ export default function ApplicationDetailPage() {
             </CardContent>
           </Card>
 
+          {/* Resume */}
+          {application.resume_url && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="w-5 h-5" />
+                  Resume
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Button
+                  onClick={() => handleDownloadFile(application.resume_url!, "Resume")}
+                  variant="outline"
+                >
+                  <FileText className="w-4 h-4 mr-2" />
+                  Download Resume
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Cover Letter */}
           {application.cover_letter && !application.cover_letter_url && (
             <Card>

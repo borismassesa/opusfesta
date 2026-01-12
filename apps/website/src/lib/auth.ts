@@ -315,8 +315,10 @@ export async function ensureUserRecord(session: Session): Promise<{ success: boo
 
     // If fetch error is not "not found" or RLS error, log it
     if (fetchError && !isNotFoundError && !isRLSError) {
-      // Only log unexpected errors
-      console.error("Error fetching user record:", fetchError);
+      // Only log unexpected errors in development
+      if (process.env.NODE_ENV === "development") {
+        console.error("Error fetching user record:", fetchError);
+      }
     }
 
     // If user exists, return their role
@@ -367,16 +369,23 @@ export async function ensureUserRecord(session: Session): Promise<{ success: boo
     );
 
     if (!createResult.success) {
+      // Log error for debugging
+      if (process.env.NODE_ENV === "development") {
+        console.error("Failed to create user record:", createResult.error);
+      }
       // Return the error (already sanitized in createUserRecord to be user-friendly)
-      return { success: false, error: createResult.error || "Unable to create user account" };
+      return { success: false, error: createResult.error || "Unable to create user account. Please try again or contact support." };
     }
 
     return { success: true, userType };
   } catch (error) {
-    console.error("Error ensuring user record:", error);
+    // Log full error details in development
+    if (process.env.NODE_ENV === "development") {
+      console.error("Error ensuring user record:", error);
+    }
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: error instanceof Error ? error.message : "An unexpected error occurred. Please try again.",
     };
   }
 }
