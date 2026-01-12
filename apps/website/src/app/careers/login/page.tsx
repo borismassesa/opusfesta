@@ -28,57 +28,84 @@ export default function CareersLogin() {
     e.preventDefault();
     setIsLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    if (error) {
+      if (error) {
+        // Provide more specific error messages
+        let errorMessage = error.message;
+        if (error.message?.includes("Invalid login credentials") || error.message?.includes("Invalid password")) {
+          errorMessage = "Invalid email or password. Please check your credentials and try again.";
+        } else if (error.message?.includes("Email not confirmed")) {
+          errorMessage = "Please verify your email address before signing in. Check your inbox for the verification code.";
+        } else if (error.message?.includes("Too many requests")) {
+          errorMessage = "Too many sign-in attempts. Please wait a moment and try again.";
+        }
+        
+        toast({
+          variant: "destructive",
+          title: "Sign in failed",
+          description: errorMessage,
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      if (!data.session) {
+        toast({
+          variant: "destructive",
+          title: "Sign in failed",
+          description: "No session created. Please try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      // Clear redirect guard on successful login attempt
+      sessionStorage.removeItem("auth_redirect_guard");
+
+      const ensureResult = await ensureUserRecord(data.session);
+      
+      if (!ensureResult.success) {
+        // Log error for debugging but show user-friendly message
+        console.error("User record ensure failed:", ensureResult.error);
+        toast({
+          variant: "destructive",
+          title: "Account setup issue",
+          description: ensureResult.error || "Unable to complete sign in. Please try again or contact support.",
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const userType = await getUserTypeFromSession(data.session);
+      const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
+      const redirectPath = getRedirectPath(userType || undefined, undefined, next);
+      
+      // Clear redirect-related storage
+      if (sessionStorage.getItem("auth_redirect")) {
+        sessionStorage.removeItem("auth_redirect");
+      }
+      sessionStorage.removeItem("auth_redirect_guard");
+      
+      toast({
+        title: "Welcome back!",
+        description: "Successfully signed in. Redirecting you now...",
+      });
+      
+      router.push(redirectPath);
+    } catch (error) {
+      console.error("Unexpected login error:", error);
       toast({
         variant: "destructive",
         title: "Sign in failed",
-        description: error.message,
+        description: "An unexpected error occurred. Please try again.",
       });
       setIsLoading(false);
-      return;
     }
-
-    if (!data.session) {
-      toast({
-        variant: "destructive",
-        title: "Sign in failed",
-        description: "No session created. Please try again.",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    const ensureResult = await ensureUserRecord(data.session);
-    
-    if (!ensureResult.success) {
-      toast({
-        variant: "destructive",
-        title: "Account setup issue",
-        description: ensureResult.error || "Unable to complete sign in. Please try again or contact support.",
-      });
-      setIsLoading(false);
-      return;
-    }
-
-    const userType = await getUserTypeFromSession(data.session);
-    const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
-    const redirectPath = getRedirectPath(userType || undefined, undefined, next);
-    
-    if (sessionStorage.getItem("auth_redirect")) {
-      sessionStorage.removeItem("auth_redirect");
-    }
-    
-    toast({
-      title: "Welcome back!",
-      description: "Successfully signed in. Redirecting you now...",
-    });
-    
-    router.push(redirectPath);
   };
 
   const features = [

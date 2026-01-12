@@ -147,7 +147,15 @@ export default function VerifyEmail() {
             title: "Email verified",
             description: "Please sign in to continue.",
           });
-          router.push("/login");
+          // Check if we're in careers context
+          const nextFromUrl = searchParams.get("next");
+          const nextFromStorage = sessionStorage.getItem("auth_redirect");
+          const next = nextFromUrl || nextFromStorage;
+          const isCareersContext = next?.includes("/careers") || 
+                                  (typeof window !== "undefined" && window.location.pathname.includes("/careers"));
+          const loginPath = isCareersContext ? "/careers/login" : "/login";
+          const loginUrl = next ? `${loginPath}?next=${encodeURIComponent(next)}` : loginPath;
+          router.push(loginUrl);
           return;
         }
 
@@ -190,7 +198,21 @@ export default function VerifyEmail() {
           title: "Email verified",
           description: "Please sign in to continue.",
         });
-        router.push(`/login?verified=true&email=${encodeURIComponent(email || "")}`);
+        // Check if we're in careers context
+        const nextFromUrl = searchParams.get("next");
+        const nextFromStorage = sessionStorage.getItem("auth_redirect");
+        const next = nextFromUrl || nextFromStorage;
+        const isCareersContext = next?.includes("/careers") || 
+                                (typeof window !== "undefined" && window.location.pathname.includes("/careers"));
+        const loginPath = isCareersContext ? "/careers/login" : "/login";
+        const loginParams = new URLSearchParams({
+          verified: "true",
+          email: email || "",
+        });
+        if (next) {
+          loginParams.set("next", next);
+        }
+        router.push(`${loginPath}?${loginParams.toString()}`);
         return;
       }
 

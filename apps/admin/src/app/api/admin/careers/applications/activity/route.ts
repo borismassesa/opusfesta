@@ -60,6 +60,81 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Deduplicate activities - filter out entries that are duplicates
+    // Prefer entries with performed_by (user ID) over those without
+    if (activities && activities.length > 0) {
+      // Group activities by a key that includes application_id, action_type, and normalized action_details
+      const activityGroups = new Map<string, typeof activities>();
+      
+      for (const activity of activities) {
+        // Normalize action_details for comparison (sort keys and stringify)
+        const normalizedDetails = activity.action_details 
+          ? JSON.stringify(activity.action_details, Object.keys(activity.action_details).sort())
+          : '';
+
+        // Create a key without timestamp to group similar activities
+        const groupKey = `${activity.application_id}|${activity.action_type}|${normalizedDetails}`;
+        
+        if (!activityGroups.has(groupKey)) {
+          activityGroups.set(groupKey, []);
+        }
+        activityGroups.get(groupKey)!.push(activity);
+      }
+
+      // For each group, keep only the best entry (prefer entries with performed_by, then most recent)
+      const deduplicatedActivities: typeof activities = [];
+      
+      for (const [, groupActivities] of activityGroups.entries()) {
+        // If only one entry in group, keep it
+        if (groupActivities.length === 1) {
+          deduplicatedActivities.push(groupActivities[0]);
+          continue;
+        }
+
+        // Sort: entries with performed_by first, then by timestamp (most recent first)
+        groupActivities.sort((a, b) => {
+          const aHasUser = a.performed_by ? 1 : 0;
+          const bHasUser = b.performed_by ? 1 : 0;
+          
+          // If one has user and other doesn't, prefer the one with user
+          if (aHasUser !== bHasUser) {
+            return bHasUser - aHasUser;
+          }
+          
+          // If both have user or both don't, prefer most recent
+          return new Date(b.performed_at).getTime() - new Date(a.performed_at).getTime();
+        });
+
+        // Check if entries are within 5 seconds of each other (likely duplicates)
+        const bestEntry = groupActivities[0];
+        const bestTime = new Date(bestEntry.performed_at).getTime();
+        const hasNearbyDuplicate = groupActivities.some((activity, index) => {
+          if (index === 0) return false; // Skip the first one (best entry)
+          const activityTime = new Date(activity.performed_at).getTime();
+          const timeDiff = Math.abs(bestTime - activityTime);
+          return timeDiff <= 5000; // 5 seconds
+        });
+
+        // If there are nearby duplicates, only keep the best one
+        // Otherwise, keep all entries (they're not duplicates)
+        if (hasNearbyDuplicate) {
+          deduplicatedActivities.push(bestEntry);
+        } else {
+          // No nearby duplicates, keep all entries
+          deduplicatedActivities.push(...groupActivities);
+        }
+      }
+
+      // Sort all activities by performed_at (most recent first)
+      deduplicatedActivities.sort((a, b) => 
+        new Date(b.performed_at).getTime() - new Date(a.performed_at).getTime()
+      );
+
+      // Filter out entries without performed_by (legacy duplicates)
+      // These are old entries created before we fixed user context tracking
+      activities = deduplicatedActivities.filter(activity => activity.performed_by !== null);
+    }
+
     // If we have activities, try to fetch user data for performed_by
     if (activities && activities.length > 0) {
       const performedByUserIds = activities

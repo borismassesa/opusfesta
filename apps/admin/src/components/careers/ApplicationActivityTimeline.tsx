@@ -330,9 +330,7 @@ export function ApplicationActivityTimeline({ applicationId }: ApplicationActivi
                                 Admin User
                               </span>
                             </>
-                          ) : (
-                            <span className="text-xs text-muted-foreground italic">Legacy Entry</span>
-                          )}
+                          ) : null}
                         </div>
                         <div className="text-xs text-muted-foreground">
                           {new Date(activity.performed_at).toLocaleString()}
