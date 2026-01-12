@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
-import { ArrowLeft, Save, Loader2, Mail, Phone, Link as LinkIcon, FileText, ExternalLink, Calendar, User, Briefcase, GraduationCap, Users } from "lucide-react";
+import { ArrowLeft, Save, Loader2, Mail, Phone, Link as LinkIcon, FileText, ExternalLink, Calendar, User, Briefcase, GraduationCap, Users, Download, Eye } from "lucide-react";
 import { ApplicationTaskChecklist } from "@/components/careers/ApplicationTaskChecklist";
 import { ApplicationActivityTimeline } from "@/components/careers/ApplicationActivityTimeline";
 import { Button } from "@/components/ui/button";
@@ -70,10 +70,40 @@ export default function ApplicationDetailPage() {
   const [error, setError] = useState<string | null>(null);
   const [status, setStatus] = useState<string>("pending");
   const [notes, setNotes] = useState<string>("");
+  const [resumePreviewUrl, setResumePreviewUrl] = useState<string | null>(null);
+  const [isLoadingResumePreview, setIsLoadingResumePreview] = useState(false);
 
   useEffect(() => {
     fetchApplication();
   }, [applicationId]);
+
+  const isPdfFile = (filePath: string): boolean => {
+    return filePath.toLowerCase().endsWith('.pdf');
+  };
+
+  const loadResumePreview = async () => {
+    if (!application?.resume_url || resumePreviewUrl) return;
+    
+    setIsLoadingResumePreview(true);
+    try {
+      const url = await getSignedUrl(application.resume_url);
+      if (url) {
+        setResumePreviewUrl(url);
+      }
+    } catch (err) {
+      console.error("Error loading resume preview:", err);
+    } finally {
+      setIsLoadingResumePreview(false);
+    }
+  };
+
+  // Auto-load resume preview for PDFs when application is loaded
+  useEffect(() => {
+    if (application?.resume_url && isPdfFile(application.resume_url) && !resumePreviewUrl && !isLoadingResumePreview) {
+      loadResumePreview();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [application?.resume_url]);
 
   const fetchApplication = async () => {
     setIsLoading(true);
@@ -398,14 +428,42 @@ export default function ApplicationDetailPage() {
                   Resume
                 </CardTitle>
               </CardHeader>
-              <CardContent>
-                <Button
-                  onClick={() => handleDownloadFile(application.resume_url!, "Resume")}
-                  variant="outline"
-                >
-                  <FileText className="w-4 h-4 mr-2" />
-                  Download Resume
-                </Button>
+              <CardContent className="space-y-4">
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleDownloadFile(application.resume_url!, "Resume")}
+                    variant="outline"
+                  >
+                    <Download className="w-4 h-4 mr-2" />
+                    Download Resume
+                  </Button>
+                </div>
+                
+                {isPdfFile(application.resume_url) && (
+                  <div className="space-y-2">
+                    {isLoadingResumePreview && (
+                      <div className="flex items-center justify-center py-8 border rounded-lg bg-muted/50">
+                        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+                        <span className="ml-2 text-sm text-muted-foreground">Loading preview...</span>
+                      </div>
+                    )}
+                    {resumePreviewUrl && !isLoadingResumePreview && (
+                      <div className="border rounded-lg overflow-hidden bg-muted/50">
+                        <iframe
+                          src={resumePreviewUrl}
+                          className="w-full h-[600px] border-0"
+                          title="Resume Preview"
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!isPdfFile(application.resume_url) && (
+                  <p className="text-sm text-muted-foreground">
+                    Preview is only available for PDF files. Please download to view DOC/DOCX files.
+                  </p>
+                )}
               </CardContent>
             </Card>
           )}
