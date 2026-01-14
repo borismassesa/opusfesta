@@ -35,11 +35,9 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
 
   // Careers-specific navigation - only careers-related links
   const NAV_LINKS = [
-    { name: "Open Positions", href: "/careers/positions" },
     { name: "Why OpusFesta", href: "/careers/why-opusfesta" },
-    { name: "How We Hire", href: "/careers/how-we-hire" },
-    { name: "Benefits", href: "/careers/benefits" },
-    { name: "Life at OpusFesta", href: "/careers/life-at-opusfesta" },
+    { name: "Students", href: "/careers/students" },
+    { name: "Open Positions", href: "/careers/positions" },
   ];
   
   // Add "My Applications" to nav if authenticated
@@ -317,9 +315,7 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
                 (link.href === "/careers/positions" && pathname?.startsWith("/careers/positions")) ||
                 (link.href === "/careers/my-applications" && pathname === "/careers/my-applications") ||
                 (link.href === "/careers/why-opusfesta" && pathname === "/careers/why-opusfesta") ||
-                (link.href === "/careers/how-we-hire" && pathname === "/careers/how-we-hire") ||
-                (link.href === "/careers/benefits" && pathname === "/careers/benefits") ||
-                (link.href === "/careers/life-at-opusfesta" && pathname === "/careers/life-at-opusfesta");
+                (link.href === "/careers/students" && pathname === "/careers/students");
               
               return (
                 <Link
@@ -432,9 +428,21 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
 
           {/* Theme Toggle and Mobile Menu - Right end */}
           <button
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            onClick={() => {
+              if (!mounted) return;
+              const currentTheme = theme || "system";
+              if (currentTheme === "dark") {
+                setTheme("light");
+              } else if (currentTheme === "light") {
+                setTheme("dark");
+              } else {
+                // If system, toggle to dark
+                setTheme("dark");
+              }
+            }}
             className="text-secondary hover:text-primary transition-colors cursor-pointer p-2 rounded-full hover:bg-primary/5"
             aria-label="Toggle theme"
+            disabled={!mounted}
           >
             {mounted && theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
           </button>
@@ -461,8 +469,7 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
                   (link.href === "/careers/my-applications" && pathname === "/careers/my-applications") ||
                   (link.href === "/careers/why-opusfesta" && pathname === "/careers/why-opusfesta") ||
                   (link.href === "/careers/how-we-hire" && pathname === "/careers/how-we-hire") ||
-                  (link.href === "/careers/benefits" && pathname === "/careers/benefits") ||
-                  (link.href === "/careers/life-at-opusfesta" && pathname === "/careers/life-at-opusfesta");
+                  (link.href === "/careers/benefits" && pathname === "/careers/benefits");
                 
                 return (
                   <Link

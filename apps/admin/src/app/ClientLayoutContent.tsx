@@ -48,8 +48,10 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Providers } from "@/components/providers";
 import { cn } from "@/lib/utils";
 import { CareersContentProvider } from "@/context/CareersContentContext";
+import { StudentsContentProvider } from "@/context/StudentsContentContext";
 import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import { UnauthorizedPage } from "@/components/UnauthorizedPage";
+import { useIsMobile } from "@/hooks/use-mobile";
 import "./globals.css";
 
 // Component to control sidebar state based on secondary sidebar visibility
@@ -262,6 +264,7 @@ function isActiveRoute(pathname: string, href: string) {
 export default function ClientLayoutContent({ children }: { children: ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
+  const isMobile = useIsMobile();
   const [authChecked, setAuthChecked] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState("");
@@ -385,10 +388,10 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
       }
     };
 
-    // Add timeout wrapper for getSession (reduced to 800ms for faster failure)
+    // Add timeout wrapper for getSession (5 seconds for network requests)
     const sessionPromise = supabase.auth.getSession();
     const sessionTimeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Session timeout")), 800)
+      setTimeout(() => reject(new Error("Session timeout")), 5000)
     );
 
     Promise.race([sessionPromise, sessionTimeout])
@@ -705,7 +708,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
                 </div>
 
                 {/* Hover Overlay Sidebar - Shows full sidebar on hover when collapsed */}
-                {hasSecondarySidebar && sidebarState === "collapsed" && (
+                {hasSecondarySidebar && sidebarState === "collapsed" && !isMobile && (
                   <HoverOverlaySidebar 
                     isVisible={sidebarHovered}
                     onMouseEnter={() => setSidebarHovered(true)}
@@ -721,7 +724,17 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
                 )}
 
               {/* Main Content Area */}
-              <main className="flex-1 overflow-auto bg-background relative">
+              <div className="flex min-w-0 flex-1 flex-col">
+                <header className="sticky top-0 z-20 flex h-12 items-center gap-3 border-b border-border/60 bg-background/95 px-3 backdrop-blur md:hidden">
+                  <SidebarTrigger className="h-9 w-9" />
+                  <Link
+                    href="/"
+                    className="font-serif text-lg text-primary hover:text-primary/80 transition-colors select-none"
+                  >
+                    OpusFesta
+                  </Link>
+                </header>
+                <main className="flex-1 overflow-auto bg-background relative">
                 <div className={cn(
                   "relative z-10 animate-in fade-in duration-500",
                   pathname.startsWith("/content") || pathname.startsWith("/editor/careers") || pathname.startsWith("/careers")
@@ -729,10 +742,13 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
                     : "min-h-full p-4 sm:p-6 pt-16 sm:pt-20 md:p-8 lg:p-10 max-w-[1600px] mx-auto"
                 )}>
                   <CareersContentProvider>
-                    {children}
+                    <StudentsContentProvider>
+                      {children}
+                    </StudentsContentProvider>
                   </CareersContentProvider>
                 </div>
-              </main>
+                </main>
+              </div>
             </div>
             </SidebarController>
           </SidebarProvider>

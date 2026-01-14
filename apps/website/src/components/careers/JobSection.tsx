@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import { Search, Briefcase, MapPin, Clock, X, Loader2, ArrowRight } from "lucide-react";
-import { fetchJobPostings, JobPosting } from "@/lib/careers/jobs";
+import { fetchJobPostings, JobPosting, getJobSlug } from "@/lib/careers/jobs";
 import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -164,7 +164,26 @@ export function JobSection() {
   };
 
   const getJobPreview = (description: string) => {
-    return description.length > 120 ? description.substring(0, 120) + "..." : description;
+    if (typeof window === 'undefined') {
+      // Server-side: simple regex-based stripping
+      let text = description
+        .replace(/<[^>]*>/g, '') // Strip HTML tags
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/&nbsp;/g, ' ')
+        .trim();
+      return text.length > 120 ? text.substring(0, 120) + "..." : text;
+    }
+    
+    // Client-side: use DOM to properly parse HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = description;
+    let text = tempDiv.textContent || tempDiv.innerText || '';
+    text = text.trim();
+    return text.length > 120 ? text.substring(0, 120) + "..." : text;
   };
 
   const hasActiveFilters = selectedDept !== "All departments" || searchQuery !== "";
@@ -178,13 +197,6 @@ export function JobSection() {
     return (
       <section className="careers-section px-6 lg:px-12 max-w-6xl mx-auto py-24 border-t border-primary/10">
         <div className="mb-12">
-          <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
-            <span className="w-12 h-px bg-accent"></span>
-            <span className="font-mono text-accent text-xs tracking-widest uppercase">
-              Opportunities
-            </span>
-            <span className="md:hidden w-12 h-px bg-accent"></span>
-          </div>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-primary mb-3">
             Open Positions
           </h2>
@@ -206,13 +218,6 @@ export function JobSection() {
     return (
       <section className="careers-section px-6 lg:px-12 max-w-6xl mx-auto py-24 border-t border-primary/10">
         <div className="mb-12">
-          <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
-            <span className="w-12 h-px bg-accent"></span>
-            <span className="font-mono text-accent text-xs tracking-widest uppercase">
-              Opportunities
-            </span>
-            <span className="md:hidden w-12 h-px bg-accent"></span>
-          </div>
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-primary mb-3">
             Open Positions
           </h2>
@@ -244,13 +249,6 @@ export function JobSection() {
     <section ref={containerRef} className="careers-section px-6 lg:px-12 max-w-6xl mx-auto py-24 border-t border-primary/10">
       {/* Header */}
       <div className="mb-12">
-        <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
-          <span className="w-12 h-px bg-accent"></span>
-          <span className="font-mono text-accent text-xs tracking-widest uppercase">
-            Opportunities
-          </span>
-          <span className="md:hidden w-12 h-px bg-accent"></span>
-        </div>
         <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-primary mb-4">
           Open Positions
         </h2>
@@ -331,7 +329,7 @@ export function JobSection() {
                     >
                       <div className="mb-4">
                         <Link
-                          href={`/careers/${job.id}`}
+                          href={`/careers/${getJobSlug(job.title)}`}
                           className="block group"
                         >
                           <h4 className="font-semibold text-lg text-primary group-hover:underline mb-3 leading-tight">
@@ -369,9 +367,9 @@ export function JobSection() {
                         </p>
                       )}
 
-                      <div className="pt-4 border-t border-border">
+                      <div className="pt-4 border-t border-border flex justify-end">
                         <Link
-                          href={`/careers/${job.id}`}
+                          href={`/careers/${getJobSlug(job.title)}`}
                           className="inline-flex items-center gap-2 text-sm font-medium text-primary hover:text-accent transition-colors group"
                         >
                           View details

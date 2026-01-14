@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { JobPosting } from "@/lib/careers/jobs";
-import { fetchJobPostings } from "@/lib/careers/jobs";
+import { JobPosting, fetchJobPostings, findJobBySlugOrId, getJobSlug } from "@/lib/careers/jobs";
 import { ArrowLeft, MapPin, Briefcase, Clock, Share2, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
@@ -35,18 +34,22 @@ export function JobDescriptionClient({
     async function loadJob() {
       try {
         const resolvedParams = await params;
-        const id = resolvedParams.id;
-        setJobId(id);
+        const slugOrId = resolvedParams.id;
+        setJobId(slugOrId);
 
         // Fetch jobs without authentication - descriptions are public
         const jobPostings = await fetchJobPostings();
-        const foundJob = jobPostings.find((j: JobPosting) => j.id === id);
+        
+        // Find job by slug or ID (for backward compatibility)
+        const foundJob = findJobBySlugOrId(jobPostings, slugOrId);
 
         if (!foundJob) {
           throw new Error("Job posting not found");
         }
 
         setJob(foundJob);
+        // Update jobId to the actual ID for internal use (e.g., apply links)
+        setJobId(foundJob.id);
       } catch (err: any) {
         console.error("Error loading job:", err);
         setError(err.message || "Failed to load job posting");

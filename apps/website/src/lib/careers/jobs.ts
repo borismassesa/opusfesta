@@ -20,6 +20,25 @@ export interface JobPosting {
   equal_opportunity_statement?: string | null;
 }
 
+/**
+ * Generate a URL-friendly slug from job title
+ */
+export function getJobSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '') // Remove special characters
+    .replace(/[\s_-]+/g, '-') // Replace spaces and underscores with hyphens
+    .replace(/^-+|-+$/g, ''); // Remove leading/trailing hyphens
+}
+
+/**
+ * Check if a string is a UUID
+ */
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 export async function fetchJobPostings(): Promise<JobPosting[]> {
   try {
     const headers: HeadersInit = {
@@ -68,6 +87,19 @@ export async function fetchJobPostings(): Promise<JobPosting[]> {
   } catch (error: any) {
     console.error("Error fetching job postings:", error);
     // Return empty array so UI can show "no positions found" instead of infinite loading
-    return [];
+      return [];
   }
+}
+
+/**
+ * Find a job by slug or ID (for backward compatibility)
+ */
+export function findJobBySlugOrId(jobs: JobPosting[], slugOrId: string): JobPosting | undefined {
+  // If it's a UUID, treat it as an ID (backward compatibility)
+  if (isUUID(slugOrId)) {
+    return jobs.find(j => j.id === slugOrId);
+  }
+  
+  // Otherwise, treat it as a slug and find by matching slug generated from title
+  return jobs.find(j => getJobSlug(j.title) === slugOrId);
 }

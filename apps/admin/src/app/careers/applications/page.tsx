@@ -371,7 +371,46 @@ export default function ApplicationsPage() {
     }
   };
 
-  const handleBulkStatusUpdate = async (status: string) => {
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) {
+      alert("Please select at least one application");
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} application(s)? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications/bulk`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "delete",
+          applicationIds: Array.from(selectedIds),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to delete applications");
+      }
+
+      setSelectedIds(new Set());
+      fetchApplications();
+    } catch (err) {
+      console.error("Error bulk deleting applications:", err);
+      alert(err instanceof Error ? err.message : "Failed to delete applications");
+    }
+  };
+
+  const handleBulkActivate = async () => {
     if (selectedIds.size === 0) {
       alert("Please select at least one application");
       return;
@@ -381,30 +420,63 @@ export default function ApplicationsPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Use absolute URL with basePath to call admin app's own API
-      for (const id of Array.from(selectedIds)) {
-        const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications`), {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({
-            id,
-            status,
-          }),
-        });
+      const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications/bulk`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "activate",
+          applicationIds: Array.from(selectedIds),
+        }),
+      });
 
-        if (!response.ok) {
-          throw new Error(`Failed to update application ${id}`);
-        }
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to activate applications");
       }
 
       setSelectedIds(new Set());
       fetchApplications();
     } catch (err) {
-      console.error("Error bulk updating applications:", err);
-      alert(err instanceof Error ? err.message : "Failed to update applications");
+      console.error("Error bulk activating applications:", err);
+      alert(err instanceof Error ? err.message : "Failed to activate applications");
+    }
+  };
+
+  const handleBulkDeactivate = async () => {
+    if (selectedIds.size === 0) {
+      alert("Please select at least one application");
+      return;
+    }
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications/bulk`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "deactivate",
+          applicationIds: Array.from(selectedIds),
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to deactivate applications");
+      }
+
+      setSelectedIds(new Set());
+      fetchApplications();
+    } catch (err) {
+      console.error("Error bulk deactivating applications:", err);
+      alert(err instanceof Error ? err.message : "Failed to deactivate applications");
     }
   };
 
@@ -634,9 +706,9 @@ export default function ApplicationsPage() {
       {/* Bulk Actions */}
       <BulkActions
         selectedCount={selectedIds.size}
-        onDelete={() => alert("Bulk delete not implemented for applications")}
-        onActivate={() => handleBulkStatusUpdate("reviewing")}
-        onDeactivate={() => handleBulkStatusUpdate("pending")}
+        onDelete={handleBulkDelete}
+        onActivate={handleBulkActivate}
+        onDeactivate={handleBulkDeactivate}
         onExport={() => {
           const selected = filteredAndSortedApplications.filter((app) => selectedIds.has(app.id));
           if (selected.length === 0) {
