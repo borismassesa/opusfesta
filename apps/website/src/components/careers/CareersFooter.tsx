@@ -5,7 +5,7 @@ import { Linkedin, Mail } from "lucide-react";
 
 export function CareersFooter() {
   return (
-    <footer className="bg-surface border-t border-border pt-12 pb-10 md:pt-20">
+    <footer className="bg-surface border-t border-border pt-12 pb-8 md:pt-16 md:pb-8">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
         <div className="flex flex-col md:grid md:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-8 mb-12 md:mb-16">
           

@@ -5,8 +5,6 @@ import { Search, Loader2, CheckCircle2, XCircle, Clock, FileText, Calendar } fro
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { CareersNavbar } from "@/components/careers/CareersNavbar";
 import { CareersFooter } from "@/components/careers/CareersFooter";
@@ -31,6 +29,50 @@ export function TrackApplicationClient() {
   const [error, setError] = useState<string | null>(null);
   const [application, setApplication] = useState<ApplicationStatus | null>(null);
 
+  // Immediately clear query parameters on mount (runs synchronously)
+  if (typeof window !== "undefined" && window.location.search) {
+    const url = new URL(window.location.href);
+    const hasSensitiveParams = url.searchParams.has('id') || url.searchParams.has('email');
+    
+    if (hasSensitiveParams) {
+      // Extract values before clearing
+      const idParam = url.searchParams.get('id');
+      const emailParam = url.searchParams.get('email');
+      
+      // Clear URL immediately (synchronous)
+      window.history.replaceState({}, '', '/careers/track');
+      
+      // Store in sessionStorage for auto-fill
+      if (idParam) {
+        sessionStorage.setItem('track_application_id', idParam);
+      }
+      if (emailParam) {
+        sessionStorage.setItem('track_application_email', emailParam);
+      }
+    } else if (url.search) {
+      // Clear any other query params
+      window.history.replaceState({}, '', '/careers/track');
+    }
+  }
+
+  // Check for pre-filled data from sessionStorage
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    
+    // Get stored values
+    const storedId = sessionStorage.getItem('track_application_id');
+    const storedEmail = sessionStorage.getItem('track_application_email');
+    
+    if (storedId) {
+      setApplicationId(storedId);
+      sessionStorage.removeItem('track_application_id');
+    }
+    if (storedEmail) {
+      setEmail(storedEmail);
+      sessionStorage.removeItem('track_application_email');
+    }
+  }, []);
+
   const trackApplication = useCallback(async (id: string, emailAddr: string) => {
     setIsLoading(true);
     setError(null);
@@ -38,7 +80,17 @@ export function TrackApplicationClient() {
 
     try {
       const response = await fetch(
-        `/api/careers/applications/track?id=${encodeURIComponent(id)}&email=${encodeURIComponent(emailAddr)}`
+        `/api/careers/applications/track`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            id: id,
+            email: emailAddr,
+          }),
+        }
       );
 
       const data = await response.json();
@@ -56,23 +108,6 @@ export function TrackApplicationClient() {
     }
   }, []);
 
-  // Check for URL parameters
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get("id");
-    const emailParam = params.get("email");
-    
-    if (id) setApplicationId(id);
-    if (emailParam) setEmail(emailParam);
-    
-    // Auto-track if both are provided
-    if (id && emailParam) {
-      trackApplication(id, emailParam);
-    }
-  }, [trackApplication]);
-
   const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
     trackApplication(applicationId, email);
@@ -85,32 +120,32 @@ export function TrackApplicationClient() {
     > = {
       pending: {
         label: "Pending",
-        color: "bg-yellow-100 text-yellow-800 border-yellow-300",
-        icon: <Clock className="w-4 h-4" />,
+        color: "bg-surface text-[#050505] border-border dark:bg-surface/50 dark:text-secondary dark:border-border/60",
+        icon: <Clock className="w-3.5 h-3.5 text-current" />,
         description: "Your application has been received and is awaiting review.",
       },
       reviewing: {
         label: "Under Review",
-        color: "bg-blue-100 text-blue-800 border-blue-300",
-        icon: <FileText className="w-4 h-4" />,
+        color: "bg-blue-100 text-[#050505] border-blue-300 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800/50",
+        icon: <FileText className="w-3.5 h-3.5 text-current" />,
         description: "Your application is currently being reviewed by our team.",
       },
       interviewed: {
         label: "Interviewed",
-        color: "bg-purple-100 text-purple-800 border-purple-300",
-        icon: <CheckCircle2 className="w-4 h-4" />,
+        color: "bg-purple-50 text-[#050505] border-purple-200 dark:bg-purple-950/30 dark:text-purple-400 dark:border-purple-800/50",
+        icon: <CheckCircle2 className="w-3.5 h-3.5 text-current" />,
         description: "You have completed the interview process. We'll be in touch soon.",
       },
       rejected: {
         label: "Not Selected",
-        color: "bg-red-100 text-red-800 border-red-300",
-        icon: <XCircle className="w-4 h-4" />,
+        color: "bg-red-50 text-[#050505] border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/50",
+        icon: <XCircle className="w-3.5 h-3.5 text-current" />,
         description: "Thank you for your interest. Unfortunately, we've decided to move forward with other candidates.",
       },
       hired: {
         label: "Hired",
-        color: "bg-green-100 text-green-800 border-green-300",
-        icon: <CheckCircle2 className="w-4 h-4" />,
+        color: "bg-green-50 text-[#050505] border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/50",
+        icon: <CheckCircle2 className="w-3.5 h-3.5 text-current" />,
         description: "Congratulations! We're excited to have you join our team.",
       },
     };
@@ -122,134 +157,142 @@ export function TrackApplicationClient() {
     <div className="min-h-screen bg-background flex flex-col">
       <CareersNavbar />
       <main className="flex-1">
-        <div className="container mx-auto px-4 pt-16 pb-12 md:pt-20 md:pb-16 max-w-4xl">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2">Track Your Application</h1>
-            <p className="text-muted-foreground">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-12 md:pt-20 md:pb-16">
+          <div className="text-center mb-12 md:mb-16">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-semibold text-primary mb-4 tracking-tight">
+              Track Your Application
+            </h1>
+            <p className="text-secondary text-sm sm:text-base md:text-lg leading-relaxed font-light max-w-2xl mx-auto">
               Enter your application ID and email to check the status of your job application
             </p>
           </div>
 
-          <Card className="mb-8">
-            <CardHeader>
-              <CardTitle>Application Details</CardTitle>
-              <CardDescription>
+          <div className="group relative bg-background border border-border rounded-2xl p-6 md:p-8 mb-8 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 overflow-hidden">
+            {/* Gradient Accent on Hover */}
+            <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-secondary to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            
+            <div className="mb-6">
+              <h2 className="text-xl md:text-2xl font-semibold text-primary mb-2">Application Details</h2>
+              <p className="text-secondary text-sm font-light">
                 Enter the information you received when you submitted your application
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleTrack} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="applicationId">Application ID</Label>
-                  <Input
-                    id="applicationId"
-                    type="text"
-                    placeholder="Enter your application ID"
-                    value={applicationId}
-                    onChange={(e) => setApplicationId(e.target.value)}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    You received this ID when you submitted your application
-                  </p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="Enter your email address"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Use the same email address you used when applying
-                  </p>
-                </div>
-                <Button type="submit" className="w-full" disabled={isLoading}>
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Tracking...
-                    </>
-                  ) : (
-                    <>
-                      <Search className="w-4 h-4 mr-2" />
-                      Track Application
-                    </>
-                  )}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
+              </p>
+            </div>
+            
+            <form onSubmit={handleTrack} className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="applicationId" className="text-sm font-medium text-primary">Application ID</Label>
+                <Input
+                  id="applicationId"
+                  type="text"
+                  placeholder="Enter your application ID"
+                  value={applicationId}
+                  onChange={(e) => setApplicationId(e.target.value)}
+                  required
+                  className="border-border focus:border-primary focus:ring-primary/20"
+                />
+                <p className="text-xs text-secondary/70 font-light">
+                  You received this ID when you submitted your application
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm font-medium text-primary">Email Address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email address"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="border-border focus:border-primary focus:ring-primary/20"
+                />
+                <p className="text-xs text-secondary/70 font-light">
+                  Use the same email address you used when applying
+                </p>
+              </div>
+              <Button type="submit" className="w-full" disabled={isLoading}>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Tracking...
+                  </>
+                ) : (
+                  <>
+                    <Search className="w-4 h-4 mr-2" />
+                    Track Application
+                  </>
+                )}
+              </Button>
+            </form>
+          </div>
 
           {error && (
-            <Card className="border-destructive/20 bg-destructive/5">
-              <CardContent className="pt-6">
-                <div className="flex items-start gap-3">
-                  <XCircle className="w-5 h-5 text-destructive mt-0.5" />
-                  <div>
-                    <p className="font-semibold text-destructive mb-1">Error</p>
-                    <p className="text-sm text-destructive/80">{error}</p>
-                  </div>
+            <div className="border border-red-200 dark:border-red-800/50 bg-red-50 dark:bg-red-950/20 rounded-2xl p-6 mb-8">
+              <div className="flex items-start gap-3">
+                <XCircle className="w-5 h-5 text-red-600 dark:text-red-400 mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="font-semibold text-red-800 dark:text-red-400 mb-1">Error</p>
+                  <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {application && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center justify-between">
+            <div className="group relative bg-background border border-border rounded-2xl p-6 md:p-8 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 hover:-translate-y-0.5 hover:border-primary/30 overflow-hidden">
+              {/* Gradient Accent on Hover */}
+              <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-secondary to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              
+              <div className="mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-4">
                   <div>
-                    <CardTitle>Application Status</CardTitle>
-                    <CardDescription>
+                    <h2 className="text-xl md:text-2xl font-semibold text-primary mb-2">Application Status</h2>
+                    <p className="text-secondary text-sm font-light">
                       Application for {application.job_posting?.title || "Position"}
-                    </CardDescription>
+                    </p>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className={cn("font-medium", getStatusInfo(application.status).color)}
-                  >
-                    <span className="flex items-center gap-2">
+                  <div className="flex-shrink-0">
+                    <span className={cn(
+                      "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border",
+                      getStatusInfo(application.status).color
+                    )}>
                       {getStatusInfo(application.status).icon}
                       {getStatusInfo(application.status).label}
                     </span>
-                  </Badge>
+                  </div>
                 </div>
-              </CardHeader>
-              <CardContent className="space-y-6">
+              </div>
+              
+              <div className="space-y-6">
                 <div>
-                  <h3 className="font-semibold mb-2">Status Information</h3>
-                  <p className="text-sm text-muted-foreground">
+                  <h3 className="font-semibold text-primary mb-2">Status Information</h3>
+                  <p className="text-sm text-secondary leading-relaxed font-light">
                     {getStatusInfo(application.status).description}
                   </p>
                 </div>
 
-                <div className="grid gap-4 md:grid-cols-2">
+                <div className="grid gap-6 md:grid-cols-2">
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">Applicant Name</Label>
-                    <p className="font-medium">{application.full_name}</p>
+                    <Label className="text-xs text-secondary/70 font-medium uppercase tracking-wide">Applicant Name</Label>
+                    <p className="font-medium text-primary">{application.full_name}</p>
                   </div>
                   {application.job_posting && (
                     <>
                       <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">Position</Label>
-                        <p className="font-medium">{application.job_posting.title}</p>
+                        <Label className="text-xs text-secondary/70 font-medium uppercase tracking-wide">Position</Label>
+                        <p className="font-medium text-primary">{application.job_posting.title}</p>
                       </div>
                       <div className="space-y-2">
-                        <Label className="text-xs text-muted-foreground">Department</Label>
-                        <p className="font-medium">{application.job_posting.department}</p>
+                        <Label className="text-xs text-secondary/70 font-medium uppercase tracking-wide">Department</Label>
+                        <p className="font-medium text-primary">{application.job_posting.department}</p>
                       </div>
                     </>
                   )}
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
-                      <Calendar className="w-3 h-3" />
+                    <Label className="text-xs text-secondary/70 font-medium uppercase tracking-wide flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5" />
                       Applied On
                     </Label>
-                    <p className="font-medium">
+                    <p className="font-medium text-primary">
                       {new Date(application.created_at).toLocaleDateString("en-US", {
                         year: "numeric",
                         month: "long",
@@ -258,11 +301,11 @@ export function TrackApplicationClient() {
                     </p>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground flex items-center gap-2">
-                      <Calendar className="w-3 h-3" />
+                    <Label className="text-xs text-secondary/70 font-medium uppercase tracking-wide flex items-center gap-2">
+                      <Calendar className="w-3.5 h-3.5" />
                       Last Updated
                     </Label>
-                    <p className="font-medium">
+                    <p className="font-medium text-primary">
                       {new Date(application.updated_at).toLocaleDateString("en-US", {
                         year: "numeric",
                         month: "long",
@@ -273,20 +316,22 @@ export function TrackApplicationClient() {
                 </div>
 
                 {application.status === "pending" && (
-                  <div className="p-4 bg-muted/50 rounded-lg">
-                    <p className="text-sm text-muted-foreground">
-                      <strong>What's next?</strong> Our team typically reviews applications within
+                  <div className="p-4 bg-surface/50 border border-border/50 rounded-xl">
+                    <p className="text-sm text-secondary leading-relaxed font-light">
+                      <strong className="font-medium text-primary">What's next?</strong> Our team typically reviews applications within
                       3-5 business days. You'll receive an email update when your application status
                       changes.
                     </p>
                   </div>
                 )}
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
         </div>
       </main>
-      <CareersFooter />
+      <div className="mt-auto">
+        <CareersFooter />
+      </div>
     </div>
   );
 }

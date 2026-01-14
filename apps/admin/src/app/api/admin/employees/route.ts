@@ -4,22 +4,53 @@ import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Check if user is admin
 async function isAdmin(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return false;
+  try {
+    const authHeader = request.headers.get("authorization");
+    if (!authHeader) {
+      console.error("[isAdmin] No authorization header");
+      return false;
+    }
 
-  const token = authHeader.replace("Bearer ", "");
-  const supabaseAdmin = getSupabaseAdmin();
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    const token = authHeader.replace("Bearer ", "");
+    if (!token) {
+      console.error("[isAdmin] No token in authorization header");
+      return false;
+    }
 
-  if (error || !user) return false;
+    const supabaseAdmin = getSupabaseAdmin();
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
 
-  const { data: userData } = await supabaseAdmin
-    .from("users")
-    .select("role")
-    .eq("id", user.id)
-    .single();
+    if (error) {
+      console.error("[isAdmin] Error getting user:", error.message);
+      return false;
+    }
 
-  return userData?.role === "admin";
+    if (!user) {
+      console.error("[isAdmin] No user found");
+      return false;
+    }
+
+    const { data: userData, error: userError } = await supabaseAdmin
+      .from("users")
+      .select("role")
+      .eq("id", user.id)
+      .single();
+
+    if (userError) {
+      console.error("[isAdmin] Error fetching user role:", userError.message);
+      return false;
+    }
+
+    const isAdminUser = userData?.role === "admin";
+    if (!isAdminUser) {
+      console.error("[isAdmin] User is not admin. Role:", userData?.role);
+    }
+
+    return isAdminUser;
+  } catch (error: any) {
+    console.error("[isAdmin] Unexpected error:", error.message);
+    return false;
+  }
 }
 
 // Emergency contact schema - allow null, empty string, or undefined for optional fields
@@ -152,8 +183,18 @@ export async function POST(request: NextRequest) {
 
     if (error) {
       console.error("Error creating employee:", error);
+      console.error("Error details:", {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       return NextResponse.json(
-        { error: "Failed to create employee" },
+        { 
+          error: "Failed to create employee",
+          message: error.message || "Database error occurred",
+          details: error.details || null
+        },
         { status: 500 }
       );
     }

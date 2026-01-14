@@ -142,7 +142,7 @@ export function ProcessEditor() {
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div className="space-y-2">
                       <Label>Step ID</Label>
                       <Input
@@ -153,7 +153,7 @@ export function ProcessEditor() {
                         min={1}
                       />
                     </div>
-                    <div className="space-y-2 col-span-2">
+                    <div className="space-y-2 sm:col-span-2">
                       <Label>Title</Label>
                       <Input
                         value={step.title}

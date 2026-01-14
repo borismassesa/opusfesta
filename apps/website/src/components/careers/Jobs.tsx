@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { fetchJobPostings, JobPosting } from "@/lib/careers/jobs";
+import { fetchJobPostings, JobPosting, getJobSlug } from "@/lib/careers/jobs";
 import { useState, useEffect } from 'react';
 
 const Jobs: React.FC = () => {
@@ -67,7 +67,7 @@ const Jobs: React.FC = () => {
                transition={{ duration: 0.4, delay: i * 0.1 }}
              >
                <Link
-                 href={`/careers/${job.id}`}
+                 href={`/careers/${getJobSlug(job.title)}`}
                  className="group w-full flex items-center justify-between py-8 border-b border-border hover:bg-surface transition-all duration-300 px-6 -mx-6 rounded-xl cursor-pointer block"
                >
                <div>

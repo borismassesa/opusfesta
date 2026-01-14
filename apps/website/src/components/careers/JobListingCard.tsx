@@ -2,7 +2,7 @@
 
 import { MapPin, Briefcase, DollarSign, ArrowRight, Clock, Building2, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { JobPosting } from "@/lib/careers/jobs";
+import { JobPosting, getJobSlug } from "@/lib/careers/jobs";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 
@@ -118,7 +118,7 @@ export function JobListingCard({ job }: JobListingCardProps) {
 
         {/* Footer */}
         <div className="mt-auto pt-4">
-          <Link href={`/careers/${job.id}`} className="block">
+          <Link href={`/careers/${getJobSlug(job.title)}`} className="block">
             <Button 
               className="w-full group/btn bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300"
               size="lg"

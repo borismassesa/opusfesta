@@ -66,6 +66,10 @@
     selection-color: var(--selection-text);
   }
 
+  .font-playfair {
+    font-family: 'Playfair Display', serif;
+  }
+
   /* Lenis CSS */
   html.lenis, html.lenis body {
     height: auto;
@@ -149,4 +153,23 @@
 .mask-linear-fade {
   mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
   -webkit-mask-image: linear-gradient(to bottom, transparent, black 10%, black 90%, transparent);
+}
+
+/* Scroll animations for animated grid */
+@keyframes scroll-up {
+  0% { transform: translateY(0); }
+  100% { transform: translateY(-50%); }
+}
+
+@keyframes scroll-down {
+  0% { transform: translateY(-50%); }
+  100% { transform: translateY(0); }
+}
+
+.animate-scroll-up {
+  animation: scroll-up linear infinite;
+}
+
+.animate-scroll-down {
+  animation: scroll-down linear infinite;
 }

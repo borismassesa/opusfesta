@@ -23,6 +23,21 @@ function getSupabaseAdmin() {
   );
 }
 
+// Helper function to check if string is UUID
+function isUUID(str: string): boolean {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
+// Helper function to generate slug from title
+function getJobSlug(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')
+    .replace(/[\s_-]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export async function generateMetadata({
   params,
 }: {
@@ -34,14 +49,34 @@ export async function generateMetadata({
   try {
     const supabaseAdmin = getSupabaseAdmin();
     
-    const { data: job, error } = await supabaseAdmin
-      .from("job_postings")
-      .select("*")
-      .eq("id", id)
-      .eq("is_active", true)
-      .single();
+    let job;
     
-    if (!error && job) {
+    // Check if it's a UUID (backward compatibility) or a slug
+    if (isUUID(id)) {
+      // Query by ID
+      const { data, error } = await supabaseAdmin
+        .from("job_postings")
+        .select("*")
+        .eq("id", id)
+        .eq("is_active", true)
+        .single();
+      
+      if (!error && data) {
+        job = data;
+      }
+    } else {
+      // Query by slug (match slug generated from title)
+      const { data: jobs, error } = await supabaseAdmin
+        .from("job_postings")
+        .select("*")
+        .eq("is_active", true);
+      
+      if (!error && jobs) {
+        job = jobs.find(j => getJobSlug(j.title) === id);
+      }
+    }
+    
+    if (job) {
       return {
         title: `${job.title} | Careers at OpusFesta`,
         description: job.description 

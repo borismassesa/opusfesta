@@ -81,47 +81,47 @@ export function MyApplicationsClient() {
 
   const getStatusIcon = (status: string, isDraft: boolean) => {
     if (isDraft) {
-      return <FileText className="w-4 h-4 text-blue-600" />;
+      return <FileText className="w-3.5 h-3.5 text-current" />;
     }
     switch (status) {
       case 'hired':
       case 'offer_accepted':
-        return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+        return <CheckCircle2 className="w-3.5 h-3.5 text-current" />;
       case 'pending':
       case 'reviewing':
       case 'phone_screen':
       case 'technical_interview':
       case 'final_interview':
       case 'offer_extended':
-        return <Clock className="w-4 h-4 text-amber-600" />;
+        return <Clock className="w-3.5 h-3.5 text-current" />;
       case 'rejected':
       case 'offer_declined':
-        return <XCircle className="w-4 h-4 text-red-600" />;
+        return <XCircle className="w-3.5 h-3.5 text-current" />;
       default:
-        return <Clock className="w-4 h-4 text-gray-400" />;
+        return <Clock className="w-3.5 h-3.5 text-current" />;
     }
   };
 
   const getStatusColor = (status: string, isDraft: boolean) => {
     if (isDraft) {
-      return 'bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400';
+      return 'bg-blue-100 text-[#050505] border-blue-300 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-800/50';
     }
     switch (status) {
       case 'hired':
       case 'offer_accepted':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400';
+        return 'bg-green-50 text-[#050505] border-green-200 dark:bg-green-950/30 dark:text-green-400 dark:border-green-800/50';
       case 'pending':
       case 'reviewing':
       case 'phone_screen':
       case 'technical_interview':
       case 'final_interview':
       case 'offer_extended':
-        return 'bg-amber-100 text-amber-800 dark:bg-amber-900/20 dark:text-amber-400';
+        return 'bg-surface text-[#050505] border-border dark:bg-surface/50 dark:text-secondary dark:border-border/60';
       case 'rejected':
       case 'offer_declined':
-        return 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400';
+        return 'bg-red-50 text-[#050505] border-red-200 dark:bg-red-950/30 dark:text-red-400 dark:border-red-800/50';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-400';
+        return 'bg-surface text-secondary border-border dark:bg-surface/50 dark:text-secondary/70';
     }
   };
 
@@ -169,10 +169,10 @@ export function MyApplicationsClient() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       <CareersNavbar />
       
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-24 pb-12 flex-1">
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">My Applications</h1>
@@ -244,59 +244,73 @@ export function MyApplicationsClient() {
             {filteredApplications.map((app) => (
               <div
                 key={app.id}
-                className="bg-card border border-border rounded-lg p-6 hover:shadow-md transition-shadow"
+                className="group relative bg-background rounded-2xl p-6 md:p-8 hover:shadow-xl hover:shadow-primary/5 transition-all duration-300 hover:-translate-y-0.5"
               >
-                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-                  {/* Left: Job Info */}
-                  <div className="flex-1">
-                    <div className="flex items-start gap-4">
-                      <div className="w-16 h-16 rounded-lg bg-primary/10 flex items-center justify-center">
-                        <Briefcase className="w-8 h-8 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <h3 className="text-lg font-semibold text-foreground">
+                {/* Gradient Accent on Hover */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-primary via-secondary to-primary opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-t-2xl"></div>
+                
+                <div className="flex flex-col gap-6">
+                  {/* Job Info */}
+                  <div className="flex items-start gap-4 md:gap-6">
+                    <div className="w-14 h-14 md:w-16 md:h-16 rounded-xl bg-surface border border-border/50 flex items-center justify-center flex-shrink-0 group-hover:border-primary/30 transition-colors">
+                      <Briefcase className="w-7 h-7 md:w-8 md:h-8 text-primary" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-3">
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-xl md:text-2xl font-semibold text-primary mb-2 group-hover:text-primary transition-colors line-clamp-2">
                             {app.job_postings?.title || "Unknown Position"}
                           </h3>
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center gap-1 ${getStatusColor(app.status, app.is_draft)}`}>
+                          <p className="text-sm md:text-base text-secondary mb-3 font-light">
+                            {app.job_postings?.department}
+                            {app.job_postings?.location && ` • ${app.job_postings.location}`}
+                            {app.job_postings?.employment_type && ` • ${app.job_postings.employment_type}`}
+                          </p>
+                        </div>
+                        <div className="flex-shrink-0">
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border ${getStatusColor(app.status, app.is_draft)}`}>
                             {getStatusIcon(app.status, app.is_draft)}
                             {getStatusLabel(app.status, app.is_draft)}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground mb-3">
-                          {app.job_postings?.department}
-                          {app.job_postings?.location && ` • ${app.job_postings.location}`}
-                          {app.job_postings?.employment_type && ` • ${app.job_postings.employment_type}`}
-                        </p>
-                        <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                          <div className="flex items-center gap-1">
-                            <Calendar className="w-4 h-4" />
-                            <span>Applied {format(new Date(app.created_at), "MMM dd, yyyy")}</span>
-                          </div>
-                          {app.updated_at !== app.created_at && (
-                            <div className="flex items-center gap-1">
-                              <Clock className="w-4 h-4" />
-                              <span>Updated {format(new Date(app.updated_at), "MMM dd, yyyy")}</span>
-                            </div>
-                          )}
+                      </div>
+                      <div className="flex flex-wrap gap-4 md:gap-6 text-sm text-secondary">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-4 h-4 text-secondary/60" />
+                          <span className="font-light">Applied {format(new Date(app.created_at), "MMM dd, yyyy")}</span>
                         </div>
+                        {app.updated_at !== app.created_at && (
+                          <div className="flex items-center gap-2">
+                            <Clock className="w-4 h-4 text-secondary/60" />
+                            <span className="font-light">Updated {format(new Date(app.updated_at), "MMM dd, yyyy")}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </div>
 
-                  {/* Right: Actions */}
-                  <div className="flex flex-col gap-2 sm:items-end">
+                  {/* Actions - Bottom Right */}
+                  <div className="flex justify-end">
                     {app.is_draft ? (
-                      <Button asChild size="sm">
+                      <Button asChild size="sm" className="w-full sm:w-auto">
                         <Link href={`/careers/${app.job_posting_id}/apply`}>
                           Continue Application
                         </Link>
                       </Button>
                     ) : (
-                      <Button asChild variant="outline" size="sm">
-                        <Link href={`/careers/track?id=${app.id}&email=${encodeURIComponent(app.email)}`}>
-                          View Status
-                        </Link>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        className="w-full sm:w-auto border-border hover:border-primary hover:bg-primary/5"
+                        onClick={() => {
+                          // Store in sessionStorage temporarily for auto-fill (cleared after use)
+                          sessionStorage.setItem('track_application_id', app.id);
+                          sessionStorage.setItem('track_application_email', app.email);
+                          // Navigate to track page without query parameters (replace to avoid history)
+                          router.replace('/careers/track');
+                        }}
+                      >
+                        View Status
                       </Button>
                     )}
                   </div>
@@ -307,7 +321,9 @@ export function MyApplicationsClient() {
         )}
       </div>
 
-      <CareersFooter />
+      <div className="mt-auto">
+        <CareersFooter />
+      </div>
     </div>
   );
 }

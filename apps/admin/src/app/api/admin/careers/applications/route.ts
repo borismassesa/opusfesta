@@ -178,6 +178,25 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
+    // If status is set to "hired", optionally mark job posting as inactive
+    // and reject other pending applications for the same job posting
+    if (status === "hired" && application.job_posting_id) {
+      // Mark job posting as inactive (position filled)
+      await supabaseAdmin
+        .from("job_postings")
+        .update({ is_active: false })
+        .eq("id", application.job_posting_id);
+
+      // Reject all other pending/reviewing applications for this job posting
+      // (except the one we just hired)
+      await supabaseAdmin
+        .from("job_applications")
+        .update({ status: "rejected" })
+        .eq("job_posting_id", application.job_posting_id)
+        .neq("id", id)
+        .in("status", ["pending", "reviewing", "phone_screen", "technical_interview", "final_interview", "interviewed", "offer_extended"]);
+    }
+
     // Activity logging is handled automatically by database triggers
     // See: supabase/migrations/045_fix_activity_log_user_context.sql
 

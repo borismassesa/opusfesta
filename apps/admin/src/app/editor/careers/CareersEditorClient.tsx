@@ -7,10 +7,15 @@ import { ResponsivePreview } from "@/components/preview/ResponsivePreview";
 import { useCareersContent } from "@/context/CareersContentContext";
 import { cn } from "@/lib/utils";
 import { CareersPageEditor } from "./components/CareersPageEditor";
+import { StudentsPageEditor } from "./components/StudentsPageEditor";
+import { type CareersPageId, CAREERS_PAGES } from "./components/PageSelector";
+import { GraduationCap, FileQuestion, ListChecks } from "lucide-react";
 
-type SectionId = "hero" | "values" | "perks" | "testimonials" | "process" | "preview";
+type HomepageSectionId = "hero" | "values" | "perks" | "testimonials" | "process" | "preview";
+type StudentsSectionId = "header" | "profiles" | "opportunities" | "benefits" | "faq" | "timeline" | "preview";
+type SectionId = HomepageSectionId | StudentsSectionId;
 
-const CAREERS_NAV_GROUPS = [
+const HOMEPAGE_NAV_GROUPS = [
   {
     label: "SECTIONS",
     items: [
@@ -29,25 +34,92 @@ const CAREERS_NAV_GROUPS = [
   },
 ];
 
+const STUDENTS_NAV_GROUPS = [
+  {
+    label: "SECTIONS",
+    items: [
+      { id: "header" as SectionId, label: "Header", icon: Briefcase },
+      { id: "profiles" as SectionId, label: "Student Profiles", icon: Users },
+      { id: "opportunities" as SectionId, label: "Opportunities", icon: GraduationCap },
+      { id: "benefits" as SectionId, label: "Benefits", icon: Heart },
+      { id: "faq" as SectionId, label: "FAQ", icon: FileQuestion },
+      { id: "timeline" as SectionId, label: "How to Apply", icon: ListChecks },
+    ],
+  },
+  {
+    label: "PREVIEW",
+    items: [
+      { id: "preview" as SectionId, label: "Preview", icon: Eye },
+    ],
+  },
+];
+
+function getNavGroups(pageId: CareersPageId) {
+  switch (pageId) {
+    case "students":
+      return STUDENTS_NAV_GROUPS;
+    case "homepage":
+    default:
+      return HOMEPAGE_NAV_GROUPS;
+  }
+}
+
+function getDefaultSection(pageId: CareersPageId): SectionId {
+  switch (pageId) {
+    case "students":
+      return "header";
+    case "homepage":
+    default:
+      return "hero";
+  }
+}
+
 export function CareersEditorClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { loadAdminContent, saveDraft, publishContent } = useCareersContent();
+  const pageParam = searchParams.get("page") as CareersPageId;
   const sectionParam = searchParams.get("section") as SectionId;
   const previewParam = searchParams.get("preview");
-  const [activeSection, setActiveSection] = useState<SectionId>(
-    previewParam === "true" || previewParam === "1"
-      ? "preview"
-      : sectionParam && ["hero", "values", "perks", "testimonials", "process", "preview"].includes(sectionParam)
-      ? sectionParam
-      : "hero"
+  
+  const [activePage, setActivePage] = useState<CareersPageId>(
+    pageParam && CAREERS_PAGES.find(p => p.id === pageParam)
+      ? pageParam
+      : "homepage"
   );
+  
+  const getValidSections = (pageId: CareersPageId): string[] => {
+    switch (pageId) {
+      case "students":
+        return ["header", "profiles", "opportunities", "benefits", "faq", "timeline", "preview"];
+      case "homepage":
+      default:
+        return ["hero", "values", "perks", "testimonials", "process", "preview"];
+    }
+  };
+
+  const [activeSection, setActiveSection] = useState<SectionId>(() => {
+    if (previewParam === "true" || previewParam === "1") return "preview";
+    if (sectionParam && getValidSections(activePage).includes(sectionParam)) {
+      return sectionParam as SectionId;
+    }
+    return getDefaultSection(activePage);
+  });
   const [previewNonce, setPreviewNonce] = useState(0);
   
-  // Secondary sidebar collapse state with localStorage persistence
+  // Primary sidebar (page selector) collapse state
+  const [isPrimarySidebarCollapsed, setIsPrimarySidebarCollapsed] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('admin-careers-editor-primary-sidebar-collapsed');
+      return saved === 'true';
+    }
+    return false;
+  });
+  
+  // Secondary sidebar (sections) collapse state
   const [isSecondarySidebarCollapsed, setIsSecondarySidebarCollapsed] = useState(() => {
     if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('admin-careers-editor-sidebar-collapsed');
+      const saved = localStorage.getItem('admin-careers-editor-secondary-sidebar-collapsed');
       return saved === 'true';
     }
     return false;
@@ -57,10 +129,24 @@ export function CareersEditorClient() {
     loadAdminContent();
   }, [loadAdminContent]);
 
-  // Persist collapse state to localStorage
+  const handlePageChange = (pageId: CareersPageId) => {
+    setActivePage(pageId);
+    // Reset to first section when changing pages
+    const defaultSection = getDefaultSection(pageId);
+    setActiveSection(defaultSection);
+    router.push(`/editor/careers?page=${pageId}&section=${defaultSection}`, { scroll: false });
+  };
+
+  // Persist collapse states to localStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('admin-careers-editor-sidebar-collapsed', String(isSecondarySidebarCollapsed));
+      localStorage.setItem('admin-careers-editor-primary-sidebar-collapsed', String(isPrimarySidebarCollapsed));
+    }
+  }, [isPrimarySidebarCollapsed]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('admin-careers-editor-secondary-sidebar-collapsed', String(isSecondarySidebarCollapsed));
     }
   }, [isSecondarySidebarCollapsed]);
 
@@ -97,27 +183,33 @@ export function CareersEditorClient() {
   }, []);
 
   useEffect(() => {
+    const page = searchParams.get("page") as CareersPageId;
     const section = searchParams.get("section") as SectionId;
     const preview = searchParams.get("preview");
+    
+    if (page && CAREERS_PAGES.find(p => p.id === page)) {
+      setActivePage(page);
+    }
     
     if (preview === "true" || preview === "1") {
       setActiveSection("preview");
       if (section !== "preview") {
-        router.replace("/editor/careers?preview=true", { scroll: false });
+        router.replace(`/editor/careers?page=${activePage}&preview=true`, { scroll: false });
       }
-    } else if (section && ["hero", "values", "perks", "testimonials", "process", "preview"].includes(section)) {
-      setActiveSection(section);
+    } else if (section && getValidSections(activePage).includes(section)) {
+      setActiveSection(section as SectionId);
     } else if (!section && !preview) {
-      router.replace("/editor/careers?section=hero", { scroll: false });
+      const defaultSection = getDefaultSection(activePage);
+      router.replace(`/editor/careers?page=${activePage}&section=${defaultSection}`, { scroll: false });
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, activePage]);
 
   const handleSectionClick = (section: SectionId) => {
     setActiveSection(section);
     if (section === "preview") {
-      router.push(`/editor/careers?preview=true`, { scroll: false });
+      router.push(`/editor/careers?page=${activePage}&preview=true`, { scroll: false });
     } else {
-      router.push(`/editor/careers?section=${section}`, { scroll: false });
+      router.push(`/editor/careers?page=${activePage}&section=${section}`, { scroll: false });
     }
   };
 
@@ -130,7 +222,16 @@ export function CareersEditorClient() {
   // Ensure we're pointing to the careers page of the website app, not the admin app
   // Remove any trailing slashes and ensure it's a clean absolute URL
   const cleanWebsiteUrl = websiteUrl.replace(/\/$/, '');
-  const previewUrl = `${cleanWebsiteUrl}/careers?preview=draft&v=${previewNonce}`;
+  
+  // Get the preview path based on active page
+  const activePageConfig = CAREERS_PAGES.find(p => p.id === activePage);
+  const previewPath = activePage === "homepage" 
+    ? "/careers" 
+    : activePageConfig 
+      ? `/careers/${activePageConfig.id === "why-opusfesta" ? "why-opusfesta" : activePageConfig.id === "life-at-opusfesta" ? "life-at-opusfesta" : activePageConfig.id === "how-we-hire" ? "how-we-hire" : activePageConfig.id}`
+      : "/careers";
+  
+  const previewUrl = `${cleanWebsiteUrl}${previewPath}?preview=draft&v=${previewNonce}`;
   
   // Debug: Log the preview URL to help troubleshoot
   useEffect(() => {
@@ -143,37 +244,74 @@ export function CareersEditorClient() {
     console.log('[Careers Editor Preview] ===========================================');
   }, [previewUrl, cleanWebsiteUrl]);
 
+  const sectionOptions = getNavGroups(activePage).flatMap((group) => group.items);
+
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-background relative w-full">
-      {/* Secondary Sidebar - Supabase Style */}
+    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-background relative w-full flex-col md:flex-row">
+      {/* Mobile controls */}
+      <div className="md:hidden border-b border-border/60 bg-background px-3 py-2">
+        <div className="flex items-center gap-2">
+          <label className="sr-only" htmlFor="careers-page-select">
+            Page
+          </label>
+          <select
+            id="careers-page-select"
+            value={activePage}
+            onChange={(event) => handlePageChange(event.target.value as CareersPageId)}
+            className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+          >
+            {CAREERS_PAGES.map((page) => (
+              <option key={page.id} value={page.id}>
+                {page.label}
+              </option>
+            ))}
+          </select>
+          <label className="sr-only" htmlFor="careers-section-select">
+            Section
+          </label>
+          <select
+            id="careers-section-select"
+            value={activeSection}
+            onChange={(event) => handleSectionClick(event.target.value as SectionId)}
+            className="h-9 w-full rounded-md border border-border bg-background px-3 text-sm text-foreground"
+          >
+            {sectionOptions.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+      {/* Primary Sidebar - Page Selector */}
       <aside 
         className={cn(
-          "border-r border-border bg-background flex-shrink-0 flex flex-col transition-all duration-200 ease-in-out h-full",
-          isSecondarySidebarCollapsed ? "w-0 border-r-0 overflow-hidden" : "w-56 lg:w-64 xl:w-72"
+          "border-r border-border bg-background flex-shrink-0 transition-all duration-200 ease-in-out h-full hidden md:flex md:flex-col",
+          isPrimarySidebarCollapsed ? "md:w-0 md:border-r-0 md:overflow-hidden" : "md:w-48 lg:w-56"
         )}
       >
         {/* Title Header */}
         <div className="px-4 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
           <div className={cn(
             "flex flex-col transition-opacity duration-200",
-            isSecondarySidebarCollapsed && "opacity-0 w-0 overflow-hidden"
+            isPrimarySidebarCollapsed && "opacity-0 w-0 overflow-hidden"
           )}>
             <h2 className="text-base font-semibold text-foreground whitespace-nowrap">
-              Careers Editor
+              Pages
             </h2>
             <p className="text-xs text-muted-foreground whitespace-nowrap mt-0.5">
-              Edit careers page
+              Select page to edit
             </p>
           </div>
           <button
-            onClick={() => setIsSecondarySidebarCollapsed(!isSecondarySidebarCollapsed)}
+            onClick={() => setIsPrimarySidebarCollapsed(!isPrimarySidebarCollapsed)}
             className={cn(
               "w-8 h-8 rounded-lg bg-card border border-border/50 shadow-none hover:bg-card/80 hover:border-border text-muted-foreground hover:text-foreground transition-all duration-200 flex items-center justify-center flex-shrink-0",
-              isSecondarySidebarCollapsed && "ml-0"
+              isPrimarySidebarCollapsed && "ml-0"
             )}
-            title={isSecondarySidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={isPrimarySidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           >
-            {isSecondarySidebarCollapsed ? (
+            {isPrimarySidebarCollapsed ? (
               <PanelLeftOpen className="w-4 h-4" />
             ) : (
               <PanelLeftClose className="w-4 h-4" />
@@ -181,13 +319,90 @@ export function CareersEditorClient() {
           </button>
         </div>
         
+        {/* Page Navigation */}
+        <nav className={cn(
+          "px-3 py-3 transition-opacity duration-200 flex-1 overflow-y-auto",
+          isPrimarySidebarCollapsed && "opacity-0 overflow-hidden"
+        )}>
+          <div className="space-y-1">
+            {CAREERS_PAGES.map((page) => {
+              const Icon = page.icon;
+              const isActive = activePage === page.id;
+              
+              return (
+                <button
+                  key={page.id}
+                  onClick={() => handlePageChange(page.id)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-all duration-200",
+                    isActive
+                      ? "!bg-foreground !text-background font-medium shadow-md"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                  )}
+                  title={page.description}
+                >
+                  <Icon className={cn(
+                    "w-4 h-4 shrink-0",
+                    isActive ? "!text-background" : "text-muted-foreground"
+                  )} />
+                  <span className={cn(
+                    "truncate text-left",
+                    isActive && "!text-background"
+                  )}>
+                    {page.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </nav>
+      </aside>
+
+      {/* Secondary Sidebar - Sections */}
+      <aside 
+        className={cn(
+          "border-r border-border bg-background flex-shrink-0 transition-all duration-200 ease-in-out h-full hidden md:flex md:flex-col",
+          isSecondarySidebarCollapsed ? "md:w-0 md:border-r-0 md:overflow-hidden" : "md:w-56 lg:w-64 xl:w-72"
+        )}
+      >
+          {/* Title Header */}
+          <div className="px-4 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
+            <div className={cn(
+              "flex flex-col transition-opacity duration-200",
+              isSecondarySidebarCollapsed && "opacity-0 w-0 overflow-hidden"
+            )}>
+              <h2 className="text-base font-semibold text-foreground whitespace-nowrap">
+                Sections
+              </h2>
+              <p className="text-xs text-muted-foreground whitespace-nowrap mt-0.5">
+                {activePageConfig?.label || "Careers"} sections
+              </p>
+            </div>
+            <button
+              onClick={() => setIsSecondarySidebarCollapsed(!isSecondarySidebarCollapsed)}
+              className={cn(
+                "w-8 h-8 rounded-lg bg-card border border-border/50 shadow-none hover:bg-card/80 hover:border-border text-muted-foreground hover:text-foreground transition-all duration-200 flex items-center justify-center flex-shrink-0",
+                isSecondarySidebarCollapsed && "ml-0"
+              )}
+              title={isSecondarySidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+            >
+              {isSecondarySidebarCollapsed ? (
+                <PanelLeftOpen className="w-4 h-4" />
+              ) : (
+                <PanelLeftClose className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        
         {/* Navigation Groups */}
         <nav className={cn(
           "px-3 py-3 transition-opacity duration-200 flex-1 overflow-y-auto",
           isSecondarySidebarCollapsed && "opacity-0 overflow-hidden"
         )}>
-          {CAREERS_NAV_GROUPS.map((group, groupIndex) => (
-            <div key={group.label} className={cn(groupIndex < CAREERS_NAV_GROUPS.length - 1 ? "mb-5" : "mb-0")}>
+          {getNavGroups(activePage).map((group, groupIndex) => {
+            const navGroups = getNavGroups(activePage);
+            return (
+            <div key={group.label} className={cn(groupIndex < navGroups.length - 1 ? "mb-5" : "mb-0")}>
               <div className="px-3 mb-2">
                 <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
                   {group.label}
@@ -223,16 +438,27 @@ export function CareersEditorClient() {
                 })}
               </div>
             </div>
-          ))}
+            );
+          })}
         </nav>
       </aside>
 
-      {/* Floating Expand Button - Shows when sidebar is collapsed */}
-      {isSecondarySidebarCollapsed && (
+      {/* Floating Expand Button for Secondary Sidebar */}
+      {isSecondarySidebarCollapsed && !isPrimarySidebarCollapsed && (
         <button
           onClick={() => setIsSecondarySidebarCollapsed(false)}
-          className="absolute left-0 top-4 z-10 w-8 h-8 rounded-r-lg bg-card border border-l-0 border-border/50 shadow-none hover:bg-card/80 hover:border-border text-muted-foreground hover:text-foreground transition-all duration-200 flex items-center justify-center"
-          title="Expand sidebar"
+          className="absolute left-12 top-4 z-10 w-8 h-8 rounded-r-lg bg-card border border-l-0 border-border/50 shadow-none hover:bg-card/80 hover:border-border text-muted-foreground hover:text-foreground transition-all duration-200 hidden md:flex items-center justify-center"
+          title="Expand sections sidebar"
+        >
+          <PanelLeftOpen className="w-4 h-4" />
+        </button>
+      )}
+      
+      {isSecondarySidebarCollapsed && isPrimarySidebarCollapsed && (
+        <button
+          onClick={() => setIsSecondarySidebarCollapsed(false)}
+          className="absolute left-0 top-12 z-10 w-8 h-8 rounded-r-lg bg-card border border-l-0 border-border/50 shadow-none hover:bg-card/80 hover:border-border text-muted-foreground hover:text-foreground transition-all duration-200 hidden md:flex items-center justify-center"
+          title="Expand sections sidebar"
         >
           <PanelLeftOpen className="w-4 h-4" />
         </button>
@@ -240,20 +466,35 @@ export function CareersEditorClient() {
 
       {/* Main Content Area */}
       <main className="flex-1 min-w-0 overflow-hidden bg-background flex flex-col max-w-full">
-        {activeSection === "preview" ? (
-          <div className="h-full w-full flex flex-col bg-background overflow-hidden">
-            <ResponsivePreview 
-              previewUrl={previewUrl} 
-              previewNonce={previewNonce}
-              onRefresh={() => setPreviewNonce(prev => prev + 1)}
-            />
-          </div>
-        ) : (
-          <div className="flex-1 min-h-0 overflow-hidden">
-            <CareersPageEditor activeSection={activeSection as Exclude<SectionId, "preview">} />
-          </div>
-        )}
-      </main>
-    </div>
+          {activeSection === "preview" ? (
+            <div className="h-full w-full flex flex-col bg-background overflow-hidden">
+              <ResponsivePreview 
+                previewUrl={previewUrl} 
+                previewNonce={previewNonce}
+                onRefresh={() => setPreviewNonce(prev => prev + 1)}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 min-h-0 overflow-hidden">
+              {activePage === "homepage" ? (
+                <CareersPageEditor activeSection={activeSection as Exclude<HomepageSectionId, "preview">} />
+              ) : activePage === "students" ? (
+                <StudentsPageEditor activeSection={activeSection as Exclude<StudentsSectionId, "preview">} />
+              ) : (
+                <div className="h-full flex items-center justify-center p-8">
+                  <div className="text-center">
+                    <p className="text-muted-foreground text-lg mb-2">
+                      Editor for "{activePageConfig?.label}" page
+                    </p>
+                    <p className="text-muted-foreground text-sm">
+                      Coming soon - Section editors are being built
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </main>
+      </div>
   );
 }
