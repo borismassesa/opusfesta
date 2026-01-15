@@ -105,6 +105,20 @@ export default function VerifyEmail() {
     return errorMessage;
   };
 
+  const buildRedirectPath = (nextPath: string | null, options?: { withAuthModal?: boolean }) => {
+    if (!nextPath) return null;
+    if (!nextPath.startsWith("/vendors/")) return nextPath;
+
+    const [basePath, queryString] = nextPath.split("?");
+    const params = new URLSearchParams(queryString || "");
+    if (options?.withAuthModal) {
+      params.set("authModal", "1");
+      params.set("authIntent", "details");
+    }
+    const query = params.toString();
+    return query ? `${basePath}?${query}` : basePath;
+  };
+
   const handleVerify = async (verificationCode?: string) => {
     const codeToVerify = verificationCode || code;
     if (codeToVerify.length !== 6) {
@@ -167,8 +181,9 @@ export default function VerifyEmail() {
           const nextFromUrl = searchParams.get("next");
           const nextFromStorage = sessionStorage.getItem("auth_redirect");
           const next = nextFromUrl || nextFromStorage;
-          
-          const redirectPath = getRedirectPath(
+
+          const vendorRedirect = buildRedirectPath(next);
+          const redirectPath = vendorRedirect || getRedirectPath(
             userType || undefined,
             undefined,
             next
@@ -202,6 +217,14 @@ export default function VerifyEmail() {
         const nextFromUrl = searchParams.get("next");
         const nextFromStorage = sessionStorage.getItem("auth_redirect");
         const next = nextFromUrl || nextFromStorage;
+        const vendorRedirect = buildRedirectPath(next, { withAuthModal: true });
+        if (vendorRedirect) {
+          if (next) {
+            sessionStorage.removeItem("auth_redirect");
+          }
+          router.push(vendorRedirect);
+          return;
+        }
         const isCareersContext = next?.includes("/careers") || 
                                 (typeof window !== "undefined" && window.location.pathname.includes("/careers"));
         const loginPath = isCareersContext ? "/careers/login" : "/login";
@@ -389,7 +412,7 @@ export default function VerifyEmail() {
                 aria-live="polite"
               >
                 <div className="flex items-start gap-2">
-                  <X className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <X className="h-4 w-4 mt-0.5 shrink-0" />
                   <p>{error}</p>
                 </div>
               </div>

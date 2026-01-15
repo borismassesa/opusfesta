@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Get saved vendors with vendor details
-    const { data: savedVendors, error: savedError } = await supabase
+    const { data: savedVendors, error: savedError } = await supabaseAdmin
       .from("saved_vendors")
       .select(`
         id,

@@ -18,9 +18,17 @@ interface VendorBookingSidebarProps {
   isSticky?: boolean;
   // Future: bookedDates will come from vendor's calendar/bookings
   bookedDates?: Date[];
+  isAuthenticated?: boolean;
+  onAuthRequired?: () => void;
 }
 
-export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = [] }: VendorBookingSidebarProps) {
+export function VendorBookingSidebar({
+  vendor,
+  isSticky = true,
+  bookedDates = [],
+  isAuthenticated = false,
+  onAuthRequired,
+}: VendorBookingSidebarProps) {
   const router = useRouter();
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
@@ -316,16 +324,26 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
     return null;
   };
 
-  const handleRequestQuote = () => {
+  const handleRequestQuote = async () => {
     if (!canRequestQuote) {
       return; // Don't open form if validation fails
+    }
+    if (!isAuthenticated) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        onAuthRequired?.();
+        return;
+      }
     }
     setIsFormOpen(true);
   };
 
   return (
     <>
-      <div className={`${isSticky ? 'sticky' : 'relative'} top-36 space-y-4 relative overflow-visible`}>
+      <div
+        id="vendor-booking-sidebar"
+        className={`${isSticky ? 'sticky' : 'relative'} top-36 space-y-4 relative overflow-visible`}
+      >
         {/* Dynamic Information Card - Changes based on user experience */}
         {(hasGoodDeal || isRareFind) && (
           <div className="bg-background border border-border rounded-2xl p-4 shadow-sm flex items-center gap-3">
@@ -1356,13 +1374,16 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                           try {
                             // Get authentication token
                             const { data: { session } } = await supabase.auth.getSession();
+                            if (!session) {
+                              setIsSubmitting(false);
+                              onAuthRequired?.();
+                              return;
+                            }
+
                             const headers: HeadersInit = {
                               "Content-Type": "application/json",
+                              Authorization: `Bearer ${session.access_token}`,
                             };
-                            
-                            if (session) {
-                              headers["Authorization"] = `Bearer ${session.access_token}`;
-                            }
 
                             // Prepare inquiry data
                             const inquiryData = {
@@ -1396,9 +1417,8 @@ export function VendorBookingSidebar({ vendor, isSticky = true, bookedDates = []
                             }
 
                             if (!response.ok) {
-                              // Handle authentication error
                               if (response.status === 401) {
-                                router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+                                onAuthRequired?.();
                                 return;
                               }
                               
