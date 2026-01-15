@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Share2, Heart, ShieldCheck, Loader2, MapPin, Star } from "lucide-react";
+import { ShieldCheck, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
@@ -15,6 +15,7 @@ import { VendorReviews } from "./VendorReviews";
 import { VendorLocation } from "./VendorLocation";
 import { VendorProfile } from "./VendorProfile";
 import { SimilarVendors } from "./SimilarVendors";
+import { AuthGateModal } from "@/components/auth/AuthGateModal";
 import type { Vendor, PortfolioItem, Review, VendorAward } from "@/lib/supabase/vendors";
 import { resolveAssetSrc } from "@/lib/assets";
 import celebrationImg from "@assets/stock_images/happy_wedding_couple_e3561dd1.jpg";
@@ -42,24 +43,32 @@ export function VendorDetailsPage({
   const [isSidebarSticky, setIsSidebarSticky] = useState(true);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalIntent, setAuthModalIntent] = useState<"booking" | "details">("details");
+  const [hasShownAuthGate, setHasShownAuthGate] = useState(false);
   const galleryRef = useRef<HTMLDivElement>(null);
   const connectSectionRef = useRef<HTMLDivElement>(null);
   const ratingSectionRef = useRef<HTMLDivElement>(null);
+  const authGateRef = useRef<HTMLDivElement>(null);
   const rating = vendor.stats.averageRating || 0;
   const reviewCount = Math.max(vendor.stats.reviewCount || 0, reviews.length);
   const locationText = vendor.location?.city
     ? `${vendor.location.city}, ${vendor.location.country || "Tanzania"}`
     : "Tanzania";
 
-  // Check authentication on mount (but don't redirect - show teaser instead)
+  // Check authentication on mount and on auth changes
   useEffect(() => {
-    async function checkAuth() {
+    let mounted = true;
+
+    const checkAuth = async () => {
       try {
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
         
         if (sessionError || !session) {
-          setIsAuthenticated(false);
-          setIsCheckingAuth(false);
+          if (mounted) {
+            setIsAuthenticated(false);
+            setIsCheckingAuth(false);
+          }
           return;
         }
 
@@ -70,23 +79,34 @@ export function VendorDetailsPage({
           .eq("id", session.user.id)
           .single();
 
-        if (userError || !userData) {
-          setIsAuthenticated(false);
+        if (mounted) {
+          if (userError || !userData) {
+            setIsAuthenticated(false);
+          } else {
+            setIsAuthenticated(true);
+          }
           setIsCheckingAuth(false);
-          return;
         }
-
-        setIsAuthenticated(true);
-        setIsCheckingAuth(false);
       } catch (err) {
         console.error("Error checking auth:", err);
-        setIsAuthenticated(false);
-        setIsCheckingAuth(false);
+        if (mounted) {
+          setIsAuthenticated(false);
+          setIsCheckingAuth(false);
+        }
       }
-    }
+    };
 
     checkAuth();
-  }, [router]);
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      checkAuth();
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const getStartingPrice = () => {
     if (vendor.price_range === "$") return "$200";
@@ -95,6 +115,57 @@ export function VendorDetailsPage({
     if (vendor.price_range === "$$$$") return "$2,500";
     return "$500";
   };
+
+  const authGateStorageKey = `vendor_auth_gate_${vendor.id}`;
+
+  const openAuthGate = (intent: "booking" | "details") => {
+    setAuthModalIntent(intent);
+    setAuthModalOpen(true);
+    setHasShownAuthGate(true);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(authGateStorageKey, "true");
+    }
+  };
+
+  const handleBookingIntent = () => {
+    if (!isAuthenticated) {
+      openAuthGate("booking");
+      return;
+    }
+    const bookingTarget = document.getElementById("vendor-booking-sidebar");
+    if (bookingTarget) {
+      bookingTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = sessionStorage.getItem(authGateStorageKey);
+    if (stored === "true") {
+      setHasShownAuthGate(true);
+    }
+  }, [authGateStorageKey]);
+
+  useEffect(() => {
+    if (isAuthenticated) return;
+    if (hasShownAuthGate) return;
+
+    const target = authGateRef.current;
+    if (!target) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry.isIntersecting && !authModalOpen && !hasShownAuthGate) {
+          openAuthGate("details");
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [authModalOpen, hasShownAuthGate, isAuthenticated]);
 
   useEffect(() => {
     const sectionIds = vendorNavigationTabs.map((tab) => tab.id);
@@ -199,97 +270,6 @@ export function VendorDetailsPage({
     );
   }
 
-  // Show teaser for unauthenticated users
-  if (!isAuthenticated) {
-    const truncatedBio = vendor.bio && vendor.bio.length > 100 
-      ? vendor.bio.substring(0, 100) + "..." 
-      : vendor.bio;
-
-    return (
-      <div className="bg-background text-primary min-h-screen">
-        <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} sticky={false} />
-        <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
-
-        <main className="pt-12 lg:pt-16 pb-24">
-          {/* Image Gallery - Show first image only */}
-          <div className="relative h-[400px] lg:h-[500px] overflow-hidden">
-            <img
-              src={vendor.cover_image || resolveAssetSrc(celebrationImg)}
-              alt={vendor.business_name}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-          </div>
-
-          {/* Teaser Content */}
-          <div className="max-w-4xl mx-auto px-6 lg:px-12 mt-8">
-            <div className="bg-surface border border-border rounded-2xl p-8 lg:p-12">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-primary mb-4">
-                {vendor.business_name}
-              </h1>
-              
-              <div className="flex flex-wrap items-center gap-4 text-base text-secondary mb-6">
-                <span>{vendor.category}</span>
-                <span>•</span>
-                <div className="flex items-center gap-1">
-                  <MapPin size={16} />
-                  <span>{locationText}</span>
-                </div>
-                <span>•</span>
-                <div className="flex items-center gap-1">
-                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  <span className="font-semibold">{rating.toFixed(1)}</span>
-                  <span>({reviewCount} reviews)</span>
-                </div>
-              </div>
-
-              {truncatedBio && (
-                <p className="text-lg text-secondary leading-relaxed mb-8">
-                  {truncatedBio}
-                </p>
-              )}
-
-              {/* CTA to View Full Profile */}
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 mb-6">
-                <h3 className="text-xl font-semibold text-primary mb-2">
-                  View Full Profile
-                </h3>
-                <p className="text-secondary mb-4">
-                  Sign in to see complete portfolio, all reviews, pricing details, and contact this vendor.
-                </p>
-                <button
-                  onClick={() => {
-                    const currentPath = window.location.pathname;
-                    router.push(`/login?next=${encodeURIComponent(currentPath)}`);
-                  }}
-                  className="w-full sm:w-auto px-8 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
-                >
-                  Sign In to View Full Profile
-                </button>
-              </div>
-
-              {/* Additional Info */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-secondary">Price Range:</span>
-                  <span className="ml-2 font-semibold">{vendor.price_range || "Contact for pricing"}</span>
-                </div>
-                {vendor.verified && (
-                  <div>
-                    <span className="text-secondary">Status:</span>
-                    <span className="ml-2 font-semibold text-emerald-500">Verified</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </main>
-
-        <Footer />
-      </div>
-    );
-  }
-
   return (
     <div className="bg-background text-primary min-h-screen">
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} sticky={false} />
@@ -329,7 +309,10 @@ export function VendorDetailsPage({
                       {reviewCount} reviews
                     </span>
                   </div>
-                  <button className="bg-primary text-background px-6 py-2.5 rounded-lg font-semibold hover:bg-primary/90 transition-colors">
+                  <button
+                    onClick={handleBookingIntent}
+                    className="bg-primary text-background px-6 py-2.5 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
+                  >
                     Request Quote
                   </button>
                 </div>
@@ -352,13 +335,19 @@ export function VendorDetailsPage({
                 portfolio={portfolio}
                 reviews={reviews}
                 ratingSectionRef={ratingSectionRef}
+                authGateRef={authGateRef}
                 awards={awards}
               />
             </div>
 
             {/* Booking Sticky Sidebar (Right) */}
             <div className="hidden lg:block">
-              <VendorBookingSidebar vendor={vendor} isSticky={isSidebarSticky} />
+              <VendorBookingSidebar
+                vendor={vendor}
+                isSticky={isSidebarSticky}
+                isAuthenticated={isAuthenticated}
+                onAuthRequired={() => openAuthGate("booking")}
+              />
             </div>
           </div>
         </div>
@@ -427,12 +416,24 @@ export function VendorDetailsPage({
               </div>
               <div className="text-sm underline">per event</div>
             </div>
-            <button className="bg-primary text-background px-8 py-3 rounded-lg font-bold">
+            <button
+              onClick={handleBookingIntent}
+              className="bg-primary text-background px-8 py-3 rounded-lg font-bold"
+            >
               Request Quote
             </button>
           </div>
         )}
       </main>
+
+      <AuthGateModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        intent={authModalIntent}
+        onAuthSuccess={() => {
+          setIsAuthenticated(true);
+        }}
+      />
 
       <Footer />
     </div>

@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
-import { Share2, Heart, ShieldCheck, Loader2, MapPin, Star, ArrowLeft } from "lucide-react";
+import { useSearchParams } from "next/navigation";
+import { ShieldCheck, Loader2, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
@@ -15,6 +15,7 @@ import { VendorReviews } from "@/components/vendors/VendorReviews";
 import { VendorLocation } from "@/components/vendors/VendorLocation";
 import { VendorProfile } from "@/components/vendors/VendorProfile";
 import { SimilarVendors } from "@/components/vendors/SimilarVendors";
+import { AuthGateModal } from "@/components/auth/AuthGateModal";
 import type { Vendor, PortfolioItem, Review, VendorAward } from "@/lib/supabase/vendors";
 import { resolveAssetSrc } from "@/lib/assets";
 import celebrationImg from "@assets/stock_images/happy_wedding_couple_e3561dd1.jpg";
@@ -27,7 +28,7 @@ export function VendorDetailsClient({
 }: {
   params: Promise<{ slug: string }>;
 }) {
-  const router = useRouter();
+  const searchParams = useSearchParams();
   const [slug, setSlug] = useState<string | null>(null);
   const [vendor, setVendor] = useState<Vendor | null>(null);
   const [portfolio, setPortfolio] = useState<PortfolioItem[]>([]);
@@ -41,14 +42,21 @@ export function VendorDetailsClient({
   const [showNavBar, setShowNavBar] = useState(false);
   const [isSidebarSticky, setIsSidebarSticky] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalIntent, setAuthModalIntent] = useState<"booking" | "details">("details");
+  const [hasShownAuthGate, setHasShownAuthGate] = useState(false);
+  const [authRefreshKey, setAuthRefreshKey] = useState(0);
   const galleryRef = useRef<HTMLDivElement>(null);
   const connectSectionRef = useRef<HTMLDivElement>(null);
   const ratingSectionRef = useRef<HTMLDivElement>(null);
+  const authGateRef = useRef<HTMLDivElement>(null);
 
   // Load vendor data - PUBLIC, no authentication required initially
   useEffect(() => {
     async function loadVendor() {
       try {
+        setIsLoading(true);
+        setError(null);
         const resolvedParams = await params;
         const vendorSlug = resolvedParams.slug;
         setSlug(vendorSlug);
@@ -56,6 +64,7 @@ export function VendorDetailsClient({
         // Fetch vendor data from API (will return teaser or full based on auth)
         const { data: { session } } = await supabase.auth.getSession();
         const token = session?.access_token;
+        setIsAuthenticated(!!session);
 
         const headers: HeadersInit = {};
         if (token) {
@@ -75,78 +84,92 @@ export function VendorDetailsClient({
 
         const data = await response.json();
         setVendor(data.vendor);
-        setIsAuthenticated(data.isAuthenticated || false);
+        setIsLoading(false);
 
         // If authenticated, load additional data directly from Supabase
-        if (data.isAuthenticated && data.vendor.id) {
-          // Load portfolio
-          const { data: portfolioData } = await supabase
-            .from("portfolio")
-            .select("*")
-            .eq("vendor_id", data.vendor.id)
-            .order("display_order", { ascending: true })
-            .order("created_at", { ascending: false });
-          if (portfolioData) setPortfolio(portfolioData as PortfolioItem[]);
+        if (session && data.vendor.id) {
+          try {
+            // Load portfolio
+            const { data: portfolioData } = await supabase
+              .from("portfolio")
+              .select("*")
+              .eq("vendor_id", data.vendor.id)
+              .order("display_order", { ascending: true })
+              .order("created_at", { ascending: false });
+            if (portfolioData) setPortfolio(portfolioData as PortfolioItem[]);
 
-          // Load reviews using RPC
-          const { data: reviewsData } = await supabase.rpc("get_vendor_reviews_with_users", {
-            vendor_id_param: data.vendor.id,
-          });
-          if (reviewsData) {
-            setReviews(reviewsData.map((row: any) => ({
-              id: row.id,
-              vendor_id: row.vendor_id,
-              user_id: row.user_id,
-              rating: row.rating,
-              title: row.title,
-              content: row.content,
-              images: row.images || [],
-              event_type: row.event_type,
-              event_date: row.event_date,
-              verified: row.verified,
-              helpful: row.helpful,
-              vendor_response: row.vendor_response,
-              vendor_responded_at: row.vendor_responded_at,
-              created_at: row.created_at,
-              updated_at: row.updated_at,
-              user: {
-                name: row.user_name || "Anonymous",
-                avatar: row.user_avatar || null,
-              },
-            })) as Review[]);
-          }
+            // Load reviews using RPC
+            const { data: reviewsData } = await supabase.rpc("get_vendor_reviews_with_users", {
+              vendor_id_param: data.vendor.id,
+            });
+            if (reviewsData) {
+              setReviews(reviewsData.map((row: any) => ({
+                id: row.id,
+                vendor_id: row.vendor_id,
+                user_id: row.user_id,
+                rating: row.rating,
+                title: row.title,
+                content: row.content,
+                images: row.images || [],
+                event_type: row.event_type,
+                event_date: row.event_date,
+                verified: row.verified,
+                helpful: row.helpful,
+                vendor_response: row.vendor_response,
+                vendor_responded_at: row.vendor_responded_at,
+                created_at: row.created_at,
+                updated_at: row.updated_at,
+                user: {
+                  name: row.user_name || "Anonymous",
+                  avatar: row.user_avatar || null,
+                },
+              })) as Review[]);
+            }
 
-          // Load similar vendors
-          const { data: similarData } = await supabase
-            .from("vendors")
-            .select("*")
-            .eq("category", data.vendor.category)
-            .eq("verified", true)
-            .neq("id", data.vendor.id)
-            .order("stats->averageRating", { ascending: false })
-            .limit(6);
-          if (similarData) setSimilarVendors(similarData as Vendor[]);
+            // Load similar vendors
+            const { data: similarData } = await supabase
+              .from("vendors")
+              .select("*")
+              .eq("category", data.vendor.category)
+              .eq("verified", true)
+              .neq("id", data.vendor.id)
+              .order("stats->averageRating", { ascending: false })
+              .limit(6);
+            if (similarData) setSimilarVendors(similarData as Vendor[]);
 
-          // Load awards
-          const { data: vendorData } = await supabase
-            .from("vendors")
-            .select("awards")
-            .eq("id", data.vendor.id)
-            .single();
-          if (vendorData?.awards) {
-            setAwards(vendorData.awards as VendorAward[]);
+            // Load awards
+            const { data: vendorData } = await supabase
+              .from("vendors")
+              .select("awards")
+              .eq("id", data.vendor.id)
+              .single();
+            if (vendorData?.awards) {
+              setAwards(vendorData.awards as VendorAward[]);
+            }
+          } catch (err) {
+            console.error("Error loading vendor details:", err);
           }
         }
       } catch (err: any) {
         console.error("Error loading vendor:", err);
         setError(err.message || "Failed to load vendor");
-      } finally {
-        setIsLoading(false);
       }
+      setIsLoading(false);
     }
 
     loadVendor();
-  }, [params]);
+  }, [params, authRefreshKey]);
+
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setIsAuthenticated(!!session);
+      setAuthRefreshKey((prev) => prev + 1);
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const rating = vendor?.stats?.averageRating || 0;
   const reviewCount = Math.max(vendor?.stats?.reviewCount || 0, reviews.length);
@@ -162,6 +185,42 @@ export function VendorDetailsClient({
     if (vendor.price_range === "$$$$") return "$2,500";
     return "$500";
   };
+
+  const openAuthGate = (intent: "booking" | "details") => {
+    setAuthModalIntent(intent);
+    setAuthModalOpen(true);
+    setHasShownAuthGate(true);
+  };
+
+  const handleBookingIntent = () => {
+    if (!isAuthenticated) {
+      openAuthGate("booking");
+      return;
+    }
+    const bookingTarget = document.getElementById("vendor-booking-sidebar");
+    if (bookingTarget) {
+      bookingTarget.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
+
+  const handleAuthModalChange = (nextOpen: boolean) => {
+    if (!nextOpen && !isAuthenticated) {
+      const aboutSection = document.getElementById("section-about");
+      if (aboutSection) {
+        aboutSection.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+      setHasShownAuthGate(false);
+    }
+    setAuthModalOpen(nextOpen);
+  };
+
+  useEffect(() => {
+    const shouldOpenModal = searchParams.get("authModal") === "1";
+    if (!shouldOpenModal || isAuthenticated) return;
+    const intentParam = searchParams.get("authIntent");
+    const intent = intentParam === "booking" ? "booking" : "details";
+    openAuthGate(intent);
+  }, [searchParams, isAuthenticated]);
 
   useEffect(() => {
     if (!vendor) return;
@@ -224,6 +283,13 @@ export function VendorDetailsClient({
         }
 
         setActiveTab(activeSection);
+
+      if (!isAuthenticated && !authModalOpen && !hasShownAuthGate && authGateRef.current) {
+        const gateTop = authGateRef.current.getBoundingClientRect().top;
+        if (gateTop <= 0) {
+          openAuthGate("details");
+        }
+      }
       } catch (error) {
         console.error('Scroll handler error:', error);
       }
@@ -234,7 +300,7 @@ export function VendorDetailsClient({
       handleScroll();
       return () => window.removeEventListener("scroll", handleScroll);
     }
-  }, [vendor]);
+  }, [vendor, isAuthenticated, authModalOpen, hasShownAuthGate]);
 
   if (isLoading) {
     return (
@@ -282,98 +348,7 @@ export function VendorDetailsClient({
     );
   }
 
-  // Show teaser for unauthenticated users
-  if (!isAuthenticated) {
-    const truncatedBio = vendor.bio && vendor.bio.length > 100 
-      ? vendor.bio.substring(0, 100) + "..." 
-      : vendor.bio;
-
-    return (
-      <div className="bg-background text-primary min-h-screen">
-        <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} sticky={false} />
-        <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
-
-        <main className="pt-12 lg:pt-16 pb-24">
-          {/* Image Gallery - Show first image only */}
-          <div className="relative h-[400px] lg:h-[500px] overflow-hidden">
-            <img
-              src={vendor.cover_image || resolveAssetSrc(celebrationImg)}
-              alt={vendor.business_name}
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-background via-background/50 to-transparent" />
-          </div>
-
-          {/* Teaser Content */}
-          <div className="max-w-4xl mx-auto px-6 lg:px-12 mt-8">
-            <div className="bg-surface border border-border rounded-2xl p-8 lg:p-12">
-              <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-primary mb-4">
-                {vendor.business_name}
-              </h1>
-              
-              <div className="flex flex-wrap items-center gap-4 text-base text-secondary mb-6">
-                <span>{vendor.category}</span>
-                <span>•</span>
-                <div className="flex items-center gap-1">
-                  <MapPin size={16} />
-                  <span>{locationText}</span>
-                </div>
-                <span>•</span>
-                <div className="flex items-center gap-1">
-                  <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-                  <span className="font-semibold">{rating.toFixed(1)}</span>
-                  <span>({reviewCount} reviews)</span>
-                </div>
-              </div>
-
-              {truncatedBio && (
-                <p className="text-lg text-secondary leading-relaxed mb-8">
-                  {truncatedBio}
-                </p>
-              )}
-
-              {/* CTA to View Full Profile */}
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-6 mb-6">
-                <h3 className="text-xl font-semibold text-primary mb-2">
-                  View Full Profile
-                </h3>
-                <p className="text-secondary mb-4">
-                  Sign in to see complete portfolio, all reviews, pricing details, and contact this vendor.
-                </p>
-                <button
-                  onClick={() => {
-                    const currentPath = window.location.pathname;
-                    router.push(`/login?next=${encodeURIComponent(currentPath)}`);
-                  }}
-                  className="w-full sm:w-auto px-8 py-3 bg-primary text-primary-foreground rounded-lg font-semibold hover:bg-primary/90 transition-colors"
-                >
-                  Sign In to View Full Profile
-                </button>
-              </div>
-
-              {/* Additional Info */}
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="text-secondary">Price Range:</span>
-                  <span className="ml-2 font-semibold">{vendor.price_range || "Contact for pricing"}</span>
-                </div>
-                {vendor.verified && (
-                  <div>
-                    <span className="text-secondary">Status:</span>
-                    <span className="ml-2 font-semibold text-emerald-500">Verified</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </main>
-
-        <Footer />
-      </div>
-    );
-  }
-
-  // Full view for authenticated users
+  // Vendor details
   return (
     <div className="bg-background text-primary min-h-screen">
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} sticky={false} />
@@ -412,7 +387,10 @@ export function VendorDetailsClient({
                       {reviewCount} reviews
                     </span>
                   </div>
-                  <button className="bg-primary text-background px-6 py-2.5 rounded-lg font-semibold hover:bg-primary/90 transition-colors">
+                  <button
+                    onClick={handleBookingIntent}
+                    className="bg-primary text-background px-6 py-2.5 rounded-lg font-semibold hover:bg-primary/90 transition-colors"
+                  >
                     Request Quote
                   </button>
                 </div>
@@ -435,13 +413,19 @@ export function VendorDetailsClient({
                 portfolio={portfolio}
                 reviews={reviews}
                 ratingSectionRef={ratingSectionRef}
+                authGateRef={authGateRef}
                 awards={awards}
               />
             </div>
 
             {/* Booking Sticky Sidebar (Right) */}
             <div className="hidden lg:block">
-              <VendorBookingSidebar vendor={vendor} isSticky={isSidebarSticky} />
+              <VendorBookingSidebar
+                vendor={vendor}
+                isSticky={isSidebarSticky}
+                isAuthenticated={isAuthenticated}
+                onAuthRequired={() => openAuthGate("booking")}
+              />
             </div>
           </div>
         </div>
@@ -469,6 +453,16 @@ export function VendorDetailsClient({
           <SimilarVendors vendors={similarVendors} />
         </div>
       </main>
+
+      <AuthGateModal
+        open={authModalOpen}
+        onOpenChange={handleAuthModalChange}
+        intent={authModalIntent}
+        onAuthSuccess={() => {
+          setIsAuthenticated(true);
+          setAuthRefreshKey((prev) => prev + 1);
+        }}
+      />
 
       <Footer />
     </div>

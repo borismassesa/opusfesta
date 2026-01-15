@@ -13,6 +13,7 @@ interface VendorContentProps {
   portfolio: PortfolioItem[];
   reviews: Review[];
   ratingSectionRef?: React.RefObject<HTMLDivElement>;
+  authGateRef?: React.RefObject<HTMLDivElement>;
 }
 
 export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
@@ -20,6 +21,7 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
   portfolio,
   reviews,
   ratingSectionRef,
+  authGateRef,
   awards = [],
 }, connectSectionRef) => {
   const [expandedPackages, setExpandedPackages] = useState<{ [key: string]: boolean }>({});
@@ -150,6 +152,12 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
 
       {/* About this vendor */}
       <VendorAboutSection vendor={vendor} />
+      <div
+        ref={authGateRef}
+        id="vendor-auth-gate-sentinel"
+        className="h-px w-full"
+        aria-hidden="true"
+      />
 
       {/* Services Section */}
       {(() => {
@@ -185,7 +193,7 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
                 return (
                   <div key={index} className="space-y-1">
                     <div className="flex items-start gap-3">
-                      <Check className="w-5 h-5 text-foreground flex-shrink-0 mt-0.5" strokeWidth={2} />
+                      <Check className="w-5 h-5 text-foreground shrink-0 mt-0.5" strokeWidth={2} />
                       <div className="flex-1">
                         <span className="text-foreground font-medium">{title}</span>
                         {description && (
@@ -219,7 +227,7 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
             <div className="space-y-2 mb-4">
               {(expandedPackages.reception ? receptionFeatures : receptionFeatures.slice(0, 4)).map((feature, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <Check className="w-5 h-5 text-primary flex-shrink-0" strokeWidth={2} />
+                  <Check className="w-5 h-5 text-primary shrink-0" strokeWidth={2} />
                   <span className="text-sm text-foreground">{feature}</span>
         </div>
               ))}
@@ -251,7 +259,7 @@ export const VendorContent = forwardRef<HTMLDivElement, VendorContentProps>(({
             <div className="space-y-2 mb-4">
               {(expandedPackages.ceremony ? ceremonyReceptionFeatures : ceremonyReceptionFeatures.slice(0, 4)).map((feature, index) => (
                 <div key={index} className="flex items-center gap-2">
-                  <Check className="w-5 h-5 text-primary flex-shrink-0" strokeWidth={2} />
+                  <Check className="w-5 h-5 text-primary shrink-0" strokeWidth={2} />
                   <span className="text-sm text-foreground">{feature}</span>
                 </div>
               ))}
