@@ -20,13 +20,18 @@ const DEFAULT_SLIDES = [
 ];
 
 export function CareersHero() {
-  const { content } = useCareersContent();
+  const { content, contentVersion } = useCareersContent();
   const { hero } = content;
   
   // Use carousel images from CMS, or fallback to defaults
   const carouselImages = hero.carouselImages && hero.carouselImages.length > 0 
     ? hero.carouselImages.filter(img => img && img.trim() !== "")
     : DEFAULT_SLIDES;
+  const cacheBustedCarouselImages = carouselImages.map((img) => {
+    if (!contentVersion) return img;
+    const separator = img.includes("?") ? "&" : "?";
+    return `${img}${separator}v=${encodeURIComponent(contentVersion)}`;
+  });
 
   return (
     <section className="min-h-screen w-full flex flex-col items-center justify-center py-12 sm:py-16 md:py-20 bg-background text-primary selection:bg-primary selection:text-primary-foreground overflow-hidden">
@@ -61,7 +66,11 @@ export function CareersHero() {
 
       {/* 3D Carousel Section */}
       <div className="w-full max-w-[1400px] px-2 sm:px-4 md:px-4 py-4 sm:py-6 md:py-8 mb-4 sm:mb-6 md:mb-8 flex justify-center items-center h-[350px] sm:h-[450px] md:h-[500px] lg:h-[600px] relative z-10">
-        <Carousel3D images={carouselImages} autoPlayInterval={2500} />
+        <Carousel3D
+          key={contentVersion || "default"}
+          images={cacheBustedCarouselImages}
+          autoPlayInterval={2500}
+        />
       </div>
 
       {/* Bottom CTA Section */}

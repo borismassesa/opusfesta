@@ -42,6 +42,7 @@ export default function VerifyEmail() {
     if (next) {
       sessionStorage.setItem("auth_redirect", next);
     }
+    sessionStorage.removeItem("pending_signup_credentials");
     
     // Set code expiry time (10 minutes from now)
     const expiryTime = new Date(Date.now() + 10 * 60 * 1000);

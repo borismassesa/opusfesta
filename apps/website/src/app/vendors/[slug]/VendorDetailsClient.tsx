@@ -186,10 +186,15 @@ export function VendorDetailsClient({
     return "$500";
   };
 
+  const authGateStorageKey = slug ? `vendor_auth_gate_${slug}` : "vendor_auth_gate";
+
   const openAuthGate = (intent: "booking" | "details") => {
     setAuthModalIntent(intent);
     setAuthModalOpen(true);
     setHasShownAuthGate(true);
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem(authGateStorageKey, "true");
+    }
   };
 
   const handleBookingIntent = () => {
@@ -204,15 +209,16 @@ export function VendorDetailsClient({
   };
 
   const handleAuthModalChange = (nextOpen: boolean) => {
-    if (!nextOpen && !isAuthenticated) {
-      const aboutSection = document.getElementById("section-about");
-      if (aboutSection) {
-        aboutSection.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
-      setHasShownAuthGate(false);
-    }
     setAuthModalOpen(nextOpen);
   };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const stored = sessionStorage.getItem(authGateStorageKey);
+    if (stored === "true") {
+      setHasShownAuthGate(true);
+    }
+  }, [authGateStorageKey]);
 
   useEffect(() => {
     const shouldOpenModal = searchParams.get("authModal") === "1";
@@ -284,12 +290,12 @@ export function VendorDetailsClient({
 
         setActiveTab(activeSection);
 
-      if (!isAuthenticated && !authModalOpen && !hasShownAuthGate && authGateRef.current) {
-        const gateTop = authGateRef.current.getBoundingClientRect().top;
-        if (gateTop <= 0) {
-          openAuthGate("details");
+        if (!isAuthenticated && !authModalOpen && !hasShownAuthGate && authGateRef.current) {
+          const gateTop = authGateRef.current.getBoundingClientRect().top;
+          if (gateTop <= 0) {
+            openAuthGate("details");
+          }
         }
-      }
       } catch (error) {
         console.error('Scroll handler error:', error);
       }

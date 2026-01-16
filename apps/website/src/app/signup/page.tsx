@@ -119,6 +119,18 @@ export default function Signup() {
         return;
       }
 
+      try {
+        sessionStorage.setItem(
+          "pending_signup_credentials",
+          JSON.stringify({
+            email: email.trim(),
+            password,
+          })
+        );
+      } catch (storageError) {
+        console.warn("Unable to store signup credentials for auto-login:", storageError);
+      }
+
       // Redirect to verification page immediately for seamless experience
       router.push(`/verify-email?email=${encodeURIComponent(email)}`);
       
@@ -148,7 +160,7 @@ export default function Signup() {
             alt="Wedding stationery" 
             className="w-full h-full object-cover opacity-90 scale-105 hover:scale-100 transition-transform duration-[20s] ease-in-out"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent" />
         </div>
         
         <div className="relative z-10 p-12 flex flex-col justify-between h-full text-white w-full">

@@ -25,13 +25,24 @@ export function getVerificationCodeEmailHtml(code: string, email: string): strin
       .note { background-color: #0f0f11 !important; border-left-color: #f5f5f5 !important; }
       .footer { background-color: #0f0f11 !important; border-top-color: #222225 !important; }
     }
+    /* Outlook.com and legacy dark-mode selectors */
+    [data-ogsc] body, [data-ogsc] .body-bg { background-color: #0b0b0c !important; }
+    [data-ogsc] .card { background-color: #111113 !important; box-shadow: none !important; }
+    [data-ogsc] .header { background: #111113 !important; border-bottom-color: #222225 !important; }
+    [data-ogsc] .text-main { color: #f5f5f5 !important; }
+    [data-ogsc] .text-muted { color: #d4d4d8 !important; }
+    [data-ogsc] .text-subtle { color: #a1a1aa !important; }
+    [data-ogsc] .border-light { border-color: #222225 !important; }
+    [data-ogsc] .code-box { background: #0f0f11 !important; border-color: #2a2a30 !important; }
+    [data-ogsc] .note { background-color: #0f0f11 !important; border-left-color: #f5f5f5 !important; }
+    [data-ogsc] .footer { background-color: #0f0f11 !important; border-top-color: #222225 !important; }
   </style>
 </head>
-<body class="body-bg" style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #fafafa; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
-  <table role="presentation" class="body-bg" style="width: 100%; border-collapse: collapse; background-color: #fafafa;">
+<body class="body-bg" bgcolor="#fafafa" style="margin: 0; padding: 0; font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #fafafa; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+  <table role="presentation" class="body-bg" bgcolor="#fafafa" style="width: 100%; border-collapse: collapse; background-color: #fafafa;">
     <tr>
       <td align="center" style="padding: 60px 20px;">
-        <table role="presentation" class="card" style="max-width: 600px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); overflow: hidden;">
+        <table role="presentation" class="card" bgcolor="#ffffff" style="max-width: 600px; width: 100%; border-collapse: collapse; background-color: #ffffff; border-radius: 16px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08); overflow: hidden;">
           <!-- Header with Logo -->
           <tr>
             <td class="header border-light" style="padding: 48px 48px 32px; text-align: center; background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%); border-bottom: 1px solid #f0f0f0;">
