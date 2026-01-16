@@ -168,7 +168,14 @@ export function JobApplicationForm({
           const saved = localStorage.getItem(storageKey);
           if (saved) {
             const localDraft = JSON.parse(saved);
-            form.reset(localDraft);
+            const {
+              resumeUrl: savedResumeUrl,
+              coverLetterUrl: savedCoverLetterUrl,
+              ...formValues
+            } = localDraft || {};
+            form.reset(formValues);
+            if (savedResumeUrl) setResumeUrl(savedResumeUrl);
+            if (savedCoverLetterUrl) setCoverLetterUrl(savedCoverLetterUrl);
           }
         } catch (err) {
           console.error("Error loading localStorage draft:", err);
@@ -187,13 +194,18 @@ export function JobApplicationForm({
   useEffect(() => {
     const subscription = form.watch((value) => {
       try {
-        localStorage.setItem(storageKey, JSON.stringify(value));
+        const draftPayload = {
+          ...value,
+          resumeUrl,
+          coverLetterUrl,
+        };
+        localStorage.setItem(storageKey, JSON.stringify(draftPayload));
       } catch (err) {
         console.error("Error saving draft:", err);
       }
     });
     return () => subscription.unsubscribe();
-  }, [form, storageKey]);
+  }, [form, storageKey, resumeUrl, coverLetterUrl]);
 
   // Watch form values for progress calculation
   const watchedValues = form.watch();
@@ -633,6 +645,8 @@ export function JobApplicationForm({
   const experienceValue = form.watch("experience");
   const educationValue = form.watch("education");
   const referenceInfoValue = form.watch("referenceInfo");
+  const hasResume = Boolean(resumeFile || resumeUrl);
+  const hasCoverLetterFile = Boolean(coverLetterFile || coverLetterUrl);
 
   if (isLoadingDraft) {
     return (
@@ -730,7 +744,7 @@ export function JobApplicationForm({
               <Label htmlFor="resume" className="text-base font-semibold">
                 Resume/CV <span className="text-destructive">*</span>
               </Label>
-              {!resumeFile ? (
+              {!hasResume ? (
                 <div className="flex items-center justify-center w-full">
                   <label
                     htmlFor="resume-upload"
@@ -774,9 +788,13 @@ export function JobApplicationForm({
                     <FileText className="w-6 h-6 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate text-primary">{resumeFile.name}</p>
+                    <p className="text-sm font-semibold truncate text-primary">
+                      {resumeFile ? resumeFile.name : "Resume uploaded"}
+                    </p>
                     <p className="text-xs text-secondary mt-1">
-                      {(resumeFile.size / 1024).toFixed(1)} KB • Ready to submit
+                      {resumeFile
+                        ? `${(resumeFile.size / 1024).toFixed(1)} KB • Ready to submit`
+                        : "File on record • Ready to submit"}
                     </p>
                   </div>
                   <Button
@@ -803,7 +821,7 @@ export function JobApplicationForm({
               </p>
 
               {/* Cover Letter File Upload */}
-              {!coverLetterFile ? (
+              {!hasCoverLetterFile ? (
                 <div className="flex items-center justify-center w-full">
                   <label
                     htmlFor="cover-letter-upload"
@@ -847,9 +865,13 @@ export function JobApplicationForm({
                     <FileText className="w-5 h-5 text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate text-primary">{coverLetterFile.name}</p>
+                    <p className="text-sm font-semibold truncate text-primary">
+                      {coverLetterFile ? coverLetterFile.name : "Cover letter uploaded"}
+                    </p>
                     <p className="text-xs text-secondary mt-1">
-                      {(coverLetterFile.size / 1024).toFixed(1)} KB • Ready to submit
+                      {coverLetterFile
+                        ? `${(coverLetterFile.size / 1024).toFixed(1)} KB • Ready to submit`
+                        : "File on record • Ready to submit"}
                     </p>
                   </div>
                   <Button
@@ -866,7 +888,7 @@ export function JobApplicationForm({
               )}
 
               {/* Cover Letter Text Input (only show if no file uploaded) */}
-              {!coverLetterFile && (
+              {!hasCoverLetterFile && (
                 <FormField
                   control={form.control}
                   name="coverLetter"
