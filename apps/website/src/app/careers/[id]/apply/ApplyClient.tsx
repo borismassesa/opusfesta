@@ -41,8 +41,11 @@ export function ApplyClient({
     let mounted = true;
     let hasRedirected = false;
     const REDIRECT_GUARD_KEY = "auth_redirect_guard";
+    const LOGIN_PENDING_KEY = "auth_login_pending";
     const MAX_REDIRECT_ATTEMPTS = 2;
-    const SESSION_CHECK_TIMEOUT = 5000; // 5 seconds max wait for session
+    const pendingAt = parseInt(sessionStorage.getItem(LOGIN_PENDING_KEY) || "0", 10);
+    const loginPendingFresh = pendingAt > 0 && Date.now() - pendingAt < 30000;
+    const SESSION_CHECK_TIMEOUT = loginPendingFresh ? 20000 : 12000;
 
     // Redirect guard to prevent infinite loops
     const checkRedirectGuard = (): boolean => {
@@ -53,7 +56,9 @@ export function ApplyClient({
         sessionStorage.removeItem(REDIRECT_GUARD_KEY);
         sessionStorage.removeItem("auth_redirect");
         if (mounted) {
-          router.replace("/careers");
+          setIsCheckingAuth(false);
+          setAuthStatus("failed");
+          setError("Too many redirect attempts. Please try accessing the application form again.");
         }
         return false;
       }
@@ -110,8 +115,9 @@ export function ApplyClient({
         if (result.success) {
           // Clear redirect guard on successful authentication
           sessionStorage.removeItem(REDIRECT_GUARD_KEY);
+          sessionStorage.removeItem(LOGIN_PENDING_KEY);
           
-          if (mounted) {
+          if (mounted && !hasRedirected) {
             setIsCheckingAuth(false);
             setAuthStatus("authenticated");
           }
@@ -119,8 +125,9 @@ export function ApplyClient({
         } else {
           console.error("Failed to verify/create user record:", result.error);
           if (mounted && !hasRedirected) {
-            const currentPath = window.location.pathname;
-            redirectToLogin(currentPath);
+            setIsCheckingAuth(false);
+            setAuthStatus("failed");
+            setError("Failed to verify your account. Please try logging in again.");
           }
           return false;
         }
@@ -128,17 +135,37 @@ export function ApplyClient({
         console.error("Error verifying user record:", err);
         
         if (mounted && !hasRedirected) {
-          const currentPath = window.location.pathname;
-          redirectToLogin(currentPath);
+          setIsCheckingAuth(false);
+          setAuthStatus("failed");
+          setError("An error occurred while verifying your account. Please try again.");
         }
         return false;
       }
     };
 
     // Set timeout for session check
-    const timeout = setTimeout(() => {
+    const timeout = setTimeout(async () => {
+      if (!mounted || hasRedirected) return;
+      console.warn("Session check timeout - rechecking before redirect");
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted || hasRedirected) return;
+        if (session?.user) {
+          sessionStorage.removeItem(LOGIN_PENDING_KEY);
+          const verified = await verifyUserRecord(session);
+          if (!verified && mounted && !hasRedirected) {
+            // If verification failed, redirect to login
+            const currentPath = window.location.pathname;
+            redirectToLogin(currentPath);
+          }
+          return;
+        }
+      } catch (err) {
+        console.error("Session recheck failed after timeout:", err);
+      }
+      // No session found - redirect to login
       if (mounted && !hasRedirected) {
-        console.warn("Session check timeout - redirecting to login");
+        sessionStorage.removeItem(LOGIN_PENDING_KEY);
         const currentPath = window.location.pathname;
         redirectToLogin(currentPath);
       }
@@ -165,6 +192,8 @@ export function ApplyClient({
           event === "INITIAL_SESSION"
         ) {
           clearTimeout(timeout);
+          // Clear redirect guard when we get a valid auth event
+          sessionStorage.removeItem(REDIRECT_GUARD_KEY);
           await verifyUserRecord(session);
         }
       }
@@ -177,31 +206,38 @@ export function ApplyClient({
       if (sessionError) {
         console.error("Session error:", sessionError);
         clearTimeout(timeout);
-        const currentPath = window.location.pathname;
-        redirectToLogin(currentPath);
+        if (mounted && !hasRedirected) {
+          const currentPath = window.location.pathname;
+          redirectToLogin(currentPath);
+        }
         return;
       }
 
-      if (!session) {
+      if (!session?.user) {
         // No session - wait for onAuthStateChange to fire or timeout
+        // But also set a maximum wait time to prevent infinite loading
         return;
       }
 
       // We have a session - verify user record
       clearTimeout(timeout);
+      // Clear redirect guard when we have a valid session
+      sessionStorage.removeItem(REDIRECT_GUARD_KEY);
       verifyUserRecord(session).catch((err) => {
         console.error("Error in verifyUserRecord from initial check:", err);
         if (mounted && !hasRedirected) {
-          const currentPath = window.location.pathname;
-          redirectToLogin(currentPath);
+          setIsCheckingAuth(false);
+          setAuthStatus("failed");
+          setError("Failed to verify authentication. Please try logging in again.");
         }
       });
     }).catch((err) => {
       console.error("Error getting initial session:", err);
       if (mounted && !hasRedirected) {
         clearTimeout(timeout);
-        const currentPath = window.location.pathname;
-        redirectToLogin(currentPath);
+        setIsCheckingAuth(false);
+        setAuthStatus("failed");
+        setError("Failed to check authentication. Please try logging in again.");
       }
     });
 
@@ -271,9 +307,19 @@ export function ApplyClient({
       <div className="min-h-screen bg-background flex items-center justify-center px-4">
         <div className="text-center">
           <Loader2 className="w-10 h-10 sm:w-12 sm:h-12 animate-spin text-primary mx-auto mb-3 sm:mb-4" />
-          <p className="text-sm sm:text-base text-secondary">
+          <p className="text-sm sm:text-base text-secondary mb-2">
             {statusMessage}
           </p>
+          {authStatus === "failed" && error && (
+            <div className="mt-4 max-w-md mx-auto">
+              <p className="text-sm text-destructive mb-3">{error}</p>
+              <Link href="/careers/login">
+                <Button variant="outline" size="sm">
+                  Go to Login
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -335,7 +381,7 @@ export function ApplyClient({
                 <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-primary leading-tight mb-2 sm:mb-3">
                   {job.title}
                 </h1>
-                <p className="text-sm sm:text-base md:text-lg text-secondary break-words">
+                <p className="text-sm sm:text-base md:text-lg text-secondary wrap-break-word">
                   <span className="whitespace-nowrap">{job.department}</span>
                   <span className="mx-1 sm:mx-2">•</span>
                   <span className="whitespace-nowrap">{job.location}</span>

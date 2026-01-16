@@ -150,6 +150,10 @@ export default function CareersLogin() {
       }
       const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
       const redirectPath = getRedirectPath(userType || undefined, undefined, next);
+      const currentPath = typeof window !== "undefined" ? window.location.pathname : "/careers/login";
+      const safeRedirectPath = redirectPath === currentPath || redirectPath.startsWith("/careers/login")
+        ? "/careers"
+        : redirectPath;
       
       // Clear redirect-related storage
       if (sessionStorage.getItem("auth_redirect")) {
@@ -162,7 +166,8 @@ export default function CareersLogin() {
         description: "Successfully signed in. Redirecting you now...",
       });
       
-      router.push(redirectPath);
+      sessionStorage.setItem("auth_login_pending", String(Date.now()));
+      router.push(safeRedirectPath);
     } catch (error) {
       if (error instanceof AuthTimeoutError) {
         toast({
@@ -201,7 +206,7 @@ export default function CareersLogin() {
   return (
     <div className="min-h-screen w-full flex bg-background">
       {/* Left Side - Enhanced Visual Panel */}
-      <div className="hidden lg:flex w-[45%] relative overflow-hidden bg-gradient-to-br from-primary/5 via-primary/2 to-background">
+      <div className="hidden lg:flex w-[45%] relative overflow-hidden bg-linear-to-br from-primary/5 via-primary/2 to-background">
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
@@ -210,14 +215,14 @@ export default function CareersLogin() {
             fill
             className="object-cover"
             priority
-            quality={90}
+            sizes="45vw"
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/60 via-primary/40 to-primary/60" />
+          <div className="absolute inset-0 bg-linear-to-br from-primary/60 via-primary/40 to-primary/60" />
         </div>
         
         {/* Overlay gradients */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/60 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-background/95 via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-transparent to-transparent" />
         
         <div className="relative z-10 p-12 flex flex-col justify-between h-full">
           <Link

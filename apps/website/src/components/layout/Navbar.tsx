@@ -166,13 +166,23 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
   const handleLogout = async () => {
     try {
       const { error } = await supabase.auth.signOut();
-      if (error) throw error;
+      if (error) {
+        console.error("Logout error:", error);
+        return;
+      }
+      // Clear state immediately
       setIsAuthenticated(false);
       setUserData(null);
-      router.push("/");
+      setIsCheckingAuth(false);
+      // Navigate after state is cleared
+      await router.push("/");
       router.refresh();
     } catch (error) {
       console.error("Error logging out:", error);
+      // Still clear state on error
+      setIsAuthenticated(false);
+      setUserData(null);
+      setIsCheckingAuth(false);
     }
   };
 
@@ -193,15 +203,53 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
       try {
         setIsCheckingAuth(true);
         
+        // Check if there was a recent login attempt
+        const loginPending = sessionStorage.getItem("auth_login_pending");
+        const loginPendingTime = loginPending ? parseInt(loginPending, 10) : null;
+        const isRecentLogin = loginPendingTime && (Date.now() - loginPendingTime) < 20000; // Within 20 seconds
+        const timeoutDuration = isRecentLogin ? 12000 : 3000; // 12s for recent login, 3s otherwise
+        
         // Add timeout to prevent hanging - show buttons if check takes too long
-        timeoutId = setTimeout(() => {
+        timeoutId = setTimeout(async () => {
           if (mounted) {
-            console.warn("Auth check timeout - defaulting to not authenticated");
-            setIsAuthenticated(false);
-            setUserData(null);
-            setIsCheckingAuth(false);
+            // Before timing out, do one final check for session
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              // Session exists, update state immediately
+              setIsAuthenticated(true);
+              setIsCheckingAuth(false);
+              const metadata = session.user.user_metadata;
+              const fullName = 
+                metadata?.full_name || 
+                metadata?.name || 
+                metadata?.display_name ||
+                (metadata?.first_name && metadata?.last_name 
+                  ? `${metadata.first_name} ${metadata.last_name}`
+                  : null);
+              const avatar = 
+                metadata?.avatar_url || 
+                metadata?.picture || 
+                metadata?.photo_url ||
+                null;
+              setUserData({
+                id: session.user.id,
+                name: fullName || null,
+                email: session.user.email || null,
+                avatar: avatar,
+              });
+              fetchUserData(session.user.id).catch(console.error);
+              // Clear the login pending flag
+              if (loginPending) {
+                sessionStorage.removeItem("auth_login_pending");
+              }
+            } else {
+              console.warn("Auth check timeout - defaulting to not authenticated");
+              setIsAuthenticated(false);
+              setUserData(null);
+              setIsCheckingAuth(false);
+            }
           }
-        }, 3000); // 3 second timeout
+        }, timeoutDuration);
         
         // Fast check: get session (this is cached by Supabase)
         const { data: { session }, error: sessionError } = await supabase.auth.getSession();
@@ -254,6 +302,11 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
           // Fetch user data from database in background (non-blocking)
           // This will update the UI if database has more complete data
           fetchUserData(session.user.id);
+          
+          // Clear the login pending flag on successful auth
+          if (loginPending) {
+            sessionStorage.removeItem("auth_login_pending");
+          }
         }
 
         // CRITICAL: First verify user still exists in Supabase Auth
@@ -374,6 +427,38 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
       if (!session || !session.user) {
         setIsAuthenticated(false);
         setUserData(null);
+        sessionStorage.removeItem("auth_login_pending");
+        return;
+      }
+
+      // For SIGNED_IN events, update state immediately without extra checks
+      if (event === "SIGNED_IN") {
+        setIsAuthenticated(true);
+        setIsCheckingAuth(false);
+        // Clear login pending flag
+        sessionStorage.removeItem("auth_login_pending");
+        // Set user data from session metadata immediately
+        const metadata = session.user.user_metadata;
+        const fullName = 
+          metadata?.full_name || 
+          metadata?.name || 
+          metadata?.display_name ||
+          (metadata?.first_name && metadata?.last_name 
+            ? `${metadata.first_name} ${metadata.last_name}`
+            : null);
+        const avatar = 
+          metadata?.avatar_url || 
+          metadata?.picture || 
+          metadata?.photo_url ||
+          null;
+        setUserData({
+          id: session.user.id,
+          name: fullName || null,
+          email: session.user.email || null,
+          avatar: avatar,
+        });
+        // Fetch user data from database in background
+        fetchUserData(session.user.id).catch(console.error);
         return;
       }
 
@@ -580,29 +665,29 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
 
                   {/* Menu Items */}
                   <div className="space-y-1">
-                    <DropdownMenuItem asChild className="!p-0 !focus:bg-transparent data-[highlighted]:bg-transparent">
+                    <DropdownMenuItem asChild className="p-0! focus:bg-transparent data-highlighted:bg-transparent">
                       <Link 
                         href="/my-inquiries" 
-                        className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:!bg-black dark:hover:!bg-white hover:!text-white dark:hover:!text-black border border-transparent hover:border-border/60 transition-all duration-200 group w-full"
+                        className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-black! dark:hover:bg-white! hover:text-white! dark:hover:text-black! border border-transparent hover:border-border/60 transition-all duration-200 group w-full"
                       >
-                        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/50 dark:bg-muted/30 group-hover:!bg-black/10 dark:group-hover:!bg-white/10 transition-colors">
-                          <FileText className="h-4 w-4 text-primary group-hover:!text-white dark:group-hover:!text-black transition-colors" />
+                        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/50 dark:bg-muted/30 group-hover:bg-black/10! dark:group-hover:bg-white/10! transition-colors">
+                          <FileText className="h-4 w-4 text-primary group-hover:text-white! dark:group-hover:text-black! transition-colors" />
                         </div>
-                        <span className="flex-1 font-medium text-foreground group-hover:!text-white dark:group-hover:!text-black transition-colors">My Inquiries</span>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:!text-white dark:group-hover:!text-black transition-opacity transition-colors" />
+                        <span className="flex-1 font-medium text-foreground group-hover:text-white! dark:group-hover:text-black! transition-colors">My Inquiries</span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-white! dark:group-hover:text-black! transition-colors" />
                       </Link>
                     </DropdownMenuItem>
                     
-                    <DropdownMenuItem asChild className="!p-0 !focus:bg-transparent data-[highlighted]:bg-transparent">
+                    <DropdownMenuItem asChild className="p-0! focus:bg-transparent data-highlighted:bg-transparent">
                       <Link 
                         href="/careers/my-applications" 
-                        className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:!bg-black dark:hover:!bg-white hover:!text-white dark:hover:!text-black border border-transparent hover:border-border/60 transition-all duration-200 group w-full"
+                        className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-black! dark:hover:bg-white! hover:text-white! dark:hover:text-black! border border-transparent hover:border-border/60 transition-all duration-200 group w-full"
                       >
-                        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/50 dark:bg-muted/30 group-hover:!bg-black/10 dark:group-hover:!bg-white/10 transition-colors">
-                          <Briefcase className="h-4 w-4 text-primary group-hover:!text-white dark:group-hover:!text-black transition-colors" />
+                        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/50 dark:bg-muted/30 group-hover:bg-black/10! dark:group-hover:bg-white/10! transition-colors">
+                          <Briefcase className="h-4 w-4 text-primary group-hover:text-white! dark:group-hover:text-black! transition-colors" />
                         </div>
-                        <span className="flex-1 font-medium text-foreground group-hover:!text-white dark:group-hover:!text-black transition-colors">My Applications</span>
-                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:!text-white dark:group-hover:!text-black transition-opacity transition-colors" />
+                        <span className="flex-1 font-medium text-foreground group-hover:text-white! dark:group-hover:text-black! transition-colors">My Applications</span>
+                        <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-white! dark:group-hover:text-black! transition-colors" />
                       </Link>
                     </DropdownMenuItem>
                   </div>
@@ -611,14 +696,17 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
 
                   {/* Logout */}
                   <DropdownMenuItem 
-                    onClick={handleLogout} 
-                    className="!p-0 !focus:bg-transparent data-[highlighted]:bg-transparent"
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleLogout().catch(console.error);
+                    }}
+                    className="p-0! focus:bg-transparent data-highlighted:bg-transparent"
                   >
-                    <div className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:!bg-black dark:hover:!bg-white hover:!text-white dark:hover:!text-black border border-transparent hover:border-border/60 transition-all duration-200 group w-full">
-                      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-destructive/5 dark:bg-destructive/10 group-hover:!bg-black/10 dark:group-hover:!bg-white/10 transition-colors">
-                        <LogOut className="h-4 w-4 text-destructive group-hover:!text-white dark:group-hover:!text-black transition-colors" />
+                    <div className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-black! dark:hover:bg-white! hover:text-white! dark:hover:text-black! border border-transparent hover:border-border/60 transition-all duration-200 group w-full">
+                      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-destructive/5 dark:bg-destructive/10 group-hover:bg-black/10! dark:group-hover:bg-white/10! transition-colors">
+                        <LogOut className="h-4 w-4 text-destructive group-hover:text-white! dark:group-hover:text-black! transition-colors" />
                       </div>
-                      <span className="flex-1 font-medium text-destructive group-hover:!text-white dark:group-hover:!text-black transition-colors">Log out</span>
+                      <span className="flex-1 font-medium text-destructive group-hover:text-white! dark:group-hover:text-black! transition-colors">Log out</span>
                     </div>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
