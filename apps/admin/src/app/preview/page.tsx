@@ -24,13 +24,29 @@ export default function PreviewPage() {
     };
   }, []);
 
-  // Get the preview URL - this should point to your website app homepage (not vendor-portal or admin)
-  // The website app runs on port 3002 (Next.js will use next available port if 3000 is taken)
-  // Set NEXT_PUBLIC_WEBSITE_URL to override (e.g., http://localhost:3002)
-  // IMPORTANT: This must point to the website app's homepage (/) with ?preview=draft
-  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002';
+  const getWebsiteUrl = () => {
+    const envUrl = process.env.NEXT_PUBLIC_WEBSITE_URL;
+    if (envUrl) return envUrl;
+    if (typeof window === "undefined") return "http://localhost:3001";
+    try {
+      const url = new URL(window.location.origin);
+      if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+        const currentPort = url.port || "3000";
+        url.port = currentPort === "3000" ? "3001" : currentPort === "3001" ? "3000" : "3001";
+        return url.toString().replace(/\/$/, "");
+      }
+      if (url.hostname.startsWith("admin.")) {
+        url.hostname = url.hostname.replace(/^admin\./, "");
+        return url.toString().replace(/\/$/, "");
+      }
+      return url.toString().replace(/\/$/, "");
+    } catch {
+      return "http://localhost:3001";
+    }
+  };
+
   // Ensure we're pointing to the root path of the website app, not /admin
-  const previewUrl = `${websiteUrl.replace(/\/$/, '')}/?preview=draft&v=${previewNonce}`;
+  const previewUrl = `${getWebsiteUrl()}/?preview=draft&v=${previewNonce}`;
   
   // Debug: Log the preview URL to help troubleshoot
   useEffect(() => {

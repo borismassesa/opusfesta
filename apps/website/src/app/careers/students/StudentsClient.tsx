@@ -60,9 +60,9 @@ export function StudentsClient() {
     <div className="min-h-screen bg-background">
       <CareersNavbar />
       
-      <main className="pt-20 sm:pt-24">
+      <main className="pt-14 sm:pt-18">
         {/* Hero Section with Carousel */}
-        <section id="hero-section" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-12 sm:py-16 md:py-24 flex flex-col items-center">
+        <section id="hero-section" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-8 md:py-12 flex flex-col items-center gap-3 sm:gap-4">
           <Header />
           <Carousel />
         </section>
@@ -75,15 +75,18 @@ export function StudentsClient() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6 }}
-              className="text-center mb-12 sm:mb-16 md:mb-20"
+              className="text-center mb-10 sm:mb-12 md:mb-16"
             >
-              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-primary leading-tight mb-6 sm:mb-8 tracking-tight">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-primary leading-tight mb-4 sm:mb-6 tracking-tight">
                 <span className="font-playfair italic font-medium">Opportunities</span>{' '}
                 <span className="font-sans font-medium tracking-tighter">for students</span>
               </h2>
+              <p className="text-secondary text-sm sm:text-base md:text-lg max-w-2xl mx-auto font-light">
+                Choose the path that fits your goals. Every role is designed to help you learn fast and make real impact.
+              </p>
             </motion.div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 sm:gap-12 md:gap-16 max-w-5xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 max-w-5xl mx-auto">
               {opportunities.map((opportunity, i) => {
                 const Icon = opportunity.icon;
                 return (
@@ -92,26 +95,23 @@ export function StudentsClient() {
                     initial={{ opacity: 0, y: 20 }}
                     whileInView={{ opacity: 1, y: 0 }}
                     viewport={{ once: true }}
-                    transition={{ duration: 0.5, delay: i * 0.1 }}
+                    transition={{ duration: 0.5, delay: i * 0.08 }}
                     className="group"
                   >
-                    <div className="text-center">
-                      {/* Icon */}
-                      <div className="mb-6 sm:mb-8 flex justify-center">
-                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-background dark:bg-surface/50 border-2 border-border dark:border-border/60 flex items-center justify-center group-hover:border-primary dark:group-hover:border-primary group-hover:bg-primary/5 dark:group-hover:bg-primary/10 transition-all duration-300">
-                          <Icon className="w-8 h-8 sm:w-10 sm:h-10 text-primary" />
+                    <div className="h-full rounded-2xl border border-border/60 bg-background/80 backdrop-blur-sm p-6 sm:p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg">
+                      <div className="flex items-start gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                          <Icon className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg sm:text-xl md:text-2xl font-semibold text-primary tracking-tight mb-2">
+                            {opportunity.title}
+                          </h3>
+                          <p className="text-secondary text-sm sm:text-base leading-relaxed font-light">
+                            {opportunity.description}
+                          </p>
                         </div>
                       </div>
-                      
-                      {/* Title */}
-                      <h3 className="text-xl sm:text-2xl md:text-3xl font-medium text-primary tracking-tight mb-4 sm:mb-6">
-                        {opportunity.title}
-                      </h3>
-                      
-                      {/* Description */}
-                      <p className="text-secondary leading-relaxed text-sm sm:text-base md:text-lg font-light max-w-md mx-auto px-2">
-                        {opportunity.description}
-                      </p>
                     </div>
                   </motion.div>
                 );
@@ -122,7 +122,7 @@ export function StudentsClient() {
 
         {/* Benefits */}
         <section className="py-12 sm:py-16 md:py-24 relative">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
+          <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-border to-transparent"></div>
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -174,7 +174,7 @@ export function StudentsClient() {
 
         {/* CTA */}
         <section className="py-12 sm:py-16 md:py-24 relative">
-          <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-border to-transparent"></div>
+          <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-transparent via-border to-transparent"></div>
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12">
             <motion.div
               initial={{ opacity: 0, y: 20 }}

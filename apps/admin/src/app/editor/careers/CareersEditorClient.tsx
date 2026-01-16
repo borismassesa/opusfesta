@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { Eye, PanelLeftClose, PanelLeftOpen, Briefcase, Users, Heart, Trophy, MessageSquare, BarChart3, Play, ArrowDown } from "lucide-react";
+import { Eye, PanelLeftClose, PanelLeftOpen, Briefcase, Users, Heart, Trophy, MessageSquare, BarChart3, Play, ArrowDown, Rocket, Sparkles, Lightbulb, Target, Flag } from "lucide-react";
 import { ResponsivePreview } from "@/components/preview/ResponsivePreview";
 import { useCareersContent } from "@/context/CareersContentContext";
 import { cn } from "@/lib/utils";
@@ -10,10 +10,12 @@ import { CareersPageEditor } from "./components/CareersPageEditor";
 import { StudentsPageEditor } from "./components/StudentsPageEditor";
 import { type CareersPageId, CAREERS_PAGES } from "./components/PageSelector";
 import { GraduationCap, FileQuestion, ListChecks } from "lucide-react";
+import { WhyOpusFestaPageEditor } from "./components/WhyOpusFestaPageEditor";
 
 type HomepageSectionId = "hero" | "values" | "perks" | "testimonials" | "process" | "preview";
+type WhyOpusFestaSectionId = "hero" | "reasons" | "difference" | "vision" | "cta" | "preview";
 type StudentsSectionId = "header" | "profiles" | "opportunities" | "benefits" | "faq" | "timeline" | "preview";
-type SectionId = HomepageSectionId | StudentsSectionId;
+type SectionId = HomepageSectionId | WhyOpusFestaSectionId | StudentsSectionId;
 
 const HOMEPAGE_NAV_GROUPS = [
   {
@@ -24,6 +26,25 @@ const HOMEPAGE_NAV_GROUPS = [
       { id: "perks" as SectionId, label: "Benefits", icon: Heart },
       { id: "testimonials" as SectionId, label: "Employee Stories", icon: MessageSquare },
       { id: "process" as SectionId, label: "Hiring Process", icon: ArrowDown },
+    ],
+  },
+  {
+    label: "PREVIEW",
+    items: [
+      { id: "preview" as SectionId, label: "Preview", icon: Eye },
+    ],
+  },
+];
+
+const WHY_OPUSFESTA_NAV_GROUPS = [
+  {
+    label: "SECTIONS",
+    items: [
+      { id: "hero" as SectionId, label: "Hero", icon: Rocket },
+      { id: "reasons" as SectionId, label: "Reasons", icon: Sparkles },
+      { id: "difference" as SectionId, label: "Difference", icon: Lightbulb },
+      { id: "vision" as SectionId, label: "Vision", icon: Target },
+      { id: "cta" as SectionId, label: "CTA", icon: Flag },
     ],
   },
   {
@@ -59,8 +80,10 @@ function getNavGroups(pageId: CareersPageId) {
     case "students":
       return STUDENTS_NAV_GROUPS;
     case "homepage":
-    default:
       return HOMEPAGE_NAV_GROUPS;
+    case "why-opusfesta":
+    default:
+      return WHY_OPUSFESTA_NAV_GROUPS;
   }
 }
 
@@ -69,6 +92,8 @@ function getDefaultSection(pageId: CareersPageId): SectionId {
     case "students":
       return "header";
     case "homepage":
+      return "hero";
+    case "why-opusfesta":
     default:
       return "hero";
   }
@@ -93,6 +118,9 @@ export function CareersEditorClient() {
       case "students":
         return ["header", "profiles", "opportunities", "benefits", "faq", "timeline", "preview"];
       case "homepage":
+        return ["hero", "values", "perks", "testimonials", "process", "preview"];
+      case "why-opusfesta":
+        return ["hero", "reasons", "difference", "vision", "cta", "preview"];
       default:
         return ["hero", "values", "perks", "testimonials", "process", "preview"];
     }
@@ -116,15 +144,6 @@ export function CareersEditorClient() {
     return false;
   });
   
-  // Secondary sidebar (sections) collapse state
-  const [isSecondarySidebarCollapsed, setIsSecondarySidebarCollapsed] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('admin-careers-editor-secondary-sidebar-collapsed');
-      return saved === 'true';
-    }
-    return false;
-  });
-
   useEffect(() => {
     loadAdminContent();
   }, [loadAdminContent]);
@@ -143,12 +162,6 @@ export function CareersEditorClient() {
       localStorage.setItem('admin-careers-editor-primary-sidebar-collapsed', String(isPrimarySidebarCollapsed));
     }
   }, [isPrimarySidebarCollapsed]);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('admin-careers-editor-secondary-sidebar-collapsed', String(isSecondarySidebarCollapsed));
-    }
-  }, [isSecondarySidebarCollapsed]);
 
   // Refresh preview when content is saved or published
   useEffect(() => {
@@ -213,23 +226,38 @@ export function CareersEditorClient() {
     }
   };
 
-  // Get the preview URL - this should point to your website app careers page
-  // IMPORTANT: This must be an absolute URL pointing to the website app, NOT the admin app
-  // Default to port 3002 (website app)
-  // The admin app runs on 3001, so the website app should be on a different port
-  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002';
-  
+  const getWebsiteUrl = () => {
+    const envUrl = process.env.NEXT_PUBLIC_WEBSITE_URL;
+    if (envUrl) return envUrl;
+    if (typeof window === "undefined") return "http://localhost:3001";
+    try {
+      const url = new URL(window.location.origin);
+      if (url.hostname === "localhost" || url.hostname === "127.0.0.1") {
+        const currentPort = url.port || "3000";
+        url.port = currentPort === "3000" ? "3001" : currentPort === "3001" ? "3000" : "3001";
+        return url.toString().replace(/\/$/, "");
+      }
+      if (url.hostname.startsWith("admin.")) {
+        url.hostname = url.hostname.replace(/^admin\./, "");
+        return url.toString().replace(/\/$/, "");
+      }
+      return url.toString().replace(/\/$/, "");
+    } catch {
+      return "http://localhost:3001";
+    }
+  };
+
   // Ensure we're pointing to the careers page of the website app, not the admin app
   // Remove any trailing slashes and ensure it's a clean absolute URL
-  const cleanWebsiteUrl = websiteUrl.replace(/\/$/, '');
+  const cleanWebsiteUrl = getWebsiteUrl();
   
   // Get the preview path based on active page
   const activePageConfig = CAREERS_PAGES.find(p => p.id === activePage);
-  const previewPath = activePage === "homepage" 
-    ? "/careers" 
-    : activePageConfig 
-      ? `/careers/${activePageConfig.id === "why-opusfesta" ? "why-opusfesta" : activePageConfig.id === "life-at-opusfesta" ? "life-at-opusfesta" : activePageConfig.id === "how-we-hire" ? "how-we-hire" : activePageConfig.id}`
-      : "/careers";
+  const previewPath = activePage === "students"
+    ? "/careers/students"
+    : activePage === "homepage"
+      ? "/careers"
+      : "/careers/why-opusfesta";
   
   const previewUrl = `${cleanWebsiteUrl}${previewPath}?preview=draft&v=${previewNonce}`;
   
@@ -358,114 +386,44 @@ export function CareersEditorClient() {
         </nav>
       </aside>
 
-      {/* Secondary Sidebar - Sections */}
-      <aside 
-        className={cn(
-          "border-r border-border bg-background flex-shrink-0 transition-all duration-200 ease-in-out h-full hidden md:flex md:flex-col",
-          isSecondarySidebarCollapsed ? "md:w-0 md:border-r-0 md:overflow-hidden" : "md:w-56 lg:w-64 xl:w-72"
-        )}
-      >
-          {/* Title Header */}
-          <div className="px-4 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
-            <div className={cn(
-              "flex flex-col transition-opacity duration-200",
-              isSecondarySidebarCollapsed && "opacity-0 w-0 overflow-hidden"
-            )}>
-              <h2 className="text-base font-semibold text-foreground whitespace-nowrap">
-                Sections
-              </h2>
-              <p className="text-xs text-muted-foreground whitespace-nowrap mt-0.5">
-                {activePageConfig?.label || "Careers"} sections
-              </p>
-            </div>
-            <button
-              onClick={() => setIsSecondarySidebarCollapsed(!isSecondarySidebarCollapsed)}
-              className={cn(
-                "w-8 h-8 rounded-lg bg-card border border-border/50 shadow-none hover:bg-card/80 hover:border-border text-muted-foreground hover:text-foreground transition-all duration-200 flex items-center justify-center flex-shrink-0",
-                isSecondarySidebarCollapsed && "ml-0"
-              )}
-              title={isSecondarySidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-            >
-              {isSecondarySidebarCollapsed ? (
-                <PanelLeftOpen className="w-4 h-4" />
-              ) : (
-                <PanelLeftClose className="w-4 h-4" />
-              )}
-            </button>
-          </div>
-        
-        {/* Navigation Groups */}
-        <nav className={cn(
-          "px-3 py-3 transition-opacity duration-200 flex-1 overflow-y-auto",
-          isSecondarySidebarCollapsed && "opacity-0 overflow-hidden"
-        )}>
-          {getNavGroups(activePage).map((group, groupIndex) => {
-            const navGroups = getNavGroups(activePage);
-            return (
-            <div key={group.label} className={cn(groupIndex < navGroups.length - 1 ? "mb-5" : "mb-0")}>
-              <div className="px-3 mb-2">
-                <h3 className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
-                  {group.label}
-                </h3>
-              </div>
-              <div className="space-y-0.5">
-                {group.items.map((item) => {
-                  const isActive = activeSection === item.id;
-                  
-                  return (
-                    <button
-                      key={item.id}
-                      onClick={() => handleSectionClick(item.id as SectionId)}
-                      className={cn(
-                        "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-all duration-200",
-                        isActive
-                          ? "!bg-foreground !text-background font-medium shadow-md"
-                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
-                      )}
-                    >
-                      <item.icon className={cn(
-                        "w-4 h-4 shrink-0",
-                        isActive ? "!text-background" : "text-muted-foreground"
-                      )} />
-                      <span className={cn(
-                        "truncate",
-                        isActive && "!text-background"
-                      )}>
-                        {item.label}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-            );
-          })}
-        </nav>
-      </aside>
-
-      {/* Floating Expand Button for Secondary Sidebar */}
-      {isSecondarySidebarCollapsed && !isPrimarySidebarCollapsed && (
-        <button
-          onClick={() => setIsSecondarySidebarCollapsed(false)}
-          className="absolute left-12 top-4 z-10 w-8 h-8 rounded-r-lg bg-card border border-l-0 border-border/50 shadow-none hover:bg-card/80 hover:border-border text-muted-foreground hover:text-foreground transition-all duration-200 hidden md:flex items-center justify-center"
-          title="Expand sections sidebar"
-        >
-          <PanelLeftOpen className="w-4 h-4" />
-        </button>
-      )}
-      
-      {isSecondarySidebarCollapsed && isPrimarySidebarCollapsed && (
-        <button
-          onClick={() => setIsSecondarySidebarCollapsed(false)}
-          className="absolute left-0 top-12 z-10 w-8 h-8 rounded-r-lg bg-card border border-l-0 border-border/50 shadow-none hover:bg-card/80 hover:border-border text-muted-foreground hover:text-foreground transition-all duration-200 hidden md:flex items-center justify-center"
-          title="Expand sections sidebar"
-        >
-          <PanelLeftOpen className="w-4 h-4" />
-        </button>
-      )}
-
       {/* Main Content Area */}
       <main className="flex-1 min-w-0 overflow-hidden bg-background flex flex-col max-w-full">
+          <div className="border-b border-border/60 bg-background/90 backdrop-blur-sm hidden md:block">
+            <div className="px-4 sm:px-6 md:px-8 py-3">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar">
+                {getNavGroups(activePage).map((group, groupIndex) => (
+                  <div key={group.label} className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
+                      {group.items.map((item) => {
+                        const isActive = activeSection === item.id;
+                        return (
+                          <button
+                            key={item.id}
+                            onClick={() => handleSectionClick(item.id as SectionId)}
+                            className={cn(
+                              "inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all duration-200 border",
+                              isActive
+                                ? "bg-foreground text-background border-foreground shadow-sm"
+                                : "text-muted-foreground border-border hover:border-foreground/30 hover:bg-muted/40 hover:text-foreground"
+                            )}
+                          >
+                            <item.icon className={cn(
+                              "w-3.5 h-3.5 shrink-0",
+                              isActive ? "text-background" : "text-muted-foreground"
+                            )} />
+                            <span className="whitespace-nowrap">{item.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    {groupIndex < getNavGroups(activePage).length - 1 && (
+                      <div className="h-5 w-px bg-border/70 mx-1" />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
           {activeSection === "preview" ? (
             <div className="h-full w-full flex flex-col bg-background overflow-hidden">
               <ResponsivePreview 
@@ -478,6 +436,8 @@ export function CareersEditorClient() {
             <div className="flex-1 min-h-0 overflow-hidden">
               {activePage === "homepage" ? (
                 <CareersPageEditor activeSection={activeSection as Exclude<HomepageSectionId, "preview">} />
+              ) : activePage === "why-opusfesta" ? (
+                <WhyOpusFestaPageEditor activeSection={activeSection as Exclude<WhyOpusFestaSectionId, "preview">} />
               ) : activePage === "students" ? (
                 <StudentsPageEditor activeSection={activeSection as Exclude<StudentsSectionId, "preview">} />
               ) : (

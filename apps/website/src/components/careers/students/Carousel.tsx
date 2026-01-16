@@ -44,7 +44,7 @@ const Carousel: React.FC = () => {
     // Active Item (Center Rectangle)
     if (diff === 0) {
       return {
-        className: `${absoluteCenter} z-30 w-[240px] h-[340px] sm:w-[280px] sm:h-[400px] md:w-[340px] md:h-[480px] opacity-100 rotate-0 ${baseTransition}`,
+        className: `${absoluteCenter} z-30 w-[220px] h-[300px] sm:w-[260px] sm:h-[360px] md:w-[300px] md:h-[420px] opacity-100 rotate-0 ${baseTransition}`,
         imageClassName: "w-full h-full object-cover",
         containerStyle: {}
       };
@@ -59,7 +59,7 @@ const Carousel: React.FC = () => {
       const desktopPos = isLeft ? "md:left-[calc(50%-240px)]" : "md:left-[calc(50%+240px)]";
 
       return {
-        className: `absolute top-1/2 ${mobilePos} ${desktopPos} transform -translate-x-1/2 -translate-y-1/2 z-20 w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] md:w-[280px] md:h-[280px] opacity-100 ${isLeft ? '-rotate-12 scale-90' : 'rotate-12 scale-90'} ${baseTransition}`,
+        className: `absolute top-1/2 ${mobilePos} ${desktopPos} transform -translate-x-1/2 -translate-y-1/2 z-20 w-[170px] h-[190px] sm:w-[210px] sm:h-[230px] md:w-[250px] md:h-[270px] opacity-100 ${isLeft ? '-rotate-12 scale-90' : 'rotate-12 scale-90'} ${baseTransition}`,
         imageClassName: "w-full h-full object-cover",
         containerStyle: {}
       };
@@ -82,7 +82,7 @@ const Carousel: React.FC = () => {
     >
       
       {/* Carousel Area */}
-      <div className="relative h-[400px] sm:h-[450px] md:h-[550px] w-full max-w-6xl mx-auto overflow-hidden md:overflow-visible flex items-center justify-center px-4">
+      <div className="relative h-[320px] sm:h-[380px] md:h-[460px] w-full max-w-6xl mx-auto overflow-hidden md:overflow-visible flex items-center justify-center px-4 -mt-6 sm:-mt-10">
         {PROFILES.map((profile, index) => {
           const { className, imageClassName } = getItemStyles(index);
           
@@ -107,13 +107,13 @@ const Carousel: React.FC = () => {
       </div>
 
       {/* Footer Controls */}
-      <div className="text-center mt-4 mb-12 sm:mb-16 md:mb-20 relative z-40 px-4">
+      <div className="text-center mt-1 mb-6 sm:mb-8 md:mb-10 relative z-40 px-4">
         <RulerControl 
           count={PROFILES.length} 
           activeIndex={activeIndex} 
           onChange={handleIndexChange} 
         />
-        <div className="mt-4 sm:mt-6 min-h-[100px] sm:min-h-[120px] md:min-h-[140px] overflow-hidden relative">
+        <div className="mt-3 sm:mt-4 min-h-[110px] sm:min-h-[130px] md:min-h-[160px] overflow-hidden relative">
           {/* Animated Content Transition */}
           {PROFILES.map((profile, index) => (
              <div 
@@ -135,7 +135,7 @@ const Carousel: React.FC = () => {
                   </p>
                 )}
                 {profile.quote && (
-                  <p className="text-sm sm:text-base text-secondary leading-relaxed font-light max-w-2xl mx-auto italic px-4">
+                  <p className="text-sm sm:text-base text-secondary leading-relaxed font-light max-w-2xl mx-auto italic px-4 line-clamp-4 sm:line-clamp-5">
                     "{profile.quote}"
                   </p>
                 )}

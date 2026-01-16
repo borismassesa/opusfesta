@@ -1,9 +1,9 @@
 "use client";
 
-import { Briefcase, GraduationCap, Heart, Users, FileText, Building2 } from "lucide-react";
+import { Briefcase, GraduationCap, Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type CareersPageId = "homepage" | "students" | "why-opusfesta" | "life-at-opusfesta" | "benefits" | "how-we-hire";
+export type CareersPageId = "homepage" | "why-opusfesta" | "students";
 
 export interface CareersPage {
   id: CareersPageId;
@@ -22,13 +22,6 @@ export const CAREERS_PAGES: CareersPage[] = [
     description: "Main careers landing page",
   },
   {
-    id: "students",
-    label: "Students",
-    slug: "careers-students",
-    icon: GraduationCap,
-    description: "Student opportunities page",
-  },
-  {
     id: "why-opusfesta",
     label: "Why OpusFesta",
     slug: "careers-why-opusfesta",
@@ -36,25 +29,11 @@ export const CAREERS_PAGES: CareersPage[] = [
     description: "Why join OpusFesta page",
   },
   {
-    id: "life-at-opusfesta",
-    label: "Life at OpusFesta",
-    slug: "careers-life-at-opusfesta",
-    icon: Users,
-    description: "Company culture page",
-  },
-  {
-    id: "benefits",
-    label: "Benefits",
-    slug: "careers-benefits",
-    icon: Building2,
-    description: "Benefits and perks page",
-  },
-  {
-    id: "how-we-hire",
-    label: "How We Hire",
-    slug: "careers-how-we-hire",
-    icon: FileText,
-    description: "Hiring process page",
+    id: "students",
+    label: "Students",
+    slug: "careers-students",
+    icon: GraduationCap,
+    description: "Student opportunities page",
   },
 ];
 
