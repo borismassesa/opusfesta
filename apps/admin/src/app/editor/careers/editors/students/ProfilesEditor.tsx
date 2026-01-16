@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ImageUpload } from "@/components/careers/ImageUpload";
 import { Plus, Trash2 } from "lucide-react";
 
 export function ProfilesEditor() {
@@ -101,6 +102,15 @@ export function ProfilesEditor() {
                   value={profile.image}
                   onChange={(e) => updateProfile(profile.id, "image", e.target.value)}
                   placeholder="https://images.unsplash.com/..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Or Upload Image</Label>
+                <ImageUpload
+                  value={profile.image || null}
+                  onChange={(url) => updateProfile(profile.id, "image", url || "")}
+                  folder="careers-students-profiles"
+                  label=""
                 />
               </div>
 

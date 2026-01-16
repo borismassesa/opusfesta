@@ -8,6 +8,40 @@ const CMS_SLUG = "careers";
 
 // Careers page content structure (same as admin)
 export interface CareersContentState {
+  whyOpusFesta: {
+    hero: {
+      headline: string;
+      description: string;
+      ctaText: string;
+      ctaLink: string;
+    };
+    reasons: {
+      headline: string;
+      items: {
+        title: string;
+        description: string;
+        icon: string;
+      }[];
+    };
+    difference: {
+      headline: string;
+      description: string;
+      items: {
+        title: string;
+        description: string;
+      }[];
+    };
+    vision: {
+      headline: string;
+      paragraphs: string[];
+    };
+    cta: {
+      headline: string;
+      description: string;
+      buttonText: string;
+      buttonLink: string;
+    };
+  };
   hero: {
     title: string;
     description: string;
@@ -98,6 +132,84 @@ export interface CareersContentState {
 
 // Initial content (same as admin)
 const INITIAL_CONTENT: CareersContentState = {
+  whyOpusFesta: {
+    hero: {
+      headline: "Why you should join us\nBuild something meaningful",
+      description: "At OpusFesta, you'll build products that matter to real people, work with cutting-edge technology, and grow your career while making a meaningful impact on Tanzanian celebrations.",
+      ctaText: "View Open Positions",
+      ctaLink: "/careers/positions",
+    },
+    reasons: {
+      headline: "Why work at OpusFesta",
+      items: [
+        {
+          icon: "rocket",
+          title: "Build Something Meaningful",
+          description: "Every line of code you write, every feature you ship, directly impacts real couples planning their most important celebrations. You're not building another app—you're helping families create memories that last a lifetime.",
+        },
+        {
+          icon: "trending",
+          title: "Rapid Growth & Impact",
+          description: "We're one of Tanzania's fastest-growing tech companies. Join us at this pivotal moment and help shape the future of event planning across the country. Your work will reach thousands of users from day one.",
+        },
+        {
+          icon: "code",
+          title: "Modern Tech Stack",
+          description: "Work with cutting-edge technologies and best practices. We use TypeScript, Next.js, React, and modern cloud infrastructure. You'll build scalable systems while learning from experienced engineers.",
+        },
+        {
+          icon: "users",
+          title: "Collaborative Culture",
+          description: "We believe great products come from great teams. You'll work alongside passionate, talented people who care about quality, user experience, and making a real difference. No egos, just great work.",
+        },
+        {
+          icon: "lightbulb",
+          title: "Ownership & Autonomy",
+          description: "Take ownership of features from concept to launch. We trust you to make decisions, experiment, and learn. Your ideas matter, and you'll see them come to life quickly without layers of bureaucracy.",
+        },
+        {
+          icon: "award",
+          title: "Career Growth",
+          description: "We invest in your growth. Whether you want to become a technical lead, explore new domains, or build expertise in specific areas, we provide the opportunities, mentorship, and resources to help you succeed.",
+        },
+      ],
+    },
+    difference: {
+      headline: "What makes us different",
+      description: "We're not just another tech company. We're building something unique for Tanzania, and that means unique opportunities for you.",
+      items: [
+        {
+          title: "Tanzania-First Approach",
+          description: "We're not adapting a foreign product—we're building specifically for the Tanzanian market. You'll work on features like mobile money integration, Swahili language support, and cultural event planning that truly serve our users.",
+        },
+        {
+          title: "Real User Connection",
+          description: "We regularly talk to couples, vendors, and families. You'll see firsthand how your work makes a difference. This isn't abstract—you'll hear stories of celebrations made easier because of what you built.",
+        },
+        {
+          title: "Fast-Paced Learning",
+          description: "In a startup environment, you wear multiple hats and learn quickly. One day you might be optimizing database queries, the next you're designing a new feature. You'll grow faster here than anywhere else.",
+        },
+        {
+          title: "Work-Life Balance",
+          description: "We work hard, but we also respect boundaries. We believe sustainable pace leads to better products and happier teams. Flexible hours and remote-friendly policies help you do your best work.",
+        },
+      ],
+    },
+    vision: {
+      headline: "Building the future of celebrations",
+      paragraphs: [
+        "We envision a future where planning any celebration—from intimate weddings to grand sherehe—is seamless, accessible, and joyful. We're building the platform that makes this possible, and we need talented people like you to help us get there.",
+        "Whether you're a seasoned engineer, a designer passionate about user experience, or someone early in their career looking to make an impact, there's a place for you here. We're building something special, and we'd love for you to be part of it.",
+      ],
+    },
+    cta: {
+      headline: "Ready to join us?",
+      description: "Check out our open positions and see where you can make an impact. We're always looking for talented, passionate people who want to build something meaningful.",
+      buttonText: "View Open Positions",
+      buttonLink: "/careers/positions",
+    },
+  },
   hero: {
     title: "Build the future\nof Event Planning",
     description: "We believe that when every person and business can tailor event planning to their unique needs, the world becomes better at celebrating life's moments. Our mission is to make that vision a reality.",
@@ -291,6 +403,33 @@ export function CareersContentProvider({ children }: { children: ReactNode }) {
     
     // Deep merge with initial content as fallback
     return {
+      whyOpusFesta: {
+        ...INITIAL_CONTENT.whyOpusFesta,
+        ...remote.whyOpusFesta,
+        hero: { ...INITIAL_CONTENT.whyOpusFesta.hero, ...(remote.whyOpusFesta?.hero || {}) },
+        reasons: {
+          ...INITIAL_CONTENT.whyOpusFesta.reasons,
+          ...(remote.whyOpusFesta?.reasons || {}),
+          items: remote.whyOpusFesta?.reasons?.items?.length
+            ? remote.whyOpusFesta.reasons.items
+            : INITIAL_CONTENT.whyOpusFesta.reasons.items,
+        },
+        difference: {
+          ...INITIAL_CONTENT.whyOpusFesta.difference,
+          ...(remote.whyOpusFesta?.difference || {}),
+          items: remote.whyOpusFesta?.difference?.items?.length
+            ? remote.whyOpusFesta.difference.items
+            : INITIAL_CONTENT.whyOpusFesta.difference.items,
+        },
+        vision: {
+          ...INITIAL_CONTENT.whyOpusFesta.vision,
+          ...(remote.whyOpusFesta?.vision || {}),
+          paragraphs: remote.whyOpusFesta?.vision?.paragraphs?.length
+            ? remote.whyOpusFesta.vision.paragraphs
+            : INITIAL_CONTENT.whyOpusFesta.vision.paragraphs,
+        },
+        cta: { ...INITIAL_CONTENT.whyOpusFesta.cta, ...(remote.whyOpusFesta?.cta || {}) },
+      },
       hero: { ...INITIAL_CONTENT.hero, ...remote.hero },
       stats: { ...INITIAL_CONTENT.stats, ...(remote.stats || {}) },
       story: { ...INITIAL_CONTENT.story, ...(remote.story || {}) },

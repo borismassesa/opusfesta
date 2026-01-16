@@ -30,43 +30,116 @@ export function ImageUpload({
   const [error, setError] = useState<string | null>(null);
   const [loadingPreview, setLoadingPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const retryRef = useRef(0);
+  const lastValueRef = useRef<string | null>(null);
+  const previewInfoRef = useRef<{
+    bucket?: string;
+    path?: string;
+    source?: "signed" | "public" | "direct";
+  } | null>(null);
+
+  const parseStorageUrl = (input: string): { bucket: string; path: string } | null => {
+    try {
+      const url = new URL(input);
+      const parts = url.pathname.split("/").filter(Boolean);
+      const objectIndex = parts.indexOf("object");
+      if (objectIndex === -1) return null;
+
+      const variant = parts[objectIndex + 1];
+      const bucketIndex =
+        variant === "public" || variant === "sign"
+          ? objectIndex + 2
+          : objectIndex + 1;
+
+      const bucketFromUrl = parts[bucketIndex];
+      const pathParts = parts.slice(bucketIndex + 1);
+
+      if (!bucketFromUrl || pathParts.length === 0) return null;
+      return { bucket: bucketFromUrl, path: pathParts.join("/") };
+    } catch {
+      return null;
+    }
+  };
+
+  const resolvePreview = async (nextValue: string) => {
+    if (!nextValue) {
+      setPreview(null);
+      return;
+    }
+
+    if (nextValue.startsWith("data:")) {
+      previewInfoRef.current = { source: "direct" };
+      setPreview(nextValue);
+      return;
+    }
+
+    let storagePath = nextValue;
+    let bucketToUse = bucket;
+
+    if (nextValue.startsWith("http")) {
+      const parsed = parseStorageUrl(nextValue);
+      if (parsed) {
+        storagePath = parsed.path;
+        bucketToUse = parsed.bucket;
+      } else {
+        previewInfoRef.current = { source: "direct" };
+        setPreview(nextValue);
+        return;
+      }
+    }
+
+    setLoadingPreview(true);
+    try {
+      const { data, error: urlError } = await supabase.storage
+        .from(bucketToUse)
+        .createSignedUrl(storagePath, 3600);
+
+      if (urlError || !data?.signedUrl) {
+        console.error("Error loading preview:", urlError);
+        const publicUrl = supabase.storage
+          .from(bucketToUse)
+          .getPublicUrl(storagePath).data.publicUrl;
+        if (publicUrl) {
+          previewInfoRef.current = { bucket: bucketToUse, path: storagePath, source: "public" };
+          setPreview(publicUrl);
+        } else {
+          previewInfoRef.current = nextValue.startsWith("http") ? { source: "direct" } : null;
+          setPreview(nextValue.startsWith("http") ? nextValue : null);
+        }
+      } else {
+        previewInfoRef.current = { bucket: bucketToUse, path: storagePath, source: "signed" };
+        setPreview(data.signedUrl);
+      }
+    } catch (err) {
+      console.error("Error generating signed URL:", err);
+      const publicUrl = supabase.storage
+        .from(bucketToUse)
+        .getPublicUrl(storagePath).data.publicUrl;
+      if (publicUrl) {
+        previewInfoRef.current = { bucket: bucketToUse, path: storagePath, source: "public" };
+        setPreview(publicUrl);
+      } else {
+        previewInfoRef.current = nextValue.startsWith("http") ? { source: "direct" } : null;
+        setPreview(nextValue.startsWith("http") ? nextValue : null);
+      }
+    } finally {
+      setLoadingPreview(false);
+    }
+  };
 
   // Load preview from Supabase Storage when value changes
   useEffect(() => {
-    const loadPreview = async () => {
-      if (!value) {
-        setPreview(null);
-        return;
-      }
+    if (value !== lastValueRef.current) {
+      retryRef.current = 0;
+      previewInfoRef.current = null;
+      lastValueRef.current = value ?? null;
+    }
 
-      // If value is already a full URL (from FileReader), use it directly
-      if (value.startsWith("data:") || value.startsWith("http")) {
-        setPreview(value);
-        return;
-      }
-
-      // Otherwise, it's a storage path - get signed URL
-      setLoadingPreview(true);
-      try {
-        const { data, error: urlError } = await supabase.storage
-          .from(bucket)
-          .createSignedUrl(value, 3600); // 1 hour expiry
-
-        if (urlError || !data) {
-          console.error("Error loading preview:", urlError);
-          setPreview(null);
-        } else {
-          setPreview(data.signedUrl);
-        }
-      } catch (err) {
-        console.error("Error generating signed URL:", err);
-        setPreview(null);
-      } finally {
-        setLoadingPreview(false);
-      }
-    };
-
-    loadPreview();
+    if (value) {
+      resolvePreview(value);
+    } else {
+      setPreview(null);
+    }
   }, [value, bucket]);
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -165,6 +238,23 @@ export function ImageUpload({
                 className="w-full h-full object-cover"
                 onError={() => {
                   console.error("Failed to load preview image");
+                  const info = previewInfoRef.current;
+                  if (info?.source === "signed" && info.bucket && info.path && retryRef.current < 1) {
+                    retryRef.current += 1;
+                    const fallbackUrl = supabase.storage
+                      .from(info.bucket)
+                      .getPublicUrl(info.path).data.publicUrl;
+                    if (fallbackUrl) {
+                      previewInfoRef.current = { ...info, source: "public" };
+                      setPreview(fallbackUrl);
+                      return;
+                    }
+                  }
+                  if (value && !value.startsWith("data:") && retryRef.current < 1) {
+                    retryRef.current += 1;
+                    resolvePreview(value);
+                    return;
+                  }
                   setPreview(null);
                 }}
               />
