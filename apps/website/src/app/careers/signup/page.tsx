@@ -137,7 +137,7 @@ export default function CareersSignup() {
   return (
     <div className="min-h-screen w-full flex bg-background">
       {/* Left Side - Enhanced Visual Panel */}
-      <div className="hidden lg:flex w-[45%] relative overflow-hidden bg-gradient-to-br from-primary/5 via-primary/2 to-background">
+      <div className="hidden lg:flex w-[45%] relative overflow-hidden bg-linear-to-br from-primary/5 via-primary/2 to-background">
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
@@ -148,12 +148,12 @@ export default function CareersSignup() {
             priority
             quality={90}
           />
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/60 via-primary/40 to-primary/60" />
+          <div className="absolute inset-0 bg-linear-to-br from-primary/60 via-primary/40 to-primary/60" />
         </div>
         
         {/* Overlay gradients */}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/95 via-background/60 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-background/95 via-background/60 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-transparent to-transparent" />
         
         <div className="relative z-10 p-12 flex flex-col justify-between h-full">
           <Link

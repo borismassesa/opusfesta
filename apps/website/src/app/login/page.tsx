@@ -8,8 +8,32 @@ import loginImg from "@assets/stock_images/romantic_couple_wedd_0c0b1d37.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
 import { getRandomSignInQuote, type Quote } from "@/lib/quotes";
 import { supabase } from "@/lib/supabaseClient";
-import { ensureUserRecord, getRedirectPath, getUserTypeFromSession } from "@/lib/auth";
+import { ensureUserRecord, getRedirectPath, getUserTypeFromSession, type UserType } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
+
+class AuthTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthTimeoutError";
+  }
+}
+
+const withTimeout = async <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new AuthTimeoutError(message));
+    }, ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
 
 export default function Login() {
   const router = useRouter();
@@ -47,10 +71,31 @@ export default function Login() {
     e.preventDefault();
     setIsLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    let data;
+    let error;
+    try {
+      const result = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        }),
+        8000,
+        "Sign in is taking longer than expected."
+      );
+      data = result.data;
+      error = result.error;
+    } catch (err) {
+      if (err instanceof AuthTimeoutError) {
+        toast({
+          variant: "destructive",
+          title: "Sign in timed out",
+          description: "Please check your connection and try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
+      throw err;
+    }
 
     if (error) {
       // Check for email confirmation errors
@@ -98,22 +143,60 @@ export default function Login() {
       return;
     }
 
-    // Ensure user record exists in database
-    const ensureResult = await ensureUserRecord(data.session);
-    
-    if (!ensureResult.success) {
-      // Show user-friendly error message (technical errors are already sanitized in ensureUserRecord)
-      toast({
-        variant: "destructive",
-        title: "Account setup issue",
-        description: ensureResult.error || "Unable to complete sign in. Please try again or contact support.",
-      });
-      setIsLoading(false);
-      return;
+    const userTypeHint = data.session.user.user_metadata?.user_type as UserType | undefined;
+
+    // Ensure user record exists in database (guard against long-running requests)
+    try {
+      const ensureResult = await withTimeout(
+        ensureUserRecord(data.session),
+        8000,
+        "Account setup is taking longer than expected."
+      );
+      
+      if (!ensureResult.success) {
+        // Show user-friendly error message (technical errors are already sanitized in ensureUserRecord)
+        toast({
+          variant: "destructive",
+          title: "Account setup issue",
+          description: ensureResult.error || "Unable to complete sign in. Please try again or contact support.",
+        });
+        setIsLoading(false);
+        return;
+      }
+    } catch (err) {
+      if (err instanceof AuthTimeoutError) {
+        toast({
+          title: "Signing you in",
+          description: "Account setup is taking longer than expected. Redirecting you now...",
+        });
+      } else {
+        console.error("Error ensuring user record:", err);
+        toast({
+          variant: "destructive",
+          title: "Sign in failed",
+          description: "Unable to complete sign in. Please try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
     }
 
-    // Get user type and redirect appropriately
-    const userType = await getUserTypeFromSession(data.session);
+    // Get user type (fallback to metadata if lookup is slow)
+    let userType = userTypeHint || null;
+    try {
+      const fetchedUserType = await withTimeout(
+        getUserTypeFromSession(data.session),
+        4000,
+        "User type lookup is taking longer than expected."
+      );
+      if (fetchedUserType) {
+        userType = fetchedUserType;
+      }
+    } catch (err) {
+      if (!(err instanceof AuthTimeoutError)) {
+        console.error("Error getting user type:", err);
+      }
+    }
     // Check both URL param and sessionStorage (for OAuth flows)
     const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
     const redirectPath = getRedirectPath(userType || undefined, undefined, next);

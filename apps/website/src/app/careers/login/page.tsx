@@ -6,8 +6,32 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Loader2, Briefcase, CheckCircle2, FileText, Bell } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
-import { ensureUserRecord, getRedirectPath, getUserTypeFromSession } from "@/lib/auth";
+import { ensureUserRecord, getRedirectPath, getUserTypeFromSession, type UserType } from "@/lib/auth";
 import { toast } from "@/hooks/use-toast";
+
+class AuthTimeoutError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "AuthTimeoutError";
+  }
+}
+
+const withTimeout = async <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
+  let timeoutId: ReturnType<typeof setTimeout> | null = null;
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      reject(new AuthTimeoutError(message));
+    }, ms);
+  });
+
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
+};
 
 export default function CareersLogin() {
   const router = useRouter();
@@ -29,10 +53,14 @@ export default function CareersLogin() {
     setIsLoading(true);
 
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
+      const { data, error } = await withTimeout(
+        supabase.auth.signInWithPassword({
+          email,
+          password,
+        }),
+        8000,
+        "Sign in is taking longer than expected."
+      );
 
       if (error) {
         // Provide more specific error messages
@@ -67,21 +95,59 @@ export default function CareersLogin() {
       // Clear redirect guard on successful login attempt
       sessionStorage.removeItem("auth_redirect_guard");
 
-      const ensureResult = await ensureUserRecord(data.session);
-      
-      if (!ensureResult.success) {
-        // Log error for debugging but show user-friendly message
-        console.error("User record ensure failed:", ensureResult.error);
-        toast({
-          variant: "destructive",
-          title: "Account setup issue",
-          description: ensureResult.error || "Unable to complete sign in. Please try again or contact support.",
-        });
-        setIsLoading(false);
-        return;
+      const userTypeHint = data.session.user.user_metadata?.user_type as UserType | undefined;
+
+      try {
+        const ensureResult = await withTimeout(
+          ensureUserRecord(data.session),
+          8000,
+          "Account setup is taking longer than expected."
+        );
+        
+        if (!ensureResult.success) {
+          // Log error for debugging but show user-friendly message
+          console.error("User record ensure failed:", ensureResult.error);
+          toast({
+            variant: "destructive",
+            title: "Account setup issue",
+            description: ensureResult.error || "Unable to complete sign in. Please try again or contact support.",
+          });
+          setIsLoading(false);
+          return;
+        }
+      } catch (err) {
+        if (err instanceof AuthTimeoutError) {
+          toast({
+            title: "Signing you in",
+            description: "Account setup is taking longer than expected. Redirecting you now...",
+          });
+        } else {
+          console.error("User record ensure failed:", err);
+          toast({
+            variant: "destructive",
+            title: "Sign in failed",
+            description: "Unable to complete sign in. Please try again.",
+          });
+          setIsLoading(false);
+          return;
+        }
       }
 
-      const userType = await getUserTypeFromSession(data.session);
+      let userType = userTypeHint || null;
+      try {
+        const fetchedUserType = await withTimeout(
+          getUserTypeFromSession(data.session),
+          4000,
+          "User type lookup is taking longer than expected."
+        );
+        if (fetchedUserType) {
+          userType = fetchedUserType;
+        }
+      } catch (err) {
+        if (!(err instanceof AuthTimeoutError)) {
+          console.error("Error getting user type:", err);
+        }
+      }
       const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
       const redirectPath = getRedirectPath(userType || undefined, undefined, next);
       
@@ -98,6 +164,15 @@ export default function CareersLogin() {
       
       router.push(redirectPath);
     } catch (error) {
+      if (error instanceof AuthTimeoutError) {
+        toast({
+          variant: "destructive",
+          title: "Sign in timed out",
+          description: "Please check your connection and try again.",
+        });
+        setIsLoading(false);
+        return;
+      }
       console.error("Unexpected login error:", error);
       toast({
         variant: "destructive",

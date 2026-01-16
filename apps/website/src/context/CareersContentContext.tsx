@@ -381,6 +381,7 @@ interface CareersContentContextType {
   content: CareersContentState;
   isLoading: boolean;
   error: string | null;
+  contentVersion: string;
 }
 
 const CareersContentContext = createContext<CareersContentContextType | undefined>(undefined);
@@ -393,6 +394,7 @@ export function CareersContentProvider({ children }: { children: ReactNode }) {
   const [content, setContent] = useState<CareersContentState>(INITIAL_CONTENT);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [contentVersion, setContentVersion] = useState("");
 
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -445,6 +447,11 @@ export function CareersContentProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const applyRemoteContent = useCallback((row?: CmsPageRow | null, mode?: "published" | "admin") => {
+    const version = mode === "published"
+      ? row?.published_at ?? row?.updated_at
+      : row?.updated_at ?? row?.published_at;
+    setContentVersion(version ?? "");
+
     // For published mode, prefer published_content, but fallback to draft_content if published_content is empty
     // For admin/preview mode, prefer draft_content, but fallback to published_content
     const source = mode === "published"
@@ -486,6 +493,7 @@ export function CareersContentProvider({ children }: { children: ReactNode }) {
       console.error('[CareersContentContext] Error loading published content:', fetchError);
       setError(fetchError.message);
       setContent(INITIAL_CONTENT);
+      setContentVersion("");
       setIsLoading(false);
       return;
     }
@@ -508,6 +516,7 @@ export function CareersContentProvider({ children }: { children: ReactNode }) {
       console.error('[CareersContentContext] Error loading admin content:', fetchError);
       setError(fetchError.message);
       setContent(INITIAL_CONTENT);
+      setContentVersion("");
       setIsLoading(false);
       return;
     }
@@ -603,6 +612,7 @@ export function CareersContentProvider({ children }: { children: ReactNode }) {
         content,
         isLoading,
         error,
+        contentVersion,
       }}
     >
       {children}
