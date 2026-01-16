@@ -140,10 +140,26 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setIsAuthenticated(false);
-    setUserData(null);
-    router.push("/careers");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error("Logout error:", error);
+        return;
+      }
+      // Clear state immediately
+      setIsAuthenticated(false);
+      setUserData(null);
+      setIsCheckingAuth(false);
+      // Navigate after state is cleared
+      await router.push("/careers");
+      router.refresh();
+    } catch (error) {
+      console.error("Error logging out:", error);
+      // Still clear state on error
+      setIsAuthenticated(false);
+      setUserData(null);
+      setIsCheckingAuth(false);
+    }
   };
 
   useEffect(() => {
@@ -186,15 +202,34 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
       let timeoutId: NodeJS.Timeout | null = null;
       
       try {
+        // Check if there was a recent login attempt
+        const loginPending = sessionStorage.getItem("auth_login_pending");
+        const loginPendingTime = loginPending ? parseInt(loginPending, 10) : null;
+        const isRecentLogin = loginPendingTime && (Date.now() - loginPendingTime) < 20000; // Within 20 seconds
+        const timeoutDuration = isRecentLogin ? 12000 : 3000; // 12s for recent login, 3s otherwise
+        
         // Add timeout to prevent hanging - show buttons if check takes too long
-        timeoutId = setTimeout(() => {
+        timeoutId = setTimeout(async () => {
           if (mounted) {
-            console.warn("Auth check timeout - defaulting to not authenticated");
-            setIsAuthenticated(false);
-            setUserData(null);
-            setIsCheckingAuth(false);
+            // Before timing out, do one final check for session
+            const { data: { session } } = await supabase.auth.getSession();
+            if (session?.user) {
+              // Session exists, update state
+              setIsAuthenticated(true);
+              await fetchUserData(session.user.id);
+              setIsCheckingAuth(false);
+              // Clear the login pending flag
+              if (loginPending) {
+                sessionStorage.removeItem("auth_login_pending");
+              }
+            } else {
+              console.warn("Auth check timeout - defaulting to not authenticated");
+              setIsAuthenticated(false);
+              setUserData(null);
+              setIsCheckingAuth(false);
+            }
           }
-        }, 3000); // 3 second timeout
+        }, timeoutDuration);
         
         const { data: { session }, error } = await supabase.auth.getSession();
         
@@ -217,6 +252,10 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
             setIsAuthenticated(true);
             await fetchUserData(session.user.id);
             setIsCheckingAuth(false);
+            // Clear the login pending flag on successful auth
+            if (loginPending) {
+              sessionStorage.removeItem("auth_login_pending");
+            }
           }
         } else {
           if (mounted) {
@@ -247,12 +286,24 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
           setIsAuthenticated(false);
           setUserData(null);
           setIsCheckingAuth(false);
+          sessionStorage.removeItem("auth_login_pending");
           return;
         }
 
         if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
           if (session?.user) {
-            // CRITICAL: Verify user still exists in Supabase Auth
+            // For SIGNED_IN events, update state immediately without extra checks
+            if (event === "SIGNED_IN") {
+              setIsAuthenticated(true);
+              setIsCheckingAuth(false);
+              // Clear login pending flag
+              sessionStorage.removeItem("auth_login_pending");
+              // Fetch user data asynchronously
+              fetchUserData(session.user.id).catch(console.error);
+              return;
+            }
+
+            // For other events, verify user still exists in Supabase Auth
             const userExistsInAuth = await supabase.auth.getUser()
               .then(({ data, error }) => {
                 if (error || !data.user || data.user.id !== session.user.id) {
@@ -377,7 +428,7 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
                   <DropdownMenuSeparator className="my-2" />
 
                   <div className="space-y-1">
-                    <DropdownMenuItem asChild className="!p-0 !focus:bg-transparent">
+                    <DropdownMenuItem asChild className="p-0! focus:bg-transparent">
                       <Link 
                         href="/careers/my-applications" 
                         className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary hover:text-primary-foreground transition-all w-full"
@@ -394,8 +445,11 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
                   <DropdownMenuSeparator className="my-2" />
 
                   <DropdownMenuItem 
-                    onClick={handleLogout} 
-                    className="!p-0 !focus:bg-transparent"
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleLogout().catch(console.error);
+                    }}
+                    className="p-0! focus:bg-transparent"
                   >
                     <div className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-destructive hover:text-destructive-foreground transition-all w-full">
                       <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-destructive/10">

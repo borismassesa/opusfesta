@@ -200,6 +200,10 @@ export default function Login() {
     // Check both URL param and sessionStorage (for OAuth flows)
     const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
     const redirectPath = getRedirectPath(userType || undefined, undefined, next);
+    const currentPath = typeof window !== "undefined" ? window.location.pathname : "/login";
+    const safeRedirectPath = redirectPath === currentPath || redirectPath.startsWith("/login")
+      ? "/"
+      : redirectPath;
     
     // Clear sessionStorage after use
     if (sessionStorage.getItem("auth_redirect")) {
@@ -211,7 +215,8 @@ export default function Login() {
       description: "Successfully signed in. Redirecting you now...",
     });
     
-    router.push(redirectPath);
+    sessionStorage.setItem("auth_login_pending", String(Date.now()));
+    router.push(safeRedirectPath);
   };
 
   return (
@@ -224,7 +229,7 @@ export default function Login() {
             alt="Couple at sunset" 
             className="w-full h-full object-cover opacity-90 scale-105 hover:scale-100 transition-transform duration-[20s] ease-in-out"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent" />
         </div>
         
         <div className="relative z-10 p-12 flex flex-col justify-between h-full text-white w-full">
