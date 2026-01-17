@@ -36,6 +36,7 @@ interface JobPosting {
   responsibilities: string[];
   salary_range: string | null;
   is_active: boolean;
+  is_archived?: boolean;
   created_at: string;
   updated_at: string;
   image_url?: string | null;
@@ -76,7 +77,7 @@ export default function JobsPage() {
       }
 
       // Use absolute URL with basePath to call admin app's own API
-      const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs?includeInactive=true`), {
+      const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs?includeInactive=true&includeArchived=true`), {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
@@ -134,10 +135,13 @@ export default function JobsPage() {
       }
 
       // Status filter
-      if (statusFilter === "active" && !job.is_active) {
+      if (statusFilter === "active" && (!job.is_active || job.is_archived)) {
         return false;
       }
-      if (statusFilter === "inactive" && job.is_active) {
+      if (statusFilter === "inactive" && (job.is_active || job.is_archived)) {
+        return false;
+      }
+      if (statusFilter === "archived" && !job.is_archived) {
         return false;
       }
 
@@ -324,6 +328,82 @@ export default function JobsPage() {
     }
   };
 
+  const handleBulkArchive = async (ids?: string[]) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const jobIds = ids || Array.from(selectedIds);
+      
+      if (jobIds.length === 0) {
+        alert("Please select at least one job posting to archive");
+        return;
+      }
+
+      // Use absolute URL with basePath to call admin app's own API
+      const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs/bulk`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "archive",
+          jobIds: jobIds,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errorData.error || "Failed to archive job postings");
+      }
+
+      setSelectedIds(new Set());
+      fetchJobs();
+    } catch (err) {
+      console.error("Error bulk archiving jobs:", err);
+      alert(err instanceof Error ? err.message : "Failed to archive job postings");
+    }
+  };
+
+  const handleBulkUnarchive = async (ids?: string[]) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const jobIds = ids || Array.from(selectedIds);
+      
+      if (jobIds.length === 0) {
+        alert("Please select at least one job posting to unarchive");
+        return;
+      }
+
+      // Use absolute URL with basePath to call admin app's own API
+      const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs/bulk`), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          action: "unarchive",
+          jobIds: jobIds,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(errorData.error || "Failed to unarchive job postings");
+      }
+
+      setSelectedIds(new Set());
+      fetchJobs();
+    } catch (err) {
+      console.error("Error bulk unarchiving jobs:", err);
+      alert(err instanceof Error ? err.message : "Failed to unarchive job postings");
+    }
+  };
+
   const handleBulkExport = () => {
     const selectedJobs = filteredAndSortedJobs.filter((job) => selectedIds.has(job.id));
     if (selectedJobs.length === 0) {
@@ -342,9 +422,10 @@ export default function JobsPage() {
 
   const stats = useMemo(() => {
     const total = jobs.length;
-    const active = jobs.filter((j) => j.is_active).length;
-    const inactive = total - active;
-    return { total, active, inactive };
+    const active = jobs.filter((j) => j.is_active && !j.is_archived).length;
+    const inactive = jobs.filter((j) => !j.is_active && !j.is_archived).length;
+    const archived = jobs.filter((j) => j.is_archived).length;
+    return { total, active, inactive, archived };
   }, [jobs]);
 
   if (loading) {
@@ -423,7 +504,7 @@ export default function JobsPage() {
       )}
 
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid gap-4 md:grid-cols-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -454,6 +535,16 @@ export default function JobsPage() {
             <div className="text-2xl font-bold text-muted-foreground">{stats.inactive}</div>
           </CardContent>
         </Card>
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Archived
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{stats.archived}</div>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Filters */}
@@ -477,6 +568,8 @@ export default function JobsPage() {
         onDelete={handleBulkDelete}
         onActivate={handleBulkActivate}
         onDeactivate={handleBulkDeactivate}
+        onArchive={handleBulkArchive}
+        onUnarchive={handleBulkUnarchive}
         onExport={() => {
           const selectedJobs = filteredAndSortedJobs.filter((job) => selectedIds.has(job.id));
           if (selectedJobs.length === 0) {
@@ -498,6 +591,8 @@ export default function JobsPage() {
           onDelete={handleDelete}
           onEdit={(id) => router.push(`/careers/jobs/${id}/edit`)}
           onPreview={(id) => router.push(`/careers/jobs/${id}/preview`)}
+          onArchive={(id) => handleBulkArchive([id])}
+          onUnarchive={(id) => handleBulkUnarchive([id])}
           sortBy={sortBy}
           sortDirection={sortDirection}
           onSort={handleSort}
@@ -518,14 +613,19 @@ export default function JobsPage() {
             filteredAndSortedJobs.map((job) => (
               <Card
                 key={job.id}
-                className={`hover:shadow-lg transition-shadow ${!job.is_active ? "opacity-60" : ""}`}
+                className={`hover:shadow-lg transition-shadow ${!job.is_active || job.is_archived ? "opacity-60" : ""}`}
               >
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <CardTitle className="text-lg">{job.title}</CardTitle>
-                    {!job.is_active && (
-                      <span className="text-xs bg-muted px-2 py-1 rounded">Inactive</span>
-                    )}
+                    <div className="flex gap-1">
+                      {job.is_archived && (
+                        <span className="text-xs bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 px-2 py-1 rounded">Archived</span>
+                      )}
+                      {!job.is_active && !job.is_archived && (
+                        <span className="text-xs bg-muted px-2 py-1 rounded">Inactive</span>
+                      )}
+                    </div>
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-4">

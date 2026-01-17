@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { JobApplicationForm } from "@/components/careers/JobApplicationForm";
 import { JobPosting } from "@/lib/careers/jobs";
-import { ArrowLeft, Loader2, Briefcase, MapPin, Clock } from "lucide-react";
+import { ArrowLeft, Loader2, Briefcase, MapPin, Clock, CheckCircle2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { CareersNavbar } from "@/components/careers/CareersNavbar";
@@ -35,6 +35,7 @@ export function ApplyClient({
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [authStatus, setAuthStatus] = useState<"restoring" | "verifying" | "authenticated" | "failed">("restoring");
   const [error, setError] = useState<string | null>(null);
+  const [hasAlreadyApplied, setHasAlreadyApplied] = useState(false);
 
   // Simplified authentication check with redirect loop prevention
   useEffect(() => {
@@ -283,6 +284,30 @@ export function ApplyClient({
         }
 
         setJob(jobPosting);
+
+        // Check if user has already applied to this job
+        if (session) {
+          try {
+            const appResponse = await fetch("/api/careers/applications/my-applications", {
+              headers: {
+                "Authorization": `Bearer ${session.access_token}`,
+              },
+            });
+            
+            if (appResponse.ok) {
+              const appData = await appResponse.json();
+              const existingApp = appData.applications?.find(
+                (app: any) => app.job_posting_id === id && !app.is_draft
+              );
+              if (existingApp) {
+                setHasAlreadyApplied(true);
+              }
+            }
+          } catch (err) {
+            // Silently fail - we'll still show the form and let the API handle the duplicate check
+            console.error("Error checking existing applications:", err);
+          }
+        }
       } catch (err: any) {
         setError(err.message || "Failed to load job posting");
       } finally {
@@ -354,6 +379,44 @@ export function ApplyClient({
   }
 
   const formattedSalary = formatSalary(job.salary_range);
+
+  // Show message if user has already applied
+  if (hasAlreadyApplied) {
+    return (
+      <div className="min-h-screen bg-background">
+        <CareersNavbar />
+        <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-12 py-8 sm:py-12">
+          <div className="max-w-2xl mx-auto">
+            <Link href={`/careers/${jobId}`}>
+              <Button variant="ghost" className="mb-4 sm:mb-6 text-sm sm:text-base">
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Job Description
+              </Button>
+            </Link>
+            <div className="text-center py-12 sm:py-16 md:py-20">
+              <div className="p-3 sm:p-4 bg-primary/10 rounded-xl sm:rounded-2xl mb-4 inline-block">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-primary/20 rounded-full flex items-center justify-center mx-auto mb-3 sm:mb-4">
+                  <CheckCircle2 className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
+                </div>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-semibold mb-2 text-primary">Application Already Submitted</h3>
+              <p className="text-sm sm:text-base text-secondary px-4 mb-6">
+                You have already submitted an application for this job posting. You can view your application status in{" "}
+                <Link href="/careers/my-applications" className="text-primary hover:underline">
+                  My Applications
+                </Link>
+                .
+              </p>
+              <Link href="/careers/my-applications">
+                <Button>View My Applications</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+        <CareersFooter />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

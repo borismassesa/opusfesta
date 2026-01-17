@@ -1,33 +1,30 @@
 "use client";
 
-import { usePathname } from "next/navigation";
-import Link from "next/link";
-import { PanelLeftClose, PanelLeftOpen, Briefcase, FileText, BarChart3, History } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Briefcase, User, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
-const CAREERS_NAV_ITEMS = [
-  { label: "Job Postings", icon: Briefcase, href: "/careers/jobs" },
-  { label: "Applications", icon: FileText, href: "/careers/applications" },
-  { label: "Analytics", icon: BarChart3, href: "/careers/analytics" },
-  { label: "History", icon: History, href: "/careers/history" },
-];
-
-function isActiveRoute(pathname: string, href: string) {
-  if (href === "/careers/jobs") {
-    return pathname === "/careers/jobs" || pathname.startsWith("/careers/jobs/");
-  }
-  if (href === "/careers/history") {
-    return pathname === "/careers/history" || pathname.startsWith("/careers/history/");
-  }
-  return pathname.startsWith(href + "/") || pathname === href;
+interface UsersSidebarProps {
+  activeTab: "vendors" | "couples" | "applicants";
+  onTabChange: (tab: "vendors" | "couples" | "applicants") => void;
+  counts: {
+    vendors: number;
+    couples: number;
+    applicants: number;
+  };
+  loading: boolean;
 }
 
-export function CareersSidebar() {
-  const pathname = usePathname();
+const USER_TYPE_ITEMS = [
+  { label: "Vendors", icon: Briefcase, value: "vendors" as const },
+  { label: "Couples", icon: User, value: "couples" as const },
+  { label: "Applicants", icon: FileText, value: "applicants" as const },
+];
+
+export function UsersSidebar({ activeTab, onTabChange, counts, loading }: UsersSidebarProps) {
   const [isCollapsed, setIsCollapsed] = useState(() => {
     if (typeof window !== "undefined") {
-      const saved = localStorage.getItem("admin-careers-sidebar-collapsed");
+      const saved = localStorage.getItem("admin-users-sidebar-collapsed");
       return saved === "true";
     }
     return false;
@@ -35,7 +32,7 @@ export function CareersSidebar() {
 
   useEffect(() => {
     if (typeof window !== "undefined") {
-      localStorage.setItem("admin-careers-sidebar-collapsed", String(isCollapsed));
+      localStorage.setItem("admin-users-sidebar-collapsed", String(isCollapsed));
     }
   }, [isCollapsed]);
 
@@ -56,9 +53,9 @@ export function CareersSidebar() {
               isCollapsed && "opacity-0 w-0 overflow-hidden"
             )}
           >
-            <h2 className="text-base font-semibold text-foreground whitespace-nowrap">Careers</h2>
+            <h2 className="text-base font-semibold text-foreground whitespace-nowrap">Users</h2>
             <p className="text-xs text-muted-foreground whitespace-nowrap mt-0.5">
-              Manage careers
+              User directory
             </p>
           </div>
           <button
@@ -86,30 +83,45 @@ export function CareersSidebar() {
           )}
         >
           <div className="space-y-0.5">
-            {CAREERS_NAV_ITEMS.map((item) => {
-              const isActive = isActiveRoute(pathname, item.href);
+            {USER_TYPE_ITEMS.map((item) => {
+              const isActive = activeTab === item.value;
+              const count = counts[item.value];
 
               return (
-                <Link
-                  key={item.href}
-                  href={item.href as any}
+                <button
+                  key={item.value}
+                  onClick={() => onTabChange(item.value)}
                   className={cn(
-                    "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-sm transition-all duration-200",
+                    "w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200",
                     isActive
                       ? "!bg-foreground !text-background font-medium shadow-md"
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   )}
                 >
-                  <item.icon
-                    className={cn(
-                      "w-4 h-4 shrink-0",
-                      isActive ? "!text-background" : "text-muted-foreground"
-                    )}
-                  />
-                  <span className={cn("truncate", isActive && "!text-background")}>
-                    {item.label}
-                  </span>
-                </Link>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <item.icon
+                      className={cn(
+                        "w-4 h-4 shrink-0",
+                        isActive ? "!text-background" : "text-muted-foreground"
+                      )}
+                    />
+                    <span className={cn("truncate", isActive && "!text-background")}>
+                      {item.label}
+                    </span>
+                  </div>
+                  {!loading && (
+                    <span
+                      className={cn(
+                        "text-xs font-semibold shrink-0 px-2 py-0.5 rounded-full",
+                        isActive
+                          ? "bg-background/20 text-background"
+                          : "bg-muted text-muted-foreground"
+                      )}
+                    >
+                      {count}
+                    </span>
+                  )}
+                </button>
               );
             })}
           </div>

@@ -25,6 +25,7 @@ interface FiltersPanelProps {
   departments: string[];
   locations: string[];
   onClearFilters: () => void;
+  hideStatusFilter?: boolean;
 }
 
 export function FiltersPanel({
@@ -39,12 +40,13 @@ export function FiltersPanel({
   departments,
   locations,
   onClearFilters,
+  hideStatusFilter = false,
 }: FiltersPanelProps) {
   const hasActiveFilters =
     searchQuery ||
     departmentFilter !== "all" ||
     locationFilter !== "all" ||
-    statusFilter !== "all";
+    (!hideStatusFilter && statusFilter !== "all");
 
   return (
     <div className="space-y-4 p-4 border rounded-lg bg-card">
@@ -64,7 +66,7 @@ export function FiltersPanel({
         )}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className={`grid gap-4 ${hideStatusFilter ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
         <div className="space-y-2">
           <label className="text-xs font-medium text-muted-foreground">
             Search
@@ -115,21 +117,24 @@ export function FiltersPanel({
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            Status
-          </label>
-          <Select value={statusFilter} onValueChange={onStatusChange}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="All statuses" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All statuses</SelectItem>
-              <SelectItem value="active">Active</SelectItem>
-              <SelectItem value="inactive">Inactive</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+        {!hideStatusFilter && (
+          <div className="space-y-2">
+            <label className="text-xs font-medium text-muted-foreground">
+              Status
+            </label>
+            <Select value={statusFilter} onValueChange={onStatusChange}>
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="All statuses" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="active">Active</SelectItem>
+                <SelectItem value="inactive">Inactive</SelectItem>
+                <SelectItem value="archived">Archived</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {hasActiveFilters && (
@@ -167,7 +172,7 @@ export function FiltersPanel({
               </button>
             </Badge>
           )}
-          {statusFilter !== "all" && (
+          {!hideStatusFilter && statusFilter !== "all" && (
             <Badge variant="secondary" className="gap-1">
               Status: {statusFilter}
               <button

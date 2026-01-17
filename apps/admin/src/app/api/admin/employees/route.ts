@@ -94,11 +94,12 @@ const employeeSchema = z.object({
   start_date: z.union([z.string(), z.null(), z.undefined()]).optional().nullable(),
   tin: z.union([z.string(), z.null(), z.undefined()]).optional(),
   gov_id: z.union([z.string(), z.null(), z.undefined()]).optional(),
+  avatar: z.union([z.string().url(), z.string().length(0), z.null(), z.undefined()]).optional(),
   emergency_contact: emergencyContactSchema.optional().default({}),
   documents: documentsSchema.optional().default({}),
 });
 
-// GET - List all employees (admin only)
+// GET - List all employees or get single employee by ID (admin only)
 export async function GET(request: NextRequest) {
   try {
     if (!(await isAdmin(request))) {
@@ -107,8 +108,49 @@ export async function GET(request: NextRequest) {
 
     const supabaseAdmin = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
+    const id = searchParams.get("id");
     const search = searchParams.get("search");
 
+    // If ID is provided, fetch single employee
+    if (id) {
+      const { data: employee, error } = await supabaseAdmin
+        .from("employees")
+        .select("*")
+        .eq("id", id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching employee:", error);
+        return NextResponse.json(
+          { error: "Employee not found" },
+          { status: 404 }
+        );
+      }
+
+      // Transform to frontend format
+      const frontendEmployee = {
+        id: employee.id,
+        employeeId: employee.employee_id || "",
+        firstName: employee.first_name,
+        lastName: employee.last_name,
+        email: employee.email,
+        phone: employee.phone || "",
+        address: employee.address || "",
+        title: employee.title || "",
+        startDate: employee.start_date || "",
+        tin: employee.tin || "",
+        govId: employee.gov_id || "",
+        avatar: employee.avatar || "",
+        emergencyContact: employee.emergency_contact || {},
+        documents: employee.documents || {},
+        createdAt: employee.created_at,
+        updatedAt: employee.updated_at,
+      };
+
+      return NextResponse.json({ employee: frontendEmployee });
+    }
+
+    // Otherwise, fetch all employees with optional search
     // Build query
     let query = supabaseAdmin.from("employees").select("*");
 
@@ -161,6 +203,7 @@ export async function POST(request: NextRequest) {
       start_date: body.startDate && body.startDate.trim() !== "" ? body.startDate : null,
       tin: body.tin && body.tin.trim() !== "" ? body.tin : null,
       gov_id: body.govId && body.govId.trim() !== "" ? body.govId : null,
+      avatar: body.avatar && body.avatar.trim() !== "" ? body.avatar : null,
       emergency_contact: body.emergencyContact || {},
       documents: body.documents || {},
     };
@@ -211,6 +254,7 @@ export async function POST(request: NextRequest) {
       startDate: employee.start_date || "",
       tin: employee.tin || "",
       govId: employee.gov_id || "",
+      avatar: employee.avatar || "",
       emergencyContact: employee.emergency_contact || {},
       documents: employee.documents || {},
       createdAt: employee.created_at,
@@ -268,6 +312,9 @@ export async function PUT(request: NextRequest) {
     if (updateData.govId !== undefined) {
       dbUpdateData.gov_id = updateData.govId && updateData.govId.trim() !== "" ? updateData.govId : null;
     }
+    if (updateData.avatar !== undefined) {
+      dbUpdateData.avatar = updateData.avatar && updateData.avatar.trim() !== "" ? updateData.avatar : null;
+    }
     if (updateData.emergencyContact !== undefined) dbUpdateData.emergency_contact = updateData.emergencyContact;
     if (updateData.documents !== undefined) dbUpdateData.documents = updateData.documents;
 
@@ -319,6 +366,7 @@ export async function PUT(request: NextRequest) {
       startDate: employee.start_date || "",
       tin: employee.tin || "",
       govId: employee.gov_id || "",
+      avatar: employee.avatar || "",
       emergencyContact: employee.emergency_contact || {},
       documents: employee.documents || {},
       createdAt: employee.created_at,

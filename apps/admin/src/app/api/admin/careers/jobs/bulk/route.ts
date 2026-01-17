@@ -23,7 +23,7 @@ async function isAdmin(request: NextRequest): Promise<boolean> {
 }
 
 const bulkActionSchema = z.object({
-  action: z.enum(["delete", "activate", "deactivate"]),
+  action: z.enum(["delete", "activate", "deactivate", "archive", "unarchive"]),
   jobIds: z.array(z.string().uuid()).min(1, "At least one job ID is required"),
 });
 
@@ -79,6 +79,24 @@ export async function POST(request: NextRequest) {
         result = { deactivated: ids.length };
         break;
 
+      case "archive":
+        const { error: archiveError } = await supabaseAdmin
+          .from("job_postings")
+          .update({ is_archived: true, is_active: false })
+          .in("id", ids);
+        error = archiveError;
+        result = { archived: ids.length };
+        break;
+
+      case "unarchive":
+        const { error: unarchiveError } = await supabaseAdmin
+          .from("job_postings")
+          .update({ is_archived: false })
+          .in("id", ids);
+        error = unarchiveError;
+        result = { unarchived: ids.length };
+        break;
+
       default:
         return NextResponse.json(
           { error: "Invalid action" },
@@ -89,7 +107,10 @@ export async function POST(request: NextRequest) {
     if (error) {
       console.error(`Error performing bulk ${action}:`, error);
       return NextResponse.json(
-        { error: `Failed to ${action} job postings` },
+        { 
+          error: `Failed to ${action} job postings`,
+          details: error.message || String(error)
+        },
         { status: 500 }
       );
     }

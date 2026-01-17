@@ -33,6 +33,7 @@ const jobPostingSchema = z.object({
   responsibilities: z.array(z.string()).default([]),
   salary_range: z.string().nullable().optional(),
   is_active: z.boolean().default(true),
+  is_archived: z.boolean().default(false).optional(),
   // New template fields
   about_thefesta: z.string().nullable().optional(),
   benefits: z.array(z.string()).default([]),
@@ -52,6 +53,7 @@ export async function GET(request: NextRequest) {
     const supabaseAdmin = getSupabaseAdmin();
     const { searchParams } = new URL(request.url);
     const includeInactive = searchParams.get("includeInactive") === "true";
+    const includeArchived = searchParams.get("includeArchived") === "true";
 
     // Use RPC function or subquery to get application counts
     // First, get all jobs
@@ -59,6 +61,11 @@ export async function GET(request: NextRequest) {
 
     if (!includeInactive) {
       query = query.eq("is_active", true);
+    }
+
+    // By default, exclude archived jobs unless explicitly requested
+    if (!includeArchived) {
+      query = query.eq("is_archived", false);
     }
 
     const { data: jobs, error } = await query.order("created_at", { ascending: false });

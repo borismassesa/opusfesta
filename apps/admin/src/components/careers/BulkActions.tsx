@@ -1,6 +1,6 @@
 "use client";
 
-import { Trash2, Power, PowerOff, Download, X } from "lucide-react";
+import { Trash2, Power, PowerOff, Download, X, Archive, ArchiveRestore } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -8,6 +8,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 
 interface BulkActionsProps {
@@ -15,6 +16,8 @@ interface BulkActionsProps {
   onDelete: () => void;
   onActivate: () => void;
   onDeactivate: () => void;
+  onArchive: () => void;
+  onUnarchive: () => void;
   onExport: () => void;
   onClearSelection: () => void;
 }
@@ -24,6 +27,8 @@ export function BulkActions({
   onDelete,
   onActivate,
   onDeactivate,
+  onArchive,
+  onUnarchive,
   onExport,
   onClearSelection,
 }: BulkActionsProps) {
@@ -61,6 +66,16 @@ export function BulkActions({
             <PowerOff className="h-4 w-4 mr-2" />
             Deactivate
           </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={onArchive}>
+            <Archive className="h-4 w-4 mr-2" />
+            Archive
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={onUnarchive}>
+            <ArchiveRestore className="h-4 w-4 mr-2" />
+            Unarchive
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onExport}>
             <Download className="h-4 w-4 mr-2" />
             Export Selected

@@ -156,138 +156,73 @@ export default function JobViewClient() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <Link href="/careers/jobs">
-          <Button variant="ghost">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to Jobs
-          </Button>
-        </Link>
-        <div className="flex items-center gap-2">
-          <Badge variant={job.is_active ? "default" : "secondary"}>
-            {job.is_active ? "Active" : "Inactive"}
-          </Badge>
-          {job.application_count !== undefined && (
-            <Badge variant="outline">
-              {job.application_count} {job.application_count === 1 ? "Application" : "Applications"}
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold mb-2">{job.title}</h1>
-          <div className="flex items-center gap-4 text-muted-foreground">
-            <span>{job.department}</span>
-            <span>•</span>
-            <span>{job.location}</span>
-            <span>•</span>
-            <span>{job.employment_type}</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          <Link href={`/careers/jobs/${jobId}/edit`}>
-            <Button variant="outline" size="sm">
-              <Edit className="w-4 h-4 mr-2" />
-              Edit
+    <div className="min-h-screen bg-background">
+      {/* Sticky Header */}
+      <div className="border-b bg-card sticky top-0 z-10">
+        <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
+          <Link href="/careers/jobs">
+            <Button variant="ghost">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Jobs
             </Button>
           </Link>
-          <a 
-            href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}`} 
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button variant="outline" size="sm">
-              <ExternalLink className="w-4 h-4 mr-2" />
-              View on Website
+          <div className="flex items-center gap-2">
+            <Badge variant={job.is_active ? "default" : "secondary"}>
+              {job.is_active ? "Active" : "Inactive"}
+            </Badge>
+            {job.application_count !== undefined && (
+              <Badge variant="outline">
+                {job.application_count} {job.application_count === 1 ? "Application" : "Applications"}
+              </Badge>
+            )}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportPDF}
+            >
+              <FileText className="w-4 h-4 mr-2" />
+              Export PDF
             </Button>
-          </a>
-          <Button variant="outline" size="sm" onClick={handleExportPDF}>
-            <FileText className="w-4 h-4 mr-2" />
-            Export PDF
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleExportWord}>
-            <File className="w-4 h-4 mr-2" />
-            Export Word
-          </Button>
-          <a 
-            href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/preview`} 
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Button variant="outline" size="sm">
-              <Eye className="w-4 h-4 mr-2" />
-              Preview
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleExportWord}
+            >
+              <File className="w-4 h-4 mr-2" />
+              Export Word
             </Button>
-          </a>
+            <a 
+              href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/preview`} 
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline" size="sm">
+                <Eye className="w-4 h-4 mr-2" />
+                Preview
+              </Button>
+            </a>
+            <Link href={`/careers/jobs/${jobId}/edit`}>
+              <Button size="sm">
+                <Edit className="w-4 h-4 mr-2" />
+                Edit
+              </Button>
+            </Link>
+            <a 
+              href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}`} 
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <Button variant="outline" size="sm">
+                <ExternalLink className="w-4 h-4 mr-2" />
+                View on Website
+              </Button>
+            </a>
+          </div>
         </div>
       </div>
 
       {/* Job Content */}
-      <div className="min-h-screen bg-background">
-        {/* Header */}
-        <div className="border-b bg-card sticky top-0 z-10">
-          <div className="max-w-4xl mx-auto px-6 py-4 flex items-center justify-between">
-            <Link href="/careers/jobs">
-              <Button variant="ghost">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Back to Jobs
-              </Button>
-            </Link>
-            <div className="flex items-center gap-2">
-              <Badge variant={job.is_active ? "default" : "secondary"}>
-                {job.is_active ? "Active" : "Inactive"}
-              </Badge>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportPDF}
-              >
-                <FileText className="w-4 h-4 mr-2" />
-                Export PDF
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleExportWord}
-              >
-                <File className="w-4 h-4 mr-2" />
-                Export Word
-              </Button>
-              <a 
-                href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/preview`} 
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="outline" size="sm">
-                  <Eye className="w-4 h-4 mr-2" />
-                  Preview
-                </Button>
-              </a>
-              <Link href={`/careers/jobs/${jobId}/edit`}>
-                <Button size="sm">
-                  <Edit className="w-4 h-4 mr-2" />
-                  Edit
-                </Button>
-              </Link>
-              <a 
-                href={`${process.env.NEXT_PUBLIC_WEBSITE_URL || 'http://localhost:3002'}/careers/${jobId}/apply`} 
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <Button variant="outline" size="sm">
-                  <ExternalLink className="w-4 h-4 mr-2" />
-                  View on Website
-                </Button>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Job Content */}
-        <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-4xl mx-auto px-6 py-8 space-y-8">
           {/* Header */}
           <div className="space-y-4">
             <div>
@@ -443,7 +378,6 @@ export default function JobViewClient() {
             )}
           </div>
         </div>
-      </div>
     </div>
   );
 }

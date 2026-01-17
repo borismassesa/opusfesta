@@ -39,8 +39,12 @@ import {
   Upload,
   Loader2,
   X,
-  Download
+  Download,
+  Eye,
+  Image as ImageIcon,
+  User
 } from "lucide-react";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,6 +88,7 @@ interface Employee {
   startDate: string;
   tin: string;
   govId: string;
+  avatar?: string;
   emergencyContact: EmergencyContact;
   documents: EmployeeDocuments;
 }
@@ -101,6 +106,24 @@ export default function Employees() {
   useEffect(() => {
     fetchEmployees();
   }, []);
+
+  useEffect(() => {
+    // Check for edit query parameter after employees are loaded
+    if (!loading && employees.length > 0) {
+      const params = new URLSearchParams(window.location.search);
+      const editId = params.get("edit");
+      if (editId) {
+        // Find employee and open edit dialog
+        const employeeToEdit = employees.find(emp => emp.id === editId);
+        if (employeeToEdit) {
+          setEditingEmployee(employeeToEdit);
+          setIsAddDialogOpen(true);
+          // Clean up URL
+          window.history.replaceState({}, "", "/org/employees");
+        }
+      }
+    }
+  }, [loading, employees]);
 
   const fetchEmployees = async () => {
     setLoading(true);
@@ -140,6 +163,7 @@ export default function Employees() {
         startDate: emp.start_date || "",
         tin: emp.tin || "",
         govId: emp.gov_id || "",
+        avatar: emp.avatar || "",
         emergencyContact: emp.emergency_contact || {},
         documents: emp.documents || {},
       }));
@@ -371,11 +395,19 @@ export default function Employees() {
                     employees.map((employee) => (
                       <TableRow key={employee.id}>
                         <TableCell className="font-medium">
-                          <div className="flex flex-col">
-                            <span>{employee.firstName} {employee.lastName}</span>
-                            <span className="text-xs text-muted-foreground">
-                              {employee.employeeId || `ID: ${employee.id.slice(0, 8)}...`}
-                            </span>
+                          <div className="flex items-center gap-3">
+                            <Avatar className="h-10 w-10">
+                              <AvatarImage src={employee.avatar} alt={`${employee.firstName} ${employee.lastName}`} />
+                              <AvatarFallback>
+                                {employee.firstName[0]}{employee.lastName[0]}
+                              </AvatarFallback>
+                            </Avatar>
+                            <div className="flex flex-col">
+                              <span>{employee.firstName} {employee.lastName}</span>
+                              <span className="text-xs text-muted-foreground">
+                                {employee.employeeId || `ID: ${employee.id.slice(0, 8)}...`}
+                              </span>
+                            </div>
                           </div>
                         </TableCell>
                         <TableCell>{employee.title}</TableCell>
@@ -402,6 +434,9 @@ export default function Employees() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                               <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => router.push(`/org/employees/${employee.id}`)}>
+                                <Eye className="mr-2 h-4 w-4" /> View Details
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => { 
                                 setEditingEmployee(employee); 
                                 setIsAddDialogOpen(true); 
@@ -469,6 +504,7 @@ function EmployeeDialog({
     startDate: "",
     tin: "",
     govId: "",
+    avatar: "",
     emergencyContact: {},
     documents: {},
   });
@@ -491,6 +527,7 @@ function EmployeeDialog({
           startDate: "",
           tin: "",
           govId: "",
+          avatar: "",
           emergencyContact: {
             fullName: "",
             phone: "",
@@ -553,6 +590,15 @@ function EmployeeDialog({
               </TabsList>
               
               <TabsContent value="personal" className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>Avatar</Label>
+                  <AvatarUpload
+                    value={formData.avatar || ""}
+                    onChange={(url) => updateField('avatar', url)}
+                    employeeId={initialData?.id || "new"}
+                  />
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>First Name *</Label>
@@ -894,6 +940,200 @@ function DocumentUpload({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+function AvatarUpload({
+  value,
+  onChange,
+  employeeId,
+}: {
+  value: string;
+  onChange: (url: string) => void;
+  employeeId: string;
+}) {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type - only images for avatar
+    const allowedTypes = ["image/jpeg", "image/png", "image/webp", "image/gif"];
+    if (!allowedTypes.includes(file.type)) {
+      setError("File must be an image (JPG, PNG, WebP, or GIF)");
+      return;
+    }
+
+    // Validate file size (5MB for avatar)
+    const maxSize = 5 * 1024 * 1024;
+    if (file.size > maxSize) {
+      setError("File size must be less than 5MB");
+      return;
+    }
+
+    setError(null);
+    
+    // Create immediate preview
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const previewUrl = reader.result as string;
+      setPreview(previewUrl);
+      // Update parent immediately with preview URL so avatar updates in real-time
+      // Use a small delay to ensure state updates properly
+      setTimeout(() => {
+        onChange(previewUrl);
+      }, 0);
+    };
+    reader.readAsDataURL(file);
+
+    setUploading(true);
+
+    try {
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(2, 15);
+      const fileExt = file.name.split(".").pop() || "jpg";
+      // Use "temp" folder for new employees, actual employee ID for existing
+      const folderId = employeeId === "new" ? `temp-${timestamp}` : employeeId;
+      const fileName = `${folderId}/avatar/${timestamp}-${randomStr}.${fileExt}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from("employees")
+        .upload(fileName, file, {
+          cacheControl: "3600",
+          contentType: file.type,
+          upsert: false,
+        });
+
+      if (uploadError) {
+        throw new Error(uploadError.message || "Failed to upload avatar");
+      }
+
+      if (!data) {
+        throw new Error("Upload failed: No data returned");
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from("employees")
+        .getPublicUrl(data.path);
+
+      // Update with final URL and clear preview
+      setPreview(null);
+      onChange(urlData.publicUrl);
+    } catch (err: any) {
+      console.error("Error uploading avatar:", err);
+      setError(err.message || "Failed to upload avatar");
+      // Clear preview on error
+      setPreview(null);
+      // Revert to original value on error
+      onChange(value);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleRemove = () => {
+    setPreview(null);
+    onChange("");
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const hasAvatar = !!value || !!preview;
+  const displayUrl = preview || value || "";
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex items-center gap-4">
+        <Avatar className="h-20 w-20">
+          <AvatarImage 
+            src={displayUrl || undefined} 
+            alt="Avatar"
+            key={displayUrl} // Force re-render when URL changes
+          />
+          <AvatarFallback>
+            <User className="h-10 w-10" />
+          </AvatarFallback>
+        </Avatar>
+        <div className="flex-1 space-y-2">
+          <div className="flex items-center gap-2">
+            {hasAvatar ? (
+              <>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <ImageIcon className="mr-2 h-4 w-4" />
+                      Change Avatar
+                    </>
+                  )}
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleRemove}
+                  disabled={uploading}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </>
+            ) : (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload Avatar
+                  </>
+                )}
+              </Button>
+            )}
+          </div>
+          {error && (
+            <p className="text-xs text-destructive">{error}</p>
+          )}
+          <p className="text-xs text-muted-foreground">
+            JPG, PNG, WebP, or GIF. Max 5MB.
+          </p>
+        </div>
+      </div>
+      <Input
+        ref={fileInputRef}
+        type="file"
+        className="hidden"
+        onChange={handleFileSelect}
+        accept="image/jpeg,image/png,image/webp,image/gif"
+      />
     </div>
   );
 }
