@@ -340,6 +340,26 @@ export async function PUT(request: NextRequest) {
       );
     }
 
+    // Normalize email to lowercase if being updated
+    if (updateData.email) {
+      updateData.email = updateData.email.toLowerCase().trim();
+      
+      // Check if normalized email already exists (case-insensitive)
+      const { data: existingEmailUser } = await supabaseAdmin
+        .from("users")
+        .select("id, email")
+        .ilike("email", updateData.email)
+        .neq("id", id)
+        .maybeSingle();
+
+      if (existingEmailUser) {
+        return NextResponse.json(
+          { error: "User with this email already exists" },
+          { status: 409 }
+        );
+      }
+    }
+
     const validationResult = userUpdateSchema.safeParse(updateData);
 
     if (!validationResult.success) {
@@ -358,6 +378,7 @@ export async function PUT(request: NextRequest) {
       cleanedData.name = validationResult.data.name;
     }
     if (validationResult.data.email !== undefined) {
+      // Email is already normalized above, just use it
       cleanedData.email = validationResult.data.email;
     }
     if (validationResult.data.phone !== undefined) {
@@ -424,12 +445,15 @@ export async function POST(request: NextRequest) {
     const data = validationResult.data;
     const supabaseAdmin = getSupabaseAdmin();
 
-    // Check if user already exists
+    // Normalize email to lowercase for consistency
+    const normalizedEmail = data.email.toLowerCase().trim();
+
+    // Check if user already exists (case-insensitive)
     const { data: existingUser } = await supabaseAdmin
       .from("users")
       .select("id, email")
-      .eq("email", data.email)
-      .single();
+      .ilike("email", normalizedEmail)
+      .maybeSingle();
 
     if (existingUser) {
       return NextResponse.json(
@@ -438,10 +462,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user in Supabase Auth
+    // Create user in Supabase Auth (use normalized email)
     const userType = data.userType || (data.role === "vendor" ? "vendor" : "couple");
     const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: data.email,
+      email: normalizedEmail,
       password: data.password,
       email_confirm: true, // Auto-confirm for admin-created users
       user_metadata: {
@@ -459,12 +483,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user record in database
+    // Create user record in database (use normalized email)
     const { data: user, error: dbError } = await supabaseAdmin
       .from("users")
       .insert({
         id: authData.user.id,
-        email: data.email,
+        email: normalizedEmail,
         password: "$2a$10$placeholder_password_not_used_with_supabase_auth",
         name: data.name,
         phone: data.phone || null,

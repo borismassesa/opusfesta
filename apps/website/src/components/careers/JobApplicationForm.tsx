@@ -93,6 +93,8 @@ export function JobApplicationForm({
   const [applicationId, setApplicationId] = useState<string | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
   const [isLoadingDraft, setIsLoadingDraft] = useState(true);
+  const [hasExistingApplication, setHasExistingApplication] = useState(false);
+  const [existingApplicationId, setExistingApplicationId] = useState<string | null>(null);
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const coverLetterInputRef = useRef<HTMLInputElement>(null);
   const storageKey = `${STORAGE_KEY_PREFIX}${jobPostingId}`;
@@ -138,6 +140,18 @@ export function JobApplicationForm({
           const draft = data.applications?.find(
             (app: any) => app.job_posting_id === jobPostingId && app.is_draft === true
           );
+          
+          // Check for existing submitted application
+          const existingApp = data.applications?.find(
+            (app: any) => app.job_posting_id === jobPostingId && !app.is_draft
+          );
+          
+          if (existingApp) {
+            setHasExistingApplication(true);
+            setExistingApplicationId(existingApp.id);
+            setIsLoadingDraft(false);
+            return;
+          }
 
           if (draft) {
             setDraftId(draft.id);
@@ -207,22 +221,31 @@ export function JobApplicationForm({
     return () => subscription.unsubscribe();
   }, [form, storageKey, resumeUrl, coverLetterUrl]);
 
-  // Watch form values for progress calculation
-  const watchedValues = form.watch();
+  // Watch individual form values for progress calculation
+  const fullName = form.watch("fullName");
+  const email = form.watch("email");
+  const phone = form.watch("phone");
+  const coverLetter = form.watch("coverLetter");
 
   // Calculate form progress based on required fields only
   // Optional fields (portfolioUrl, linkedinUrl, experience, education, referenceInfo) are NOT counted
   const formProgress = useMemo(() => {
+    // Helper to check if a field is filled (not empty string, null, or undefined)
+    const isFilled = (value: string | null | undefined): boolean => {
+      return Boolean(value && value.trim().length > 0);
+    };
+
     const requiredFields = [
-      watchedValues.fullName,
-      watchedValues.email,
-      watchedValues.phone,
-      watchedValues.coverLetter || coverLetterUrl, // At least one cover letter (text or file) is required
-      resumeUrl,
+      isFilled(fullName),
+      isFilled(email),
+      isFilled(phone),
+      isFilled(coverLetter) || Boolean(coverLetterUrl), // At least one cover letter (text or file) is required
+      Boolean(resumeUrl),
     ];
+    
     const filled = requiredFields.filter(Boolean).length;
     return Math.round((filled / requiredFields.length) * 100);
-  }, [watchedValues.fullName, watchedValues.email, watchedValues.phone, watchedValues.coverLetter, coverLetterUrl, resumeUrl]);
+  }, [fullName, email, phone, coverLetter, coverLetterUrl, resumeUrl]);
 
   const handleResumeSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -437,7 +460,7 @@ export function JobApplicationForm({
     }
 
     // Check if cover letter (text or file) is provided
-    if (!data.coverLetter && !coverLetterUrl) {
+    if ((!data.coverLetter || !data.coverLetter.trim()) && !coverLetterUrl) {
       setError("Please provide a cover letter (text or file)");
       return;
     }
@@ -451,6 +474,41 @@ export function JobApplicationForm({
         setError("Please log in to submit applications");
         setIsSubmitting(false);
         return;
+      }
+
+      // Check if user has already submitted an application for this job
+      if (hasExistingApplication) {
+        setError("You have already submitted an application for this job posting. You can view your application status in 'My Applications'.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Double-check with API if not updating a draft (redundant check for safety)
+      if (!draftId) {
+        try {
+          const checkResponse = await fetch("/api/careers/applications/my-applications", {
+            headers: {
+              "Authorization": `Bearer ${session.access_token}`,
+            },
+          });
+          
+          if (checkResponse.ok) {
+            const checkData = await checkResponse.json();
+            const existingApp = checkData.applications?.find(
+              (app: any) => app.job_posting_id === jobPostingId && !app.is_draft
+            );
+            if (existingApp) {
+              setHasExistingApplication(true);
+              setExistingApplicationId(existingApp.id);
+              setError("You have already submitted an application for this job posting. You can view your application status in 'My Applications'.");
+              setIsSubmitting(false);
+              return;
+            }
+          }
+        } catch (checkError) {
+          // Silently continue - API will handle duplicate check
+          console.error("Error checking existing applications:", checkError);
+        }
       }
 
       // If there's a draft, use PATCH to submit it
@@ -551,6 +609,15 @@ export function JobApplicationForm({
       }
 
       if (!response.ok) {
+        // Handle specific error cases
+        if (response.status === 409) {
+          // Duplicate submission
+          const errorMsg = result.error || "You have already submitted an application for this job posting.";
+          setError(`${errorMsg} You can view your application status in 'My Applications'.`);
+          setIsSubmitting(false);
+          return;
+        }
+        
         // Show more detailed error message if available
         const errorMsg = result.message || result.error || `Failed to submit application (${response.status})`;
         console.error("Application submission error:", {
@@ -620,17 +687,27 @@ export function JobApplicationForm({
           Thank you for your interest in joining our team. We'll review your application and get back to you soon.
         </p>
         {applicationId && (
-          <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border">
-            <p className="text-sm text-secondary mb-3">
+          <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border space-y-3">
+            <p className="text-sm text-secondary">
               <strong>Application ID:</strong> <code className="text-primary font-mono text-xs">{applicationId}</code>
             </p>
-            <Link
-              href="/careers/my-applications"
-              className="inline-flex items-center gap-2 text-sm text-primary hover:underline"
-            >
-              View your applications
-              <ExternalLink className="w-3 h-3" />
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href="/careers/my-applications"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline font-medium"
+              >
+                View All Applications
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+              <span className="hidden sm:inline text-secondary">•</span>
+              <Link
+                href={`/careers/track?id=${applicationId}&email=${encodeURIComponent(form.getValues("email"))}`}
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline font-medium"
+              >
+                Track This Application
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
         )}
         <div className="mt-8 flex items-center gap-2 text-sm text-secondary">
@@ -652,6 +729,53 @@ export function JobApplicationForm({
     return (
       <div className="flex items-center justify-center p-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (hasExistingApplication) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center">
+        <div className="relative mb-6">
+          <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse"></div>
+          <div className="relative bg-gradient-to-br from-primary/10 to-secondary/10 p-6 rounded-3xl border border-primary/20">
+            <CheckCircle2 className="w-20 h-20 text-primary" />
+          </div>
+        </div>
+        <h3 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+          Application Already Submitted
+        </h3>
+        <p className="text-lg text-secondary max-w-md leading-relaxed mb-6">
+          You have already submitted an application for this position. You cannot submit multiple applications for the same job posting.
+        </p>
+        {existingApplicationId && (
+          <div className="mt-6 p-4 bg-muted/50 rounded-lg border border-border space-y-3">
+            <p className="text-sm text-secondary">
+              <strong>Application ID:</strong> <code className="text-primary font-mono text-xs">{existingApplicationId}</code>
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href="/careers/my-applications"
+                className="inline-flex items-center gap-2 text-sm text-primary hover:underline font-medium"
+              >
+                View All Applications
+                <ExternalLink className="w-3 h-3" />
+              </Link>
+              {form.getValues("email") && (
+                <>
+                  <span className="hidden sm:inline text-secondary">•</span>
+                  <Link
+                    href={`/careers/track?id=${existingApplicationId}&email=${encodeURIComponent(form.getValues("email"))}`}
+                    className="inline-flex items-center gap-2 text-sm text-primary hover:underline font-medium"
+                  >
+                    Track This Application
+                    <ExternalLink className="w-3 h-3" />
+                  </Link>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1074,7 +1198,17 @@ export function JobApplicationForm({
             </Button>
             <Button
               type="submit"
-              disabled={isSubmitting || isSavingDraft || isUploadingResume || isUploadingCoverLetter || !resumeUrl}
+              disabled={
+                isSubmitting || 
+                isSavingDraft || 
+                isUploadingResume || 
+                isUploadingCoverLetter || 
+                !resumeUrl || 
+                !fullName?.trim() || 
+                !email?.trim() || 
+                !phone?.trim() || 
+                (!coverLetter?.trim() && !coverLetterUrl)
+              }
               className="flex-1"
             >
               {isSubmitting ? (

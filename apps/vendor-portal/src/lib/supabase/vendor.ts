@@ -142,7 +142,44 @@ export async function createVendor(
     team_size?: number | null;
   }
 ): Promise<Vendor | null> {
-  const slug = generateSlug(vendorData.business_name);
+  // Check if vendor already exists for this user
+  const { data: existingVendor } = await supabase
+    .from('vendors')
+    .select('id')
+    .eq('user_id', userId)
+    .maybeSingle();
+
+  if (existingVendor) {
+    console.error('Vendor already exists for this user');
+    return null;
+  }
+
+  // Normalize contact_info email to lowercase
+  const normalizedContactInfo = vendorData.contact_info ? {
+    ...vendorData.contact_info,
+    email: vendorData.contact_info.email?.toLowerCase().trim() || vendorData.contact_info.email,
+  } : {};
+
+  // Generate unique slug
+  let slug = generateSlug(vendorData.business_name);
+  let slugCounter = 1;
+  let isUnique = false;
+
+  while (!isUnique) {
+    const { data: existingSlug } = await supabase
+      .from('vendors')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle();
+
+    if (!existingSlug) {
+      isUnique = true;
+    } else {
+      slug = `${generateSlug(vendorData.business_name)}-${slugCounter}`;
+      slugCounter++;
+    }
+  }
+
   const now = new Date().toISOString();
 
   const { data, error } = await supabase
@@ -168,7 +205,7 @@ export async function createVendor(
         averageRating: 0,
         reviewCount: 0,
       },
-      contact_info: vendorData.contact_info || {},
+      contact_info: normalizedContactInfo,
       social_links: vendorData.social_links || {},
       services_offered: vendorData.services_offered || [],
       years_in_business: vendorData.years_in_business || null,
@@ -192,10 +229,20 @@ export async function updateVendor(
   vendorId: string,
   updates: Partial<Vendor>
 ): Promise<Vendor | null> {
+  // Normalize contact_info email to lowercase if being updated
+  const cleanedUpdates: any = { ...updates };
+  
+  if (cleanedUpdates.contact_info && cleanedUpdates.contact_info.email) {
+    cleanedUpdates.contact_info = {
+      ...cleanedUpdates.contact_info,
+      email: cleanedUpdates.contact_info.email.toLowerCase().trim(),
+    };
+  }
+
   const { data, error } = await supabase
     .from('vendors')
     .update({
-      ...updates,
+      ...cleanedUpdates,
       updated_at: new Date().toISOString(),
     })
     .eq('id', vendorId)

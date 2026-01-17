@@ -236,8 +236,25 @@ export async function PATCH(
     if (data.education !== undefined) updateData.education = data.education || null;
     if (data.referenceInfo !== undefined) updateData.reference_info = data.referenceInfo || null;
 
-    // If submitting, set is_draft to false
+    // If submitting, check for duplicate submissions first
     if (isSubmitting) {
+      // Check if user has already submitted an application for this job (not a draft, and not this current draft)
+      const { data: existingApplication } = await supabaseAdmin
+        .from("job_applications")
+        .select("id, status")
+        .eq("job_posting_id", existingApp.job_posting_id)
+        .eq("user_id", user.userId)
+        .eq("is_draft", false)
+        .neq("id", applicationId) // Exclude the current draft
+        .single();
+
+      if (existingApplication) {
+        return NextResponse.json(
+          { error: "You have already submitted an application for this job posting." },
+          { status: 409 }
+        );
+      }
+
       updateData.is_draft = false;
       updateData.status = "pending";
     }

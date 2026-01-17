@@ -21,7 +21,11 @@
     "db:generate": "turbo db:generate",
     "db:push": "turbo db:push",
     "db:migrate": "turbo db:migrate",
-    "db:studio": "turbo db:studio"
+    "db:studio": "turbo db:studio",
+    "cleanup:duplicates": "tsx scripts/cleanup-duplicate-users.ts",
+    "cleanup:duplicates:dry-run": "tsx scripts/cleanup-duplicate-users.ts --dry-run",
+    "cleanup:vendor-duplicates": "tsx scripts/cleanup-duplicate-vendors.ts",
+    "cleanup:vendor-duplicates:dry-run": "tsx scripts/cleanup-duplicate-vendors.ts --dry-run"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
