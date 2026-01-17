@@ -469,18 +469,79 @@ export default function ApplicationDetailPage() {
           )}
 
           {/* Cover Letter */}
-          {application.cover_letter && !application.cover_letter_url && (
+          {(application.cover_letter || application.cover_letter_url) && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <FileText className="w-5 h-5" />
                   Cover Letter
                 </CardTitle>
+                <CardDescription className="flex items-center gap-2 mt-1">
+                  {application.cover_letter && application.cover_letter_url && (
+                    <>
+                      <Badge variant="outline" className="text-xs">Text Input</Badge>
+                      <span className="text-muted-foreground">•</span>
+                      <Badge variant="outline" className="text-xs">File Upload</Badge>
+                    </>
+                  )}
+                  {application.cover_letter && !application.cover_letter_url && (
+                    <Badge variant="outline" className="text-xs">Text Input</Badge>
+                  )}
+                  {!application.cover_letter && application.cover_letter_url && (
+                    <Badge variant="outline" className="text-xs">File Upload</Badge>
+                  )}
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div className="p-4 border rounded-lg bg-muted/50 whitespace-pre-wrap text-sm">
-                  {application.cover_letter}
-                </div>
+              <CardContent className="space-y-4">
+                {/* Cover Letter Text */}
+                {application.cover_letter && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Text Content</Label>
+                    <div className="p-4 border rounded-lg bg-muted/50 whitespace-pre-wrap text-sm">
+                      {application.cover_letter}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Cover Letter File */}
+                {application.cover_letter_url && (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Uploaded File</Label>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => handleDownloadFile(application.cover_letter_url!, "Cover Letter")}
+                        variant="outline"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download Cover Letter
+                      </Button>
+                      {isPdfFile(application.cover_letter_url) && (
+                        <Button
+                          onClick={async () => {
+                            try {
+                              const url = await getSignedUrl(application.cover_letter_url!);
+                              if (url) {
+                                window.open(url, "_blank");
+                              }
+                            } catch (err) {
+                              console.error("Error opening cover letter:", err);
+                              alert("Failed to open cover letter");
+                            }
+                          }}
+                          variant="outline"
+                        >
+                          <Eye className="w-4 h-4 mr-2" />
+                          View in New Tab
+                        </Button>
+                      )}
+                    </div>
+                    {!isPdfFile(application.cover_letter_url) && (
+                      <p className="text-sm text-muted-foreground">
+                        Preview is only available for PDF files. Please download to view DOC/DOCX files.
+                      </p>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
