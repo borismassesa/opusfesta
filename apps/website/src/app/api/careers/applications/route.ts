@@ -353,6 +353,22 @@ export async function POST(request: NextRequest) {
 
         application = updated;
       } else {
+        // Check if user has already submitted an application for this job (not a draft)
+        const { data: existingApplication } = await supabaseAdmin
+          .from("job_applications")
+          .select("id, status")
+          .eq("job_posting_id", data.jobPostingId)
+          .eq("user_id", user.userId)
+          .eq("is_draft", false)
+          .single();
+
+        if (existingApplication) {
+          return NextResponse.json(
+            { error: "You have already submitted an application for this job posting." },
+            { status: 409 }
+          );
+        }
+
         // Create new submitted application
         const { data: newApp, error: insertError } = await supabaseAdmin
           .from("job_applications")

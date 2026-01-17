@@ -233,7 +233,10 @@ const MENU_GROUPS = [
   },
   {
     label: "Organization",
-    items: [{ label: "Employees", icon: Users, href: "/org/employees" }],
+    items: [
+      { label: "Users", icon: Users, href: "/users" },
+      { label: "Employees", icon: Users, href: "/org/employees" },
+    ],
   },
   {
     label: "Careers",
@@ -274,7 +277,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   const [isRedirecting, setIsRedirecting] = useState(false);
   
   // Check if we're on a route that should show secondary sidebar
-  const hasSecondarySidebar = pathname.startsWith("/content") || pathname.startsWith("/careers") || pathname.startsWith("/editor/careers");
+  const hasSecondarySidebar = pathname.startsWith("/content") || pathname.startsWith("/careers") || pathname.startsWith("/editor/careers") || pathname.startsWith("/users");
   
   // Attach hover listeners to sidebar container and gap
   useEffect(() => {

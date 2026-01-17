@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowUpDown, Edit, Trash2, Eye, MoreHorizontal, Users } from "lucide-react";
+import { ArrowUpDown, Edit, Trash2, Eye, MoreHorizontal, Users, Archive, ArchiveRestore, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Table,
@@ -30,6 +30,7 @@ interface JobPosting {
   employment_type: string;
   salary_range: string | null;
   is_active: boolean;
+  is_archived?: boolean;
   created_at: string;
   updated_at: string;
   application_count?: number;
@@ -43,6 +44,9 @@ interface JobPostingTableProps {
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
   onPreview: (id: string) => void;
+  onArchive?: (id: string) => void;
+  onUnarchive?: (id: string) => void;
+  onReuse?: (id: string) => void;
   sortBy?: string;
   sortDirection?: "asc" | "desc";
   onSort?: (field: string) => void;
@@ -56,6 +60,9 @@ export function JobPostingTable({
   onDelete,
   onEdit,
   onPreview,
+  onArchive,
+  onUnarchive,
+  onReuse,
   sortBy,
   sortDirection,
   onSort,
@@ -143,7 +150,7 @@ export function JobPostingTable({
                     key={job.id}
                     className={cn(
                       selectedIds.has(job.id) && "bg-muted/50",
-                      !job.is_active && "opacity-60"
+                      (!job.is_active || job.is_archived) && "opacity-60"
                     )}
                   >
                     <TableCell>
@@ -178,9 +185,15 @@ export function JobPostingTable({
                       {job.salary_range || "—"}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={job.is_active ? "default" : "secondary"}>
-                        {job.is_active ? "Active" : "Inactive"}
-                      </Badge>
+                      {job.is_archived ? (
+                        <Badge variant="outline" className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 border-orange-300">
+                          Archived
+                        </Badge>
+                      ) : (
+                        <Badge variant={job.is_active ? "default" : "secondary"}>
+                          {job.is_active ? "Active" : "Inactive"}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell className="hidden lg:table-cell">
                       <Link
@@ -202,6 +215,12 @@ export function JobPostingTable({
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          {onReuse && job.is_archived && (
+                            <DropdownMenuItem onClick={() => onReuse(job.id)}>
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Reuse
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => onPreview(job.id)}>
                             <Eye className="h-4 w-4 mr-2" />
                             Preview
@@ -210,6 +229,21 @@ export function JobPostingTable({
                             <Edit className="h-4 w-4 mr-2" />
                             Edit
                           </DropdownMenuItem>
+                          {onArchive && onUnarchive && (
+                            <>
+                              {job.is_archived ? (
+                                <DropdownMenuItem onClick={() => onUnarchive(job.id)}>
+                                  <ArchiveRestore className="h-4 w-4 mr-2" />
+                                  Unarchive
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem onClick={() => onArchive(job.id)}>
+                                  <Archive className="h-4 w-4 mr-2" />
+                                  Archive
+                                </DropdownMenuItem>
+                              )}
+                            </>
+                          )}
                           <DropdownMenuItem
                             onClick={() => onDelete(job.id)}
                             className="text-destructive"
