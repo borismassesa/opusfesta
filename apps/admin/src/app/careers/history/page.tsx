@@ -349,12 +349,17 @@ export default function HistoryPage() {
               <p className="text-muted-foreground mt-1">View and manage archived job postings for future reference</p>
             </div>
             <div className="flex gap-2">
-              <div className="flex items-center gap-1 border rounded-lg p-1">
+              <div className="flex items-center gap-1 border border-border dark:border-border rounded-lg p-1 bg-background dark:bg-card">
                 <Button
                   variant={viewMode === "table" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("table")}
-                  className="h-8"
+                  className={cn(
+                    "h-8",
+                    viewMode === "table" 
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50 dark:text-muted-foreground dark:hover:text-foreground dark:hover:bg-muted/50"
+                  )}
                 >
                   <Table2 className="h-4 w-4" />
                 </Button>
@@ -362,7 +367,12 @@ export default function HistoryPage() {
                   variant={viewMode === "grid" ? "default" : "ghost"}
                   size="sm"
                   onClick={() => setViewMode("grid")}
-                  className="h-8"
+                  className={cn(
+                    "h-8",
+                    viewMode === "grid" 
+                      ? "bg-primary text-primary-foreground hover:bg-primary/90 dark:bg-primary dark:text-primary-foreground dark:hover:bg-primary/90" 
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50 dark:text-muted-foreground dark:hover:text-foreground dark:hover:bg-muted/50"
+                  )}
                 >
                   <LayoutGrid className="h-4 w-4" />
                 </Button>

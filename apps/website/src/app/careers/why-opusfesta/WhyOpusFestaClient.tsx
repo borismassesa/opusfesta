@@ -3,6 +3,7 @@
 import { CareersNavbar } from "@/components/careers/CareersNavbar";
 import { CareersFooter } from "@/components/careers/CareersFooter";
 import { AnimatedGrid } from "@/components/careers/AnimatedGrid";
+import CoreValuesSection from "@/components/careers/CoreValuesSection";
 import { ArrowRight, TrendingUp, Code, Users, Lightbulb, Rocket, Award } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -123,6 +124,9 @@ export function WhyOpusFestaClient() {
             </div>
           </div>
         </section>
+
+        {/* Core Values & Ethos Section */}
+        <CoreValuesSection />
 
         {/* What Makes Us Different */}
         <section className="py-12 sm:py-16 md:py-24 relative">

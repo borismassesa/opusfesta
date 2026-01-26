@@ -9,6 +9,7 @@ flowchart LR
     Web[Website (apps/website)]
     Admin[Admin Portal (apps/admin)]
     Vendor[Vendor Portal (apps/vendor-portal)]
+    CustomerSupport[Customer Support (apps/customersupport)]
   end
 
   %% Backend Services
@@ -17,6 +18,7 @@ flowchart LR
     Auth[Auth Service (services/auth)]
     Payments[Payments Service (services/payments)]
     Webhooks[Webhooks Service (services/webhooks)]
+    Support[Support Service (services/support)]
   end
 
   %% Data Layer
@@ -62,4 +64,9 @@ flowchart LR
   Admin --> Supabase
   Vendor --> Supabase
   Web --> Supabase
+
+  %% Support
+  CustomerSupport --> Support
+  Support --> DB
+  Support --> Supabase
 ```

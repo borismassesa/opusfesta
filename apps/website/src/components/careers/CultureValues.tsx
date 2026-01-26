@@ -3,10 +3,9 @@
 import React from 'react';
 import Values from './Values';
 import Benefits from './Benefits';
-import EmployeeStories from './EmployeeStories';
-import Jobs from './Jobs';
 import Process from './Process';
 import CareersCTA from './CareersCTA';
+import { Team } from './Team';
 
 export function CultureValues() {
   return (
@@ -17,11 +16,8 @@ export function CultureValues() {
       {/* Benefits Section */}
       <Benefits />
 
-      {/* Employee Stories */}
-      <EmployeeStories />
-
-      {/* Open Roles */}
-      <Jobs />
+      {/* About Our Team */}
+      <Team />
 
       {/* Hiring Process */}
       <Process />

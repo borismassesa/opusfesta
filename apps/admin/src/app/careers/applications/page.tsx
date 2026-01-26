@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, Download, Search, Mail, Phone, FileText, ArrowUpDown, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { BulkActions } from "@/components/careers/BulkActions";
@@ -239,48 +240,27 @@ export default function ApplicationsPage() {
   }, [applications]);
 
   const getStatusBadge = (status: string) => {
-    const variants: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
-      pending: "outline",
-      reviewing: "default",
-      phone_screen: "default",
-      technical_interview: "default",
-      final_interview: "default",
-      interviewed: "default",
-      offer_extended: "default",
-      offer_accepted: "default",
-      offer_declined: "outline",
-      rejected: "destructive",
-      hired: "default",
+    const statusConfig: Record<string, { label: string; color: string; darkColor: string }> = {
+      pending: { label: "Pending", color: "bg-orange-500 text-white", darkColor: "dark:bg-orange-600 dark:text-white" },
+      reviewing: { label: "Reviewing", color: "bg-blue-500 text-white", darkColor: "dark:bg-blue-600 dark:text-white" },
+      phone_screen: { label: "Phone Screen", color: "bg-cyan-500 text-white", darkColor: "dark:bg-cyan-600 dark:text-white" },
+      technical_interview: { label: "Technical Interview", color: "bg-indigo-500 text-white", darkColor: "dark:bg-indigo-600 dark:text-white" },
+      final_interview: { label: "Final Interview", color: "bg-violet-500 text-white", darkColor: "dark:bg-violet-600 dark:text-white" },
+      interviewed: { label: "Interviewed", color: "bg-purple-500 text-white", darkColor: "dark:bg-purple-600 dark:text-white" },
+      offer_extended: { label: "Offer Extended", color: "bg-emerald-500 text-white", darkColor: "dark:bg-emerald-600 dark:text-white" },
+      offer_accepted: { label: "Offer Accepted", color: "bg-green-500 text-white", darkColor: "dark:bg-green-600 dark:text-white" },
+      offer_declined: { label: "Offer Declined", color: "bg-orange-500 text-white", darkColor: "dark:bg-orange-600 dark:text-white" },
+      rejected: { label: "Rejected", color: "bg-red-500 text-white", darkColor: "dark:bg-red-600 dark:text-white" },
+      hired: { label: "Hired", color: "bg-green-500 text-white", darkColor: "dark:bg-green-600 dark:text-white" },
     };
-    const colors: Record<string, string> = {
-      pending: "bg-yellow-100 text-yellow-800 border-yellow-300 dark:bg-yellow-900/20 dark:text-yellow-300",
-      reviewing: "bg-blue-100 text-blue-800 border-blue-300 dark:bg-blue-900/20 dark:text-blue-300",
-      phone_screen: "bg-cyan-100 text-cyan-800 border-cyan-300 dark:bg-cyan-900/20 dark:text-cyan-300",
-      technical_interview: "bg-indigo-100 text-indigo-800 border-indigo-300 dark:bg-indigo-900/20 dark:text-indigo-300",
-      final_interview: "bg-violet-100 text-violet-800 border-violet-300 dark:bg-violet-900/20 dark:text-violet-300",
-      interviewed: "bg-purple-100 text-purple-800 border-purple-300 dark:bg-purple-900/20 dark:text-purple-300",
-      offer_extended: "bg-emerald-100 text-emerald-800 border-emerald-300 dark:bg-emerald-900/20 dark:text-emerald-300",
-      offer_accepted: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/20 dark:text-green-300",
-      offer_declined: "bg-orange-100 text-orange-800 border-orange-300 dark:bg-orange-900/20 dark:text-orange-300",
-      rejected: "bg-red-100 text-red-800 border-red-300 dark:bg-red-900/20 dark:text-red-300",
-      hired: "bg-green-100 text-green-800 border-green-300 dark:bg-green-900/20 dark:text-green-300",
-    };
-    const labels: Record<string, string> = {
-      pending: "Pending",
-      reviewing: "Reviewing",
-      phone_screen: "Phone Screen",
-      technical_interview: "Technical Interview",
-      final_interview: "Final Interview",
-      interviewed: "Interviewed",
-      offer_extended: "Offer Extended",
-      offer_accepted: "Offer Accepted",
-      offer_declined: "Offer Declined",
-      rejected: "Rejected",
-      hired: "Hired",
+    const config = statusConfig[status] || { 
+      label: status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " "), 
+      color: "bg-gray-500 text-white",
+      darkColor: "dark:bg-gray-600 dark:text-white"
     };
     return (
-      <Badge variant={variants[status] || "secondary"} className={cn("font-medium", colors[status] || colors.pending)}>
-        {labels[status] || status.charAt(0).toUpperCase() + status.slice(1).replace(/_/g, " ")}
+      <Badge className={cn("font-medium border-0", config.color, config.darkColor)}>
+        {config.label}
       </Badge>
     );
   };
@@ -657,50 +637,59 @@ export default function ApplicationsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-4 flex-wrap">
-        <div className="flex-1 min-w-[200px]">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name, email, or job title..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold">Filter</h3>
+        <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+          <div className="flex flex-col gap-2">
+            <Label className="text-xs text-muted-foreground">Select Status</Label>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="reviewing">Reviewing</SelectItem>
+                <SelectItem value="phone_screen">Phone Screen</SelectItem>
+                <SelectItem value="technical_interview">Technical Interview</SelectItem>
+                <SelectItem value="final_interview">Final Interview</SelectItem>
+                <SelectItem value="interviewed">Interviewed</SelectItem>
+                <SelectItem value="offer_extended">Offer Extended</SelectItem>
+                <SelectItem value="offer_accepted">Offer Accepted</SelectItem>
+                <SelectItem value="offer_declined">Offer Declined</SelectItem>
+                <SelectItem value="rejected">Rejected</SelectItem>
+                <SelectItem value="hired">Hired</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label className="text-xs text-muted-foreground">Select Job</Label>
+            <Select value={jobFilter} onValueChange={setJobFilter}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="All" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                {jobPostings.map((job) => (
+                  <SelectItem key={job.id} value={job.id}>
+                    {job.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex flex-col gap-2 flex-1 min-w-[200px]">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name, email, or job title..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
           </div>
         </div>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="Filter by status" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="pending">Pending</SelectItem>
-            <SelectItem value="reviewing">Reviewing</SelectItem>
-            <SelectItem value="phone_screen">Phone Screen</SelectItem>
-            <SelectItem value="technical_interview">Technical Interview</SelectItem>
-            <SelectItem value="final_interview">Final Interview</SelectItem>
-            <SelectItem value="interviewed">Interviewed</SelectItem>
-            <SelectItem value="offer_extended">Offer Extended</SelectItem>
-            <SelectItem value="offer_accepted">Offer Accepted</SelectItem>
-            <SelectItem value="offer_declined">Offer Declined</SelectItem>
-            <SelectItem value="rejected">Rejected</SelectItem>
-            <SelectItem value="hired">Hired</SelectItem>
-          </SelectContent>
-        </Select>
-        <Select value={jobFilter} onValueChange={setJobFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filter by job" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Jobs</SelectItem>
-            {jobPostings.map((job) => (
-              <SelectItem key={job.id} value={job.id}>
-                {job.title}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {/* Bulk Actions */}
@@ -743,11 +732,11 @@ export default function ApplicationsPage() {
         </Card>
       ) : (
         <Card>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto -mx-1 sm:mx-0">
             <div className="inline-block min-w-full align-middle">
-              <Table>
+              <Table className="bg-white dark:bg-card min-w-[700px] sm:min-w-0">
                 <TableHeader>
-                  <TableRow>
+                  <TableRow className="border-b border-border dark:border-border">
                     <TableHead className="w-12">
                       <Checkbox
                         checked={
@@ -774,8 +763,10 @@ export default function ApplicationsPage() {
                     <TableRow
                       key={app.id}
                       className={cn(
-                        "hover:bg-muted/50",
-                        selectedIds.has(app.id) && "bg-muted/50"
+                        "border-b border-border dark:border-border",
+                        "bg-white dark:bg-card",
+                        "hover:bg-muted/50 dark:hover:bg-muted/50",
+                        selectedIds.has(app.id) && "bg-muted/50 dark:bg-muted/50"
                       )}
                     >
                       <TableCell>
@@ -785,20 +776,20 @@ export default function ApplicationsPage() {
                           aria-label={`Select ${app.full_name}`}
                         />
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-foreground dark:text-foreground min-w-[200px] sm:min-w-0">
                         <div className="flex flex-col gap-1">
-                          <div className="font-medium">{app.full_name}</div>
-                          <div className="text-sm text-muted-foreground flex items-center gap-2">
-                            <Mail className="w-3 h-3" />
-                            {app.email}
+                          <div className="font-medium text-foreground dark:text-foreground break-words">{app.full_name}</div>
+                          <div className="text-sm text-muted-foreground dark:text-muted-foreground flex items-center gap-2 break-all">
+                            <Mail className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{app.email}</span>
                           </div>
                           {app.phone && (
-                            <div className="text-xs text-muted-foreground flex items-center gap-2">
-                              <Phone className="w-3 h-3" />
-                              {app.phone}
+                            <div className="text-xs text-muted-foreground dark:text-muted-foreground flex items-center gap-2">
+                              <Phone className="w-3 h-3 flex-shrink-0" />
+                              <span>{app.phone}</span>
                             </div>
                           )}
-                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground md:hidden mt-1">
+                          <div className="flex flex-wrap gap-2 text-xs text-muted-foreground dark:text-muted-foreground md:hidden mt-1">
                             <span className="font-medium">{app.job_postings?.title || "N/A"}</span>
                             {app.job_postings?.department && (
                               <>
@@ -811,40 +802,54 @@ export default function ApplicationsPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="hidden md:table-cell">
+                      <TableCell className="hidden md:table-cell min-w-[150px]">
                         <div>
-                          <div className="font-medium">{app.job_postings?.title || "N/A"}</div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="font-medium text-foreground dark:text-foreground break-words">{app.job_postings?.title || "N/A"}</div>
+                          <div className="text-sm text-muted-foreground dark:text-muted-foreground">
                             {app.job_postings?.department || ""}
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell>{getStatusBadge(app.status)}</TableCell>
-                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground">
+                      <TableCell className="whitespace-nowrap">{getStatusBadge(app.status)}</TableCell>
+                      <TableCell className="hidden lg:table-cell text-sm text-muted-foreground dark:text-muted-foreground whitespace-nowrap">
                         {new Date(app.created_at).toLocaleDateString()}
                       </TableCell>
-                      <TableCell className="text-right">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-8 w-8">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link href={`/careers/applications/${app.id}`}>
-                                <Eye className="h-4 w-4 mr-2" />
-                                View Details
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <a href={`mailto:${app.email}`}>
-                                <Mail className="h-4 w-4 mr-2" />
-                                Send Email
-                              </a>
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <div className="flex items-center justify-end gap-1 sm:gap-2">
+                          <button
+                            type="button"
+                            className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50 dark:hover:bg-muted/50"
+                            onClick={() => router.push(`/careers/applications/${app.id}`)}
+                            aria-label="View"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                type="button"
+                                className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50 dark:hover:bg-muted/50"
+                                aria-label="More options"
+                              >
+                                <MoreHorizontal className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="dark:bg-popover dark:border-border">
+                              <DropdownMenuItem asChild className="dark:hover:bg-accent dark:text-foreground">
+                                <Link href={`/careers/applications/${app.id}`}>
+                                  <Eye className="h-4 w-4 mr-2" />
+                                  View Details
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild className="dark:hover:bg-accent dark:text-foreground">
+                                <a href={`mailto:${app.email}`}>
+                                  <Mail className="h-4 w-4 mr-2" />
+                                  Send Email
+                                </a>
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}

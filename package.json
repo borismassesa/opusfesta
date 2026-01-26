@@ -11,6 +11,7 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "dev:website": "turbo dev --filter=./apps/website",
+    "dev:customersupport": "turbo dev --filter=./apps/customersupport",
     "build:website": "turbo build --filter=./apps/website",
     "lint": "turbo lint",
     "test": "turbo test",
@@ -53,6 +54,10 @@
       "react-dom": "18.3.1"
     },
     "rest-express": {
+      "react": "18.3.1",
+      "react-dom": "18.3.1"
+    },
+    "@opusfesta/customersupport": {
       "react": "18.3.1",
       "react-dom": "18.3.1"
     }
