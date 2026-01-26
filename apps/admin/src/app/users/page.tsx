@@ -191,13 +191,7 @@ export default function UsersPage() {
         <div className="p-3 md:p-6 space-y-6">
           {/* Header */}
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-bold">Users</h1>
-              <p className="text-muted-foreground mt-1">
-                Manage platform users: vendors, couples, and job applicants.
-              </p>
-            </div>
-            <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex items-center gap-3 w-full sm:w-auto flex-1">
               <div className="relative w-full sm:w-80">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
@@ -220,25 +214,9 @@ export default function UsersPage() {
             </div>
           )}
 
-          {/* User Count and Status */}
-          <div className="flex items-center justify-between">
-            {loading && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                <span>Loading...</span>
-              </div>
-            )}
-            {!loading && (
-              <div className="text-sm text-muted-foreground">
-                <span className="font-medium text-foreground">{users.length}</span>{" "}
-                {users.length === 1 ? "user" : "users"} found
-              </div>
-            )}
-          </div>
-
           {/* Users Table */}
-          <Card>
-            <CardContent className="pt-6">
+          <Card className="bg-transparent border-0 shadow-none">
+            <CardContent className="pt-0 p-0">
               {loading ? (
                 <div className="space-y-4">
                   {[1, 2, 3].map((i) => (

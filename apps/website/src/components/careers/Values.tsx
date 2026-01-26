@@ -23,19 +23,25 @@ const Values: React.FC = () => {
   const { content } = useCareersContent();
   const { values } = content;
 
-  // Use values from CMS or default - updated to reflect OpusFesta's mission
-  const valuesList = values.items.length > 0 ? values.items.slice(0, 3) : [
+  // Updated values with new content
+  const valuesList = [
     {
-      title: "Celebrate Tanzanian culture",
-      description: "We honor Swahili traditions while building modern tools. Every feature we ship respects the way Tanzanians actually plan celebrations, from harusi to sherehe."
+      title: "Our Best Features",
+      subtitle: "We are drivers of our mission",
+      description: "We're driven by our commitment to empower every person in Tanzania to plan and celebrate their events exactly the way they want.",
+      imageUrl: "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&q=80&w=1000"
     },
     {
-      title: "Build for real people",
-      description: "We talk to couples, vendors, and families every week. Their stories shape our product. We're not building in a vacuum—we're solving real problems for real celebrations."
+      title: "Progression",
+      subtitle: "Be a pace setter",
+      description: "We move with urgency so we can set the cadence for our market, cover more ground, and ship more great products and programs for our users, faster.",
+      imageUrl: "https://images.unsplash.com/photo-1552664730-d307ca884978?auto=format&fit=crop&q=80&w=1000"
     },
     {
-      title: "Move with purpose",
-      description: "Event planning can't wait. When a couple needs a vendor or a family needs to track RSVPs, speed matters. We ship fast, but we ship right—because celebrations deserve our best."
+      title: "Management",
+      subtitle: "Be a truth seeker",
+      description: "We pursue the best data, ideas, and solutions with rigor and open-mindedness, always guided by our users' most pressing needs.",
+      imageUrl: "https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&q=80&w=1000"
     }
   ];
 
@@ -68,13 +74,37 @@ const Values: React.FC = () => {
         initial="hidden"
         whileInView="visible"
         viewport={{ once: true, margin: "-100px" }}
-        className="grid md:grid-cols-3 gap-12 md:gap-16"
+        className="grid md:grid-cols-3 gap-6 md:gap-8"
       >
         {valuesList.map((v, i) => (
-          <motion.div key={i} variants={itemVariants} className="flex flex-col gap-4">
-             <div className="w-12 h-[2px] bg-primary mb-4 opacity-10"></div>
-             <h3 className="text-2xl font-medium text-primary tracking-tight">{v.title}</h3>
-             <p className="text-secondary leading-relaxed text-base md:text-lg font-light">{v.description}</p>
+          <motion.div 
+            key={i} 
+            variants={itemVariants} 
+            className="flex flex-col bg-card rounded-lg border border-border overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
+          >
+            {/* Image Area */}
+            <div className="w-full h-48 relative overflow-hidden">
+              <img 
+                src={v.imageUrl} 
+                alt={v.title}
+                className="w-full h-full object-cover"
+                loading="lazy"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-background/20 to-transparent"></div>
+            </div>
+            
+            {/* Content Area */}
+            <div className="p-6 flex flex-col flex-1">
+              <h3 className="text-xl font-semibold text-primary tracking-tight mb-1">
+                {v.title}
+              </h3>
+              <p className="text-sm text-secondary font-medium mb-4">
+                {v.subtitle}
+              </p>
+              <p className="text-secondary leading-relaxed text-sm flex-1">
+                {v.description}
+              </p>
+            </div>
           </motion.div>
         ))}
       </motion.div>

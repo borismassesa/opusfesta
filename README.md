@@ -9,3 +9,8 @@ To be Tanzania's go-to wedding & events marketplace, empowering couples, familie
 ## Mission
 
 The Festa connects couples and families with trusted vendors, streamlines event planning, and enables secure mobile money transactions — all in Swahili and English.
+
+## Customer support stack
+
+- **Backend:** `services/support` — Support/chatbot API.
+- **Dashboard:** `apps/customersupport` — Support dashboard UI. See [docs/SUPPORT_SERVICES.md](docs/SUPPORT_SERVICES.md) for run instructions.

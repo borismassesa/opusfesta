@@ -42,19 +42,19 @@ export function UsersSidebar({ activeTab, onTabChange, counts, loading }: UsersS
       <aside
         className={cn(
           "border-r border-border bg-background flex-shrink-0 flex flex-col transition-all duration-200 ease-in-out h-full",
-          isCollapsed ? "w-0 border-r-0 overflow-hidden" : "w-48 sm:w-56 lg:w-64"
+          isCollapsed ? "w-0 border-r-0 overflow-hidden" : "w-48 sm:w-56 lg:w-64 xl:w-72"
         )}
       >
         {/* Title Header */}
-        <div className="px-4 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
+        <div className="px-4 lg:px-6 py-4 border-b border-border flex items-center justify-between flex-shrink-0">
           <div
             className={cn(
               "flex flex-col transition-opacity duration-200",
               isCollapsed && "opacity-0 w-0 overflow-hidden"
             )}
           >
-            <h2 className="text-base font-semibold text-foreground whitespace-nowrap">Users</h2>
-            <p className="text-xs text-muted-foreground whitespace-nowrap mt-0.5">
+            <h2 className="text-base lg:text-lg font-semibold text-foreground whitespace-nowrap">Users</h2>
+            <p className="text-xs lg:text-sm text-muted-foreground whitespace-nowrap mt-0.5">
               User directory
             </p>
           </div>
@@ -77,12 +77,12 @@ export function UsersSidebar({ activeTab, onTabChange, counts, loading }: UsersS
         {/* Navigation */}
         <nav
           className={cn(
-            "px-3 py-3 transition-opacity duration-200 flex-1",
+            "px-3 lg:px-4 py-3 lg:py-4 transition-opacity duration-200 flex-1",
             isCollapsed && "opacity-0 overflow-hidden",
             !isCollapsed && "overflow-y-auto"
           )}
         >
-          <div className="space-y-0.5">
+          <div className="space-y-1 lg:space-y-1.5">
             {USER_TYPE_ITEMS.map((item) => {
               const isActive = activeTab === item.value;
               const count = counts[item.value];
@@ -92,7 +92,7 @@ export function UsersSidebar({ activeTab, onTabChange, counts, loading }: UsersS
                   key={item.value}
                   onClick={() => onTabChange(item.value)}
                   className={cn(
-                    "w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-sm transition-all duration-200",
+                    "w-full flex items-center justify-between gap-3 px-3 lg:px-4 py-2.5 lg:py-3 rounded-lg text-sm lg:text-base transition-all duration-200",
                     isActive
                       ? "!bg-foreground !text-background font-medium shadow-md"
                       : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
@@ -101,7 +101,7 @@ export function UsersSidebar({ activeTab, onTabChange, counts, loading }: UsersS
                   <div className="flex items-center gap-3 min-w-0">
                     <item.icon
                       className={cn(
-                        "w-4 h-4 shrink-0",
+                        "w-4 h-4 lg:w-5 lg:h-5 shrink-0",
                         isActive ? "!text-background" : "text-muted-foreground"
                       )}
                     />
@@ -112,7 +112,7 @@ export function UsersSidebar({ activeTab, onTabChange, counts, loading }: UsersS
                   {!loading && (
                     <span
                       className={cn(
-                        "text-xs font-semibold shrink-0 px-2 py-0.5 rounded-full",
+                        "text-xs lg:text-sm font-semibold shrink-0 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-full",
                         isActive
                           ? "bg-background/20 text-background"
                           : "bg-muted text-muted-foreground"

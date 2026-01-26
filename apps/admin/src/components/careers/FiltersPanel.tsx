@@ -49,46 +49,19 @@ export function FiltersPanel({
     (!hideStatusFilter && statusFilter !== "all");
 
   return (
-    <div className="space-y-4 p-4 border rounded-lg bg-card">
-      <div className="flex items-center gap-2">
-        <Filter className="h-4 w-4 text-muted-foreground" />
-        <h3 className="text-sm font-semibold">Filters</h3>
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onClearFilters}
-            className="h-6 px-2 ml-auto"
-          >
-            <X className="h-3 w-3 mr-1" />
-            Clear
-          </Button>
-        )}
-      </div>
-
-      <div className={`grid gap-4 ${hideStatusFilter ? 'md:grid-cols-2 lg:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            Search
-          </label>
-          <Input
-            placeholder="Search jobs..."
-            value={searchQuery}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="h-9"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            Department
+    <div className="space-y-4">
+      <h3 className="text-sm font-semibold">Filter</h3>
+      <div className="flex flex-col sm:flex-row gap-4 flex-wrap">
+        <div className="flex flex-col gap-2">
+          <label className="text-xs text-muted-foreground">
+            Select Department
           </label>
           <Select value={departmentFilter} onValueChange={onDepartmentChange}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="All departments" />
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All departments</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               {departments.map((dept) => (
                 <SelectItem key={dept} value={dept}>
                   {dept}
@@ -98,16 +71,16 @@ export function FiltersPanel({
           </Select>
         </div>
 
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-muted-foreground">
-            Location
+        <div className="flex flex-col gap-2">
+          <label className="text-xs text-muted-foreground">
+            Select Location
           </label>
           <Select value={locationFilter} onValueChange={onLocationChange}>
-            <SelectTrigger className="h-9">
-              <SelectValue placeholder="All locations" />
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="All" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All locations</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               {locations.map((loc) => (
                 <SelectItem key={loc} value={loc}>
                   {loc}
@@ -118,16 +91,16 @@ export function FiltersPanel({
         </div>
 
         {!hideStatusFilter && (
-          <div className="space-y-2">
-            <label className="text-xs font-medium text-muted-foreground">
-              Status
+          <div className="flex flex-col gap-2">
+            <label className="text-xs text-muted-foreground">
+              Select Status
             </label>
             <Select value={statusFilter} onValueChange={onStatusChange}>
-              <SelectTrigger className="h-9">
-                <SelectValue placeholder="All statuses" />
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="All" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All statuses</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 <SelectItem value="active">Active</SelectItem>
                 <SelectItem value="inactive">Inactive</SelectItem>
                 <SelectItem value="archived">Archived</SelectItem>
@@ -135,6 +108,18 @@ export function FiltersPanel({
             </Select>
           </div>
         )}
+
+        <div className="flex flex-col gap-2 flex-1 min-w-[200px]">
+          <label className="text-xs text-muted-foreground">
+            Search
+          </label>
+          <Input
+            placeholder="Search jobs..."
+            value={searchQuery}
+            onChange={(e) => onSearchChange(e.target.value)}
+            className="h-10"
+          />
+        </div>
       </div>
 
       {hasActiveFilters && (

@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -349,21 +350,30 @@ export default function Employees() {
       )}
 
       <Card>
-        <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 space-y-0 pb-4">
+        <CardHeader className="space-y-4 pb-4">
           <div className="space-y-1">
             <CardTitle>Staff Directory</CardTitle>
             <CardDescription>
               Total Employees: {loading ? "..." : employees.length}
             </CardDescription>
           </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search employees..."
-              className="pl-9 w-full"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          {/* Filters */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-semibold">Filter</h3>
+            <div className="flex gap-4 flex-wrap">
+              <div className="flex flex-col gap-2 flex-1 min-w-[200px]">
+                <Label className="text-xs text-muted-foreground">Search</Label>
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search employees..."
+                    className="pl-9 w-full"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -372,92 +382,137 @@ export default function Employees() {
               <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
             </div>
           ) : (
-            <div className="rounded-md border overflow-x-auto">
-              <Table className="min-w-[600px]">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Title</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>Start Date</TableHead>
-                    <TableHead>Docs Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+            <div className="rounded-md border border-border dark:border-border overflow-x-auto bg-white dark:bg-card w-full">
+              <div className="overflow-x-auto -mx-1 sm:mx-0">
+                <Table className="min-w-[800px] sm:min-w-0">
+                  <TableHeader>
+                  <TableRow className="border-b border-border dark:border-border">
+                    <TableHead className="w-12">
+                      <Checkbox aria-label="Select all" />
+                    </TableHead>
+                    <TableHead className="min-w-[200px] sm:min-w-0">Employee</TableHead>
+                    <TableHead className="hidden sm:table-cell">Title</TableHead>
+                    <TableHead className="hidden md:table-cell">Contact</TableHead>
+                    <TableHead className="hidden lg:table-cell whitespace-nowrap">Start Date</TableHead>
+                    <TableHead className="hidden xl:table-cell">Docs Status</TableHead>
+                    <TableHead className="text-right whitespace-nowrap">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {employees.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
                         No employees found
                       </TableCell>
                     </TableRow>
                   ) : (
                     employees.map((employee) => (
-                      <TableRow key={employee.id}>
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-10 w-10">
+                      <TableRow 
+                        key={employee.id}
+                        className="border-b border-border dark:border-border bg-white dark:bg-card hover:bg-muted/50 dark:hover:bg-muted/50"
+                      >
+                        <TableCell>
+                          <Checkbox aria-label={`Select ${employee.firstName} ${employee.lastName}`} />
+                        </TableCell>
+                        <TableCell className="font-medium min-w-[200px] sm:min-w-0">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <Avatar className="h-8 w-8 sm:h-10 sm:w-10 flex-shrink-0">
                               <AvatarImage src={employee.avatar} alt={`${employee.firstName} ${employee.lastName}`} />
-                              <AvatarFallback>
+                              <AvatarFallback className="text-xs sm:text-sm">
                                 {employee.firstName[0]}{employee.lastName[0]}
                               </AvatarFallback>
                             </Avatar>
-                            <div className="flex flex-col">
-                              <span>{employee.firstName} {employee.lastName}</span>
-                              <span className="text-xs text-muted-foreground">
-                                {employee.employeeId || `ID: ${employee.id.slice(0, 8)}...`}
+                            <div className="flex flex-col min-w-0 flex-1">
+                              <span className="font-semibold text-foreground dark:text-foreground truncate">
+                                {employee.firstName} {employee.lastName}
                               </span>
+                              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground dark:text-muted-foreground sm:hidden mt-1">
+                                <span className="truncate">{employee.email}</span>
+                                {employee.phone && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{employee.phone}</span>
+                                  </>
+                                )}
+                                {employee.title && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{employee.title}</span>
+                                  </>
+                                )}
+                                {employee.startDate && (
+                                  <>
+                                    <span>•</span>
+                                    <span>{employee.startDate}</span>
+                                  </>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </TableCell>
-                        <TableCell>{employee.title}</TableCell>
-                        <TableCell>
+                        <TableCell className="hidden sm:table-cell text-foreground dark:text-foreground break-words">{employee.title}</TableCell>
+                        <TableCell className="hidden md:table-cell">
                           <div className="flex flex-col text-sm">
-                            <span>{employee.email}</span>
-                            <span className="text-muted-foreground text-xs">{employee.phone}</span>
+                            <span className="text-foreground dark:text-foreground break-all">{employee.email}</span>
+                            <span className="text-muted-foreground dark:text-muted-foreground text-xs">{employee.phone}</span>
                           </div>
                         </TableCell>
-                        <TableCell>{employee.startDate}</TableCell>
-                        <TableCell>
+                        <TableCell className="hidden lg:table-cell text-foreground dark:text-foreground whitespace-nowrap">{employee.startDate}</TableCell>
+                        <TableCell className="hidden xl:table-cell">
                           <CircularProgress 
                             current={Object.values(employee.documents).filter((url): url is string => !!url).length} 
                             total={5} 
                           />
                         </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" className="h-8 w-8 p-0">
-                                <span className="sr-only">Open menu</span>
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => router.push(`/org/employees/${employee.id}`)}>
-                                <Eye className="mr-2 h-4 w-4" /> View Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => { 
-                                setEditingEmployee(employee); 
-                                setIsAddDialogOpen(true); 
-                              }}>
-                                <Pencil className="mr-2 h-4 w-4" /> Edit Details
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-destructive focus:text-destructive" 
-                                onClick={() => handleDelete(employee.id)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete Employee
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                        <TableCell className="text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-1 sm:gap-2">
+                            <button
+                              type="button"
+                              className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50 dark:hover:bg-muted/50"
+                              onClick={() => handleDelete(employee.id)}
+                              aria-label="Delete"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              type="button"
+                              className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50 dark:hover:bg-muted/50"
+                              onClick={() => router.push(`/org/employees/${employee.id}`)}
+                              aria-label="View"
+                            >
+                              <Eye className="h-4 w-4" />
+                            </button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button
+                                  type="button"
+                                  className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50 dark:hover:bg-muted/50"
+                                  aria-label="More options"
+                                >
+                                  <MoreHorizontal className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="dark:bg-popover dark:border-border">
+                                <DropdownMenuLabel className="dark:text-foreground">Actions</DropdownMenuLabel>
+                                <DropdownMenuItem 
+                                  onClick={() => { 
+                                    setEditingEmployee(employee); 
+                                    setIsAddDialogOpen(true); 
+                                  }}
+                                  className="dark:hover:bg-accent dark:text-foreground"
+                                >
+                                  <Pencil className="mr-2 h-4 w-4" /> Edit Details
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))
                   )}
                 </TableBody>
               </Table>
+              </div>
             </div>
           )}
         </CardContent>
