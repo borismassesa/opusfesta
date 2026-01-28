@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
@@ -13,6 +13,14 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const unauthorized = searchParams.get("unauthorized");
   const [isLoading, setIsLoading] = useState(false);
+
+  // Clean URL when only param is next=/ (avoid /login?next=%2F)
+  useEffect(() => {
+    const next = searchParams.get("next");
+    if (next === "/" && window.location.pathname === "/login") {
+      router.replace("/login", { scroll: false });
+    }
+  }, [router, searchParams]);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
