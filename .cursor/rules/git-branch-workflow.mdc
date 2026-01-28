@@ -1,0 +1,42 @@
+---
+description: Git workflow — work on a branch, then merge into main
+alwaysApply: true
+---
+
+# Git branch workflow
+
+**Do not push directly to `main`.** Work on a feature branch and merge into `main` after review (or when ready).
+
+## Workflow
+
+1. **Create a branch** from `main` (or from latest `main`):
+   ```bash
+   git checkout main
+   git pull origin main
+   git checkout -b your-branch-name
+   ```
+
+2. **Commit and push your branch**:
+   ```bash
+   git add .
+   git commit -m "Your message"
+   git push -u origin your-branch-name
+   ```
+
+3. **Merge into main** (after review, or when ready):
+   - Open a Pull Request (GitHub/GitLab) and merge, or
+   - Merge locally then push:
+     ```bash
+     git checkout main
+     git pull origin main
+     git merge your-branch-name
+     git push origin main
+     ```
+
+## Before pushing
+
+- Run pre-push checks: `npm run check:prepush` (runs lint, test, type-check on changed workspaces).
+
+## Reminder
+
+When suggesting Git commands, prefer commands that push to the **current branch** (e.g. `git push -u origin <current-branch>`) rather than pushing to `main` unless the user is explicitly merging.

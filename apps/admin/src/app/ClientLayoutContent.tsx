@@ -472,8 +472,8 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
     }
     if (!session) {
       setIsRedirecting(true);
-      // Use replace to avoid adding to history, and ensure it happens immediately
-      const targetPath = `/login?next=${encodeURIComponent(pathname)}`;
+      // Use replace to avoid adding to history; only add ?next= when not going to "/" (clean URL)
+      const targetPath = pathname === "/" ? "/login" : `/login?next=${encodeURIComponent(pathname)}`;
       router.replace(targetPath);
       // Fallback: if router.replace doesn't work quickly, use window.location as backup
       const timeoutId = setTimeout(() => {
@@ -523,10 +523,11 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   // If no session and we're not on a public page, redirect to login immediately
   // Don't show unauthorized page for users who aren't logged in yet
   if (!session && authChecked && pathname !== "/login" && pathname !== "/forgot-password" && pathname !== "/reset-password") {
-    // Trigger redirect immediately - don't wait for useEffect
+    // Trigger redirect immediately - don't wait for useEffect; only add ?next= when not "/"
     if (!isRedirecting) {
       setIsRedirecting(true);
-      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      const loginPath = pathname === "/" ? "/login" : `/login?next=${encodeURIComponent(pathname)}`;
+      router.replace(loginPath);
     }
     // Show minimal loading state while redirecting
     return (
@@ -740,7 +741,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
                 <main className="flex-1 overflow-auto bg-background relative">
                 <div className={cn(
                   "relative z-10 animate-in fade-in duration-500",
-                  pathname.startsWith("/content") || pathname.startsWith("/editor/careers") || pathname.startsWith("/careers")
+                  pathname.startsWith("/content") || pathname.startsWith("/editor/careers") || pathname.startsWith("/careers") || pathname.startsWith("/users")
                     ? "h-full p-0" 
                     : "min-h-full p-4 sm:p-6 pt-16 sm:pt-20 md:p-8 lg:p-10 max-w-[1600px] mx-auto"
                 )}>
