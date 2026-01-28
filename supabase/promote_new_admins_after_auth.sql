@@ -8,7 +8,23 @@
 --   2. Set auth.users app_metadata.role = admin
 --   3. Link admin_whitelist.user_id to the auth user
 --
--- Emails: ibadatt.aulakh@opusfesta.com, boris.massesa@opusfesta.com
+-- Email source: a single temp table (promote_emails) populated from admin_whitelist
+-- so all three steps use the same set. No hardcoded emails. On any error, run ROLLBACK;
+
+BEGIN;
+
+-- ============================================
+-- Email set: one source for all steps
+-- Default: active admin_whitelist entries.
+-- For ad-hoc: replace the INSERT below with e.g.
+--   INSERT INTO promote_emails (email) VALUES
+--     ('one@example.com'),
+--     ('two@example.com');
+-- ============================================
+CREATE TEMP TABLE promote_emails (email text);
+
+INSERT INTO promote_emails (email)
+SELECT email FROM admin_whitelist WHERE is_active = true;
 
 -- ============================================
 -- 1. Ensure users row exists with role = admin (from auth.users by email)
@@ -21,7 +37,7 @@ SELECT
   'admin'::user_role,
   au.encrypted_password
 FROM auth.users au
-WHERE au.email IN ('ibadatt.aulakh@opusfesta.com', 'boris.massesa@opusfesta.com')
+WHERE au.email IN (SELECT email FROM promote_emails)
 ON CONFLICT (id) DO UPDATE
 SET 
   role = 'admin'::user_role,
@@ -38,26 +54,30 @@ SET
     '{role}',
     '"admin"'
   )
-WHERE email IN ('ibadatt.aulakh@opusfesta.com', 'boris.massesa@opusfesta.com');
+WHERE email IN (SELECT email FROM promote_emails);
 
 -- ============================================
--- 3. Link admin_whitelist to user_id
+-- 3. Link admin_whitelist to user_id (only for promote set, unlinked rows)
 -- ============================================
 UPDATE admin_whitelist aw
 SET user_id = au.id
 FROM auth.users au
 WHERE aw.email = au.email
-  AND aw.user_id IS NULL;
+  AND aw.user_id IS NULL
+  AND aw.email IN (SELECT email FROM promote_emails);
 
 -- ============================================
--- 4. Verify
+-- 4. Verify (inside transaction; roll back if something looks wrong)
 -- ============================================
 SELECT 
   aw.email,
   aw.full_name,
   aw.role,
   aw.is_active,
-  aw.user_id IS NOT NULL as has_user_record
+  aw.user_id IS NOT NULL AS has_user_record
 FROM admin_whitelist aw
-WHERE aw.email IN ('ibadatt.aulakh@opusfesta.com', 'boris.massesa@opusfesta.com')
+WHERE aw.email IN (SELECT email FROM promote_emails)
 ORDER BY aw.email;
+
+COMMIT;
+-- If any statement above failed, run: ROLLBACK;

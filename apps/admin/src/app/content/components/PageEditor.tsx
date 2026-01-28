@@ -6,6 +6,7 @@ import { Save, RotateCcw } from "lucide-react";
 import { useContent } from "@/context/ContentContext";
 import { supabase } from "@/lib/supabaseClient";
 import type { Session } from "@supabase/supabase-js";
+import { getAdminWhitelistEntry } from "@/lib/adminWhitelist";
 import { HeroEditor } from "../editors/HeroEditor";
 import { ServicesEditor } from "../editors/ServicesEditor";
 import { FAQEditor } from "../editors/FAQEditor";
@@ -36,9 +37,11 @@ export function PageEditor({ activeSection }: PageEditorProps) {
     lastPublishedAt,
   } = useContent();
   const [role, setRole] = useState("");
+  const [isAdminFromWhitelist, setIsAdminFromWhitelist] = useState(false);
 
-  const canSave = ["owner", "admin", "editor"].includes(role);
-  const canPublish = ["owner", "admin"].includes(role);
+  // Check both app_metadata role and admin_whitelist to ensure ALL admins can publish
+  const canSave = ["owner", "admin", "editor"].includes(role) || isAdminFromWhitelist;
+  const canPublish = ["owner", "admin"].includes(role) || isAdminFromWhitelist;
 
   useEffect(() => {
     loadAdminContent();
@@ -49,14 +52,37 @@ export function PageEditor({ activeSection }: PageEditorProps) {
     const getRole = (session: Session | null) =>
       session?.user?.app_metadata?.role ?? "";
 
-    supabase.auth.getSession().then(({ data }) => {
+    const checkAdminStatus = async (session: Session | null) => {
+      if (!session?.user?.email) {
+        setIsAdminFromWhitelist(false);
+        return;
+      }
+
+      // Check admin_whitelist as fallback to ensure all admins can publish
+      try {
+        const whitelistEntry = await getAdminWhitelistEntry(session.user.email);
+        if (whitelistEntry && whitelistEntry.is_active) {
+          // If user is in whitelist with admin or owner role, they can publish
+          setIsAdminFromWhitelist(["owner", "admin"].includes(whitelistEntry.role));
+        } else {
+          setIsAdminFromWhitelist(false);
+        }
+      } catch (error) {
+        console.error("Error checking admin whitelist:", error);
+        setIsAdminFromWhitelist(false);
+      }
+    };
+
+    supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return;
       setRole(getRole(data.session));
+      await checkAdminStatus(data.session);
     });
 
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (!mounted) return;
       setRole(getRole(session));
+      await checkAdminStatus(session);
     });
 
     return () => {
@@ -66,13 +92,27 @@ export function PageEditor({ activeSection }: PageEditorProps) {
   }, []);
 
   const handleSaveDraft = async () => {
-    if (!canSave) return;
+    if (!canSave) {
+      const { toast } = await import('@/lib/toast');
+      toast.error(`Cannot save: Insufficient permissions. Your role: ${role || 'loading...'}`);
+      return;
+    }
     await saveDraft();
   };
 
   const handlePublish = async () => {
-    if (!canPublish) return;
-    await publishContent();
+    if (!canPublish) {
+      const { toast } = await import('@/lib/toast');
+      toast.error(`Cannot publish: Insufficient permissions. Your role: ${role || 'loading...'}`);
+      return;
+    }
+    try {
+      await publishContent();
+    } catch (error) {
+      console.error('[PageEditor] Error in handlePublish:', error);
+      const { toast } = await import('@/lib/toast');
+      toast.error(`Failed to publish: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
   };
 
   return (
