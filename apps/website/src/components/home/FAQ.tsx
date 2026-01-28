@@ -70,11 +70,11 @@ export function FAQ() {
         {/* Left Column: Header */}
         <div ref={headerRef} className="sticky top-32 opacity-0 text-center md:text-left">
           <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
-            <span className="w-12 h-[1px] bg-accent"></span>
+            <span className="w-12 h-px bg-accent"></span>
             <span className="font-mono text-accent text-xs tracking-widest uppercase">
               Common Questions
             </span>
-            <span className="md:hidden w-12 h-[1px] bg-accent"></span>
+            <span className="md:hidden w-12 h-px bg-accent"></span>
           </div>
           <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-primary leading-[1.1] mb-6">
             Got questions? <br/>

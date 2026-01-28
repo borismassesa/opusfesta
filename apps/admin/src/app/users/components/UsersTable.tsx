@@ -46,7 +46,7 @@ interface User {
 
 interface UsersTableProps {
   users: User[];
-  type: "vendors" | "couples" | "applicants";
+  type: "vendors" | "couples" | "applicants" | "admins";
   onEdit: (user: User) => void;
   onDelete: (user: User) => void;
 }
@@ -196,14 +196,16 @@ export function UsersTable({ users, type, onEdit, onDelete }: UsersTableProps) {
                   </TableCell>
                   <TableCell className="text-right whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1 sm:gap-2">
-                      <button
-                        type="button"
-                        className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50 dark:hover:bg-muted/50"
-                        onClick={() => onDelete(user)}
-                        aria-label="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
+                      {user.role !== "admin" && (
+                        <button
+                          type="button"
+                          className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50 dark:hover:bg-muted/50"
+                          onClick={() => onDelete(user)}
+                          aria-label="Delete"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      )}
                       <button
                         type="button"
                         className="h-8 w-8 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded-md hover:bg-muted/50 dark:hover:bg-muted/50"

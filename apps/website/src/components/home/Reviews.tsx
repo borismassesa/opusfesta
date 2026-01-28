@@ -206,11 +206,11 @@ export function Reviews() {
         <div ref={headerRef} className="md:sticky md:top-32 flex flex-col items-center md:items-start gap-8 z-10 opacity-0 text-center md:text-left">
           <div>
             <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
-              <span className="w-12 h-[1px] bg-accent"></span>
+              <span className="w-12 h-px bg-accent"></span>
               <span className="font-mono text-accent text-xs tracking-widest uppercase">
                 Testimonials
               </span>
-              <span className="md:hidden w-12 h-[1px] bg-accent"></span>
+              <span className="md:hidden w-12 h-px bg-accent"></span>
             </div>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-primary leading-[1.1] mb-6">
               Loved by couples <br/>
@@ -251,8 +251,8 @@ export function Reviews() {
         {/* Desktop: Moving Cards */}
         <div ref={marqueeRef} className="hidden md:grid relative h-[600px] overflow-hidden mask-gradient-y grid-cols-2 gap-4">
           {/* Vertical Gradients for masking */}
-          <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-surface to-transparent z-10 pointer-events-none"></div>
-          <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-surface to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute inset-x-0 top-0 h-32 bg-linear-to-b from-surface to-transparent z-10 pointer-events-none"></div>
+          <div className="absolute inset-x-0 bottom-0 h-32 bg-linear-to-t from-surface to-transparent z-10 pointer-events-none"></div>
 
           {/* Column 1 - Moving Up */}
           <div className="overflow-hidden h-full relative">
@@ -315,7 +315,7 @@ function ReviewCard({ review }: { review: ReviewItem }) {
 
         {/* Bottom: User Info - Compact */}
         <div className="mt-auto pt-4 border-t border-border/50 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full overflow-hidden border border-border flex-shrink-0 bg-surface">
+          <div className="w-10 h-10 rounded-full overflow-hidden border border-border shrink-0 bg-surface">
             <img
               src={resolveAssetSrc(review.avatar)}
               alt={review.name}

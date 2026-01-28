@@ -1,16 +1,17 @@
 "use client";
 
-import { PanelLeftClose, PanelLeftOpen, Briefcase, User, FileText } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen, Briefcase, User, FileText, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 
 interface UsersSidebarProps {
-  activeTab: "vendors" | "couples" | "applicants";
-  onTabChange: (tab: "vendors" | "couples" | "applicants") => void;
+  activeTab: "vendors" | "couples" | "applicants" | "admins";
+  onTabChange: (tab: "vendors" | "couples" | "applicants" | "admins") => void;
   counts: {
     vendors: number;
     couples: number;
     applicants: number;
+    admins: number;
   };
   loading: boolean;
 }
@@ -19,6 +20,7 @@ const USER_TYPE_ITEMS = [
   { label: "Vendors", icon: Briefcase, value: "vendors" as const },
   { label: "Couples", icon: User, value: "couples" as const },
   { label: "Applicants", icon: FileText, value: "applicants" as const },
+  { label: "Admins", icon: Shield, value: "admins" as const },
 ];
 
 export function UsersSidebar({ activeTab, onTabChange, counts, loading }: UsersSidebarProps) {
