@@ -6,7 +6,6 @@ import { Save, RotateCcw } from "lucide-react";
 import { useContent } from "@/context/ContentContext";
 import { supabase } from "@/lib/supabaseClient";
 import type { Session } from "@supabase/supabase-js";
-import { getAdminWhitelistEntry } from "@/lib/adminWhitelist";
 import { HeroEditor } from "../editors/HeroEditor";
 import { ServicesEditor } from "../editors/ServicesEditor";
 import { FAQEditor } from "../editors/FAQEditor";
@@ -37,11 +36,11 @@ export function PageEditor({ activeSection }: PageEditorProps) {
     lastPublishedAt,
   } = useContent();
   const [role, setRole] = useState("");
-  const [isAdminFromWhitelist, setIsAdminFromWhitelist] = useState(false);
+  const [whitelistRole, setWhitelistRole] = useState<string | null>(null);
 
-  // Check both app_metadata role and admin_whitelist to ensure ALL admins can publish
-  const canSave = ["owner", "admin", "editor"].includes(role) || isAdminFromWhitelist;
-  const canPublish = ["owner", "admin"].includes(role) || isAdminFromWhitelist;
+  // JWT app_metadata.role + whitelist API fallback so all admins can save/publish
+  const canSave = ["owner", "admin", "editor"].includes(role) || ["owner", "admin", "editor"].includes(whitelistRole ?? "");
+  const canPublish = ["owner", "admin"].includes(role) || ["owner", "admin"].includes(whitelistRole ?? "");
 
   useEffect(() => {
     loadAdminContent();
@@ -54,22 +53,25 @@ export function PageEditor({ activeSection }: PageEditorProps) {
 
     const checkAdminStatus = async (session: Session | null) => {
       if (!session?.user?.email) {
-        setIsAdminFromWhitelist(false);
+        setWhitelistRole(null);
         return;
       }
 
-      // Check admin_whitelist as fallback to ensure all admins can publish
       try {
-        const whitelistEntry = await getAdminWhitelistEntry(session.user.email);
-        if (whitelistEntry && whitelistEntry.is_active) {
-          // If user is in whitelist with admin or owner role, they can publish
-          setIsAdminFromWhitelist(["owner", "admin"].includes(whitelistEntry.role));
+        const res = await fetch("/api/admin/whitelist/check", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: session.user.email }),
+        });
+        const data = await res.json();
+        if (data.whitelisted && data.entry?.role) {
+          setWhitelistRole(data.entry.role);
         } else {
-          setIsAdminFromWhitelist(false);
+          setWhitelistRole(null);
         }
       } catch (error) {
         console.error("Error checking admin whitelist:", error);
-        setIsAdminFromWhitelist(false);
+        setWhitelistRole(null);
       }
     };
 
@@ -94,7 +96,7 @@ export function PageEditor({ activeSection }: PageEditorProps) {
   const handleSaveDraft = async () => {
     if (!canSave) {
       const { toast } = await import('@/lib/toast');
-      toast.error(`Cannot save: Insufficient permissions. Your role: ${role || 'loading...'}`);
+      toast.error(`Cannot save: Insufficient permissions. Your role: ${role || whitelistRole || 'loading...'}`);
       return;
     }
     await saveDraft();
@@ -103,7 +105,7 @@ export function PageEditor({ activeSection }: PageEditorProps) {
   const handlePublish = async () => {
     if (!canPublish) {
       const { toast } = await import('@/lib/toast');
-      toast.error(`Cannot publish: Insufficient permissions. Your role: ${role || 'loading...'}`);
+      toast.error(`Cannot publish: Insufficient permissions. Your role: ${role || whitelistRole || 'loading...'}`);
       return;
     }
     try {
