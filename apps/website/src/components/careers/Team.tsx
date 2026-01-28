@@ -88,7 +88,7 @@ const GalleryItem: React.FC<{
       onClick={onClick}
       onMouseEnter={onMouseEnter}
       className={`relative cursor-pointer transition-all duration-1000 ease-[cubic-bezier(0.23,1,0.32,1)] overflow-hidden h-full group ${
-        isActive ? 'flex-[4]' : 'flex-1 hover:flex-[1.1]'
+        isActive ? 'flex-4' : 'flex-1 hover:flex-[1.1]'
       }`}
     >
       <img 

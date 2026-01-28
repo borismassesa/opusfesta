@@ -282,7 +282,7 @@ export function Hero() {
   }, [hero.slides.length]);
 
   return (
-    <div ref={containerRef} className="relative min-h-[100dvh] w-full overflow-hidden border-b border-border bg-background flex flex-col justify-center">
+    <div ref={containerRef} className="relative min-h-dvh w-full overflow-hidden border-b border-border bg-background flex flex-col justify-center">
       <section id="hero" className="w-full max-w-[1400px] mx-auto px-6 lg:px-12 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-16 items-center py-20 md:py-0">
         
         {/* Text Content */}
@@ -316,7 +316,7 @@ export function Hero() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`px-3 py-1.5 rounded-lg border transition-all duration-200 whitespace-nowrap flex-shrink-0 text-xs sm:text-sm ${
+                    className={`px-3 py-1.5 rounded-lg border transition-all duration-200 whitespace-nowrap shrink-0 text-xs sm:text-sm ${
                       activeTab === tab.id
                         ? 'bg-primary text-background border-primary'
                         : 'bg-transparent border-border text-secondary hover:border-primary/50 hover:text-primary hover:bg-surface'
@@ -352,13 +352,13 @@ export function Hero() {
 
           {/* Social Proof Badge - Updated to match design */}
           <div className="hero-fade flex items-center gap-3 sm:gap-4 mt-8 pl-2 pr-4 sm:pr-6 py-2 bg-surface rounded-full shadow-sm border border-border w-full sm:w-fit hover:scale-105 transition-transform duration-300 cursor-default max-w-full">
-             <div className="flex -space-x-3 flex-shrink-0">
+             <div className="flex -space-x-3 shrink-0">
                {[10, 15, 20].map((i) => (
                  <div key={i} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-[3px] border-surface overflow-hidden relative ring-1 ring-border">
                     <img 
                       src={`https://picsum.photos/seed/${i}/100/100`} 
                       alt="User" 
-                      className="w-full h-full object-cover grayscale-[20%]" 
+                      className="w-full h-full object-cover grayscale-20" 
                     />
                  </div>
                ))}
@@ -371,7 +371,7 @@ export function Hero() {
         </div>
 
         {/* Hero Visual - Video Carousel */}
-        <div ref={visualRef} className="hero-visual relative w-full aspect-[4/3] rounded-[2.5rem] overflow-hidden shadow-2xl group bg-surface border border-border z-20 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto">
+        <div ref={visualRef} className="hero-visual relative w-full aspect-4/3 rounded-[2.5rem] overflow-hidden shadow-2xl group bg-surface border border-border z-20 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto">
         
         {hero.slides.map((slide, index) => (
           <div 

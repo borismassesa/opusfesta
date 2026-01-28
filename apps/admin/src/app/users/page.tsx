@@ -41,13 +41,14 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
-  const [activeTab, setActiveTab] = useState<"vendors" | "couples" | "applicants">("vendors");
+  const [activeTab, setActiveTab] = useState<"vendors" | "couples" | "applicants" | "admins">("vendors");
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [userCounts, setUserCounts] = useState({
     vendors: 0,
     couples: 0,
     applicants: 0,
+    admins: 0,
   });
 
   useEffect(() => {
@@ -61,7 +62,7 @@ export default function UsersPage() {
       if (!session) return;
 
       // Fetch counts for all types in parallel
-      const [vendorsRes, couplesRes, applicantsRes] = await Promise.all([
+      const [vendorsRes, couplesRes, applicantsRes, adminsRes] = await Promise.all([
         fetch(getAdminApiUrl("/api/admin/users?type=vendors"), {
           headers: { Authorization: `Bearer ${session.access_token}` },
         }),
@@ -71,16 +72,21 @@ export default function UsersPage() {
         fetch(getAdminApiUrl("/api/admin/users?type=applicants"), {
           headers: { Authorization: `Bearer ${session.access_token}` },
         }),
+        fetch(getAdminApiUrl("/api/admin/users?type=admins"), {
+          headers: { Authorization: `Bearer ${session.access_token}` },
+        }),
       ]);
 
       const vendorsData = vendorsRes.ok ? await vendorsRes.json() : { users: [] };
       const couplesData = couplesRes.ok ? await couplesRes.json() : { users: [] };
       const applicantsData = applicantsRes.ok ? await applicantsRes.json() : { users: [] };
+      const adminsData = adminsRes.ok ? await adminsRes.json() : { users: [] };
 
       setUserCounts({
         vendors: vendorsData.users?.length || 0,
         couples: couplesData.users?.length || 0,
         applicants: applicantsData.users?.length || 0,
+        admins: adminsData.users?.length || 0,
       });
     } catch (err) {
       console.error("Error fetching user counts:", err);

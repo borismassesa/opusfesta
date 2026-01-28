@@ -43,6 +43,8 @@ NEXT_PUBLIC_ADMIN_WHITELIST=admin1@example.com,admin2@example.com,admin3@example
 
 **Managing Admins:** Use the API endpoint `/api/admin/whitelist` (requires owner role) to add, update, or remove admins. See `ADMIN_WHITELIST_GUIDE.md` for more details.
 
+**Adding new admins:** Run the SQL script in Supabase Dashboard → SQL Editor, e.g. `supabase/add_new_admins_2025.sql`. That adds emails to `admin_whitelist` and promotes any existing auth users to `role = admin` in `users` and `auth.users`. If the person doesn’t have an account yet, they sign up first (e.g. on the main site), then re-run the “Promote existing users to admin” part of the script or use `supabase/make_user_admin_simple.sql` with their user id. Optionally add their email to `NEXT_PUBLIC_ADMIN_WHITELIST` (comma-separated) as a fallback.
+
 ### Install Dependencies
 
 ```bash

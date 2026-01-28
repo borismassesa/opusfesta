@@ -260,6 +260,34 @@ export async function GET(request: NextRequest) {
           );
         }
       }
+    } else if (type === "admins") {
+      // Get users who are admins (role = 'admin')
+      const { data: adminUsers, error: usersError } = await supabaseAdmin
+        .from("users")
+        .select("*")
+        .eq("role", "admin")
+        .order("created_at", { ascending: false });
+
+      if (usersError) {
+        console.error("Error fetching admins:", usersError);
+        return NextResponse.json(
+          { error: "Failed to fetch admins" },
+          { status: 500 }
+        );
+      }
+
+      users = adminUsers || [];
+
+      // Apply search filter
+      if (search) {
+        const searchLower = search.toLowerCase();
+        users = users.filter(
+          (user) =>
+            user.name?.toLowerCase().includes(searchLower) ||
+            user.email?.toLowerCase().includes(searchLower) ||
+            user.phone?.toLowerCase().includes(searchLower)
+        );
+      }
     } else {
       // Get all users
       let query = supabaseAdmin.from("users").select("*");

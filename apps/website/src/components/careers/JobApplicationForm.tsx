@@ -676,11 +676,11 @@ export function JobApplicationForm({
       <div className="flex flex-col items-center justify-center p-12 text-center">
         <div className="relative mb-6">
           <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse"></div>
-          <div className="relative bg-gradient-to-br from-primary/10 to-secondary/10 p-6 rounded-3xl border border-primary/20">
+          <div className="relative bg-linear-to-br from-primary/10 to-secondary/10 p-6 rounded-3xl border border-primary/20">
             <CheckCircle2 className="w-20 h-20 text-primary" />
           </div>
         </div>
-        <h3 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+        <h3 className="text-3xl font-bold mb-4 bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
           Application Submitted!
         </h3>
         <p className="text-lg text-secondary max-w-md leading-relaxed">
@@ -738,11 +738,11 @@ export function JobApplicationForm({
       <div className="flex flex-col items-center justify-center p-12 text-center">
         <div className="relative mb-6">
           <div className="absolute inset-0 bg-primary/20 rounded-full blur-2xl animate-pulse"></div>
-          <div className="relative bg-gradient-to-br from-primary/10 to-secondary/10 p-6 rounded-3xl border border-primary/20">
+          <div className="relative bg-linear-to-br from-primary/10 to-secondary/10 p-6 rounded-3xl border border-primary/20">
             <CheckCircle2 className="w-20 h-20 text-primary" />
           </div>
         </div>
-        <h3 className="text-3xl font-bold mb-4 bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
+        <h3 className="text-3xl font-bold mb-4 bg-linear-to-r from-primary to-secondary bg-clip-text text-transparent">
           Application Already Submitted
         </h3>
         <p className="text-lg text-secondary max-w-md leading-relaxed mb-6">
@@ -874,7 +874,7 @@ export function JobApplicationForm({
                     htmlFor="resume-upload"
                     className="group relative flex flex-col items-center justify-center w-full h-40 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 overflow-hidden"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-secondary/0 group-hover:from-primary/5 group-hover:to-secondary/5 transition-all duration-300"></div>
+                    <div className="absolute inset-0 bg-linear-to-br from-primary/0 to-secondary/0 group-hover:from-primary/5 group-hover:to-secondary/5 transition-all duration-300"></div>
                     <div className="relative flex flex-col items-center justify-center pt-5 pb-6 z-10">
                       {isUploadingResume ? (
                         <>
@@ -907,7 +907,7 @@ export function JobApplicationForm({
                   </label>
                 </div>
               ) : (
-                <div className="flex items-center gap-4 p-5 border-2 border-primary/20 rounded-xl bg-gradient-to-br from-primary/5 to-secondary/5">
+                <div className="flex items-center gap-4 p-5 border-2 border-primary/20 rounded-xl bg-linear-to-br from-primary/5 to-secondary/5">
                   <div className="p-3 bg-primary/10 rounded-lg">
                     <FileText className="w-6 h-6 text-primary" />
                   </div>
@@ -951,7 +951,7 @@ export function JobApplicationForm({
                     htmlFor="cover-letter-upload"
                     className="group relative flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-border rounded-xl cursor-pointer hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 overflow-hidden"
                   >
-                    <div className="absolute inset-0 bg-gradient-to-br from-primary/0 to-secondary/0 group-hover:from-primary/5 group-hover:to-secondary/5 transition-all duration-300"></div>
+                    <div className="absolute inset-0 bg-linear-to-br from-primary/0 to-secondary/0 group-hover:from-primary/5 group-hover:to-secondary/5 transition-all duration-300"></div>
                     <div className="relative flex flex-col items-center justify-center pt-4 pb-4 z-10">
                       {isUploadingCoverLetter ? (
                         <>
@@ -984,7 +984,7 @@ export function JobApplicationForm({
                   </label>
                 </div>
               ) : (
-                <div className="flex items-center gap-4 p-4 border-2 border-primary/20 rounded-xl bg-gradient-to-br from-primary/5 to-secondary/5">
+                <div className="flex items-center gap-4 p-4 border-2 border-primary/20 rounded-xl bg-linear-to-br from-primary/5 to-secondary/5">
                   <div className="p-2 bg-primary/10 rounded-lg">
                     <FileText className="w-5 h-5 text-primary" />
                   </div>

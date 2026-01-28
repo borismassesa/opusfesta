@@ -277,7 +277,7 @@ export function MobileMoneyPaymentInstructions({
 
       {/* Payment Instructions */}
       {selectedAccount && (
-        <div className="p-6 bg-gradient-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-2 border-red-200 dark:border-red-800 rounded-lg">
+        <div className="p-6 bg-linear-to-br from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border-2 border-red-200 dark:border-red-800 rounded-lg">
           {/* Header */}
           <div className="mb-4">
             <h3 className="text-2xl font-bold text-red-900 dark:text-red-100 mb-1">
