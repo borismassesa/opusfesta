@@ -133,7 +133,7 @@ const CATEGORIES = [
   "Beauty & Fashion",
 ];
 
-export default function InspirationPage() {
+export function InspirationPageClient() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [searchQuery, setSearchQuery] = useState("");
