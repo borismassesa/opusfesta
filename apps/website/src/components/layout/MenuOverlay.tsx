@@ -18,7 +18,7 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     { name: t('nav.vendors'), href: "/vendors" },
     { name: t('nav.guests'), href: "/guests" },
     { name: t('nav.websites'), href: "/websites" },
-    { name: t('nav.inspiration'), href: "/advice-and-ideas" },
+    { name: t('nav.inspiration'), href: "/inspiration" },
     { name: t('nav.shop'), href: "/shop" },
     { name: "Careers", href: "/careers" },
   ];

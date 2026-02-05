@@ -5,6 +5,8 @@ import { getVendorBySlug } from "@/lib/supabase/vendors";
 
 export const dynamic = "force-dynamic";
 
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://opusfestaevents.com";
+
 export async function generateMetadata({
   params,
 }: {
@@ -22,20 +24,29 @@ export async function generateMetadata({
   const description =
     vendor.description || vendor.bio || `${vendor.business_name} - ${vendor.category} in ${vendor.location?.city || "Tanzania"}`;
   const image = vendor.cover_image || vendor.logo || "";
+  const canonicalUrl = `${BASE_URL}/vendors/${slug}`;
+  const location = vendor.location?.city 
+    ? `${vendor.location.city}${vendor.location.country ? `, ${vendor.location.country}` : ", Tanzania"}`
+    : "Tanzania";
 
   return {
-    title: `${vendor.business_name} | OpusFesta`,
-    description,
+    title: `${vendor.business_name} | ${vendor.category} in ${location} | OpusFesta`,
+    description: description.length > 160 ? description.substring(0, 157) + "..." : description,
+    alternates: {
+      canonical: canonicalUrl,
+    },
     openGraph: {
       title: `${vendor.business_name} | OpusFesta`,
-      description,
+      description: description.length > 200 ? description.substring(0, 197) + "..." : description,
       images: image ? [image] : [],
       type: "website",
+      url: canonicalUrl,
+      siteName: "OpusFesta",
     },
     twitter: {
       card: "summary_large_image",
       title: `${vendor.business_name} | OpusFesta`,
-      description,
+      description: description.length > 200 ? description.substring(0, 197) + "..." : description,
       images: image ? [image] : [],
     },
   };

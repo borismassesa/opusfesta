@@ -629,29 +629,29 @@ export function VendorCollectionView({
                                       </button>
                                     </div>
                                   </div>
-                                  <div className="grid grid-cols-3 gap-2">
+                                <div className="grid grid-cols-3 gap-2">
                                     <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                       <img
                                         src={resolveAssetSrc(vendor.image)}
-                                        alt=""
+                                        alt={`${vendor.name} portfolio image 1`}
                                         className="w-full h-full object-cover"
                                       />
                                     </div>
                                     <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                       <img
                                         src={resolveAssetSrc(vendor.image)}
-                                        alt=""
+                                        alt={`${vendor.name} portfolio image 2`}
                                         className="w-full h-full object-cover"
                                       />
                                     </div>
                                     <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                       <img
                                         src={resolveAssetSrc(vendor.image)}
-                                        alt=""
+                                        alt={`${vendor.name} portfolio image 3`}
                                         className="w-full h-full object-cover"
                                       />
                                     </div>
-                                  </div>
+                                </div>
                                 </div>
                                 <div
                                   className={`absolute top-full w-3 h-3 bg-background border-r border-b border-border transform rotate-45 -mt-1.5 ${
