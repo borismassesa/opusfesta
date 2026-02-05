@@ -2232,12 +2232,6 @@ export default function VendorsPage() {
                     Apply to join
                     <ArrowRight className="w-4 h-4" />
                   </Link>
-                  <Link
-                    href="/inspiration"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/30 bg-white/5 px-6 py-3 text-sm font-semibold text-white/90 backdrop-blur-sm transition-all hover:bg-white/10 sm:w-[280px] sm:text-base"
-                  >
-                    Browse inspiration
-                  </Link>
                 </div>
                 <div className="text-xs text-white/60 sm:text-sm">
                   Approval in 48 hours for qualified teams.
