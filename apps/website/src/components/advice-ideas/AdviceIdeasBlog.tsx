@@ -139,7 +139,7 @@ export function AdviceIdeasBlog() {
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                    <BreadcrumbLink href='#'>Advice</BreadcrumbLink>
+                  <BreadcrumbLink href={`${ADVICE_IDEAS_PATH}#categories`}>Advice</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
