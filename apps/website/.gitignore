@@ -8,4 +8,3 @@ vite.config.ts.*
 .env.local
 .env*.local
 .vercel
-opusfesta_ideas_advise_repo
