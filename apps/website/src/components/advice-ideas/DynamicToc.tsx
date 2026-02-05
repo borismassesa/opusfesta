@@ -101,8 +101,15 @@ export function DynamicToc({ contentContainerId = 'content', className = '', sti
     if (item.level === 2) {
       if (currentGroup) groupedItems.push(currentGroup)
       currentGroup = { main: item, subs: [] }
-    } else if (item.level === 3 && currentGroup) {
-      currentGroup.subs.push(item)
+      return
+    }
+
+    if (item.level === 3) {
+      if (currentGroup) {
+        currentGroup.subs.push(item)
+      } else {
+        groupedItems.push({ main: item, subs: [] })
+      }
     }
   })
   if (currentGroup) groupedItems.push(currentGroup)
