@@ -1359,21 +1359,21 @@ export default function VendorsPage() {
                                   <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                     <img
                                       src={getImageSrc(promo.image)}
-                                      alt=""
+                                      alt={`${promo.name} portfolio image 1`}
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
                                   <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                     <img
                                       src={getImageSrc(promo.image)}
-                                      alt=""
+                                      alt={`${promo.name} portfolio image 2`}
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
                                   <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                     <img
                                       src={getImageSrc(promo.image)}
-                                      alt=""
+                                      alt={`${promo.name} portfolio image 3`}
                                       className="w-full h-full object-cover"
                                     />
                                   </div>
@@ -1521,21 +1521,21 @@ export default function VendorsPage() {
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 1`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 2`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 3`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
@@ -1672,21 +1672,21 @@ export default function VendorsPage() {
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 1`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 2`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 3`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
@@ -1823,21 +1823,21 @@ export default function VendorsPage() {
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 1`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 2`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 3`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
@@ -1974,21 +1974,21 @@ export default function VendorsPage() {
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 1`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 2`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 3`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
@@ -2125,21 +2125,21 @@ export default function VendorsPage() {
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 1`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 2`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={getImageSrc(vendor.image)}
-                                    alt=""
+                                    alt={`${vendor.name} portfolio image 3`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
