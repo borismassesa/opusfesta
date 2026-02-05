@@ -19,7 +19,7 @@ i18n
             vendors: "Vendors",
             guests: "Guests",
             websites: "Websites",
-            inspiration: "Advice & Ideas",
+            inspiration: "Inspiration",
             shop: "Shop",
             login: "Log In",
             getStarted: "Get Started"
@@ -49,7 +49,7 @@ i18n
             venues: "Venues",
             vendors: "Vendors",
             planning: "Planning",
-            inspiration: "Advice & Ideas"
+            inspiration: "Inspiration"
           },
           about: {
             title: "About Us",

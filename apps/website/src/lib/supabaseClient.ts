@@ -31,7 +31,7 @@ function createSupabaseClient(): SupabaseClient {
     throw new Error("Missing Supabase environment variables for the website app.");
   }
 
-  const client = createClient(url, key, {
+  return createClient(url, key, {
     auth: {
       persistSession: true,
       autoRefreshToken: true,
@@ -39,61 +39,6 @@ function createSupabaseClient(): SupabaseClient {
       storage: typeof window !== "undefined" ? window.localStorage : undefined,
     },
   });
-
-  // In the browser: when refresh token is invalid (expired/revoked/not found),
-  // clear session and return null so the app treats the user as logged out
-  // instead of surfacing AuthApiError and retrying the bad token.
-  if (typeof window !== "undefined") {
-    const isInvalidRefreshTokenError = (err: unknown): boolean => {
-      const msg =
-        err && typeof err === "object" && "message" in err
-          ? String((err as { message?: string }).message)
-          : "";
-      return (
-        msg.includes("Invalid Refresh Token") ||
-        msg.includes("Refresh Token Not Found") ||
-        msg.includes("refresh_token_not_found")
-      );
-    };
-
-    const originalGetSession = client.auth.getSession.bind(client.auth);
-    client.auth.getSession = async () => {
-      try {
-        const result = await originalGetSession();
-        if (result.error && isInvalidRefreshTokenError(result.error)) {
-          await client.auth.signOut({ scope: "local" });
-          return { data: { session: null }, error: null };
-        }
-        return result;
-      } catch (err) {
-        if (isInvalidRefreshTokenError(err)) {
-          await client.auth.signOut({ scope: "local" });
-          return { data: { session: null }, error: null };
-        }
-        throw err;
-      }
-    };
-
-    const originalGetUser = client.auth.getUser.bind(client.auth);
-    client.auth.getUser = async () => {
-      try {
-        const result = await originalGetUser();
-        if (result.error && isInvalidRefreshTokenError(result.error)) {
-          await client.auth.signOut({ scope: "local" });
-          return { data: { user: null }, error: null };
-        }
-        return result;
-      } catch (err) {
-        if (isInvalidRefreshTokenError(err)) {
-          await client.auth.signOut({ scope: "local" });
-          return { data: { user: null }, error: null };
-        }
-        throw err;
-      }
-    };
-  }
-
-  return client;
 }
 
 // Lazy initialization

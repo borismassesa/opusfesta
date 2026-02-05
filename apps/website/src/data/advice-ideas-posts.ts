@@ -107,9 +107,7 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
 </blockquote>
 
 <h2>Quick timeline video</h2>
-<!-- TODO: Replace placeholder video and poster with production-hosted assets before release. -->
 <video controls poster="/images/advice-ideas/post-2.webp">
-  <!-- TODO: Replace placeholder video source with production-hosted file. -->
   <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
   Your browser does not support the video tag.
 </video>
@@ -192,9 +190,7 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
 </figure>
 
 <h2>Budget walk-through</h2>
-<!-- TODO: Replace placeholder video and poster with production-hosted assets before release. -->
 <video controls poster="/images/advice-ideas/post-6.webp">
-  <!-- TODO: Replace placeholder video source with production-hosted file. -->
   <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
   Your browser does not support the video tag.
 </video>
@@ -259,9 +255,7 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
 </figure>
 
 <h2>Studio walkthrough</h2>
-<!-- TODO: Replace placeholder video and poster with production-hosted assets before release. -->
 <video controls poster="/images/advice-ideas/post-4.webp">
-  <!-- TODO: Replace placeholder video source with production-hosted file. -->
   <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
   Your browser does not support the video tag.
 </video>
@@ -327,9 +321,7 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
 </ol>
 
 <h2>Behind-the-scenes video</h2>
-<!-- TODO: Replace placeholder video and poster with production-hosted assets before release. -->
 <video controls poster="/images/advice-ideas/post-5.webp">
-  <!-- TODO: Replace placeholder video source with production-hosted file. -->
   <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
   Your browser does not support the video tag.
 </video>
@@ -379,9 +371,7 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
 </figure>
 
 <h2>Reception highlight video</h2>
-<!-- TODO: Replace placeholder video and poster with production-hosted assets before release. -->
 <video controls poster="/images/advice-ideas/post-7.webp">
-  <!-- TODO: Replace placeholder video source with production-hosted file. -->
   <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
   Your browser does not support the video tag.
 </video>
@@ -437,9 +427,7 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
 </figure>
 
 <h2>Behind the lens video</h2>
-<!-- TODO: Replace placeholder video and poster with production-hosted assets before release. -->
 <video controls poster="/images/advice-ideas/post-1.webp">
-  <!-- TODO: Replace placeholder video source with production-hosted file. -->
   <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
   Your browser does not support the video tag.
 </video>
@@ -488,9 +476,7 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
 </figure>
 
 <h2>Guest experience reel</h2>
-<!-- TODO: Replace placeholder video and poster with production-hosted assets before release. -->
 <video controls poster="/images/advice-ideas/post-8.webp">
-  <!-- TODO: Replace placeholder video source with production-hosted file. -->
   <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
   Your browser does not support the video tag.
 </video>
@@ -549,9 +535,7 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
 </figure>
 
 <h2>Etiquette essentials video</h2>
-<!-- TODO: Replace placeholder video and poster with production-hosted assets before release. -->
 <video controls poster="/images/advice-ideas/post-3.webp">
-  <!-- TODO: Replace placeholder video source with production-hosted file. -->
   <source src="https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4" type="video/mp4" />
   Your browser does not support the video tag.
 </video>
