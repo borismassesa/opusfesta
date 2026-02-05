@@ -2,20 +2,27 @@ import type { Metadata } from "next";
 import { type ReactNode, Suspense } from "react";
 import "@/app/globals.css";
 import { Providers } from "@/app/providers";
+import { OrganizationStructuredData } from "@/components/seo/StructuredData";
+
+const BASE_URL = process.env.NEXT_PUBLIC_SITE_URL || "https://opusfestaevents.com";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(
-    process.env.NEXT_PUBLIC_SITE_URL || "https://opusfestaevents.com",
-  ),
-  title: "OPUS FESTA | Plan Your Perfect Wedding",
+  metadataBase: new URL(BASE_URL),
+  title: {
+    default: "OPUS FESTA | Plan Your Perfect Wedding",
+    template: "%s | OpusFesta",
+  },
   description:
-    "The all-in-one marketplace for venues, vendors, and planning tools. Discover inspiration and manage every detail in one place.",
+    "The all-in-one marketplace for wedding venues, vendors, and planning tools. Discover inspiration and manage every detail in one place.",
+  alternates: {
+    canonical: BASE_URL,
+  },
   openGraph: {
     title: "OPUS FESTA | Plan Your Perfect Wedding",
     description:
       "The all-in-one marketplace for venues, vendors, and planning tools. Discover inspiration and manage every detail in one place.",
     type: "website",
-    url: "https://opusfestaevents.com",
+    url: BASE_URL,
     siteName: "OPUS FESTA",
     images: [
       {
@@ -68,6 +75,7 @@ export default function RootLayout({
         />
       </head>
       <body>
+        <OrganizationStructuredData />
         <Suspense fallback={null}>
           <Providers>{children}</Providers>
         </Suspense>

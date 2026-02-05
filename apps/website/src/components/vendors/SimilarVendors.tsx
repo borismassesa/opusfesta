@@ -138,21 +138,21 @@ export function SimilarVendors({ vendors, title, subtitle }: SimilarVendorsProps
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={resolveAssetSrc(coverImage)}
-                                    alt=""
+                                    alt={`${vendor.business_name} portfolio image 1`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={resolveAssetSrc(coverImage)}
-                                    alt=""
+                                    alt={`${vendor.business_name} portfolio image 2`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
                                 <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
                                   <img
                                     src={resolveAssetSrc(coverImage)}
-                                    alt=""
+                                    alt={`${vendor.business_name} portfolio image 3`}
                                     className="w-full h-full object-cover"
                                   />
                                 </div>

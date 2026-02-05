@@ -22,6 +22,7 @@ import celebrationImg from "@assets/stock_images/happy_wedding_couple_e3561dd1.j
 import { supabase } from "@/lib/supabaseClient";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { VendorStructuredData, BreadcrumbStructuredData } from "@/components/seo/StructuredData";
 
 export function VendorDetailsClient({
   params,
@@ -357,6 +358,20 @@ export function VendorDetailsClient({
   // Vendor details
   return (
     <div className="bg-background text-primary min-h-screen">
+      {/* Structured Data */}
+      {vendor && (
+        <>
+          <VendorStructuredData vendor={vendor} reviews={reviews} />
+          <BreadcrumbStructuredData
+            items={[
+              { name: "Home", url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://opusfestaevents.com"}` },
+              { name: "Vendors", url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://opusfestaevents.com"}/vendors` },
+              { name: vendor.business_name, url: `${process.env.NEXT_PUBLIC_SITE_URL || "https://opusfestaevents.com"}/vendors/${vendor.slug}` },
+            ]}
+          />
+        </>
+      )}
+      
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} sticky={false} />
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
