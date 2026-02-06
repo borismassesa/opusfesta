@@ -1,8 +1,9 @@
 'use client'
 
 import type { KeyboardEvent } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Script from 'next/script'
 import { SearchIcon, ArrowRightIcon, CalendarDaysIcon, ClockIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -18,7 +19,12 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
-import { adviceIdeasPosts, ADVICE_IDEAS_PATH, categoryToId, type AdviceIdeasPost } from '@/data/advice-ideas-posts'
+import { useAdviceIdeas } from '@/context/AdviceIdeasContext'
+import { useAdviceIdeasPageContent } from '@/context/AdviceIdeasPageContentContext'
+import { ADVICE_IDEAS_PATH, categoryToId, type AdviceIdeasPost } from '@/data/advice-ideas-posts'
+
+const INITIAL_VISIBLE_POSTS = 9
+const LOAD_MORE_STEP = 6
 
 const BlogGrid = ({ posts, onCategoryClick }: { posts: AdviceIdeasPost[]; onCategoryClick: (category: string) => void }) => {
   const router = useRouter()
@@ -45,24 +51,24 @@ const BlogGrid = ({ posts, onCategoryClick }: { posts: AdviceIdeasPost[]; onCate
           role='link'
           tabIndex={0}
         >
-          <CardContent className='flex h-full flex-col gap-4 p-5'>
-            <div className='relative overflow-hidden rounded-xl bg-surface'>
-              <img
-                src={post.imageUrl}
-                alt={post.imageAlt}
-                className='aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]'
-              />
+        <CardContent className='flex h-full flex-col gap-4 p-5'>
+          <div className='relative overflow-hidden rounded-xl bg-surface'>
+            <img
+              src={post.imageUrl}
+              alt={post.imageAlt}
+              className='aspect-[4/3] w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]'
+            />
+          </div>
+          <div className='flex flex-wrap items-center justify-between gap-2 text-xs font-medium text-secondary'>
+            <div className='flex flex-wrap items-center gap-2'>
+              <CalendarDaysIcon className='size-4' />
+              <span>{post.date}</span>
+              <ClockIcon className='size-4' />
+              <span>{post.readTime} min read</span>
             </div>
-            <div className='flex items-center justify-between gap-2 text-xs font-medium text-secondary'>
-              <div className='flex items-center gap-2'>
-                <CalendarDaysIcon className='size-4' />
-                <span>{post.date}</span>
-                <ClockIcon className='ml-3 size-4' />
-                <span>{post.readTime} min read</span>
-              </div>
-              <Badge
-                className='rounded-full border-0 bg-primary/10 px-3 py-1 text-xs text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
-                onClick={e => {
+            <Badge
+              className='rounded-full border-0 bg-primary/10 px-3 py-1 text-xs text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/30'
+              onClick={e => {
                   e.stopPropagation()
                   onCategoryClick(post.category)
                   router.push(`${ADVICE_IDEAS_PATH}#category-${categoryToId(post.category)}`)
@@ -99,13 +105,21 @@ const BlogGrid = ({ posts, onCategoryClick }: { posts: AdviceIdeasPost[]; onCate
 }
 
 export function AdviceIdeasBlog() {
+  const { posts: adviceIdeasPosts } = useAdviceIdeas()
+  const { content } = useAdviceIdeasPageContent()
   const [selectedTab, setSelectedTab] = useState('All')
   const [searchQuery, setSearchQuery] = useState('')
+  const [visibleCount, setVisibleCount] = useState(INITIAL_VISIBLE_POSTS)
   const router = useRouter()
 
   const nonFeaturedPosts = useMemo(
-    () => adviceIdeasPosts.filter(post => !post.featured).sort((a, b) => b.id - a.id),
-    [],
+    () =>
+      adviceIdeasPosts
+        .filter(post => !post.featured)
+        .sort(
+          (a, b) => new Date(b.publishedAt || b.date).getTime() - new Date(a.publishedAt || a.date).getTime(),
+        ),
+    [adviceIdeasPosts],
   )
   const uniqueCategories = useMemo(() => [...new Set(nonFeaturedPosts.map(post => post.category))], [nonFeaturedPosts])
   const categories = useMemo(() => ['All', ...uniqueCategories.sort()], [uniqueCategories])
@@ -123,6 +137,7 @@ export function AdviceIdeasBlog() {
 
   const handleTabChange = (tab: string) => {
     setSelectedTab(tab)
+    setVisibleCount(INITIAL_VISIBLE_POSTS)
     const hash = tab === 'All' ? '#categories' : `#category-${categoryToId(tab)}`
     router.push(`${ADVICE_IDEAS_PATH}${hash}`)
   }
@@ -130,16 +145,68 @@ export function AdviceIdeasBlog() {
   const visiblePosts =
     selectedTab === 'All' ? filteredPosts : filteredPosts.filter(post => post.category === selectedTab)
 
+  const suggestedCategories = useMemo(() => categories.slice(1, 5), [categories])
+  const alternativeCategories = useMemo(
+    () => categories.slice(1).filter(category => category !== selectedTab).slice(0, 4),
+    [categories, selectedTab],
+  )
+
+  useEffect(() => {
+    setVisibleCount(INITIAL_VISIBLE_POSTS)
+  }, [selectedTab, normalizedQuery])
+
+  const handleSuggestionClick = (category: string) => {
+    setSearchQuery('')
+    setSelectedTab(category)
+    setVisibleCount(INITIAL_VISIBLE_POSTS)
+    router.push(`${ADVICE_IDEAS_PATH}#category-${categoryToId(category)}`)
+  }
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://opusfestaevents.com'
+  const blogStructuredData = useMemo(
+    () => ({
+      '@context': 'https://schema.org',
+      '@type': 'Blog',
+      name: content.blog.title,
+      description: content.blog.description,
+      url: `${siteUrl}${ADVICE_IDEAS_PATH}`,
+      blogPost: adviceIdeasPosts.map(post => {
+        const publishedValue = post.publishedAt || post.date
+        const parsedDate = new Date(publishedValue)
+        const datePublished = Number.isNaN(parsedDate.getTime()) ? new Date().toISOString() : parsedDate.toISOString()
+
+        return {
+          '@type': 'BlogPosting',
+          headline: post.title,
+          description: post.description,
+          datePublished,
+          image: `${siteUrl}${post.imageUrl}`,
+          url: `${siteUrl}${ADVICE_IDEAS_PATH}/${post.slug}`,
+          author: {
+            '@type': 'Person',
+            name: post.author,
+          },
+        }
+      }),
+    }),
+    [siteUrl, adviceIdeasPosts, content.blog.title, content.blog.description],
+  )
+
   return (
     <section className='bg-muted/40 dark:bg-muted/20 py-8 sm:py-16 lg:py-24' id='categories'>
+      <Script
+        id='advice-ideas-jsonld'
+        type='application/ld+json'
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogStructuredData) }}
+      />
       <div className='mx-auto max-w-7xl space-y-8 px-4 sm:px-6 lg:space-y-16 lg:px-8'>
         <div className='space-y-4'>
-          {selectedTab === 'All' && <p className='text-sm'>Advice</p>}
+          {selectedTab === 'All' && <p className='text-sm'>{content.blog.label}</p>}
           {selectedTab !== 'All' && (
             <Breadcrumb>
               <BreadcrumbList>
                 <BreadcrumbItem>
-                  <BreadcrumbLink href={`${ADVICE_IDEAS_PATH}#categories`}>Advice</BreadcrumbLink>
+                  <BreadcrumbLink href={`${ADVICE_IDEAS_PATH}#categories`}>{content.blog.label}</BreadcrumbLink>
                 </BreadcrumbItem>
                 <BreadcrumbSeparator />
                 <BreadcrumbItem>
@@ -149,50 +216,61 @@ export function AdviceIdeasBlog() {
             </Breadcrumb>
           )}
 
-          <h2 className='text-2xl font-semibold md:text-3xl lg:text-4xl'>Wedding advice for every part of the day.</h2>
+          <h2 className='text-2xl font-semibold md:text-3xl lg:text-4xl'>{content.blog.title}</h2>
 
           <p className='text-muted-foreground text-lg md:text-xl'>
-            Timelines, budgets, style, and guest experience to guide you from planning to celebration.
+            {content.blog.description}
           </p>
         </div>
 
         <Tabs defaultValue='All' value={selectedTab} onValueChange={handleTabChange} className='gap-8 lg:gap-16'>
-          <div className='flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center'>
-            <ScrollArea className='bg-muted w-full rounded-lg sm:w-auto'>
-              <TabsList className='h-auto gap-1'>
-                {categories.map(category => (
-                  <TabsTrigger
-                    key={category}
-                    value={category}
-                    id={`category-${categoryToId(category)}`}
-                    className='hover:bg-primary/10 cursor-pointer rounded-lg px-4 text-base'
-                  >
-                    {category}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              <ScrollBar orientation='horizontal' />
-            </ScrollArea>
+          <div className='sticky top-16 z-10 -mx-4 border-y border-border/60 bg-muted/80 px-4 py-4 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8'>
+            <div className='flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center'>
+              <ScrollArea className='bg-muted w-full rounded-lg sm:w-auto'>
+                <TabsList className='h-auto gap-1'>
+                  {categories.map(category => (
+                    <TabsTrigger
+                      key={category}
+                      value={category}
+                      id={`category-${categoryToId(category)}`}
+                      className='hover:bg-primary/10 cursor-pointer rounded-lg px-3 text-sm sm:px-4 sm:text-base'
+                    >
+                      {category}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                <ScrollBar orientation='horizontal' />
+              </ScrollArea>
 
-            <div className='relative max-md:w-full'>
-              <div className='text-muted-foreground pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50'>
-                <SearchIcon className='size-4' />
-                <span className='sr-only'>Search</span>
+              <div className='relative max-md:w-full'>
+                <div className='text-muted-foreground pointer-events-none absolute inset-y-0 left-0 flex items-center justify-center pl-3 peer-disabled:opacity-50'>
+                  <SearchIcon className='size-4' />
+                  <span className='sr-only'>Search</span>
+                </div>
+                <Input
+                  type='search'
+                  placeholder='Search ideas'
+                  aria-label='Search advice and ideas'
+                  value={searchQuery}
+                  onChange={event => setSearchQuery(event.target.value)}
+                  className='peer h-10 px-9 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none'
+                />
               </div>
-              <Input
-                type='search'
-                placeholder='Search ideas'
-                aria-label='Search advice and ideas'
-                value={searchQuery}
-                onChange={event => setSearchQuery(event.target.value)}
-                className='peer h-10 px-9 [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none [&::-webkit-search-results-button]:appearance-none [&::-webkit-search-results-decoration]:appearance-none'
-              />
             </div>
           </div>
 
           <TabsContent value='All'>
             {visiblePosts.length ? (
-              <BlogGrid posts={visiblePosts} onCategoryClick={handleTabChange} />
+              <>
+                <BlogGrid posts={visiblePosts.slice(0, visibleCount)} onCategoryClick={handleTabChange} />
+                {visiblePosts.length > visibleCount ? (
+                  <div className='flex justify-center pt-6'>
+                    <Button variant='outline' onClick={() => setVisibleCount(count => count + LOAD_MORE_STEP)}>
+                      Load more
+                    </Button>
+                  </div>
+                ) : null}
+              </>
             ) : (
               <div className='rounded-2xl border border-dashed border-border/70 bg-background p-10 text-center'>
                 <p className='text-lg font-semibold text-primary'>No results found.</p>
@@ -205,39 +283,80 @@ export function AdviceIdeasBlog() {
                   onClick={() => {
                     setSearchQuery('')
                     setSelectedTab('All')
+                    setVisibleCount(INITIAL_VISIBLE_POSTS)
                     router.push(`${ADVICE_IDEAS_PATH}#categories`)
                   }}
                 >
                   Clear filters
                 </Button>
+                {suggestedCategories.length ? (
+                  <div className='mt-4 flex flex-wrap items-center justify-center gap-2'>
+                    {suggestedCategories.map(category => (
+                      <Button
+                        key={category}
+                        size='sm'
+                        variant='outline'
+                        onClick={() => handleSuggestionClick(category)}
+                      >
+                        Try {category}
+                      </Button>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             )}
           </TabsContent>
 
           {categories.slice(1).map((category, index) => (
             <TabsContent key={index} value={category}>
-              {filteredPosts.filter(post => post.category === category).length ? (
-                <BlogGrid
-                  posts={filteredPosts.filter(post => post.category === category)}
-                  onCategoryClick={handleTabChange}
-                />
-              ) : (
-                <div className='rounded-2xl border border-dashed border-border/70 bg-background p-10 text-center'>
-                  <p className='text-lg font-semibold text-primary'>No results in this category.</p>
-                  <p className='text-muted-foreground mt-2'>Try a different search or check back soon.</p>
-                  <Button
-                    className='mt-4'
-                    variant='outline'
-                    onClick={() => {
-                      setSearchQuery('')
-                      setSelectedTab('All')
-                      router.push(`${ADVICE_IDEAS_PATH}#categories`)
-                    }}
-                  >
-                    View all articles
-                  </Button>
-                </div>
-              )}
+              {(() => {
+                const categoryPosts = filteredPosts.filter(post => post.category === category)
+                const visibleCategoryPosts = categoryPosts.slice(0, visibleCount)
+
+                return categoryPosts.length ? (
+                  <>
+                    <BlogGrid posts={visibleCategoryPosts} onCategoryClick={handleTabChange} />
+                    {categoryPosts.length > visibleCount ? (
+                      <div className='flex justify-center pt-6'>
+                        <Button variant='outline' onClick={() => setVisibleCount(count => count + LOAD_MORE_STEP)}>
+                          Load more
+                        </Button>
+                      </div>
+                    ) : null}
+                  </>
+                ) : (
+                  <div className='rounded-2xl border border-dashed border-border/70 bg-background p-10 text-center'>
+                    <p className='text-lg font-semibold text-primary'>No results in this category.</p>
+                    <p className='text-muted-foreground mt-2'>Try a different search or check back soon.</p>
+                    <Button
+                      className='mt-4'
+                      variant='outline'
+                      onClick={() => {
+                        setSearchQuery('')
+                        setSelectedTab('All')
+                        setVisibleCount(INITIAL_VISIBLE_POSTS)
+                        router.push(`${ADVICE_IDEAS_PATH}#categories`)
+                      }}
+                    >
+                      View all articles
+                    </Button>
+                    {alternativeCategories.length ? (
+                      <div className='mt-4 flex flex-wrap items-center justify-center gap-2'>
+                        {alternativeCategories.map(altCategory => (
+                          <Button
+                            key={altCategory}
+                            size='sm'
+                            variant='outline'
+                            onClick={() => handleSuggestionClick(altCategory)}
+                          >
+                            Try {altCategory}
+                          </Button>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                )
+              })()}
             </TabsContent>
           ))}
         </Tabs>

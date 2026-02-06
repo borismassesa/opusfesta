@@ -120,6 +120,13 @@ export function Issues() {
               <p className="text-secondary text-base md:text-lg max-w-md text-center md:text-right leading-relaxed font-light">
                 {content.advice?.description || "Expert guides, trending styles, and real wedding stories to help you plan a celebration that's uniquely yours."}
               </p>
+              <Link
+                href={content.advice?.buttonLink || "/services/advice"}
+                className="group inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-background text-sm font-medium transition-all hover:bg-primary/90 hover:scale-105"
+              >
+                {content.advice?.buttonText || "Browse All Articles"}
+                <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+              </Link>
             </div>
           </div>
         </div>
@@ -184,15 +191,7 @@ export function Issues() {
           </div>
         </div>
 
-        <div className="max-w-[1400px] mx-auto w-full px-6 lg:px-12 pt-8 md:pt-10 pb-4 flex justify-center md:justify-end">
-          <Link
-            href={content.advice?.buttonLink || "/services/advice"}
-            className="group inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-background text-sm font-medium transition-all hover:bg-primary/90 hover:scale-105"
-          >
-            {content.advice?.buttonText || "Browse All Articles"}
-            <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-          </Link>
-        </div>
+        {/* Button moved under description */}
       </section>
     </div>
   );

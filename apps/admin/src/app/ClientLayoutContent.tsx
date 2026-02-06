@@ -17,6 +17,7 @@ import {
   LogOut,
   Eye,
   BarChart3,
+  Lightbulb,
 } from "lucide-react";
 import { useEffect, useState, useRef, type ReactNode } from "react";
 import type { Session } from "@supabase/supabase-js";
@@ -214,6 +215,7 @@ const MENU_GROUPS = [
     items: [
       { label: "Homepage Editor", icon: FileText, href: "/content" },
       { label: "Careers Editor", icon: Briefcase, href: "/editor/careers" },
+      { label: "Advice & Ideas CMS", icon: Lightbulb, href: "/editorial/advice-ideas" },
     ],
   },
   {
@@ -276,8 +278,8 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
   
-  // Check if we're on a route that should show secondary sidebar
-  const hasSecondarySidebar = pathname.startsWith("/content") || pathname.startsWith("/careers") || pathname.startsWith("/editor/careers") || pathname.startsWith("/users");
+  // Check if we're on a route that should show secondary sidebar (primary sidebar collapses to icon + hover overlay)
+  const hasSecondarySidebar = pathname.startsWith("/content") || pathname.startsWith("/careers") || pathname.startsWith("/editor/careers") || pathname.startsWith("/editorial/advice-ideas") || pathname.startsWith("/users");
   
   // Attach hover listeners to sidebar container and gap
   useEffect(() => {
@@ -741,7 +743,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
                 <main className="flex-1 overflow-auto bg-background relative">
                 <div className={cn(
                   "relative z-10 animate-in fade-in duration-500",
-                  pathname.startsWith("/content") || pathname.startsWith("/editor/careers") || pathname.startsWith("/careers") || pathname.startsWith("/users")
+                  pathname.startsWith("/content") || pathname.startsWith("/editor/careers") || pathname.startsWith("/careers") || pathname.startsWith("/editorial/advice-ideas") || pathname.startsWith("/users")
                     ? "h-full p-0" 
                     : "min-h-full p-4 sm:p-6 pt-16 sm:pt-20 md:p-8 lg:p-10 max-w-[1600px] mx-auto"
                 )}>

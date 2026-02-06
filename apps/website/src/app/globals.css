@@ -15,8 +15,45 @@
   --color-accent-foreground: var(--accent-foreground);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
+  --color-card: var(--card);
+  --color-muted-foreground: var(--muted-foreground);
   
   --animate-loading-scan: loading-scan 2s infinite linear;
+}
+
+@theme inline {
+  --animate-marquee-horizontal: marquee-horizontal var(--marquee-duration) infinite linear;
+  --animate-marquee-vertical: marquee-vertical var(--marquee-duration) infinite linear;
+  --animate-orbit: orbit calc(var(--duration) * 1s) linear infinite;
+
+  @keyframes marquee-horizontal {
+    from {
+      transform: translateX(0);
+    }
+    to {
+      transform: translateX(calc(-100% - var(--marquee-gap)));
+    }
+  }
+
+  @keyframes marquee-vertical {
+    from {
+      transform: translateY(0);
+    }
+    to {
+      transform: translateY(calc(-100% - var(--marquee-gap)));
+    }
+  }
+
+  @keyframes orbit {
+    0% {
+      transform: rotate(calc(var(--angle) * 1deg)) translateY(calc(var(--radius) * 1px))
+        rotate(calc(var(--angle) * -1deg));
+    }
+    100% {
+      transform: rotate(calc(var(--angle) * 1deg + 360deg)) translateY(calc(var(--radius) * 1px))
+        rotate(calc((var(--angle) * -1deg) - 360deg));
+    }
+  }
 }
 
 @layer base {
@@ -32,6 +69,9 @@
     --accent-foreground: #fafafa;
     --popover: #ffffff;
     --popover-foreground: #050505;
+    --card: var(--background);
+    --muted-foreground: var(--secondary);
+    --shadow-color: #000000;
     
     --grid-line: rgba(0, 0, 0, 0.06);
     --selection-bg: rgba(0, 0, 0, 0.1);
@@ -50,6 +90,9 @@
     --accent-foreground: #18181b;
     --popover: #050505;
     --popover-foreground: #ffffff;
+    --card: var(--background);
+    --muted-foreground: var(--secondary);
+    --shadow-color: #000000;
 
     --grid-line: rgba(255, 255, 255, 0.06);
     --selection-bg: rgba(255, 255, 255, 0.2);

@@ -3,10 +3,8 @@
 import { useRef, useEffect } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useContent } from "@/context/ContentContext";
-import { resolveAssetSrc } from "@/lib/assets";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -14,7 +12,7 @@ export function About() {
   const containerRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
   const { content } = useContent();
-  const { stats, headline, featuredLabel, featuredCompanies } = content.about;
+  const { stats, headline } = content.about;
 
   useEffect(() => {
     const ctx = gsap.context(() => {
@@ -67,29 +65,6 @@ export function About() {
           }
         }
       );
-
-      // Animate featured companies logos
-      const logoElements = gsap.utils.toArray<HTMLElement>(".featured-logo-item");
-      if (logoElements.length > 0) {
-        gsap.fromTo(logoElements,
-          { 
-            y: 30, 
-            opacity: 0,
-          },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
-            stagger: 0.1,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: ".featured-companies-section",
-              start: "top 85%",
-              toggleActions: "play none none reverse"
-            }
-          }
-        );
-      }
 
     }, containerRef);
 
@@ -181,103 +156,6 @@ export function About() {
           </div>
         </div>
 
-        {/* Featured Companies Section */}
-        <div className="featured-companies-section mt-16 md:mt-24 pt-12 md:pt-16 border-t border-primary/10">
-          {/* Section Header */}
-          <div className="flex justify-center md:justify-start mb-8 md:mb-12 animate-on-scroll">
-            <div className="flex items-center justify-center md:justify-start gap-3">
-              <span className="w-12 h-px bg-accent"></span>
-              <span className="font-mono text-accent text-xs tracking-widest uppercase">
-                {featuredLabel || t('about.featured')}
-              </span>
-              <span className="md:hidden w-12 h-px bg-accent"></span>
-            </div>
-          </div>
-          
-          {/* Logo Grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-6 md:gap-10 lg:gap-12 items-center justify-items-center md:justify-items-start">
-            {featuredCompanies && featuredCompanies.length > 0 ? (
-              featuredCompanies.map((company) => {
-                const baseClasses = "flex items-center justify-center transition-all duration-300 w-full h-full";
-                const imageClasses = "h-12 sm:h-14 md:h-16 lg:h-20 w-auto max-w-[150px] sm:max-w-[170px] md:max-w-[200px] object-contain opacity-90 hover:opacity-100 transition-all duration-500";
-                const textClasses = "text-primary/80 font-serif text-lg sm:text-xl md:text-2xl font-semibold tracking-tight whitespace-nowrap hover:text-primary transition-colors duration-300";
-                
-                const CompanyContent = company.link ? (
-                  <a
-                    href={company.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className={baseClasses}
-                  >
-                    {company.logoType === "image" && company.logo ? (
-                      <img
-                        src={resolveAssetSrc(company.logo)}
-                        alt={company.name}
-                        className={imageClasses}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <span className={textClasses}>
-                        {company.name}
-                      </span>
-                    )}
-                  </a>
-                ) : (
-                  <div className={baseClasses}>
-                    {company.logoType === "image" && company.logo ? (
-                      <img
-                        src={resolveAssetSrc(company.logo)}
-                        alt={company.name}
-                        className={imageClasses}
-                        loading="lazy"
-                      />
-                    ) : (
-                      <span className={textClasses}>
-                        {company.name}
-                      </span>
-                    )}
-                  </div>
-                );
-                return (
-                  <div key={company.id} className="shrink-0 featured-logo-item w-full flex items-center justify-center p-4 md:p-6">
-                    <div className="w-full h-full flex items-center justify-center">
-                      {CompanyContent}
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              // Fallback to hardcoded companies if no content
-              <>
-                <div className="shrink-0 featured-logo-item w-full flex items-center justify-center p-4 md:p-6">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <svg viewBox="0 0 24 24" className="h-12 sm:h-14 md:h-16 lg:h-20 w-auto fill-primary/90 opacity-90 hover:opacity-100 transition-all duration-500" xmlns="http://www.w3.org/2000/svg"><path d="M9.82 5.09h1.93V2.5H6.28v2.59h1.83c.96 0 .96.06.96 1.15v10.15l-4.5-12.2h-2.3L.02 18.91l-.02-13.8c0-1.12.02-1.15 1.15-1.15h1.94V2.5H.5v1.46h.88c.7 0 .86.23.86.8v15.93h2.6L10.38 6.6l5.72 14.09h2.51V4.76c0-.57.16-.8.86-.8h.88V2.5h-4.32v1.46h1.94c1.13 0 1.15.03 1.15 1.15l.02 13.06L14.6 4.21h-2.3l-3.3 11.2V6.24c0-1.09 0-1.15.82-1.15z"/></svg>
-                  </div>
-                </div>
-                <div className="shrink-0 featured-logo-item w-full flex items-center justify-center p-4 md:p-6">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-primary/80 font-serif text-lg sm:text-xl md:text-2xl font-semibold tracking-tight whitespace-nowrap hover:text-primary transition-colors duration-300">BRIDES</span>
-                  </div>
-                </div>
-                <div className="shrink-0 featured-logo-item w-full flex items-center justify-center p-4 md:p-6">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-primary/80 font-serif text-lg sm:text-xl md:text-2xl font-semibold tracking-tight whitespace-nowrap hover:text-primary transition-colors duration-300">The Knot</span>
-                  </div>
-                </div>
-                <div className="shrink-0 featured-logo-item w-full flex items-center justify-center p-4 md:p-6">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-primary/80 font-serif text-lg sm:text-xl md:text-2xl font-semibold tracking-tight whitespace-nowrap hover:text-primary transition-colors duration-300">Martha Stewart Weddings</span>
-                  </div>
-                </div>
-                <div className="shrink-0 featured-logo-item w-full flex items-center justify-center p-4 md:p-6">
-                  <div className="w-full h-full flex items-center justify-center">
-                    <span className="text-primary/80 font-serif text-lg sm:text-xl md:text-2xl font-semibold tracking-tight whitespace-nowrap hover:text-primary transition-colors duration-300">BAZAAR</span>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
       </div>
     </section>
   );
