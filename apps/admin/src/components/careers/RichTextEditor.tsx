@@ -4,15 +4,19 @@ import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Image from "@tiptap/extension-image";
 import Link from "@tiptap/extension-link";
-import { 
-  Bold, 
-  Italic, 
-  List, 
-  ListOrdered, 
-  Link as LinkIcon, 
+import {
+  Bold,
+  Italic,
+  List,
+  ListOrdered,
+  Link as LinkIcon,
   Image as ImageIcon,
   Undo,
-  Redo
+  Redo,
+  Heading2,
+  Heading3,
+  Quote,
+  Code,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -118,6 +122,59 @@ export function RichTextEditor({
           )}
         >
           <Italic className="h-4 w-4" />
+        </Button>
+        <div className="w-px h-6 bg-border mx-1" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+          className={cn(
+            "h-8 w-8 p-0",
+            editor.isActive("heading", { level: 2 }) && "bg-muted"
+          )}
+          title="Heading 2"
+        >
+          <Heading2 className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+          className={cn(
+            "h-8 w-8 p-0",
+            editor.isActive("heading", { level: 3 }) && "bg-muted"
+          )}
+          title="Heading 3"
+        >
+          <Heading3 className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().toggleBlockquote().run()}
+          className={cn(
+            "h-8 w-8 p-0",
+            editor.isActive("blockquote") && "bg-muted"
+          )}
+          title="Quote"
+        >
+          <Quote className="h-4 w-4" />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+          className={cn(
+            "h-8 w-8 p-0",
+            editor.isActive("codeBlock") && "bg-muted"
+          )}
+          title="Code block"
+        >
+          <Code className="h-4 w-4" />
         </Button>
         <div className="w-px h-6 bg-border mx-1" />
         <Button

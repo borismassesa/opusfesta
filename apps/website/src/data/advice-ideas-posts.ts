@@ -6,7 +6,7 @@
 export const ADVICE_IDEAS_PATH = "/advice-and-ideas";
 
 export type AdviceIdeasPost = {
-  id: number;
+  id: number | string;
   slug: string;
   title: string;
   description: string;
@@ -20,6 +20,9 @@ export type AdviceIdeasPost = {
   featured: boolean;
   /** HTML for article body (repo uses MDX; we use HTML so layout matches) */
   content?: string;
+  publishedAt?: string;
+  views?: number;
+  saves?: number;
 };
 
 export const categoryToId = (category: string) =>

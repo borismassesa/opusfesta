@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react";
-import { Search, Sparkles } from "lucide-react";
+import { Search } from "lucide-react";
 import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useTranslation } from "react-i18next";
 import { useContent } from "@/context/ContentContext";
 
@@ -87,8 +86,6 @@ export function Hero() {
   useEffect(() => {
     // Hero Animations with GSAP
     const ctx = gsap.context(() => {
-      const mm = gsap.matchMedia();
-
       // Common Text Animation (Intro)
       const tl = gsap.timeline();
       tl.from(
@@ -116,156 +113,9 @@ export function Hero() {
         "-=0.5",
       );
 
-      // Desktop & Tablet Specifics
-      mm.add("(min-width: 768px)", () => {
-        const navOffset = 80;
-        // Ensure text is visible before scroll animations in Strict Mode
-        gsap.set(contentRef.current, { opacity: 1, y: 0 });
-
-        // Remove Intro animation for visual to prevent conflict and ensure visibility
-        gsap.set(visualRef.current, { opacity: 1, x: 0, y: 0, scale: 1 });
-
-        // Scroll: Visual expands
-        const scrollTl = gsap.timeline({
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: "top top",
-            end: "+=150%",
-            pin: true,
-            scrub: true,
-            invalidateOnRefresh: true 
-          }
-        });
-
-        const initAnimation = () => {
-             if (!visualRef.current || !containerRef.current) return;
-             
-             // Ensure visual is visible and in flow - make sure it's displayed
-             if (visualRef.current) {
-               visualRef.current.style.display = 'block';
-             }
-             gsap.set(visualRef.current, { opacity: 1, clearProps: "position,left,top,width,height,transform" });
-             
-             scrollTl.clear();
-
-             // 1. Fade out content
-             scrollTl.to(contentRef.current, {
-                opacity: 0,
-                y: -50,
-                duration: 0.5,
-                ease: "power2.out"
-             }, 0);
-
-             const visualRect = visualRef.current.getBoundingClientRect();
-             const containerRect = containerRef.current.getBoundingClientRect();
-             
-             // Calculate offsets
-             const startLeft = visualRect.left - containerRect.left;
-             const startTop = visualRect.top - containerRect.top;
-             const startWidth = visualRect.width;
-             const startHeight = visualRect.height;
-
-             // 2. Animate visual using Layout properties (width/height/top/left)
-             // We switch to layout animation to ensure object-fit: cover works correctly
-             // and avoids stretching/distortion or shrinking of content.
-             // Modern browsers handle this well enough for a hero scroll effect.
-
-             scrollTl.fromTo(visualRef.current, 
-              {
-                position: 'absolute',
-                left: startLeft,
-                top: startTop,
-                width: startWidth,
-                height: startHeight,
-                borderRadius: "2.5rem",
-                zIndex: 40,
-                boxShadow: "0 0 0 rgba(0,0,0,0)",
-                transform: "none" // Ensure no transforms are interfering
-              },
-              {
-                left: "50%",
-                top: `calc(50% + ${navOffset / 2}px)`,
-                xPercent: -50,
-                yPercent: -50,
-                width: "94vw",
-                height: `calc(90vh - ${navOffset}px)`,
-                borderRadius: "1.5rem",
-                boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.5)",
-                duration: 1,
-                ease: "power3.inOut"
-              }, 
-              0
-            );
-            
-            // Just ensure video scale is normal
-            scrollTl.fromTo(".hero-video", 
-                { scale: 1.1 }, 
-                { scale: 1, duration: 1, ease: "power3.inOut" }, 
-                0
-             );
-        };
-
-        // Initialize immediately
-        // Use a small timeout to ensure layout is settled
-        setTimeout(initAnimation, 100);
-        
-        ScrollTrigger.addEventListener("refreshInit", initAnimation);
-      });
-
-      // Mobile Specifics
-      mm.add("(max-width: 767px)", () => {
-        const navOffset = 72;
-        // No intro animation for visual (it stays hidden/opacity 0 via CSS or set here)
-        gsap.set(visualRef.current, { opacity: 0, y: 50 }); // Ensure hidden initially
-
-        // Scroll: Reveals visual
-        const scrollTl = gsap.timeline({
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: "top top",
-            end: "+=150%",
-            pin: true,
-            scrub: true
-          }
-        });
-
-        scrollTl.to(contentRef.current, {
-          opacity: 0,
-          y: -50,
-          duration: 0.5,
-          ease: "power2.out"
-        }, 0);
-
-        // Animate Visual In
-        scrollTl.fromTo(visualRef.current,
-          {
-             opacity: 0,
-             scale: 0.8,
-             position: 'absolute',
-             left: '50%',
-             xPercent: -50,
-             top: '100%',     // Start from the very bottom
-             yPercent: 0,     // No offset initially
-             width: '90vw',
-             height: '50vh',  // Keep consistent height
-             zIndex: 40
-          },
-          {
-             opacity: 1,
-             scale: 1,
-             top: `calc(50% + ${navOffset / 2}px)`, // Move to vertical center with nav offset
-             yPercent: -50,   // Center alignment
-             left: '50%',
-             xPercent: -50,
-             width: '94vw',
-             height: `calc(50vh - ${navOffset}px)`,
-             borderRadius: "1.5rem",
-             duration: 1,
-             ease: "power3.out" // Smoother easing
-          },
-          0
-        );
-      });
+      // Ensure hero visual is visible without scroll-triggered full-screen effects
+      gsap.set(visualRef.current, { opacity: 1, x: 0, y: 0, scale: 1, clearProps: "position,left,top,width,height" });
+      gsap.set(contentRef.current, { opacity: 1, y: 0 });
 
     }, containerRef);
 
@@ -371,7 +221,7 @@ export function Hero() {
         </div>
 
         {/* Hero Visual - Video Carousel */}
-        <div ref={visualRef} className="hero-visual relative w-full aspect-4/3 rounded-[2.5rem] overflow-hidden shadow-2xl group bg-surface border border-border z-20 opacity-0 md:opacity-100 pointer-events-none md:pointer-events-auto">
+        <div ref={visualRef} className="hero-visual relative w-full aspect-4/3 rounded-[2.5rem] overflow-hidden shadow-2xl group bg-surface border border-border z-20 opacity-100 pointer-events-none md:pointer-events-auto">
         
         {hero.slides.map((slide, index) => (
           <div 

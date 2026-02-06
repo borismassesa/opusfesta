@@ -125,7 +125,7 @@ export default function ContentPage() {
   const sectionOptions = CONTENT_NAV_GROUPS.flatMap((group) => group.items);
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden bg-background relative w-full flex-col md:flex-row">
+    <div className="flex h-full min-h-0 overflow-hidden bg-background relative w-full flex-col md:flex-row">
       {/* Mobile: section dropdown */}
       <div className="md:hidden border-b border-border/60 bg-background px-3 py-2 flex-shrink-0">
         <label className="sr-only" htmlFor="content-section-select">

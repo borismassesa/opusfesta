@@ -4,8 +4,10 @@ import { useState, type FormEvent } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { useAdviceIdeasPageContent } from '@/context/AdviceIdeasPageContentContext'
 
 export function AdviceIdeasCTA() {
+  const { content } = useAdviceIdeasPageContent()
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [feedback, setFeedback] = useState<{ type: 'success' | 'error'; message: string } | null>(null)
@@ -30,8 +32,17 @@ export function AdviceIdeasCTA() {
     setFeedback(null)
 
     try {
-      // TODO: Replace with real newsletter subscription API call.
-      await Promise.resolve()
+      const response = await fetch('/api/advice-ideas/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: trimmedEmail, source: 'cta' }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Subscription failed')
+      }
       setFeedback({ type: 'success', message: "You're subscribed. Watch your inbox for the next issue." })
       setEmail('')
     } catch (error) {
@@ -58,13 +69,14 @@ export function AdviceIdeasCTA() {
 
               <div className='flex h-full flex-col justify-between gap-6 bg-surface p-6 sm:p-8'>
                 <div className='space-y-3'>
-                  <p className='text-xs font-semibold tracking-[0.2em] text-secondary uppercase'>Newsletter</p>
+                  <p className='text-xs font-semibold tracking-[0.2em] text-secondary uppercase'>
+                    {content.cta.label}
+                  </p>
                   <h2 className='text-xl leading-tight font-semibold text-primary sm:text-2xl lg:text-3xl'>
-                    Fresh wedding ideas, planning tips, and vendor insights delivered to your inbox.
+                    {content.cta.title}
                   </h2>
                   <p className='text-secondary text-sm leading-relaxed sm:text-base'>
-                    Join couples and planners who get practical guidance, budget tips, and creative inspiration for a
-                    celebration that feels like you.
+                    {content.cta.description}
                   </p>
                 </div>
                 <form
@@ -77,7 +89,7 @@ export function AdviceIdeasCTA() {
                     placeholder='Your email'
                     autoComplete='email'
                     aria-label='Email address'
-                    className='bg-background h-11 flex-1 text-base'
+                    className='bg-background h-11 min-w-0 flex-1 text-base'
                     value={email}
                     onChange={event => {
                       setEmail(event.target.value)
@@ -88,7 +100,7 @@ export function AdviceIdeasCTA() {
                     disabled={isSubmitting}
                   />
                   <Button size='lg' className='h-11 text-base max-sm:w-full' type='submit' disabled={isSubmitting}>
-                    {isSubmitting ? 'Subscribing...' : 'Subscribe'}
+                    {isSubmitting ? 'Subscribing...' : content.cta.buttonText}
                   </Button>
                 </form>
                 {feedback ? (
