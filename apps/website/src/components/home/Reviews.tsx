@@ -279,14 +279,12 @@ export function Reviews() {
 }
 
 function ReviewCard({ review }: { review: ReviewItem }) {
-  // Determine badge color based on role content - Updated to Neutral/Monochrome for consistency
-  let badgeColor = "bg-primary/5 text-primary";
-  if (review.role.includes("Married") || review.role.includes("Groom")) {
-    badgeColor = "bg-secondary/10 text-secondary-foreground dark:text-gray-300";
-  } else if (review.role.includes("Planner") || review.role.includes("Photographer") || review.role.includes("Owner")) {
-    badgeColor = "bg-primary/5 text-primary dark:text-gray-100";
+  // Determine badge color based on role content - tuned for readability
+  let badgeColor = "bg-primary/10 text-primary";
+  if (review.role.includes("Planner") || review.role.includes("Photographer") || review.role.includes("Owner")) {
+    badgeColor = "bg-primary/10 text-primary";
   } else if (review.role.includes("Maid")) {
-    badgeColor = "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400";
+    badgeColor = "bg-foreground/5 text-foreground/80";
   }
 
   return (
@@ -324,7 +322,7 @@ function ReviewCard({ review }: { review: ReviewItem }) {
           </div>
           <div className="flex flex-col items-start gap-1">
             <h4 className="font-bold text-primary text-xs tracking-tight">{review.name}</h4>
-            <span className={`text-[9px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${badgeColor}`}>
+            <span className={`text-xs font-medium tracking-normal px-2.5 py-1 rounded-full ${badgeColor}`}>
               {review.role}
             </span>
           </div>

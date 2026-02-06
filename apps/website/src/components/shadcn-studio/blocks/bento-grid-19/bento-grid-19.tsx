@@ -10,8 +10,33 @@ import ProductManagement from "@/components/shadcn-studio/blocks/bento-grid-19/p
 
 const BentoGrid = () => {
   return (
-    <section className="bg-muted py-8 sm:py-16 lg:py-24">
-      <div className="mx-auto grid max-w-7xl gap-6 px-4 sm:px-6 md:grid-cols-2 lg:grid-cols-3 lg:px-8">
+    <section className="bg-muted py-12 sm:py-16 lg:py-24">
+      <div className="mx-auto max-w-[1400px] px-6 lg:px-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-end border-b border-border/40 pb-10 mb-10">
+          <div className="text-center md:text-left">
+            <div className="flex items-center justify-center md:justify-start gap-3 mb-4 md:mb-6">
+              <span className="w-12 h-px bg-accent"></span>
+              <span className="font-mono text-accent text-xs tracking-widest uppercase">
+                Marketplace overview
+              </span>
+              <span className="md:hidden w-12 h-px bg-accent"></span>
+            </div>
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-primary leading-[1.1]">
+              One view of every event, <br />
+              <span className="font-serif italic font-normal text-secondary">for couples and vendors.</span>
+            </h2>
+          </div>
+
+          <div className="flex flex-col items-center md:items-end gap-6">
+            <p className="text-secondary text-base md:text-lg max-w-md text-center md:text-right leading-relaxed font-light">
+              Track inquiries, bookings, and timelines in a shared workspace so everyone stays aligned from first
+              message to final payment.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mx-auto grid max-w-[1400px] gap-6 px-6 md:grid-cols-2 lg:grid-cols-3 lg:px-12">
         <div className="grid grid-rows-2 gap-6">
           <MotionPreset
             fade
