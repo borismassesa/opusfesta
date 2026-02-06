@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { useAuth } from "@/contexts/AuthContext";
 import { CheckCircle2, Clock, XCircle, Calendar, Mail, Phone, MapPin, Search, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -32,8 +33,9 @@ interface Inquiry {
   };
 }
 
-export default function MyInquiriesPage() {
+function MyInquiriesContent() {
   const router = useRouter();
+  const { session } = useAuth();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,17 +43,17 @@ export default function MyInquiriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetchInquiries();
-  }, [statusFilter]);
+    if (session?.access_token) {
+      fetchInquiries();
+    }
+  }, [statusFilter, session]);
 
   const fetchInquiries = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (!session || sessionError) {
-        router.push(`/login?next=${encodeURIComponent('/my-inquiries')}`);
+      if (!session?.access_token) {
         return;
       }
 
@@ -281,5 +283,13 @@ export default function MyInquiriesPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function MyInquiriesPage() {
+  return (
+    <AuthGuard>
+      <MyInquiriesContent />
+    </AuthGuard>
   );
 }

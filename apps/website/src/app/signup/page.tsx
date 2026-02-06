@@ -7,12 +7,16 @@ import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
 import signupImg from "@assets/stock_images/happy_wedding_couple_e3561dd1.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
 import { getRandomSignUpQuote, type Quote } from "@/lib/quotes";
+import { handleOAuthSignIn, type UserType } from "@/lib/auth";
+import { parseAuthError } from "@/lib/auth-errors";
+import { OAuthUserTypeSelector } from "@/components/auth/OAuthUserTypeSelector";
 import { toast } from "@/hooks/use-toast";
 
 export default function Signup() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
+  const [isOAuthLoading, setIsOAuthLoading] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [userType, setUserType] = useState<"couple" | "vendor">("couple");
   const [firstName, setFirstName] = useState("");
@@ -21,6 +25,34 @@ export default function Signup() {
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
   const [quote, setQuote] = useState<Quote>(() => getRandomSignUpQuote());
+  const [oauthUserTypeSelectorOpen, setOAuthUserTypeSelectorOpen] = useState(false);
+  const [selectedOAuthProvider, setSelectedOAuthProvider] = useState<"google" | "apple" | null>(null);
+
+  // Calculate password strength
+  const getPasswordStrength = (pwd: string): { strength: number; label: string; color: string } => {
+    if (pwd.length === 0) {
+      return { strength: 0, label: "", color: "" };
+    }
+    
+    let strength = 0;
+    if (pwd.length >= 8) strength++;
+    if (pwd.length >= 12) strength++;
+    if (/[a-z]/.test(pwd) && /[A-Z]/.test(pwd)) strength++;
+    if (/\d/.test(pwd)) strength++;
+    if (/[^a-zA-Z\d]/.test(pwd)) strength++;
+    
+    if (strength <= 2) {
+      return { strength, label: "Weak", color: "bg-red-500" };
+    } else if (strength <= 3) {
+      return { strength, label: "Fair", color: "bg-yellow-500" };
+    } else if (strength <= 4) {
+      return { strength, label: "Good", color: "bg-blue-500" };
+    } else {
+      return { strength, label: "Strong", color: "bg-green-500" };
+    }
+  };
+
+  const passwordStrength = getPasswordStrength(password);
 
   useEffect(() => {
     // Set a new random sign up quote on mount
@@ -102,18 +134,13 @@ export default function Signup() {
           return;
         }
 
-        console.error("Signup API error:", {
-          status: response.status,
-          statusText: response.statusText,
-          error: data?.error || "Unknown error",
-          message: data?.message,
-          details: data?.details,
-          fullData: data,
-        });
+        // Use improved error parsing
+        const parsedError = parseAuthError(data?.error || new Error(data?.message || "Unknown error"));
+        
         toast({
           variant: "destructive",
           title: "Sign up failed",
-          description: data?.error || data?.message || `An error occurred during signup (${response.status})`,
+          description: parsedError.message,
         });
         setIsLoading(false);
         return;
@@ -141,13 +168,44 @@ export default function Signup() {
       });
     } catch (error) {
       console.error("Signup error:", error);
+      const parsedError = parseAuthError(error);
       toast({
         variant: "destructive",
         title: "Sign up failed",
-        description: "An unexpected error occurred. Please try again.",
+        description: parsedError.message,
       });
       setIsLoading(false);
     }
+  };
+
+  const handleOAuthClick = (provider: "google" | "apple") => {
+    setSelectedOAuthProvider(provider);
+    setOAuthUserTypeSelectorOpen(true);
+  };
+
+  const handleOAuthUserTypeSelect = async (selectedUserType: UserType) => {
+    if (!selectedOAuthProvider) return;
+
+    setIsOAuthLoading(selectedOAuthProvider);
+    setOAuthUserTypeSelectorOpen(false);
+
+    // Store next parameter for OAuth callback
+    const next = searchParams.get("next");
+    if (next) {
+      sessionStorage.setItem("auth_redirect", next);
+    }
+
+    const result = await handleOAuthSignIn(selectedOAuthProvider, selectedUserType);
+
+    if (result.error) {
+      toast({
+        variant: "destructive",
+        title: "OAuth sign-up failed",
+        description: result.error,
+      });
+      setIsOAuthLoading(null);
+    }
+    // OAuth will redirect, so we don't need to do anything else
   };
 
   return (
@@ -301,15 +359,33 @@ export default function Signup() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="Create a password"
+                  minLength={8}
+                  aria-label="Password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
+              {password.length > 0 && (
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className={`h-full transition-all duration-300 ${passwordStrength.color}`}
+                        style={{ width: `${(passwordStrength.strength / 5) * 100}%` }}
+                      />
+                    </div>
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {passwordStrength.label}
+                    </span>
+                  </div>
+                </div>
+              )}
               <p className="text-xs text-muted-foreground pl-0.5">
                 Must be at least 8 characters long.
               </p>
@@ -317,8 +393,9 @@ export default function Signup() {
 
             <button
               type="submit"
-              disabled={isLoading}
+              disabled={isLoading || password.length < 8}
               className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-11 w-full mt-1"
+              aria-label="Create account"
             >
               {isLoading ? (
                 <>
@@ -330,6 +407,77 @@ export default function Signup() {
               )}
             </button>
           </form>
+
+          {/* OAuth Buttons */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => handleOAuthClick("google")}
+              disabled={isOAuthLoading !== null || isLoading}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-4"
+              aria-label="Sign up with Google"
+            >
+              {isOAuthLoading === "google" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                    <path
+                      fill="currentColor"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  Google
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOAuthClick("apple")}
+              disabled={isOAuthLoading !== null || isLoading}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-4"
+              aria-label="Sign up with Apple"
+            >
+              {isOAuthLoading === "apple" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+                  </svg>
+                  Apple
+                </>
+              )}
+            </button>
+          </div>
+
+          <OAuthUserTypeSelector
+            open={oauthUserTypeSelectorOpen}
+            onOpenChange={setOAuthUserTypeSelectorOpen}
+            onSelect={handleOAuthUserTypeSelect}
+            provider={selectedOAuthProvider || "google"}
+          />
 
           <div className="text-center text-sm text-muted-foreground pt-2">
             Already have an account?{" "}

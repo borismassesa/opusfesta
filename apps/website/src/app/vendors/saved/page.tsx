@@ -17,7 +17,8 @@ import {
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
-import { supabase } from "@/lib/supabaseClient";
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { useAuth } from "@/contexts/AuthContext";
 import { resolveAssetSrc } from "@/lib/assets";
 
 interface SavedVendor {
@@ -41,8 +42,9 @@ interface SavedVendor {
   saved_at: string;
 }
 
-export default function SavedVendorsPage() {
+function SavedVendorsContent() {
   const router = useRouter();
+  const { session } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [savedVendors, setSavedVendors] = useState<SavedVendor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,37 +53,10 @@ export default function SavedVendorsPage() {
   const [filterCategory, setFilterCategory] = useState("All");
 
   useEffect(() => {
-    async function checkAuthAndLoadVendors() {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (!session || sessionError) {
-          router.push(`/login?next=${encodeURIComponent("/vendors/saved")}`);
-          return;
-        }
-
-        // Verify user exists in database
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        if (userError || !userData) {
-          router.push(`/login?next=${encodeURIComponent("/vendors/saved")}`);
-          return;
-        }
-
-        // Load saved vendors
-        await loadSavedVendors(session.access_token);
-      } catch (err) {
-        console.error("Error checking auth:", err);
-        router.push(`/login?next=${encodeURIComponent("/vendors/saved")}`);
-      }
+    if (session?.access_token) {
+      loadSavedVendors(session.access_token);
     }
-
-    checkAuthAndLoadVendors();
-  }, [router]);
+  }, [session]);
 
   async function loadSavedVendors(token: string) {
     try {
@@ -114,8 +89,7 @@ export default function SavedVendorsPage() {
 
   async function unsaveVendor(vendorId: string) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session?.access_token) return;
 
       const response = await fetch(`/api/vendors/${vendorId}/save`, {
         method: "DELETE",
@@ -341,5 +315,13 @@ export default function SavedVendorsPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function SavedVendorsPage() {
+  return (
+    <AuthGuard>
+      <SavedVendorsContent />
+    </AuthGuard>
   );
 }

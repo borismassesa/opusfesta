@@ -7,8 +7,7 @@ import { useTheme } from "next-themes";
 import { Moon, Sun, User, LogOut, Bell, Heart, ShoppingCart, FileText, Briefcase, Settings, ChevronRight } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/lib/supabaseClient";
-import { ensureUserRecord } from "@/lib/auth";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -30,12 +29,18 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
   const { theme, setTheme } = useTheme();
   const { t, i18n } = useTranslation();
   const router = useRouter();
+  const { user, isLoading: isCheckingAuth, isAuthenticated, signOut } = useAuth();
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null); // null = unknown, false = not authenticated, true = authenticated
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [userData, setUserData] = useState<UserData | null>(null);
   const pathname = usePathname();
+
+  // Convert auth context user to UserData format
+  const userData: UserData | null = user ? {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    avatar: user.avatar,
+  } : null;
 
   const NAV_LINKS = [
     { name: t('nav.planning'), href: "/planning" },
@@ -47,80 +52,6 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
     { name: "Careers", href: "/careers" },
   ];
 
-  // Function to fetch user data
-  const fetchUserData = async (userId: string) => {
-    try {
-      // First, try to get from database
-      const { data, error } = await supabase
-        .from("users")
-        .select("id, name, email, avatar")
-        .eq("id", userId)
-        .single();
-
-      // Handle RLS errors gracefully (406) - these are expected if session isn't fully established
-      const isRLSError = error?.code === "PGRST301" || 
-                        error?.message?.toLowerCase().includes("row-level security") ||
-                        error?.status === 406;
-
-      if (!error && data) {
-        // If database has name, use it
-        if (data.name) {
-          setUserData({
-            id: data.id,
-            name: data.name,
-            email: data.email,
-            avatar: data.avatar,
-          });
-          return;
-        }
-      }
-
-      // If database doesn't have name or we got an RLS error, try to get from auth session metadata
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const metadata = session.user.user_metadata;
-        const fullName = 
-          metadata?.full_name || 
-          metadata?.name || 
-          metadata?.display_name ||
-          (metadata?.first_name && metadata?.last_name 
-            ? `${metadata.first_name} ${metadata.last_name}`
-            : null);
-
-        const avatar = 
-          metadata?.avatar_url || 
-          metadata?.picture || 
-          metadata?.photo_url ||
-          null;
-
-        setUserData({
-          id: userId,
-          name: fullName || data?.name || null,
-          email: data?.email || session.user.email || null,
-          avatar: data?.avatar || avatar,
-        });
-      } else if (data) {
-        // Fallback to database data even if name is null
-        setUserData({
-          id: data.id,
-          name: data.name,
-          email: data.email,
-          avatar: data.avatar,
-        });
-      } else if (error && !isRLSError) {
-        // Only log non-RLS errors (406, PGRST301, PGRST116 are expected)
-        // Also suppress 403 errors (user deleted) - these are handled by verifyUserExistsInAuth
-        if (error.status !== 403 && error.code !== "PGRST116") {
-          console.error("Error fetching user data:", error);
-        }
-      }
-    } catch (error) {
-      // Suppress expected errors (403 = user deleted, handled elsewhere)
-      if (error && typeof error === 'object' && 'status' in error && error.status !== 403) {
-        console.error("Error fetching user data:", error);
-      }
-    }
-  };
 
   // Function to get user initials (first name + last name)
   const getUserInitials = (name: string | null, email: string | null): string => {
@@ -165,24 +96,11 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
   // Function to handle logout
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error("Logout error:", error);
-        return;
-      }
-      // Clear state immediately
-      setIsAuthenticated(false);
-      setUserData(null);
-      setIsCheckingAuth(false);
-      // Navigate after state is cleared
-      await router.push("/");
+      await signOut();
+      router.push("/");
       router.refresh();
     } catch (error) {
       console.error("Error logging out:", error);
-      // Still clear state on error
-      setIsAuthenticated(false);
-      setUserData(null);
-      setIsCheckingAuth(false);
     }
   };
 
@@ -193,374 +111,8 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-    let subscription: { unsubscribe: () => void } | null = null;
-
-    async function checkAuth() {
-      let timeoutId: NodeJS.Timeout | null = null;
-      
-      try {
-        setIsCheckingAuth(true);
-        
-        // Check if there was a recent login attempt
-        const loginPending = sessionStorage.getItem("auth_login_pending");
-        const loginPendingTime = loginPending ? parseInt(loginPending, 10) : null;
-        const isRecentLogin = loginPendingTime && (Date.now() - loginPendingTime) < 20000; // Within 20 seconds
-        const timeoutDuration = isRecentLogin ? 12000 : 3000; // 12s for recent login, 3s otherwise
-        
-        // Add timeout to prevent hanging - show buttons if check takes too long
-        timeoutId = setTimeout(async () => {
-          if (mounted) {
-            // Before timing out, do one final check for session
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-              // Session exists, update state immediately
-              setIsAuthenticated(true);
-              setIsCheckingAuth(false);
-              const metadata = session.user.user_metadata;
-              const fullName = 
-                metadata?.full_name || 
-                metadata?.name || 
-                metadata?.display_name ||
-                (metadata?.first_name && metadata?.last_name 
-                  ? `${metadata.first_name} ${metadata.last_name}`
-                  : null);
-              const avatar = 
-                metadata?.avatar_url || 
-                metadata?.picture || 
-                metadata?.photo_url ||
-                null;
-              setUserData({
-                id: session.user.id,
-                name: fullName || null,
-                email: session.user.email || null,
-                avatar: avatar,
-              });
-              fetchUserData(session.user.id).catch(console.error);
-              // Clear the login pending flag
-              if (loginPending) {
-                sessionStorage.removeItem("auth_login_pending");
-              }
-            } else {
-              console.warn("Auth check timeout - defaulting to not authenticated");
-              setIsAuthenticated(false);
-              setUserData(null);
-              setIsCheckingAuth(false);
-            }
-          }
-        }, timeoutDuration);
-        
-        // Fast check: get session (this is cached by Supabase)
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        
-        if (!mounted) return;
-
-        // If no session, user is not authenticated
-        if (sessionError || !session || !session.user) {
-          if (mounted) {
-            setIsAuthenticated(false);
-            setUserData(null);
-            setIsCheckingAuth(false);
-          }
-          return;
-        }
-
-        // We have a valid session - trust it immediately for fast UI update
-        if (mounted) {
-          setIsAuthenticated(true);
-          setIsCheckingAuth(false);
-          
-          // Immediately set user data from session metadata (fast UI update)
-          const metadata = session.user.user_metadata;
-          const fullName = 
-            metadata?.full_name || 
-            metadata?.name || 
-            metadata?.display_name ||
-            (metadata?.first_name && metadata?.last_name 
-              ? `${metadata.first_name} ${metadata.last_name}`
-              : null);
-          
-          const avatar = 
-            metadata?.avatar_url || 
-            metadata?.picture || 
-            metadata?.photo_url ||
-            null;
-
-          setUserData({
-            id: session.user.id,
-            name: fullName || null,
-            email: session.user.email || null,
-            avatar: avatar,
-          });
-          
-          // Fetch user data from database in background (non-blocking)
-          // This will update the UI if database has more complete data
-          fetchUserData(session.user.id);
-          
-          // Clear the login pending flag on successful auth
-          if (loginPending) {
-            sessionStorage.removeItem("auth_login_pending");
-          }
-        }
-
-        // CRITICAL: First verify user still exists in Supabase Auth
-        // If user was deleted, clear session immediately
-        const userExistsInAuth = await supabase.auth.getUser()
-          .then(({ data, error }) => {
-            // 403 Forbidden means user was deleted - this is expected
-            if (error) {
-              // Suppress 403 errors (user deleted) - these are expected
-              if (error.status !== 403 && error.message !== "Invalid Refresh Token: Refresh Token Not Found") {
-                // Only log unexpected errors
-                console.warn("Error checking user in Auth:", error);
-              }
-              return false;
-            }
-            if (!data.user || data.user.id !== session.user.id) {
-              return false;
-            }
-            return true;
-          })
-          .catch((err) => {
-            // Suppress 403 errors (user deleted) - these are expected
-            if (err?.status !== 403 && err?.message !== "Invalid Refresh Token: Refresh Token Not Found") {
-              console.warn("Error checking user in Auth:", err);
-            }
-            return false;
-          });
-
-        if (!mounted) return;
-
-        if (!userExistsInAuth) {
-          // User was deleted from Auth - clear session and sign out
-          console.warn("User deleted from Auth, clearing session");
-          await supabase.auth.signOut();
-          if (mounted) {
-            setIsAuthenticated(false);
-            setUserData(null);
-            setIsCheckingAuth(false);
-          }
-          return;
-        }
-
-        // Verify user exists in database in background (non-blocking)
-        // This ensures the user record exists, but doesn't block the UI
-        try {
-          const { data: userData, error: userError } = await supabase
-            .from("users")
-            .select("id, name, email, avatar")
-            .eq("id", session.user.id)
-            .single();
-
-          if (!mounted) return;
-
-          if (!userError && userData) {
-            // User exists - prefer database name, but fallback to metadata if missing
-            const metadata = session.user.user_metadata;
-            const fullName = 
-              userData.name ||
-              metadata?.full_name || 
-              metadata?.name || 
-              metadata?.display_name ||
-              (metadata?.first_name && metadata?.last_name 
-                ? `${metadata.first_name} ${metadata.last_name}`
-                : null);
-            
-            const avatar = 
-              userData.avatar ||
-              metadata?.avatar_url || 
-              metadata?.picture || 
-              metadata?.photo_url ||
-              null;
-
-            if (mounted) {
-              setUserData({
-                id: userData.id,
-                name: fullName,
-                email: userData.email || session.user.email || null,
-                avatar: avatar,
-              });
-            }
-          } else {
-            // User doesn't exist in database, try to create it
-            const createResult = await ensureUserRecord(session);
-            
-            if (mounted && createResult.success) {
-              // Re-fetch user data after creating record
-              fetchUserData(session.user.id);
-            }
-          }
-        } catch (userCheckError) {
-          // Database check failed, but we have a valid session
-          // Keep user authenticated - the session is the source of truth
-          console.warn("User database check failed, but session is valid:", userCheckError);
-        }
-      } catch (error) {
-        // Clear timeout if it hasn't fired yet
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-        console.error("Error checking authentication:", error);
-        if (mounted) {
-          setIsAuthenticated(false);
-          setUserData(null);
-          setIsCheckingAuth(false);
-        }
-      }
-    }
-
-    // Initial auth check
-    checkAuth();
-
-    // Listen to auth state changes (only for actual changes, not re-checks)
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return;
-
-      // Only update state on actual auth events (SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED)
-      // Don't set isCheckingAuth to true here to avoid flickering
-      if (!session || !session.user) {
-        setIsAuthenticated(false);
-        setUserData(null);
-        sessionStorage.removeItem("auth_login_pending");
-        return;
-      }
-
-      // For SIGNED_IN events, update state immediately without extra checks
-      if (event === "SIGNED_IN") {
-        setIsAuthenticated(true);
-        setIsCheckingAuth(false);
-        // Clear login pending flag
-        sessionStorage.removeItem("auth_login_pending");
-        // Set user data from session metadata immediately
-        const metadata = session.user.user_metadata;
-        const fullName = 
-          metadata?.full_name || 
-          metadata?.name || 
-          metadata?.display_name ||
-          (metadata?.first_name && metadata?.last_name 
-            ? `${metadata.first_name} ${metadata.last_name}`
-            : null);
-        const avatar = 
-          metadata?.avatar_url || 
-          metadata?.picture || 
-          metadata?.photo_url ||
-          null;
-        setUserData({
-          id: session.user.id,
-          name: fullName || null,
-          email: session.user.email || null,
-          avatar: avatar,
-        });
-        // Fetch user data from database in background
-        fetchUserData(session.user.id).catch(console.error);
-        return;
-      }
-
-      // CRITICAL: First verify user still exists in Supabase Auth
-      const userExistsInAuth = await supabase.auth.getUser()
-        .then(({ data, error }) => {
-          // 403 Forbidden means user was deleted - this is expected
-          if (error) {
-            // Suppress 403 errors (user deleted) - these are expected
-            if (error.status !== 403 && error.message !== "Invalid Refresh Token: Refresh Token Not Found") {
-              // Only log unexpected errors
-              console.warn("Error checking user in Auth:", error);
-            }
-            return false;
-          }
-          if (!data.user || data.user.id !== session.user.id) {
-            return false;
-          }
-          return true;
-        })
-        .catch((err) => {
-          // Suppress 403 errors (user deleted) - these are expected
-          if (err?.status !== 403 && err?.message !== "Invalid Refresh Token: Refresh Token Not Found") {
-            console.warn("Error checking user in Auth:", err);
-          }
-          return false;
-        });
-
-      if (!mounted) return;
-
-      if (!userExistsInAuth) {
-        // User was deleted - sign out
-        console.warn("User deleted from Auth during state change, signing out");
-        await supabase.auth.signOut();
-        if (mounted) {
-          setIsAuthenticated(false);
-          setUserData(null);
-        }
-        return;
-      }
-
-      // We have a session - trust it immediately
-      setIsAuthenticated(true);
-
-      // Verify and fetch user data in background
-      try {
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id, name, email, avatar")
-          .eq("id", session.user.id)
-          .single();
-
-        if (!mounted) return;
-
-        if (!userError && userData) {
-          // Use database data, but fallback to session metadata if name is missing
-          const metadata = session.user.user_metadata;
-          const fullName = 
-            userData.name ||
-            metadata?.full_name || 
-            metadata?.name || 
-            metadata?.display_name ||
-            (metadata?.first_name && metadata?.last_name 
-              ? `${metadata.first_name} ${metadata.last_name}`
-              : null);
-          
-          const avatar = 
-            userData.avatar ||
-            metadata?.avatar_url || 
-            metadata?.picture || 
-            metadata?.photo_url ||
-            null;
-
-          setUserData({
-            id: userData.id,
-            name: fullName,
-            email: userData.email || session.user.email || null,
-            avatar: avatar,
-          });
-        } else {
-          // User doesn't exist, try to create it
-          const createResult = await ensureUserRecord(session);
-          
-          if (mounted && createResult.success) {
-            fetchUserData(session.user.id);
-          }
-        }
-      } catch (error) {
-        console.error("Error verifying user in database:", error);
-        // Keep authenticated - session is valid
-      }
-    });
-
-    subscription = authSubscription;
-
-    return () => {
-      mounted = false;
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
-  }, []);
+  // AuthContext handles all auth state management
+  // No need for manual auth checking here
 
   return (
     <nav 

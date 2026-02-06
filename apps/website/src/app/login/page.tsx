@@ -8,7 +8,11 @@ import loginImg from "@assets/stock_images/romantic_couple_wedd_0c0b1d37.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
 import { getRandomSignInQuote, type Quote } from "@/lib/quotes";
 import { supabase } from "@/lib/supabaseClient";
-import { ensureUserRecord, getRedirectPath, getUserTypeFromSession, type UserType } from "@/lib/auth";
+import { ensureUserRecord, getRedirectPath, getUserTypeFromSession, handleOAuthSignIn, type UserType } from "@/lib/auth";
+import { parseAuthError, AuthErrorCode } from "@/lib/auth-errors";
+import { setRememberMe as saveRememberMePreference, isRememberMeEnabled } from "@/lib/session";
+import { redirectAfterLogin } from "@/lib/redirects";
+import { OAuthUserTypeSelector } from "@/components/auth/OAuthUserTypeSelector";
 import { toast } from "@/hooks/use-toast";
 
 class AuthTimeoutError extends Error {
@@ -40,10 +44,14 @@ export default function Login() {
   const searchParams = useSearchParams();
   const unauthorized = searchParams.get("unauthorized");
   const [isLoading, setIsLoading] = useState(false);
+  const [isOAuthLoading, setIsOAuthLoading] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [quote, setQuote] = useState<Quote>(() => getRandomSignInQuote());
+  const [oauthUserTypeSelectorOpen, setOAuthUserTypeSelectorOpen] = useState(false);
+  const [selectedOAuthProvider, setSelectedOAuthProvider] = useState<"google" | "apple" | null>(null);
 
   useEffect(() => {
     // Set a new random sign in quote on mount (client-side only)
@@ -54,6 +62,9 @@ export default function Login() {
     if (next) {
       sessionStorage.setItem("auth_redirect", next);
     }
+
+    // Load remember me preference
+    setRememberMe(isRememberMeEnabled());
   }, [searchParams]);
 
   useEffect(() => {
@@ -98,37 +109,17 @@ export default function Login() {
     }
 
     if (error) {
-      // Check for email confirmation errors
-      const isEmailNotConfirmed = 
-        error.message?.toLowerCase().includes("email not confirmed") ||
-        error.message?.toLowerCase().includes("email_not_confirmed") ||
-        error.message?.toLowerCase().includes("confirm your email");
+      // Use improved error parsing
+      const parsedError = parseAuthError(error);
       
-      if (isEmailNotConfirmed) {
-        toast({
-          variant: "destructive",
-          title: "Email not verified",
-          description: "Please check your email and click the confirmation link before signing in. Check your spam folder if you don't see it.",
-        });
-      } else {
-        // Show user-friendly error messages
-        let errorMessage = error.message;
-        
-        // Sanitize technical error messages
-        if (error.message?.toLowerCase().includes("invalid login")) {
-          errorMessage = "Invalid email or password. Please check your credentials and try again.";
-        } else if (error.message?.toLowerCase().includes("user not found")) {
-          errorMessage = "No account found with this email. Please sign up first.";
-        } else if (error.message?.toLowerCase().includes("wrong password")) {
-          errorMessage = "Incorrect password. Please try again or use 'Forgot password' to reset it.";
-        }
-        
-        toast({
-          variant: "destructive",
-          title: "Sign in failed",
-          description: errorMessage,
-        });
-      }
+      toast({
+        variant: "destructive",
+        title: parsedError.code === AuthErrorCode.EMAIL_NOT_VERIFIED 
+          ? "Email not verified" 
+          : "Sign in failed",
+        description: parsedError.message,
+      });
+      
       setIsLoading(false);
       return;
     }
@@ -181,6 +172,9 @@ export default function Login() {
       }
     }
 
+    // Save remember me preference
+    saveRememberMePreference(rememberMe);
+
     // Get user type (fallback to metadata if lookup is slow)
     let userType = userTypeHint || null;
     try {
@@ -197,26 +191,50 @@ export default function Login() {
         console.error("Error getting user type:", err);
       }
     }
+
+    // Get user role for redirect
+    const role = data.session.user.user_metadata?.role || "user";
+    
     // Check both URL param and sessionStorage (for OAuth flows)
     const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
-    const redirectPath = getRedirectPath(userType || undefined, undefined, next);
-    const currentPath = typeof window !== "undefined" ? window.location.pathname : "/login";
-    const safeRedirectPath = redirectPath === currentPath || redirectPath.startsWith("/login")
-      ? "/"
-      : redirectPath;
-    
-    // Clear sessionStorage after use
-    if (sessionStorage.getItem("auth_redirect")) {
-      sessionStorage.removeItem("auth_redirect");
-    }
     
     toast({
       title: "Welcome back!",
       description: "Successfully signed in. Redirecting you now...",
     });
     
-    sessionStorage.setItem("auth_login_pending", String(Date.now()));
-    router.push(safeRedirectPath);
+    // Use redirect utility
+    redirectAfterLogin(role as any, userType || undefined, next || undefined);
+  };
+
+  const handleOAuthClick = (provider: "google" | "apple") => {
+    setSelectedOAuthProvider(provider);
+    setOAuthUserTypeSelectorOpen(true);
+  };
+
+  const handleOAuthUserTypeSelect = async (userType: UserType) => {
+    if (!selectedOAuthProvider) return;
+
+    setIsOAuthLoading(selectedOAuthProvider);
+    setOAuthUserTypeSelectorOpen(false);
+
+    // Store next parameter for OAuth callback
+    const next = searchParams.get("next");
+    if (next) {
+      sessionStorage.setItem("auth_redirect", next);
+    }
+
+    const result = await handleOAuthSignIn(selectedOAuthProvider, userType);
+
+    if (result.error) {
+      toast({
+        variant: "destructive",
+        title: "OAuth sign-in failed",
+        description: result.error,
+      });
+      setIsOAuthLoading(null);
+    }
+    // OAuth will redirect, so we don't need to do anything else
   };
 
   return (
@@ -301,16 +319,32 @@ export default function Login() {
                   onChange={(e) => setPassword(e.target.value)}
                   required
                   placeholder="••••••••"
+                  aria-label="Password"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                 </button>
               </div>
-              <div className="flex justify-end">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => {
+                      const checked = e.target.checked;
+                      setRememberMe(checked);
+                      setRememberMe(checked); // Save to localStorage
+                    }}
+                    className="h-4 w-4 rounded border-input"
+                    aria-label="Remember me"
+                  />
+                  <span>Remember me</span>
+                </label>
                 <Link
                   href="/forgot-password"
                   className="text-xs text-primary hover:underline underline-offset-4 transition-colors"
@@ -324,6 +358,7 @@ export default function Login() {
               type="submit"
               disabled={isLoading}
               className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-11 w-full mt-1"
+              aria-label="Sign in"
             >
               {isLoading ? (
                 <>
@@ -335,6 +370,77 @@ export default function Login() {
               )}
             </button>
           </form>
+
+          {/* OAuth Buttons */}
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t border-border" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              type="button"
+              onClick={() => handleOAuthClick("google")}
+              disabled={isOAuthLoading !== null || isLoading}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-4"
+              aria-label="Sign in with Google"
+            >
+              {isOAuthLoading === "google" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+                    <path
+                      fill="currentColor"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                    />
+                  </svg>
+                  Google
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOAuthClick("apple")}
+              disabled={isOAuthLoading !== null || isLoading}
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-11 px-4"
+              aria-label="Sign in with Apple"
+            >
+              {isOAuthLoading === "apple" ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z" />
+                  </svg>
+                  Apple
+                </>
+              )}
+            </button>
+          </div>
+
+          <OAuthUserTypeSelector
+            open={oauthUserTypeSelectorOpen}
+            onOpenChange={setOAuthUserTypeSelectorOpen}
+            onSelect={handleOAuthUserTypeSelect}
+            provider={selectedOAuthProvider || "google"}
+          />
 
           <div className="text-center text-sm text-muted-foreground pt-2">
             Don't have an account?{" "}

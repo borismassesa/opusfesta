@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { AuthGuard } from "@/components/auth/AuthGuard";
+import { useAuth } from "@/contexts/AuthContext";
 import { CheckCircle2, Clock, XCircle, Calendar, Search, Filter, FileText, Briefcase, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -31,8 +32,9 @@ interface Application {
   } | null;
 }
 
-export function MyApplicationsClient() {
+function MyApplicationsContent() {
   const router = useRouter();
+  const { session } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,17 +42,17 @@ export function MyApplicationsClient() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
-    fetchApplications();
-  }, [statusFilter]);
+    if (session?.access_token) {
+      fetchApplications();
+    }
+  }, [statusFilter, session]);
 
   const fetchApplications = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (!session || sessionError) {
-        router.push(`/careers/login?next=${encodeURIComponent('/careers/my-applications')}`);
+      if (!session?.access_token) {
         return;
       }
 
@@ -325,5 +327,13 @@ export function MyApplicationsClient() {
         <CareersFooter />
       </div>
     </div>
+  );
+}
+
+export function MyApplicationsClient() {
+  return (
+    <AuthGuard redirectTo="/careers/login">
+      <MyApplicationsContent />
+    </AuthGuard>
   );
 }

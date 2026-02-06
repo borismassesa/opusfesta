@@ -1,15 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { t } = useTranslation();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const { isAuthenticated, isLoading: isCheckingAuth } = useAuth();
   const overlayRef = useRef<HTMLDivElement>(null);
   const linksRef = useRef<HTMLDivElement>(null);
 
@@ -23,135 +22,7 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     { name: "Careers", href: "/careers" },
   ];
 
-  // Check authentication state
-  useEffect(() => {
-    let mounted = true;
-
-    async function checkAuth() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!mounted) return;
-
-        if (!session) {
-          setIsAuthenticated(false);
-          setIsCheckingAuth(false);
-          return;
-        }
-
-        // CRITICAL: First verify user still exists in Supabase Auth
-        const userExistsInAuth = await supabase.auth.getUser()
-          .then(({ data, error }) => {
-            if (error || !data.user || data.user.id !== session.user.id) {
-              return false;
-            }
-            return true;
-          })
-          .catch(() => false);
-
-        if (!mounted) return;
-
-        if (!userExistsInAuth) {
-          // User was deleted - clear session
-          await supabase.auth.signOut();
-          if (mounted) {
-            setIsAuthenticated(false);
-            setIsCheckingAuth(false);
-          }
-          return;
-        }
-
-        // Verify user exists in database
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        if (mounted) {
-          setIsAuthenticated(!userError && !!userData);
-          setIsCheckingAuth(false);
-        }
-      } catch (error) {
-        console.error("Error checking auth in MenuOverlay:", error);
-        if (mounted) {
-          setIsAuthenticated(false);
-          setIsCheckingAuth(false);
-        }
-      }
-    }
-
-    checkAuth();
-
-    // Listen to auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
-
-      if (!session) {
-        setIsAuthenticated(false);
-        return;
-      }
-
-      // CRITICAL: First verify user still exists in Supabase Auth
-      const userExistsInAuth = await supabase.auth.getUser()
-        .then(({ data, error }) => {
-          // 403 Forbidden means user was deleted - this is expected
-          if (error) {
-            // Suppress 403 errors (user deleted) - these are expected
-            if (error.status !== 403 && error.message !== "Invalid Refresh Token: Refresh Token Not Found") {
-              // Only log unexpected errors
-              console.warn("Error checking user in Auth:", error);
-            }
-            return false;
-          }
-          if (!data.user || data.user.id !== session.user.id) {
-            return false;
-          }
-          return true;
-        })
-        .catch((err) => {
-          // Suppress 403 errors (user deleted) - these are expected
-          if (err?.status !== 403 && err?.message !== "Invalid Refresh Token: Refresh Token Not Found") {
-            console.warn("Error checking user in Auth:", err);
-          }
-          return false;
-        });
-
-      if (!mounted) return;
-
-      if (!userExistsInAuth) {
-        // User was deleted - clear session
-        await supabase.auth.signOut();
-        if (mounted) {
-          setIsAuthenticated(false);
-        }
-        return;
-      }
-
-      // Verify user exists in database
-      try {
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        if (mounted) {
-          setIsAuthenticated(!userError && !!userData);
-        }
-      } catch (error) {
-        console.error("Error verifying user in MenuOverlay:", error);
-        if (mounted) {
-          setIsAuthenticated(false);
-        }
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+  // AuthContext handles all auth state management
 
   useEffect(() => {
     if (isOpen) {

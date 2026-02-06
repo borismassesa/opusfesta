@@ -8,6 +8,7 @@ import loginImg from "@assets/stock_images/romantic_couple_wedd_0c0b1d37.jpg";
 import { resolveAssetSrc } from "@/lib/assets";
 import { toast } from "@/hooks/use-toast";
 import { getRandomSignInQuote, type Quote } from "@/lib/quotes";
+import { parseAuthError } from "@/lib/auth-errors";
 
 export default function ForgotPassword() {
   const router = useRouter();
@@ -56,10 +57,11 @@ export default function ForgotPassword() {
       router.push(`/verify-reset-code?email=${encodeURIComponent(email.trim())}`);
     } catch (error) {
       console.error("Request reset code error:", error);
+      const parsedError = parseAuthError(error);
       toast({
         variant: "destructive",
         title: "Failed to send reset code",
-        description: "An unexpected error occurred. Please try again.",
+        description: parsedError.message,
       });
       setIsLoading(false);
     }
@@ -140,6 +142,7 @@ export default function ForgotPassword() {
                 type="submit"
                 disabled={isLoading}
                 className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-11 w-full mt-1"
+                aria-label="Send reset code"
               >
                 {isLoading ? (
                   <>
