@@ -62,7 +62,8 @@ const WorkflowItem = ({
             type === 'input',
           'bg-[color-mix(in_oklab,var(--color-amber-600)20%,var(--background))] text-amber-600 dark:bg-[color-mix(in_oklab,var(--color-amber-400)20%,var(--background))] dark:text-amber-400':
             type === 'action',
-          'text-red-600 bg-red-50': type === 'pending',
+          'text-red-600 bg-[color-mix(in_oklab,var(--color-red-600)20%,var(--background))] dark:bg-[color-mix(in_oklab,var(--color-red-400)20%,var(--background))] dark:text-red-400':
+            type === 'pending',
           'bg-[color-mix(in_oklab,var(--color-green-600)20%,var(--background))] text-green-600 dark:bg-[color-mix(in_oklab,var(--color-green-400)20%,var(--background))] dark:text-green-400':
             type === 'output'
         })}

@@ -23,7 +23,7 @@ import {
   SheetDescription,
   SheetTrigger
 } from '@/components/ui/sheet'
-import { PrimaryOrionButton } from '@/components/ui/orion-button'
+import { PrimaryOrionButton, SecondaryOrionButton } from '@/components/ui/orion-button'
 
 import { cn } from '@/lib/utils'
 
@@ -284,6 +284,28 @@ const HeroNavigationSmallScreen = ({
               </Collapsible>
             )
           })}
+        </div>
+        <div className='border-t px-4 py-4'>
+          <div className='flex flex-col gap-2'>
+            <SecondaryOrionButton
+              size='lg'
+              className='w-full bg-[#FFD41D] text-black hover:bg-[#e6bf19]'
+              asChild
+            >
+              <a href='#' onClick={handleLinkClick}>
+                Sign up
+              </a>
+            </SecondaryOrionButton>
+            <SecondaryOrionButton
+              size='lg'
+              className='w-full bg-foreground text-background hover:bg-foreground/90'
+              asChild
+            >
+              <a href='#' onClick={handleLinkClick}>
+                Log in
+              </a>
+            </SecondaryOrionButton>
+          </div>
         </div>
       </SheetContent>
     </Sheet>

@@ -78,7 +78,7 @@ const Reporting = () => {
         type='output'
         icon={<MessageSquareTextIcon />}
         title='Budget Summary'
-        description='Updated totals with what’s left to allocate.'
+        description="Updated totals with what’s left to allocate."
         time='1.1 sec'
         delay={2.4}
         className='md:w-72.5'

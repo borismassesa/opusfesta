@@ -60,14 +60,14 @@ const Header = ({ navigationData, className }: HeaderProps) => {
         <div className='flex gap-3'>
           <SecondaryOrionButton
             size='lg'
-            className='bg-[#FFD41D] text-black hover:bg-[#e6bf19]'
+            className='hidden bg-[#FFD41D] text-black hover:bg-[#e6bf19] sm:inline-flex'
             asChild
           >
             <a href='#'>Sign up</a>
           </SecondaryOrionButton>
           <SecondaryOrionButton
             size='lg'
-            className='bg-foreground text-background hover:bg-foreground/90'
+            className='hidden bg-foreground text-background hover:bg-foreground/90 sm:inline-flex'
             asChild
           >
             <a href='#'>Log in</a>
