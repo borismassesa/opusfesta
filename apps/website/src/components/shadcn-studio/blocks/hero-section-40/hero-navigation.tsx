@@ -27,7 +27,6 @@ import { PrimaryOrionButton, SecondaryOrionButton } from '@/components/ui/orion-
 
 import { cn } from '@/lib/utils'
 
-import Logo from '@/assets/svg/logo'
 
 type NavigationSection = {
   type: 'section'
