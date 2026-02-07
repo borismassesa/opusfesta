@@ -279,7 +279,11 @@ export function AdviceIdeasContentProvider({ children }: { children: ReactNode }
       .single();
 
     if (publishError) {
-      setError(publishError.message);
+      const msg =
+        publishError.message?.includes("policy") || publishError.message?.includes("row-level security")
+          ? "Publish failed. Only owner or admin can publish. Editors can save drafts only."
+          : publishError.message;
+      setError(msg);
       setIsSaving(false);
       return;
     }

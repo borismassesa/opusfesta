@@ -273,6 +273,20 @@ export function AdviceIdeasPageContentProvider({ children }: { children: ReactNo
     return () => window.removeEventListener('content-saved', handleContentSaved)
   }, [isPreviewDraft, isAdminRoute, loadPublishedContent])
 
+  // Refetch published content when user returns to the tab so they see latest after admin publishes
+  useEffect(() => {
+    if (typeof document === 'undefined' || isAdminRoute || isPreviewDraft) return
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        loadPublishedContent()
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
+  }, [isAdminRoute, isPreviewDraft, loadPublishedContent])
+
   return (
     <AdviceIdeasPageContentContext.Provider
       value={{

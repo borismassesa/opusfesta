@@ -6,6 +6,7 @@
   --font-mono: 'JetBrains Mono', monospace;
 
   --color-background: var(--background);
+  --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-border: var(--border);
   --color-primary: var(--primary);
@@ -60,6 +61,7 @@
   :root {
     /* Light Mode */
     --background: #ffffff;
+    --foreground: #050505;
     --surface: #f4f4f5;
     --border: rgba(0, 0, 0, 0.08);
     --primary: #050505;
@@ -67,6 +69,8 @@
     --secondary: #52525b;
     --accent: #18181b;
     --accent-foreground: #fafafa;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
     --popover: #ffffff;
     --popover-foreground: #050505;
     --card: var(--background);
@@ -81,6 +85,7 @@
   .dark {
     /* Dark Mode (Original) */
     --background: #050505;
+    --foreground: #ffffff;
     --surface: #0A0A0A;
     --border: rgba(255, 255, 255, 0.08);
     --primary: #FFFFFF;
@@ -88,6 +93,8 @@
     --secondary: #888888;
     --accent: #fafafa;
     --accent-foreground: #18181b;
+    --destructive: #f87171;
+    --destructive-foreground: #050505;
     --popover: #050505;
     --popover-foreground: #ffffff;
     --card: var(--background);
@@ -97,6 +104,25 @@
     --grid-line: rgba(255, 255, 255, 0.06);
     --selection-bg: rgba(255, 255, 255, 0.2);
     --selection-text: white;
+  }
+
+  .orion-theme {
+    --background: #f8f8f9;
+    --foreground: #111111;
+    --surface: #f2f2f3;
+    --border: rgba(0, 0, 0, 0.08);
+    --primary: #111111;
+    --primary-foreground: #ffffff;
+    --secondary: #6b7280;
+    --accent: #111111;
+    --accent-foreground: #fafafa;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --popover: #ffffff;
+    --popover-foreground: #111111;
+    --card: #ffffff;
+    --muted-foreground: #6b7280;
+    --shadow-color: #000000;
   }
 
   body {
@@ -172,6 +198,114 @@
   .no-scrollbar {
     -ms-overflow-style: none;  /* IE and Edge */
     scrollbar-width: none;  /* Firefox */
+  }
+
+  /* Custom Utilities – hero-section-40 */
+  .size-4\.5 {
+    width: 1.125rem;
+    height: 1.125rem;
+  }
+  .draft-dots {
+    background-image: radial-gradient(rgba(17, 17, 17, 0.14) 2px, transparent 2px);
+    background-size: 20px 20px;
+    background-attachment: fixed;
+  }
+  .size-5\.5 {
+    width: 1.375rem;
+    height: 1.375rem;
+  }
+  .size-7\.5 {
+    width: 1.875rem;
+    height: 1.875rem;
+  }
+  .h-5\.5 {
+    height: 1.375rem;
+  }
+  .h-6\.5 {
+    height: 1.625rem;
+  }
+  .h-7\.5 {
+    height: 1.875rem;
+  }
+  .h-15 {
+    height: 3.75rem;
+  }
+  .h-19\.5 {
+    height: 4.875rem;
+  }
+  .h-151 {
+    height: 37.75rem;
+  }
+  .w-60\.5 {
+    width: 15.125rem;
+  }
+  .w-70 {
+    width: 17.5rem;
+  }
+  .w-72\.5 {
+    width: 18.125rem;
+  }
+  .w-75 {
+    width: 18.75rem;
+  }
+  .w-82\.5 {
+    width: 20.625rem;
+  }
+  .w-141 {
+    width: 35.25rem;
+  }
+  .pt-7\.5 {
+    padding-top: 1.875rem;
+  }
+  .pl-4\.5 {
+    padding-left: 1.125rem;
+  }
+  .ml-4\.5 {
+    margin-left: 1.125rem;
+  }
+  .mr-11\.25 {
+    margin-right: 2.8125rem;
+  }
+  .mr-15 {
+    margin-right: 3.75rem;
+  }
+  .mr-22 {
+    margin-right: 5.5rem;
+  }
+  .mt-10\.5 {
+    margin-top: 2.625rem;
+  }
+  .mt-17 {
+    margin-top: 4.25rem;
+  }
+  .mt-68 {
+    margin-top: 17rem;
+  }
+  .ml-41 {
+    margin-left: 10.25rem;
+  }
+  .gap-40\.5 {
+    gap: 10.125rem;
+  }
+  .bottom-19\.5 {
+    bottom: 4.875rem;
+  }
+  .-bottom-13\.5 {
+    bottom: -3.375rem;
+  }
+  .translate-x-11\.25 {
+    --tw-translate-x: 2.8125rem;
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+  .translate-x-15 {
+    --tw-translate-x: 3.75rem;
+    translate: var(--tw-translate-x) var(--tw-translate-y);
+  }
+  .z-1 {
+    z-index: 1;
+  }
+  .z-2 {
+    z-index: 2;
   }
 }
 

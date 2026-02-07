@@ -33,6 +33,8 @@ NEXT_PUBLIC_ADMIN_WHITELIST=admin1@example.com,admin2@example.com,admin3@example
 
 **Note:** The `SUPABASE_SERVICE_ROLE_KEY` is required for admin API routes. You can find it in your Supabase project dashboard under Settings > API > service_role key (keep this secret!).
 
+**Production – Advice & Ideas (and other CMS) publish:** For published content to appear on the **production website**, the admin app must use the **same Supabase project** as the production website. Set `NEXT_PUBLIC_SUPABASE_URL` (and keys) in the admin’s production environment to the same values as the website. Only users with role **owner** or **admin** can publish; **editor** can save drafts but cannot publish (RLS restricts `published_content` updates).
+
 **Admin Whitelist:** The admin whitelist is now managed via a database table (`admin_whitelist`). 
 
 **Database Setup:**
