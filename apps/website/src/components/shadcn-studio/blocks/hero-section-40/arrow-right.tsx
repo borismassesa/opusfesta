@@ -26,8 +26,8 @@ const ArrowRight = ({ delay = 0, className }: { delay?: number; className?: stri
           delay
         }}
         d='M6 1.35791L12 7.35791L6 13.3579L0 7.35791L6 1.35791Z'
-        fill='color-mix(in oklab,var(--foreground)15%,var(--background))'
-        className='dark:fill-[color-mix(in_oklab,var(--foreground)25%,var(--background))]'
+        fill='color-mix(in oklab, var(--foreground) 15%, var(--background))'
+        className='dark:fill-[color-mix(in_oklab,_var(--foreground)_25%,_var(--background))]'
       />
       <motion.path
         initial={{ pathLength: 0 }}
@@ -38,9 +38,9 @@ const ArrowRight = ({ delay = 0, className }: { delay?: number; className?: stri
           delay: delay + 0.24
         }}
         d='M6 7.35791H70'
-        stroke='color-mix(in oklab,var(--foreground)15%,var(--background))'
+        stroke='color-mix(in oklab, var(--foreground) 15%, var(--background))'
         strokeWidth='2'
-        className='dark:stroke-[color-mix(in_oklab,var(--foreground)25%,var(--background))]'
+        className='dark:stroke-[color-mix(in_oklab,_var(--foreground)_25%,_var(--background))]'
       />
       <motion.path
         initial={{ pathLength: 0, opacity: 0 }}
@@ -54,11 +54,11 @@ const ArrowRight = ({ delay = 0, className }: { delay?: number; className?: stri
           opacity: { duration: 0.1, delay: delay + 0.64 }
         }}
         d='M63.4941 1L69.8768 7.35817L63.4944 13.7158'
-        stroke='color-mix(in oklab,var(--foreground)15%,var(--background))'
+        stroke='color-mix(in oklab, var(--foreground) 15%, var(--background))'
         strokeWidth='2'
         strokeLinecap='round'
         strokeLinejoin='round'
-        className='dark:stroke-[color-mix(in_oklab,var(--foreground)25%,var(--background))]'
+        className='dark:stroke-[color-mix(in_oklab,_var(--foreground)_25%,_var(--background))]'
       />
     </motion.svg>
   )
