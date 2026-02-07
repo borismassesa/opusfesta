@@ -32,6 +32,20 @@ function BorderBeam({
   initialOffset = 0,
   borderWidth = 1
 }: BorderBeamProps) {
+  const supportsOffsetPath =
+    typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('offset-path', 'rect(0 0 0 0)')
+
+  const beamStyle: MotionStyle = {
+    width: size,
+    '--color-from': colorFrom,
+    '--color-to': colorTo,
+    ...style
+  }
+
+  if (supportsOffsetPath) {
+    beamStyle.offsetPath = `rect(0 auto auto 0 round ${size}px)`
+  }
+
   return (
     <div
       className='pointer-events-none absolute inset-0 rounded-[inherit] border-(length:--border-beam-width) border-transparent [mask-image:linear-gradient(transparent,transparent),linear-gradient(#000,#000)] [mask-composite:intersect] [mask-clip:padding-box,border-box]'
@@ -47,15 +61,7 @@ function BorderBeam({
           'rounded-full bg-gradient-to-l from-[var(--color-from)] via-[var(--color-to)] to-transparent',
           className
         )}
-        style={
-          {
-            width: size,
-            offsetPath: `rect(0 auto auto 0 round ${size}px)`,
-            '--color-from': colorFrom,
-            '--color-to': colorTo,
-            ...style
-          } as MotionStyle
-        }
+        style={beamStyle}
         initial={{ offsetDistance: `${initialOffset}%` }}
         animate={{
           offsetDistance: reverse

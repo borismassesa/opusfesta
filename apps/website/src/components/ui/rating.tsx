@@ -151,7 +151,7 @@ function RatingItem({
       <Comp
         data-slot='rating-item'
         htmlFor={readOnly ? undefined : `${ratingIconId}-${point}`}
-        aria-label={`${point} Stars`}
+        aria-label={`${point} ${point === 1 ? 'Star' : 'Stars'}`}
         onClick={!readOnly ? handleClick : undefined}
         onMouseMove={!readOnly ? handleMouseMove : undefined}
         onMouseLeave={!readOnly ? onMouseLeave : undefined}

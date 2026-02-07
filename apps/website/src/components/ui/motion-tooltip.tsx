@@ -28,11 +28,11 @@ function AnimatedTooltip({ items, className }: { items: TooltipItem[]; className
   // translate the tooltip
   const translateX = useSpring(useTransform(x, [-100, 100], [-50, 50]), springConfig)
 
-  const handleMouseMove = (event: any) => {
-    const halfWidth = event.target.offsetWidth / 2
+  const handleMouseMove = (event: React.MouseEvent<HTMLDivElement>) => {
+    const rect = event.currentTarget.getBoundingClientRect()
+    const offsetX = event.clientX - rect.left - rect.width / 2
 
-    // set the x value, which is then used in transform and rotate
-    x.set(event.nativeEvent.offsetX - halfWidth)
+    x.set(offsetX)
   }
 
   return (

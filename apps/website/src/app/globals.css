@@ -210,6 +210,11 @@
     background-size: 20px 20px;
     background-attachment: fixed;
   }
+  @media (max-width: 640px) {
+    .draft-dots {
+      background-attachment: scroll;
+    }
+  }
   .size-5\.5 {
     width: 1.375rem;
     height: 1.375rem;
@@ -295,11 +300,11 @@
   }
   .translate-x-11\.25 {
     --tw-translate-x: 2.8125rem;
-    translate: var(--tw-translate-x) var(--tw-translate-y);
+    translate: var(--tw-translate-x) var(--tw-translate-y, 0);
   }
   .translate-x-15 {
     --tw-translate-x: 3.75rem;
-    translate: var(--tw-translate-x) var(--tw-translate-y);
+    translate: var(--tw-translate-x) var(--tw-translate-y, 0);
   }
   .z-1 {
     z-index: 1;
