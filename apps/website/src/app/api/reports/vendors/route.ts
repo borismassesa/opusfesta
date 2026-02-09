@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Mark route as dynamic to prevent static analysis during build
 export const dynamic = 'force-dynamic';
@@ -43,13 +44,9 @@ export async function POST(request: NextRequest) {
 
     // Get authenticated user (optional - reports can be anonymous)
     let userId: string | null = null;
-    const authHeader = request.headers.get("authorization");
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-      if (!authError && user) {
-        userId = user.id;
-      }
+    const user = await getAuthenticatedUser();
+    if (user) {
+      userId = user.id;
     }
 
     // Verify vendor exists

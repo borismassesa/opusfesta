@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { CareersNavbar } from "@/components/careers/CareersNavbar";
 import { CareersFooter } from "@/components/careers/CareersFooter";
-import { supabase } from "@/lib/supabaseClient";
-import { ensureUserRecord } from "@/lib/auth";
+import { useAuth } from "@clerk/nextjs";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 function formatSalary(salaryRange: string | null): string | null {
   if (!salaryRange) return null;
@@ -37,218 +37,25 @@ export function ApplyClient({
   const [error, setError] = useState<string | null>(null);
   const [hasAlreadyApplied, setHasAlreadyApplied] = useState(false);
 
-  // Simplified authentication check with redirect loop prevention
+  const { isSignedIn, isLoaded: isAuthLoaded, getToken } = useAuth();
+  const { requireAuth } = useAuthGate();
+
+  // Authentication check - show modal instead of redirect
   useEffect(() => {
-    let mounted = true;
-    let hasRedirected = false;
-    const REDIRECT_GUARD_KEY = "auth_redirect_guard";
-    const LOGIN_PENDING_KEY = "auth_login_pending";
-    const MAX_REDIRECT_ATTEMPTS = 2;
-    const pendingAt = parseInt(sessionStorage.getItem(LOGIN_PENDING_KEY) || "0", 10);
-    const loginPendingFresh = pendingAt > 0 && Date.now() - pendingAt < 30000;
-    const SESSION_CHECK_TIMEOUT = loginPendingFresh ? 20000 : 12000;
+    if (!isAuthLoaded) return;
 
-    // Redirect guard to prevent infinite loops
-    const checkRedirectGuard = (): boolean => {
-      const redirectCount = parseInt(sessionStorage.getItem(REDIRECT_GUARD_KEY) || "0", 10);
-      if (redirectCount >= MAX_REDIRECT_ATTEMPTS) {
-        console.error("Redirect loop detected - too many redirect attempts");
-        // Clear the guard and redirect to careers page
-        sessionStorage.removeItem(REDIRECT_GUARD_KEY);
-        sessionStorage.removeItem("auth_redirect");
-        if (mounted) {
-          setIsCheckingAuth(false);
-          setAuthStatus("failed");
-          setError("Too many redirect attempts. Please try accessing the application form again.");
-        }
-        return false;
-      }
-      return true;
-    };
-
-    const redirectToLogin = (currentPath: string) => {
-      if (!mounted || hasRedirected) return;
-      
-      // Check redirect guard
-      if (!checkRedirectGuard()) return;
-      
-      // Increment redirect counter
-      const redirectCount = parseInt(sessionStorage.getItem(REDIRECT_GUARD_KEY) || "0", 10);
-      sessionStorage.setItem(REDIRECT_GUARD_KEY, String(redirectCount + 1));
-      
-      hasRedirected = true;
-      sessionStorage.setItem("auth_redirect", currentPath);
-      // Redirect to careers login (user can sign up from there if needed)
-      router.replace(`/careers/login?next=${encodeURIComponent(currentPath)}`);
-    };
-
-    const verifyUserRecord = async (session: any): Promise<boolean> => {
-      if (!mounted || hasRedirected) return false;
-
-      try {
-        setAuthStatus("verifying");
-        
-        // Verify user exists in Supabase Auth
-        const userCheckResult = await supabase.auth.getUser();
-        
-        if (!mounted || hasRedirected) return false;
-
-        const userExistsInAuth = !userCheckResult.error && 
-                                userCheckResult.data?.user && 
-                                userCheckResult.data.user.id === session.user.id;
-
-        if (!userExistsInAuth) {
-          // User was deleted from Auth - sign out
-          console.warn("User deleted from Auth, signing out");
-          await supabase.auth.signOut();
-          if (mounted && !hasRedirected) {
-            const currentPath = window.location.pathname;
-            redirectToLogin(currentPath);
-          }
-          return false;
-        }
-        
-        // Use ensureUserRecord which creates the record if it doesn't exist
-        const result = await ensureUserRecord(session);
-        
-        if (!mounted || hasRedirected) return false;
-        
-        if (result.success) {
-          // Clear redirect guard on successful authentication
-          sessionStorage.removeItem(REDIRECT_GUARD_KEY);
-          sessionStorage.removeItem(LOGIN_PENDING_KEY);
-          
-          if (mounted && !hasRedirected) {
-            setIsCheckingAuth(false);
-            setAuthStatus("authenticated");
-          }
-          return true;
-        } else {
-          console.error("Failed to verify/create user record:", result.error);
-          if (mounted && !hasRedirected) {
-            setIsCheckingAuth(false);
-            setAuthStatus("failed");
-            setError("Failed to verify your account. Please try logging in again.");
-          }
-          return false;
-        }
-      } catch (err) {
-        console.error("Error verifying user record:", err);
-        
-        if (mounted && !hasRedirected) {
-          setIsCheckingAuth(false);
-          setAuthStatus("failed");
-          setError("An error occurred while verifying your account. Please try again.");
-        }
-        return false;
-      }
-    };
-
-    // Set timeout for session check
-    const timeout = setTimeout(async () => {
-      if (!mounted || hasRedirected) return;
-      console.warn("Session check timeout - rechecking before redirect");
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted || hasRedirected) return;
-        if (session?.user) {
-          sessionStorage.removeItem(LOGIN_PENDING_KEY);
-          const verified = await verifyUserRecord(session);
-          if (!verified && mounted && !hasRedirected) {
-            // If verification failed, redirect to login
-            const currentPath = window.location.pathname;
-            redirectToLogin(currentPath);
-          }
-          return;
-        }
-      } catch (err) {
-        console.error("Session recheck failed after timeout:", err);
-      }
-      // No session found - redirect to login
-      if (mounted && !hasRedirected) {
-        sessionStorage.removeItem(LOGIN_PENDING_KEY);
-        const currentPath = window.location.pathname;
-        redirectToLogin(currentPath);
-      }
-    }, SESSION_CHECK_TIMEOUT);
-
-    // Listen for auth state changes (handles session restoration, refresh, sign in/out)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted || hasRedirected) return;
-
-        // Handle different auth events
-        if (event === "SIGNED_OUT" || !session) {
-          clearTimeout(timeout);
-          const currentPath = window.location.pathname;
-          redirectToLogin(currentPath);
-          return;
-        }
-
-        // For SIGNED_IN, TOKEN_REFRESHED, USER_UPDATED, or INITIAL_SESSION events, verify user record
-        if (
-          event === "SIGNED_IN" || 
-          event === "TOKEN_REFRESHED" || 
-          event === "USER_UPDATED" ||
-          event === "INITIAL_SESSION"
-        ) {
-          clearTimeout(timeout);
-          // Clear redirect guard when we get a valid auth event
-          sessionStorage.removeItem(REDIRECT_GUARD_KEY);
-          await verifyUserRecord(session);
-        }
-      }
-    );
-
-    // Initial session check (in case session is already available)
-    supabase.auth.getSession().then(({ data: { session }, error: sessionError }) => {
-      if (!mounted || hasRedirected) return;
-
-      if (sessionError) {
-        console.error("Session error:", sessionError);
-        clearTimeout(timeout);
-        if (mounted && !hasRedirected) {
-          const currentPath = window.location.pathname;
-          redirectToLogin(currentPath);
-        }
-        return;
-      }
-
-      if (!session?.user) {
-        // No session - wait for onAuthStateChange to fire or timeout
-        // But also set a maximum wait time to prevent infinite loading
-        return;
-      }
-
-      // We have a session - verify user record
-      clearTimeout(timeout);
-      // Clear redirect guard when we have a valid session
-      sessionStorage.removeItem(REDIRECT_GUARD_KEY);
-      verifyUserRecord(session).catch((err) => {
-        console.error("Error in verifyUserRecord from initial check:", err);
-        if (mounted && !hasRedirected) {
-          setIsCheckingAuth(false);
-          setAuthStatus("failed");
-          setError("Failed to verify authentication. Please try logging in again.");
-        }
-      });
-    }).catch((err) => {
-      console.error("Error getting initial session:", err);
-      if (mounted && !hasRedirected) {
-        clearTimeout(timeout);
+    if (!isSignedIn) {
+      requireAuth("apply", () => {
         setIsCheckingAuth(false);
-        setAuthStatus("failed");
-        setError("Failed to check authentication. Please try logging in again.");
-      }
-    });
+        setAuthStatus("authenticated");
+      });
+      return;
+    }
 
-    return () => {
-      mounted = false;
-      hasRedirected = true;
-      subscription.unsubscribe();
-      clearTimeout(timeout);
-    };
-  }, [router]);
+    // User is authenticated
+    setIsCheckingAuth(false);
+    setAuthStatus("authenticated");
+  }, [isAuthLoaded, isSignedIn]);
 
   useEffect(() => {
     if (isCheckingAuth) return; // Wait for auth check to complete
@@ -259,9 +66,8 @@ export function ApplyClient({
         const id = resolvedParams.id;
         setJobId(id);
 
-        // Get session token to fetch full job details
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
+        // Get token to fetch full job details
+        const token = await getToken();
 
         const headers: HeadersInit = {};
         if (token) {
@@ -286,11 +92,11 @@ export function ApplyClient({
         setJob(jobPosting);
 
         // Check if user has already applied to this job
-        if (session) {
+        if (token) {
           try {
             const appResponse = await fetch("/api/careers/applications/my-applications", {
               headers: {
-                "Authorization": `Bearer ${session.access_token}`,
+                "Authorization": `Bearer ${token}`,
               },
             });
             

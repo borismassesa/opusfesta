@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from "@/lib/api-auth";
+import {
+  VendorSavedResponseSchema,
+  type VendorSavedResponse,
+} from "@opusfesta/lib";
 
 // Mark route as dynamic to prevent static analysis during build
 export const dynamic = 'force-dynamic';
@@ -25,21 +30,12 @@ function getSupabaseAdmin() {
 export async function GET(request: NextRequest) {
   try {
     const supabaseAdmin = getSupabaseAdmin();
-    // Get authenticated user
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
+
+    // Authenticate user
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Invalid authentication" },
         { status: 401 }
       );
     }
@@ -102,10 +98,21 @@ export async function GET(request: NextRequest) {
         created_at: vendor.created_at,
       }));
 
-    return NextResponse.json({
+    const responsePayload: VendorSavedResponse = {
       vendors,
       count: vendors.length,
-    });
+    };
+
+    const parsedResponse = VendorSavedResponseSchema.safeParse(responsePayload);
+    if (!parsedResponse.success) {
+      console.error("Saved vendors response contract mismatch:", parsedResponse.error.flatten());
+      return NextResponse.json(
+        { error: "Invalid saved vendors response contract" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(parsedResponse.data);
   } catch (error) {
     console.error("Unexpected error fetching saved vendors:", error);
     return NextResponse.json(

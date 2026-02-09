@@ -6,10 +6,12 @@ import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Eye, EyeOff, Loader2, Briefcase, CheckCircle2, FileText, Bell, Sparkles } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useSignUp } from "@clerk/nextjs";
 
 export default function CareersSignup() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { signUp, setActive, isLoaded } = useSignUp();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [firstName, setFirstName] = useState("");
@@ -17,6 +19,10 @@ export default function CareersSignup() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+
+  // Email verification state
+  const [pendingVerification, setPendingVerification] = useState(false);
+  const [verificationCode, setVerificationCode] = useState("");
 
   useEffect(() => {
     const next = searchParams.get("next");
@@ -27,94 +33,69 @@ export default function CareersSignup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLoaded || !signUp) return;
     setIsLoading(true);
 
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      await signUp.create({
+        emailAddress: email.trim(),
+        password,
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        unsafeMetadata: {
+          user_type: "couple", // Careers signups are always "couple" type
+          ...(phone.trim() && { phone: phone.trim() }),
         },
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-          firstName: firstName.trim(),
-          lastName: lastName.trim(),
-          ...(phone.trim() && { phone: phone.trim() }), // Only include phone if it's not empty
-          userType: "couple", // Careers signups are always "couple" type
-        }),
       });
 
-      const data = await response.json();
+      // Send email verification code
+      await signUp.prepareEmailAddressVerification({ strategy: "email_code" });
 
-      if (!response.ok) {
-        console.error("Signup API error:", {
-          status: response.status,
-          error: data.error,
-          details: data.details,
-          verified: data.verified,
-          canResend: data.canResend,
-        });
-        
-        // If user exists but not verified, redirect to verification page
-        if (data.canResend && !data.verified) {
-          toast({
-            title: "Account exists",
-            description: "Redirecting to verification page...",
-          });
-          const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
-          const verifyUrl = `/verify-email?email=${encodeURIComponent(email)}${next ? `&next=${encodeURIComponent(next)}` : ""}`;
-          router.push(verifyUrl);
-          setIsLoading(false);
-          return;
-        }
-        
-        // If user exists and is verified, suggest login
-        if (data.verified) {
-          toast({
-            variant: "destructive",
-            title: "Account already exists",
-            description: "Please sign in instead",
-          });
-          // Optionally redirect to login
-          setTimeout(() => {
-            router.push(`/careers/login?email=${encodeURIComponent(email)}`);
-          }, 2000);
-          setIsLoading(false);
-          return;
-        }
-        
-        toast({
-          variant: "destructive",
-          title: "Sign up failed",
-          description: data.error || data.message || "An error occurred during signup",
-        });
-        setIsLoading(false);
-        return;
-      }
-
-      // Show success message
       toast({
         title: "Verification code sent",
         description: "Please check your email for the verification code.",
       });
 
-      // Preserve the redirect path for after verification
-      const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
-      if (next) {
-        sessionStorage.setItem("auth_redirect", next);
-      }
-      
-      // Redirect to verification page immediately for seamless experience
-      const verifyUrl = `/verify-email?email=${encodeURIComponent(email)}${next ? `&next=${encodeURIComponent(next)}` : ""}`;
-      router.push(verifyUrl);
-    } catch (error) {
+      setPendingVerification(true);
+    } catch (error: any) {
       console.error("Signup error:", error);
+      const errorMessage = error.errors?.[0]?.longMessage || error.errors?.[0]?.message || "An error occurred during signup";
+
       toast({
         variant: "destructive",
         title: "Sign up failed",
-        description: "An unexpected error occurred. Please try again.",
+        description: errorMessage,
       });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isLoaded || !signUp) return;
+    setIsLoading(true);
+
+    try {
+      const result = await signUp.attemptEmailAddressVerification({
+        code: verificationCode,
+      });
+
+      if (result.status === "complete" && result.createdSessionId) {
+        await setActive({ session: result.createdSessionId });
+        const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
+        sessionStorage.removeItem("auth_redirect");
+        router.push(next || "/careers");
+      }
+    } catch (error: any) {
+      console.error("Verification error:", error);
+      const errorMessage = error.errors?.[0]?.longMessage || error.errors?.[0]?.message || "Invalid verification code";
+      toast({
+        variant: "destructive",
+        title: "Verification failed",
+        description: errorMessage,
+      });
+    } finally {
       setIsLoading(false);
     }
   };
@@ -150,11 +131,11 @@ export default function CareersSignup() {
           />
           <div className="absolute inset-0 bg-linear-to-br from-primary/60 via-primary/40 to-primary/60" />
         </div>
-        
+
         {/* Overlay gradients */}
         <div className="absolute inset-0 bg-linear-to-t from-background/95 via-background/60 to-transparent" />
         <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-transparent to-transparent" />
-        
+
         <div className="relative z-10 p-12 flex flex-col justify-between h-full">
           <Link
             href="/careers"
@@ -162,7 +143,7 @@ export default function CareersSignup() {
           >
             OpusFesta Careers
           </Link>
-          
+
           <div className="max-w-md space-y-8">
             <div className="space-y-4">
               <div className="flex items-center gap-3">
@@ -212,122 +193,172 @@ export default function CareersSignup() {
             </Link>
           </div>
 
-          {/* Header */}
-          <div className="space-y-2">
-            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
-              Create your account
-            </h1>
-            <p className="text-base text-muted-foreground">
-              Start your journey with OpusFesta. We'll keep you updated on your application status.
-            </p>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="grid grid-cols-2 gap-4">
+          {pendingVerification ? (
+            /* Verification Form */
+            <>
               <div className="space-y-2">
-                <label htmlFor="firstName" className="text-sm font-medium text-primary">
-                  First name
-                </label>
-                <input
-                  id="firstName"
-                  type="text"
-                  placeholder="Jane"
-                  className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                  value={firstName}
-                  onChange={(e) => setFirstName(e.target.value)}
-                  required
-                />
+                <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
+                  Verify your email
+                </h1>
+                <p className="text-base text-muted-foreground">
+                  We've sent a verification code to <strong>{email}</strong>. Enter it below to complete your registration.
+                </p>
               </div>
-              <div className="space-y-2">
-                <label htmlFor="lastName" className="text-sm font-medium text-primary">
-                  Last name
-                </label>
-                <input
-                  id="lastName"
-                  type="text"
-                  placeholder="Doe"
-                  className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                  value={lastName}
-                  onChange={(e) => setLastName(e.target.value)}
-                  required
-                />
-              </div>
-            </div>
 
-            <div className="space-y-2">
-              <label htmlFor="email" className="text-sm font-medium text-primary">
-                Email address
-              </label>
-              <input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
+              <form onSubmit={handleVerification} className="space-y-5">
+                <div className="space-y-2">
+                  <label htmlFor="code" className="text-sm font-medium text-primary">
+                    Verification code
+                  </label>
+                  <input
+                    id="code"
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="Enter 6-digit code"
+                    className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm text-center tracking-[0.5em] font-mono transition-all placeholder:text-muted-foreground placeholder:tracking-normal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    value={verificationCode}
+                    onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                    required
+                    maxLength={6}
+                    autoFocus
+                  />
+                </div>
 
-            <div className="space-y-2">
-              <label htmlFor="phone" className="text-sm font-medium text-primary">
-                Phone number <span className="text-muted-foreground font-normal">(optional)</span>
-              </label>
-              <input
-                id="phone"
-                type="tel"
-                placeholder="+255 123 456 789"
-                className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <label htmlFor="password" className="text-sm font-medium text-primary">
-                Password
-              </label>
-              <div className="relative">
-                <input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  placeholder="Create a password"
-                  className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 pr-12 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  minLength={8}
-                />
                 <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-surface"
-                  aria-label={showPassword ? "Hide password" : "Show password"}
+                  type="submit"
+                  disabled={isLoading || verificationCode.length < 6}
+                  className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium text-sm transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Verifying...
+                    </>
+                  ) : (
+                    "Verify email"
+                  )}
                 </button>
+              </form>
+            </>
+          ) : (
+            /* Signup Form */
+            <>
+              <div className="space-y-2">
+                <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
+                  Create your account
+                </h1>
+                <p className="text-base text-muted-foreground">
+                  Start your journey with OpusFesta. We'll keep you updated on your application status.
+                </p>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Must be at least 8 characters long
-              </p>
-            </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium text-sm transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Creating account...
-                </>
-              ) : (
-                "Create account"
-              )}
-            </button>
-          </form>
+              <form onSubmit={handleSubmit} className="space-y-5">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label htmlFor="firstName" className="text-sm font-medium text-primary">
+                      First name
+                    </label>
+                    <input
+                      id="firstName"
+                      type="text"
+                      placeholder="Jane"
+                      className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label htmlFor="lastName" className="text-sm font-medium text-primary">
+                      Last name
+                    </label>
+                    <input
+                      id="lastName"
+                      type="text"
+                      placeholder="Doe"
+                      className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="email" className="text-sm font-medium text-primary">
+                    Email address
+                  </label>
+                  <input
+                    id="email"
+                    type="email"
+                    placeholder="you@example.com"
+                    className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="phone" className="text-sm font-medium text-primary">
+                    Phone number <span className="text-muted-foreground font-normal">(optional)</span>
+                  </label>
+                  <input
+                    id="phone"
+                    type="tel"
+                    placeholder="+255 123 456 789"
+                    className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label htmlFor="password" className="text-sm font-medium text-primary">
+                    Password
+                  </label>
+                  <div className="relative">
+                    <input
+                      id="password"
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Create a password"
+                      className="flex h-12 w-full rounded-lg border border-input bg-background px-4 py-3 pr-12 text-sm transition-all placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      required
+                      minLength={8}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1.5 rounded-md hover:bg-surface"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
+                    >
+                      {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Must be at least 8 characters long
+                  </p>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={isLoading}
+                  className="w-full h-12 rounded-lg bg-primary text-primary-foreground font-medium text-sm transition-all hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Creating account...
+                    </>
+                  ) : (
+                    "Create account"
+                  )}
+                </button>
+              </form>
+            </>
+          )}
 
           {/* Footer Links */}
           <div className="space-y-4 pt-4">

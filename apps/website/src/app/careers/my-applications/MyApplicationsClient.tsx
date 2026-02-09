@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { CheckCircle2, Clock, XCircle, Calendar, Search, Filter, FileText, Briefcase, Loader2 } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,7 @@ interface Application {
 
 export function MyApplicationsClient() {
   const router = useRouter();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,27 +41,32 @@ export function MyApplicationsClient() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      router.push(`/careers/login?next=${encodeURIComponent('/careers/my-applications')}`);
+      return;
+    }
     fetchApplications();
-  }, [statusFilter]);
+  }, [statusFilter, isLoaded, isSignedIn]);
 
   const fetchApplications = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (!session || sessionError) {
+      const token = await getToken();
+      if (!token) {
         router.push(`/careers/login?next=${encodeURIComponent('/careers/my-applications')}`);
         return;
       }
 
-      const url = statusFilter === "all" 
+      const url = statusFilter === "all"
         ? "/api/careers/applications/my-applications?includeDrafts=true"
         : `/api/careers/applications/my-applications?status=${statusFilter}&includeDrafts=true`;
-      
+
       const response = await fetch(url, {
         headers: {
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${token}`,
         },
       });
 

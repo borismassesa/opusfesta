@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Get Supabase admin client
 function getSupabaseAdmin() {
@@ -21,16 +22,11 @@ function getSupabaseAdmin() {
 }
 
 // Check if user is admin
-async function isAdmin(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return false;
+async function isAdmin(): Promise<boolean> {
+  const user = await getAuthenticatedUser();
+  if (!user) return false;
 
-  const token = authHeader.replace("Bearer ", "");
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-  if (error || !user) return false;
-
   const { data: userData } = await supabaseAdmin
     .from("users")
     .select("role")
@@ -43,7 +39,7 @@ async function isAdmin(request: NextRequest): Promise<boolean> {
 // GET - List all applications (admin only)
 export async function GET(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -94,7 +90,7 @@ export async function GET(request: NextRequest) {
 // PATCH - Update application status/notes (admin only)
 export async function PATCH(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

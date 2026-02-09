@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { FileText, CheckCircle2, Clock, XCircle, CreditCard, Loader2, Smartphone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { InvoicePaymentForm } from "./InvoicePaymentForm";
 import { MobileMoneyPaymentInstructions } from "./MobileMoneyPaymentInstructions";
 import { format } from "date-fns";
@@ -44,6 +44,7 @@ interface InvoiceListProps {
 }
 
 export function InvoiceList({ inquiryId, onPaymentSuccess }: InvoiceListProps) {
+  const { getToken, isSignedIn } = useAuth();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -53,16 +54,16 @@ export function InvoiceList({ inquiryId, onPaymentSuccess }: InvoiceListProps) {
 
   const fetchInvoices = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      if (!isSignedIn) {
         setError("Please log in to view invoices");
         setLoading(false);
         return;
       }
 
+      const token = await getToken();
       const response = await fetch(`/api/inquiries/${inquiryId}/invoices`, {
         headers: {
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${token}`,
         },
       });
 
@@ -85,7 +86,7 @@ export function InvoiceList({ inquiryId, onPaymentSuccess }: InvoiceListProps) {
 
   useEffect(() => {
     fetchInvoices();
-  }, [inquiryId]);
+  }, [inquiryId, isSignedIn]);
 
   const handlePaymentSuccess = () => {
     setIsRefreshing(true);

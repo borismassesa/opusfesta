@@ -1,52 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Check if user is admin
-async function isAdmin(request: NextRequest): Promise<boolean> {
+async function isAdmin(): Promise<boolean> {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
-      console.error("[isAdmin] No authorization header");
-      return false;
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    if (!token) {
-      console.error("[isAdmin] No token in authorization header");
-      return false;
-    }
+    const { userId: clerkUserId } = await auth();
+    if (!clerkUserId) return false;
 
     const supabaseAdmin = getSupabaseAdmin();
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-    if (error) {
-      console.error("[isAdmin] Error getting user:", error.message);
-      return false;
-    }
-
-    if (!user) {
-      console.error("[isAdmin] No user found");
-      return false;
-    }
-
     const { data: userData, error: userError } = await supabaseAdmin
       .from("users")
       .select("role")
-      .eq("id", user.id)
+      .eq("clerk_id", clerkUserId)
       .single();
 
-    if (userError) {
-      console.error("[isAdmin] Error fetching user role:", userError.message);
-      return false;
-    }
+    if (userError || !userData) return false;
 
-    const isAdminUser = userData?.role === "admin";
-    if (!isAdminUser) {
-      console.error("[isAdmin] User is not admin. Role:", userData?.role);
-    }
-
-    return isAdminUser;
+    return userData.role === "admin";
   } catch (error: any) {
     console.error("[isAdmin] Unexpected error:", error.message);
     return false;
@@ -102,7 +74,7 @@ const employeeSchema = z.object({
 // GET - List all employees or get single employee by ID (admin only)
 export async function GET(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -184,7 +156,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new employee (admin only)
 export async function POST(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -274,7 +246,7 @@ export async function POST(request: NextRequest) {
 // PUT - Update employee (admin only)
 export async function PUT(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -386,7 +358,7 @@ export async function PUT(request: NextRequest) {
 // DELETE - Delete employee (admin only)
 export async function DELETE(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

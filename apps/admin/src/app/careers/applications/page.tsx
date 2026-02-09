@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import Link from "next/link";
 
@@ -77,6 +77,7 @@ interface JobApplication {
 }
 
 export default function ApplicationsPage() {
+  const { getToken } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [applications, setApplications] = useState<JobApplication[]>([]);
@@ -115,8 +116,8 @@ export default function ApplicationsPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -143,7 +144,7 @@ export default function ApplicationsPage() {
       try {
         response = await fetch(getAdminApiUrl(url), {
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
           signal: controller.signal,
         });
@@ -362,14 +363,14 @@ export default function ApplicationsPage() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications/bulk`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: "delete",
@@ -397,14 +398,14 @@ export default function ApplicationsPage() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications/bulk`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: "activate",
@@ -432,14 +433,14 @@ export default function ApplicationsPage() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications/bulk`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: "deactivate",

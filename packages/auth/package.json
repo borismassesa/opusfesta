@@ -1,0 +1,26 @@
+{
+  "name": "@opusfesta/auth",
+  "version": "1.0.0",
+  "description": "Shared authentication package for OpusFesta apps (Clerk + Supabase)",
+  "private": true,
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "scripts": {
+    "build": "../../node_modules/.bin/tsc",
+    "dev": "../../node_modules/.bin/tsc --watch",
+    "type-check": "../../node_modules/.bin/tsc --noEmit"
+  },
+  "dependencies": {
+    "@clerk/nextjs": "^6.12.0",
+    "@supabase/supabase-js": "^2.89.0",
+    "svix": "^1.44.0"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.0",
+    "typescript": "^5.3.0"
+  },
+  "peerDependencies": {
+    "next": ">=14.0.0",
+    "react": ">=18.0.0"
+  }
+}

@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import {
+  VendorBySlugResponseSchema,
+  type VendorBySlugResponse,
+} from "@opusfesta/lib";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
-// Get Supabase admin client for authentication
+// Get Supabase admin client for database queries
 function getSupabaseAdmin() {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     throw new Error("Missing Supabase configuration");
@@ -17,37 +22,6 @@ function getSupabaseAdmin() {
       },
     }
   );
-}
-
-// Get authenticated user from request (optional)
-async function getAuthenticatedUser(request: NextRequest): Promise<{ userId: string } | null> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-
-  const token = authHeader.replace("Bearer ", "");
-  
-  try {
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    
-    if (error || !user) {
-      return null;
-    }
-
-    // Verify user exists in database
-    const { data: userData } = await supabaseAdmin
-      .from("users")
-      .select("id")
-      .eq("id", user.id)
-      .single();
-
-    return userData ? { userId: user.id } : null;
-  } catch (error) {
-    console.error("Error getting authenticated user:", error);
-    return null;
-  }
 }
 
 // Helper function to truncate text
@@ -85,8 +59,8 @@ export async function GET(
     const { slug } = await params;
     const supabaseAdmin = getSupabaseAdmin();
 
-    // Check if user is authenticated
-    const user = await getAuthenticatedUser(request);
+    // Check if user is authenticated (optional - route works without auth too)
+    const user = await getAuthenticatedUser();
     const isAuthenticated = !!user;
 
     // Get vendor from database
@@ -104,11 +78,11 @@ export async function GET(
     }
 
     // Track view (fire and forget)
-    trackVendorView(vendor.id, user?.userId || null, "api").catch(console.error);
+    trackVendorView(vendor.id, user?.id || null, "api").catch(console.error);
 
     // For unauthenticated users, return teaser
     if (!isAuthenticated) {
-      return NextResponse.json({
+      const teaserResponse: VendorBySlugResponse = {
         vendor: {
           id: vendor.id,
           slug: vendor.slug,
@@ -133,17 +107,99 @@ export async function GET(
           isTeaser: true,
         },
         isAuthenticated: false,
-      });
+      };
+
+      const parsedTeaserResponse = VendorBySlugResponseSchema.safeParse(teaserResponse);
+      if (!parsedTeaserResponse.success) {
+        console.error("Vendor by-slug teaser response contract mismatch:", parsedTeaserResponse.error.flatten());
+        return NextResponse.json(
+          { error: "Invalid vendor by-slug response contract" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(parsedTeaserResponse.data);
     }
 
     // For authenticated users, return full vendor data
-    return NextResponse.json({
+    const [portfolioResult, reviewsResult, similarVendorsResult, awardsResult] = await Promise.all([
+      supabaseAdmin
+        .from("portfolio")
+        .select("*")
+        .eq("vendor_id", vendor.id)
+        .order("display_order", { ascending: true })
+        .order("created_at", { ascending: false }),
+      supabaseAdmin.rpc("get_vendor_reviews_with_users", {
+        vendor_id_param: vendor.id,
+      }),
+      supabaseAdmin
+        .from("vendors")
+        .select("*")
+        .eq("category", vendor.category)
+        .eq("verified", true)
+        .neq("id", vendor.id)
+        .order("stats->averageRating", { ascending: false })
+        .limit(6),
+      supabaseAdmin.from("vendors").select("awards").eq("id", vendor.id).single(),
+    ]);
+
+    if (portfolioResult.error) {
+      console.error("Error loading vendor portfolio in by-slug route:", portfolioResult.error);
+    }
+    if (reviewsResult.error) {
+      console.error("Error loading vendor reviews in by-slug route:", reviewsResult.error);
+    }
+    if (similarVendorsResult.error) {
+      console.error("Error loading similar vendors in by-slug route:", similarVendorsResult.error);
+    }
+    if (awardsResult.error) {
+      console.error("Error loading vendor awards in by-slug route:", awardsResult.error);
+    }
+
+    const reviews = (reviewsResult.data || []).map((row: any) => ({
+      id: row.id,
+      vendor_id: row.vendor_id,
+      user_id: row.user_id,
+      rating: row.rating,
+      title: row.title,
+      content: row.content,
+      images: row.images || [],
+      event_type: row.event_type,
+      event_date: row.event_date,
+      verified: row.verified,
+      helpful: row.helpful,
+      vendor_response: row.vendor_response,
+      vendor_responded_at: row.vendor_responded_at,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      user: {
+        name: row.user_name || "Anonymous",
+        avatar: row.user_avatar || null,
+      },
+    }));
+
+    const fullResponse: VendorBySlugResponse = {
       vendor: {
         ...vendor,
         isTeaser: false,
       },
       isAuthenticated: true,
-    });
+      portfolio: portfolioResult.data || [],
+      reviews,
+      similarVendors: similarVendorsResult.data || [],
+      awards: awardsResult.data?.awards || [],
+    };
+
+    const parsedFullResponse = VendorBySlugResponseSchema.safeParse(fullResponse);
+    if (!parsedFullResponse.success) {
+      console.error("Vendor by-slug full response contract mismatch:", parsedFullResponse.error.flatten());
+      return NextResponse.json(
+        { error: "Invalid vendor by-slug response contract" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(parsedFullResponse.data);
   } catch (error) {
     console.error("Error fetching vendor:", error);
     return NextResponse.json(

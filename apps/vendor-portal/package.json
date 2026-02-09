@@ -7,7 +7,7 @@
     "dev": "next dev",
     "lint": "next lint",
     "start": "next start",
-    "type-check": "tsc --noEmit"
+    "type-check": "rm -rf .next && tsc --noEmit"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.2",
@@ -23,6 +23,7 @@
     "@tailwindcss/postcss": "^4.1.17",
     "@tanstack/react-query": "^5.8.4",
     "@tanstack/react-query-devtools": "^5.8.4",
+    "@opusfesta/auth": "*",
     "@opusfesta/db": "*",
     "@opusfesta/lib": "*",
     "@types/node": "^20.10.0",

@@ -21,9 +21,10 @@ import { Label } from "@/components/ui/label";
 import { Calendar } from "@/components/ui/calendar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { format, startOfDay, isBefore, addDays } from "date-fns";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import type { Vendor } from "@/lib/supabase/vendors";
 import { cn } from "@/lib/utils";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 interface VendorInquiryFlowProps {
   vendor: Vendor;
@@ -34,6 +35,8 @@ type InquiryStep = 'date' | 'details' | 'review' | 'success';
 
 export function VendorInquiryFlow({ vendor, onSuccess }: VendorInquiryFlowProps) {
   const router = useRouter();
+  const { getToken, isSignedIn } = useAuth();
+  const { requireAuth } = useAuthGate();
   const [currentStep, setCurrentStep] = useState<InquiryStep>('date');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -105,13 +108,13 @@ export function VendorInquiryFlow({ vendor, onSuccess }: VendorInquiryFlowProps)
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      const token = await getToken();
       const headers: HeadersInit = {
         "Content-Type": "application/json",
       };
-      
-      if (session) {
-        headers["Authorization"] = `Bearer ${session.access_token}`;
+
+      if (token) {
+        headers["Authorization"] = `Bearer ${token}`;
       }
 
       const inquiryData = {
@@ -137,7 +140,7 @@ export function VendorInquiryFlow({ vendor, onSuccess }: VendorInquiryFlowProps)
 
       if (!response.ok) {
         if (response.status === 401) {
-          router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+          requireAuth("inquiry", () => handleSubmit());
           return;
         }
         throw new Error(data.error || "Failed to submit inquiry");

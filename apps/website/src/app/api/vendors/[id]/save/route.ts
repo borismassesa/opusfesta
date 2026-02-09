@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Mark route as dynamic to prevent static analysis during build
 export const dynamic = 'force-dynamic';
@@ -31,30 +32,16 @@ export async function POST(
     const { id: vendorId } = await params;
     
     // Get authenticated user
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    // Extract user ID from auth token (you'll need to implement proper JWT verification)
-    // For now, we'll use a simple approach - in production, verify the JWT properly
-    const token = authHeader.replace("Bearer ", "");
-    
-    // Get user from Supabase auth
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Invalid authentication" },
-        { status: 401 }
-      );
-    }
-
     // Check if vendor exists
-    const { data: vendor, error: vendorError } = await supabase
+    const { data: vendor, error: vendorError } = await supabaseAdmin
       .from("vendors")
       .select("id")
       .eq("id", vendorId)
@@ -68,7 +55,7 @@ export async function POST(
     }
 
     // Check if already saved
-    const { data: existing } = await supabase
+    const { data: existing } = await supabaseAdmin
       .from("saved_vendors")
       .select("id")
       .eq("user_id", user.id)
@@ -83,7 +70,7 @@ export async function POST(
     }
 
     // Save vendor
-    const { data: saved, error: saveError } = await supabase
+    const { data: saved, error: saveError } = await supabaseAdmin
       .from("saved_vendors")
       .insert({
         user_id: user.id,
@@ -102,7 +89,7 @@ export async function POST(
     }
 
     // Increment vendor save count atomically
-    await supabase.rpc("increment_vendor_save_count", {
+    await supabaseAdmin.rpc("increment_vendor_save_count", {
       vendor_id_param: vendorId,
     });
 
@@ -124,29 +111,20 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const supabaseAdmin = getSupabaseAdmin();
     const { id: vendorId } = await params;
     
     // Get authenticated user
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Invalid authentication" },
-        { status: 401 }
-      );
-    }
-
     // Delete saved vendor
-    const { error: deleteError } = await supabase
+    const { error: deleteError } = await supabaseAdmin
       .from("saved_vendors")
       .delete()
       .eq("user_id", user.id)
@@ -161,7 +139,7 @@ export async function DELETE(
     }
 
     // Decrement vendor save count atomically
-    await supabase.rpc("decrement_vendor_save_count", {
+    await supabaseAdmin.rpc("decrement_vendor_save_count", {
       vendor_id_param: vendorId,
     });
 

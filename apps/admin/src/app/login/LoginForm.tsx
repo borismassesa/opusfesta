@@ -3,16 +3,28 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
-import loginImg from "@assets/stock_images/elegant_wedding_venu_86ae752a.jpg";
-import { resolveAssetSrc } from "@/lib/assets";
-import { supabase } from "@/lib/supabaseClient";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
+import { useSignIn, useAuth } from "@clerk/nextjs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const unauthorized = searchParams.get("unauthorized");
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const { isSignedIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already signed in
+  useEffect(() => {
+    if (isSignedIn) {
+      const next = searchParams.get("next") || "/";
+      router.replace(next);
+    }
+  }, [isSignedIn, searchParams, router]);
 
   // Clean URL when only param is next=/ (avoid /login?next=%2F)
   useEffect(() => {
@@ -28,6 +40,7 @@ export function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLoaded || !signIn) return;
     setIsLoading(true);
     setErrorMessage("");
 
@@ -77,178 +90,130 @@ export function LoginForm() {
       }
     }
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const result = await signIn.create({
+        identifier: email,
+        password,
+      });
 
-    if (error) {
-      setErrorMessage(error.message);
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
+        const next = searchParams.get("next") || "/";
+        router.push(next as any);
+      } else {
+        setErrorMessage("Sign in requires additional steps. Please try again.");
+        setIsLoading(false);
+      }
+    } catch (err: any) {
+      const clerkError = err?.errors?.[0];
+      setErrorMessage(
+        clerkError?.longMessage || clerkError?.message || "Invalid email or password"
+      );
       setIsLoading(false);
-      return;
     }
-
-    if (!data.session) {
-      setErrorMessage("Login failed: No session created");
-      setIsLoading(false);
-      return;
-    }
-
-    // Wait a moment for the session to be fully established
-    await new Promise(resolve => setTimeout(resolve, 100));
-
-    const next = searchParams.get("next") || "/";
-    router.push(next as any);
   };
 
   return (
-    <div className="h-screen overflow-hidden w-full flex bg-background">
-      {/* Left Side - Image */}
-      <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-black h-full">
-        <div className="absolute inset-0 z-0">
-          <img 
-            src={resolveAssetSrc(loginImg)} 
-            alt="Elegant wedding venue" 
-            className="w-full h-full object-cover opacity-90 scale-105 hover:scale-100 transition-transform duration-[20s] ease-in-out"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-        </div>
-        
-        <div className="relative z-10 p-12 flex flex-col justify-between h-full text-white w-full">
-          <Link
-            href="/"
-            className="font-serif text-4xl tracking-wide drop-shadow-sm hover:opacity-80 transition-opacity w-fit"
-          >
-            OpusFesta
-          </Link>
-          
-          <div className="backdrop-blur-md bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl max-w-lg">
-            <h2 className="text-3xl font-serif mb-4 leading-normal text-white" suppressHydrationWarning>
-              "The highest happiness on earth is the happiness of marriage."
-            </h2>
-            <div className="flex items-center gap-3">
-               <div className="h-px w-8 bg-white/60"></div>
-               <p className="text-white/80 text-sm tracking-wider uppercase font-medium">
-                 William Lyon Phelps
-               </p>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-[400px] space-y-8">
+        <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+          <CardContent className="pt-10 pb-8 px-8 space-y-6">
+            <div className="text-center">
+              <Link href="/" className="font-serif text-3xl text-foreground hover:opacity-80 transition-opacity">
+                OpusFesta
+              </Link>
+              <p className="text-xs text-muted-foreground mt-1">Admin Portal</p>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center items-center p-8 sm:p-12 lg:p-24 pt-24 lg:pt-0 relative bg-background h-full overflow-y-auto">
-        <div className="w-full max-w-sm space-y-10 pb-8">
-          
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
-            <Link href="/" className="font-serif text-3xl text-primary">
-              OpusFesta
-            </Link>
-          </div>
-
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
-              Welcome back
-            </h1>
-            <p className="text-muted-foreground">
-              Enter your details to access your account.
-            </p>
-            {unauthorized ? (
-              <p className="text-sm text-destructive">
-                Your account does not have admin access.
+            <div className="text-center space-y-1">
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Welcome back</h1>
+              <p className="text-sm text-muted-foreground">
+                Sign in to access the admin dashboard
               </p>
-            ) : null}
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="relative group">
-              <label className="absolute -top-2 left-2 bg-background px-1 text-xs font-medium text-primary/80 group-focus-within:text-primary transition-colors z-10">
-                Email
-              </label>
-              <input
-                type="email"
-                placeholder="name@example.com"
-                className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-
-            <div className="space-y-2">
-              <div className="relative group">
-                 <label className="absolute -top-2 left-2 bg-background px-1 text-xs font-medium text-primary/80 group-focus-within:text-primary transition-colors z-10">
-                  Password
-                </label>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 pr-10"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              <div className="flex justify-end">
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-primary/60 hover:text-primary transition-colors"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-12 w-full"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
+              {unauthorized && (
+                <p className="text-sm text-destructive mt-2">
+                  Your account does not have admin access.
+                </p>
               )}
-            </button>
-            {errorMessage ? (
-              <p className="text-sm text-destructive text-center">{errorMessage}</p>
-            ) : null}
-          </form>
+            </div>
 
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm font-medium text-foreground">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20 transition-colors"
+                />
+              </div>
 
-          <p className="px-8 text-center text-xs text-muted-foreground">
-            By continuing, you agree to OpusFesta's{" "}
-            <Link href="/terms" className="underline underline-offset-4 hover:text-primary">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" className="underline underline-offset-4 hover:text-primary">
-              Privacy Policy
-            </Link>
-            , and to receive periodic emails with updates.
-          </p>
-          
-          <div className="absolute top-8 left-8 lg:top-12 lg:left-12">
-            <Link
-              href="/"
-              className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to home
-            </Link>
-          </div>
-        </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-sm font-medium text-foreground">Password</Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="h-10 pr-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {errorMessage && (
+                <p className="text-sm text-destructive text-center">{errorMessage}</p>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isLoading || !isLoaded}
+                className="w-full h-10 mt-1"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Continue"
+                )}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-xs text-muted-foreground/60 leading-relaxed px-6">
+          By continuing, you agree to OpusFesta&apos;s{" "}
+          <Link href="/terms" className="underline underline-offset-4 hover:text-muted-foreground transition-colors">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline underline-offset-4 hover:text-muted-foreground transition-colors">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );

@@ -3,15 +3,39 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowLeft, Eye, EyeOff, Loader2 } from 'lucide-react';
-import { supabase } from '@/lib/supabase/client';
+import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import { useSignIn, useAuth, useClerk } from '@clerk/nextjs';
+import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get('next') || '/';
+  const errorParam = searchParams.get('error');
   const message = searchParams.get('message');
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const { isSignedIn } = useAuth();
+  const { signOut } = useClerk();
   const [isLoading, setIsLoading] = useState(false);
+  const [unauthorizedRole, setUnauthorizedRole] = useState(false);
+
+  useEffect(() => {
+    if (!isSignedIn) {
+      setUnauthorizedRole(false);
+      return;
+    }
+
+    // User is signed in but doesn't have vendor/admin role — don't redirect back
+    if (errorParam === 'unauthorized_role') {
+      setUnauthorizedRole(true);
+      return;
+    }
+
+    router.replace(next);
+  }, [isSignedIn, next, router, errorParam]);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,254 +43,242 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLoaded || !signIn) return;
     setIsLoading(true);
     setErrorMessage('');
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    try {
+      const result = await signIn.create({
+        identifier: email,
+        password,
+      });
 
-    if (error) {
-      setErrorMessage(error.message);
-      setIsLoading(false);
-      return;
-    }
-
-    // Set a flag to indicate we just logged in (for AuthGuard to retry)
-    sessionStorage.setItem('justLoggedIn', 'true');
-
-    // Wait a moment for session to be fully established
-    await new Promise(resolve => setTimeout(resolve, 300));
-
-    // Verify session is available before redirecting
-    let sessionAvailable = false;
-    for (let i = 0; i < 5; i++) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        sessionAvailable = true;
-        break;
+      if (result.status === 'complete') {
+        await setActive({ session: result.createdSessionId });
+        router.push(next);
+      } else {
+        setErrorMessage('Sign in requires additional steps. Please try again.');
+        setIsLoading(false);
       }
-      // Wait a bit before retrying
-      await new Promise(resolve => setTimeout(resolve, 200));
-    }
-
-    if (sessionAvailable) {
-      // Use window.location for a hard redirect to break any loops
-      window.location.href = next;
-    } else {
-      // Session not available yet, but redirect anyway - AuthGuard will handle retries
-      // This prevents getting stuck on login page
-      window.location.href = next;
+    } catch (err: any) {
+      const clerkError = err?.errors?.[0];
+      setErrorMessage(
+        clerkError?.longMessage || clerkError?.message || 'Invalid email or password'
+      );
+      setIsLoading(false);
     }
   };
 
-  return (
-    <div className="h-screen overflow-hidden w-full flex bg-background">
-      {/* Left Side - Gradient Background */}
-      <div className="hidden lg:flex w-1/2 relative overflow-hidden h-full bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-primary/3 to-transparent" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(99,102,241,0.08),transparent_50%)]" />
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc0JyBoZWlnaHQ9JzQnPgo8cmVjdCB3aWR0aD0nNCcgaGVpZ2h0PSc0JyBmaWxsPScjZmZmJy8+CjxyZWN0IHdpZHRoPScxJyBoZWlnaHQ9JzEnIGZpbGw9JyNjY2MnLz4KPC9zdmc+')] opacity-[0.02] dark:opacity-[0.03]" />
-        </div>
-        
-        <div className="relative z-10 p-12 flex flex-col justify-between h-full w-full">
-          <Link
-            href="/"
-            className="font-serif text-4xl tracking-wide text-slate-700 dark:text-slate-200 hover:opacity-80 transition-opacity w-fit"
-          >
-            OpusFesta
-          </Link>
-          
-          <div className="backdrop-blur-sm bg-white/40 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 p-8 rounded-3xl shadow-xl max-w-lg">
-            <h2 className="text-3xl font-serif mb-4 leading-normal text-slate-700 dark:text-slate-200">
-              "The highest happiness on earth is the happiness of marriage."
-            </h2>
-            <div className="flex items-center gap-3">
-               <div className="h-px w-8 bg-slate-400/60 dark:bg-slate-400/40"></div>
-               <p className="text-slate-600 dark:text-slate-300 text-sm tracking-wider uppercase font-medium">
-                 William Lyon Phelps
-               </p>
-            </div>
-          </div>
+  const handleOAuth = async (strategy: 'oauth_google' | 'oauth_apple') => {
+    if (!isLoaded || !signIn) return;
+    try {
+      await signIn.authenticateWithRedirect({
+        strategy,
+        redirectUrl: '/sso-callback',
+        redirectUrlComplete: next,
+      });
+    } catch (err: any) {
+      setErrorMessage('Failed to initiate sign in. Please try again.');
+    }
+  };
+
+  if (unauthorizedRole) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-[#fafafa] dark:bg-background">
+        <div className="w-full max-w-[400px] space-y-8">
+          <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+            <CardContent className="pt-10 pb-8 px-8 space-y-6">
+              <div className="text-center">
+                <Link href="/" className="font-serif text-3xl text-foreground hover:opacity-80 transition-opacity">
+                  OpusFesta
+                </Link>
+                <p className="text-xs text-muted-foreground mt-1">Vendor Portal</p>
+              </div>
+
+              <div className="text-center space-y-2">
+                <h1 className="text-xl font-semibold tracking-tight text-foreground">Access Denied</h1>
+                <p className="text-sm text-muted-foreground">
+                  Your account doesn&apos;t have vendor access. The Vendor Portal is only available to registered vendors.
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <Button
+                  className="w-full h-10"
+                  onClick={async () => {
+                    await signOut();
+                    router.replace('/login');
+                  }}
+                >
+                  Sign in with a different account
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full h-10"
+                  onClick={() => {
+                    window.location.href = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://opusfesta.com';
+                  }}
+                >
+                  Go to OpusFesta website
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
+    );
+  }
 
-      {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center items-center p-8 sm:p-12 lg:p-24 pt-24 lg:pt-0 relative bg-background h-full overflow-y-auto">
-        <div className="w-full max-w-sm space-y-10 pb-8">
-          
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
-            <Link href="/" className="font-serif text-3xl text-primary hover:opacity-80 transition-opacity">
-              OpusFesta
-            </Link>
-          </div>
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#fafafa] dark:bg-background">
 
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
-              Welcome back
-            </h1>
-            <p className="text-muted-foreground">
-              Enter your details to access your vendor account.
-            </p>
-            {message && (
-              <p className="text-sm text-primary mt-2">
-                {message}
-              </p>
-            )}
-            {errorMessage && (
-              <p className="text-sm text-destructive mt-2">
-                {errorMessage}
-              </p>
-            )}
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="relative group">
-              <label className="absolute -top-2 left-2 bg-background px-1 text-xs font-medium text-primary/80 group-focus-within:text-primary transition-colors z-10">
-                Email
-              </label>
-              <input
-                type="email"
-                placeholder="name@example.com"
-                className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-              />
+      <div className="w-full max-w-[400px] space-y-8">
+        <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+          <CardContent className="pt-10 pb-8 px-8 space-y-6">
+            <div className="text-center">
+              <Link href="/" className="font-serif text-3xl text-foreground hover:opacity-80 transition-opacity">
+                OpusFesta
+              </Link>
+              <p className="text-xs text-muted-foreground mt-1">Vendor Portal</p>
             </div>
 
-            <div className="space-y-2">
-              <div className="relative group">
-                 <label className="absolute -top-2 left-2 bg-background px-1 text-xs font-medium text-primary/80 group-focus-within:text-primary transition-colors z-10">
-                  Password
-                </label>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50 pr-10"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  placeholder="••••••••"
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary transition-colors"
-                  disabled={isLoading}
-                >
-                  {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              <div className="flex justify-end">
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-primary/60 hover:text-primary transition-colors"
-                >
-                  Forgot password?
-                </Link>
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-12 w-full"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
+            <div className="text-center space-y-1">
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Welcome back</h1>
+              <p className="text-sm text-muted-foreground">
+                Sign in to manage your vendor account
+              </p>
+              {message && (
+                <p className="text-sm text-primary mt-2">{message}</p>
               )}
-            </button>
-          </form>
-
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-background px-2 text-muted-foreground">
-                Or continue with
-              </span>
+
+            <div className="flex flex-col gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 w-full justify-center gap-3 font-normal border-border/40 bg-background hover:bg-muted/50 hover:border-border/80 transition-all"
+                onClick={() => handleOAuth('oauth_google')}
+              >
+                <svg className="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                Continue with Google
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 w-full justify-center gap-3 font-normal border-border/40 bg-background hover:bg-muted/50 hover:border-border/80 transition-all"
+                onClick={() => handleOAuth('oauth_apple')}
+              >
+                <svg className="h-[18px] w-[18px] shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+                </svg>
+                Continue with Apple
+              </Button>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-4">
-             <button 
-               type="button"
-               className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-11"
-             >
-                <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
-                  <path
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                    fill="#4285F4"
-                  />
-                  <path
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                    fill="#34A853"
-                  />
-                  <path
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.26.81-.58z"
-                    fill="#FBBC05"
-                  />
-                  <path
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                    fill="#EA4335"
-                  />
-                </svg>
-                Google
-             </button>
-             <button 
-               type="button"
-               className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-11"
-             >
-                <svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-.98-.42-2.05-.42-3.01 0-1.07.47-2.09.55-3.23-.4-4.44-4.19-3.8-11.19 1.74-11.38 1.4.05 2.37.8 3.15.82.71.02 1.96-.85 3.37-.7 1.8.15 3.12.82 3.96 2.05-3.5 1.76-2.9 6.57.54 7.9-.69 1.76-1.68 3.48-3.44 5.3zM14.47 5.25c.82-1.05 1.35-2.48 1.2-3.77-1.2.07-2.65.82-3.5 1.85-.75.92-1.4 2.38-1.2 3.7 1.35.1 2.7-.75 3.5-1.78z" />
-                </svg>
-                Apple
-             </button>
-          </div>
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border/40" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-3 text-muted-foreground/60">or</span>
+              </div>
+            </div>
 
-          <div className="text-center text-sm text-muted-foreground">
-            Don't have an account?{" "}
-            <Link
-              href="/signup"
-              className="font-semibold text-primary hover:underline underline-offset-4"
-            >
-              Sign up
-            </Link>
-          </div>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm font-medium text-foreground">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20 transition-colors"
+                />
+              </div>
 
-          <p className="px-8 text-center text-xs text-muted-foreground">
-            By continuing, you agree to OpusFesta's{" "}
-            <a href="#" className="underline underline-offset-4 hover:text-primary">
-              Terms of Service
-            </a>{" "}
-            and{" "}
-            <a href="#" className="underline underline-offset-4 hover:text-primary">
-              Privacy Policy
-            </a>
-            , and to receive periodic emails with updates.
-          </p>
-          
-          <div className="absolute top-8 left-8 lg:top-12 lg:left-12">
-            <Link
-              href="/"
-              className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to home
-            </Link>
-          </div>
-        </div>
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-sm font-medium text-foreground">Password</Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="h-10 pr-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                    disabled={isLoading}
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
+              </div>
+
+              {errorMessage && (
+                <p className="text-sm text-destructive text-center">{errorMessage}</p>
+              )}
+
+              <Button
+                type="submit"
+                disabled={isLoading || !isLoaded}
+                className="w-full h-10 mt-1"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Continue"
+                )}
+              </Button>
+            </form>
+
+            <p className="text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/signup"
+                className="text-primary font-medium hover:text-primary/80 transition-colors"
+              >
+                Sign up
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
+
+        <p className="text-center text-xs text-muted-foreground/60 leading-relaxed px-6">
+          By continuing, you agree to OpusFesta&apos;s{" "}
+          <Link href="/terms" className="underline underline-offset-4 hover:text-muted-foreground transition-colors">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline underline-offset-4 hover:text-muted-foreground transition-colors">
+            Privacy Policy
+          </Link>
+          .
+        </p>
       </div>
     </div>
   );

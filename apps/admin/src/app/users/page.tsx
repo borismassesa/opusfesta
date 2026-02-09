@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
+
 import { UsersTable } from "./components/UsersTable";
 import { UserDialog } from "./components/UserDialog";
 import { UsersSidebar } from "@/components/users/UsersSidebar";
@@ -37,6 +38,7 @@ interface User {
 
 export default function UsersPage() {
   const router = useRouter();
+  const { getToken } = useAuth();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -58,22 +60,22 @@ export default function UsersPage() {
 
   const fetchAllCounts = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       // Fetch counts for all types in parallel
       const [vendorsRes, couplesRes, applicantsRes, adminsRes] = await Promise.all([
         fetch(getAdminApiUrl("/api/admin/users?type=vendors"), {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(getAdminApiUrl("/api/admin/users?type=couples"), {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(getAdminApiUrl("/api/admin/users?type=applicants"), {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          headers: { Authorization: `Bearer ${token}` },
         }),
         fetch(getAdminApiUrl("/api/admin/users?type=admins"), {
-          headers: { Authorization: `Bearer ${session.access_token}` },
+          headers: { Authorization: `Bearer ${token}` },
         }),
       ]);
 
@@ -97,8 +99,8 @@ export default function UsersPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -113,7 +115,7 @@ export default function UsersPage() {
         getAdminApiUrl(`/api/admin/users?${params.toString()}`),
         {
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -150,8 +152,8 @@ export default function UsersPage() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -161,7 +163,7 @@ export default function UsersPage() {
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );

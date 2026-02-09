@@ -1,102 +1,156 @@
 import { supabase } from './client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type {
+  VendorRecord,
+  VendorPortfolioItem,
+  VendorPackageRecord,
+  VendorAwardRecord,
+  VendorAvailabilityRecord,
+  VendorReviewRecord,
+} from "@opusfesta/lib";
 
-export interface Vendor {
-  id: string;
-  slug: string;
-  user_id: string;
-  business_name: string;
-  category: string;
-  subcategories: string[];
-  bio: string | null;
-  description: string | null;
-  logo: string | null;
-  cover_image: string | null;
-  location: {
-    city?: string;
-    country?: string;
-    address?: string;
-    coordinates?: {
-      lat: number;
-      lng: number;
-    };
-  };
-  price_range: string | null;
-  verified: boolean;
-  tier: string;
-  stats: {
-    viewCount: number;
-    inquiryCount: number;
-    saveCount: number;
-    averageRating: number;
-    reviewCount: number;
-  };
-  contact_info: {
-    email?: string;
-    phone?: string;
-    website?: string;
-  };
-  social_links: {
-    instagram?: string;
-    facebook?: string;
-    twitter?: string;
-    tiktok?: string;
-  };
-  years_in_business: number | null;
-  team_size: number | null;
-  services_offered: Array<{ title: string; description: string }>;
-  created_at: string;
-  updated_at: string;
+export type Vendor = VendorRecord;
+export type PortfolioItem = VendorPortfolioItem;
+export type VendorPackage = VendorPackageRecord;
+export type VendorAward = VendorAwardRecord;
+export type AvailabilityDate = VendorAvailabilityRecord;
+export type VendorReview = VendorReviewRecord;
+export type VendorOnboardingStatus = 'invited' | 'in_progress' | 'pending_review' | 'active' | 'suspended';
+export type VendorMemberRole = 'owner' | 'manager' | 'staff';
+
+export interface VendorPortalAccess {
+  dbUserId: string | null;
+  role: 'user' | 'vendor' | 'admin' | null;
+  vendor: Pick<Vendor, 'id' | 'slug' | 'business_name'> | null;
+  membershipRole: VendorMemberRole | null;
+  onboardingStatus: VendorOnboardingStatus | null;
+  suspensionReason: string | null;
 }
 
-export interface PortfolioItem {
-  id: string;
-  vendor_id: string;
-  title: string;
-  images: string[];
-  description: string | null;
-  event_type: string | null;
-  event_date: string | null;
-  featured: boolean;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+function isUuid(value: string): boolean {
+  return UUID_REGEX.test(value);
 }
 
-export interface VendorPackage {
-  id?: string;
-  vendor_id: string;
-  name: string;
-  starting_price: number;
-  duration: string;
-  features: string[];
-  is_popular: boolean;
-  display_order: number;
-  created_at?: string;
-  updated_at?: string;
+const VENDOR_ROLE_PRIORITY: Record<VendorMemberRole, number> = {
+  owner: 0,
+  manager: 1,
+  staff: 2,
+};
+
+type VendorMembershipLookup = {
+  role: VendorMemberRole;
+  vendor: {
+    id: string;
+    slug?: string;
+    business_name: string;
+    onboarding_status?: VendorOnboardingStatus;
+    suspension_reason?: string | null;
+  };
+};
+
+async function getPrimaryMembershipVendor(
+  dbUserId: string,
+  client: SupabaseClient
+): Promise<VendorMembershipLookup | null> {
+  const { data, error } = await client
+    .from('vendor_memberships')
+    .select(`
+      role,
+      vendor:vendors (
+        id,
+        slug,
+        business_name,
+        onboarding_status,
+        suspension_reason
+      )
+    `)
+    .eq('user_id', dbUserId)
+    .eq('status', 'active');
+
+  if (error || !data?.length) {
+    return null;
+  }
+
+  const parsedMemberships = data
+    .map((row) => {
+      const role = row.role as VendorMemberRole | undefined;
+      const rawVendor = (row as { vendor?: unknown }).vendor;
+      const vendor =
+        rawVendor && Array.isArray(rawVendor)
+          ? rawVendor[0]
+          : (rawVendor as VendorMembershipLookup['vendor'] | undefined);
+
+      if (!role || !vendor?.id || !vendor.business_name) {
+        return null;
+      }
+
+      return {
+        role,
+        vendor,
+      } satisfies VendorMembershipLookup;
+    })
+    .filter((membership): membership is VendorMembershipLookup => membership !== null)
+    .sort((a, b) => VENDOR_ROLE_PRIORITY[a.role] - VENDOR_ROLE_PRIORITY[b.role]);
+
+  return parsedMemberships[0] ?? null;
 }
 
-export interface VendorAward {
-  title: string;
-  year: string;
-  description: string;
-  icon: string;
-  image?: string | null;
-  display_order?: number;
-}
+export async function resolveDbUserId(
+  userIdentifier: string,
+  client?: SupabaseClient
+): Promise<string | null> {
+  const db = client || supabase;
+  const normalized = userIdentifier.trim();
+  if (!normalized) {
+    return null;
+  }
 
-export interface AvailabilityDate {
-  date: string;
-  is_available: boolean;
-  reason?: string;
+  if (isUuid(normalized)) {
+    return normalized;
+  }
+
+  const { data } = await db
+    .from('users')
+    .select('id')
+    .eq('clerk_id', normalized)
+    .maybeSingle();
+
+  return data?.id ?? null;
 }
 
 // Fetch vendor by user_id
-export async function getVendorByUserId(userId: string): Promise<Vendor | null> {
-  const { data, error } = await supabase
+export async function getVendorByUserId(
+  userId: string,
+  client?: SupabaseClient
+): Promise<Vendor | null> {
+  const db = client || supabase;
+  const resolvedUserId = await resolveDbUserId(userId, db);
+
+  if (!resolvedUserId) {
+    return null;
+  }
+
+  const primaryMembershipVendor = await getPrimaryMembershipVendor(resolvedUserId, db);
+  if (primaryMembershipVendor?.vendor?.id) {
+    const membershipVendorResult = await db
+      .from('vendors')
+      .select('*')
+      .eq('id', primaryMembershipVendor.vendor.id)
+      .maybeSingle();
+
+    if (!membershipVendorResult.error && membershipVendorResult.data) {
+      return membershipVendorResult.data as Vendor;
+    }
+  }
+
+  const { data, error } = await db
     .from('vendors')
     .select('*')
-    .eq('user_id', userId)
-    .single();
+    .eq('user_id', resolvedUserId)
+    .maybeSingle();
 
   if (error || !data) {
     return null;
@@ -140,17 +194,23 @@ export async function createVendor(
     services_offered?: Array<{ title: string; description: string }>;
     years_in_business?: number | null;
     team_size?: number | null;
-  }
+  },
+  client?: SupabaseClient
 ): Promise<Vendor | null> {
+  const db = client || supabase;
+  const resolvedUserId = await resolveDbUserId(userId, db);
+  if (!resolvedUserId) {
+    return null;
+  }
+
   // Check if vendor already exists for this user
-  const { data: existingVendor } = await supabase
+  const { data: existingVendor } = await db
     .from('vendors')
     .select('id')
-    .eq('user_id', userId)
+    .eq('user_id', resolvedUserId)
     .maybeSingle();
 
   if (existingVendor) {
-    console.error('Vendor already exists for this user');
     return null;
   }
 
@@ -166,7 +226,7 @@ export async function createVendor(
   let isUnique = false;
 
   while (!isUnique) {
-    const { data: existingSlug } = await supabase
+    const { data: existingSlug } = await db
       .from('vendors')
       .select('id')
       .eq('slug', slug)
@@ -182,10 +242,10 @@ export async function createVendor(
 
   const now = new Date().toISOString();
 
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('vendors')
     .insert({
-      user_id: userId,
+      user_id: resolvedUserId,
       business_name: vendorData.business_name,
       category: vendorData.category,
       subcategories: vendorData.subcategories || [],
@@ -210,6 +270,8 @@ export async function createVendor(
       services_offered: vendorData.services_offered || [],
       years_in_business: vendorData.years_in_business || null,
       team_size: vendorData.team_size || null,
+      onboarding_status: 'in_progress',
+      onboarding_started_at: now,
       created_at: now,
       updated_at: now,
     })
@@ -217,11 +279,96 @@ export async function createVendor(
     .single();
 
   if (error || !data) {
-    console.error('Error creating vendor:', error);
     return null;
   }
 
   return data as Vendor;
+}
+
+export async function getVendorPortalAccessByClerkId(
+  clerkId: string,
+  client?: SupabaseClient
+): Promise<VendorPortalAccess> {
+  const db = client || supabase;
+  const normalized = clerkId.trim();
+  if (!normalized) {
+    return {
+      dbUserId: null,
+      role: null,
+      vendor: null,
+      membershipRole: null,
+      onboardingStatus: null,
+      suspensionReason: null,
+    };
+  }
+
+  const { data: user } = await db
+    .from('users')
+    .select('id, role')
+    .eq('clerk_id', normalized)
+    .maybeSingle();
+
+  if (!user) {
+    return {
+      dbUserId: null,
+      role: null,
+      vendor: null,
+      membershipRole: null,
+      onboardingStatus: null,
+      suspensionReason: null,
+    };
+  }
+
+  let vendor:
+    | {
+        id: string;
+        slug?: string;
+        business_name: string;
+        onboarding_status?: VendorOnboardingStatus;
+        suspension_reason?: string | null;
+      }
+    | null = null;
+  let membershipRole: VendorMemberRole | null = null;
+
+  const primaryMembershipVendor = await getPrimaryMembershipVendor(user.id, db);
+  if (primaryMembershipVendor?.vendor) {
+    vendor = primaryMembershipVendor.vendor;
+    membershipRole = primaryMembershipVendor.role;
+  }
+
+  if (!vendor) {
+    const vendorWithStatus = await db
+      .from('vendors')
+      .select('id, slug, business_name, onboarding_status, suspension_reason')
+      .eq('user_id', user.id)
+      .maybeSingle();
+
+    if (vendorWithStatus.error && vendorWithStatus.error.message?.includes('onboarding_status')) {
+      const legacyVendor = await db
+        .from('vendors')
+        .select('id, slug, business_name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      vendor = legacyVendor.data as typeof vendor;
+    } else {
+      vendor = vendorWithStatus.data as typeof vendor;
+    }
+
+    if (vendor) {
+      membershipRole = 'owner';
+    }
+  }
+
+  return {
+    dbUserId: user.id,
+    role: (user.role as 'user' | 'vendor' | 'admin') ?? 'user',
+    vendor: vendor
+      ? { id: vendor.id, slug: vendor.slug || '', business_name: vendor.business_name }
+      : null,
+    membershipRole,
+    onboardingStatus: vendor?.onboarding_status ?? (vendor ? 'active' : null),
+    suspensionReason: vendor?.suspension_reason ?? null,
+  };
 }
 
 // Update vendor storefront fields
@@ -369,22 +516,7 @@ export async function updateVendorAvailability(
   reason?: string
 ): Promise<boolean> {
   try {
-    // Check authentication first
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      console.error('[updateVendorAvailability] No active session');
-      return false;
-    }
-
-    console.log('[updateVendorAvailability] Attempting upsert:', {
-      vendorId,
-      date,
-      isAvailable,
-      reason,
-      userId: session.user.id,
-    });
-
-    const { data, error } = await supabase
+    const { error } = await supabase
       .from('vendor_availability')
       .upsert(
         {
@@ -401,74 +533,11 @@ export async function updateVendorAvailability(
       .select();
 
     if (error) {
-      // Log error in multiple ways to capture all information
-      const errorInfo: any = {
-        hasError: true,
-        errorType: typeof error,
-        errorConstructor: error?.constructor?.name,
-        vendorId,
-        date,
-        isAvailable,
-        reason,
-        userId: session.user.id,
-      };
-
-      // Try to extract error properties
-      if (error && typeof error === 'object') {
-        try {
-          errorInfo.errorMessage = (error as any)?.message;
-          errorInfo.errorDetails = (error as any)?.details;
-          errorInfo.errorHint = (error as any)?.hint;
-          errorInfo.errorCode = (error as any)?.code;
-          errorInfo.errorStatus = (error as any)?.status;
-          errorInfo.errorStatusText = (error as any)?.statusText;
-          
-          // Try to stringify
-          try {
-            errorInfo.errorString = JSON.stringify(error, Object.getOwnPropertyNames(error));
-          } catch (e) {
-            errorInfo.errorString = String(error);
-          }
-        } catch (e) {
-          errorInfo.stringifyError = String(e);
-        }
-      } else {
-        errorInfo.errorString = String(error);
-      }
-
-      console.error('[updateVendorAvailability] Supabase error:', errorInfo);
       return false;
     }
 
-    // Check if data was returned (should be for upsert with select)
-    if (!data || data.length === 0) {
-      console.warn('[updateVendorAvailability] No data returned from upsert (but no error):', {
-        vendorId,
-        date,
-        isAvailable,
-      });
-      // Still return true if no error - upsert might have succeeded without returning data
-    } else {
-      console.log('[updateVendorAvailability] Success:', {
-        vendorId,
-        date,
-        isAvailable,
-        returnedRows: data.length,
-      });
-    }
-
     return true;
-  } catch (err) {
-    console.error('[updateVendorAvailability] Unexpected error:', {
-      error: err,
-      errorType: typeof err,
-      errorMessage: err instanceof Error ? err.message : String(err),
-      errorStack: err instanceof Error ? err.stack : undefined,
-      vendorId,
-      date,
-      isAvailable,
-      reason,
-    });
+  } catch {
     return false;
   }
 }
@@ -486,7 +555,7 @@ export async function getBookedDates(vendorId: string): Promise<string[]> {
 }
 
 // Reviews Management
-export async function getVendorReviews(vendorId: string) {
+export async function getVendorReviews(vendorId: string): Promise<VendorReview[]> {
   const { data, error } = await supabase
     .from('reviews')
     .select('*, user:users(name, avatar)')
@@ -497,7 +566,7 @@ export async function getVendorReviews(vendorId: string) {
     return [];
   }
 
-  return data;
+  return data as VendorReview[];
 }
 
 export async function updateReviewResponse(
@@ -529,8 +598,6 @@ export async function uploadImage(
     });
 
     if (error) {
-      console.error('Supabase storage upload error:', error);
-      
       // Provide more specific error messages
       if (error.message?.includes('Bucket not found')) {
         return { url: null, error: 'Storage bucket not found. Please contact support.' };
@@ -554,11 +621,10 @@ export async function uploadImage(
     } = supabase.storage.from(bucket).getPublicUrl(data.path);
 
     return { url: publicUrl, error: null };
-  } catch (error) {
-    console.error('Unexpected upload error:', error);
-    return { 
-      url: null, 
-      error: error instanceof Error ? error.message : 'An unexpected error occurred' 
+  } catch (err) {
+    return {
+      url: null,
+      error: err instanceof Error ? err.message : 'An unexpected error occurred'
     };
   }
 }
@@ -572,15 +638,6 @@ export async function getVendorPackages(vendorId: string): Promise<VendorPackage
     .single();
 
   if (error) {
-    // If column doesn't exist, return empty array instead of error
-    if (error.message?.includes('column') && error.message?.includes('does not exist')) {
-      console.warn(
-        '⚠️  The "packages" column does not exist. ' +
-        'Please run migration: supabase/migrations/021_add_vendor_packages_awards.sql'
-      );
-      return [];
-    }
-    console.error('Error fetching vendor packages:', error);
     return [];
   }
 
@@ -624,52 +681,28 @@ export async function updateVendorPackages(
       .select();
 
     if (error) {
-      // Log error in multiple ways to capture all details
-      const errorInfo = {
-        message: error.message,
-        details: error.details,
-        hint: error.hint,
-        code: error.code,
-      };
-      
-      console.error('Error updating vendor packages:', errorInfo);
-      console.error('Full error object:', error);
-      console.error('Vendor ID:', vendorId);
-      console.error('Packages data:', JSON.stringify(cleanedPackages, null, 2));
-      console.error('Response data:', data);
-      
-      // Create a more helpful error message
       let errorMessage = 'Failed to save packages';
-      
+
       if (error.message?.includes('column') && error.message?.includes('does not exist')) {
-        errorMessage = 'Database column missing. Please run migration: supabase/migrations/021_add_vendor_packages_awards.sql';
+        errorMessage = 'Database column missing. Please run the packages migration.';
       } else if (error.message) {
         errorMessage = `Failed to save packages: ${error.message}`;
       } else if (error.code) {
         errorMessage = `Failed to save packages (Error code: ${error.code})`;
       }
-      
+
       throw new Error(errorMessage);
     }
 
     if (!data || data.length === 0) {
-      const errorMsg = 'No data returned from update. Vendor may not exist or you may not have permission to update it.';
-      console.error(errorMsg);
-      console.error('Vendor ID:', vendorId);
-      throw new Error(errorMsg);
+      throw new Error('No data returned from update. Vendor may not exist or you may not have permission to update it.');
     }
 
     return true;
   } catch (err) {
-    // Re-throw if it's already an Error with a message
     if (err instanceof Error) {
       throw err;
     }
-    
-    // Otherwise, wrap in Error
-    console.error('Unexpected error in updateVendorPackages:', err);
-    console.error('Vendor ID:', vendorId);
-    console.error('Packages data:', JSON.stringify(packages, null, 2));
     throw new Error('An unexpected error occurred while saving packages');
   }
 }
@@ -702,9 +735,6 @@ export async function updateVendorAwards(
     .eq('id', vendorId);
 
   if (error) {
-    console.error('Error updating vendor awards:', error);
-    console.error('Vendor ID:', vendorId);
-    console.error('Awards data:', JSON.stringify(awards, null, 2));
     return false;
   }
 

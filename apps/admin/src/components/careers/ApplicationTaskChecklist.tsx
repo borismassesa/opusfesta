@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -32,6 +32,7 @@ interface ApplicationTaskChecklistProps {
 }
 
 export function ApplicationTaskChecklist({ applicationId }: ApplicationTaskChecklistProps) {
+  const { getToken } = useAuth();
   const [tasks, setTasks] = useState<ApplicationTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -47,8 +48,8 @@ export function ApplicationTaskChecklist({ applicationId }: ApplicationTaskCheck
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         setError("Not authenticated");
         return;
       }
@@ -57,7 +58,7 @@ export function ApplicationTaskChecklist({ applicationId }: ApplicationTaskCheck
         getAdminApiUrl(`/api/admin/careers/applications/tasks?applicationId=${applicationId}`),
         {
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -83,14 +84,14 @@ export function ApplicationTaskChecklist({ applicationId }: ApplicationTaskCheck
 
   const handleToggleTask = async (taskId: string, currentCompleted: boolean) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications/tasks`), {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           id: taskId,
@@ -117,15 +118,15 @@ export function ApplicationTaskChecklist({ applicationId }: ApplicationTaskCheck
     if (!newTaskTitle.trim()) return;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       setIsAddingTask(true);
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications/tasks`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           application_id: applicationId,
@@ -156,15 +157,15 @@ export function ApplicationTaskChecklist({ applicationId }: ApplicationTaskCheck
     if (!confirm("Are you sure you want to delete this task?")) return;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       const response = await fetch(
         getAdminApiUrl(`/api/admin/careers/applications/tasks?id=${taskId}`),
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );

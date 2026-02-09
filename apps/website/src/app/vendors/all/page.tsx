@@ -22,6 +22,7 @@ import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
 import { resolveAssetSrc } from "@/lib/assets";
 import { useSaveVendor } from "@/hooks/useSaveVendor";
+import type { VendorSearchItem, VendorSearchResponse } from "@opusfesta/lib";
 
 import vendorPlanning from "@assets/stock_images/wedding_planning_che_871a1473.jpg";
 import vendorFlorals from "@assets/stock_images/wedding_bouquet_mode_ab76e613.jpg";
@@ -214,6 +215,8 @@ const SORT_OPTIONS = [
   { label: "Price: high to low", value: "priceDesc" },
 ];
 
+type VendorFromAPI = VendorSearchItem;
+
 // Helper function to determine vendor badge
 // Priority: Featured > Limited > New > Verified
 const getVendorBadge = (vendor: VendorFromAPI): { label: string; className: string; icon: typeof Sparkles } | null => {
@@ -358,7 +361,7 @@ export default function AllVendorsPage() {
           throw new Error("Failed to fetch vendors");
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as VendorSearchResponse;
         setVendors(data.vendors || []);
         setTotal(data.total || 0);
         setHasMore((data.vendors?.length || 0) === 24 && (data.vendors?.length || 0) < (data.total || 0));
@@ -413,7 +416,7 @@ export default function AllVendorsPage() {
           throw new Error("Failed to fetch vendors");
         }
 
-        const data = await response.json();
+        const data = (await response.json()) as VendorSearchResponse;
         const newVendors = data.vendors || [];
         setVendors((prev) => {
           const updated = [...prev, ...newVendors];
@@ -457,7 +460,7 @@ export default function AllVendorsPage() {
         // Fetch all vendors to extract unique locations
         const response = await fetch("/api/vendors/search?limit=1000");
         if (response.ok) {
-          const data = await response.json();
+          const data = (await response.json()) as VendorSearchResponse;
           const uniqueLocations = new Set<string>(["All"]);
 
           data.vendors?.forEach((vendor: VendorFromAPI) => {

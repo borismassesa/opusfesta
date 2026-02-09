@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { CheckCircle2, Clock, XCircle, Calendar, Mail, Phone, MapPin, Search, Filter } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
@@ -34,6 +34,7 @@ interface Inquiry {
 
 export default function MyInquiriesPage() {
   const router = useRouter();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const [inquiries, setInquiries] = useState<Inquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -41,27 +42,32 @@ export default function MyInquiriesPage() {
   const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
+    if (!isLoaded) return;
+    if (!isSignedIn) {
+      router.push(`/login?next=${encodeURIComponent('/my-inquiries')}`);
+      return;
+    }
     fetchInquiries();
-  }, [statusFilter]);
+  }, [statusFilter, isLoaded, isSignedIn]);
 
   const fetchInquiries = async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (!session || sessionError) {
+      const token = await getToken();
+      if (!token) {
         router.push(`/login?next=${encodeURIComponent('/my-inquiries')}`);
         return;
       }
 
-      const url = statusFilter === "all" 
+      const url = statusFilter === "all"
         ? "/api/inquiries"
         : `/api/inquiries?status=${statusFilter}`;
-      
+
       const response = await fetch(url, {
         headers: {
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${token}`,
         },
       });
 

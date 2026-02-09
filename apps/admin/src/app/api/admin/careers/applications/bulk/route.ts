@@ -1,43 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { z } from "zod";
 
 // Check if user is admin
-async function isAdmin(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return false;
+async function isAdmin(): Promise<boolean> {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) return false;
 
-  const token = authHeader.replace("Bearer ", "");
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-  if (error || !user) return false;
-
   const { data: userData } = await supabaseAdmin
     .from("users")
     .select("role")
-    .eq("id", user.id)
+    .eq("clerk_id", clerkUserId)
     .single();
 
   return userData?.role === "admin";
 }
 
-// Get authenticated user ID
-async function getAuthenticatedUserId(request: NextRequest): Promise<string> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) {
-    throw new Error("No authorization header");
-  }
+// Get authenticated user's database UUID
+async function getAuthenticatedUserId(): Promise<string> {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) throw new Error("Not authenticated");
 
-  const token = authHeader.replace("Bearer ", "");
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  const { data: userData, error } = await supabaseAdmin
+    .from("users")
+    .select("id")
+    .eq("clerk_id", clerkUserId)
+    .single();
 
-  if (error || !user || !user.id) {
-    throw new Error("Failed to get user from token");
-  }
-
-  return user.id;
+  if (error || !userData) throw new Error("Failed to get user from Clerk ID");
+  return userData.id;
 }
 
 // Validation schema
@@ -49,7 +43,7 @@ const bulkActionSchema = z.object({
 // POST - Bulk operations on job applications
 export async function POST(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -65,7 +59,7 @@ export async function POST(request: NextRequest) {
 
     const { action, applicationIds } = validationResult.data;
     const supabaseAdmin = getSupabaseAdmin();
-    const userId = await getAuthenticatedUserId(request);
+    const userId = await getAuthenticatedUserId();
 
     let result;
     let error;

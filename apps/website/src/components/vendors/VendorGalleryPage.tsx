@@ -10,7 +10,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
 import { resolveAssetSrc } from "@/lib/assets";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import type { Vendor, PortfolioItem } from "@/lib/supabase/vendors";
 
 interface VendorGalleryPageProps {
@@ -36,6 +36,7 @@ export function VendorGalleryPage({
   vendor,
   portfolio,
 }: VendorGalleryPageProps) {
+  const { isSignedIn, getToken } = useAuth();
   const [isLightboxOpen, setIsLightboxOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -156,74 +157,53 @@ export function VendorGalleryPage({
   useEffect(() => {
     const checkSavedStatus = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
+        if (!isSignedIn) {
           setIsSaved(false);
           return;
         }
 
-        const { data, error } = await supabase
-          .from("saved_vendors")
-          .select("id")
-          .eq("user_id", user.id)
-          .eq("vendor_id", vendor.id)
-          .single();
+        const token = await getToken();
+        const response = await fetch(`/api/users/saved-vendors`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
 
-        if (!error && data) {
-          setIsSaved(true);
+        if (response.ok) {
+          const data = await response.json();
+          const saved = data.vendors?.some((v: any) => v.id === vendor.id) || false;
+          setIsSaved(saved);
         }
       } catch (error) {
         console.error('Error checking saved status:', error);
       }
     };
     checkSavedStatus();
-  }, [vendor.id]);
+  }, [vendor.id, isSignedIn, getToken]);
 
   const handleSave = async () => {
     if (isSaving) return;
-    
+
     // Check if user is authenticated
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      // Redirect to login or show message
+    if (!isSignedIn) {
       alert('Please sign in to save vendors');
       return;
     }
-    
+
     setIsSaving(true);
     try {
-      if (isSaved) {
-        // Unsave vendor
-        const { error } = await supabase
-          .from("saved_vendors")
-          .delete()
-          .eq("user_id", user.id)
-          .eq("vendor_id", vendor.id);
+      const token = await getToken();
+      const method = isSaved ? "DELETE" : "POST";
+      const response = await fetch(`/api/vendors/${vendor.id}/save`, {
+        method,
+        headers: {
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+      });
 
-        if (!error) {
-          setIsSaved(false);
-          // Decrement save count
-          await supabase.rpc("decrement_vendor_save_count", {
-            vendor_id_param: vendor.id,
-          });
-        }
-      } else {
-        // Save vendor
-        const { error } = await supabase
-          .from("saved_vendors")
-          .insert({
-            user_id: user.id,
-            vendor_id: vendor.id,
-            status: "saved",
-          });
-
-        if (!error) {
-          setIsSaved(true);
-          // Increment save count
-          await supabase.rpc("increment_vendor_save_count", {
-            vendor_id_param: vendor.id,
-          });
-        }
+      if (response.ok) {
+        setIsSaved(!isSaved);
       }
     } catch (error) {
       console.error('Error saving vendor:', error);

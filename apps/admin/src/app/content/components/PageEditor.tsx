@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Save, RotateCcw } from "lucide-react";
 import { useContent } from "@/context/ContentContext";
-import { supabase } from "@/lib/supabaseClient";
-import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "@clerk/nextjs";
 import { HeroEditor } from "../editors/HeroEditor";
 import { ServicesEditor } from "../editors/ServicesEditor";
 import { FAQEditor } from "../editors/FAQEditor";
@@ -35,6 +34,7 @@ export function PageEditor({ activeSection }: PageEditorProps) {
     lastUpdatedAt,
     lastPublishedAt,
   } = useContent();
+  const { getToken, sessionClaims } = useAuth();
   const [role, setRole] = useState("");
   const [whitelistRole, setWhitelistRole] = useState<string | null>(null);
 
@@ -47,12 +47,12 @@ export function PageEditor({ activeSection }: PageEditorProps) {
   }, [loadAdminContent]);
 
   useEffect(() => {
-    let mounted = true;
-    const getRole = (session: Session | null) =>
-      session?.user?.app_metadata?.role ?? "";
+    const claimsRole = (sessionClaims as any)?.metadata?.role ?? "";
+    setRole(claimsRole);
 
-    const checkAdminStatus = async (session: Session | null) => {
-      if (!session?.user?.email) {
+    const checkAdminStatus = async () => {
+      const email = (sessionClaims as any)?.email;
+      if (!email) {
         setWhitelistRole(null);
         return;
       }
@@ -61,7 +61,7 @@ export function PageEditor({ activeSection }: PageEditorProps) {
         const res = await fetch("/api/admin/whitelist/check", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: session.user.email }),
+          body: JSON.stringify({ email }),
         });
         const data = await res.json();
         if (data.whitelisted && data.entry?.role) {
@@ -75,23 +75,8 @@ export function PageEditor({ activeSection }: PageEditorProps) {
       }
     };
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      if (!mounted) return;
-      setRole(getRole(data.session));
-      await checkAdminStatus(data.session);
-    });
-
-    const { data } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
-      setRole(getRole(session));
-      await checkAdminStatus(session);
-    });
-
-    return () => {
-      mounted = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
+    checkAdminStatus();
+  }, [sessionClaims]);
 
   const handleSaveDraft = async () => {
     if (!canSave) {

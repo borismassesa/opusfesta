@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -61,6 +62,7 @@ interface JobApplication {
 }
 
 export default function ApplicationDetailPage() {
+  const { getToken } = useAuth();
   const router = useRouter();
   const params = useParams();
   const applicationId = params.id as string;
@@ -108,8 +110,8 @@ export default function ApplicationDetailPage() {
   const fetchApplication = async () => {
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -117,7 +119,7 @@ export default function ApplicationDetailPage() {
       // Use absolute URL with basePath to call admin app's own API
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/applications`), {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -148,8 +150,8 @@ export default function ApplicationDetailPage() {
 
     setIsSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -164,7 +166,7 @@ export default function ApplicationDetailPage() {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(updatePayload),
       });
@@ -213,8 +215,8 @@ export default function ApplicationDetailPage() {
 
   const handleDownloadFile = async (filePath: string, fileName: string) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       const { data, error } = await supabase.storage
         .from("careers")
@@ -233,8 +235,8 @@ export default function ApplicationDetailPage() {
 
   const getSignedUrl = async (filePath: string): Promise<string | null> => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return null;
+      const token = await getToken();
+      if (!token) return null;
 
       const { data, error } = await supabase.storage
         .from("careers")

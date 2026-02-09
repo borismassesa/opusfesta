@@ -5,8 +5,9 @@ import { CheckCircle2, XCircle, MessageSquare, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 interface InquiryVendorActionsProps {
   inquiryId: string;
@@ -15,13 +16,15 @@ interface InquiryVendorActionsProps {
   onStatusUpdate?: () => void;
 }
 
-export function InquiryVendorActions({ 
-  inquiryId, 
+export function InquiryVendorActions({
+  inquiryId,
   currentStatus,
   vendorUserId,
-  onStatusUpdate 
+  onStatusUpdate
 }: InquiryVendorActionsProps) {
   const router = useRouter();
+  const { getToken, isSignedIn, userId } = useAuth();
+  const { requireAuth } = useAuthGate();
   const [isUpdating, setIsUpdating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showResponseForm, setShowResponseForm] = useState(false);
@@ -32,21 +35,11 @@ export function InquiryVendorActions({
 
   // Check if current user is the vendor
   useEffect(() => {
-    const checkVendor = async () => {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session?.user && vendorUserId && session.user.id === vendorUserId) {
-          setIsVendor(true);
-        }
-      } catch (error) {
-        console.error("Error checking vendor status:", error);
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    checkVendor();
-  }, [vendorUserId]);
+    if (isSignedIn && userId && vendorUserId && userId === vendorUserId) {
+      setIsVendor(true);
+    }
+    setIsChecking(false);
+  }, [vendorUserId, isSignedIn, userId]);
 
   // Don't show anything if not vendor or still checking
   if (isChecking || !isVendor) {
@@ -58,17 +51,18 @@ export function InquiryVendorActions({
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      if (!isSignedIn) {
+        requireAuth("inquiry", () => handleStatusUpdate(status, message));
         return;
       }
+
+      const token = await getToken();
 
       const response = await fetch(`/api/inquiries/${inquiryId}/status`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           status,

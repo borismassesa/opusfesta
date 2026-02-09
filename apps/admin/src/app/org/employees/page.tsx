@@ -57,6 +57,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import { toast } from "@/lib/toast";
 
@@ -96,6 +97,7 @@ interface Employee {
 
 export default function Employees() {
   const router = useRouter();
+  const { getToken } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
@@ -130,19 +132,19 @@ export default function Employees() {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
 
-      const url = searchTerm 
+      const url = searchTerm
         ? getAdminApiUrl(`/api/admin/employees?search=${encodeURIComponent(searchTerm)}`)
         : getAdminApiUrl(`/api/admin/employees`);
 
       const response = await fetch(url, {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -194,8 +196,8 @@ export default function Employees() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -203,7 +205,7 @@ export default function Employees() {
       const response = await fetch(getAdminApiUrl(`/api/admin/employees?id=${id}`), {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -229,8 +231,8 @@ export default function Employees() {
   const handleSubmit = async (data: Employee) => {
     setSubmitting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -276,7 +278,7 @@ export default function Employees() {
         method,
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(body),
       });

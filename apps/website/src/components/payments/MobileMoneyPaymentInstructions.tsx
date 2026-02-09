@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { useRouter } from "next/navigation";
 
 interface MobileMoneyAccount {
@@ -34,6 +35,7 @@ export function MobileMoneyPaymentInstructions({
   onPaymentSubmitted,
 }: MobileMoneyPaymentInstructionsProps) {
   const router = useRouter();
+  const { getToken, isSignedIn, userId } = useAuth();
   const [selectedProvider, setSelectedProvider] = useState<string>("");
   const [thefestaAccounts, setThefestaAccounts] = useState<MobileMoneyAccount[]>([]);
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -135,15 +137,16 @@ export function MobileMoneyPaymentInstructions({
 
     try {
       // Get user session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (!session || sessionError) {
+      if (!isSignedIn) {
         router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
         return;
       }
 
+      const token = await getToken();
+
       // Upload receipt image to Supabase Storage
       const fileExt = receiptFile.name.split(".").pop();
-      const fileName = `${session.user.id}/${invoice.id}/${Date.now()}.${fileExt}`;
+      const fileName = `${userId}/${invoice.id}/${Date.now()}.${fileExt}`;
       const filePath = `payment-receipts/${fileName}`;
 
       const { data: uploadData, error: uploadError } = await supabase.storage
@@ -167,7 +170,7 @@ export function MobileMoneyPaymentInstructions({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           invoiceId: invoice.id,
@@ -193,7 +196,7 @@ export function MobileMoneyPaymentInstructions({
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           paymentId: paymentData.payment.id,

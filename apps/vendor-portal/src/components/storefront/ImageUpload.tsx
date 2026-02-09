@@ -1,19 +1,19 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
+import { useCallback, useRef, useState } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
 import { uploadImage } from '@/lib/supabase/vendor';
-import { toast } from '@/lib/toast';
-// Note: Using img tag instead of Next.js Image for dynamic uploads
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { toast } from '@/lib/toast';
 
 interface ImageUploadProps {
-  currentImage: string | null;
-  onUpload: (url: string) => void;
+  currentImage: string | null | undefined;
+  onUpload: (url: string | null) => void;
   bucket: string;
   folder: string;
-  maxSizeMB?: number;
+  aspectHint?: 'square' | 'wide';
+  className?: string;
 }
 
 export function ImageUpload({
@@ -21,127 +21,120 @@ export function ImageUpload({
   onUpload,
   bucket,
   folder,
-  maxSizeMB = 5,
+  aspectHint = 'square',
+  className,
 }: ImageUploadProps) {
-  const [uploading, setUploading] = useState(false);
-  const [preview, setPreview] = useState<string | null>(currentImage);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate file size
-    if (file.size > maxSizeMB * 1024 * 1024) {
-      toast.error(`File size must be less than ${maxSizeMB}MB`);
-      return;
-    }
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
-    // Create preview
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setPreview(reader.result as string);
-    };
-    reader.readAsDataURL(file);
-
-    // Upload to Supabase
-    setUploading(true);
-    try {
-      const timestamp = Date.now();
-      const fileExt = file.name.split('.').pop() || 'jpg';
-      const fileName = `${folder}/${timestamp}.${fileExt}`;
-
-      const { url, error: uploadError } = await uploadImage(bucket, fileName, file);
-      
-      if (uploadError) {
-        throw new Error(uploadError);
+  const handleFile = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith('image/')) {
+        toast.error('Please select an image file.');
+        return;
       }
-      
-      if (url && url.trim() !== '') {
-        onUpload(url);
-        toast.success('Image uploaded successfully');
+
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error('Image must be under 5MB.');
+        return;
+      }
+
+      setIsUploading(true);
+      const ext = file.name.split('.').pop() || 'jpg';
+      const path = `${folder}/${Date.now()}.${ext}`;
+
+      const { url, error } = await uploadImage(bucket, path, file);
+
+      if (error || !url) {
+        toast.error(error || 'Failed to upload image');
       } else {
-        throw new Error('Upload failed: No URL returned');
+        onUpload(url);
       }
-    } catch (error) {
-      console.error('Upload error:', error);
-      const errorMessage = error instanceof Error 
-        ? error.message 
-        : 'Failed to upload image. Please try again.';
-      toast.error(errorMessage);
-      setPreview(currentImage);
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
 
-  const handleRemove = () => {
-    setPreview(null);
-    onUpload('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
-  };
+      setIsUploading(false);
+    },
+    [bucket, folder, onUpload]
+  );
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      setIsDragging(false);
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    },
+    [handleFile]
+  );
+
+  const handleChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) handleFile(file);
+      if (inputRef.current) inputRef.current.value = '';
+    },
+    [handleFile]
+  );
+
+  const aspectClass =
+    aspectHint === 'wide' ? 'aspect-[16/9]' : 'aspect-square';
+
+  if (currentImage) {
+    return (
+      <div className={cn('relative overflow-hidden rounded-lg border', aspectClass, className)}>
+        <img
+          src={currentImage}
+          alt="Uploaded"
+          className="h-full w-full object-cover"
+        />
+        <Button
+          type="button"
+          variant="destructive"
+          size="icon"
+          className="absolute right-2 top-2 h-7 w-7"
+          onClick={() => onUpload(null)}
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-2">
-      {preview ? (
-        <div className="relative w-full h-48 rounded-lg overflow-hidden border border-border">
-          <img
-            src={preview}
-            alt="Preview"
-            className="w-full h-full object-cover"
-          />
-          <Button
-            type="button"
-            variant="destructive"
-            size="icon"
-            className="absolute top-2 right-2"
-            onClick={handleRemove}
-            disabled={uploading}
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      ) : (
-        <div
-          className={cn(
-            'w-full h-48 rounded-lg border-2 border-dashed border-border flex items-center justify-center cursor-pointer hover:border-primary transition-colors',
-            uploading && 'opacity-50 cursor-not-allowed'
-          )}
-          onClick={() => !uploading && fileInputRef.current?.click()}
-        >
-          {uploading ? (
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          ) : (
-            <div className="text-center">
-              <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" />
-              <p className="text-sm text-muted-foreground">Click to upload</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Max {maxSizeMB}MB per image
-              </p>
-            </div>
-          )}
-        </div>
+    <div
+      className={cn(
+        'relative flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed transition-colors',
+        isDragging
+          ? 'border-primary bg-primary/5'
+          : 'border-muted-foreground/25 hover:border-muted-foreground/50',
+        aspectClass,
+        className
       )}
-
+      onClick={() => inputRef.current?.click()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragging(true);
+      }}
+      onDragLeave={() => setIsDragging(false)}
+      onDrop={handleDrop}
+    >
       <input
-        ref={fileInputRef}
+        ref={inputRef}
         type="file"
         accept="image/*"
-        onChange={handleFileSelect}
         className="hidden"
-        disabled={uploading}
+        onChange={handleChange}
       />
+      {isUploading ? (
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      ) : (
+        <>
+          <Upload className="mb-2 h-8 w-8 text-muted-foreground/50" />
+          <p className="text-sm text-muted-foreground">
+            Click or drag to upload
+          </p>
+        </>
+      )}
     </div>
   );
 }

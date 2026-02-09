@@ -12,6 +12,7 @@ interface VendorContentProps {
   vendor: Vendor;
   portfolio: PortfolioItem[];
   reviews: Review[];
+  awards?: VendorAward[];
   ratingSectionRef?: React.RefObject<HTMLDivElement>;
   authGateRef?: React.RefObject<HTMLDivElement>;
 }

@@ -22,6 +22,11 @@ import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
 import { resolveAssetSrc } from "@/lib/assets";
 import { useSaveVendor } from "@/hooks/useSaveVendor";
+import type {
+  VendorSearchItem,
+  VendorSearchResponse,
+  VendorStatisticsResponse,
+} from "@opusfesta/lib";
 import {
   BUDGET_FRIENDLY,
   DEALS,
@@ -35,11 +40,7 @@ import {
 import heroMain from "@assets/stock_images/elegant_wedding_venu_86ae752a.jpg";
 
 // Stats will be fetched dynamically from the API
-interface VendorStats {
-  vendorCount: string;
-  cityCount: string;
-  rating: string;
-}
+type VendorStats = Pick<VendorStatisticsResponse["formatted"], "vendorCount" | "cityCount" | "rating">;
 
 const PAGE_SIZE = 12;
 
@@ -235,7 +236,7 @@ export function VendorCollectionView({
   };
 
   // Helper function to transform vendor data
-  const transformVendor = (vendor: any): VendorCollectionItem => {
+  const transformVendor = (vendor: VendorSearchItem): VendorCollectionItem => {
     const location = typeof vendor.location === 'string' 
       ? JSON.parse(vendor.location) 
       : vendor.location || {};
@@ -245,13 +246,13 @@ export function VendorCollectionView({
     
     return {
       id: vendor.id,
-      name: vendor.business_name || vendor.name,
+      name: vendor.business_name,
       category: vendor.category,
       location: location?.city || "Unknown",
-      rating: stats.averageRating || vendor.rating || 0,
-      reviews: stats.reviewCount || vendor.reviews || 0,
+      rating: stats.averageRating || 0,
+      reviews: stats.reviewCount || 0,
       image: vendor.cover_image || vendor.logo || "",
-      slug: vendor.slug || generateSlug(vendor.business_name || vendor.name),
+      slug: vendor.slug || generateSlug(vendor.business_name),
     };
   };
 
@@ -269,7 +270,7 @@ export function VendorCollectionView({
         if (!response.ok) {
           throw new Error("Failed to fetch vendors");
         }
-        const data = await response.json();
+        const data = (await response.json()) as VendorSearchResponse;
         
         const transformedVendors: VendorCollectionItem[] = (data.vendors || []).map(transformVendor);
         
@@ -302,7 +303,7 @@ export function VendorCollectionView({
           const response = await fetch(`/api/vendors/search?${searchParams}`);
           
           if (response.ok) {
-            const data = await response.json();
+            const data = (await response.json()) as VendorSearchResponse;
             const transformedVendors: VendorCollectionItem[] = (data.vendors || []).map(transformVendor);
             setVendors((prev) => [...prev, ...transformedVendors]);
           }
@@ -345,7 +346,7 @@ export function VendorCollectionView({
       try {
         const response = await fetch("/api/vendors/statistics");
         if (response.ok) {
-          const data = await response.json();
+          const data = (await response.json()) as VendorStatisticsResponse;
           if (data.formatted) {
             setStats({
               vendorCount: data.formatted.vendorCount,

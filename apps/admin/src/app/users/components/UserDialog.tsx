@@ -23,6 +23,7 @@ import {
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import { toast } from "@/lib/toast";
 import { Loader2, Upload, Image as ImageIcon, User, X } from "lucide-react";
@@ -68,6 +69,7 @@ const formatDate = (dateString: string) => {
 
 export function UserDialog({ user, open, onOpenChange, onClose }: UserDialogProps) {
   const router = useRouter();
+  const { getToken } = useAuth();
   const [loading, setLoading] = useState(false);
   const isCreating = !user;
   const [formData, setFormData] = useState({
@@ -110,8 +112,8 @@ export function UserDialog({ user, open, onOpenChange, onClose }: UserDialogProp
     setLoading(true);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -134,7 +136,7 @@ export function UserDialog({ user, open, onOpenChange, onClose }: UserDialogProp
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             email: formData.email,
@@ -159,7 +161,7 @@ export function UserDialog({ user, open, onOpenChange, onClose }: UserDialogProp
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify({
             id: user!.id,

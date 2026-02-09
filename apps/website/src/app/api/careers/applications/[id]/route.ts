@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Get Supabase admin client
 function getSupabaseAdmin() {
@@ -18,33 +19,6 @@ function getSupabaseAdmin() {
       },
     }
   );
-}
-
-// Get authenticated user from request
-async function getAuthenticatedUser(request: NextRequest): Promise<{ userId: string; email: string } | null> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-
-  const token = authHeader.replace("Bearer ", "");
-  
-  try {
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    
-    if (error || !user) {
-      return null;
-    }
-
-    return {
-      userId: user.id,
-      email: user.email || "",
-    };
-  } catch (error) {
-    console.error("Error getting authenticated user:", error);
-    return null;
-  }
 }
 
 // Simple email regex for basic validation
@@ -151,7 +125,7 @@ export async function PATCH(
 ) {
   try {
     // Check authentication
-    const user = await getAuthenticatedUser(request);
+    const user = await getAuthenticatedUser();
     if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -178,7 +152,7 @@ export async function PATCH(
     }
 
     // Verify ownership
-    if (existingApp.user_id !== user.userId) {
+    if (existingApp.user_id !== user.id) {
       return NextResponse.json(
         { error: "Unauthorized: You can only update your own applications" },
         { status: 403 }
@@ -243,7 +217,7 @@ export async function PATCH(
         .from("job_applications")
         .select("id, status")
         .eq("job_posting_id", existingApp.job_posting_id)
-        .eq("user_id", user.userId)
+        .eq("user_id", user.id)
         .eq("is_draft", false)
         .neq("id", applicationId) // Exclude the current draft
         .single();
@@ -309,7 +283,7 @@ export async function PATCH(
                   title: task.title,
                   is_default: true,
                 },
-                performed_by: user.userId,
+                performed_by: user.id,
               });
           }
         }
@@ -329,7 +303,7 @@ export async function PATCH(
               applicant_name: data.fullName,
               applicant_email: data.email,
             },
-            performed_by: user.userId,
+            performed_by: user.id,
           });
       } catch (logError) {
         console.error("Error logging application submission:", logError);

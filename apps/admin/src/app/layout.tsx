@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { OpusFestaClerkProvider } from "@opusfesta/auth";
 import ClientLayoutContent from "./ClientLayoutContent";
 import "./globals.css";
 
@@ -80,7 +81,9 @@ export default function RootLayout({
         />
       </head>
       <body>
-        <ClientLayoutContent>{children}</ClientLayoutContent>
+        <OpusFestaClerkProvider>
+          <ClientLayoutContent>{children}</ClientLayoutContent>
+        </OpusFestaClerkProvider>
       </body>
     </html>
   );

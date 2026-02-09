@@ -8,8 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, RotateCcw, RefreshCw, Plus, Trash2 } from "lucide-react";
 import { useCareersContent } from "@/context/CareersContentContext";
-import { supabase } from "@/lib/supabaseClient";
-import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "@clerk/nextjs";
 
 type SectionId = "hero" | "reasons" | "difference" | "vision" | "cta";
 
@@ -42,6 +41,7 @@ export function WhyOpusFestaPageEditor({ activeSection }: WhyOpusFestaPageEditor
     content,
     updateContent,
   } = useCareersContent();
+  const { getToken, sessionClaims } = useAuth();
   const [role, setRole] = useState("");
 
   const canSave = ["owner", "admin", "editor"].includes(role);
@@ -52,25 +52,9 @@ export function WhyOpusFestaPageEditor({ activeSection }: WhyOpusFestaPageEditor
   }, [loadAdminContent]);
 
   useEffect(() => {
-    let mounted = true;
-    const getRole = (session: Session | null) =>
-      session?.user?.app_metadata?.role ?? "";
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setRole(getRole(data.session));
-    });
-
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setRole(getRole(session));
-    });
-
-    return () => {
-      mounted = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
+    const claimsRole = (sessionClaims as any)?.metadata?.role ?? "";
+    setRole(claimsRole);
+  }, [sessionClaims]);
 
   const handleSaveDraft = async () => {
     if (!canSave) {
