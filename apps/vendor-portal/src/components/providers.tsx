@@ -5,6 +5,7 @@ import { ThemeProvider } from 'next-themes';
 import { useState } from 'react';
 import dynamic from 'next/dynamic';
 import { ToastProvider } from '@/components/ui/toast';
+import { OpusFestaClerkProvider } from '@opusfesta/auth';
 
 const ReactQueryDevtools =
   process.env.NODE_ENV === 'development'
@@ -35,13 +36,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-      <QueryClientProvider client={queryClient}>
-        <ToastProvider>
-          {children}
-          <ReactQueryDevtools initialIsOpen={false} />
-        </ToastProvider>
-      </QueryClientProvider>
-    </ThemeProvider>
+    <OpusFestaClerkProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <QueryClientProvider client={queryClient}>
+          <ToastProvider>
+            {children}
+            <ReactQueryDevtools initialIsOpen={false} />
+          </ToastProvider>
+        </QueryClientProvider>
+      </ThemeProvider>
+    </OpusFestaClerkProvider>
   );
 }

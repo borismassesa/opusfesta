@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 import { sendEmail } from "@/lib/emails/resend";
 import { InquiryCustomerEmail } from "@/lib/emails/templates/inquiry-customer";
 import { InquiryVendorEmail } from "@/lib/emails/templates/inquiry-vendor";
@@ -92,13 +93,9 @@ export async function POST(request: NextRequest) {
 
     // Get authenticated user (optional - inquiries can be created by anyone)
     let userId: string | null = null;
-    const authHeader = request.headers.get("authorization");
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-      if (!authError && user) {
-        userId = user.id;
-      }
+    const user = await getAuthenticatedUser();
+    if (user) {
+      userId = user.id;
     }
 
     // #region agent log

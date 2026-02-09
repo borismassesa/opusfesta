@@ -1,319 +1,381 @@
 'use client';
 
-import { useState, useEffect, useCallback, type ReactNode } from 'react';
-import { useRouter } from 'next/navigation';
-import { StorefrontForm } from './StorefrontForm';
-import { ServicesManager } from './ServicesManager';
-import { PortfolioManager } from './PortfolioManager';
-import { PackagesPricingManager } from './PackagesPricingManager';
-import { AvailabilityManager } from './AvailabilityManager';
-import { AwardsManager } from './AwardsManager';
-import { ReviewsManager } from './ReviewsManager';
-import { ProfileSettings } from './ProfileSettings';
-import { ResponsivePreview } from './ResponsivePreview';
-import { StorefrontSecondarySidebar } from './StorefrontSecondarySidebar';
-import { getVendorByUserId, type Vendor } from '@/lib/supabase/vendor';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Loader2 } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Monitor, Smartphone, Tablet } from 'lucide-react';
+import { useVendorPortalAccess } from '@/hooks/useVendorPortalAccess';
 import { supabase } from '@/lib/supabase/client';
+import type { Vendor } from '@/lib/supabase/vendor';
+import { OnboardingWizard } from './OnboardingWizard';
+import { StorefrontOverview, type EditingSection } from './StorefrontOverview';
+import { VendorPagePreview } from './VendorPagePreview';
+import { BusinessInfoEditor } from './BusinessInfoEditor';
+import { ServicesEditor } from './ServicesEditor';
+import { PortfolioEditor } from './PortfolioEditor';
+import { PackagesEditor } from './PackagesEditor';
+import { LocationContactEditor } from './LocationContactEditor';
+import { AvailabilityEditor } from './AvailabilityEditor';
+import { AwardsEditor } from './AwardsEditor';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+
+// ---------------------------------------------------------------------------
+// Section metadata (for editor headings)
+// ---------------------------------------------------------------------------
+
+const SECTION_META: Record<
+  NonNullable<EditingSection>,
+  { title: string; description: string }
+> = {
+  'business-info': {
+    title: 'Business Info',
+    description: 'Your core profile details visible to potential clients.',
+  },
+  services: {
+    title: 'Services',
+    description: 'List the services you offer to clients.',
+  },
+  portfolio: {
+    title: 'Portfolio',
+    description: 'Showcase your best work with images and descriptions.',
+  },
+  packages: {
+    title: 'Packages & Pricing',
+    description: 'Create pricing packages so clients know what to expect.',
+  },
+  'location-contact': {
+    title: 'Location & Contact',
+    description: 'Help clients find and reach you.',
+  },
+  availability: {
+    title: 'Availability',
+    description: 'Manage your calendar availability.',
+  },
+  awards: {
+    title: 'Awards & Recognition',
+    description: 'Highlight your achievements and certifications.',
+  },
+  preview: {
+    title: 'Live Preview',
+    description: 'See how your storefront looks to clients.',
+  },
+};
+
+// ---------------------------------------------------------------------------
+// Loading skeleton
+// ---------------------------------------------------------------------------
+
+function LoadingSkeleton() {
+  return (
+    <div className="mx-auto max-w-7xl px-6 pb-20 pt-8 md:px-10">
+      <div className="flex flex-col gap-8 animate-in fade-in duration-500">
+        <div className="flex items-end justify-between">
+          <div>
+            <Skeleton className="h-9 w-48" />
+            <Skeleton className="mt-2 h-4 w-72" />
+          </div>
+          <Skeleton className="h-9 w-32" />
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-28 w-full rounded-lg" />
+          ))}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// StorefrontBuilder
+// ---------------------------------------------------------------------------
 
 export function StorefrontBuilder() {
-  const router = useRouter();
-  const [vendor, setVendor] = useState<Vendor | null>(null);
-  const [userId, setUserId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [activeSection, setActiveSection] = useState<string>('section-business-info');
+  const { vendorId, dbUserId, isAccessLoading, needsOnboarding } =
+    useVendorPortalAccess();
 
-  // Debug: Check Supabase client initialization on mount
-  useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    
-    console.log('[StorefrontBuilder] Environment check:', {
-      hasUrl: !!supabaseUrl,
-      hasKey: !!supabaseKey,
-      urlLength: supabaseUrl?.length || 0,
-      keyLength: supabaseKey?.length || 0,
-    });
+  const [editingSection, setEditingSection] = useState<EditingSection>(null);
 
-    if (!supabaseUrl || !supabaseKey) {
-      console.error('[StorefrontBuilder] Missing Supabase environment variables!');
-      console.error('Required: NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY');
-    }
-  }, []);
-
-  // Get current user ID from Supabase auth
-  // Note: AuthGuard at root level ensures user is authenticated, so we just need to get userId
-  useEffect(() => {
-    let mountedRef = true;
-    let subscription: { unsubscribe: () => void } | null = null;
-
-    const getUser = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (!mountedRef) return;
-
-        if (error) {
-          console.error('[StorefrontBuilder] Error getting session:', error);
-          setIsLoading(false);
-          return;
-        }
-
-        if (session?.user?.id) {
-          setUserId(session.user.id);
-        }
-        setIsLoading(false);
-      } catch (error) {
-        console.error('[StorefrontBuilder] Exception getting session:', error);
-        if (mountedRef) {
-          setIsLoading(false);
-        }
-      }
-    };
-
-    getUser();
-
-    // Listen to auth state changes
-    const { data: { subscription: authSubscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mountedRef) return;
-      
-      if (session?.user?.id) {
-        setUserId(session.user.id);
-      } else {
-        setUserId(null);
-      }
-    });
-
-    subscription = authSubscription;
-
-    return () => {
-      mountedRef = false;
-      if (subscription) {
-        subscription.unsubscribe();
-      }
-    };
-  }, []);
-
-  // Fetch vendor data
-  const { data: vendorData, isLoading: isLoadingVendor, refetch } = useQuery({
-    queryKey: ['vendor', userId],
+  const {
+    data: vendor = null,
+    isLoading: isVendorLoading,
+    refetch,
+  } = useQuery({
+    queryKey: ['vendor-profile', vendorId],
     queryFn: async () => {
-      if (!userId) return null;
-      return await getVendorByUserId(userId);
+      const { data, error } = await supabase
+        .from('vendors')
+        .select('*')
+        .eq('id', vendorId!)
+        .single();
+
+      if (error || !data) return null;
+      return data as Vendor;
     },
-    enabled: !!userId,
+    enabled: !!vendorId,
+    staleTime: 30_000,
   });
 
-  useEffect(() => {
-    if (vendorData) {
-      setVendor(vendorData);
-    }
-  }, [vendorData]);
-
-  // Combined loading state
-  const isDataLoading = isLoading || (!!userId && isLoadingVendor);
-
-  // Debug: Log activeSection changes (must be before any conditional returns)
-  useEffect(() => {
-    console.log('[StorefrontBuilder] activeSection changed to:', activeSection);
-  }, [activeSection]);
-
-  // Define section order for navigation (must be before any conditional returns)
-  const sectionOrder = [
-    'section-business-info',
-    'section-services',
-    'section-packages',
-    'section-availability',
-    'section-awards',
-    'section-reviews',
-    'section-profile-settings',
-    'section-preview',
-  ];
-
-  const goToNextSection = () => {
-    const currentIndex = sectionOrder.indexOf(activeSection);
-    if (currentIndex < sectionOrder.length - 1) {
-      setActiveSection(sectionOrder[currentIndex + 1]);
-    }
+  const handleUpdate = () => {
+    refetch();
   };
 
-  const handleSectionChange = useCallback((sectionId: string) => {
-    console.log('[StorefrontBuilder] handleSectionChange called with:', sectionId);
-    setActiveSection((prevSection) => {
-      console.log('[StorefrontBuilder] setActiveSection called, prev:', prevSection, 'new:', sectionId);
-      if (prevSection === sectionId) {
-        console.warn('[StorefrontBuilder] Section is already active, skipping update');
-        return prevSection;
-      }
-      return sectionId;
-    });
-  }, []);
+  const handleReturnToOverview = () => {
+    setEditingSection(null);
+  };
 
-  // Render content based on active section
-  const renderSectionContent = () => {
-    // Show loading state while fetching vendor data
-    if (isDataLoading) {
-      return (
-        <div className="flex items-center justify-center min-h-[400px]">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
-            <p className="text-sm text-muted-foreground">Loading your storefront...</p>
-          </div>
-        </div>
-      );
-    }
+  const handleOnboardingComplete = () => {
+    refetch();
+  };
 
-    // Render section content - allow all sections to render even if vendor doesn't exist yet
-    // Components will handle the null vendor case appropriately
-    console.log('[StorefrontBuilder] Rendering section:', activeSection, 'vendor exists:', !!vendor);
-    
-    // Helper function to wrap sections with consistent heading/subheading
-    const SectionWrapper = ({ 
-      title, 
-      description, 
-      children 
-    }: { 
-      title: string; 
-      description: string; 
-      children: React.ReactNode;
-    }) => (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">{title}</h1>
-          <p className="text-muted-foreground mt-2">{description}</p>
-        </div>
-        {children}
+  // 1. Auth still loading — show skeleton
+  if (isAccessLoading) {
+    return <LoadingSkeleton />;
+  }
+
+  // 2. Not signed in
+  if (!dbUserId) {
+    return (
+      <div className="mx-auto max-w-7xl px-6 pb-20 pt-8 md:px-10">
+        <Card>
+          <CardHeader>
+            <CardTitle>Storefront Builder</CardTitle>
+            <CardDescription>
+              Please sign in and complete onboarding to access the storefront
+              builder.
+            </CardDescription>
+          </CardHeader>
+        </Card>
       </div>
     );
+  }
 
-    switch (activeSection) {
-      case 'section-business-info':
-        console.log('[StorefrontBuilder] Rendering StorefrontForm');
-        return (
-          <SectionWrapper
-            title={!vendor ? 'Create Your Storefront' : 'Business Information'}
-            description={!vendor 
-              ? 'Get started by creating your vendor profile. This will be your public storefront on The Festa.'
-              : 'Manage your business details that appear on your public storefront.'}
-          >
-            <StorefrontForm vendor={vendor} userId={userId} onUpdate={refetch} onNextSection={goToNextSection} />
-          </SectionWrapper>
-        );
-      case 'section-services':
-        console.log('[StorefrontBuilder] Rendering ServicesManager');
-        return (
-          <SectionWrapper
-            title="Services"
-            description="List the services you offer. These will appear in the 'What this vendor offers' section on your storefront."
-          >
-            <ServicesManager vendor={vendor} onUpdate={refetch} />
-          </SectionWrapper>
-        );
-      case 'section-portfolio':
-        console.log('[StorefrontBuilder] Rendering PortfolioManager');
-        return (
-          <SectionWrapper
-            title="Portfolio"
-            description="Showcase your work with images and galleries that appear on your public storefront."
-          >
-            <PortfolioManager vendor={vendor} onUpdate={refetch} onNextSection={goToNextSection} />
-          </SectionWrapper>
-        );
-      case 'section-packages':
-        console.log('[StorefrontBuilder] Rendering PackagesPricingManager');
-        return (
-          <SectionWrapper
-            title="Packages & Pricing"
-            description="Create pricing packages that appear on your public storefront to help customers understand your offerings."
-          >
-            <PackagesPricingManager vendor={vendor} onUpdate={refetch} />
-          </SectionWrapper>
-        );
-      case 'section-availability':
-        console.log('[StorefrontBuilder] Rendering AvailabilityManager');
-        return (
-          <SectionWrapper
-            title="Availability"
-            description="Manage your calendar and availability so customers can see when you're available for bookings."
-          >
-            <AvailabilityManager vendor={vendor} onUpdate={refetch} />
-          </SectionWrapper>
-        );
-      case 'section-awards':
-        console.log('[StorefrontBuilder] Rendering AwardsManager');
-        return (
-          <SectionWrapper
-            title="Awards & Recognition"
-            description="Showcase your achievements and industry recognition to build trust with potential customers."
-          >
-            <AwardsManager vendor={vendor} onUpdate={refetch} />
-          </SectionWrapper>
-        );
-      case 'section-profile-settings':
-        console.log('[StorefrontBuilder] Rendering ProfileSettings');
-        return (
-          <SectionWrapper
-            title="Profile Settings"
-            description="Update profile information and settings that are displayed on your public storefront."
-          >
-            <ProfileSettings vendor={vendor} onUpdate={refetch} />
-          </SectionWrapper>
-        );
-      case 'section-reviews':
-        console.log('[StorefrontBuilder] Rendering ReviewsManager');
-        return (
-          <SectionWrapper
-            title="Reviews & Ratings"
-            description="View and respond to customer reviews. You cannot edit reviews, only respond to them."
-          >
-            <ReviewsManager vendor={vendor} onUpdate={refetch} />
-          </SectionWrapper>
-        );
-      case 'section-preview':
-        console.log('[StorefrontBuilder] Rendering ResponsivePreview');
-        return (
-          <SectionWrapper
-            title="Preview"
-            description="See how your storefront appears on different devices and screen sizes."
-          >
-            <ResponsivePreview vendor={vendor} />
-          </SectionWrapper>
-        );
-      default:
-        console.log('[StorefrontBuilder] Rendering default StorefrontForm');
-        return (
-          <SectionWrapper
-            title="Business Information"
-            description="Manage your business details that appear on your public storefront."
-          >
-            <StorefrontForm vendor={vendor} userId={userId} onUpdate={refetch} />
-          </SectionWrapper>
-        );
-    }
-  };
+  // 3. Needs onboarding → wizard (don't wait for vendor profile query)
+  if (needsOnboarding || !vendorId) {
+    return (
+      <OnboardingWizard
+        dbUserId={dbUserId}
+        vendor={vendor}
+        onComplete={handleOnboardingComplete}
+      />
+    );
+  }
+
+  // 4. Vendor data loading for overview/editor — show skeleton
+  if (isVendorLoading || !vendor) {
+    return <LoadingSkeleton />;
+  }
+
+  // 5a. Live preview
+  if (editingSection === 'preview') {
+    return (
+      <LivePreview
+        vendor={vendor}
+        onBack={handleReturnToOverview}
+      />
+    );
+  }
+
+  // 5b. Editing a specific section
+  if (editingSection !== null) {
+    const meta = SECTION_META[editingSection];
+
+    return (
+      <div className="mx-auto max-w-7xl px-6 pb-20 pt-8 md:px-10 animate-in fade-in duration-300">
+        <Button
+          variant="ghost"
+          className="mb-4"
+          onClick={handleReturnToOverview}
+        >
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Storefront
+        </Button>
+
+        <div className="mb-6">
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {meta.title}
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {meta.description}
+          </p>
+        </div>
+
+        {renderEditor(editingSection, vendor, dbUserId, handleUpdate, handleReturnToOverview)}
+      </div>
+    );
+  }
+
+  // 6. Default → overview
+  return (
+    <div className="mx-auto max-w-7xl px-6 pb-20 pt-8 md:px-10">
+      <StorefrontOverview vendor={vendor} onEditSection={setEditingSection} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Editor renderer
+// ---------------------------------------------------------------------------
+
+function renderEditor(
+  section: NonNullable<EditingSection>,
+  vendor: Vendor,
+  dbUserId: string,
+  onUpdate: () => void,
+  onBack: () => void,
+) {
+  switch (section) {
+    case 'business-info':
+      return (
+        <BusinessInfoEditor
+          vendor={vendor}
+          dbUserId={dbUserId}
+          onUpdate={onUpdate}
+          onNextSection={onBack}
+        />
+      );
+    case 'services':
+      return (
+        <ServicesEditor
+          vendor={vendor}
+          onUpdate={onUpdate}
+          onNextSection={onBack}
+        />
+      );
+    case 'portfolio':
+      return (
+        <PortfolioEditor
+          vendorId={vendor.id}
+          onUpdate={onUpdate}
+          onNextSection={onBack}
+        />
+      );
+    case 'packages':
+      return (
+        <PackagesEditor
+          vendorId={vendor.id}
+          onUpdate={onUpdate}
+          onNextSection={onBack}
+        />
+      );
+    case 'location-contact':
+      return (
+        <LocationContactEditor
+          vendor={vendor}
+          onUpdate={onUpdate}
+          onNextSection={onBack}
+        />
+      );
+    case 'availability':
+      return (
+        <AvailabilityEditor vendorId={vendor.id} onNextSection={onBack} />
+      );
+    case 'awards':
+      return (
+        <AwardsEditor
+          vendorId={vendor.id}
+          onUpdate={onUpdate}
+          onNextSection={onBack}
+        />
+      );
+    default:
+      return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Live Preview (renders StorefrontPreview in responsive viewport)
+// ---------------------------------------------------------------------------
+
+const PREVIEW_SIZES = {
+  desktop: { width: '100%', label: 'Desktop' },
+  tablet: { width: '768px', label: 'Tablet' },
+  mobile: { width: '375px', label: 'Mobile' },
+} as const;
+
+type PreviewSize = keyof typeof PREVIEW_SIZES;
+
+function LivePreview({
+  vendor,
+  onBack,
+}: {
+  vendor: Vendor;
+  onBack: () => void;
+}) {
+  const [previewSize, setPreviewSize] = useState<PreviewSize>('desktop');
+
+  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL || 'https://opusfesta.com';
+  const liveUrl = vendor.slug ? `${websiteUrl}/vendors/${vendor.slug}` : null;
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-background">
-      {/* Secondary Sidebar */}
-      <StorefrontSecondarySidebar 
-        vendor={vendor} 
-        activeSection={activeSection}
-        onSectionChange={handleSectionChange}
-      />
+    <div className="px-6 pb-20 pt-8 md:px-10 animate-in fade-in duration-300">
+      {/* Header bar */}
+      <div className="mb-4 flex items-center justify-between">
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Storefront
+        </Button>
 
-      {/* Main Content Area */}
-      <div className="flex-1 min-w-0 overflow-hidden bg-background flex flex-col">
-        {activeSection === 'section-preview' ? (
-          <div className="flex-1 min-h-0 overflow-hidden px-6 py-8">
-            {renderSectionContent()}
+        <div className="flex items-center gap-2">
+          {/* Viewport size toggles */}
+          <div className="flex items-center rounded-lg border bg-muted/50 p-1">
+            <button
+              onClick={() => setPreviewSize('desktop')}
+              className={`rounded-md p-1.5 transition-colors ${previewSize === 'desktop' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}`}
+              title="Desktop"
+            >
+              <Monitor className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setPreviewSize('tablet')}
+              className={`rounded-md p-1.5 transition-colors ${previewSize === 'tablet' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}`}
+              title="Tablet"
+            >
+              <Tablet className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setPreviewSize('mobile')}
+              className={`rounded-md p-1.5 transition-colors ${previewSize === 'mobile' ? 'bg-background shadow-sm' : 'hover:bg-background/50'}`}
+              title="Mobile"
+            >
+              <Smartphone className="h-4 w-4" />
+            </button>
           </div>
-        ) : (
-          <div className="flex-1 min-h-0 overflow-y-auto px-8 py-8">
-            {renderSectionContent()}
-          </div>
-        )}
+
+          {/* Open actual live page in new tab */}
+          {liveUrl && (
+            <Button variant="outline" size="sm" asChild>
+              <a href={liveUrl} target="_blank" rel="noopener noreferrer">
+                <ExternalLink className="mr-2 h-3.5 w-3.5" />
+                Open Live Page
+              </a>
+            </Button>
+          )}
+        </div>
+      </div>
+
+      {/* Preview title */}
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold tracking-tight">Live Preview</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          This is how your storefront looks to clients on {PREVIEW_SIZES[previewSize].label.toLowerCase()} devices.
+        </p>
+      </div>
+
+      {/* Preview container with responsive viewport */}
+      <div className="flex justify-center">
+        <div
+          className="w-full overflow-hidden rounded-2xl border bg-white p-6 md:p-8 transition-all duration-300 shadow-sm"
+          style={{ maxWidth: PREVIEW_SIZES[previewSize].width }}
+        >
+          <VendorPagePreview vendor={vendor} />
+        </div>
       </div>
     </div>
   );

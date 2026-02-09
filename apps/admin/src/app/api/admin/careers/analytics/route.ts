@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Check if user is admin
-async function isAdmin(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return false;
+async function isAdmin(): Promise<boolean> {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) return false;
 
-  const token = authHeader.replace("Bearer ", "");
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-  if (error || !user) return false;
-
   const { data: userData } = await supabaseAdmin
     .from("users")
     .select("role")
-    .eq("id", user.id)
+    .eq("clerk_id", clerkUserId)
     .single();
 
   return userData?.role === "admin";
@@ -24,7 +20,7 @@ async function isAdmin(request: NextRequest): Promise<boolean> {
 // GET - Get analytics data
 export async function GET(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 

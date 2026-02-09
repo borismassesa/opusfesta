@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { ShieldCheck, Loader2 } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
@@ -15,11 +14,11 @@ import { VendorReviews } from "./VendorReviews";
 import { VendorLocation } from "./VendorLocation";
 import { VendorProfile } from "./VendorProfile";
 import { SimilarVendors } from "./SimilarVendors";
-import { AuthGateModal } from "@/components/auth/AuthGateModal";
 import type { Vendor, PortfolioItem, Review, VendorAward } from "@/lib/supabase/vendors";
 import { resolveAssetSrc } from "@/lib/assets";
 import celebrationImg from "@assets/stock_images/happy_wedding_couple_e3561dd1.jpg";
-import { supabase } from "@/lib/supabaseClient";
+import { useOpusFestaAuth } from "@opusfesta/auth";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 interface VendorDetailsPageProps {
   vendor: Vendor;
@@ -36,15 +35,14 @@ export function VendorDetailsPage({
   similarVendors,
   awards,
 }: VendorDetailsPageProps) {
-  const router = useRouter();
   const [menuOpen, setMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("about");
   const [showNavBar, setShowNavBar] = useState(false);
   const [isSidebarSticky, setIsSidebarSticky] = useState(true);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalIntent, setAuthModalIntent] = useState<"booking" | "details">("details");
+  const { isSignedIn, isLoaded } = useOpusFestaAuth();
+  const isCheckingAuth = !isLoaded;
+  const isAuthenticated = isLoaded ? !!isSignedIn : false;
+  const { openAuthModal } = useAuthGate();
   const [hasShownAuthGate, setHasShownAuthGate] = useState(false);
   const galleryRef = useRef<HTMLDivElement>(null);
   const connectSectionRef = useRef<HTMLDivElement>(null);
@@ -56,58 +54,6 @@ export function VendorDetailsPage({
     ? `${vendor.location.city}, ${vendor.location.country || "Tanzania"}`
     : "Tanzania";
 
-  // Check authentication on mount and on auth changes
-  useEffect(() => {
-    let mounted = true;
-
-    const checkAuth = async () => {
-      try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (sessionError || !session) {
-          if (mounted) {
-            setIsAuthenticated(false);
-            setIsCheckingAuth(false);
-          }
-          return;
-        }
-
-        // Verify user exists in the database
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        if (mounted) {
-          if (userError || !userData) {
-            setIsAuthenticated(false);
-          } else {
-            setIsAuthenticated(true);
-          }
-          setIsCheckingAuth(false);
-        }
-      } catch (err) {
-        console.error("Error checking auth:", err);
-        if (mounted) {
-          setIsAuthenticated(false);
-          setIsCheckingAuth(false);
-        }
-      }
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
-      checkAuth();
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
   const getStartingPrice = () => {
     if (vendor.price_range === "$") return "$200";
     if (vendor.price_range === "$$") return "$500";
@@ -118,9 +64,8 @@ export function VendorDetailsPage({
 
   const authGateStorageKey = `vendor_auth_gate_${vendor.id}`;
 
-  const openAuthGate = (intent: "booking" | "details") => {
-    setAuthModalIntent(intent);
-    setAuthModalOpen(true);
+  const showAuthGate = (intent: "booking" | "details") => {
+    openAuthModal(intent);
     setHasShownAuthGate(true);
     if (typeof window !== "undefined") {
       sessionStorage.setItem(authGateStorageKey, "true");
@@ -129,7 +74,7 @@ export function VendorDetailsPage({
 
   const handleBookingIntent = () => {
     if (!isAuthenticated) {
-      openAuthGate("booking");
+      showAuthGate("booking");
       return;
     }
     const bookingTarget = document.getElementById("vendor-booking-sidebar");
@@ -156,8 +101,8 @@ export function VendorDetailsPage({
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry.isIntersecting && !authModalOpen && !hasShownAuthGate) {
-          openAuthGate("details");
+        if (entry.isIntersecting && !hasShownAuthGate) {
+          showAuthGate("details");
         }
       },
       { threshold: 0.1 }
@@ -165,7 +110,7 @@ export function VendorDetailsPage({
 
     observer.observe(target);
     return () => observer.disconnect();
-  }, [authModalOpen, hasShownAuthGate, isAuthenticated]);
+  }, [hasShownAuthGate, isAuthenticated]);
 
   useEffect(() => {
     const sectionIds = vendorNavigationTabs.map((tab) => tab.id);
@@ -345,8 +290,6 @@ export function VendorDetailsPage({
               <VendorBookingSidebar
                 vendor={vendor}
                 isSticky={isSidebarSticky}
-                isAuthenticated={isAuthenticated}
-                onAuthRequired={() => openAuthGate("booking")}
               />
             </div>
           </div>
@@ -425,15 +368,6 @@ export function VendorDetailsPage({
           </div>
         )}
       </main>
-
-      <AuthGateModal
-        open={authModalOpen}
-        onOpenChange={setAuthModalOpen}
-        intent={authModalIntent}
-        onAuthSuccess={() => {
-          setIsAuthenticated(true);
-        }}
-      />
 
       <Footer />
     </div>

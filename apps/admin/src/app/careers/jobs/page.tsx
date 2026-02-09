@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Plus, LayoutGrid, Table2, Briefcase, MapPin, DollarSign, Edit, Trash2, Eye, Loader2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import Link from "next/link";
 import { JobPostingTable } from "@/components/careers/JobPostingTable";
@@ -45,6 +45,7 @@ interface JobPosting {
 }
 
 export default function JobsPage() {
+  const { getToken } = useAuth();
   const router = useRouter();
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -70,8 +71,8 @@ export default function JobsPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -79,7 +80,7 @@ export default function JobsPage() {
       // Use absolute URL with basePath to call admin app's own API
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs?includeInactive=true&includeArchived=true`), {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -205,14 +206,14 @@ export default function JobsPage() {
     if (!jobToDelete) return;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       // Use absolute URL with basePath to call admin app's own API
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs?id=${jobToDelete}`), {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -240,15 +241,15 @@ export default function JobsPage() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       // Use absolute URL with basePath to call admin app's own API
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs/bulk`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: "delete",
@@ -270,15 +271,15 @@ export default function JobsPage() {
 
   const handleBulkActivate = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       // Use absolute URL with basePath to call admin app's own API
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs/bulk`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: "activate",
@@ -300,15 +301,15 @@ export default function JobsPage() {
 
   const handleBulkDeactivate = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       // Use absolute URL with basePath to call admin app's own API
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs/bulk`), {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: "deactivate",
@@ -330,11 +331,11 @@ export default function JobsPage() {
 
   const handleBulkArchive = async (ids?: string[]) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       const jobIds = ids || Array.from(selectedIds);
-      
+
       if (jobIds.length === 0) {
         alert("Please select at least one job posting to archive");
         return;
@@ -345,7 +346,7 @@ export default function JobsPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: "archive",
@@ -368,11 +369,11 @@ export default function JobsPage() {
 
   const handleBulkUnarchive = async (ids?: string[]) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       const jobIds = ids || Array.from(selectedIds);
-      
+
       if (jobIds.length === 0) {
         alert("Please select at least one job posting to unarchive");
         return;
@@ -383,7 +384,7 @@ export default function JobsPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: "unarchive",

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, ExternalLink, FileText, File } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import { Skeleton } from "@/components/ui/skeleton";
 import Link from "next/link";
@@ -31,6 +31,7 @@ interface JobPosting {
 }
 
 export default function PreviewPage() {
+  const { getToken } = useAuth();
   const params = useParams();
   const router = useRouter();
   const jobId = params.id as string;
@@ -45,8 +46,8 @@ export default function PreviewPage() {
   const fetchJob = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -54,7 +55,7 @@ export default function PreviewPage() {
       // Use absolute URL with basePath to call admin app's own API
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs?includeInactive=true`), {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 

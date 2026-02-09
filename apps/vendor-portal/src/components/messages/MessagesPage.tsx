@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase/client';
-import { useRouter } from 'next/navigation';
-import { 
-  getVendorMessageThreads, 
-  getThreadMessages, 
+import { useClerkSupabaseClient, useOpusFestaAuth } from '@opusfesta/auth';
+import {
+  getVendorMessageThreads,
+  getThreadMessages,
   sendMessage as sendMessageFn,
   markThreadMessagesAsRead,
   type MessageThread,
@@ -17,24 +16,28 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
-import { 
-  MessageSquare, 
-  Send, 
-  Loader2, 
-  Search, 
-  Settings, 
-  Plus, 
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  MessageSquare,
+  Send,
+  Loader2,
+  Search,
+  Settings,
   Image as ImageIcon,
   X,
   Check,
-  Star,
   Phone,
   Calendar,
   File,
-  Paperclip
+  Paperclip,
+  ArrowLeft,
+  PanelRightClose,
+  PanelRightOpen,
+  Inbox,
+  SmilePlus
 } from 'lucide-react';
 import { toast } from '@/lib/toast';
-import { format, isToday, isYesterday, formatDistanceToNow } from 'date-fns';
+import { format, isToday, isYesterday, isThisWeek } from 'date-fns';
 
 interface MessagesPageProps {
   vendor: Vendor;
@@ -51,44 +54,109 @@ interface Inquiry {
   created_at: string;
 }
 
+// ---- Skeleton Components ----
+
+function ThreadListSkeleton() {
+  return (
+    <div className="divide-y divide-border/40 dark:divide-border/30">
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="px-5 py-4 flex items-start gap-3.5">
+          <Skeleton className="h-12 w-12 rounded-full flex-shrink-0" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="flex items-center justify-between">
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-3 w-12" />
+            </div>
+            <Skeleton className="h-3.5 w-full" />
+            <Skeleton className="h-3.5 w-3/4" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MessagesSkeleton() {
+  return (
+    <div className="space-y-6 py-4">
+      {/* Date separator skeleton */}
+      <div className="flex items-center justify-center my-4">
+        <Skeleton className="h-7 w-32 rounded-full" />
+      </div>
+      {/* Incoming message */}
+      <div className="flex gap-3 justify-start">
+        <Skeleton className="h-9 w-9 rounded-full flex-shrink-0" />
+        <div className="space-y-2">
+          <Skeleton className="h-3 w-20" />
+          <Skeleton className="h-16 w-56 rounded-2xl rounded-bl-sm" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+      </div>
+      {/* Outgoing message */}
+      <div className="flex gap-3 justify-end">
+        <div className="space-y-2 flex flex-col items-end">
+          <Skeleton className="h-12 w-48 rounded-2xl rounded-br-sm" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+        <Skeleton className="h-9 w-9 rounded-full flex-shrink-0" />
+      </div>
+      {/* Incoming message */}
+      <div className="flex gap-3 justify-start">
+        <div className="w-9 flex-shrink-0" />
+        <div className="space-y-2">
+          <Skeleton className="h-20 w-64 rounded-2xl rounded-bl-sm" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+      </div>
+      {/* Outgoing message */}
+      <div className="flex gap-3 justify-end">
+        <div className="space-y-2 flex flex-col items-end">
+          <Skeleton className="h-10 w-40 rounded-2xl rounded-br-sm" />
+          <Skeleton className="h-3 w-14" />
+        </div>
+        <div className="w-9 flex-shrink-0" />
+      </div>
+    </div>
+  );
+}
+
+// ---- Date formatting helper ----
+
+function formatDateSeparator(dateString: string): string {
+  const date = new Date(dateString);
+  if (isToday(date)) {
+    return 'Today';
+  }
+  if (isYesterday(date)) {
+    return 'Yesterday';
+  }
+  if (isThisWeek(date, { weekStartsOn: 1 })) {
+    return format(date, 'EEEE'); // e.g., "Monday"
+  }
+  return format(date, 'MMMM d, yyyy'); // e.g., "January 15, 2025"
+}
+
+// ---- Main Component ----
+
 export function MessagesPage({ vendor }: MessagesPageProps) {
   const [selectedThreadId, setSelectedThreadId] = useState<string | null>(null);
   const [messageContent, setMessageContent] = useState('');
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filter, setFilter] = useState<'all' | 'unread'>('all');
   const [isSearchActive, setIsSearchActive] = useState(false);
   const [attachments, setAttachments] = useState<Array<{ file: File; preview: string; url?: string }>>([]);
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [mobileView, setMobileView] = useState<'threads' | 'conversation'>('threads');
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
-
-  // Get current user and verify authentication
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user }, error } = await supabase.auth.getUser();
-      if (error || !user) {
-        console.error('[Messages] Not authenticated:', error);
-        return;
-      }
-      setCurrentUserId(user.id);
-    };
-    getUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        setCurrentUserId(session.user.id);
-      }
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [vendor.user_id]);
+  const supabase = useClerkSupabaseClient();
+  const { user: authUser } = useOpusFestaAuth();
 
   // Get vendor's user_id
   const { data: vendorUserId } = useQuery({
@@ -104,13 +172,17 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
     },
     enabled: !!vendor,
   });
+  const currentUserId = vendorUserId || authUser?.id || null;
 
   // Fetch message threads
   const { data: threads = [], isLoading: threadsLoading } = useQuery({
     queryKey: ['messageThreads', vendor?.id],
     queryFn: async () => {
       if (!vendor) return [];
-      return await getVendorMessageThreads(vendor.id);
+      return await getVendorMessageThreads(vendor.id, {
+        client: supabase,
+        currentUserId: currentUserId || undefined,
+      });
     },
     enabled: !!vendor,
     refetchInterval: 30000,
@@ -148,7 +220,7 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
     queryKey: ['threadMessages', selectedThreadId],
     queryFn: async () => {
       if (!selectedThreadId) return [];
-      return await getThreadMessages(selectedThreadId);
+      return await getThreadMessages(selectedThreadId, supabase);
     },
     enabled: !!selectedThreadId,
     refetchInterval: 5000,
@@ -168,9 +240,8 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      
+
       if (error) {
-        console.error('Error fetching inquiry:', error);
         return null;
       }
       return data as Inquiry | null;
@@ -195,9 +266,9 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
         (payload) => {
           queryClient.invalidateQueries({ queryKey: ['threadMessages', selectedThreadId] });
           queryClient.invalidateQueries({ queryKey: ['messageThreads', vendor.id] });
-          
+
           if (payload.new.sender_id !== currentUserId && vendorUserId) {
-            markThreadMessagesAsRead(selectedThreadId, vendorUserId);
+            markThreadMessagesAsRead(selectedThreadId, vendorUserId, supabase);
           }
         }
       )
@@ -206,7 +277,7 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedThreadId, currentUserId, vendorUserId, queryClient, vendor?.id]);
+  }, [selectedThreadId, currentUserId, vendorUserId, queryClient, vendor?.id, supabase]);
 
   // Set up realtime subscription for new messages in any thread
   useEffect(() => {
@@ -232,7 +303,7 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
           if (thread?.vendor_id === vendor.id && payload.new.sender_id !== vendorUserId) {
             // New message from a customer
             queryClient.invalidateQueries({ queryKey: ['messageThreads', vendor.id] });
-            
+
             // Show notification if not on messages page or if it's a different thread
             if (payload.new.thread_id !== selectedThreadId) {
               const { data: sender } = await supabase
@@ -240,13 +311,13 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                 .select('name, email')
                 .eq('id', payload.new.sender_id)
                 .single();
-              
+
               const senderName = sender?.name || sender?.email || 'Someone';
               const messagePreview = (payload.new.content as string).substring(0, 50);
-              
-              toast.success(`${senderName} sent a message`, {
-                description: messagePreview + (messagePreview.length >= 50 ? '...' : ''),
-              });
+
+              toast.success(
+                `${senderName} sent a message: ${messagePreview}${messagePreview.length >= 50 ? '...' : ''}`
+              );
             }
           }
         }
@@ -261,23 +332,28 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
   // Mark messages as read when thread is selected
   useEffect(() => {
     if (selectedThreadId && vendorUserId && messages.length > 0) {
-      markThreadMessagesAsRead(selectedThreadId, vendorUserId);
+      markThreadMessagesAsRead(selectedThreadId, vendorUserId, supabase);
       queryClient.invalidateQueries({ queryKey: ['messageThreads', vendor?.id] });
     }
-  }, [selectedThreadId, vendorUserId, messages.length, queryClient, vendor?.id]);
+  }, [selectedThreadId, vendorUserId, messages.length, queryClient, vendor?.id, supabase]);
 
   // Scroll to bottom when new messages arrive
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Auto-resize textarea
+  // Auto-resize textarea smoothly
   useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      const maxHeight = 256; // max-h-64 = 256px
-      const scrollHeight = textareaRef.current.scrollHeight;
-      textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+      // Use requestAnimationFrame for smoother resize
+      requestAnimationFrame(() => {
+        if (!textareaRef.current) return;
+        textareaRef.current.style.height = '0px';
+        const maxHeight = 256; // max-h-64 = 256px
+        const minHeight = 44; // comfortable single-line height
+        const scrollHeight = textareaRef.current.scrollHeight;
+        textareaRef.current.style.height = `${Math.max(minHeight, Math.min(scrollHeight, maxHeight))}px`;
+      });
     }
   }, [messageContent]);
 
@@ -288,11 +364,33 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
     }
   }, [isSearchActive]);
 
+  // Switch to conversation view on mobile when thread is selected
+  useEffect(() => {
+    if (selectedThreadId) {
+      setMobileView('conversation');
+    }
+  }, [selectedThreadId]);
+
   // Handle search close
   const handleSearchClose = () => {
     setIsSearchActive(false);
     setSearchQuery('');
   };
+
+  // Handle mobile back to thread list
+  const handleMobileBack = () => {
+    setMobileView('threads');
+    setSelectedThreadId(null);
+  };
+
+  // Scroll to composer (for quick-reply button in sidebar)
+  const scrollToComposer = useCallback(() => {
+    composerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+    // Focus the textarea after scrolling
+    setTimeout(() => {
+      textareaRef.current?.focus();
+    }, 300);
+  }, []);
 
   // Upload attachment function
   const uploadAttachment = async (file: File): Promise<string | null> => {
@@ -304,14 +402,13 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
 
       const { uploadImage } = await import('@/lib/supabase/vendor');
       const { url, error: uploadError } = await uploadImage('vendor-assets', fileName, file);
-      
+
       if (uploadError || !url) {
         throw new Error(uploadError || 'Upload failed');
       }
 
       return url;
     } catch (error) {
-      console.error('Error uploading attachment:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to upload attachment');
       return null;
     }
@@ -323,7 +420,7 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
     if (!files || files.length === 0) return;
 
     const file = files[0];
-    
+
     // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File size must be less than 5MB');
@@ -348,8 +445,8 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
     setUploadingAttachment(false);
 
     if (url) {
-      setAttachments(prev => 
-        prev.map(att => 
+      setAttachments(prev =>
+        prev.map(att =>
           att.file === file ? { ...att, url } : att
         )
       );
@@ -376,15 +473,15 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
   const sendMessageMutation = useMutation({
     mutationFn: async ({ threadId, content, attachmentUrls }: { threadId: string; content: string; attachmentUrls?: string[] }) => {
       if (!vendorUserId) throw new Error('Not authenticated');
-      
+
       // Combine content with attachment URLs
       let finalContent = content.trim();
       if (attachmentUrls && attachmentUrls.length > 0) {
         const imageUrls = attachmentUrls.map(url => `![attachment](${url})`).join('\n');
         finalContent = finalContent ? `${finalContent}\n\n${imageUrls}` : imageUrls;
       }
-      
-      return await sendMessageFn(threadId, vendorUserId, finalContent);
+
+      return await sendMessageFn(threadId, vendorUserId, finalContent, supabase);
     },
     onSuccess: () => {
       setMessageContent('');
@@ -458,21 +555,28 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
     }
   };
 
+  const isSending = sendMessageMutation.isPending;
+  const charCount = messageContent.length;
+
   return (
-    <div className="h-full flex flex-col bg-background dark:bg-background p-4 gap-4 overflow-hidden">
+    <div className="h-full flex flex-col bg-background dark:bg-background p-2 md:p-4 gap-2 md:gap-4 overflow-hidden">
       {/* Main three-column layout */}
-      <div className="flex-1 flex gap-4 min-h-0">
+      <div className="flex-1 flex gap-2 md:gap-4 min-h-0">
         {/* Left Column: Thread List */}
-        <div className="w-[360px] rounded-2xl shadow-lg dark:shadow-2xl border border-border/60 dark:border-border/30 bg-card/95 dark:bg-card backdrop-blur-sm flex flex-col overflow-hidden min-h-0">
+        <div className={`
+          w-full md:w-[360px] md:flex-shrink-0
+          rounded-2xl shadow-lg dark:shadow-2xl border border-border/60 dark:border-border/30 bg-card/95 dark:bg-card backdrop-blur-sm flex flex-col overflow-hidden min-h-0
+          ${mobileView === 'conversation' ? 'hidden md:flex' : 'flex'}
+        `}>
           {/* Header */}
           <div className="px-5 py-4 border-b border-border/60 dark:border-border/30 bg-gradient-to-b from-card to-card/95 dark:from-card dark:to-card/90 flex items-center gap-3">
             {/* Left side: Title or Search Bar */}
             <div className="flex-1 relative overflow-hidden min-h-[36px] flex items-center">
               {/* Title - shown when search is inactive */}
-              <h2 
+              <h2
                 className={`text-2xl font-bold tracking-tight text-foreground transition-all duration-300 ease-out ${
-                  isSearchActive 
-                    ? 'opacity-0 translate-x-[-24px] absolute pointer-events-none' 
+                  isSearchActive
+                    ? 'opacity-0 translate-x-[-24px] absolute pointer-events-none'
                     : 'opacity-100 translate-x-0'
                 }`}
               >
@@ -480,10 +584,10 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
               </h2>
 
               {/* Search Bar - shown when search is active */}
-              <div 
+              <div
                 className={`relative w-full transition-all duration-300 ease-out ${
-                  isSearchActive 
-                    ? 'opacity-100 translate-x-0' 
+                  isSearchActive
+                    ? 'opacity-100 translate-x-0'
                     : 'opacity-0 translate-x-[24px] absolute pointer-events-none'
                 }`}
               >
@@ -502,7 +606,7 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                       }
                     }}
                     className="pl-11 pr-11 h-11 text-[15px] bg-background dark:bg-muted/30 border border-border/50 dark:border-border/30 focus:bg-background dark:focus:bg-muted/40 focus:border-primary/40 dark:focus:border-primary/50 focus:ring-2 focus:ring-primary/15 dark:focus:ring-primary/20 focus:outline-none transition-all duration-200 rounded-2xl shadow-sm dark:shadow-md hover:border-border/80 dark:hover:border-border/50 hover:shadow-md dark:hover:shadow-lg"
-                    style={{ 
+                    style={{
                       boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)',
                     }}
                   />
@@ -522,14 +626,14 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
             <div className="flex items-center gap-1.5 shrink-0">
               {!isSearchActive ? (
                 <>
-                  <button 
+                  <button
                     onClick={() => setIsSearchActive(true)}
                     className="p-2.5 hover:bg-muted/60 active:bg-muted rounded-xl transition-all duration-200 group"
                     aria-label="Search conversations"
                   >
                     <Search className="h-5 w-5 text-muted-foreground group-hover:text-foreground transition-colors" />
                   </button>
-                  <button 
+                  <button
                     className="p-2.5 hover:bg-muted/60 active:bg-muted rounded-xl transition-all duration-200 group"
                     aria-label="Settings"
                   >
@@ -537,7 +641,7 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                   </button>
                 </>
               ) : (
-                <button 
+                <button
                   onClick={handleSearchClose}
                   className="px-4 py-2.5 hover:bg-muted/60 active:bg-muted rounded-xl transition-all duration-200 group font-medium text-sm"
                   aria-label="Cancel search"
@@ -575,16 +679,34 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
           {/* Thread List */}
           <div className="flex-1 overflow-y-auto">
             {threadsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
+              <ThreadListSkeleton />
             ) : filteredThreads.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-                <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
-                <p className="text-foreground font-medium">No conversations yet</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  {searchQuery ? 'No conversations match your search' : 'Messages from customers will appear here'}
-                </p>
+              <div className="flex flex-col items-center justify-center py-16 px-6 text-center">
+                <div className="w-16 h-16 rounded-2xl bg-primary/5 dark:bg-primary/10 flex items-center justify-center mb-5">
+                  <Inbox className="w-8 h-8 text-primary/60" />
+                </div>
+                {searchQuery ? (
+                  <>
+                    <p className="text-foreground font-semibold text-[15px]">No results found</p>
+                    <p className="text-sm text-muted-foreground mt-2 max-w-[240px] leading-relaxed">
+                      No conversations match &ldquo;{searchQuery}&rdquo;. Try a different search term.
+                    </p>
+                  </>
+                ) : filter === 'unread' ? (
+                  <>
+                    <p className="text-foreground font-semibold text-[15px]">All caught up!</p>
+                    <p className="text-sm text-muted-foreground mt-2 max-w-[240px] leading-relaxed">
+                      You have no unread messages. Switch to &ldquo;All&rdquo; to see your conversations.
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-foreground font-semibold text-[15px]">No conversations yet</p>
+                    <p className="text-sm text-muted-foreground mt-2 max-w-[240px] leading-relaxed">
+                      When customers reach out about your services, their messages will appear here. You will be notified of new inquiries.
+                    </p>
+                  </>
+                )}
               </div>
             ) : (
               <div className="divide-y divide-border/40 dark:divide-border/30">
@@ -599,8 +721,8 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                       key={thread.id}
                       onClick={() => setSelectedThreadId(thread.id)}
                       className={`w-full px-5 py-4 text-left transition-all duration-200 relative ${
-                        isSelected 
-                          ? 'bg-primary/5 dark:bg-primary/10 border-l-3 border-l-primary dark:border-l-primary/80' 
+                        isSelected
+                          ? 'bg-primary/5 dark:bg-primary/10 border-l-3 border-l-primary dark:border-l-primary/80'
                           : 'hover:bg-muted/30 dark:hover:bg-muted/40 border-l-3 border-l-transparent'
                       } ${unreadCount > 0 ? 'font-semibold' : ''}`}
                     >
@@ -617,10 +739,10 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between mb-1.5">
                             <p className={`text-[15px] truncate ${
-                              unreadCount > 0 
-                                ? 'font-bold text-foreground' 
-                                : isSelected 
-                                  ? 'font-semibold text-foreground' 
+                              unreadCount > 0
+                                ? 'font-bold text-foreground'
+                                : isSelected
+                                  ? 'font-semibold text-foreground'
                                   : 'font-medium text-foreground'
                             }`}>
                               {displayName}
@@ -628,8 +750,8 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                             <div className="flex items-center gap-2 flex-shrink-0 ml-2">
                               {lastMessage && (
                                 <span className={`text-[11px] font-medium ${
-                                  unreadCount > 0 
-                                    ? 'text-primary font-semibold' 
+                                  unreadCount > 0
+                                    ? 'text-primary font-semibold'
                                     : 'text-muted-foreground/80'
                                 }`}>
                                   {formatThreadTime(lastMessage.created_at)}
@@ -644,8 +766,8 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                           </div>
                           {lastMessage && (
                             <p className={`text-sm line-clamp-2 mb-1.5 leading-relaxed ${
-                              unreadCount > 0 
-                                ? 'text-foreground font-medium' 
+                              unreadCount > 0
+                                ? 'text-foreground font-medium'
                                 : 'text-muted-foreground/90'
                             }`}>
                               {lastMessage.content}
@@ -653,7 +775,7 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                           )}
                           {inquiry && thread.id === selectedThreadId && (
                             <p className="text-xs text-muted-foreground/80 truncate font-medium">
-                              {inquiry.event_type} • {inquiry.event_date ? formatEventDate(inquiry.event_date) : 'Date TBD'}
+                              {inquiry.event_type} {inquiry.event_date ? `\u00B7 ${formatEventDate(inquiry.event_date)}` : '\u00B7 Date TBD'}
                             </p>
                           )}
                         </div>
@@ -667,54 +789,89 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
         </div>
 
         {/* Center Column: Conversation */}
-        <div className="flex-1 flex flex-col rounded-2xl shadow-lg dark:shadow-2xl border border-border/60 dark:border-border/30 bg-card/95 dark:bg-card backdrop-blur-sm overflow-hidden min-h-0">
+        <div className={`
+          flex-1 flex flex-col rounded-2xl shadow-lg dark:shadow-2xl border border-border/60 dark:border-border/30 bg-card/95 dark:bg-card backdrop-blur-sm overflow-hidden min-h-0
+          ${mobileView === 'threads' ? 'hidden md:flex' : 'flex'}
+        `}>
           {!selectedThreadId ? (
             <div className="flex-1 flex items-center justify-center bg-card">
-              <div className="text-center">
-                <MessageSquare className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
-                <p className="text-foreground font-medium">Select a conversation</p>
-                <p className="text-sm text-muted-foreground mt-2">
-                  Choose a conversation from the list to view messages
+              <div className="text-center max-w-[280px]">
+                <div className="w-20 h-20 rounded-2xl bg-primary/5 dark:bg-primary/10 flex items-center justify-center mx-auto mb-5">
+                  <MessageSquare className="w-10 h-10 text-primary/50" />
+                </div>
+                <p className="text-foreground font-semibold text-lg">Select a conversation</p>
+                <p className="text-sm text-muted-foreground mt-2.5 leading-relaxed">
+                  Choose a conversation from the list to view and reply to customer messages.
                 </p>
               </div>
             </div>
           ) : (
             <>
               {/* Conversation Header */}
-              <div className="px-5 py-4 border-b border-border/60 dark:border-border/30 bg-gradient-to-b from-card to-card/95 dark:from-card dark:to-card/90">
+              <div className="px-3 md:px-5 py-3 md:py-4 border-b border-border/60 dark:border-border/30 bg-gradient-to-b from-card to-card/95 dark:from-card dark:to-card/90">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3.5">
-                    <Avatar className="h-11 w-11 ring-2 ring-background shadow-sm">
+                  <div className="flex items-center gap-2 md:gap-3.5">
+                    {/* Mobile back button */}
+                    <button
+                      onClick={handleMobileBack}
+                      className="md:hidden p-2 -ml-1 hover:bg-muted/60 rounded-xl transition-colors"
+                      aria-label="Back to conversations"
+                    >
+                      <ArrowLeft className="h-5 w-5 text-foreground" />
+                    </button>
+                    <Avatar className="h-10 w-10 md:h-11 md:w-11 ring-2 ring-background shadow-sm">
                       <AvatarImage src={selectedThread?.user?.avatar || undefined} />
                       <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-foreground text-sm font-semibold">
                         {(selectedThread?.user?.name || selectedThread?.user?.email || 'C').charAt(0).toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-bold text-[16px] text-foreground tracking-tight">
+                      <p className="font-bold text-[15px] md:text-[16px] text-foreground tracking-tight">
                         {selectedThread?.user?.name || selectedThread?.user?.email || 'Customer'}
                       </p>
-                      <p className="text-xs text-muted-foreground/80 font-medium mt-0.5">
+                      <p className="text-xs text-muted-foreground/80 font-medium mt-0.5 hidden sm:block">
                         {selectedThread?.user?.email}
                       </p>
                     </div>
                   </div>
+                  {/* Desktop sidebar toggle */}
+                  <button
+                    onClick={() => setIsSidebarCollapsed(prev => !prev)}
+                    className="hidden lg:flex p-2 hover:bg-muted/60 rounded-xl transition-colors"
+                    aria-label={isSidebarCollapsed ? 'Show details panel' : 'Hide details panel'}
+                    title={isSidebarCollapsed ? 'Show details' : 'Hide details'}
+                  >
+                    {isSidebarCollapsed ? (
+                      <PanelRightOpen className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <PanelRightClose className="h-5 w-5 text-muted-foreground" />
+                    )}
+                  </button>
                 </div>
               </div>
 
               {/* Messages */}
-              <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 bg-card scrollbar-hide">
+              <div className="flex-1 overflow-y-auto px-3 sm:px-4 md:px-6 py-6 bg-card scrollbar-hide">
                 {messagesLoading ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  </div>
+                  <MessagesSkeleton />
                 ) : messages.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <MessageSquare className="w-12 h-12 text-muted-foreground mb-4" />
-                    <p className="text-foreground font-medium">No messages yet</p>
-                    <p className="text-sm text-muted-foreground mt-2">
-                      Start the conversation by sending a message
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="w-16 h-16 rounded-2xl bg-primary/5 dark:bg-primary/10 flex items-center justify-center mb-5">
+                      <SmilePlus className="w-8 h-8 text-primary/50" />
+                    </div>
+                    <p className="text-foreground font-semibold text-[15px]">Start the conversation</p>
+                    <p className="text-sm text-muted-foreground mt-2 max-w-[260px] leading-relaxed">
+                      Send a friendly greeting to kick things off. Great communication leads to great events!
                     </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-5 rounded-xl"
+                      onClick={scrollToComposer}
+                    >
+                      <Send className="h-3.5 w-3.5 mr-2" />
+                      Write a message
+                    </Button>
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -722,10 +879,10 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                       const isFromVendor = message.sender_id === vendorUserId;
                       const senderName = message.sender?.name || message.sender?.email || 'User';
                       const prevMessage = index > 0 ? messages[index - 1] : null;
-                      const showDateSeparator = !prevMessage || 
-                        format(new Date(message.created_at), 'MMM d, yyyy') !== 
+                      const showDateSeparator = !prevMessage ||
+                        format(new Date(message.created_at), 'MMM d, yyyy') !==
                         format(new Date(prevMessage.created_at), 'MMM d, yyyy');
-                      const showAvatar = !prevMessage || 
+                      const showAvatar = !prevMessage ||
                         prevMessage.sender_id !== message.sender_id ||
                         new Date(message.created_at).getTime() - new Date(prevMessage.created_at).getTime() > 300000; // 5 minutes
                       const isGrouped = !showAvatar && prevMessage && prevMessage.sender_id === message.sender_id;
@@ -735,7 +892,7 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                           {showDateSeparator && (
                             <div className="flex items-center justify-center my-8">
                               <span className="text-xs font-semibold text-muted-foreground/80 dark:text-muted-foreground/70 bg-muted/30 dark:bg-muted/50 backdrop-blur-sm px-4 py-2 rounded-full border border-border/40 dark:border-border/30 shadow-sm dark:shadow-md">
-                                {format(new Date(message.created_at), 'MMMM d, yyyy')}
+                                {formatDateSeparator(message.created_at)}
                               </span>
                             </div>
                           )}
@@ -758,7 +915,7 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                                 )}
                               </div>
                             )}
-                            <div className={`flex flex-col max-w-[70%] sm:max-w-[65%] ${isFromVendor ? 'items-end' : 'items-start'}`}>
+                            <div className={`flex flex-col max-w-[80%] sm:max-w-[70%] md:max-w-[65%] ${isFromVendor ? 'items-end' : 'items-start'}`}>
                               {showAvatar && !isFromVendor && (
                                 <p className="text-xs font-semibold text-foreground mb-1.5 px-1.5">
                                   {senderName}
@@ -864,7 +1021,15 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
               </div>
 
               {/* Message Input */}
-              <div className="px-5 pt-5 pb-4 border-t border-border/60 dark:border-border/30 bg-gradient-to-b from-card/95 to-card dark:from-card/90 dark:to-card shrink-0">
+              <div ref={composerRef} className="px-3 md:px-5 pt-3 md:pt-5 pb-3 md:pb-4 border-t border-border/60 dark:border-border/30 bg-gradient-to-b from-card/95 to-card dark:from-card/90 dark:to-card shrink-0">
+                {/* Sending state banner */}
+                {isSending && (
+                  <div className="mb-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-primary/5 dark:bg-primary/10 border border-primary/20">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                    <span className="text-xs font-medium text-primary">Sending message...</span>
+                  </div>
+                )}
+
                 {/* Attachment Previews */}
                 {attachments.length > 0 && (
                   <div className="mb-3 flex flex-wrap gap-2">
@@ -913,7 +1078,7 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                   </div>
                 )}
 
-                <div className="rounded-2xl shadow-md dark:shadow-lg border border-border/60 dark:border-border/30 bg-background/80 dark:bg-muted/20 backdrop-blur-sm p-4">
+                <div className="rounded-2xl shadow-md dark:shadow-lg border border-border/60 dark:border-border/30 bg-background/80 dark:bg-muted/20 backdrop-blur-sm p-3 md:p-4">
                   <form onSubmit={handleSendMessage} className="flex items-end gap-2">
                     <div className="flex-1 relative">
                       <textarea
@@ -921,14 +1086,13 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                         value={messageContent}
                         onChange={(e) => setMessageContent(e.target.value)}
                         placeholder="Write a message..."
-                        className="w-full min-h-[80px] max-h-64 px-4 py-3 pr-20 rounded-xl border border-border/60 dark:border-border/30 bg-background dark:bg-muted/20 text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/25 focus:border-primary/30 dark:focus:border-primary/50 text-[15px] leading-relaxed transition-all duration-200"
+                        className="w-full min-h-[44px] max-h-64 px-3 md:px-4 py-2.5 md:py-3 pr-20 rounded-xl border border-border/60 dark:border-border/30 bg-background dark:bg-muted/20 text-foreground placeholder:text-muted-foreground/70 dark:placeholder:text-muted-foreground/60 resize-none focus:outline-none focus:ring-2 focus:ring-primary/20 dark:focus:ring-primary/25 focus:border-primary/30 dark:focus:border-primary/50 text-[15px] leading-relaxed transition-[height,border-color,box-shadow] duration-200"
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
                             handleSendMessage(e);
                           }
                         }}
-                        rows={3}
                       />
                       <div className="absolute right-2 bottom-2 flex items-center gap-1">
                         <input
@@ -965,17 +1129,27 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                     </div>
                     <Button
                       type="submit"
-                      disabled={(!messageContent.trim() && attachments.length === 0) || sendMessageMutation.isPending || uploadingAttachment}
+                      disabled={(!messageContent.trim() && attachments.length === 0) || isSending || uploadingAttachment}
                       size="icon"
-                      className="h-12 w-12 rounded-xl shrink-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50"
+                      className="h-11 w-11 md:h-12 md:w-12 rounded-xl shrink-0 shadow-md hover:shadow-lg transition-all duration-200 disabled:opacity-50"
                     >
-                      {sendMessageMutation.isPending || uploadingAttachment ? (
+                      {isSending || uploadingAttachment ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
                         <Send className="h-4 w-4" />
                       )}
                     </Button>
                   </form>
+                  {/* Character count - only shown for long messages */}
+                  {charCount > 500 && (
+                    <div className="flex justify-end mt-1.5 pr-14">
+                      <span className={`text-[11px] font-medium tabular-nums ${
+                        charCount > 2000 ? 'text-destructive' : 'text-muted-foreground/60'
+                      }`}>
+                        {charCount.toLocaleString()} characters
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </>
@@ -983,10 +1157,17 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
         </div>
 
         {/* Right Column: Reservation Details */}
-        {selectedThreadId && selectedThread && (
-          <div className="w-[360px] flex flex-col rounded-2xl shadow-lg dark:shadow-2xl border border-border/60 dark:border-border/30 bg-card/95 dark:bg-card backdrop-blur-sm overflow-hidden min-h-0">
+        {selectedThreadId && selectedThread && !isSidebarCollapsed && (
+          <div className="hidden lg:flex w-[360px] flex-shrink-0 flex-col rounded-2xl shadow-lg dark:shadow-2xl border border-border/60 dark:border-border/30 bg-card/95 dark:bg-card backdrop-blur-sm overflow-hidden min-h-0">
             <div className="px-5 py-4 border-b border-border/60 dark:border-border/30 bg-gradient-to-b from-card to-card/95 dark:from-card dark:to-card/90 flex items-center justify-between">
               <h3 className="font-bold text-lg text-foreground tracking-tight">Reservation</h3>
+              <button
+                onClick={() => setIsSidebarCollapsed(true)}
+                className="p-1.5 hover:bg-muted/60 rounded-lg transition-colors"
+                aria-label="Close details panel"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-6">
               {/* Customer Info */}
@@ -1064,6 +1245,14 @@ export function MessagesPage({ vendor }: MessagesPageProps) {
                 <Button variant="outline" className="w-full justify-start h-11 rounded-xl font-semibold hover:bg-muted/60 transition-all duration-200">
                   <Phone className="h-4 w-4 mr-2.5" />
                   Contact Customer
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full justify-start h-11 rounded-xl font-semibold hover:bg-muted/60 transition-all duration-200"
+                  onClick={scrollToComposer}
+                >
+                  <Send className="h-4 w-4 mr-2.5" />
+                  Quick Reply
                 </Button>
               </div>
             </div>

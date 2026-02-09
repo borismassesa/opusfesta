@@ -1,55 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
-import { createClient } from "@supabase/supabase-js";
-
-// Get Supabase admin client for authentication
-function getSupabaseAdmin() {
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    throw new Error("Missing Supabase configuration");
-  }
-
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY,
-    {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false,
-      },
-    }
-  );
-}
-
-// Get authenticated user from request (optional - returns null if not authenticated)
-async function getAuthenticatedUser(request: NextRequest): Promise<{ userId: string } | null> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-
-  const token = authHeader.replace("Bearer ", "");
-  
-  try {
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    
-    if (error || !user) {
-      return null;
-    }
-
-    // Verify user exists in database
-    const { data: userData } = await supabaseAdmin
-      .from("users")
-      .select("id")
-      .eq("id", user.id)
-      .single();
-
-    return userData ? { userId: user.id } : null;
-  } catch (error) {
-    console.error("Error getting authenticated user:", error);
-    return null;
-  }
-}
+import {
+  VendorSearchResponseSchema,
+  type VendorSearchResponse,
+} from "@opusfesta/lib";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Helper function to truncate text
 function truncateText(text: string | null, maxLength: number = 100): string | null {
@@ -72,8 +27,8 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
 
-    // Check if user is authenticated
-    const user = await getAuthenticatedUser(request);
+    // Check if user is authenticated (optional - route works without auth too)
+    const user = await getAuthenticatedUser();
     const isAuthenticated = !!user;
 
     // Validate pagination
@@ -112,13 +67,25 @@ export async function GET(request: NextRequest) {
     }
 
     if (!data || data.length === 0) {
-      return NextResponse.json({
+      const emptyResponse: VendorSearchResponse = {
         vendors: [],
         total: 0,
         page,
         limit,
         totalPages: 0,
-      });
+        isAuthenticated,
+      };
+
+      const parsedEmptyResponse = VendorSearchResponseSchema.safeParse(emptyResponse);
+      if (!parsedEmptyResponse.success) {
+        console.error("Vendor search response contract mismatch:", parsedEmptyResponse.error.flatten());
+        return NextResponse.json(
+          { error: "Invalid vendor search response contract" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(parsedEmptyResponse.data);
     }
 
     // Get total count from first row (all rows have the same total_count)
@@ -167,14 +134,25 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    return NextResponse.json({
+    const responsePayload: VendorSearchResponse = {
       vendors,
       total,
       page,
       limit,
       totalPages,
       isAuthenticated,
-    });
+    };
+
+    const parsedResponse = VendorSearchResponseSchema.safeParse(responsePayload);
+    if (!parsedResponse.success) {
+      console.error("Vendor search response contract mismatch:", parsedResponse.error.flatten());
+      return NextResponse.json(
+        { error: "Invalid vendor search response contract" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(parsedResponse.data);
   } catch (error) {
     console.error("Unexpected error in vendor search:", error);
     return NextResponse.json(

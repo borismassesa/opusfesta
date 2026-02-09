@@ -11,25 +11,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { format, startOfDay, isBefore, differenceInDays, isSameMonth } from "date-fns";
 import Image from "next/image";
 import type { Vendor } from "@/lib/supabase/vendors";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 interface VendorBookingSidebarProps {
   vendor: Vendor;
   isSticky?: boolean;
-  // Future: bookedDates will come from vendor's calendar/bookings
   bookedDates?: Date[];
-  isAuthenticated?: boolean;
-  onAuthRequired?: () => void;
 }
 
 export function VendorBookingSidebar({
   vendor,
   isSticky = true,
   bookedDates = [],
-  isAuthenticated = false,
-  onAuthRequired,
 }: VendorBookingSidebarProps) {
   const router = useRouter();
+  const { getToken, isSignedIn } = useAuth();
+  const { requireAuth } = useAuthGate();
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: undefined,
     to: undefined,
@@ -324,18 +322,13 @@ export function VendorBookingSidebar({
     return null;
   };
 
-  const handleRequestQuote = async () => {
+  const handleRequestQuote = () => {
     if (!canRequestQuote) {
       return; // Don't open form if validation fails
     }
-    if (!isAuthenticated) {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        onAuthRequired?.();
-        return;
-      }
-    }
-    setIsFormOpen(true);
+    requireAuth("booking", () => {
+      setIsFormOpen(true);
+    });
   };
 
   return (
@@ -1373,8 +1366,8 @@ export function VendorBookingSidebar({
                           
                           try {
                             // Get authentication token
-                            const { data: { session } } = await supabase.auth.getSession();
-                            if (!session) {
+                            const token = await getToken();
+                            if (!token) {
                               setIsSubmitting(false);
                               onAuthRequired?.();
                               return;
@@ -1382,7 +1375,7 @@ export function VendorBookingSidebar({
 
                             const headers: HeadersInit = {
                               "Content-Type": "application/json",
-                              Authorization: `Bearer ${session.access_token}`,
+                              Authorization: `Bearer ${token}`,
                             };
 
                             // Prepare inquiry data
@@ -1999,13 +1992,13 @@ export function VendorBookingSidebar({
                   
                   setIsSubmittingReport(true);
                   try {
-                    const { data: { session } } = await supabase.auth.getSession();
+                    const token = await getToken();
                     const headers: HeadersInit = {
                       "Content-Type": "application/json",
                     };
-                    
-                    if (session) {
-                      headers["Authorization"] = `Bearer ${session.access_token}`;
+
+                    if (token) {
+                      headers["Authorization"] = `Bearer ${token}`;
                     }
 
                     const response = await fetch("/api/reports/vendors", {

@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  VendorCollectionResponseSchema,
+  type VendorCollectionResponse,
+} from "@opusfesta/lib";
 
 export async function GET(
   request: NextRequest,
@@ -30,6 +34,7 @@ export async function GET(
       .from("vendors")
       .select("*", { count: "exact" })
       .eq("verified", true);
+    let isNewCollection = false;
 
     // Apply collection-specific filters
     switch (collectionKey) {
@@ -42,6 +47,7 @@ export async function GET(
         break;
 
       case "new":
+        isNewCollection = true;
         // Recently created vendors (within last 30 days)
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
@@ -101,21 +107,49 @@ export async function GET(
       );
     }
 
-    if (!data || data.length === 0) {
-      return NextResponse.json({
+    let rows = data || [];
+    let total = count || 0;
+
+    // If there are no vendors created in the last 30 days, fall back to latest verified vendors.
+    if (isNewCollection && rows.length === 0) {
+      const { data: fallbackData, error: fallbackError, count: fallbackCount } = await supabase
+        .from("vendors")
+        .select("*", { count: "exact" })
+        .eq("verified", true)
+        .order("created_at", { ascending: false })
+        .range(offset, offset + limit - 1);
+
+      if (!fallbackError && fallbackData) {
+        rows = fallbackData;
+        total = fallbackCount || fallbackData.length;
+      }
+    }
+
+    if (rows.length === 0) {
+      const emptyResponse: VendorCollectionResponse = {
         vendors: [],
         total: 0,
         page,
         limit,
         totalPages: 0,
-      });
+      };
+
+      const parsedEmptyResponse = VendorCollectionResponseSchema.safeParse(emptyResponse);
+      if (!parsedEmptyResponse.success) {
+        console.error("Vendor collection response contract mismatch:", parsedEmptyResponse.error.flatten());
+        return NextResponse.json(
+          { error: "Invalid vendor collection response contract" },
+          { status: 500 }
+        );
+      }
+
+      return NextResponse.json(parsedEmptyResponse.data);
     }
 
-    const total = count || 0;
     const totalPages = Math.ceil(total / limit);
 
     // Transform the data to match VendorCollectionItem interface
-    const vendors = data.map((row: any) => {
+    const vendors = rows.map((row: any) => {
       // Handle location - it's stored as JSONB
       const location = typeof row.location === 'string' 
         ? JSON.parse(row.location) 
@@ -139,13 +173,24 @@ export async function GET(
       };
     });
 
-    return NextResponse.json({
+    const responsePayload: VendorCollectionResponse = {
       vendors,
       total,
       page,
       limit,
       totalPages,
-    });
+    };
+
+    const parsedResponse = VendorCollectionResponseSchema.safeParse(responsePayload);
+    if (!parsedResponse.success) {
+      console.error("Vendor collection response contract mismatch:", parsedResponse.error.flatten());
+      return NextResponse.json(
+        { error: "Invalid vendor collection response contract" },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json(parsedResponse.data);
   } catch (error) {
     console.error("Unexpected error in collection fetch:", error);
     return NextResponse.json(

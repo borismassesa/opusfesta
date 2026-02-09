@@ -24,7 +24,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import Link from "next/link";
 import { RichTextEditor } from "@/components/careers/RichTextEditor";
@@ -55,6 +55,7 @@ const jobPostingSchema = z.object({
 type JobPostingFormData = z.infer<typeof jobPostingSchema>;
 
 export default function EditJobPostingPage() {
+  const { getToken } = useAuth();
   const router = useRouter();
   const params = useParams();
   const jobId = params.id as string;
@@ -89,8 +90,8 @@ export default function EditJobPostingPage() {
   const fetchJob = async () => {
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -98,7 +99,7 @@ export default function EditJobPostingPage() {
       // Use absolute URL with basePath to call admin app's own API
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs?includeInactive=true`), {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -170,8 +171,8 @@ export default function EditJobPostingPage() {
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -181,7 +182,7 @@ export default function EditJobPostingPage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           id: jobId,

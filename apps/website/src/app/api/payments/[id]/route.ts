@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { stripePaymentService } from "@/lib/payments/stripe";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Mark route as dynamic to prevent static analysis during build
 export const dynamic = 'force-dynamic';
@@ -43,20 +44,10 @@ export async function GET(
     const { id: paymentId } = await params;
 
     // Authenticate user
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Invalid authentication" },
         { status: 401 }
       );
     }
@@ -183,20 +174,10 @@ export async function PUT(
     const body: UpdatePaymentRequest = await request.json();
 
     // Authenticate user
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Invalid authentication" },
         { status: 401 }
       );
     }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Mark route as dynamic to prevent static analysis during build
 export const dynamic = 'force-dynamic';
@@ -54,27 +55,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get authenticated user
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
+    // Authenticate user
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Invalid authentication" },
-        { status: 401 }
-      );
-    }
-
     // Verify vendor exists
-    const { data: vendor, error: vendorError } = await supabase
+    const { data: vendor, error: vendorError } = await supabaseAdmin
       .from("vendors")
       .select("id")
       .eq("id", body.vendorId)
@@ -88,7 +79,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user can review this vendor (must have completed inquiry)
-    const { data: canReview, error: canReviewError } = await supabase
+    const { data: canReview, error: canReviewError } = await supabaseAdmin
       .rpc("can_user_review_vendor", {
         user_uuid: user.id,
         vendor_uuid: body.vendorId,
@@ -113,7 +104,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already reviewed this vendor
-    const { data: existingReview } = await supabase
+    const { data: existingReview } = await supabaseAdmin
       .from("reviews")
       .select("id")
       .eq("user_id", user.id)
@@ -129,7 +120,7 @@ export async function POST(request: NextRequest) {
 
     // If inquiryId is provided, verify it belongs to the user and vendor
     if (body.inquiryId) {
-      const { data: inquiry, error: inquiryError } = await supabase
+      const { data: inquiry, error: inquiryError } = await supabaseAdmin
         .from("inquiries")
         .select("id, vendor_id, user_id, status, event_date")
         .eq("id", body.inquiryId)
@@ -170,7 +161,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Create review
-    const { data: review, error: reviewError } = await supabase
+    const { data: review, error: reviewError } = await supabaseAdmin
       .from("reviews")
       .insert({
         vendor_id: body.vendorId,

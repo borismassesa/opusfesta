@@ -8,7 +8,7 @@ interface VendorLocationProps {
   vendor: Vendor;
 }
 
-const MAPBOX_TOKEN = "pk.eyJ1IjoiYm9yaXNtYXNzZXNhIiwiYSI6ImNtanBhMDN3bjJhYjQzZm9wMjl0Ym45N2gifQ.KI_zPFPD__KEro-8ba4a2Q";
+const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
 // City coordinates in Tanzania [lng, lat]
 const CITY_COORDINATES: Record<string, [number, number]> = {
@@ -56,6 +56,13 @@ export function VendorLocation({ vendor }: VendorLocationProps) {
 
     const initMap = async () => {
       try {
+        if (!MAPBOX_TOKEN) {
+          if (mounted) {
+            setMapError("Map unavailable. Missing NEXT_PUBLIC_MAPBOX_TOKEN.");
+          }
+          return;
+        }
+
         // Dynamic import for client-side only
         const mapboxgl = (await import("mapbox-gl")).default;
 

@@ -1,38 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getAllActiveAdmins, isEmailWhitelisted, getAdminWhitelistEntry } from "@/lib/adminWhitelist";
 
 // Check if user is owner (only owners can manage whitelist)
-async function isOwner(request: NextRequest): Promise<{ isOwner: boolean; userId?: string }> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) {
+async function isOwner(): Promise<{ isOwner: boolean; userId?: string }> {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) {
     return { isOwner: false };
   }
 
-  const token = authHeader.replace("Bearer ", "");
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-  if (error || !user) {
-    return { isOwner: false };
-  }
-
   const { data: userData } = await supabaseAdmin
     .from("users")
-    .select("role")
-    .eq("id", user.id)
+    .select("id, role")
+    .eq("clerk_id", clerkUserId)
     .single();
 
+  if (!userData) {
+    return { isOwner: false };
+  }
+
   return {
-    isOwner: userData?.role === "owner",
-    userId: user.id,
+    isOwner: userData.role === "owner",
+    userId: userData.id,
   };
 }
 
 // GET - List all admins in whitelist
 export async function GET(request: NextRequest) {
   try {
-    const ownerCheck = await isOwner(request);
+    const ownerCheck = await isOwner();
     if (!ownerCheck.isOwner) {
       return NextResponse.json({ error: "Unauthorized. Only owners can view the whitelist." }, { status: 403 });
     }
@@ -52,7 +50,7 @@ export async function GET(request: NextRequest) {
 // POST - Add admin to whitelist
 export async function POST(request: NextRequest) {
   try {
-    const ownerCheck = await isOwner(request);
+    const ownerCheck = await isOwner();
     if (!ownerCheck.isOwner) {
       return NextResponse.json({ error: "Unauthorized. Only owners can add admins." }, { status: 403 });
     }
@@ -123,7 +121,7 @@ export async function POST(request: NextRequest) {
 // PATCH - Update admin in whitelist
 export async function PATCH(request: NextRequest) {
   try {
-    const ownerCheck = await isOwner(request);
+    const ownerCheck = await isOwner();
     if (!ownerCheck.isOwner) {
       return NextResponse.json({ error: "Unauthorized. Only owners can update admins." }, { status: 403 });
     }
@@ -177,7 +175,7 @@ export async function PATCH(request: NextRequest) {
 // DELETE - Remove admin from whitelist
 export async function DELETE(request: NextRequest) {
   try {
-    const ownerCheck = await isOwner(request);
+    const ownerCheck = await isOwner();
     if (!ownerCheck.isOwner) {
       return NextResponse.json({ error: "Unauthorized. Only owners can remove admins." }, { status: 403 });
     }

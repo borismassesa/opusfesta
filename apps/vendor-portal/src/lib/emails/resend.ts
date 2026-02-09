@@ -53,7 +53,7 @@ export async function sendEmail(options: EmailOptions): Promise<{ success: boole
       to: Array.isArray(options.to) ? options.to : [options.to],
       subject: options.subject,
       html: options.html,
-      reply_to: options.replyTo,
+      replyTo: options.replyTo,
     });
 
     if (result.error) {

@@ -3,6 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { sendEmail } from "@/lib/emails/resend";
 import { JobApplicationNotification } from "@/lib/emails/templates/job-application-notification";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Get Supabase admin client
 function getSupabaseAdmin() {
@@ -20,33 +21,6 @@ function getSupabaseAdmin() {
       },
     }
   );
-}
-
-// Get authenticated user from request
-async function getAuthenticatedUser(request: NextRequest): Promise<{ userId: string; email: string } | null> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-
-  const token = authHeader.replace("Bearer ", "");
-  
-  try {
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    
-    if (error || !user) {
-      return null;
-    }
-
-    return {
-      userId: user.id,
-      email: user.email || "",
-    };
-  } catch (error) {
-    console.error("Error getting authenticated user:", error);
-    return null;
-  }
 }
 
 // Helper function to validate and clean URL fields
@@ -156,7 +130,7 @@ const draftSchema = z.object({
 export async function POST(request: NextRequest) {
   try {
     // Check authentication
-    const user = await getAuthenticatedUser(request);
+    const user = await getAuthenticatedUser();
     if (!user) {
       return NextResponse.json(
         { error: "Authentication required. Please log in to apply." },
@@ -239,7 +213,7 @@ export async function POST(request: NextRequest) {
         .from("job_applications")
         .select("id")
         .eq("job_posting_id", data.jobPostingId)
-        .eq("user_id", user.userId)
+        .eq("user_id", user.id)
         .eq("is_draft", true)
         .single();
 
@@ -280,7 +254,7 @@ export async function POST(request: NextRequest) {
           .from("job_applications")
           .insert({
             job_posting_id: data.jobPostingId,
-            user_id: user.userId,
+            user_id: user.id,
             full_name: data.fullName || null,
             email: data.email || user.email,
             phone: data.phone || null,
@@ -315,7 +289,7 @@ export async function POST(request: NextRequest) {
         .from("job_applications")
         .select("id")
         .eq("job_posting_id", data.jobPostingId)
-        .eq("user_id", user.userId)
+        .eq("user_id", user.id)
         .eq("is_draft", true)
         .single();
 
@@ -358,7 +332,7 @@ export async function POST(request: NextRequest) {
           .from("job_applications")
           .select("id, status")
           .eq("job_posting_id", data.jobPostingId)
-          .eq("user_id", user.userId)
+          .eq("user_id", user.id)
           .eq("is_draft", false)
           .single();
 
@@ -374,7 +348,7 @@ export async function POST(request: NextRequest) {
           .from("job_applications")
           .insert({
             job_posting_id: data.jobPostingId,
-            user_id: user.userId,
+            user_id: user.id,
             full_name: data.fullName,
             email: data.email,
             phone: data.phone,
@@ -449,7 +423,7 @@ export async function POST(request: NextRequest) {
                   title: task.title,
                   is_default: true,
                 },
-                performed_by: user.userId,
+                performed_by: user.id,
               });
           }
         }
@@ -470,7 +444,7 @@ export async function POST(request: NextRequest) {
               applicant_email: data.email,
               job_title: jobPosting.title,
             },
-            performed_by: user.userId,
+            performed_by: user.id,
           });
       } catch (logError) {
         console.error("Error logging application creation:", logError);

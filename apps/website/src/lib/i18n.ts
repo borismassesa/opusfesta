@@ -20,7 +20,7 @@ i18n
             guests: "Guests",
             websites: "Websites",
             inspiration: "Advice & Ideas",
-            shop: "Shop",
+            attireAndRings: "Attire & Rings",
             login: "Log In",
             getStarted: "Get Started"
           },
@@ -89,7 +89,7 @@ i18n
             guests: "Wageni",
             websites: "Tovuti",
             inspiration: "Hamasa",
-            shop: "Duka",
+            attireAndRings: "Mavazi & Pete",
             login: "Ingia",
             getStarted: "Anza Sasa"
           },

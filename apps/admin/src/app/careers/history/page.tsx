@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { LayoutGrid, Table2, Briefcase, MapPin, DollarSign, Edit, Eye, ArchiveRestore, Copy, Loader2, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import Link from "next/link";
 import { JobPostingTable } from "@/components/careers/JobPostingTable";
@@ -34,6 +34,7 @@ interface JobPosting {
 }
 
 export default function HistoryPage() {
+  const { getToken } = useAuth();
   const router = useRouter();
   const [jobs, setJobs] = useState<JobPosting[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,8 +57,8 @@ export default function HistoryPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -65,7 +66,7 @@ export default function HistoryPage() {
       // Fetch all jobs including archived
       const response = await fetch(getAdminApiUrl(`/api/admin/careers/jobs?includeInactive=true&includeArchived=true`), {
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -180,11 +181,11 @@ export default function HistoryPage() {
 
   const handleUnarchive = async (ids?: string[]) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       const jobIds = ids || Array.from(selectedIds);
-      
+
       if (jobIds.length === 0) {
         alert("Please select at least one job posting to unarchive");
         return;
@@ -194,7 +195,7 @@ export default function HistoryPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           action: "unarchive",
@@ -217,8 +218,8 @@ export default function HistoryPage() {
 
   const handleReuse = async (job: JobPosting) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       // Create a new active job based on the archived one
       const newJob = {
@@ -243,7 +244,7 @@ export default function HistoryPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(newJob),
       });
@@ -264,8 +265,8 @@ export default function HistoryPage() {
 
   const handleDuplicate = async (job: JobPosting) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       // Create a new job based on the archived one (as inactive for review)
       const newJob = {
@@ -290,7 +291,7 @@ export default function HistoryPage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(newJob),
       });

@@ -4,8 +4,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Save, RotateCcw, RefreshCw } from "lucide-react";
 import { useCareersContent } from "@/context/CareersContentContext";
-import { supabase } from "@/lib/supabaseClient";
-import type { Session } from "@supabase/supabase-js";
+import { useAuth } from "@clerk/nextjs";
 import { HeroEditor } from "../editors/HeroEditor";
 import { TestimonialsEditor } from "../editors/TestimonialsEditor";
 import { ValuesEditor } from "../editors/ValuesEditor";
@@ -32,6 +31,7 @@ export function CareersPageEditor({ activeSection }: CareersPageEditorProps) {
     lastUpdatedAt,
     lastPublishedAt,
   } = useCareersContent();
+  const { getToken, sessionClaims } = useAuth();
   const [role, setRole] = useState("");
 
   const canSave = ["owner", "admin", "editor"].includes(role);
@@ -42,25 +42,9 @@ export function CareersPageEditor({ activeSection }: CareersPageEditorProps) {
   }, [loadAdminContent]);
 
   useEffect(() => {
-    let mounted = true;
-    const getRole = (session: Session | null) =>
-      session?.user?.app_metadata?.role ?? "";
-
-    supabase.auth.getSession().then(({ data }) => {
-      if (!mounted) return;
-      setRole(getRole(data.session));
-    });
-
-    const { data } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!mounted) return;
-      setRole(getRole(session));
-    });
-
-    return () => {
-      mounted = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
+    const claimsRole = (sessionClaims as any)?.metadata?.role ?? "";
+    setRole(claimsRole);
+  }, [sessionClaims]);
 
   const handleSaveDraft = async () => {
     if (!canSave) {

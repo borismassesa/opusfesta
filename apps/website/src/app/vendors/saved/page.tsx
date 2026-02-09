@@ -17,32 +17,15 @@ import {
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { resolveAssetSrc } from "@/lib/assets";
+import type { VendorSavedItem, VendorSavedResponse } from "@opusfesta/lib";
 
-interface SavedVendor {
-  id: string;
-  slug: string;
-  business_name: string;
-  category: string;
-  location: {
-    city?: string;
-    country?: string;
-  };
-  price_range: string;
-  verified: boolean;
-  stats: {
-    averageRating: number;
-    reviewCount: number;
-    saveCount: number;
-  };
-  cover_image: string | null;
-  logo: string | null;
-  saved_at: string;
-}
+type SavedVendor = VendorSavedItem & { saved_at?: string };
 
 export default function SavedVendorsPage() {
   const router = useRouter();
+  const { isSignedIn, isLoaded, getToken } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
   const [savedVendors, setSavedVendors] = useState<SavedVendor[]>([]);
   const [loading, setLoading] = useState(true);
@@ -51,37 +34,27 @@ export default function SavedVendorsPage() {
   const [filterCategory, setFilterCategory] = useState("All");
 
   useEffect(() => {
-    async function checkAuthAndLoadVendors() {
+    if (!isLoaded) return;
+
+    if (!isSignedIn) {
+      router.push(`/login?next=${encodeURIComponent("/vendors/saved")}`);
+      return;
+    }
+
+    async function loadVendors() {
       try {
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        
-        if (!session || sessionError) {
-          router.push(`/login?next=${encodeURIComponent("/vendors/saved")}`);
-          return;
+        const token = await getToken();
+        if (token) {
+          await loadSavedVendors(token);
         }
-
-        // Verify user exists in database
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        if (userError || !userData) {
-          router.push(`/login?next=${encodeURIComponent("/vendors/saved")}`);
-          return;
-        }
-
-        // Load saved vendors
-        await loadSavedVendors(session.access_token);
       } catch (err) {
-        console.error("Error checking auth:", err);
-        router.push(`/login?next=${encodeURIComponent("/vendors/saved")}`);
+        console.error("Error loading vendors:", err);
+        setLoading(false);
       }
     }
 
-    checkAuthAndLoadVendors();
-  }, [router]);
+    loadVendors();
+  }, [isLoaded, isSignedIn, router]);
 
   async function loadSavedVendors(token: string) {
     try {
@@ -102,7 +75,7 @@ export default function SavedVendorsPage() {
         throw new Error("Failed to load saved vendors");
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as VendorSavedResponse;
       setSavedVendors(data.vendors || []);
     } catch (err: any) {
       console.error("Error loading saved vendors:", err);
@@ -114,13 +87,13 @@ export default function SavedVendorsPage() {
 
   async function unsaveVendor(vendorId: string) {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      const token = await getToken();
+      if (!token) return;
 
       const response = await fetch(`/api/vendors/${vendorId}/save`, {
         method: "DELETE",
         headers: {
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
       });
 

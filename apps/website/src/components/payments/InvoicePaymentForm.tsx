@@ -6,7 +6,8 @@ import { CreditCard, Smartphone, CheckCircle2, XCircle, Loader2, AlertCircle } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth, useUser } from "@clerk/nextjs";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import { loadStripe } from "@stripe/stripe-js";
 import {
   Elements,
@@ -44,6 +45,9 @@ function PaymentForm({ invoice, inquiryId, onPaymentSuccess, onPaymentError }: I
   const stripe = useStripe();
   const elements = useElements();
   const router = useRouter();
+  const { getToken, isSignedIn } = useAuth();
+  const { user } = useUser();
+  const { requireAuth } = useAuthGate();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<'card' | 'mobile'>('card');
@@ -62,11 +66,12 @@ function PaymentForm({ invoice, inquiryId, onPaymentSuccess, onPaymentError }: I
 
     try {
       // Get user session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (!session || sessionError) {
-        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      if (!isSignedIn) {
+        requireAuth("general", () => handleSubmit(e));
         return;
       }
+
+      const token = await getToken();
 
       if (paymentMethod === 'card') {
         // Card payment via Stripe
@@ -75,12 +80,15 @@ function PaymentForm({ invoice, inquiryId, onPaymentSuccess, onPaymentError }: I
           throw new Error("Card element not found");
         }
 
+        const customerEmail = user?.primaryEmailAddress?.emailAddress || "";
+        const customerName = user?.fullName || customerEmail;
+
         // Create payment intent
         const intentResponse = await fetch("/api/payments/intent", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
+            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify({
             invoiceId: invoice.id,
@@ -88,8 +96,8 @@ function PaymentForm({ invoice, inquiryId, onPaymentSuccess, onPaymentError }: I
             amount: Math.round(invoice.remainingAmount * 100), // Convert to cents
             currency: invoice.currency.toLowerCase(),
             method: 'stripe',
-            customerEmail: session.user.email,
-            customerName: session.user.user_metadata?.name || session.user.email,
+            customerEmail,
+            customerName,
           }),
         });
 
@@ -110,8 +118,8 @@ function PaymentForm({ invoice, inquiryId, onPaymentSuccess, onPaymentError }: I
             payment_method: {
               card: cardElement,
               billing_details: {
-                email: session.user.email,
-                name: session.user.user_metadata?.name || session.user.email,
+                email: customerEmail,
+                name: customerName,
               },
             },
           }
@@ -151,12 +159,12 @@ function PaymentForm({ invoice, inquiryId, onPaymentSuccess, onPaymentError }: I
     for (let i = 0; i < maxAttempts; i++) {
       await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
 
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!isSignedIn) return;
+      const token = await getToken();
 
       const response = await fetch(`/api/payments/${paymentId}/status`, {
         headers: {
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${token}`,
         },
       });
 

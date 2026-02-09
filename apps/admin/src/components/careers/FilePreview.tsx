@@ -12,6 +12,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 
 interface FilePreviewProps {
   fileUrl: string;
@@ -28,6 +29,7 @@ export function FilePreview({
   onDownload,
   className,
 }: FilePreviewProps) {
+  const { getToken } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,8 +58,8 @@ export function FilePreview({
       }
 
       // For Supabase storage paths, create a signed URL
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         alert("Please log in to preview files");
         setIsOpen(false);
         setIsLoading(false);

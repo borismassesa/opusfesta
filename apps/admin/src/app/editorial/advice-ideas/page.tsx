@@ -41,7 +41,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import { toast } from "@/lib/toast";
 import { cn } from "@/lib/utils";
@@ -138,6 +138,7 @@ const toDateInput = (value: string | null) => {
 
 export default function AdviceIdeasEditorialPage() {
   const router = useRouter();
+  const { getToken } = useAuth();
   const searchParams = useSearchParams();
   const [posts, setPosts] = useState<AdvicePost[]>([]);
   const [loading, setLoading] = useState(true);
@@ -231,8 +232,8 @@ export default function AdviceIdeasEditorialPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -241,7 +242,7 @@ export default function AdviceIdeasEditorialPage() {
         getAdminApiUrl("/api/admin/advice-ideas/posts?includeUnpublished=true"),
         {
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -311,8 +312,8 @@ export default function AdviceIdeasEditorialPage() {
   const handleSubmit = async () => {
     setIsSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -343,7 +344,7 @@ export default function AdviceIdeasEditorialPage() {
         method: editingPost ? "PUT" : "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify(editingPost ? { id: editingPost.id, ...payload } : payload),
       });
@@ -370,8 +371,8 @@ export default function AdviceIdeasEditorialPage() {
     }
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -380,7 +381,7 @@ export default function AdviceIdeasEditorialPage() {
         method: "DELETE",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ id: post.id }),
       });

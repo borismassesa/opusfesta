@@ -1,48 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Check if user is admin
-async function isAdmin(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return false;
+async function isAdmin(): Promise<boolean> {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) return false;
 
-  const token = authHeader.replace("Bearer ", "");
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-  if (error || !user) return false;
-
   const { data: userData } = await supabaseAdmin
     .from("users")
     .select("role")
-    .eq("id", user.id)
+    .eq("clerk_id", clerkUserId)
     .single();
 
   return userData?.role === "admin";
 }
 
-// Get authenticated user ID - since isAdmin() already verified the user, we can trust the token
-async function getAuthenticatedUserId(request: NextRequest): Promise<string> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) {
-    throw new Error("No authorization header - user should be authenticated");
-  }
-
-  const token = authHeader.replace("Bearer ", "");
-  if (!token) {
-    throw new Error("No token in authorization header");
-  }
+// Get authenticated user's database UUID
+async function getAuthenticatedUserId(): Promise<string> {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) throw new Error("Not authenticated");
 
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+  const { data: userData, error } = await supabaseAdmin
+    .from("users")
+    .select("id")
+    .eq("clerk_id", clerkUserId)
+    .single();
 
-  if (error || !user || !user.id) {
-    throw new Error("Failed to get user from token - user should be authenticated");
-  }
-
-  // Return the user ID - since isAdmin() already verified they exist in users table
-  return user.id;
+  if (error || !userData) throw new Error("Failed to get user from Clerk ID");
+  return userData.id;
 }
 
 // Task schema
@@ -62,7 +51,7 @@ const updateTaskSchema = z.object({
 // GET - Get all tasks for an application
 export async function GET(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -141,13 +130,13 @@ export async function GET(request: NextRequest) {
 // POST - Create a new task
 export async function POST(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const supabaseAdmin = getSupabaseAdmin();
     // Get authenticated user ID - since isAdmin() passed, user is guaranteed to be authenticated
-    const userId = await getAuthenticatedUserId(request);
+    const userId = await getAuthenticatedUserId();
 
     const body = await request.json();
     const validationResult = taskSchema.safeParse(body);
@@ -200,13 +189,13 @@ export async function POST(request: NextRequest) {
 // PATCH - Update a task (mark complete/incomplete or update fields)
 export async function PATCH(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const supabaseAdmin = getSupabaseAdmin();
     // Get authenticated user ID - since isAdmin() passed, user is guaranteed to be authenticated
-    const userId = await getAuthenticatedUserId(request);
+    const userId = await getAuthenticatedUserId();
 
     const body = await request.json();
     const validationResult = updateTaskSchema.safeParse(body);
@@ -283,7 +272,7 @@ export async function PATCH(request: NextRequest) {
 // DELETE - Delete a task
 export async function DELETE(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -319,7 +308,7 @@ export async function DELETE(request: NextRequest) {
     // Log task deletion to activity log
     if (task) {
       // Get authenticated user ID - since isAdmin() passed, user is guaranteed to be authenticated
-      const userId = await getAuthenticatedUserId(request);
+      const userId = await getAuthenticatedUserId();
 
       await supabaseAdmin
         .from("application_activity_log")

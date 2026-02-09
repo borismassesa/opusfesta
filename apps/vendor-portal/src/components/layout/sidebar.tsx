@@ -19,9 +19,9 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
-import { supabase } from "@/lib/supabase/client";
+import { useUser, useClerk } from "@clerk/nextjs";
+import { useClerkSupabaseClient } from "@opusfesta/auth";
 import {
-  SidebarProvider,
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -44,6 +44,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { toast } from "@/lib/toast";
+import { getVendorByUserId } from "@/lib/supabase/vendor";
 
 const MENU_GROUPS = [
   {
@@ -69,6 +71,12 @@ const MENU_GROUPS = [
       { label: "Analytics", icon: BarChart3, href: "/analytics" },
     ],
   },
+  {
+    label: "Account",
+    items: [
+      { label: "Settings", icon: Settings, href: "/settings" },
+    ],
+  },
 ];
 
 function isActiveRoute(pathname: string, href: string) {
@@ -78,55 +86,90 @@ function isActiveRoute(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
+interface SidebarUserProfile {
+  displayName: string;
+  displayEmail: string;
+  avatarUrl: string;
+}
+
 export function VendorSidebar() {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [profile, setProfile] = useState<SidebarUserProfile>({
+    displayName: "Vendor User",
+    displayEmail: "",
+    avatarUrl: "",
+  });
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // Fetch unread message count
+  const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
+  const { signOut } = useClerk();
+  const supabase = useClerkSupabaseClient();
+
+  // Fetch sidebar data (vendor info + unread message count)
   useEffect(() => {
-    const fetchUnreadCount = async () => {
+    if (!isUserLoaded || !clerkUser) return;
+    let isMounted = true;
+
+    // Set profile from Clerk user data immediately
+    setProfile({
+      displayName: clerkUser.fullName || clerkUser.primaryEmailAddress?.emailAddress?.split("@")[0] || "Vendor User",
+      displayEmail: clerkUser.primaryEmailAddress?.emailAddress || "",
+      avatarUrl: clerkUser.imageUrl || "",
+    });
+
+    const fetchVendorData = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) return;
+        const vendor = await getVendorByUserId(clerkUser.id, supabase);
 
-        // Get vendor for this user
-        const { data: vendor } = await supabase
-          .from('vendors')
-          .select('id')
-          .eq('user_id', user.id)
-          .single();
+        if (vendor && isMounted) {
+          setProfile((prev) => ({
+            ...prev,
+            displayName: vendor.business_name || prev.displayName,
+            avatarUrl: vendor.logo || prev.avatarUrl,
+          }));
 
-        if (vendor) {
-          const { getVendorUnreadCount } = await import('@/lib/supabase/messages');
-          const count = await getVendorUnreadCount(vendor.id);
-          setUnreadCount(count);
+          const { getVendorUnreadCount } = await import("@/lib/supabase/messages");
+          const count = await getVendorUnreadCount(vendor.id, supabase);
+          if (isMounted) {
+            setUnreadCount(count);
+          }
         }
-      } catch (error) {
-        console.error('Error fetching unread count:', error);
+      } catch {
+        // Vendor data fetch failed silently — sidebar will use Clerk profile info
       }
     };
 
-    fetchUnreadCount();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    fetchVendorData();
 
-  // Mock user data - in production, get from auth
-  const displayName = "Vendor User";
-  const displayEmail = "vendor@opusfesta.com";
-  const avatarUrl = "";
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchVendorData, 30000);
+    return () => {
+      isMounted = false;
+      clearInterval(interval);
+    };
+  }, [isUserLoaded, clerkUser, supabase]);
+
+  const { displayName, displayEmail, avatarUrl } = profile;
+  const initials = displayName
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((n) => n[0])
+    .join("")
+    .toUpperCase();
 
   const handleSignOut = async () => {
-    // Implement sign out logic
-    console.log("Sign out");
+    try {
+      await signOut({ redirectUrl: "/login" });
+    } catch {
+      toast.error("Failed to sign out. Please try again.");
+    }
   };
 
   return (
@@ -240,7 +283,7 @@ export function VendorSidebar() {
                   <Avatar className="h-9 w-9 group-data-[collapsible=icon]:h-10 group-data-[collapsible=icon]:w-10">
                     <AvatarImage src={avatarUrl} alt={displayName} />
                     <AvatarFallback>
-                      {displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
                 </div>
@@ -264,7 +307,7 @@ export function VendorSidebar() {
                   <Avatar className="h-9 w-9 rounded-full">
                     <AvatarImage src={avatarUrl} alt={displayName} />
                     <AvatarFallback className="rounded-full bg-muted text-popover-foreground font-semibold text-sm">
-                      {displayName.split(' ').map(n => n[0]).join('').toUpperCase()}
+                      {initials}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col flex-1 text-left leading-tight min-w-0">
@@ -278,8 +321,7 @@ export function VendorSidebar() {
                 <DropdownMenuItem 
                   className="cursor-pointer focus:bg-accent focus:text-accent-foreground px-2 py-2 text-popover-foreground"
                   onClick={() => {
-                    // Navigate to settings or handle settings action
-                    window.location.href = '/profile';
+                    window.location.href = '/settings';
                   }}
                 >
                   <Settings className="mr-2 h-4 w-4" />

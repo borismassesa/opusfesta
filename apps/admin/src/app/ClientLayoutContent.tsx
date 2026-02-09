@@ -20,8 +20,8 @@ import {
   Lightbulb,
 } from "lucide-react";
 import { useEffect, useState, useRef, type ReactNode } from "react";
-import type { Session } from "@supabase/supabase-js";
-import { supabase } from "@/lib/supabaseClient";
+import { useUser, useClerk } from "@clerk/nextjs";
+import { useOpusFestaAuth } from "@opusfesta/auth";
 import {
   SidebarProvider,
   Sidebar,
@@ -270,13 +270,17 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   const router = useRouter();
   const pathname = usePathname();
   const isMobile = useIsMobile();
-  const [authChecked, setAuthChecked] = useState(false);
-  const [session, setSession] = useState<Session | null>(null);
-  const [role, setRole] = useState("");
+  const { isLoaded: isUserLoaded, isSignedIn, user: clerkUser } = useUser();
+  const { signOut } = useClerk();
+  const { role: userRole } = useOpusFestaAuth();
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [sidebarState, setSidebarState] = useState<"expanded" | "collapsed">("expanded");
   const sidebarContainerRef = useRef<HTMLDivElement>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
+
+  const authChecked = isUserLoaded;
+  const session = isSignedIn ? clerkUser : null;
+  const role = (clerkUser?.publicMetadata?.role as string) || userRole || "";
   
   // Check if we're on a route that should show secondary sidebar (primary sidebar collapses to icon + hover overlay)
   const hasSecondarySidebar = pathname.startsWith("/content") || pathname.startsWith("/careers") || pathname.startsWith("/editor/careers") || pathname.startsWith("/editorial/advice-ideas") || pathname.startsWith("/users");
@@ -352,127 +356,13 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   const isAllowed = session && allowedRoles.includes(role);
 
   useEffect(() => {
-    let mountedRef = true;
-    
-    // Timeout fallback to ensure authChecked is always set (reduced to 1 second for faster redirect)
-    const timeoutId = setTimeout(() => {
-      if (mountedRef) {
-        console.warn("Auth check timeout - setting authChecked to true");
-        setSession(null);
-        setRole("");
-        setAuthChecked(true);
-      }
-    }, 1000); // 1 second timeout - faster redirect to login
-    
-    const fetchUserRole = async (currentSession: Session | null) => {
-      if (!currentSession?.user?.id) return "";
-      
-      try {
-        // Add timeout to the database query
-        const queryPromise = supabase
-          .from("users")
-          .select("role")
-          .eq("id", currentSession.user.id)
-          .single();
-        
-        const timeoutPromise = new Promise((_, reject) => 
-          setTimeout(() => reject(new Error("Query timeout")), 1500)
-        );
-        
-        const { data, error } = await Promise.race([queryPromise, timeoutPromise]) as any;
-        
-        if (error || !data) {
-          // Fallback to app_metadata if database query fails
-          return currentSession.user.app_metadata?.role ?? "";
-        }
-        
-        return data.role ?? "";
-      } catch (error) {
-        // Fallback to app_metadata on error
-        return currentSession.user.app_metadata?.role ?? "";
-      }
-    };
-
-    // Add timeout wrapper for getSession (5 seconds for network requests)
-    const sessionPromise = supabase.auth.getSession();
-    const sessionTimeout = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error("Session timeout")), 5000)
-    );
-
-    Promise.race([sessionPromise, sessionTimeout])
-      .then(async (result: any) => {
-        clearTimeout(timeoutId);
-        if (!mountedRef) return;
-        
-        const { data, error } = result || { data: null, error: new Error("No session data") };
-        
-        if (error) {
-          console.error("Error getting session:", error);
-          if (mountedRef) {
-            setSession(null);
-            setRole("");
-            setAuthChecked(true);
-          }
-          return;
-        }
-        const currentSession = data?.session ?? null;
-        setSession(currentSession);
-        if (currentSession) {
-          const userRole = await fetchUserRole(currentSession);
-          if (mountedRef) {
-            setRole(userRole);
-            setAuthChecked(true);
-          }
-        } else {
-          if (mountedRef) {
-            setRole("");
-            setAuthChecked(true);
-          }
-        }
-      })
-      .catch((error) => {
-        clearTimeout(timeoutId);
-        console.error("Error in getSession:", error);
-        if (mountedRef) {
-          setSession(null);
-          setRole("");
-          setAuthChecked(true);
-        }
-      });
-
-    const { data } = supabase.auth.onAuthStateChange(async (_event, nextSession) => {
-      clearTimeout(timeoutId);
-      if (!mountedRef) return;
-      setSession(nextSession);
-      if (nextSession) {
-        const userRole = await fetchUserRole(nextSession);
-        if (mountedRef) {
-          setRole(userRole);
-          setAuthChecked(true);
-        }
-      } else {
-        if (mountedRef) {
-          setRole("");
-          setAuthChecked(true);
-        }
-      }
-    });
-
-    return () => {
-      clearTimeout(timeoutId);
-      mountedRef = false;
-      data.subscription.unsubscribe();
-    };
-  }, []);
-
-  useEffect(() => {
     if (!authChecked) return;
     // Don't redirect if we're already on the login, forgot-password, or reset-password page
     if (pathname === "/login" || pathname === "/forgot-password" || pathname === "/reset-password") {
       setIsRedirecting(false);
       return;
     }
-    if (!session) {
+    if (!isSignedIn) {
       setIsRedirecting(true);
       // Use replace to avoid adding to history; only add ?next= when not going to "/" (clean URL)
       const targetPath = pathname === "/" ? "/login" : `/login?next=${encodeURIComponent(pathname)}`;
@@ -490,11 +380,10 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
     // (handled by the !isAllowed check below)
     // If role is empty but session exists, allow access (role might be loading)
     // The role check will happen again once it's loaded
-  }, [authChecked, pathname, role, router, session]);
+  }, [authChecked, pathname, role, router, isSignedIn]);
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.replace("/login");
+    await signOut({ redirectUrl: "/login" });
   };
 
   // Don't block login, forgot-password, and reset-password pages - allow them to render
@@ -524,7 +413,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
 
   // If no session and we're not on a public page, redirect to login immediately
   // Don't show unauthorized page for users who aren't logged in yet
-  if (!session && authChecked && pathname !== "/login" && pathname !== "/forgot-password" && pathname !== "/reset-password") {
+  if (!isSignedIn && authChecked && pathname !== "/login" && pathname !== "/forgot-password" && pathname !== "/reset-password") {
     // Trigger redirect immediately - don't wait for useEffect; only add ?next= when not "/"
     if (!isRedirecting) {
       setIsRedirecting(true);
@@ -560,11 +449,11 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   }
 
   const displayName =
-    session?.user?.user_metadata?.full_name ??
-    session?.user?.email ??
+    clerkUser?.fullName ??
+    clerkUser?.primaryEmailAddress?.emailAddress ??
     "Admin User";
-  const displayEmail = session?.user?.email ?? "admin@opusfesta.com";
-  const avatarUrl = session?.user?.user_metadata?.avatar_url ?? "https://github.com/shadcn.png";
+  const displayEmail = clerkUser?.primaryEmailAddress?.emailAddress ?? "admin@opusfesta.com";
+  const avatarUrl = clerkUser?.imageUrl ?? "https://github.com/shadcn.png";
 
   return (
     <Providers>

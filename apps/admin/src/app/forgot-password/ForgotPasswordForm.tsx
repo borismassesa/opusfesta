@@ -2,12 +2,15 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Loader2, Mail } from "lucide-react";
-import forgotPasswordImg from "@assets/stock_images/elegant_wedding_invi_ec57761b.jpg";
-import { resolveAssetSrc } from "@/lib/assets";
-import { supabase } from "@/lib/supabaseClient";
+import { Loader2, Mail } from "lucide-react";
+import { useSignIn } from "@clerk/nextjs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function ForgotPasswordForm() {
+  const { signIn, isLoaded } = useSignIn();
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [email, setEmail] = useState("");
@@ -15,6 +18,7 @@ export function ForgotPasswordForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLoaded || !signIn) return;
     setIsLoading(true);
     setErrorMessage("");
 
@@ -22,210 +26,147 @@ export function ForgotPasswordForm() {
     try {
       const checkResponse = await fetch("/api/admin/whitelist/check", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email }),
       });
 
       const checkData = await checkResponse.json();
 
       if (!checkData.whitelisted) {
-        // Fallback to env var whitelist for backward compatibility
         const whitelistEnv = process.env.NEXT_PUBLIC_ADMIN_WHITELIST;
         if (whitelistEnv) {
           const adminWhitelist = whitelistEnv.split(",").map(e => e.trim().toLowerCase()).filter(e => e.length > 0);
           if (adminWhitelist.length > 0 && !adminWhitelist.includes(email.toLowerCase())) {
-            setErrorMessage(checkData.message || "This email is not authorized to reset passwords for the admin portal. Only whitelisted admin emails can request password resets.");
+            setErrorMessage(checkData.message || "This email is not authorized to reset passwords for the admin portal.");
             setIsLoading(false);
             return;
           }
         } else {
-          setErrorMessage(checkData.message || "Password reset is temporarily unavailable. Please contact your system administrator for assistance.");
+          setErrorMessage(checkData.message || "Password reset is temporarily unavailable.");
           setIsLoading(false);
           return;
         }
       }
-    } catch (error) {
-      // If API fails, fallback to env var check
-      console.warn("Whitelist API check failed, falling back to env var:", error);
+    } catch {
       const whitelistEnv = process.env.NEXT_PUBLIC_ADMIN_WHITELIST;
       if (!whitelistEnv || whitelistEnv.trim().length === 0) {
-        setErrorMessage("Password reset is temporarily unavailable. Please contact your system administrator for assistance.");
+        setErrorMessage("Password reset is temporarily unavailable. Please contact your system administrator.");
         setIsLoading(false);
         return;
       }
-
       const adminWhitelist = whitelistEnv.split(",").map(e => e.trim().toLowerCase()).filter(e => e.length > 0);
-      
-      if (adminWhitelist.length === 0) {
-        setErrorMessage("Password reset is temporarily unavailable. Please contact your system administrator for assistance.");
-        setIsLoading(false);
-        return;
-      }
-      
-      if (!adminWhitelist.includes(email.toLowerCase())) {
-        setErrorMessage("This email is not authorized to reset passwords for the admin portal. Only whitelisted admin emails can request password resets.");
+      if (adminWhitelist.length === 0 || !adminWhitelist.includes(email.toLowerCase())) {
+        setErrorMessage("This email is not authorized to reset passwords for the admin portal.");
         setIsLoading(false);
         return;
       }
     }
 
-    const redirectTo =
-      typeof window !== "undefined"
-        ? `${window.location.origin}/admin/reset-password`
-        : undefined;
+    try {
+      await signIn.create({
+        strategy: "reset_password_email_code",
+        identifier: email,
+      });
 
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo,
-    });
-
-    if (error) {
-      setErrorMessage(error.message);
       setIsLoading(false);
-      return;
+      setIsSubmitted(true);
+    } catch (err: any) {
+      const clerkError = err?.errors?.[0];
+      setErrorMessage(clerkError?.longMessage || clerkError?.message || "Failed to send reset code.");
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
-    setIsSubmitted(true);
   };
 
   return (
-    <div className="h-screen overflow-hidden w-full flex bg-background">
-      {/* Left Side - Image */}
-      <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-black h-full">
-        <div className="absolute inset-0 z-0">
-          <img 
-            src={resolveAssetSrc(forgotPasswordImg)} 
-            alt="Elegant wedding invitation" 
-            className="w-full h-full object-cover opacity-90 scale-105 hover:scale-100 transition-transform duration-[20s] ease-in-out"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
-        </div>
-        
-        <div className="relative z-10 p-12 flex flex-col justify-between h-full text-white w-full">
-          <Link
-            href="/"
-            className="font-serif text-4xl tracking-wide drop-shadow-sm hover:opacity-80 transition-opacity w-fit"
-          >
-            OpusFesta
-          </Link>
-          
-          <div className="backdrop-blur-md bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl max-w-lg">
-            <h2 className="text-3xl font-serif mb-4 leading-normal text-white" suppressHydrationWarning>
-              "The highest happiness on earth is the happiness of marriage."
-            </h2>
-            <div className="flex items-center gap-3">
-               <div className="h-px w-8 bg-white/60"></div>
-               <p className="text-white/80 text-sm tracking-wider uppercase font-medium">
-                 William Lyon Phelps
-               </p>
+    <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="w-full max-w-[400px] space-y-8">
+        <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+          <CardContent className="pt-10 pb-8 px-8 space-y-6">
+            <div className="text-center">
+              <Link href="/" className="font-serif text-3xl text-foreground hover:opacity-80 transition-opacity">
+                OpusFesta
+              </Link>
+              <p className="text-xs text-muted-foreground mt-1">Admin Portal</p>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center items-center p-8 sm:p-12 lg:p-24 pt-24 lg:pt-0 relative bg-background h-full overflow-y-auto">
-        <div className="w-full max-w-sm space-y-10 pb-8">
-          
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
-            <Link href="/" className="font-serif text-3xl text-primary">
-              OpusFesta
-            </Link>
-          </div>
+            <div className="text-center space-y-1">
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Forgot password?</h1>
+              <p className="text-sm text-muted-foreground">
+                Enter your authorized admin email to receive a reset code
+              </p>
+              <p className="text-xs text-muted-foreground/70">
+                Only whitelisted admin emails can reset passwords.
+              </p>
+            </div>
 
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
-              Forgot password?
-            </h1>
-            <p className="text-muted-foreground">
-              Enter your authorized admin email address and we'll send you a link to reset your password.
-            </p>
-            <p className="text-xs text-muted-foreground/80">
-              Only whitelisted admin emails can reset passwords.
-            </p>
-          </div>
+            {!isSubmitted ? (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-sm font-medium text-foreground">Email address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20"
+                  />
+                </div>
 
-          {!isSubmitted ? (
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="relative group">
-                <label className="absolute -top-2 left-2 bg-background px-1 text-xs font-medium text-primary/80 group-focus-within:text-primary transition-colors z-10">
-                  Email
-                </label>
-                <input
-                  type="email"
-                  placeholder="name@example.com"
-                  className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                />
-              </div>
-
-              {errorMessage ? (
-                <p className="text-sm text-destructive text-center">{errorMessage}</p>
-              ) : null}
-
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-12 w-full"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Sending link...
-                  </>
-                ) : (
-                  "Send Reset Link"
+                {errorMessage && (
+                  <p className="text-sm text-destructive text-center">{errorMessage}</p>
                 )}
-              </button>
-            </form>
-          ) : (
-            <div className="flex flex-col items-center justify-center space-y-4 p-8 border border-border rounded-xl bg-muted/30">
-              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-2">
-                <Mail className="w-6 h-6" />
-              </div>
-              <div className="text-center space-y-2">
-                <h3 className="font-semibold text-lg">Check your email</h3>
-                <p className="text-sm text-muted-foreground">
-                  We've sent a password reset link to <strong>{email}</strong>. Please check your inbox and click the link to reset your password.
-                </p>
-              </div>
-              <button 
-                onClick={() => {
-                  setIsSubmitted(false);
-                  setEmail("");
-                }}
-                className="text-sm font-medium text-primary hover:underline mt-4"
-              >
-                Try with another email
-              </button>
-            </div>
-          )}
 
-          <div className="text-center text-sm text-muted-foreground">
-            Remember your password?{" "}
-            <Link
-              href="/login"
-              className="font-semibold text-primary hover:underline underline-offset-4"
-            >
-              Sign in
-            </Link>
-          </div>
-          
-          <div className="absolute top-8 left-8 lg:top-12 lg:left-12">
-            <Link
-              href="/login"
-              className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to login
-            </Link>
-          </div>
-        </div>
+                <Button
+                  type="submit"
+                  disabled={isLoading || !isLoaded}
+                  className="w-full h-10"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending code...
+                    </>
+                  ) : (
+                    "Send Reset Code"
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <div className="flex flex-col items-center justify-center space-y-4 py-2">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div className="text-center space-y-1.5">
+                  <h3 className="font-semibold text-foreground">Check your email</h3>
+                  <p className="text-sm text-muted-foreground">
+                    We&apos;ve sent a reset code to <span className="font-medium text-foreground">{email}</span>
+                  </p>
+                </div>
+                <Button asChild className="h-10 w-full">
+                  <Link href={`/reset-password?email=${encodeURIComponent(email)}`}>
+                    Enter Reset Code
+                  </Link>
+                </Button>
+                <button
+                  onClick={() => { setIsSubmitted(false); setEmail(""); }}
+                  className="text-sm text-primary font-medium hover:text-primary/80 transition-colors"
+                >
+                  Try a different email
+                </button>
+              </div>
+            )}
+
+            <p className="text-center text-sm text-muted-foreground">
+              Remember your password?{" "}
+              <Link href="/login" className="text-primary font-medium hover:text-primary/80 transition-colors">
+                Sign in
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

@@ -831,6 +831,29 @@ export function ContentProvider({ children }: { children: ReactNode }) {
     setContent(INITIAL_CONTENT);
   };
 
+  const ensureUniqueStringIds = useCallback(
+    <T extends { id: string }>(items: T[] | undefined, prefix: string): T[] => {
+      const source = items ?? [];
+      const seen = new Set<string>();
+
+      return source.map((item, index) => {
+        const rawId = typeof item.id === "string" ? item.id.trim() : "";
+        const baseId = rawId || `${prefix}-${index + 1}`;
+        let uniqueId = baseId;
+        let suffix = 2;
+
+        while (seen.has(uniqueId)) {
+          uniqueId = `${baseId}-${suffix}`;
+          suffix += 1;
+        }
+
+        seen.add(uniqueId);
+        return uniqueId === item.id ? item : { ...item, id: uniqueId };
+      });
+    },
+    [],
+  );
+
   const mergeContent = useCallback((incoming?: Partial<ContentState> | null) => {
     if (!incoming) {
       return INITIAL_CONTENT;
@@ -849,7 +872,10 @@ export function ContentProvider({ children }: { children: ReactNode }) {
         ...incoming.about,
         headline: incoming.about?.headline ?? INITIAL_CONTENT.about.headline,
         featuredLabel: incoming.about?.featuredLabel ?? INITIAL_CONTENT.about.featuredLabel,
-        featuredCompanies: incoming.about?.featuredCompanies ?? INITIAL_CONTENT.about.featuredCompanies,
+        featuredCompanies: ensureUniqueStringIds(
+          incoming.about?.featuredCompanies ?? INITIAL_CONTENT.about.featuredCompanies,
+          "featured-company",
+        ),
         stats: {
           weddings: {
             ...INITIAL_CONTENT.about.stats.weddings,
@@ -869,24 +895,36 @@ export function ContentProvider({ children }: { children: ReactNode }) {
           },
         },
       },
-      services: incoming.services ?? INITIAL_CONTENT.services,
+      services: ensureUniqueStringIds(
+        incoming.services ?? INITIAL_CONTENT.services,
+        "service",
+      ),
       issues: incoming.issues ?? INITIAL_CONTENT.issues,
       reviews: incoming.reviews ?? INITIAL_CONTENT.reviews,
       faqs: incoming.faqs ?? INITIAL_CONTENT.faqs,
       advice: {
         ...INITIAL_CONTENT.advice,
         ...incoming.advice,
-        articles: incoming.advice?.articles ?? INITIAL_CONTENT.advice.articles,
+        articles: ensureUniqueStringIds(
+          incoming.advice?.articles ?? INITIAL_CONTENT.advice.articles,
+          "article",
+        ),
       },
       testimonials: {
         ...INITIAL_CONTENT.testimonials,
         ...incoming.testimonials,
-        items: incoming.testimonials?.items ?? INITIAL_CONTENT.testimonials.items,
+        items: ensureUniqueStringIds(
+          incoming.testimonials?.items ?? INITIAL_CONTENT.testimonials.items,
+          "testimonial",
+        ),
       },
       community: {
         ...INITIAL_CONTENT.community,
         ...incoming.community,
-        vendors: incoming.community?.vendors ?? INITIAL_CONTENT.community.vendors,
+        vendors: ensureUniqueStringIds(
+          incoming.community?.vendors ?? INITIAL_CONTENT.community.vendors,
+          "community-vendor",
+        ),
       },
       cta: {
         ...INITIAL_CONTENT.cta,
@@ -904,7 +942,7 @@ export function ContentProvider({ children }: { children: ReactNode }) {
         ...incoming.social,
       },
     };
-  }, []);
+  }, [ensureUniqueStringIds]);
 
   const serializeContent = useCallback((current: ContentState) => {
     return {

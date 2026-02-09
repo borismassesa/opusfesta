@@ -1,97 +1,15 @@
 import { supabase } from "@/lib/supabaseClient";
+import type {
+  VendorRecord,
+  VendorPortfolioItem,
+  VendorReviewRecord,
+  VendorAwardRecord,
+} from "@opusfesta/lib";
 
-export interface Vendor {
-  id: string;
-  slug: string;
-  user_id: string;
-  business_name: string;
-  category: string;
-  subcategories: string[];
-  bio: string | null;
-  description: string | null;
-  logo: string | null;
-  cover_image: string | null;
-  location: {
-    city?: string;
-    country?: string;
-    address?: string;
-    coordinates?: {
-      lat: number;
-      lng: number;
-    };
-  };
-  price_range: string | null;
-  verified: boolean;
-  tier: string;
-  stats: {
-    viewCount: number;
-    inquiryCount: number;
-    saveCount: number;
-    averageRating: number;
-    reviewCount: number;
-  };
-  contact_info: {
-    email?: string;
-    phone?: string;
-    website?: string;
-  };
-  social_links: {
-    instagram?: string;
-    facebook?: string;
-    twitter?: string;
-    tiktok?: string;
-  };
-  years_in_business: number | null;
-  team_size: number | null;
-  services_offered: Array<{ title: string; description: string }>;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface PortfolioItem {
-  id: string;
-  vendor_id: string;
-  title: string;
-  images: string[];
-  description: string | null;
-  event_type: string | null;
-  event_date: string | null;
-  featured: boolean;
-  display_order: number;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface Review {
-  id: string;
-  vendor_id: string;
-  user_id: string;
-  rating: number;
-  title: string | null;
-  content: string;
-  images: string[];
-  event_type: string | null;
-  event_date: string | null;
-  verified: boolean;
-  helpful: number;
-  vendor_response: string | null;
-  vendor_responded_at: string | null;
-  created_at: string;
-  updated_at: string;
-  user: {
-    name: string;
-    avatar: string | null;
-  };
-}
-
-export interface VendorAward {
-  title: string;
-  year: string;
-  description: string;
-  icon: string;
-  image?: string | null;
-  display_order?: number;
-}
+export type Vendor = VendorRecord;
+export type PortfolioItem = VendorPortfolioItem;
+export type Review = VendorReviewRecord;
+export type VendorAward = VendorAwardRecord;
 
 export async function getVendorBySlug(slug: string): Promise<Vendor | null> {
   const { data, error } = await supabase

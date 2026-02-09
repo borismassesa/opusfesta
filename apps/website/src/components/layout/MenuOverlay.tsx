@@ -4,12 +4,15 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import gsap from "gsap";
 import { useTranslation } from "react-i18next";
-import { supabase } from "@/lib/supabaseClient";
+import { useOpusFestaAuth } from "@opusfesta/auth";
 
 export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const { t } = useTranslation();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
+  const { isLoaded, isSignedIn } = useOpusFestaAuth();
+
+  const isAuthenticated = isLoaded ? isSignedIn : false;
+  const isCheckingAuth = !isLoaded;
+
   const overlayRef = useRef<HTMLDivElement>(null);
   const linksRef = useRef<HTMLDivElement>(null);
 
@@ -19,170 +22,40 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
     { name: t('nav.guests'), href: "/guests" },
     { name: t('nav.websites'), href: "/websites" },
     { name: t('nav.inspiration'), href: "/advice-and-ideas" },
-    { name: t('nav.shop'), href: "/shop" },
+    { name: t('nav.attireAndRings'), href: "/attireandrings" },
     { name: "Careers", href: "/careers" },
   ];
-
-  // Check authentication state
-  useEffect(() => {
-    let mounted = true;
-
-    async function checkAuth() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        
-        if (!mounted) return;
-
-        if (!session) {
-          setIsAuthenticated(false);
-          setIsCheckingAuth(false);
-          return;
-        }
-
-        // CRITICAL: First verify user still exists in Supabase Auth
-        const userExistsInAuth = await supabase.auth.getUser()
-          .then(({ data, error }) => {
-            if (error || !data.user || data.user.id !== session.user.id) {
-              return false;
-            }
-            return true;
-          })
-          .catch(() => false);
-
-        if (!mounted) return;
-
-        if (!userExistsInAuth) {
-          // User was deleted - clear session
-          await supabase.auth.signOut();
-          if (mounted) {
-            setIsAuthenticated(false);
-            setIsCheckingAuth(false);
-          }
-          return;
-        }
-
-        // Verify user exists in database
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        if (mounted) {
-          setIsAuthenticated(!userError && !!userData);
-          setIsCheckingAuth(false);
-        }
-      } catch (error) {
-        console.error("Error checking auth in MenuOverlay:", error);
-        if (mounted) {
-          setIsAuthenticated(false);
-          setIsCheckingAuth(false);
-        }
-      }
-    }
-
-    checkAuth();
-
-    // Listen to auth state changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!mounted) return;
-
-      if (!session) {
-        setIsAuthenticated(false);
-        return;
-      }
-
-      // CRITICAL: First verify user still exists in Supabase Auth
-      const userExistsInAuth = await supabase.auth.getUser()
-        .then(({ data, error }) => {
-          // 403 Forbidden means user was deleted - this is expected
-          if (error) {
-            // Suppress 403 errors (user deleted) - these are expected
-            if (error.status !== 403 && error.message !== "Invalid Refresh Token: Refresh Token Not Found") {
-              // Only log unexpected errors
-              console.warn("Error checking user in Auth:", error);
-            }
-            return false;
-          }
-          if (!data.user || data.user.id !== session.user.id) {
-            return false;
-          }
-          return true;
-        })
-        .catch((err) => {
-          // Suppress 403 errors (user deleted) - these are expected
-          if (err?.status !== 403 && err?.message !== "Invalid Refresh Token: Refresh Token Not Found") {
-            console.warn("Error checking user in Auth:", err);
-          }
-          return false;
-        });
-
-      if (!mounted) return;
-
-      if (!userExistsInAuth) {
-        // User was deleted - clear session
-        await supabase.auth.signOut();
-        if (mounted) {
-          setIsAuthenticated(false);
-        }
-        return;
-      }
-
-      // Verify user exists in database
-      try {
-        const { data: userData, error: userError } = await supabase
-          .from("users")
-          .select("id")
-          .eq("id", session.user.id)
-          .single();
-
-        if (mounted) {
-          setIsAuthenticated(!userError && !!userData);
-        }
-      } catch (error) {
-        console.error("Error verifying user in MenuOverlay:", error);
-        if (mounted) {
-          setIsAuthenticated(false);
-        }
-      }
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
 
   useEffect(() => {
     if (isOpen) {
       const tl = gsap.timeline();
-      
-      tl.to(overlayRef.current, { 
-        clipPath: 'inset(0 0 0 0)', 
-        duration: 0.6, 
+
+      tl.to(overlayRef.current, {
+        clipPath: 'inset(0 0 0 0)',
+        duration: 0.6,
         ease: 'power4.inOut',
         pointerEvents: 'all'
       });
 
       const links = linksRef.current?.children;
       if (links) {
-        tl.fromTo(links, 
+        tl.fromTo(links,
           { y: 50, opacity: 0 },
-          { 
-            y: 0, 
-            opacity: 1, 
-            duration: 0.4, 
-            stagger: 0.05, 
-            ease: "power2.out" 
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.4,
+            stagger: 0.05,
+            ease: "power2.out"
           },
           "-=0.2"
         );
       }
 
     } else {
-      gsap.to(overlayRef.current, { 
-        clipPath: 'inset(0 0 100% 0)', 
-        duration: 0.6, 
+      gsap.to(overlayRef.current, {
+        clipPath: 'inset(0 0 100% 0)',
+        duration: 0.6,
         ease: 'power4.inOut',
         pointerEvents: 'none'
       });
@@ -190,13 +63,13 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   }, [isOpen]);
 
   return (
-    <div 
+    <div
       ref={overlayRef}
       className="fixed inset-0 bg-background/95 backdrop-blur-xl z-40 flex flex-col justify-center items-center menu-overlay"
       style={{ clipPath: 'inset(0 0 100% 0)' }}
     >
       {/* Close Button Area (invisible hit area or handled by Navbar button z-index) */}
-      <button 
+      <button
         onClick={onClose}
         className="absolute top-6 right-6 p-4 text-primary hover:opacity-70 transition-opacity lg:hidden"
         aria-label="Close Menu"
@@ -216,7 +89,7 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             {item.name}
           </Link>
         ))}
-        
+
         <div className="h-px w-20 bg-border mx-auto my-4"></div>
 
         <div className="flex flex-col gap-3">
@@ -263,7 +136,7 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       </div>
 
       <div className="absolute bottom-10 left-[5vw] right-[5vw] flex justify-between text-xs font-mono text-secondary uppercase opacity-50">
-        <span>© {new Date().getFullYear()} The Festa</span>
+        <span>&copy; {new Date().getFullYear()} The Festa</span>
         <span>Made with love</span>
       </div>
     </div>

@@ -7,8 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import type { Vendor } from "@/lib/supabase/vendors";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 interface VendorReviewFormProps {
   vendor: Vendor;
@@ -19,6 +20,8 @@ interface VendorReviewFormProps {
 
 export function VendorReviewForm({ vendor, inquiryId, onSuccess, onCancel }: VendorReviewFormProps) {
   const router = useRouter();
+  const { getToken, isSignedIn } = useAuth();
+  const { requireAuth } = useAuthGate();
   const [rating, setRating] = useState<number>(0);
   const [hoveredRating, setHoveredRating] = useState<number>(0);
   const [title, setTitle] = useState("");
@@ -84,9 +87,9 @@ export function VendorReviewForm({ vendor, inquiryId, onSuccess, onCancel }: Ven
       }
 
       // Get authentication token
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+      const token = await getToken();
+      if (!token) {
+        requireAuth("review", () => handleSubmit(e));
         return;
       }
 
@@ -104,7 +107,7 @@ export function VendorReviewForm({ vendor, inquiryId, onSuccess, onCancel }: Ven
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${session.access_token}`,
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           vendorId: vendor.id,
@@ -122,7 +125,7 @@ export function VendorReviewForm({ vendor, inquiryId, onSuccess, onCancel }: Ven
 
       if (!response.ok) {
         if (response.status === 401) {
-          router.push(`/login?next=${encodeURIComponent(window.location.pathname)}`);
+          requireAuth("review", () => handleSubmit(e));
           return;
         }
         throw new Error(data.error || "Failed to submit review");

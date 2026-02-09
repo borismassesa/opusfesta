@@ -15,11 +15,12 @@ import { VendorReviews } from "@/components/vendors/VendorReviews";
 import { VendorLocation } from "@/components/vendors/VendorLocation";
 import { VendorProfile } from "@/components/vendors/VendorProfile";
 import { SimilarVendors } from "@/components/vendors/SimilarVendors";
-import { AuthGateModal } from "@/components/auth/AuthGateModal";
 import type { Vendor, PortfolioItem, Review, VendorAward } from "@/lib/supabase/vendors";
+import type { VendorBySlugResponse } from "@opusfesta/lib";
 import { resolveAssetSrc } from "@/lib/assets";
 import celebrationImg from "@assets/stock_images/happy_wedding_couple_e3561dd1.jpg";
-import { supabase } from "@/lib/supabaseClient";
+import { useOpusFestaAuth } from "@opusfesta/auth";
+import { useAuthGate } from "@/hooks/useAuthGate";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
@@ -41,12 +42,12 @@ export function VendorDetailsClient({
   const [activeTab, setActiveTab] = useState("about");
   const [showNavBar, setShowNavBar] = useState(false);
   const [isSidebarSticky, setIsSidebarSticky] = useState(true);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [authModalOpen, setAuthModalOpen] = useState(false);
-  const [authModalIntent, setAuthModalIntent] = useState<"booking" | "details">("details");
   const [hasShownAuthGate, setHasShownAuthGate] = useState(false);
-  const [authRefreshKey, setAuthRefreshKey] = useState(0);
   const galleryRef = useRef<HTMLDivElement>(null);
+
+  const { isLoaded: isAuthLoaded, isSignedIn, getToken } = useOpusFestaAuth();
+  const isAuthenticated = isAuthLoaded ? !!isSignedIn : false;
+  const { openAuthModal } = useAuthGate();
   const connectSectionRef = useRef<HTMLDivElement>(null);
   const ratingSectionRef = useRef<HTMLDivElement>(null);
   const authGateRef = useRef<HTMLDivElement>(null);
@@ -62,9 +63,10 @@ export function VendorDetailsClient({
         setSlug(vendorSlug);
 
         // Fetch vendor data from API (will return teaser or full based on auth)
-        const { data: { session } } = await supabase.auth.getSession();
-        const token = session?.access_token;
-        setIsAuthenticated(!!session);
+        let token: string | null = null;
+        try {
+          token = await getToken();
+        } catch {}
 
         const headers: HeadersInit = {};
         if (token) {
@@ -82,73 +84,47 @@ export function VendorDetailsClient({
           throw new Error("Failed to load vendor");
         }
 
-        const data = await response.json();
-        setVendor(data.vendor);
+        const data = (await response.json()) as VendorBySlugResponse;
+        const vendorFromApi = data.vendor as Partial<Vendor>;
+        const normalizedVendor: Vendor = {
+          id: vendorFromApi.id || "",
+          slug: vendorFromApi.slug || "",
+          user_id: vendorFromApi.user_id || "",
+          business_name: vendorFromApi.business_name || "",
+          category: vendorFromApi.category || "",
+          subcategories: vendorFromApi.subcategories || [],
+          bio: vendorFromApi.bio ?? null,
+          description: vendorFromApi.description ?? null,
+          logo: vendorFromApi.logo ?? null,
+          cover_image: vendorFromApi.cover_image ?? null,
+          location: vendorFromApi.location || {},
+          price_range: vendorFromApi.price_range ?? null,
+          verified: vendorFromApi.verified ?? false,
+          tier: vendorFromApi.tier || "free",
+          stats: vendorFromApi.stats || {
+            viewCount: 0,
+            inquiryCount: 0,
+            saveCount: 0,
+            averageRating: 0,
+            reviewCount: 0,
+          },
+          contact_info: vendorFromApi.contact_info || {},
+          social_links: vendorFromApi.social_links || {},
+          years_in_business: vendorFromApi.years_in_business ?? null,
+          team_size: vendorFromApi.team_size ?? null,
+          services_offered: vendorFromApi.services_offered || [],
+          created_at: vendorFromApi.created_at || new Date().toISOString(),
+          updated_at: vendorFromApi.updated_at || vendorFromApi.created_at || new Date().toISOString(),
+        };
+        setVendor(normalizedVendor);
         setIsLoading(false);
 
-        // If authenticated, load additional data directly from Supabase
-        if (session && data.vendor.id) {
-          try {
-            // Load portfolio
-            const { data: portfolioData } = await supabase
-              .from("portfolio")
-              .select("*")
-              .eq("vendor_id", data.vendor.id)
-              .order("display_order", { ascending: true })
-              .order("created_at", { ascending: false });
-            if (portfolioData) setPortfolio(portfolioData as PortfolioItem[]);
-
-            // Load reviews using RPC
-            const { data: reviewsData } = await supabase.rpc("get_vendor_reviews_with_users", {
-              vendor_id_param: data.vendor.id,
-            });
-            if (reviewsData) {
-              setReviews(reviewsData.map((row: any) => ({
-                id: row.id,
-                vendor_id: row.vendor_id,
-                user_id: row.user_id,
-                rating: row.rating,
-                title: row.title,
-                content: row.content,
-                images: row.images || [],
-                event_type: row.event_type,
-                event_date: row.event_date,
-                verified: row.verified,
-                helpful: row.helpful,
-                vendor_response: row.vendor_response,
-                vendor_responded_at: row.vendor_responded_at,
-                created_at: row.created_at,
-                updated_at: row.updated_at,
-                user: {
-                  name: row.user_name || "Anonymous",
-                  avatar: row.user_avatar || null,
-                },
-              })) as Review[]);
-            }
-
-            // Load similar vendors
-            const { data: similarData } = await supabase
-              .from("vendors")
-              .select("*")
-              .eq("category", data.vendor.category)
-              .eq("verified", true)
-              .neq("id", data.vendor.id)
-              .order("stats->averageRating", { ascending: false })
-              .limit(6);
-            if (similarData) setSimilarVendors(similarData as Vendor[]);
-
-            // Load awards
-            const { data: vendorData } = await supabase
-              .from("vendors")
-              .select("awards")
-              .eq("id", data.vendor.id)
-              .single();
-            if (vendorData?.awards) {
-              setAwards(vendorData.awards as VendorAward[]);
-            }
-          } catch (err) {
-            console.error("Error loading vendor details:", err);
-          }
+        // If authenticated, load related data from the same API response
+        if (token && data.vendor.id) {
+          setPortfolio((data.portfolio || []) as PortfolioItem[]);
+          setReviews((data.reviews || []) as Review[]);
+          setSimilarVendors((data.similarVendors || []) as Vendor[]);
+          setAwards((data.awards || []) as VendorAward[]);
         }
       } catch (err: any) {
         console.error("Error loading vendor:", err);
@@ -158,18 +134,7 @@ export function VendorDetailsClient({
     }
 
     loadVendor();
-  }, [params, authRefreshKey]);
-
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAuthenticated(!!session);
-      setAuthRefreshKey((prev) => prev + 1);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
+  }, [params, isAuthLoaded, isSignedIn]);
 
   const rating = vendor?.stats?.averageRating || 0;
   const reviewCount = Math.max(vendor?.stats?.reviewCount || 0, reviews.length);
@@ -188,9 +153,8 @@ export function VendorDetailsClient({
 
   const authGateStorageKey = slug ? `vendor_auth_gate_${slug}` : "vendor_auth_gate";
 
-  const openAuthGate = (intent: "booking" | "details") => {
-    setAuthModalIntent(intent);
-    setAuthModalOpen(true);
+  const showAuthGate = (intent: "booking" | "details") => {
+    openAuthModal(intent);
     setHasShownAuthGate(true);
     if (typeof window !== "undefined") {
       sessionStorage.setItem(authGateStorageKey, "true");
@@ -199,17 +163,13 @@ export function VendorDetailsClient({
 
   const handleBookingIntent = () => {
     if (!isAuthenticated) {
-      openAuthGate("booking");
+      showAuthGate("booking");
       return;
     }
     const bookingTarget = document.getElementById("vendor-booking-sidebar");
     if (bookingTarget) {
       bookingTarget.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  };
-
-  const handleAuthModalChange = (nextOpen: boolean) => {
-    setAuthModalOpen(nextOpen);
   };
 
   useEffect(() => {
@@ -225,7 +185,7 @@ export function VendorDetailsClient({
     if (!shouldOpenModal || isAuthenticated) return;
     const intentParam = searchParams.get("authIntent");
     const intent = intentParam === "booking" ? "booking" : "details";
-    openAuthGate(intent);
+    showAuthGate(intent);
   }, [searchParams, isAuthenticated]);
 
   useEffect(() => {
@@ -290,10 +250,10 @@ export function VendorDetailsClient({
 
         setActiveTab(activeSection);
 
-        if (!isAuthenticated && !authModalOpen && !hasShownAuthGate && authGateRef.current) {
+        if (!isAuthenticated && !hasShownAuthGate && authGateRef.current) {
           const gateTop = authGateRef.current.getBoundingClientRect().top;
           if (gateTop <= 0) {
-            openAuthGate("details");
+            showAuthGate("details");
           }
         }
       } catch (error) {
@@ -306,7 +266,7 @@ export function VendorDetailsClient({
       handleScroll();
       return () => window.removeEventListener("scroll", handleScroll);
     }
-  }, [vendor, isAuthenticated, authModalOpen, hasShownAuthGate]);
+  }, [vendor, isAuthenticated, hasShownAuthGate]);
 
   if (isLoading) {
     return (
@@ -429,8 +389,6 @@ export function VendorDetailsClient({
               <VendorBookingSidebar
                 vendor={vendor}
                 isSticky={isSidebarSticky}
-                isAuthenticated={isAuthenticated}
-                onAuthRequired={() => openAuthGate("booking")}
               />
             </div>
           </div>
@@ -459,16 +417,6 @@ export function VendorDetailsClient({
           <SimilarVendors vendors={similarVendors} />
         </div>
       </main>
-
-      <AuthGateModal
-        open={authModalOpen}
-        onOpenChange={handleAuthModalChange}
-        intent={authModalIntent}
-        onAuthSuccess={() => {
-          setIsAuthenticated(true);
-          setAuthRefreshKey((prev) => prev + 1);
-        }}
-      />
 
       <Footer />
     </div>

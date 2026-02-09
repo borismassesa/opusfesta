@@ -1,21 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Check if user is admin
-async function isAdmin(request: NextRequest): Promise<boolean> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader) return false;
+async function isAdmin(): Promise<boolean> {
+  const { userId: clerkUserId } = await auth();
+  if (!clerkUserId) return false;
 
-  const token = authHeader.replace("Bearer ", "");
   const supabaseAdmin = getSupabaseAdmin();
-  const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-  if (error || !user) return false;
-
   const { data: userData } = await supabaseAdmin
     .from("users")
     .select("role")
-    .eq("id", user.id)
+    .eq("clerk_id", clerkUserId)
     .single();
 
   return userData?.role === "admin";
@@ -24,7 +20,7 @@ async function isAdmin(request: NextRequest): Promise<boolean> {
 // GET - Get activity log for an application
 export async function GET(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -173,29 +169,14 @@ export async function GET(request: NextRequest) {
           }
         }
         
-        // Try to get additional user data from auth.users for any missing users
+        // For any users not found in public.users, set a placeholder
         for (const userId of performedByUserIds) {
           if (!userMap.has(userId)) {
-            try {
-              const { data: authUser } = await supabaseAdmin.auth.admin.getUserById(userId);
-              if (authUser?.user) {
-                const metadata = authUser.user.user_metadata || {};
-                const appMetadata = authUser.user.app_metadata || {};
-                const displayName = metadata.full_name || metadata.name || authUser.user.email?.split('@')[0] || 'Unknown';
-                const displayEmail = authUser.user.email || 'unknown@example.com';
-                
-                userMap.set(userId, {
-                  id: userId,
-                  email: displayEmail,
-                  full_name: displayName !== 'Unknown' && displayName !== displayEmail?.split('@')[0]
-                    ? displayName
-                    : null
-                });
-              }
-            } catch (err) {
-              // If we can't get auth user data, that's okay - we'll use what we have
-              console.warn(`Could not fetch auth user data for ${userId}:`, err);
-            }
+            userMap.set(userId, {
+              id: userId,
+              email: 'unknown@example.com',
+              full_name: null,
+            });
           }
         }
         

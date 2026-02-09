@@ -1,52 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 // Check if user is admin
-async function isAdmin(request: NextRequest): Promise<boolean> {
+async function isAdmin(): Promise<boolean> {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
-      console.error("[isAdmin] No authorization header");
-      return false;
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    if (!token) {
-      console.error("[isAdmin] No token in authorization header");
-      return false;
-    }
+    const { userId: clerkUserId } = await auth();
+    if (!clerkUserId) return false;
 
     const supabaseAdmin = getSupabaseAdmin();
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-
-    if (error) {
-      console.error("[isAdmin] Error getting user:", error.message);
-      return false;
-    }
-
-    if (!user) {
-      console.error("[isAdmin] No user found");
-      return false;
-    }
-
     const { data: userData, error: userError } = await supabaseAdmin
       .from("users")
       .select("role")
-      .eq("id", user.id)
+      .eq("clerk_id", clerkUserId)
       .single();
 
-    if (userError) {
-      console.error("[isAdmin] Error fetching user role:", userError.message);
-      return false;
-    }
+    if (userError || !userData) return false;
 
-    const isAdminUser = userData?.role === "admin";
-    if (!isAdminUser) {
-      console.error("[isAdmin] User is not admin. Role:", userData?.role);
-    }
-
-    return isAdminUser;
+    return userData.role === "admin";
   } catch (error: any) {
     console.error("[isAdmin] Unexpected error:", error.message);
     return false;
@@ -76,7 +48,7 @@ const userUpdateSchema = z.object({
 // GET - List users by type (admin only)
 export async function GET(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -326,7 +298,7 @@ export async function GET(request: NextRequest) {
 // PUT - Update user (admin only)
 export async function PUT(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -453,7 +425,7 @@ export async function PUT(request: NextRequest) {
 // POST - Create new user (admin only)
 export async function POST(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -490,34 +462,38 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user in Supabase Auth (use normalized email)
+    // Create user in Clerk
     const userType = data.userType || (data.role === "vendor" ? "vendor" : "couple");
-    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
-      email: normalizedEmail,
-      password: data.password,
-      email_confirm: true, // Auto-confirm for admin-created users
-      user_metadata: {
-        full_name: data.name,
-        user_type: userType,
-        phone: data.phone || null,
-      },
-    });
-
-    if (authError || !authData?.user) {
-      console.error("Error creating auth user:", authError);
+    const { clerkClient } = await import("@clerk/nextjs/server");
+    const clerk = await clerkClient();
+    let clerkUser;
+    try {
+      clerkUser = await clerk.users.createUser({
+        emailAddress: [normalizedEmail],
+        password: data.password,
+        firstName: data.name?.split(" ")[0] || "",
+        lastName: data.name?.split(" ").slice(1).join(" ") || "",
+        publicMetadata: {
+          role: data.role,
+          user_type: userType,
+        },
+      });
+    } catch (clerkError: any) {
+      console.error("Error creating Clerk user:", clerkError);
       return NextResponse.json(
-        { error: authError?.message || "Failed to create user" },
+        { error: clerkError?.errors?.[0]?.message || "Failed to create user" },
         { status: 500 }
       );
     }
 
-    // Create user record in database (use normalized email)
+    // Create user record in database
     const { data: user, error: dbError } = await supabaseAdmin
       .from("users")
       .insert({
-        id: authData.user.id,
+        id: crypto.randomUUID(),
+        clerk_id: clerkUser.id,
         email: normalizedEmail,
-        password: "$2a$10$placeholder_password_not_used_with_supabase_auth",
+        password: "$clerk_managed",
         name: data.name,
         phone: data.phone || null,
         avatar: data.avatar || null,
@@ -528,8 +504,8 @@ export async function POST(request: NextRequest) {
 
     if (dbError) {
       console.error("Error creating user record:", dbError);
-      // Try to clean up auth user if database insert fails
-      await supabaseAdmin.auth.admin.deleteUser(authData.user.id);
+      // Try to clean up Clerk user if database insert fails
+      await clerk.users.deleteUser(clerkUser.id);
       return NextResponse.json(
         { error: "Failed to create user record" },
         { status: 500 }
@@ -549,7 +525,7 @@ export async function POST(request: NextRequest) {
 // DELETE - Delete user (admin only)
 export async function DELETE(request: NextRequest) {
   try {
-    if (!(await isAdmin(request))) {
+    if (!(await isAdmin())) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -583,12 +559,24 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete user from auth first, then database (cascade will handle related data)
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(id);
-    
-    if (authError) {
-      console.error("Error deleting auth user:", authError);
-      // Continue with database deletion even if auth deletion fails
+    // Delete user from Clerk first, then database (cascade will handle related data)
+    if (user) {
+      const { data: userRecord } = await supabaseAdmin
+        .from("users")
+        .select("clerk_id")
+        .eq("id", id)
+        .single();
+
+      if (userRecord?.clerk_id) {
+        try {
+          const { clerkClient } = await import("@clerk/nextjs/server");
+          const clerk = await clerkClient();
+          await clerk.users.deleteUser(userRecord.clerk_id);
+        } catch (clerkError) {
+          console.error("Error deleting Clerk user:", clerkError);
+          // Continue with database deletion even if Clerk deletion fails
+        }
+      }
     }
 
     const { error } = await supabaseAdmin.from("users").delete().eq("id", id);

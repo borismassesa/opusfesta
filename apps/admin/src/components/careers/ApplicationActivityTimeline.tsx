@@ -15,7 +15,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -168,6 +168,7 @@ function getInitials(name: string | null | undefined, email: string | null | und
 }
 
 export function ApplicationActivityTimeline({ applicationId }: ApplicationActivityTimelineProps) {
+  const { getToken } = useAuth();
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -193,8 +194,8 @@ export function ApplicationActivityTimeline({ applicationId }: ApplicationActivi
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         setError("Not authenticated");
         return;
       }
@@ -203,7 +204,7 @@ export function ApplicationActivityTimeline({ applicationId }: ApplicationActivi
         getAdminApiUrl(`/api/admin/careers/applications/activity?applicationId=${applicationId}`),
         {
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );

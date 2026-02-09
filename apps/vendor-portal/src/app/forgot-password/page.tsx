@@ -2,152 +2,129 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Mail } from "lucide-react";
-import { toast } from "@/lib/toast";
+import { Loader2, Mail } from "lucide-react";
+import { useSignIn } from "@clerk/nextjs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function ForgotPassword() {
-  const router = useRouter();
+  const { signIn, isLoaded } = useSignIn();
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
   const [email, setEmail] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLoaded || !signIn) return;
     setIsLoading(true);
+    setErrorMessage("");
 
     try {
-      const response = await fetch("/api/auth/request-reset-code", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email: email.trim() }),
+      await signIn.create({
+        strategy: "reset_password_email_code",
+        identifier: email,
       });
 
-      const data = await response.json();
-
-      if (!response.ok) {
-        toast.error(data.error || "An error occurred. Please try again.");
-        setIsLoading(false);
-        return;
-      }
-
-      toast.success("Reset code sent! Check your email for the password reset code.");
-
+      setIsSubmitted(true);
       setIsLoading(false);
-      // Redirect to verify-reset-code page
-      router.push(`/verify-reset-code?email=${encodeURIComponent(email.trim())}`);
-    } catch (error) {
-      console.error("Request reset code error:", error);
-      toast.error("An unexpected error occurred. Please try again.");
+    } catch (err: any) {
+      const clerkError = err?.errors?.[0];
+      setErrorMessage(clerkError?.longMessage || clerkError?.message || "Failed to send reset code.");
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="h-screen overflow-hidden w-full flex bg-background">
-      {/* Left Side - Gradient Background */}
-      <div className="hidden lg:flex w-1/2 relative overflow-hidden h-full bg-gradient-to-br from-slate-100 via-slate-50 to-slate-200 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-primary/3 to-transparent" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(99,102,241,0.08),transparent_50%)]" />
-          <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0naHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmcnIHdpZHRoPSc0JyBoZWlnaHQ9JzQnPgo8cmVjdCB3aWR0aD0nNCcgaGVpZ2h0PSc0JyBmaWxsPScjZmZmJy8+CjxyZWN0IHdpZHRoPScxJyBoZWlnaHQ9JzEnIGZpbGw9JyNjY2MnLz4KPC9zdmc+')] opacity-[0.02] dark:opacity-[0.03]" />
-        </div>
-        
-        <div className="relative z-10 p-12 flex flex-col justify-between h-full w-full">
-          <Link
-            href="/"
-            className="font-serif text-4xl tracking-wide text-slate-700 dark:text-slate-200 hover:opacity-80 transition-opacity w-fit"
-          >
-            OpusFesta
-          </Link>
-          
-          <div className="backdrop-blur-sm bg-white/40 dark:bg-white/5 border border-slate-200/50 dark:border-white/10 p-8 rounded-3xl shadow-xl max-w-lg">
-            <h2 className="text-3xl font-serif mb-4 leading-normal text-slate-700 dark:text-slate-200">
-              "The highest happiness on earth is the happiness of marriage."
-            </h2>
-            <div className="flex items-center gap-3">
-               <div className="h-px w-8 bg-slate-400/60 dark:bg-slate-400/40"></div>
-               <p className="text-slate-600 dark:text-slate-300 text-sm tracking-wider uppercase font-medium">
-                 William Lyon Phelps
-               </p>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#fafafa] dark:bg-background">
+
+      <div className="w-full max-w-[400px] space-y-8">
+        <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+          <CardContent className="pt-10 pb-8 px-8 space-y-6">
+            <div className="text-center">
+              <Link href="/" className="font-serif text-3xl text-foreground hover:opacity-80 transition-opacity">
+                OpusFesta
+              </Link>
+              <p className="text-xs text-muted-foreground mt-1">Vendor Portal</p>
             </div>
-          </div>
-        </div>
-      </div>
 
-      {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-start lg:justify-center items-center p-8 sm:p-12 lg:p-24 pt-24 lg:pt-0 relative bg-background h-full overflow-y-auto">
-        <div className="w-full max-w-sm space-y-10 pb-8">
-          
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
-            <Link href="/" className="font-serif text-3xl text-primary hover:opacity-80 transition-opacity">
-              OpusFesta
-            </Link>
-          </div>
+            <div className="text-center space-y-1">
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Forgot password?</h1>
+              <p className="text-sm text-muted-foreground">
+                We&apos;ll send you a code to reset your password
+              </p>
+            </div>
 
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
-              Forgot password?
-            </h1>
-            <p className="text-muted-foreground">
-              Enter your email address and we'll send you a code to reset your password.
+            {!isSubmitted ? (
+              <form onSubmit={handleSubmit} className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="text-sm font-medium text-foreground">Email address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="name@example.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20"
+                  />
+                </div>
+
+                {errorMessage && (
+                  <p className="text-sm text-destructive text-center">{errorMessage}</p>
+                )}
+
+                <Button
+                  type="submit"
+                  disabled={isLoading || !isLoaded}
+                  className="w-full h-10"
+                >
+                  {isLoading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Sending code...
+                    </>
+                  ) : (
+                    "Send Reset Code"
+                  )}
+                </Button>
+              </form>
+            ) : (
+              <div className="flex flex-col items-center justify-center space-y-4 py-2">
+                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div className="text-center space-y-1.5">
+                  <h3 className="font-semibold text-foreground">Check your email</h3>
+                  <p className="text-sm text-muted-foreground">
+                    We&apos;ve sent a reset code to <span className="font-medium text-foreground">{email}</span>
+                  </p>
+                </div>
+                <Button asChild className="h-10 w-full">
+                  <Link href={`/reset-password?email=${encodeURIComponent(email)}`}>
+                    Enter Reset Code
+                  </Link>
+                </Button>
+                <button
+                  onClick={() => setIsSubmitted(false)}
+                  className="text-sm text-primary font-medium hover:text-primary/80 transition-colors"
+                >
+                  Try a different email
+                </button>
+              </div>
+            )}
+
+            <p className="text-center text-sm text-muted-foreground">
+              Remember your password?{" "}
+              <Link href="/login" className="text-primary font-medium hover:text-primary/80 transition-colors">
+                Sign in
+              </Link>
             </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="relative group">
-              <label className="absolute -top-2 left-2 bg-background px-1 text-xs font-medium text-primary/80 group-focus-within:text-primary transition-colors z-10">
-                Email
-              </label>
-              <input
-                type="email"
-                placeholder="name@example.com"
-                className="flex h-12 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
-
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="inline-flex items-center justify-center rounded-full text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-12 w-full"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Sending code...
-                </>
-              ) : (
-                "Send Reset Code"
-              )}
-            </button>
-          </form>
-
-          <div className="text-center text-sm text-muted-foreground">
-            Remember your password?{" "}
-            <Link
-              href="/login"
-              className="font-semibold text-primary hover:underline underline-offset-4"
-            >
-              Sign in
-            </Link>
-          </div>
-          
-          <div className="absolute top-8 left-8 lg:top-12 lg:left-12">
-            <Link
-              href="/login"
-              className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to login
-            </Link>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );

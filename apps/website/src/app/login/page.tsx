@@ -3,42 +3,22 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowLeft, Eye, EyeOff, Loader2 } from "lucide-react";
-import loginImg from "@assets/stock_images/romantic_couple_wedd_0c0b1d37.jpg";
-import { resolveAssetSrc } from "@/lib/assets";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { getRandomSignInQuote, type Quote } from "@/lib/quotes";
-import { supabase } from "@/lib/supabaseClient";
-import { ensureUserRecord, getRedirectPath, getUserTypeFromSession, type UserType } from "@/lib/auth";
+import { useSignIn, useAuth } from "@clerk/nextjs";
 import { toast } from "@/hooks/use-toast";
-
-class AuthTimeoutError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "AuthTimeoutError";
-  }
-}
-
-const withTimeout = async <T,>(promise: Promise<T>, ms: number, message: string): Promise<T> => {
-  let timeoutId: ReturnType<typeof setTimeout> | null = null;
-  const timeoutPromise = new Promise<T>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new AuthTimeoutError(message));
-    }, ms);
-  });
-
-  try {
-    return await Promise.race([promise, timeoutPromise]);
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  }
-};
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function Login() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const unauthorized = searchParams.get("unauthorized");
+  const next = searchParams.get("next") || "/";
+  const { signIn, setActive, isLoaded } = useSignIn();
+  const { isSignedIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [email, setEmail] = useState("");
@@ -46,15 +26,14 @@ export default function Login() {
   const [quote, setQuote] = useState<Quote>(() => getRandomSignInQuote());
 
   useEffect(() => {
-    // Set a new random sign in quote on mount (client-side only)
     setQuote(getRandomSignInQuote());
-    
-    // Store next parameter in sessionStorage for OAuth flows
-    const next = searchParams.get("next");
-    if (next) {
-      sessionStorage.setItem("auth_redirect", next);
+  }, []);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      router.replace(next);
     }
-  }, [searchParams]);
+  }, [isSignedIn, next, router]);
 
   useEffect(() => {
     if (unauthorized) {
@@ -69,304 +48,215 @@ export default function Login() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isLoaded || !signIn) return;
     setIsLoading(true);
 
-    let data;
-    let error;
     try {
-      const result = await withTimeout(
-        supabase.auth.signInWithPassword({
-          email,
-          password,
-        }),
-        8000,
-        "Sign in is taking longer than expected."
-      );
-      data = result.data;
-      error = result.error;
-    } catch (err) {
-      if (err instanceof AuthTimeoutError) {
-        toast({
-          variant: "destructive",
-          title: "Sign in timed out",
-          description: "Please check your connection and try again.",
-        });
-        setIsLoading(false);
-        return;
-      }
-      throw err;
-    }
+      const result = await signIn.create({
+        identifier: email,
+        password,
+      });
 
-    if (error) {
-      // Check for email confirmation errors
-      const isEmailNotConfirmed = 
-        error.message?.toLowerCase().includes("email not confirmed") ||
-        error.message?.toLowerCase().includes("email_not_confirmed") ||
-        error.message?.toLowerCase().includes("confirm your email");
-      
-      if (isEmailNotConfirmed) {
+      if (result.status === "complete") {
+        await setActive({ session: result.createdSessionId });
         toast({
-          variant: "destructive",
-          title: "Email not verified",
-          description: "Please check your email and click the confirmation link before signing in. Check your spam folder if you don't see it.",
+          title: "Welcome back!",
+          description: "Successfully signed in. Redirecting you now...",
         });
+        router.push(next);
       } else {
-        // Show user-friendly error messages
-        let errorMessage = error.message;
-        
-        // Sanitize technical error messages
-        if (error.message?.toLowerCase().includes("invalid login")) {
-          errorMessage = "Invalid email or password. Please check your credentials and try again.";
-        } else if (error.message?.toLowerCase().includes("user not found")) {
-          errorMessage = "No account found with this email. Please sign up first.";
-        } else if (error.message?.toLowerCase().includes("wrong password")) {
-          errorMessage = "Incorrect password. Please try again or use 'Forgot password' to reset it.";
-        }
-        
         toast({
           variant: "destructive",
           title: "Sign in failed",
-          description: errorMessage,
+          description: "Sign in requires additional steps. Please try again.",
         });
+        setIsLoading(false);
       }
-      setIsLoading(false);
-      return;
-    }
-
-    if (!data.session) {
+    } catch (err: any) {
+      const clerkError = err?.errors?.[0];
+      const errorMessage = clerkError?.longMessage || clerkError?.message || "Invalid email or password. Please try again.";
       toast({
         variant: "destructive",
         title: "Sign in failed",
-        description: "No session created. Please try again.",
+        description: errorMessage,
       });
       setIsLoading(false);
-      return;
     }
+  };
 
-    const userTypeHint = data.session.user.user_metadata?.user_type as UserType | undefined;
-
-    // Ensure user record exists in database (guard against long-running requests)
+  const handleOAuth = async (strategy: "oauth_google" | "oauth_apple") => {
+    if (!isLoaded || !signIn) return;
     try {
-      const ensureResult = await withTimeout(
-        ensureUserRecord(data.session),
-        8000,
-        "Account setup is taking longer than expected."
-      );
-      
-      if (!ensureResult.success) {
-        // Show user-friendly error message (technical errors are already sanitized in ensureUserRecord)
-        toast({
-          variant: "destructive",
-          title: "Account setup issue",
-          description: ensureResult.error || "Unable to complete sign in. Please try again or contact support.",
-        });
-        setIsLoading(false);
-        return;
-      }
-    } catch (err) {
-      if (err instanceof AuthTimeoutError) {
-        toast({
-          title: "Signing you in",
-          description: "Account setup is taking longer than expected. Redirecting you now...",
-        });
-      } else {
-        console.error("Error ensuring user record:", err);
-        toast({
-          variant: "destructive",
-          title: "Sign in failed",
-          description: "Unable to complete sign in. Please try again.",
-        });
-        setIsLoading(false);
-        return;
-      }
+      await signIn.authenticateWithRedirect({
+        strategy,
+        redirectUrl: "/sso-callback",
+        redirectUrlComplete: next,
+      });
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Sign in failed",
+        description: "Failed to initiate sign in. Please try again.",
+      });
     }
-
-    // Get user type (fallback to metadata if lookup is slow)
-    let userType = userTypeHint || null;
-    try {
-      const fetchedUserType = await withTimeout(
-        getUserTypeFromSession(data.session),
-        4000,
-        "User type lookup is taking longer than expected."
-      );
-      if (fetchedUserType) {
-        userType = fetchedUserType;
-      }
-    } catch (err) {
-      if (!(err instanceof AuthTimeoutError)) {
-        console.error("Error getting user type:", err);
-      }
-    }
-    // Check both URL param and sessionStorage (for OAuth flows)
-    const next = searchParams.get("next") || sessionStorage.getItem("auth_redirect");
-    const redirectPath = getRedirectPath(userType || undefined, undefined, next);
-    const currentPath = typeof window !== "undefined" ? window.location.pathname : "/login";
-    const safeRedirectPath = redirectPath === currentPath || redirectPath.startsWith("/login")
-      ? "/"
-      : redirectPath;
-    
-    // Clear sessionStorage after use
-    if (sessionStorage.getItem("auth_redirect")) {
-      sessionStorage.removeItem("auth_redirect");
-    }
-    
-    toast({
-      title: "Welcome back!",
-      description: "Successfully signed in. Redirecting you now...",
-    });
-    
-    sessionStorage.setItem("auth_login_pending", String(Date.now()));
-    router.push(safeRedirectPath);
   };
 
   return (
-    <div className="h-screen overflow-hidden w-full flex bg-background">
-      {/* Left Side - Image */}
-      <div className="hidden lg:flex w-1/2 relative overflow-hidden bg-black h-full">
-        <div className="absolute inset-0 z-0">
-          <img 
-            src={resolveAssetSrc(loginImg)} 
-            alt="Couple at sunset" 
-            className="w-full h-full object-cover opacity-90 scale-105 hover:scale-100 transition-transform duration-[20s] ease-in-out"
-          />
-          <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/20 to-transparent" />
-        </div>
-        
-        <div className="relative z-10 p-12 flex flex-col justify-between h-full text-white w-full">
-          <Link
-            href="/"
-            className="font-serif text-4xl tracking-wide drop-shadow-sm hover:opacity-80 transition-opacity w-fit"
-          >
-            OpusFesta
-          </Link>
-          
-          <div className="backdrop-blur-md bg-white/10 border border-white/10 p-8 rounded-3xl shadow-2xl max-w-lg">
-            <h2 className="text-3xl font-serif mb-4 leading-normal text-white" suppressHydrationWarning>
-              "{quote.text}"
-            </h2>
-            <div className="flex items-center gap-3">
-               <div className="h-px w-8 bg-white/60"></div>
-               <p className="text-white/80 text-sm tracking-wider uppercase font-medium" suppressHydrationWarning>
-                 {quote.author}
-               </p>
-            </div>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen flex items-center justify-center p-4 bg-[#fafafa] dark:bg-background">
 
-      {/* Right Side - Form */}
-      <div className="w-full lg:w-1/2 flex flex-col justify-center items-center p-8 sm:p-12 lg:p-24 relative h-full overflow-y-auto">
-        <div className="w-full max-w-sm space-y-6 pb-8">
-          
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-6 -mt-8">
-            <Link href="/" className="font-serif text-3xl text-primary">
-              OpusFesta
-            </Link>
-          </div>
-
-          <div className="space-y-1.5 text-center">
-            <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-primary">
-              Welcome back
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Enter your details to access your account.
-            </p>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="relative group">
-              <label className="absolute -top-2.5 left-2.5 bg-background px-1.5 text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors z-10">
-                Email
-              </label>
-              <input
-                type="email"
-                placeholder="name@example.com"
-                className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
+      <div className="w-full max-w-[400px] space-y-8">
+        <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+          <CardContent className="pt-10 pb-8 px-8 space-y-6">
+            {/* Logo */}
+            <div className="text-center">
+              <Link href="/" className="font-serif text-3xl text-foreground hover:opacity-80 transition-opacity">
+                OpusFesta
+              </Link>
             </div>
 
-            <div className="space-y-1.5">
-              <div className="relative group">
-                 <label className="absolute -top-2.5 left-2.5 bg-background px-1.5 text-xs font-medium text-muted-foreground group-focus-within:text-primary transition-colors z-10">
-                  Password
-                </label>
-                <input
-                  type={showPassword ? "text" : "password"}
-                  className="flex h-11 w-full rounded-md border border-input bg-background px-3 py-2 pr-10 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-0 disabled:cursor-not-allowed disabled:opacity-50"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
+            {/* Title */}
+            <div className="text-center space-y-1">
+              <h1 className="text-xl font-semibold tracking-tight text-foreground">Welcome back</h1>
+              <p className="text-sm text-muted-foreground">
+                Sign in to your account to continue
+              </p>
+            </div>
+
+            {/* OAuth Buttons */}
+            <div className="flex flex-col gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 w-full justify-center gap-3 font-normal border-border/40 bg-background hover:bg-muted/50 hover:border-border/80 transition-all"
+                onClick={() => handleOAuth("oauth_google")}
+              >
+                <svg className="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                Continue with Google
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-10 w-full justify-center gap-3 font-normal border-border/40 bg-background hover:bg-muted/50 hover:border-border/80 transition-all"
+                onClick={() => handleOAuth("oauth_apple")}
+              >
+                <svg className="h-[18px] w-[18px] shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+                </svg>
+                Continue with Apple
+              </Button>
+            </div>
+
+            {/* Divider */}
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-border/40" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-3 text-muted-foreground/60">or</span>
+              </div>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="email" className="text-sm font-medium text-foreground">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   required
-                  placeholder="••••••••"
+                  disabled={isLoading}
+                  className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20 transition-colors"
                 />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-1"
-                >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
-                </button>
               </div>
-              <div className="flex justify-end">
-                <Link
-                  href="/forgot-password"
-                  className="text-xs text-primary hover:underline underline-offset-4 transition-colors"
-                >
-                  Forgot password?
-                </Link>
+
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-sm font-medium text-foreground">Password</Label>
+                  <Link
+                    href="/forgot-password"
+                    className="text-xs text-primary hover:text-primary/80 transition-colors"
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+                <div className="relative">
+                  <Input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="Enter your password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="h-10 pr-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+                  >
+                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90 h-11 w-full mt-1"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Signing in...
-                </>
-              ) : (
-                "Sign In"
-              )}
-            </button>
-          </form>
+              <Button
+                type="submit"
+                disabled={isLoading || !isLoaded}
+                className="w-full h-10 mt-1"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Signing in...
+                  </>
+                ) : (
+                  "Continue"
+                )}
+              </Button>
+            </form>
 
-          <div className="text-center text-sm text-muted-foreground pt-2">
-            Don't have an account?{" "}
-            <Link
-              href="/signup"
-              className="font-semibold text-primary hover:underline underline-offset-4 transition-colors"
-            >
-              Sign up
-            </Link>
-          </div>
+            {/* Footer */}
+            <p className="text-center text-sm text-muted-foreground">
+              Don&apos;t have an account?{" "}
+              <Link
+                href="/signup"
+                className="text-primary font-medium hover:text-primary/80 transition-colors"
+              >
+                Sign up
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
 
-          <p className="text-center text-xs text-muted-foreground leading-relaxed pt-1">
-            By continuing, you agree to OpusFesta's{" "}
-            <Link href="/terms" className="underline underline-offset-4 hover:text-primary transition-colors">
-              Terms of Service
-            </Link>{" "}
-            and{" "}
-            <Link href="/privacy" className="underline underline-offset-4 hover:text-primary transition-colors">
-              Privacy Policy
-            </Link>
-            , and to receive periodic emails with updates.
+        <p className="text-center text-xs text-muted-foreground/60 leading-relaxed px-6">
+          By continuing, you agree to OpusFesta&apos;s{" "}
+          <Link href="/terms" className="underline underline-offset-4 hover:text-muted-foreground transition-colors">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="/privacy" className="underline underline-offset-4 hover:text-muted-foreground transition-colors">
+            Privacy Policy
+          </Link>
+          .
+        </p>
+
+        {/* Quote */}
+        <div className="text-center px-6" suppressHydrationWarning>
+          <p className="text-sm text-muted-foreground/50 italic" suppressHydrationWarning>
+            &ldquo;{quote.text}&rdquo;
           </p>
-          
-          <div className="absolute top-6 left-6 lg:top-8 lg:left-8">
-            <Link
-              href="/"
-              className="flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors"
-            >
-              <ArrowLeft className="mr-1.5 h-4 w-4" />
-              Back to home
-            </Link>
-          </div>
+          <p className="text-xs text-muted-foreground/40 mt-1.5" suppressHydrationWarning>
+            &mdash; {quote.author}
+          </p>
         </div>
       </div>
     </div>

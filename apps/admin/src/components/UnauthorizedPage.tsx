@@ -2,7 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { ShieldX, LogOut, ArrowLeft, Mail } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+import { useClerk, useUser } from "@clerk/nextjs";
 import { Button } from "@/components/ui/button";
 
 interface UnauthorizedPageProps {
@@ -12,11 +12,15 @@ interface UnauthorizedPageProps {
 
 export function UnauthorizedPage({ session, userEmail }: UnauthorizedPageProps) {
   const router = useRouter();
+  const { signOut } = useClerk();
+  const { isSignedIn, user } = useUser();
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    router.push("/login");
+    await signOut({ redirectUrl: "/login" });
   };
+
+  const email = userEmail || user?.primaryEmailAddress?.emailAddress;
+  const isAuthenticated = session || isSignedIn;
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -33,16 +37,16 @@ export function UnauthorizedPage({ session, userEmail }: UnauthorizedPageProps) 
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
             Access Denied
           </h1>
-          
-          {session ? (
+
+          {isAuthenticated ? (
             <div className="space-y-3">
               <p className="text-muted-foreground">
                 Your account does not have permission to access the admin portal.
               </p>
-              {userEmail && (
+              {email && (
                 <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
                   <Mail className="w-4 h-4" />
-                  <span>Logged in as: <strong className="text-foreground">{userEmail}</strong></span>
+                  <span>Logged in as: <strong className="text-foreground">{email}</strong></span>
                 </div>
               )}
               <p className="text-sm text-muted-foreground">
@@ -63,7 +67,7 @@ export function UnauthorizedPage({ session, userEmail }: UnauthorizedPageProps) 
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          {session ? (
+          {isAuthenticated ? (
             <>
               <Button
                 onClick={handleSignOut}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Get Supabase admin client
 function getSupabaseAdmin() {
@@ -19,38 +20,11 @@ function getSupabaseAdmin() {
   );
 }
 
-// Get authenticated user from request
-async function getAuthenticatedUser(request: NextRequest): Promise<{ userId: string; email: string } | null> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-
-  const token = authHeader.replace("Bearer ", "");
-  
-  try {
-    const supabaseAdmin = getSupabaseAdmin();
-    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
-    
-    if (error || !user) {
-      return null;
-    }
-
-    return {
-      userId: user.id,
-      email: user.email || "",
-    };
-  } catch (error) {
-    console.error("Error getting authenticated user:", error);
-    return null;
-  }
-}
-
 // GET - Fetch user's applications
 export async function GET(request: NextRequest) {
   try {
     // Check authentication
-    const user = await getAuthenticatedUser(request);
+    const user = await getAuthenticatedUser();
     if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
@@ -84,7 +58,7 @@ export async function GET(request: NextRequest) {
           employment_type
         )
       `)
-      .eq("user_id", user.userId)
+      .eq("user_id", user.id)
       .order("created_at", { ascending: false });
 
     // Apply filters

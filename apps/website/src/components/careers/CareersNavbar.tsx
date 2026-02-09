@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
 import { Moon, Sun, LogOut, Briefcase, ChevronRight, Menu, X } from "lucide-react";
-import { supabase } from "@/lib/supabaseClient";
+import { useOpusFestaAuth } from "@opusfesta/auth";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -15,23 +15,24 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
-interface UserData {
-  id: string;
-  name: string | null;
-  email: string | null;
-  avatar: string | null;
-}
-
 export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [userData, setUserData] = useState<UserData | null>(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const pathname = usePathname();
+
+  const { clerkUser, isLoaded, isSignedIn, signOut } = useOpusFestaAuth();
+
+  const isAuthenticated = isLoaded ? isSignedIn : null;
+  const isCheckingAuth = !isLoaded;
+
+  const userData = clerkUser ? {
+    name: clerkUser.fullName,
+    email: clerkUser.primaryEmailAddress?.emailAddress || null,
+    avatar: clerkUser.imageUrl || null,
+  } : null;
 
   // Careers-specific navigation - only careers-related links
   const NAV_LINKS = [
@@ -39,91 +40,13 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
     { name: "Students", href: "/careers/students" },
     { name: "Open Positions", href: "/careers/positions" },
   ];
-  
+
   // Add "My Applications" to nav if authenticated
   const authenticatedNavLinks = isAuthenticated === true ? [
     { name: "My Applications", href: "/careers/my-applications" },
   ] : [];
-  
+
   const allNavLinks = [...NAV_LINKS, ...authenticatedNavLinks];
-
-  // Function to fetch user data
-  const fetchUserData = async (userId: string) => {
-    try {
-      // First, try to get from database
-      const { data, error } = await supabase
-        .from("users")
-        .select("id, name, email, avatar")
-        .eq("id", userId)
-        .single();
-
-      // Handle RLS errors gracefully (406) - these are expected if session isn't fully established
-      const errorStatus = (error as any)?.status;
-      const isRLSError = error?.code === "PGRST301" || 
-                        error?.code === "PGRST116" ||
-                        error?.message?.toLowerCase().includes("row-level security") ||
-                        errorStatus === 406;
-
-      if (!error && data) {
-        // If database has name, use it
-        if (data.name) {
-          setUserData({
-            id: data.id,
-            name: data.name,
-            email: data.email,
-            avatar: data.avatar,
-          });
-          return;
-        }
-      }
-
-      // If database doesn't have name or we got an RLS error, try to get from auth session metadata
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) {
-        const metadata = session.user.user_metadata;
-        const fullName = 
-          metadata?.full_name || 
-          metadata?.name || 
-          metadata?.display_name ||
-          (metadata?.first_name && metadata?.last_name 
-            ? `${metadata.first_name} ${metadata.last_name}`
-            : null);
-
-        const avatar = 
-          metadata?.avatar_url || 
-          metadata?.picture || 
-          metadata?.photo_url ||
-          null;
-
-        setUserData({
-          id: userId,
-          name: fullName || data?.name || null,
-          email: data?.email || session.user.email || null,
-          avatar: data?.avatar || avatar,
-        });
-      } else if (data) {
-        // Fallback to database data even if name is null
-        setUserData({
-          id: data.id,
-          name: data.name,
-          email: data.email,
-          avatar: data.avatar,
-        });
-      } else if (error && !isRLSError) {
-        // Only log non-RLS errors (406, PGRST301, PGRST116 are expected)
-        // Also suppress 403 errors (user deleted) - these are handled by verifyUserExistsInAuth
-        if (errorStatus !== 403 && error.code !== "PGRST116") {
-          console.error("Error fetching user data:", error);
-        }
-      }
-    } catch (error) {
-      // Suppress expected errors (403 = user deleted, handled elsewhere)
-      const errorStatus = error && typeof error === 'object' && 'status' in error ? (error as any).status : null;
-      if (errorStatus !== 403) {
-        console.error("Error fetching user data:", error);
-      }
-    }
-  };
 
   const getUserInitials = (name: string | null, email: string | null): string => {
     if (name) {
@@ -141,24 +64,11 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
 
   const handleLogout = async () => {
     try {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error("Logout error:", error);
-        return;
-      }
-      // Clear state immediately
-      setIsAuthenticated(false);
-      setUserData(null);
-      setIsCheckingAuth(false);
-      // Navigate after state is cleared
+      await signOut();
       await router.push("/careers");
       router.refresh();
     } catch (error) {
       console.error("Error logging out:", error);
-      // Still clear state on error
-      setIsAuthenticated(false);
-      setUserData(null);
-      setIsCheckingAuth(false);
     }
   };
 
@@ -195,155 +105,9 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  useEffect(() => {
-    let mounted = true;
-
-    const checkAuth = async () => {
-      let timeoutId: NodeJS.Timeout | null = null;
-      
-      try {
-        // Check if there was a recent login attempt
-        const loginPending = sessionStorage.getItem("auth_login_pending");
-        const loginPendingTime = loginPending ? parseInt(loginPending, 10) : null;
-        const isRecentLogin = loginPendingTime && (Date.now() - loginPendingTime) < 20000; // Within 20 seconds
-        const timeoutDuration = isRecentLogin ? 12000 : 3000; // 12s for recent login, 3s otherwise
-        
-        // Add timeout to prevent hanging - show buttons if check takes too long
-        timeoutId = setTimeout(async () => {
-          if (mounted) {
-            // Before timing out, do one final check for session
-            const { data: { session } } = await supabase.auth.getSession();
-            if (session?.user) {
-              // Session exists, update state
-              setIsAuthenticated(true);
-              await fetchUserData(session.user.id);
-              setIsCheckingAuth(false);
-              // Clear the login pending flag
-              if (loginPending) {
-                sessionStorage.removeItem("auth_login_pending");
-              }
-            } else {
-              console.warn("Auth check timeout - defaulting to not authenticated");
-              setIsAuthenticated(false);
-              setUserData(null);
-              setIsCheckingAuth(false);
-            }
-          }
-        }, timeoutDuration);
-        
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-          timeoutId = null;
-        }
-        
-        if (error) {
-          console.error("Session error:", error);
-          if (mounted) {
-            setIsAuthenticated(false);
-            setIsCheckingAuth(false);
-          }
-          return;
-        }
-
-        if (session?.user) {
-          if (mounted) {
-            setIsAuthenticated(true);
-            await fetchUserData(session.user.id);
-            setIsCheckingAuth(false);
-            // Clear the login pending flag on successful auth
-            if (loginPending) {
-              sessionStorage.removeItem("auth_login_pending");
-            }
-          }
-        } else {
-          if (mounted) {
-            setIsAuthenticated(false);
-            setIsCheckingAuth(false);
-          }
-        }
-      } catch (error) {
-        // Clear timeout if it hasn't fired yet
-        if (timeoutId) {
-          clearTimeout(timeoutId);
-        }
-        console.error("Auth check error:", error);
-        if (mounted) {
-          setIsAuthenticated(false);
-          setIsCheckingAuth(false);
-        }
-      }
-    };
-
-    checkAuth();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (!mounted) return;
-
-        if (event === "SIGNED_OUT" || !session) {
-          setIsAuthenticated(false);
-          setUserData(null);
-          setIsCheckingAuth(false);
-          sessionStorage.removeItem("auth_login_pending");
-          return;
-        }
-
-        if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED" || event === "USER_UPDATED") {
-          if (session?.user) {
-            // For SIGNED_IN events, update state immediately without extra checks
-            if (event === "SIGNED_IN") {
-              setIsAuthenticated(true);
-              setIsCheckingAuth(false);
-              // Clear login pending flag
-              sessionStorage.removeItem("auth_login_pending");
-              // Fetch user data asynchronously
-              fetchUserData(session.user.id).catch(console.error);
-              return;
-            }
-
-            // For other events, verify user still exists in Supabase Auth
-            const userExistsInAuth = await supabase.auth.getUser()
-              .then(({ data, error }) => {
-                if (error || !data.user || data.user.id !== session.user.id) {
-                  return false;
-                }
-                return true;
-              })
-              .catch(() => false);
-
-            if (!mounted) return;
-
-            if (!userExistsInAuth) {
-              // User was deleted - sign out
-              console.warn("User deleted from Auth during state change, signing out");
-              await supabase.auth.signOut();
-              if (mounted) {
-                setIsAuthenticated(false);
-                setUserData(null);
-                setIsCheckingAuth(false);
-              }
-              return;
-            }
-
-            setIsAuthenticated(true);
-            await fetchUserData(session.user.id);
-            setIsCheckingAuth(false);
-          }
-        }
-      }
-    );
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
-
   return (
     <>
-      <nav 
+      <nav
         className={`${sticky ? 'fixed' : 'relative'} top-0 w-full z-50 px-6 md:px-12 pb-1 pt-3 flex justify-between items-center transition-all duration-300 ${
           sticky && scrolled ? "bg-background/80 backdrop-blur-md border-b border-border/50 pb-0.5 pt-2" : sticky ? "bg-transparent pb-1 pt-3" : "bg-background pb-1 pt-3"
         }`}
@@ -362,12 +126,12 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
         {allNavLinks.length > 0 && (
           <div className="hidden lg:flex items-center gap-8 bg-background/50 px-8 py-2.5 rounded-full border border-border/40 backdrop-blur-sm shadow-sm">
             {allNavLinks.map((link) => {
-              const isActive = pathname === link.href || 
+              const isActive = pathname === link.href ||
                 (link.href === "/careers/positions" && pathname?.startsWith("/careers/positions")) ||
                 (link.href === "/careers/my-applications" && pathname === "/careers/my-applications") ||
                 (link.href === "/careers/why-opusfesta" && pathname === "/careers/why-opusfesta") ||
                 (link.href === "/careers/students" && pathname === "/careers/students");
-              
+
               return (
                 <Link
                   key={link.href}
@@ -429,8 +193,8 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
 
                   <div className="space-y-1">
                     <DropdownMenuItem asChild className="p-0! focus:bg-transparent">
-                      <Link 
-                        href="/careers/my-applications" 
+                      <Link
+                        href="/careers/my-applications"
                         className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary hover:text-primary-foreground transition-all w-full"
                       >
                         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/50">
@@ -444,7 +208,7 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
 
                   <DropdownMenuSeparator className="my-2" />
 
-                  <DropdownMenuItem 
+                  <DropdownMenuItem
                     onSelect={(e) => {
                       e.preventDefault();
                       handleLogout().catch(console.error);
@@ -518,21 +282,21 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
           <div className="flex flex-col h-full overflow-y-auto">
             <nav className="flex flex-col p-6 gap-2">
               {allNavLinks.map((link) => {
-                const isActive = pathname === link.href || 
+                const isActive = pathname === link.href ||
                   (link.href === "/careers/positions" && pathname?.startsWith("/careers/positions")) ||
                   (link.href === "/careers/my-applications" && pathname === "/careers/my-applications") ||
                   (link.href === "/careers/why-opusfesta" && pathname === "/careers/why-opusfesta") ||
                   (link.href === "/careers/how-we-hire" && pathname === "/careers/how-we-hire") ||
                   (link.href === "/careers/benefits" && pathname === "/careers/benefits");
-                
+
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`px-4 py-3 rounded-lg text-base font-medium transition-colors ${
-                      isActive 
-                        ? "bg-primary text-primary-foreground" 
+                      isActive
+                        ? "bg-primary text-primary-foreground"
                         : "text-secondary hover:bg-surface hover:text-primary"
                     }`}
                   >
@@ -541,7 +305,7 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
                 );
               })}
             </nav>
-            
+
             {/* Mobile Auth Section */}
             <div className="mt-auto p-6 border-t border-border">
               {isAuthenticated === true ? (
@@ -585,7 +349,7 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
                   </Link>
                 </div>
               )}
-              
+
               {isAuthenticated === true && (
                 <>
                   <Link

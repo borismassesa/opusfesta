@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Mark route as dynamic to prevent static analysis during build
 export const dynamic = 'force-dynamic';
@@ -43,27 +44,17 @@ export async function PUT(
       );
     }
 
-    // Get authenticated user (must be the vendor)
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
+    // Authenticate user (must be the vendor)
+    const user = await getAuthenticatedUser();
+    if (!user) {
       return NextResponse.json(
         { error: "Authentication required" },
         { status: 401 }
       );
     }
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
-    
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Invalid authentication" },
-        { status: 401 }
-      );
-    }
-
     // Get the review and verify vendor ownership
-    const { data: review, error: reviewError } = await supabase
+    const { data: review, error: reviewError } = await supabaseAdmin
       .from("reviews")
       .select(`
         id,
@@ -99,7 +90,7 @@ export async function PUT(
     }
 
     // Update review with vendor response
-    const { data: updatedReview, error: updateError } = await supabase
+    const { data: updatedReview, error: updateError } = await supabaseAdmin
       .from("reviews")
       .update({
         vendor_response: body.response.trim(),

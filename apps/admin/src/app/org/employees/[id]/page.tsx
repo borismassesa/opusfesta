@@ -29,7 +29,7 @@ import {
   CreditCard
 } from "lucide-react";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
 import { getAdminApiUrl } from "@/lib/api";
 import { toast } from "@/lib/toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -80,6 +80,7 @@ interface Employee {
 
 export default function EmployeeDetailPage() {
   const router = useRouter();
+  const { getToken } = useAuth();
   const params = useParams();
   const employeeId = params.id as string;
   
@@ -99,8 +100,8 @@ export default function EmployeeDetailPage() {
     setLoading(true);
     setError(null);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -109,7 +110,7 @@ export default function EmployeeDetailPage() {
         getAdminApiUrl(`/api/admin/employees?id=${employeeId}`),
         {
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );
@@ -134,8 +135,8 @@ export default function EmployeeDetailPage() {
   const handleDelete = async () => {
     setDeleting(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
+      const token = await getToken();
+      if (!token) {
         router.push("/login");
         return;
       }
@@ -145,7 +146,7 @@ export default function EmployeeDetailPage() {
         {
           method: "DELETE",
           headers: {
-            Authorization: `Bearer ${session.access_token}`,
+            Authorization: `Bearer ${token}`,
           },
         }
       );

@@ -1,80 +1,18 @@
 import { supabase } from './client';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { MessageThreadRecord, VendorMessageRecord } from "@opusfesta/lib";
 
-export interface MessageThread {
-  id: string;
-  user_id: string;
-  vendor_id: string;
-  last_message_at: string;
-  created_at: string;
-  updated_at: string;
-  // Joined data
-  user?: {
-    id: string;
-    name: string | null;
-    email: string | null;
-    avatar: string | null;
-  };
-  vendor?: {
-    id: string;
-    business_name: string;
-    logo: string | null;
-  };
-  last_message?: Message;
-  unread_count?: number;
-}
-
-export interface Message {
-  id: string;
-  thread_id: string;
-  sender_id: string;
-  content: string;
-  read_at: string | null;
-  created_at: string;
-  updated_at: string;
-  // Joined data
-  sender?: {
-    id: string;
-    name: string | null;
-    email: string | null;
-    avatar: string | null;
-  };
-}
+export type MessageThread = MessageThreadRecord;
+export type Message = VendorMessageRecord;
 
 // Get all message threads for a vendor
 export async function getVendorMessageThreads(
-  vendorId: string
+  vendorId: string,
+  options?: { client?: SupabaseClient; currentUserId?: string }
 ): Promise<MessageThread[]> {
-  // Get current user for debugging
-  const { data: { user } } = await supabase.auth.getUser();
-  console.log('[Messages] Fetching threads for vendor:', vendorId, 'Current user:', user?.id);
+  const db = options?.client || supabase;
 
-  // First, verify we can access the vendor
-  const { data: vendorCheck, error: vendorError } = await supabase
-    .from('vendors')
-    .select('id, user_id')
-    .eq('id', vendorId)
-    .single();
-  
-  if (vendorError) {
-    console.error('[Messages] Error checking vendor:', vendorError);
-  }
-  
-  console.log('[Messages] Vendor check result:', vendorCheck);
-  console.log('[Messages] Vendor owner matches user:', vendorCheck?.user_id === user?.id);
-
-  // Try query without join first to test RLS
-  const { data: threadsWithoutJoin, error: testError } = await supabase
-    .from('message_threads')
-    .select('*')
-    .eq('vendor_id', vendorId)
-    .order('last_message_at', { ascending: false });
-  
-  console.log('[Messages] Threads without join:', threadsWithoutJoin?.length || 0);
-  if (testError) {
-    console.error('[Messages] Error fetching threads (no join):', testError);
-  }
-
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from('message_threads')
     .select(`
       *,
@@ -89,32 +27,7 @@ export async function getVendorMessageThreads(
     .order('last_message_at', { ascending: false });
 
   if (error) {
-    console.error('[Messages] Error fetching vendor message threads:', error);
-    console.error('[Messages] Error details:', {
-      message: error.message,
-      details: error.details,
-      hint: error.hint,
-      code: error.code
-    });
     return [];
-  }
-
-  console.log('[Messages] Raw data from Supabase:', data);
-  console.log('[Messages] Fetched threads:', data?.length || 0, 'threads');
-  
-  // If no data but no error, check RLS
-  if (!data || data.length === 0) {
-    console.warn('[Messages] No threads returned. Possible RLS issue. Current user:', user?.id);
-    // Try a direct query to check RLS
-    const { data: vendorCheck } = await supabase
-      .from('vendors')
-      .select('id, user_id')
-      .eq('id', vendorId)
-      .single();
-    console.log('[Messages] Vendor check:', vendorCheck);
-    if (vendorCheck && vendorCheck.user_id !== user?.id) {
-      console.error('[Messages] User mismatch! Logged in as:', user?.id, 'but vendor owner is:', vendorCheck.user_id);
-    }
   }
 
   if (!data) {
@@ -122,9 +35,10 @@ export async function getVendorMessageThreads(
   }
 
   // Get last message and unread count for each thread
+  const currentUserId = options?.currentUserId;
   const threadsWithMessages = await Promise.all(
     data.map(async (thread) => {
-      const { data: messages } = await supabase
+      const { data: messages } = await db
         .from('messages')
         .select('*')
         .eq('thread_id', thread.id)
@@ -132,17 +46,21 @@ export async function getVendorMessageThreads(
         .limit(1)
         .single();
 
-      const { count: unreadCount } = await supabase
-        .from('messages')
-        .select('*', { count: 'exact', head: true })
-        .eq('thread_id', thread.id)
-        .is('read_at', null)
-        .neq('sender_id', (await supabase.auth.getUser()).data.user?.id || '');
+      let unreadCount = 0;
+      if (currentUserId) {
+        const { count } = await db
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('thread_id', thread.id)
+          .is('read_at', null)
+          .neq('sender_id', currentUserId);
+        unreadCount = count || 0;
+      }
 
       return {
         ...thread,
         last_message: messages || null,
-        unread_count: unreadCount || 0,
+        unread_count: unreadCount,
       };
     })
   );
@@ -152,9 +70,12 @@ export async function getVendorMessageThreads(
 
 // Get all message threads for a user
 export async function getUserMessageThreads(
-  userId: string
+  userId: string,
+  client?: SupabaseClient
 ): Promise<MessageThread[]> {
-  const { data, error } = await supabase
+  const db = client || supabase;
+
+  const { data, error } = await db
     .from('message_threads')
     .select(`
       *,
@@ -168,7 +89,6 @@ export async function getUserMessageThreads(
     .order('last_message_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching user message threads:', error);
     return [];
   }
 
@@ -179,7 +99,7 @@ export async function getUserMessageThreads(
   // Get last message and unread count for each thread
   const threadsWithMessages = await Promise.all(
     data.map(async (thread) => {
-      const { data: messages } = await supabase
+      const { data: messages } = await db
         .from('messages')
         .select('*')
         .eq('thread_id', thread.id)
@@ -187,7 +107,7 @@ export async function getUserMessageThreads(
         .limit(1)
         .single();
 
-      const { count: unreadCount } = await supabase
+      const { count: unreadCount } = await db
         .from('messages')
         .select('*', { count: 'exact', head: true })
         .eq('thread_id', thread.id)
@@ -208,10 +128,13 @@ export async function getUserMessageThreads(
 // Get or create a message thread between a user and vendor
 export async function getOrCreateThread(
   userId: string,
-  vendorId: string
+  vendorId: string,
+  client?: SupabaseClient
 ): Promise<MessageThread | null> {
+  const db = client || supabase;
+
   // Try to get existing thread
-  const { data: existingThread, error: fetchError } = await supabase
+  const { data: existingThread, error: fetchError } = await db
     .from('message_threads')
     .select(`
       *,
@@ -236,7 +159,7 @@ export async function getOrCreateThread(
   }
 
   // Create new thread if it doesn't exist
-  const { data: newThread, error: createError } = await supabase
+  const { data: newThread, error: createError } = await db
     .from('message_threads')
     .insert({
       user_id: userId,
@@ -259,7 +182,6 @@ export async function getOrCreateThread(
     .single();
 
   if (createError || !newThread) {
-    console.error('Error creating message thread:', createError);
     return null;
   }
 
@@ -268,9 +190,12 @@ export async function getOrCreateThread(
 
 // Get messages for a specific thread
 export async function getThreadMessages(
-  threadId: string
+  threadId: string,
+  client?: SupabaseClient
 ): Promise<Message[]> {
-  const { data, error } = await supabase
+  const db = client || supabase;
+
+  const { data, error } = await db
     .from('messages')
     .select(`
       *,
@@ -285,7 +210,6 @@ export async function getThreadMessages(
     .order('created_at', { ascending: true });
 
   if (error) {
-    console.error('Error fetching thread messages:', error);
     return [];
   }
 
@@ -296,9 +220,12 @@ export async function getThreadMessages(
 export async function sendMessage(
   threadId: string,
   senderId: string,
-  content: string
+  content: string,
+  client?: SupabaseClient
 ): Promise<Message | null> {
-  const { data, error } = await supabase
+  const db = client || supabase;
+
+  const { data, error } = await db
     .from('messages')
     .insert({
       thread_id: threadId,
@@ -317,7 +244,6 @@ export async function sendMessage(
     .single();
 
   if (error || !data) {
-    console.error('Error sending message:', error);
     return null;
   }
 
@@ -327,10 +253,13 @@ export async function sendMessage(
 // Mark messages as read in a thread
 export async function markThreadMessagesAsRead(
   threadId: string,
-  userId: string
+  userId: string,
+  client?: SupabaseClient
 ): Promise<boolean> {
+  const db = client || supabase;
+
   // Get the other participant's ID (vendor or user)
-  const { data: thread } = await supabase
+  const { data: thread } = await db
     .from('message_threads')
     .select('user_id, vendor_id')
     .eq('id', threadId)
@@ -341,8 +270,8 @@ export async function markThreadMessagesAsRead(
   }
 
   // Determine the other participant
-  const otherParticipantId = thread.user_id === userId 
-    ? (await supabase
+  const otherParticipantId = thread.user_id === userId
+    ? (await db
         .from('vendors')
         .select('user_id')
         .eq('id', thread.vendor_id)
@@ -354,7 +283,7 @@ export async function markThreadMessagesAsRead(
   }
 
   // Mark all messages from the other participant as read
-  const { error } = await supabase
+  const { error } = await db
     .from('messages')
     .update({ read_at: new Date().toISOString() })
     .eq('thread_id', threadId)
@@ -362,7 +291,6 @@ export async function markThreadMessagesAsRead(
     .is('read_at', null);
 
   if (error) {
-    console.error('Error marking messages as read:', error);
     return false;
   }
 
@@ -371,10 +299,13 @@ export async function markThreadMessagesAsRead(
 
 // Get unread message count for a vendor
 export async function getVendorUnreadCount(
-  vendorId: string
+  vendorId: string,
+  client?: SupabaseClient
 ): Promise<number> {
+  const db = client || supabase;
+
   // Get vendor's user_id
-  const { data: vendor } = await supabase
+  const { data: vendor } = await db
     .from('vendors')
     .select('user_id')
     .eq('id', vendorId)
@@ -385,7 +316,7 @@ export async function getVendorUnreadCount(
   }
 
   // Get all threads for this vendor
-  const { data: threads } = await supabase
+  const { data: threads } = await db
     .from('message_threads')
     .select('id')
     .eq('vendor_id', vendorId);
@@ -397,7 +328,7 @@ export async function getVendorUnreadCount(
   const threadIds = threads.map((t) => t.id);
 
   // Count unread messages (messages not sent by vendor's user_id)
-  const { count, error } = await supabase
+  const { count, error } = await db
     .from('messages')
     .select('*', { count: 'exact', head: true })
     .in('thread_id', threadIds)
@@ -405,7 +336,6 @@ export async function getVendorUnreadCount(
     .neq('sender_id', vendor.user_id);
 
   if (error) {
-    console.error('Error getting unread count:', error);
     return 0;
   }
 
@@ -414,10 +344,13 @@ export async function getVendorUnreadCount(
 
 // Get unread message count for a user
 export async function getUserUnreadCount(
-  userId: string
+  userId: string,
+  client?: SupabaseClient
 ): Promise<number> {
+  const db = client || supabase;
+
   // Get all threads for this user
-  const { data: threads } = await supabase
+  const { data: threads } = await db
     .from('message_threads')
     .select('id')
     .eq('user_id', userId);
@@ -429,7 +362,7 @@ export async function getUserUnreadCount(
   const threadIds = threads.map((t) => t.id);
 
   // Count unread messages (messages not sent by user)
-  const { count, error } = await supabase
+  const { count, error } = await db
     .from('messages')
     .select('*', { count: 'exact', head: true })
     .in('thread_id', threadIds)
@@ -437,7 +370,6 @@ export async function getUserUnreadCount(
     .neq('sender_id', userId);
 
   if (error) {
-    console.error('Error getting unread count:', error);
     return 0;
   }
 

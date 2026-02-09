@@ -21,7 +21,8 @@ import {
 } from "@/components/ui/form";
 import { uploadResume, uploadCoverLetter } from "@/lib/careers/applications";
 import { cn } from "@/lib/utils";
-import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@clerk/nextjs";
+import { useAuthGate } from "@/hooks/useAuthGate";
 
 // Helper to validate optional URL fields - allows empty string, undefined, or valid URL
 // This pattern matches what's used elsewhere in the codebase
@@ -80,6 +81,8 @@ export function JobApplicationForm({
   onSuccess,
   onCancel,
 }: JobApplicationFormProps) {
+  const { getToken, isSignedIn } = useAuth();
+  const { requireAuth } = useAuthGate();
   const [resumeFile, setResumeFile] = useState<File | null>(null);
   const [resumeUrl, setResumeUrl] = useState<string | null>(null);
   const [isUploadingResume, setIsUploadingResume] = useState(false);
@@ -122,16 +125,17 @@ export function JobApplicationForm({
         setIsLoadingDraft(true);
         
         // Get auth session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) {
+        if (!isSignedIn) {
           setIsLoadingDraft(false);
           return;
         }
 
+        const token = await getToken();
+
         // Try to load draft from database
         const response = await fetch(`/api/careers/applications/my-applications?includeDrafts=true`, {
           headers: {
-            "Authorization": `Bearer ${session.access_token}`,
+            "Authorization": `Bearer ${token}`,
           },
         });
 
@@ -202,7 +206,7 @@ export function JobApplicationForm({
     }
 
     loadDraft();
-  }, [storageKey, form, jobPostingId]);
+  }, [storageKey, form, jobPostingId, isSignedIn, getToken]);
 
   // Auto-save to localStorage
   useEffect(() => {
@@ -350,17 +354,18 @@ export function JobApplicationForm({
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setError("Please log in to save drafts");
+      if (!isSignedIn) {
+        requireAuth("apply", () => saveDraft(data));
         setIsSavingDraft(false);
         return;
       }
 
-      const url = draftId 
+      const token = await getToken();
+
+      const url = draftId
         ? `/api/careers/applications/${draftId}`
         : "/api/careers/applications";
-      
+
       const method = draftId ? "PATCH" : "POST";
 
       // Build request body, converting empty strings and nulls to undefined
@@ -368,7 +373,7 @@ export function JobApplicationForm({
         jobPostingId,
         is_draft: true,
       };
-      
+
       // Only include fields that have values (not empty strings or null)
       if (data.fullName && data.fullName.trim()) requestBody.fullName = data.fullName;
       if (data.email && data.email.trim()) requestBody.email = data.email;
@@ -388,7 +393,7 @@ export function JobApplicationForm({
           method,
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
+            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify(requestBody),
         });
@@ -469,12 +474,13 @@ export function JobApplicationForm({
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setError("Please log in to submit applications");
+      if (!isSignedIn) {
+        requireAuth("apply", () => onSubmit(data));
         setIsSubmitting(false);
         return;
       }
+
+      const token = await getToken();
 
       // Check if user has already submitted an application for this job
       if (hasExistingApplication) {
@@ -488,7 +494,7 @@ export function JobApplicationForm({
         try {
           const checkResponse = await fetch("/api/careers/applications/my-applications", {
             headers: {
-              "Authorization": `Bearer ${session.access_token}`,
+              "Authorization": `Bearer ${token}`,
             },
           });
           
@@ -573,7 +579,7 @@ export function JobApplicationForm({
           method,
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session.access_token}`,
+            "Authorization": `Bearer ${token}`,
           },
           body: JSON.stringify(requestBody),
         });
