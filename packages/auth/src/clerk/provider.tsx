@@ -10,6 +10,12 @@ interface OpusFestaClerkProviderProps {
 export function OpusFestaClerkProvider({
   children,
 }: OpusFestaClerkProviderProps) {
+  // During build-time prerendering, the publishable key may not be available.
+  // Skip Clerk wrapping to allow static pages (like /_not-found) to build.
+  if (!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) {
+    return <>{children}</>;
+  }
+
   return (
     <BaseClerkProvider
       signInUrl="/login"
