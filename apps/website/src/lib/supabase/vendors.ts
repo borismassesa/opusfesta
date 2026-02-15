@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { VENDOR_COLUMNS } from "@/lib/vendor-columns";
 import type {
   VendorRecord,
   VendorPortfolioItem,
@@ -10,9 +11,6 @@ export type Vendor = VendorRecord;
 export type PortfolioItem = VendorPortfolioItem;
 export type Review = VendorReviewRecord;
 export type VendorAward = VendorAwardRecord;
-
-const VENDOR_COLUMNS =
-  "id,slug,user_id,business_name,category,subcategories,bio,description,logo,cover_image,location,price_range,verified,tier,stats,contact_info,social_links,years_in_business,team_size,services_offered,created_at,updated_at";
 
 export async function getVendorBySlug(slug: string): Promise<Vendor | null> {
   const { data, error } = await supabase

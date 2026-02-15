@@ -748,6 +748,88 @@ interface VendorRowSection {
   items: VendorItem[];
 }
 
+const CATEGORY_DISPLAY_MAP: Record<string, string> = {
+  "Wedding Planners": "Planning",
+  "Venues": "Venues",
+  "Photographers": "Photography",
+  "Videographers": "Videography",
+  "Caterers": "Catering",
+  "Florists": "Florals",
+  "DJs & Music": "Music",
+  "Beauty & Makeup": "Beauty",
+  "Bridal Salons": "Bridal shops",
+  "Officiants": "Officiants",
+  "Decorators": "Decor",
+};
+
+function parseLocationForVendor(v: { location?: unknown }): { city?: string } {
+  if (v.location == null) return {};
+  if (typeof v.location === "object") return (v.location as { city?: string }) || {};
+  if (typeof v.location !== "string") return {};
+  const s = (v.location as string).trim();
+  if (s.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(v.location as string) as { city?: string };
+      return parsed || {};
+    } catch {
+      return { city: s || undefined };
+    }
+  }
+  return { city: s || undefined };
+}
+
+function parseStatsForVendor(v: { stats?: unknown }): Record<string, unknown> {
+  if (v.stats == null) return {};
+  if (typeof v.stats === "object") return (v.stats as Record<string, unknown>) || {};
+  if (typeof v.stats !== "string") return {};
+  const s = (v.stats as string).trim();
+  if (!s.startsWith("{")) return {};
+  try {
+    return (JSON.parse(v.stats as string) as Record<string, unknown>) || {};
+  } catch {
+    return {};
+  }
+}
+
+function transformVendors(vendors: any[]): VendorItem[] {
+  return vendors.map((vendor) => {
+    const location = parseLocationForVendor(vendor);
+    const stats = parseStatsForVendor(vendor);
+    const displayCategory = CATEGORY_DISPLAY_MAP[vendor.category] || vendor.category;
+    return {
+      id: vendor.id,
+      name: vendor.business_name || vendor.name,
+      category: displayCategory,
+      location: location?.city || "Unknown",
+      price: vendor.price_range || "$$",
+      rating: Number(stats.averageRating) || vendor.rating || 0,
+      reviews: Number(stats.reviewCount) || vendor.reviews || 0,
+      image: vendor.cover_image || vendor.logo || vendor.image || vendorPhoto,
+      slug: vendor.slug,
+      featured: vendor.tier === "premium" || vendor.tier === "pro",
+      fastResponse: (Number(stats.inquiryCount) || 0) > 10,
+    };
+  });
+}
+
+function transformCollectionVendors(vendors: any[]): any[] {
+  return (vendors || []).map((v: any) => {
+    const city = parseLocationForVendor(v)?.city || "Unknown";
+    const stats = parseStatsForVendor(v);
+    return {
+      id: v.id,
+      name: v.name || v.business_name,
+      category: CATEGORY_DISPLAY_MAP[v.category] || v.category,
+      location: city,
+      price: v.price_range || "$$",
+      rating: Number(stats.averageRating) || 0,
+      reviews: Number(stats.reviewCount) || 0,
+      image: v.image || v.cover_image || v.logo || vendorPhoto,
+      slug: v.slug,
+    };
+  });
+}
+
 export default function VendorsPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -802,19 +884,6 @@ export default function VendorsPage() {
       "bridal-shops": "Bridal Salons",
       "officiants": "Officiants",
     };
-    const categoryDisplayMap: Record<string, string> = {
-      "Wedding Planners": "Planning",
-      "Venues": "Venues",
-      "Photographers": "Photography",
-      "Videographers": "Videography",
-      "Caterers": "Catering",
-      "Florists": "Florals",
-      "DJs & Music": "Music",
-      "Beauty & Makeup": "Beauty",
-      "Bridal Salons": "Bridal shops",
-      "Officiants": "Officiants",
-      "Decorators": "Decor",
-    };
 
     const fetchVendorData = async () => {
       setLoading(true);
@@ -850,82 +919,10 @@ export default function VendorsPage() {
           spotlightRes.ok ? spotlightRes.json() : { vendors: [] },
         ]);
 
-        const transformVendorsLocal = (vendors: any[]): VendorItem[] => {
-          return vendors.map((vendor) => {
-            const location = typeof vendor.location === "string" ? JSON.parse(vendor.location) : vendor.location || {};
-            const stats = typeof vendor.stats === "string" ? JSON.parse(vendor.stats) : vendor.stats || {};
-            const displayCategory = categoryDisplayMap[vendor.category] || vendor.category;
-            return {
-              id: vendor.id,
-              name: vendor.business_name || vendor.name,
-              category: displayCategory,
-              location: location?.city || "Unknown",
-              price: vendor.price_range || "$$",
-              rating: stats.averageRating || vendor.rating || 0,
-              reviews: stats.reviewCount || vendor.reviews || 0,
-              image: vendor.cover_image || vendor.logo || vendor.image || vendorPhoto,
-              slug: vendor.slug,
-              featured: vendor.tier === "premium" || vendor.tier === "pro",
-              fastResponse: (stats.inquiryCount || 0) > 10,
-            };
-          });
-        };
-        const transformCollectionVendorsLocal = (vendors: any[]): any[] => {
-          return (vendors || []).map((v: any) => {
-            let city = "Unknown";
-            if (v.location != null) {
-              if (typeof v.location === "object") {
-                city = v.location?.city || "Unknown";
-              } else if (typeof v.location === "string") {
-                const s = v.location.trim();
-                if (s.startsWith("{")) {
-                  try {
-                    const parsed = JSON.parse(v.location);
-                    city = parsed?.city || "Unknown";
-                  } catch {
-                    city = s || "Unknown";
-                  }
-                } else {
-                  city = s || "Unknown";
-                }
-              }
-            }
-            let stats: Record<string, unknown> = {};
-            if (v.stats != null) {
-              if (typeof v.stats === "object") {
-                stats = v.stats;
-              } else if (typeof v.stats === "string") {
-                const s = v.stats.trim();
-                if (s.startsWith("{")) {
-                  try {
-                    stats = JSON.parse(v.stats) || {};
-                  } catch {
-                    stats = {};
-                  }
-                }
-              }
-            }
-            return {
-              id: v.id,
-              name: v.name || v.business_name,
-              category: categoryDisplayMap[v.category] || v.category,
-              location: city,
-              price: v.price_range || "$$",
-              rating: Number(stats.averageRating) || 0,
-              reviews: Number(stats.reviewCount) || 0,
-              image: v.image || v.cover_image || v.logo || vendorPhoto,
-              slug: v.slug,
-            };
-          });
-        };
-
         const categoryRows = Object.entries(categoryMap).map(([id, category], i) => {
           const data = categoryResults[i] || { vendors: [] };
           const sectionConfig = VENDOR_ROW_SECTIONS.find((s) => s.id === id);
-          const transformedVendors = transformVendorsLocal(data.vendors || []).map((v) => ({
-            ...v,
-            category: categoryDisplayMap[v.category] || v.category,
-          }));
+          const transformedVendors = transformVendors(data.vendors || []);
           return {
             id,
             title: sectionConfig?.title || category,
@@ -934,14 +931,14 @@ export default function VendorsPage() {
           };
         });
 
-        setFeaturedVendors(transformVendorsLocal(featuredData.vendors || []).slice(0, 12));
+        setFeaturedVendors(transformVendors(featuredData.vendors || []).slice(0, 12));
         setVendorRowSections(categoryRows);
-        setPromotions(transformCollectionVendorsLocal(promosData.vendors || []));
-        setNewVendors(transformCollectionVendorsLocal(newData.vendors || []));
-        setMostBooked(transformCollectionVendorsLocal(trendingData.vendors || []));
-        setBudgetFriendly(transformCollectionVendorsLocal(budgetData.vendors || []));
-        setQuickResponders(transformCollectionVendorsLocal(fastData.vendors || []));
-        setSpotlightVendors(transformVendorsLocal(spotlightData.vendors || []).slice(0, 6));
+        setPromotions(transformCollectionVendors(promosData.vendors || []));
+        setNewVendors(transformCollectionVendors(newData.vendors || []));
+        setMostBooked(transformCollectionVendors(trendingData.vendors || []));
+        setBudgetFriendly(transformCollectionVendors(budgetData.vendors || []));
+        setQuickResponders(transformCollectionVendors(fastData.vendors || []));
+        setSpotlightVendors(transformVendors(spotlightData.vendors || []).slice(0, 6));
       } catch (error) {
         console.error("Failed to fetch vendor data:", error);
       } finally {
@@ -951,63 +948,6 @@ export default function VendorsPage() {
 
     fetchVendorData();
   }, []);
-
-  // Helper function to transform API vendor data to VendorItem format
-  const transformVendors = (vendors: any[]): VendorItem[] => {
-    return vendors.map((vendor) => {
-      const location = typeof vendor.location === 'string' 
-        ? JSON.parse(vendor.location) 
-        : vendor.location || {};
-      const stats = typeof vendor.stats === 'string'
-        ? JSON.parse(vendor.stats)
-        : vendor.stats || {};
-      
-      // Map database category to frontend category ID
-      const categoryDisplayMap: Record<string, string> = {
-        "Wedding Planners": "Planning",
-        "Venues": "Venues",
-        "Photographers": "Photography",
-        "Videographers": "Videography",
-        "Caterers": "Catering",
-        "Florists": "Florals",
-        "DJs & Music": "Music",
-        "Beauty & Makeup": "Beauty",
-        "Bridal Salons": "Bridal shops",
-        "Officiants": "Officiants",
-        "Decorators": "Decor",
-      };
-      
-      const displayCategory = categoryDisplayMap[vendor.category] || vendor.category;
-      
-      return {
-        id: vendor.id,
-        name: vendor.business_name || vendor.name,
-        category: displayCategory,
-        location: location?.city || "Unknown",
-        price: vendor.price_range || "$$",
-        rating: stats.averageRating || vendor.rating || 0,
-        reviews: stats.reviewCount || vendor.reviews || 0,
-        image: vendor.cover_image || vendor.logo || vendor.image || vendorPhoto,
-        slug: vendor.slug,
-        featured: vendor.tier === "premium" || vendor.tier === "pro",
-        fastResponse: (stats.inquiryCount || 0) > 10,
-      };
-    });
-  };
-
-  // Helper function to transform collection vendor data
-  const transformCollectionVendors = (vendors: any[]): any[] => {
-    return vendors.map((vendor) => ({
-      id: vendor.id,
-      name: vendor.name,
-      category: vendor.category,
-      location: vendor.location,
-      rating: vendor.rating || 0,
-      reviews: vendor.reviews || 0,
-      image: vendor.image || vendorPhoto,
-      slug: vendor.slug,
-    }));
-  };
 
   const [activeLocation, setActiveLocation] = useState("All");
   const [priceFilter, setPriceFilter] = useState("Any budget");

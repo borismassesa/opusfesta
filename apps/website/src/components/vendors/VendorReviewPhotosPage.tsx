@@ -155,7 +155,7 @@ export function VendorReviewPhotosPage({
             className="inline-flex items-center gap-2 text-sm text-secondary hover:text-primary transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
-            Back to {vendor.business_name}
+            {vendor.slug ? `Back to ${vendor.business_name}` : "Back to all vendors"}
           </Link>
 
           <div className="mt-6 flex flex-col gap-4">

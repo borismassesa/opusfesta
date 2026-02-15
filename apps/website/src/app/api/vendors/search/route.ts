@@ -114,7 +114,10 @@ export async function GET(request: NextRequest) {
       }
 
       return NextResponse.json(parsedEmptyResponse.data, {
-        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+        headers: {
+          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+          "Vary": "Cookie, Authorization",
+        },
       });
     }
 
@@ -138,10 +141,11 @@ export async function GET(request: NextRequest) {
         stats: normalizeStats(row.stats),
         cover_image: row.cover_image != null ? String(row.cover_image) : null,
         logo: row.logo != null ? String(row.logo) : null,
-        created_at:
-          row.created_at != null
-            ? new Date(row.created_at as string | number | Date).toISOString()
-            : new Date().toISOString(),
+        created_at: (() => {
+          if (row.created_at == null) return new Date().toISOString();
+          const date = new Date(row.created_at as string | number | Date);
+          return Number.isFinite(date.getTime()) ? date.toISOString() : new Date().toISOString();
+        })(),
       };
 
       const bioRaw = row.bio != null ? String(row.bio) : null;
@@ -186,7 +190,10 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json(parsedResponse.data, {
-      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      headers: {
+        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        "Vary": "Cookie, Authorization",
+      },
     });
   } catch (error) {
     console.error("Unexpected error in vendor search:", error);
