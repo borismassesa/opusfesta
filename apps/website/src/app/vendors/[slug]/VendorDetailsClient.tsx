@@ -7,14 +7,27 @@ import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { VendorImageGallery } from "@/components/vendors/VendorImageGallery";
 import { VendorNavigationTabs, vendorNavigationTabs } from "@/components/vendors/VendorNavigationTabs";
 import { VendorContent } from "@/components/vendors/VendorContent";
-import { VendorBookingSidebar } from "@/components/vendors/VendorBookingSidebar";
-import { VendorReviews } from "@/components/vendors/VendorReviews";
 import { VendorLocation } from "@/components/vendors/VendorLocation";
 import { VendorProfile } from "@/components/vendors/VendorProfile";
-import { SimilarVendors } from "@/components/vendors/SimilarVendors";
+
+const VendorBookingSidebar = dynamic(
+  () => import("@/components/vendors/VendorBookingSidebar").then(mod => ({ default: mod.VendorBookingSidebar })),
+  { ssr: false, loading: () => <div className="w-full h-[600px] bg-surface animate-pulse rounded-lg" /> }
+);
+
+const VendorReviews = dynamic(
+  () => import("@/components/vendors/VendorReviews").then(mod => ({ default: mod.VendorReviews })),
+  { ssr: false, loading: () => <div className="w-full h-[300px] bg-surface animate-pulse rounded-lg" /> }
+);
+
+const SimilarVendors = dynamic(
+  () => import("@/components/vendors/SimilarVendors").then(mod => ({ default: mod.SimilarVendors })),
+  { ssr: false, loading: () => <div className="w-full h-[200px] bg-surface animate-pulse rounded-lg" /> }
+);
 import type { Vendor, PortfolioItem, Review, VendorAward } from "@/lib/supabase/vendors";
 import type { VendorBySlugResponse } from "@opusfesta/lib";
 import { resolveAssetSrc } from "@/lib/assets";

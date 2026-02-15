@@ -3,7 +3,18 @@ import { Metadata } from "next";
 import { VendorDetailsClient } from "./VendorDetailsClient";
 import { getVendorBySlug } from "@/lib/supabase/vendors";
 
-export const dynamic = "force-dynamic";
+export const revalidate = 300;
+
+export async function generateStaticParams() {
+  const { supabase } = await import("@/lib/supabaseClient");
+  const { data } = await supabase
+    .from("vendors")
+    .select("slug")
+    .eq("verified", true)
+    .order("stats->averageRating", { ascending: false })
+    .limit(50);
+  return (data || []).map((v: { slug: string }) => ({ slug: v.slug }));
+}
 
 export async function generateMetadata({
   params,
