@@ -5,6 +5,7 @@ import {
   type VendorBySlugResponse,
 } from "@opusfesta/lib";
 import { getAuthenticatedUser } from "@/lib/api-auth";
+import { VENDOR_COLUMNS } from "@/lib/vendor-columns";
 
 // Get Supabase admin client for database queries
 function getSupabaseAdmin() {
@@ -24,10 +25,6 @@ function getSupabaseAdmin() {
   );
 }
 
-// Explicit vendor columns to reduce payload (avoid select("*"))
-const VENDOR_COLUMNS =
-  "id,slug,user_id,business_name,category,subcategories,bio,description,logo,cover_image,location,price_range,verified,tier,stats,contact_info,social_links,years_in_business,team_size,services_offered,created_at,updated_at";
-
 // Helper function to truncate text
 function truncateText(text: string | null, maxLength: number = 100): string | null {
   if (!text) return null;
@@ -38,13 +35,6 @@ function truncateText(text: string | null, maxLength: number = 100): string | nu
 function toFiniteNumber(value: unknown, fallback = 0): number {
   const numericValue = Number(value);
   return Number.isFinite(numericValue) ? numericValue : fallback;
-}
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
 }
 
 function normalizeVendorForBySlug(vendor: Record<string, any>, isTeaser: boolean) {
@@ -172,20 +162,13 @@ export async function GET(
     vendor = exactResult.data as Record<string, unknown> | null;
     vendorError = exactResult.error;
 
-    // Optional fallback: resolve name-based slugs for legacy/shared links.
+    // Optional fallback: resolve name-based slugs in DB (legacy/shared links).
     if ((vendorError || !vendor) && /^[a-z0-9-]+$/.test(slug)) {
-      const FALLBACK_LIMIT = 100;
-      const { data: candidates } = await supabaseAdmin
-        .from("vendors")
-        .select(VENDOR_COLUMNS)
-        .limit(FALLBACK_LIMIT);
-      if (Array.isArray(candidates)) {
-        const matched = (candidates as Record<string, unknown>[]).find(
-          (row) =>
-            typeof row.business_name === "string" &&
-            generateSlug(row.business_name) === slug
-        );
-        if (matched) vendor = matched;
+      const { data: fallbackRows } = await supabaseAdmin.rpc("get_vendor_by_slug_fallback", {
+        slug_param: slug,
+      });
+      if (Array.isArray(fallbackRows) && fallbackRows.length > 0) {
+        vendor = fallbackRows[0] as Record<string, unknown>;
       }
     }
 
@@ -223,7 +206,10 @@ export async function GET(
       }
 
       return NextResponse.json(parsedTeaserResponse.data, {
-        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+        headers: {
+          "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600",
+          "Vary": "Cookie, Authorization",
+        },
       });
     }
 
@@ -349,7 +335,7 @@ export async function GET(
     }
 
     return NextResponse.json(parsedFullResponse.data, {
-      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+      headers: { "Cache-Control": "private, no-store" },
     });
   } catch (error) {
     console.error("Error fetching vendor:", error);

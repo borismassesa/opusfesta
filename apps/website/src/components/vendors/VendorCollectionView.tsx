@@ -546,14 +546,22 @@ export function VendorCollectionView({
                         className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
                       >
                         <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
-                          <Image
-                            src={typeof vendor.image === "string" ? vendor.image : resolveAssetSrc(vendor.image)}
-                            alt={vendor.name}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover/image:scale-105"
-                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                            loading="lazy"
-                          />
+                          {vendor.image ? (
+                            <Image
+                              src={typeof vendor.image === "string" ? vendor.image : resolveAssetSrc(vendor.image)}
+                              alt={vendor.name}
+                              fill
+                              className="object-cover transition-transform duration-300 group-hover/image:scale-105"
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-surface flex items-center justify-center">
+                              <span className="text-4xl font-bold text-foreground">
+                                {vendor.name?.charAt(0)?.toUpperCase() ?? "V"}
+                              </span>
+                            </div>
+                          )}
                           <div
                             className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${collection.badgeClassName} text-background text-[0.6rem] font-semibold`}
                           >
