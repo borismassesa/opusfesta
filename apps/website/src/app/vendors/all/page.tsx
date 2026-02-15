@@ -308,12 +308,16 @@ const ALL_CATEGORIES = [
   "Transportation",
 ];
 
+// Hardcoded locations (avoids fetching 1000 vendors just for city names)
+const VENDOR_LOCATIONS = ["All", "Dar es Salaam", "Zanzibar", "Arusha", "Mwanza", "Dodoma", "Bagamoyo"];
+
 export default function AllVendorsPage() {
   const searchParams = useSearchParams();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState(
     searchParams.get("q") || ""
   );
+  const [debouncedSearch, setDebouncedSearch] = useState(searchParams.get("q") || "");
   const [activeCategory, setActiveCategory] = useState(
     searchParams.get("category") || "All"
   );
@@ -334,9 +338,21 @@ export default function AllVendorsPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
   const [total, setTotal] = useState(0);
-  const [categories, setCategories] = useState<string[]>(["All"]);
-  const [locations, setLocations] = useState<string[]>(["All"]);
+  const categories = ALL_CATEGORIES;
+  const locations = VENDOR_LOCATIONS;
   const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  // Ref for mutable state used by IntersectionObserver (avoids effect churn)
+  const stateRef = useRef({ loading, loadingMore, hasMore, page, debouncedSearch, activeCategory, activeLocation, activePrice, sortBy });
+  stateRef.current = { loading, loadingMore, hasMore, page, debouncedSearch, activeCategory, activeLocation, activePrice, sortBy };
+
+  // Debounce search input (350ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 350);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Fetch initial vendors when filters change
   useEffect(() => {
@@ -349,7 +365,7 @@ export default function AllVendorsPage() {
       try {
         // Build API params (always include all params for API call)
         const apiParams = new URLSearchParams();
-        if (searchQuery) apiParams.set("q", searchQuery);
+        if (debouncedSearch) apiParams.set("q", debouncedSearch);
         if (activeCategory !== "All") apiParams.set("category", activeCategory);
         if (activeLocation !== "All") apiParams.set("location", activeLocation);
         if (activePrice !== "Any budget") apiParams.set("priceRange", activePrice);
@@ -369,7 +385,7 @@ export default function AllVendorsPage() {
 
         // Build clean URL params (only include non-default values)
         const urlParams = new URLSearchParams();
-        if (searchQuery) urlParams.set("q", searchQuery);
+        if (debouncedSearch) urlParams.set("q", debouncedSearch);
         if (activeCategory !== "All") urlParams.set("category", activeCategory);
         if (activeLocation !== "All") urlParams.set("location", activeLocation);
         if (activePrice !== "Any budget") urlParams.set("priceRange", activePrice);
@@ -377,7 +393,7 @@ export default function AllVendorsPage() {
         // Don't include page=1 or limit=24 in URL (they're defaults)
 
         // Update URL without navigation (only if there are params, otherwise use clean URL)
-        const newUrl = urlParams.toString() 
+        const newUrl = urlParams.toString()
           ? `/vendors/all?${urlParams.toString()}`
           : `/vendors/all`;
         window.history.replaceState({}, "", newUrl);
@@ -392,23 +408,24 @@ export default function AllVendorsPage() {
     };
 
     fetchVendors();
-  }, [searchQuery, activeCategory, activeLocation, activePrice, sortBy]);
+  }, [debouncedSearch, activeCategory, activeLocation, activePrice, sortBy]);
 
-  // Load more vendors when scrolling
+  // Load more vendors when scrolling (uses stateRef to avoid effect churn)
   useEffect(() => {
     const loadMore = async () => {
-      if (loading || loadingMore || !hasMore) return;
+      const s = stateRef.current;
+      if (s.loading || s.loadingMore || !s.hasMore) return;
 
       setLoadingMore(true);
-      const nextPage = page + 1;
+      const nextPage = s.page + 1;
 
       try {
         const params = new URLSearchParams();
-        if (searchQuery) params.set("q", searchQuery);
-        if (activeCategory !== "All") params.set("category", activeCategory);
-        if (activeLocation !== "All") params.set("location", activeLocation);
-        if (activePrice !== "Any budget") params.set("priceRange", activePrice);
-        params.set("sort", sortBy);
+        if (s.debouncedSearch) params.set("q", s.debouncedSearch);
+        if (s.activeCategory !== "All") params.set("category", s.activeCategory);
+        if (s.activeLocation !== "All") params.set("location", s.activeLocation);
+        if (s.activePrice !== "Any budget") params.set("priceRange", s.activePrice);
+        params.set("sort", s.sortBy);
         params.set("page", nextPage.toString());
         params.set("limit", "24");
 
@@ -435,7 +452,7 @@ export default function AllVendorsPage() {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+        if (entries[0].isIntersecting) {
           loadMore();
         }
       },
@@ -452,33 +469,9 @@ export default function AllVendorsPage() {
         observer.unobserve(currentRef);
       }
     };
-  }, [hasMore, loading, loadingMore, page, searchQuery, activeCategory, activeLocation, activePrice, sortBy, vendors.length, total]);
+  }, [hasMore]);
 
-  // Fetch available locations
-  useEffect(() => {
-    const fetchLocations = async () => {
-      try {
-        // Fetch all vendors to extract unique locations
-        const response = await fetch("/api/vendors/search?limit=1000");
-        if (response.ok) {
-          const data = (await response.json()) as VendorSearchResponse;
-          const uniqueLocations = new Set<string>(["All"]);
-
-          data.vendors?.forEach((vendor: VendorFromAPI) => {
-            if (vendor.location?.city) uniqueLocations.add(vendor.location.city);
-          });
-
-          setLocations(Array.from(uniqueLocations).sort());
-        }
-      } catch (error) {
-        console.error("Error fetching locations:", error);
-      }
-    };
-
-    fetchLocations();
-    // Set categories to all available categories
-    setCategories(ALL_CATEGORIES);
-  }, []);
+  // Categories and locations are now static constants (no fetch needed)
 
   const handleFilterChange = (
     filterType: "category" | "location" | "price" | "sort",
