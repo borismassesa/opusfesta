@@ -4,3 +4,9 @@
  */
 export const VENDOR_COLUMNS =
   "id,slug,user_id,business_name,category,subcategories,bio,description,logo,cover_image,location,price_range,verified,tier,stats,contact_info,social_links,years_in_business,team_size,services_offered,onboarding_status,onboarding_started_at,onboarding_completed_at,suspended_at,suspension_reason,created_at,updated_at";
+
+/**
+ * Slim column set for list views (cards, grids) — skips heavy text fields.
+ */
+export const VENDOR_LIST_COLUMNS =
+  "id,slug,business_name,category,cover_image,logo,location,price_range,verified,tier,stats,created_at";

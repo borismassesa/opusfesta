@@ -849,104 +849,67 @@ export default function VendorsPage() {
   const [quickResponders, setQuickResponders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Fetch vendor statistics on mount
+  // Fetch all homepage data in a single request (replaces 13 parallel browser fetches)
   useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch("/api/vendors/statistics");
-        if (response.ok) {
-          const data = await response.json();
-          if (data.formatted) {
-            setStats({
-              vendorCount: data.formatted.vendorCount,
-              cityCount: data.formatted.cityCount,
-              rating: data.formatted.rating,
-              categoryCounts: data.formatted.categoryCounts || {},
-            });
-          }
-        }
-      } catch (error) {
-        console.error("Failed to fetch vendor statistics:", error);
-        // Keep default values on error
-      }
-    };
-
-    fetchStats();
-  }, []);
-
-  // Fetch all vendor data in parallel to reduce waterfall
-  useEffect(() => {
-    const categoryMap: Record<string, string> = {
-      "planners": "Wedding Planners",
-      "venues": "Venues",
-      "photographers": "Photographers",
-      "beauty": "Beauty & Makeup",
-      "bridal-shops": "Bridal Salons",
-      "officiants": "Officiants",
-    };
-
-    const fetchVendorData = async () => {
+    const fetchHomepageData = async () => {
       setLoading(true);
       try {
-        const [
-          featuredResponse,
-          ...categoryResponses
-        ] = await Promise.all([
-          fetch("/api/vendors/search?verified=true&sort=rating&limit=12"),
-          ...Object.entries(categoryMap).map(([, category]) =>
-            fetch(`/api/vendors/search?category=${encodeURIComponent(category)}&limit=4`)
-          ),
-          fetch("/api/vendors/collections/deals?limit=6"),
-          fetch("/api/vendors/collections/new?limit=6"),
-          fetch("/api/vendors/collections/trending?limit=6"),
-          fetch("/api/vendors/collections/budget?limit=6"),
-          fetch("/api/vendors/collections/fast-responders?limit=6"),
-          fetch(`/api/vendors/search?location=${encodeURIComponent(DEFAULT_SPOTLIGHT_LOCATION)}&limit=6`),
-        ]);
+        const response = await fetch("/api/vendors/homepage");
+        if (!response.ok) throw new Error("Failed to fetch homepage data");
+        const data = await response.json();
 
-        const categoryCount = Object.keys(categoryMap).length;
-        const featuredData = featuredResponse.ok ? await featuredResponse.json() : { vendors: [] };
-        const categoryResults = await Promise.all(
-          categoryResponses.slice(0, categoryCount).map((r) => (r.ok ? r.json() : { vendors: [] }))
-        );
-        const [promosRes, newRes, trendingRes, budgetRes, fastRes, spotlightRes] = categoryResponses.slice(categoryCount);
-        const [promosData, newData, trendingData, budgetData, fastData, spotlightData] = await Promise.all([
-          promosRes.ok ? promosRes.json() : { vendors: [] },
-          newRes.ok ? newRes.json() : { vendors: [] },
-          trendingRes.ok ? trendingRes.json() : { vendors: [] },
-          budgetRes.ok ? budgetRes.json() : { vendors: [] },
-          fastRes.ok ? fastRes.json() : { vendors: [] },
-          spotlightRes.ok ? spotlightRes.json() : { vendors: [] },
-        ]);
+        // Stats
+        if (data.stats) {
+          setStats({
+            vendorCount: data.stats.vendorCount,
+            cityCount: data.stats.cityCount,
+            rating: data.stats.rating,
+            categoryCounts: data.stats.categoryCounts || {},
+          });
+        }
 
-        const categoryRows = Object.entries(categoryMap).map(([id, category], i) => {
-          const data = categoryResults[i] || { vendors: [] };
+        // Featured vendors
+        setFeaturedVendors(transformVendors(data.featured || []).slice(0, 12));
+
+        // Category rows
+        const categoryMap: Record<string, string> = {
+          planners: "Wedding Planners",
+          venues: "Venues",
+          photographers: "Photographers",
+          beauty: "Beauty & Makeup",
+          "bridal-shops": "Bridal Salons",
+          officiants: "Officiants",
+        };
+
+        const categoryRows = Object.entries(categoryMap).map(([id, category]) => {
+          const vendors = data.categories?.[id] || [];
           const sectionConfig = VENDOR_ROW_SECTIONS.find((s) => s.id === id);
-          const transformedVendors = transformVendors(data.vendors || []);
           return {
             id,
             title: sectionConfig?.title || category,
             description: sectionConfig?.description || "",
-            items: transformedVendors,
+            items: transformVendors(vendors),
           };
         });
-
-        setFeaturedVendors(transformVendors(featuredData.vendors || []).slice(0, 12));
         setVendorRowSections(categoryRows);
-        setPromotions(transformCollectionVendors(promosData.vendors || []));
-        setNewVendors(transformCollectionVendors(newData.vendors || []));
-        setMostBooked(transformCollectionVendors(trendingData.vendors || []));
-        setBudgetFriendly(transformCollectionVendors(budgetData.vendors || []));
-        setQuickResponders(transformCollectionVendors(fastData.vendors || []));
-        setSpotlightVendors(transformVendors(spotlightData.vendors || []).slice(0, 6));
+
+        // Collections
+        setPromotions(transformCollectionVendors(data.collections?.deals || []));
+        setNewVendors(transformCollectionVendors(data.collections?.new || []));
+        setMostBooked(transformCollectionVendors(data.collections?.trending || []));
+        setBudgetFriendly(transformCollectionVendors(data.collections?.budget || []));
+        setQuickResponders(transformCollectionVendors(data.collections?.["fast-responders"] || []));
+
+        // Spotlight
+        setSpotlightVendors(transformVendors(data.spotlight || []).slice(0, 6));
       } catch (error) {
-        console.error("Failed to fetch vendor data:", error);
+        console.error("Failed to fetch homepage data:", error);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchVendorData();
+    fetchHomepageData();
   }, []);
 
   const [activeLocation, setActiveLocation] = useState("All");

@@ -4,6 +4,7 @@ import {
   VendorCollectionResponseSchema,
   type VendorCollectionResponse,
 } from "@opusfesta/lib";
+import { VENDOR_LIST_COLUMNS } from "@/lib/vendor-columns";
 
 export async function GET(
   request: NextRequest,
@@ -32,7 +33,7 @@ export async function GET(
 
     let query = supabase
       .from("vendors")
-      .select("*", { count: "exact" })
+      .select(VENDOR_LIST_COLUMNS, { count: "exact" })
       .eq("verified", true);
     let isNewCollection = false;
 
@@ -114,7 +115,7 @@ export async function GET(
     if (isNewCollection && rows.length === 0) {
       const { data: fallbackData, error: fallbackError, count: fallbackCount } = await supabase
         .from("vendors")
-        .select("*", { count: "exact" })
+        .select(VENDOR_LIST_COLUMNS, { count: "exact" })
         .eq("verified", true)
         .order("created_at", { ascending: false })
         .range(offset, offset + limit - 1);
