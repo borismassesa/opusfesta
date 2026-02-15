@@ -4,7 +4,6 @@ import {
   VendorSearchResponseSchema,
   type VendorSearchResponse,
 } from "@opusfesta/lib";
-import { getAuthenticatedUser } from "@/lib/api-auth";
 
 // Helper function to truncate text
 function truncateText(text: string | null, maxLength: number = 100): string | null {
@@ -49,16 +48,6 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
 
-    // Check if user is authenticated (optional - route works without auth too).
-    // Auth can throw in some contexts; treat failure as guest.
-    let user = null;
-    try {
-      user = await getAuthenticatedUser();
-    } catch (authError) {
-      console.warn("Non-fatal auth lookup failure in vendor search route:", authError);
-    }
-    const isAuthenticated = !!user;
-
     // Validate pagination
     if (page < 1) {
       return NextResponse.json(
@@ -101,7 +90,7 @@ export async function GET(request: NextRequest) {
         page,
         limit,
         totalPages: 0,
-        isAuthenticated,
+        isAuthenticated: false,
       };
 
       const parsedEmptyResponse = VendorSearchResponseSchema.safeParse(emptyResponse);
@@ -116,7 +105,6 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(parsedEmptyResponse.data, {
         headers: {
           "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-          "Vary": "Cookie, Authorization",
         },
       });
     }
@@ -125,11 +113,12 @@ export async function GET(request: NextRequest) {
     const total = Number(data[0]?.total_count) || 0;
     const totalPages = Math.ceil(total / limit);
 
-    // Transform and normalize the data - apply progressive disclosure for unauthenticated users
+    // Transform and normalize the data - always return teaser-level data
+    // (full vendor data available via by-slug endpoint)
     const vendors = data.map((row: Record<string, unknown>) => {
       const location =
         row.location && typeof row.location === "object" ? row.location : {};
-      const baseVendor = {
+      return {
         id: String(row.id ?? ""),
         slug: String(row.slug ?? ""),
         business_name: String(row.business_name ?? ""),
@@ -146,28 +135,9 @@ export async function GET(request: NextRequest) {
           const date = new Date(row.created_at as string | number | Date);
           return Number.isFinite(date.getTime()) ? date.toISOString() : new Date().toISOString();
         })(),
-      };
-
-      const bioRaw = row.bio != null ? String(row.bio) : null;
-      const descriptionRaw =
-        row.description != null ? String(row.description) : null;
-
-      // For unauthenticated users, return teaser (truncated bio/description)
-      if (!isAuthenticated) {
-        return {
-          ...baseVendor,
-          bio: truncateText(bioRaw, 100),
-          description: null,
-          isTeaser: true,
-        };
-      }
-
-      // For authenticated users, return full data
-      return {
-        ...baseVendor,
-        bio: bioRaw,
-        description: descriptionRaw,
-        isTeaser: false,
+        bio: truncateText(row.bio != null ? String(row.bio) : null, 100),
+        description: null,
+        isTeaser: true,
       };
     });
 
@@ -177,7 +147,7 @@ export async function GET(request: NextRequest) {
       page,
       limit,
       totalPages,
-      isAuthenticated,
+      isAuthenticated: false,
     };
 
     const parsedResponse = VendorSearchResponseSchema.safeParse(responsePayload);
@@ -192,7 +162,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(parsedResponse.data, {
       headers: {
         "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-        "Vary": "Cookie, Authorization",
       },
     });
   } catch (error) {
