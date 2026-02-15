@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
@@ -631,18 +632,17 @@ export default function AllVendorsPage() {
                   return (
                     <div key={vendor.id}>
                       <Link
-                          href={`/vendors/${vendor.slug}`}
+                          href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"}
                         className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
                       >
                         <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
-                          <img
-                              src={vendorImage}
-                              alt={vendorName}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src =
-                                  "/placeholder-vendor.jpg";
-                              }}
+                          <Image
+                            src={vendorImage}
+                            alt={vendorName}
+                            fill
+                            className="object-cover transition-transform duration-300 group-hover/image:scale-105"
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                            loading="lazy"
                           />
                             {badge && (
                             <div className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${badge.className} text-background text-[0.6rem] font-semibold`}>

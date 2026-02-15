@@ -41,7 +41,7 @@ export function VendorReviewPhotosPage({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const photoCount = reviewImages.length;
-  const backHref = `/vendors/${vendor.slug}#section-reviews`;
+  const backHref = vendor.slug ? `/vendors/${vendor.slug}#section-reviews` : "/vendors/all";
 
   // Create bento grid layout with varied sizes
   const bentoGrid = useMemo(() => {
