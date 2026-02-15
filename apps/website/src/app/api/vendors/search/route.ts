@@ -13,6 +13,28 @@ function truncateText(text: string | null, maxLength: number = 100): string | nu
   return text.substring(0, maxLength) + "...";
 }
 
+function toFiniteNumber(value: unknown, fallback = 0): number {
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) ? numericValue : fallback;
+}
+
+function normalizeStats(stats: unknown): {
+  viewCount: number;
+  inquiryCount: number;
+  saveCount: number;
+  averageRating: number;
+  reviewCount: number;
+} {
+  const s = stats && typeof stats === "object" ? (stats as Record<string, unknown>) : {};
+  return {
+    viewCount: toFiniteNumber(s.viewCount),
+    inquiryCount: toFiniteNumber(s.inquiryCount),
+    saveCount: toFiniteNumber(s.saveCount),
+    averageRating: toFiniteNumber(s.averageRating),
+    reviewCount: toFiniteNumber(s.reviewCount),
+  };
+}
+
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
@@ -27,8 +49,14 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get("page") || "1", 10);
     const limit = parseInt(searchParams.get("limit") || "20", 10);
 
-    // Check if user is authenticated (optional - route works without auth too)
-    const user = await getAuthenticatedUser();
+    // Check if user is authenticated (optional - route works without auth too).
+    // Auth can throw in some contexts; treat failure as guest.
+    let user = null;
+    try {
+      user = await getAuthenticatedUser();
+    } catch (authError) {
+      console.warn("Non-fatal auth lookup failure in vendor search route:", authError);
+    }
     const isAuthenticated = !!user;
 
     // Validate pagination
@@ -85,51 +113,56 @@ export async function GET(request: NextRequest) {
         );
       }
 
-      return NextResponse.json(parsedEmptyResponse.data);
+      return NextResponse.json(parsedEmptyResponse.data, {
+        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      });
     }
 
     // Get total count from first row (all rows have the same total_count)
-    const total = data[0]?.total_count || 0;
+    const total = Number(data[0]?.total_count) || 0;
     const totalPages = Math.ceil(total / limit);
 
-    // Transform the data - apply progressive disclosure for unauthenticated users
-    const vendors = data.map((row: any) => {
+    // Transform and normalize the data - apply progressive disclosure for unauthenticated users
+    const vendors = data.map((row: Record<string, unknown>) => {
+      const location =
+        row.location && typeof row.location === "object" ? row.location : {};
       const baseVendor = {
-        id: row.id,
-        slug: row.slug,
-        business_name: row.business_name,
-        category: row.category,
-        location: row.location || {},
-        price_range: row.price_range,
-        verified: row.verified,
-        tier: row.tier || 'free',
-        stats: row.stats || {
-          viewCount: 0,
-          inquiryCount: 0,
-          saveCount: 0,
-          averageRating: 0,
-          reviewCount: 0,
-        },
-        cover_image: row.cover_image,
-        logo: row.logo,
-        created_at: row.created_at,
+        id: String(row.id ?? ""),
+        slug: String(row.slug ?? ""),
+        business_name: String(row.business_name ?? ""),
+        category: String(row.category ?? ""),
+        location,
+        price_range: row.price_range != null ? String(row.price_range) : null,
+        verified: Boolean(row.verified),
+        tier: String(row.tier ?? "free"),
+        stats: normalizeStats(row.stats),
+        cover_image: row.cover_image != null ? String(row.cover_image) : null,
+        logo: row.logo != null ? String(row.logo) : null,
+        created_at:
+          row.created_at != null
+            ? new Date(row.created_at as string | number | Date).toISOString()
+            : new Date().toISOString(),
       };
+
+      const bioRaw = row.bio != null ? String(row.bio) : null;
+      const descriptionRaw =
+        row.description != null ? String(row.description) : null;
 
       // For unauthenticated users, return teaser (truncated bio/description)
       if (!isAuthenticated) {
         return {
           ...baseVendor,
-          bio: truncateText(row.bio, 100),
-          description: null, // Hide full description
-          isTeaser: true, // Flag to indicate this is a teaser
+          bio: truncateText(bioRaw, 100),
+          description: null,
+          isTeaser: true,
         };
       }
 
       // For authenticated users, return full data
       return {
         ...baseVendor,
-        bio: row.bio,
-        description: row.description,
+        bio: bioRaw,
+        description: descriptionRaw,
         isTeaser: false,
       };
     });
@@ -152,7 +185,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    return NextResponse.json(parsedResponse.data);
+    return NextResponse.json(parsedResponse.data, {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    });
   } catch (error) {
     console.error("Unexpected error in vendor search:", error);
     return NextResponse.json(

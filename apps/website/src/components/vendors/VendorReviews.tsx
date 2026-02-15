@@ -76,7 +76,7 @@ export function VendorReviews({ vendor, reviews }: VendorReviewsProps) {
     )
     .filter((item) => !isVideoUrl(item.url)); // Only show images in carousel, not videos
 
-  const reviewGalleryHref = `/vendors/${vendor.slug}/reviews/photos`;
+  const reviewGalleryHref = vendor.slug ? `/vendors/${vendor.slug}/reviews/photos` : "/vendors/all";
   const photoIndexByKey = new Map<string, number>();
   allReviewImages.forEach((item, index) => {
     photoIndexByKey.set(`${item.reviewId}:${item.url}`, index);

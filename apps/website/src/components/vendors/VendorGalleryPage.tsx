@@ -269,7 +269,7 @@ export function VendorGalleryPage({
         <div className="pt-24 pb-8 px-6 lg:px-12 border-b border-border">
           <div className="max-w-[1280px] mx-auto">
             <Link
-              href={`/vendors/${vendor.slug}`}
+              href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"}
               className="inline-flex items-center gap-2 text-sm text-secondary hover:text-primary transition-colors mb-6"
             >
               <ArrowLeft className="w-4 h-4" />
