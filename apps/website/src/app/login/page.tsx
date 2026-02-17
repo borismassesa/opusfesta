@@ -7,16 +7,29 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { getRandomSignInQuote, type Quote } from "@/lib/quotes";
 import { useSignIn, useAuth } from "@clerk/nextjs";
 import { toast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { AuthPortalLayout } from "@/features/auth/components";
+import { AUTH_FULL_LOGO_PATH } from "@/features/auth/constants";
+
+function getRedirectTarget(searchParams: URLSearchParams): string {
+  const nextParam = searchParams.get("next");
+  if (nextParam) return nextParam;
+  const redirectUrl = searchParams.get("redirect_url");
+  if (redirectUrl) {
+    try {
+      const url = new URL(redirectUrl);
+      return url.pathname + url.search;
+    } catch {
+      return "/";
+    }
+  }
+  return "/";
+}
 
 export default function Login() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const unauthorized = searchParams.get("unauthorized");
-  const next = searchParams.get("next") || "/";
+  const next = getRedirectTarget(searchParams);
   const { signIn, setActive, isLoaded } = useSignIn();
   const { isSignedIn } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
@@ -72,9 +85,12 @@ export default function Login() {
         });
         setIsLoading(false);
       }
-    } catch (err: any) {
-      const clerkError = err?.errors?.[0];
-      const errorMessage = clerkError?.longMessage || clerkError?.message || "Invalid email or password. Please try again.";
+    } catch (err: unknown) {
+      const clerkError = (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0];
+      const errorMessage =
+        clerkError?.longMessage ||
+        clerkError?.message ||
+        "Invalid email or password. Please try again.";
       toast({
         variant: "destructive",
         title: "Sign in failed",
@@ -92,7 +108,7 @@ export default function Login() {
         redirectUrl: "/sso-callback",
         redirectUrlComplete: next,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: "destructive",
         title: "Sign in failed",
@@ -101,164 +117,241 @@ export default function Login() {
     }
   };
 
+  const promoCta = (
+    <>
+      <span className="mr-4 text-sm font-light opacity-80">
+        Don&apos;t have an account yet?
+      </span>
+      <Link
+        href={`/signup${next && next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}
+        className="text-sm font-semibold px-6 py-2.5 bg-[#1a0b2e] text-white border border-white rounded-lg hover:bg-[#2a1b3e] transition-all duration-300"
+      >
+        Sign up
+      </Link>
+    </>
+  );
+
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#fafafa] dark:bg-background">
+    <AuthPortalLayout promoCta={promoCta}>
+      <div className="w-full max-w-md space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 flex flex-col items-start">
+        <div className="flex flex-col items-start w-full">
+          {/* Mobile-only logo */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={AUTH_FULL_LOGO_PATH}
+            alt="OpusFesta - Plan Less, Celebrate More"
+            className="h-12 w-auto object-contain mb-6 lg:hidden"
+          />
+          <h1 className="text-4xl font-medium text-gray-900 tracking-tight">
+            Log in
+          </h1>
+          <p className="mt-3 text-gray-500 font-light">
+            Welcome back to OpusFesta. Enter your credentials to manage your
+            celebrations.
+          </p>
+        </div>
 
-      <div className="w-full max-w-[400px] space-y-8">
-        <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
-          <CardContent className="pt-10 pb-8 px-8 space-y-6">
-            {/* Logo */}
-            <div className="text-center">
-              <Link href="/" className="font-serif text-3xl text-foreground hover:opacity-80 transition-opacity">
-                OpusFesta
-              </Link>
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <div className="space-y-6">
+            <div className="relative group">
+              <label
+                className={`absolute left-0 transition-all duration-300 pointer-events-none ${
+                  email
+                    ? "-top-6 text-xs font-bold text-[#4f6cf6]"
+                    : "top-3 text-gray-400 text-sm"
+                }`}
+              >
+                Email address
+              </label>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={isLoading}
+                className="block w-full px-0 py-3 border-b border-gray-200 focus:border-[#4f6cf6] outline-none transition-all bg-transparent text-gray-900"
+              />
             </div>
 
-            {/* Title */}
-            <div className="text-center space-y-1">
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">Welcome back</h1>
-              <p className="text-sm text-muted-foreground">
-                Sign in to your account to continue
-              </p>
-            </div>
-
-            {/* OAuth Buttons */}
-            <div className="flex flex-col gap-3">
-              <Button
+            <div className="relative group">
+              <label
+                className={`absolute left-0 transition-all duration-300 pointer-events-none ${
+                  password
+                    ? "-top-6 text-xs font-bold text-[#4f6cf6]"
+                    : "top-3 text-gray-400 text-sm"
+                }`}
+              >
+                Password
+              </label>
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={isLoading}
+                className="block w-full px-0 py-3 border-b border-gray-200 focus:border-[#4f6cf6] outline-none transition-all bg-transparent text-gray-900 pr-10"
+              />
+              <button
                 type="button"
-                variant="outline"
-                className="h-10 w-full justify-center gap-3 font-normal border-border/40 bg-background hover:bg-muted/50 hover:border-border/80 transition-all"
-                onClick={() => handleOAuth("oauth_google")}
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-0 top-3 text-gray-400 hover:text-[#4f6cf6] transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                <svg className="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24">
-                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                </svg>
-                Continue with Google
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                className="h-10 w-full justify-center gap-3 font-normal border-border/40 bg-background hover:bg-muted/50 hover:border-border/80 transition-all"
-                onClick={() => handleOAuth("oauth_apple")}
-              >
-                <svg className="h-[18px] w-[18px] shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
-                </svg>
-                Continue with Apple
-              </Button>
-            </div>
-
-            {/* Divider */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-border/40" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-3 text-muted-foreground/60">or</span>
-              </div>
-            </div>
-
-            {/* Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="email" className="text-sm font-medium text-foreground">Email address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="name@example.com"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  disabled={isLoading}
-                  className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20 transition-colors"
-                />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-sm font-medium text-foreground">Password</Label>
-                  <Link
-                    href="/forgot-password"
-                    className="text-xs text-primary hover:text-primary/80 transition-colors"
-                  >
-                    Forgot password?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Input
-                    id="password"
-                    type={showPassword ? "text" : "password"}
-                    placeholder="Enter your password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    disabled={isLoading}
-                    className="h-10 pr-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20 transition-colors"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-                  >
-                    {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                </div>
-              </div>
-
-              <Button
-                type="submit"
-                disabled={isLoading || !isLoaded}
-                className="w-full h-10 mt-1"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Signing in...
-                  </>
+                {showPassword ? (
+                  <EyeOff className="w-5 h-5" />
                 ) : (
-                  "Continue"
+                  <Eye className="w-5 h-5" />
                 )}
-              </Button>
-            </form>
+              </button>
+            </div>
+          </div>
 
-            {/* Footer */}
-            <p className="text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
-              <Link
-                href="/signup"
-                className="text-primary font-medium hover:text-primary/80 transition-colors"
+          <div className="flex items-center justify-between">
+            <label className="flex items-center space-x-2 cursor-pointer group">
+              <div className="relative flex items-center">
+                <input
+                  type="checkbox"
+                  className="peer appearance-none w-5 h-5 rounded border border-gray-300 text-[#4f6cf6] focus:ring-0 cursor-pointer transition-all checked:bg-[#4f6cf6] checked:border-[#4f6cf6]"
+                  tabIndex={-1}
+                  aria-hidden
+                />
+                <svg
+                  className="absolute w-3 h-3 text-white left-1 pointer-events-none hidden peer-checked:block"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={4}
+                    d="M5 13l4 4L19 7"
+                  />
+                </svg>
+              </div>
+              <span className="text-sm text-gray-600 group-hover:text-gray-900 transition-colors">
+                Keep me signed in
+              </span>
+            </label>
+            <Link
+              href="/forgot-password"
+              className="text-sm text-[#4f6cf6] hover:text-[#3f57c5] font-semibold transition-colors"
+            >
+              Reset password?
+            </Link>
+          </div>
+
+          <button
+            type="submit"
+            disabled={isLoading || !isLoaded}
+            className="w-full bg-[#4f6cf6] text-white py-4 px-4 rounded-xl font-bold hover:bg-[#3f57c5] transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/20 disabled:opacity-70 disabled:transform-none"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin inline-block align-middle" />
+                Signing in...
+              </>
+            ) : (
+              "Sign In"
+            )}
+          </button>
+
+          <div className="relative flex items-center py-4">
+            <div className="flex-grow border-t border-gray-100" />
+            <span className="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-bold tracking-[0.2em]">
+              OR
+            </span>
+            <div className="flex-grow border-t border-gray-100" />
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={() => handleOAuth("oauth_google")}
+              disabled={!isLoaded}
+              className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 py-3.5 px-4 rounded-xl border border-gray-200 font-semibold hover:bg-gray-50 transition-all hover:border-gray-300 shadow-sm"
+            >
+              <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+                <path
+                  d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                  fill="#4285F4"
+                />
+                <path
+                  d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                  fill="#34A853"
+                />
+                <path
+                  d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"
+                  fill="#FBBC05"
+                />
+                <path
+                  d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
+                  fill="#EA4335"
+                />
+              </svg>
+              Continue with Google
+            </button>
+            <button
+              type="button"
+              onClick={() => handleOAuth("oauth_apple")}
+              disabled={!isLoaded}
+              className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 py-3.5 px-4 rounded-xl border border-gray-200 font-semibold hover:bg-gray-50 transition-all hover:border-gray-300 shadow-sm"
+            >
+              <svg
+                className="h-5 w-5 shrink-0"
+                fill="currentColor"
+                viewBox="0 0 24 24"
               >
-                Sign up
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+                <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+              </svg>
+              Continue with Apple
+            </button>
+          </div>
 
-        <p className="text-center text-xs text-muted-foreground/60 leading-relaxed px-6">
+          <div className="text-center pt-2">
+            <span className="text-sm text-gray-400 font-medium">
+              Organization Single Sign-On
+            </span>
+          </div>
+        </form>
+
+        <p className="text-center text-sm text-gray-600">
+          Don&apos;t have an account?{" "}
+          <Link
+            href={`/signup${next && next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}
+            className="text-[#4f6cf6] font-medium hover:text-[#3f57c5] transition-colors"
+          >
+            Sign up
+          </Link>
+        </p>
+
+        <p className="text-center text-xs text-gray-500 leading-relaxed px-2">
           By continuing, you agree to OpusFesta&apos;s{" "}
-          <Link href="/terms" className="underline underline-offset-4 hover:text-muted-foreground transition-colors">
+          <Link
+            href="/terms"
+            className="underline underline-offset-4 hover:text-gray-700 transition-colors"
+          >
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link href="/privacy" className="underline underline-offset-4 hover:text-muted-foreground transition-colors">
+          <Link
+            href="/privacy"
+            className="underline underline-offset-4 hover:text-gray-700 transition-colors"
+          >
             Privacy Policy
           </Link>
           .
         </p>
 
-        {/* Quote */}
-        <div className="text-center px-6" suppressHydrationWarning>
-          <p className="text-sm text-muted-foreground/50 italic" suppressHydrationWarning>
+        <div className="text-center px-2" suppressHydrationWarning>
+          <p className="text-sm text-gray-500 italic" suppressHydrationWarning>
             &ldquo;{quote.text}&rdquo;
           </p>
-          <p className="text-xs text-muted-foreground/40 mt-1.5" suppressHydrationWarning>
+          <p className="text-xs text-gray-400 mt-1.5" suppressHydrationWarning>
             &mdash; {quote.author}
           </p>
         </div>
       </div>
-    </div>
+    </AuthPortalLayout>
   );
 }

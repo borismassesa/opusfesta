@@ -5,10 +5,12 @@ import Link from "next/link";
 import { Loader2, Mail } from "lucide-react";
 import { useSignIn } from "@clerk/nextjs";
 import { toast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { AuthPortalLayout } from "@/features/auth/components";
+import { AUTH_FULL_LOGO_PATH } from "@/features/auth/constants";
+
+function clerkErrorFrom(err: unknown): { longMessage?: string; message?: string } | undefined {
+  return (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0];
+}
 
 export default function ForgotPassword() {
   const { signIn, isLoaded } = useSignIn();
@@ -34,101 +36,127 @@ export default function ForgotPassword() {
 
       setIsSubmitted(true);
       setIsLoading(false);
-    } catch (err: any) {
-      const clerkError = err?.errors?.[0];
+    } catch (err: unknown) {
+      const clerkError = clerkErrorFrom(err);
       toast({
         variant: "destructive",
         title: "Failed to send reset code",
-        description: clerkError?.longMessage || clerkError?.message || "An error occurred. Please try again.",
+        description:
+          clerkError?.longMessage ||
+          clerkError?.message ||
+          "An error occurred. Please try again.",
       });
       setIsLoading(false);
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#fafafa] dark:bg-background">
+  const promoCta = (
+    <>
+      <span className="mr-4 text-sm font-light opacity-80">
+        Remember your password?
+      </span>
+      <Link
+        href="/login"
+        className="text-sm font-semibold px-6 py-2.5 bg-[#1a0b2e] text-white border border-white rounded-lg hover:bg-[#2a1b3e] transition-all duration-300"
+      >
+        Sign in
+      </Link>
+    </>
+  );
 
-      <div className="w-full max-w-[400px] space-y-8">
-        <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
-          <CardContent className="pt-10 pb-8 px-8 space-y-6">
-            <div className="text-center">
-              <Link href="/" className="font-serif text-3xl text-foreground hover:opacity-80 transition-opacity">
-                OpusFesta
-              </Link>
+  return (
+    <AuthPortalLayout promoCta={promoCta}>
+      <div className="w-full max-w-md space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 flex flex-col items-start">
+        <div className="flex flex-col items-start w-full">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={AUTH_FULL_LOGO_PATH}
+            alt="OpusFesta - Plan Less, Celebrate More"
+            className="h-12 w-auto object-contain mb-6 lg:hidden"
+          />
+          <h1 className="text-4xl font-medium text-gray-900 tracking-tight">
+            Forgot password?
+          </h1>
+          <p className="mt-3 text-gray-500 font-light">
+            We&apos;ll send you a code to reset your password
+          </p>
+        </div>
+
+        {!isSubmitted ? (
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="relative group">
+              <label
+                className={`absolute left-0 transition-all duration-300 pointer-events-none ${
+                  email
+                    ? "-top-6 text-xs font-bold text-[#4f6cf6]"
+                    : "top-3 text-gray-400 text-sm"
+                }`}
+              >
+                Email address
+              </label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                disabled={isLoading}
+                className="block w-full px-0 py-3 border-b border-gray-200 focus:border-[#4f6cf6] outline-none transition-all bg-transparent text-gray-900"
+              />
             </div>
 
-            <div className="text-center space-y-1">
-              <h1 className="text-xl font-semibold tracking-tight text-foreground">Forgot password?</h1>
-              <p className="text-sm text-muted-foreground">
-                We&apos;ll send you a code to reset your password
+            <button
+              type="submit"
+              disabled={isLoading || !isLoaded}
+              className="w-full bg-[#4f6cf6] text-white py-4 px-4 rounded-xl font-bold hover:bg-[#3f57c5] transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/20 disabled:opacity-70 disabled:transform-none"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin inline-block align-middle" />
+                  Sending code...
+                </>
+              ) : (
+                "Send Reset Code"
+              )}
+            </button>
+          </form>
+        ) : (
+          <div className="flex flex-col items-center justify-center space-y-4 py-2">
+            <div className="w-12 h-12 rounded-full bg-[#4f6cf6]/10 flex items-center justify-center text-[#4f6cf6]">
+              <Mail className="w-5 h-5" />
+            </div>
+            <div className="text-center space-y-1.5">
+              <h3 className="font-semibold text-gray-900">Check your email</h3>
+              <p className="text-sm text-gray-500">
+                We&apos;ve sent a reset code to{" "}
+                <span className="font-medium text-gray-900">{email}</span>
               </p>
             </div>
+            <Link
+              href={`/reset-password?email=${encodeURIComponent(email)}`}
+              className="w-full flex items-center justify-center bg-[#4f6cf6] text-white py-3.5 px-4 rounded-xl font-bold hover:bg-[#3f57c5] transition-all"
+            >
+              Enter Reset Code
+            </Link>
+            <button
+              type="button"
+              onClick={() => setIsSubmitted(false)}
+              className="text-sm text-[#4f6cf6] font-medium hover:text-[#3f57c5] transition-colors"
+            >
+              Try a different email
+            </button>
+          </div>
+        )}
 
-            {!isSubmitted ? (
-              <form onSubmit={handleSubmit} className="space-y-4">
-                <div className="space-y-1.5">
-                  <Label htmlFor="email" className="text-sm font-medium text-foreground">Email address</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="name@example.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    disabled={isLoading}
-                    className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20"
-                  />
-                </div>
-
-                <Button
-                  type="submit"
-                  disabled={isLoading || !isLoaded}
-                  className="w-full h-10"
-                >
-                  {isLoading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Sending code...
-                    </>
-                  ) : (
-                    "Send Reset Code"
-                  )}
-                </Button>
-              </form>
-            ) : (
-              <div className="flex flex-col items-center justify-center space-y-4 py-2">
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary">
-                  <Mail className="w-5 h-5" />
-                </div>
-                <div className="text-center space-y-1.5">
-                  <h3 className="font-semibold text-foreground">Check your email</h3>
-                  <p className="text-sm text-muted-foreground">
-                    We&apos;ve sent a reset code to <span className="font-medium text-foreground">{email}</span>
-                  </p>
-                </div>
-                <Button asChild className="h-10 w-full">
-                  <Link href={`/reset-password?email=${encodeURIComponent(email)}`}>
-                    Enter Reset Code
-                  </Link>
-                </Button>
-                <button
-                  onClick={() => setIsSubmitted(false)}
-                  className="text-sm text-primary font-medium hover:text-primary/80 transition-colors"
-                >
-                  Try a different email
-                </button>
-              </div>
-            )}
-
-            <p className="text-center text-sm text-muted-foreground">
-              Remember your password?{" "}
-              <Link href="/login" className="text-primary font-medium hover:text-primary/80 transition-colors">
-                Sign in
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+        <p className="text-center text-sm text-gray-600">
+          Remember your password?{" "}
+          <Link
+            href="/login"
+            className="text-[#4f6cf6] font-medium hover:text-[#3f57c5] transition-colors"
+          >
+            Sign in
+          </Link>
+        </p>
       </div>
-    </div>
+    </AuthPortalLayout>
   );
 }

@@ -11,7 +11,9 @@ export function createOpusFestaMiddleware(publicRoutes: string[]) {
 
   return clerkMiddleware(async (auth, request) => {
     if (!isPublicRoute(request)) {
-      await auth.protect();
+      const loginUrl = new URL("/login", request.url);
+      loginUrl.searchParams.set("next", request.nextUrl.pathname);
+      await auth.protect({ unauthenticatedUrl: loginUrl.toString() });
     }
   });
 }
