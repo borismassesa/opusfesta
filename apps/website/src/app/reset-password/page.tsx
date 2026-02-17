@@ -7,7 +7,7 @@ import { Loader2, Eye, EyeOff, CheckCircle2 } from "lucide-react";
 import { useSignIn } from "@clerk/nextjs";
 import { toast } from "@/hooks/use-toast";
 import { AuthPortalLayout } from "@/features/auth/components";
-import { AUTH_WORDMARK_URL } from "@/features/auth/constants";
+import { AUTH_FULL_LOGO_PATH } from "@/features/auth/constants";
 
 function clerkErrorFrom(err: unknown): { longMessage?: string; message?: string } | undefined {
   return (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0];
@@ -111,7 +111,7 @@ export default function ResetPassword() {
       </span>
       <Link
         href="/login"
-        className="text-sm font-semibold px-6 py-2.5 border border-white/30 rounded-lg hover:bg-white/10 transition-all duration-300"
+        className="text-sm font-semibold px-6 py-2.5 bg-[#1a0b2e] text-white border border-white rounded-lg hover:bg-[#2a1b3e] transition-all duration-300"
       >
         Sign in
       </Link>
@@ -133,18 +133,18 @@ export default function ResetPassword() {
 
   return (
     <AuthPortalLayout promoCta={promoCta}>
-      <div className="w-full max-w-md space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="flex flex-col items-center">
+      <div className="w-full max-w-md space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 flex flex-col items-start">
+        <div className="flex flex-col items-start w-full">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={AUTH_WORDMARK_URL}
-            alt="OpusFesta"
+            src={AUTH_FULL_LOGO_PATH}
+            alt="OpusFesta - Plan Less, Celebrate More"
             className="h-12 w-auto object-contain mb-6 lg:hidden"
           />
-          <h1 className="text-4xl font-light text-gray-900 tracking-tight">
+          <h1 className="text-4xl font-medium text-gray-900 tracking-tight">
             {stepTitle}
           </h1>
-          <p className="mt-3 text-gray-500 font-light text-center">
+          <p className="mt-3 text-gray-500 font-light">
             {stepDescription}
           </p>
         </div>
@@ -159,7 +159,6 @@ export default function ResetPassword() {
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                placeholder="Enter 6-digit code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
                 required

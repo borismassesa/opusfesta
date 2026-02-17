@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { AUTH_TAGLINE, AUTH_WORDMARK_URL } from "../constants";
+import { AUTH_FULL_LOGO_PATH } from "../constants";
 
 interface AuthBrandHeaderProps {
   /** Show only on mobile (lg:hidden) */
@@ -19,12 +19,8 @@ export function AuthBrandHeader({
 }: AuthBrandHeaderProps) {
   const logoClass =
     logoSize === "sm"
-      ? "h-8 w-auto object-contain"
-      : "h-10 w-auto object-contain self-start";
-  const taglineClass =
-    logoSize === "sm"
-      ? "text-[8px] uppercase tracking-[0.2em] text-[#4f6cf6] font-bold mt-1"
-      : "text-[10px] uppercase tracking-[0.3em] text-[#4f6cf6] font-bold mt-1.5 ml-1";
+      ? "h-9 w-auto object-contain"
+      : "h-12 w-auto object-contain self-start";
 
   const wrapperClass = [
     "flex flex-col",
@@ -42,12 +38,11 @@ export function AuthBrandHeader({
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={AUTH_WORDMARK_URL}
-          alt="OpusFesta"
+          src={AUTH_FULL_LOGO_PATH}
+          alt="OpusFesta - Plan Less, Celebrate More"
           className={logoClass}
         />
       </Link>
-      <span className={taglineClass}>{AUTH_TAGLINE}</span>
     </div>
   );
 }

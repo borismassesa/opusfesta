@@ -8,15 +8,31 @@ import { getRandomSignUpQuote, type Quote } from "@/lib/quotes";
 import { useSignUp, useAuth } from "@clerk/nextjs";
 import { toast } from "@/hooks/use-toast";
 import { AuthPortalLayout } from "@/features/auth/components";
-import { AUTH_WORDMARK_URL } from "@/features/auth/constants";
+import { AUTH_FULL_LOGO_PATH } from "@/features/auth/constants";
 
 function clerkErrorFrom(err: unknown): { longMessage?: string; message?: string } | undefined {
   return (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0];
 }
 
+function getRedirectTarget(searchParams: URLSearchParams): string {
+  const nextParam = searchParams.get("next");
+  if (nextParam) return nextParam;
+  const redirectUrl = searchParams.get("redirect_url");
+  if (redirectUrl) {
+    try {
+      const url = new URL(redirectUrl);
+      return url.pathname + url.search;
+    } catch {
+      return "/";
+    }
+  }
+  return "/";
+}
+
 export default function Signup() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const next = getRedirectTarget(searchParams);
   const { signUp, setActive, isLoaded } = useSignUp();
   const { isSignedIn } = useAuth();
   const [step, setStep] = useState<"form" | "verify">("form");
@@ -37,10 +53,9 @@ export default function Signup() {
 
   useEffect(() => {
     if (isSignedIn) {
-      const next = searchParams.get("next") || "/";
       router.replace(next);
     }
-  }, [isSignedIn, searchParams, router]);
+  }, [isSignedIn, next, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -94,7 +109,6 @@ export default function Signup() {
           title: "Account created!",
           description: "Welcome to OpusFesta. Redirecting...",
         });
-        const next = searchParams.get("next") || "/";
         router.push(next);
       } else {
         toast({
@@ -141,7 +155,7 @@ export default function Signup() {
       await signUp.authenticateWithRedirect({
         strategy,
         redirectUrl: "/sso-callback",
-        redirectUrlComplete: searchParams.get("next") || "/",
+        redirectUrlComplete: next,
         unsafeMetadata: {
           user_type: userType,
         },
@@ -161,8 +175,8 @@ export default function Signup() {
         Already have an account?
       </span>
       <Link
-        href={`/login${searchParams.get("next") ? `?next=${encodeURIComponent(searchParams.get("next")!)}` : ""}`}
-        className="text-sm font-semibold px-6 py-2.5 border border-white/30 rounded-lg hover:bg-white/10 transition-all duration-300"
+        href={`/login${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}
+        className="text-sm font-semibold px-6 py-2.5 bg-[#1a0b2e] text-white border border-white rounded-lg hover:bg-[#2a1b3e] transition-all duration-300"
       >
         Sign in
       </Link>
@@ -171,18 +185,18 @@ export default function Signup() {
 
   return (
     <AuthPortalLayout promoCta={promoCta}>
-      <div className="w-full max-w-md space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
-        <div className="flex flex-col items-center">
+      <div className="w-full max-w-md space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700 flex flex-col items-start">
+        <div className="flex flex-col items-start w-full">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={AUTH_WORDMARK_URL}
-            alt="OpusFesta"
+            src={AUTH_FULL_LOGO_PATH}
+            alt="OpusFesta - Plan Less, Celebrate More"
             className="h-12 w-auto object-contain mb-6 lg:hidden"
           />
-          <h1 className="text-4xl font-light text-gray-900 tracking-tight">
+          <h1 className="text-4xl font-medium text-gray-900 tracking-tight">
             {step === "form" ? "Create an account" : "Verify your email"}
           </h1>
-          <p className="mt-3 text-gray-500 font-light text-center">
+          <p className="mt-3 text-gray-500 font-light">
             {step === "form"
               ? "Join thousands of couples planning their big day."
               : `We sent a code to ${email}`}
@@ -264,7 +278,6 @@ export default function Signup() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Jane"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     required
@@ -282,7 +295,6 @@ export default function Signup() {
                   </label>
                   <input
                     type="text"
-                    placeholder="Doe"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     required
@@ -302,7 +314,6 @@ export default function Signup() {
                 </label>
                 <input
                   type="email"
-                  placeholder="name@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
@@ -321,7 +332,6 @@ export default function Signup() {
                 </label>
                 <input
                   type="tel"
-                  placeholder="+255 123 456 789"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={isLoading}
@@ -339,7 +349,6 @@ export default function Signup() {
                 </label>
                 <input
                   type={showPassword ? "text" : "password"}
-                  placeholder="Create a password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
@@ -391,7 +400,6 @@ export default function Signup() {
                   type="text"
                   inputMode="numeric"
                   autoComplete="one-time-code"
-                  placeholder="Enter 6-digit code"
                   value={code}
                   onChange={(e) => setCode(e.target.value)}
                   required
@@ -432,7 +440,7 @@ export default function Signup() {
         <p className="text-center text-sm text-gray-600">
           Already have an account?{" "}
           <Link
-            href={`/login${searchParams.get("next") ? `?next=${encodeURIComponent(searchParams.get("next")!)}` : ""}`}
+            href={`/login${next !== "/" ? `?next=${encodeURIComponent(next)}` : ""}`}
             className="text-[#4f6cf6] font-medium hover:text-[#3f57c5] transition-colors"
           >
             Sign in

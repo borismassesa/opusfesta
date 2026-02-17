@@ -1,8 +1,9 @@
 /**
- * Shared auth portal design tokens (from opusfesta-login-portal).
- * Primary and dark background used across auth layout and forms.
+ * Shared auth portal design tokens.
+ * Full logo (icon + wordmark + tagline) used on auth pages top-left.
  */
-export const AUTH_WORDMARK_URL =
-  "https://images.squarespace-cdn.com/content/v1/640f7d549f691b0686915228/f7869688-4674-42f0-94f9-2c6b3e3e0980/OpusFesta_Logo_Wordmark.png";
+export const AUTH_FULL_LOGO_PATH = "/logo/opusfesta-full-logo.png";
 
-export const AUTH_TAGLINE = "Plan Less, Celebrate More";
+/** Full-bleed blurred background for right promo panel (group/celebration photo). Replace with final asset if needed. */
+export const AUTH_PROMO_BG_IMAGE_URL =
+  "https://images.unsplash.com/photo-1543269865-cbf427effbad?q=80&w=2070&auto=format&fit=crop";
