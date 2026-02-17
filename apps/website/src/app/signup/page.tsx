@@ -7,10 +7,12 @@ import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { getRandomSignUpQuote, type Quote } from "@/lib/quotes";
 import { useSignUp, useAuth } from "@clerk/nextjs";
 import { toast } from "@/hooks/use-toast";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { AuthPortalLayout } from "@/features/auth/components";
+import { AUTH_WORDMARK_URL } from "@/features/auth/constants";
+
+function clerkErrorFrom(err: unknown): { longMessage?: string; message?: string } | undefined {
+  return (err as { errors?: Array<{ longMessage?: string; message?: string }> })?.errors?.[0];
+}
 
 export default function Signup() {
   const router = useRouter();
@@ -64,12 +66,15 @@ export default function Signup() {
         description: "Please check your email for the verification code.",
       });
       setIsLoading(false);
-    } catch (err: any) {
-      const clerkError = err?.errors?.[0];
+    } catch (err: unknown) {
+      const clerkError = clerkErrorFrom(err);
       toast({
         variant: "destructive",
         title: "Sign up failed",
-        description: clerkError?.longMessage || clerkError?.message || "An error occurred. Please try again.",
+        description:
+          clerkError?.longMessage ||
+          clerkError?.message ||
+          "An error occurred. Please try again.",
       });
       setIsLoading(false);
     }
@@ -99,12 +104,15 @@ export default function Signup() {
         });
         setIsLoading(false);
       }
-    } catch (err: any) {
-      const clerkError = err?.errors?.[0];
+    } catch (err: unknown) {
+      const clerkError = clerkErrorFrom(err);
       toast({
         variant: "destructive",
         title: "Verification failed",
-        description: clerkError?.longMessage || clerkError?.message || "Invalid code. Please try again.",
+        description:
+          clerkError?.longMessage ||
+          clerkError?.message ||
+          "Invalid code. Please try again.",
       });
       setIsLoading(false);
     }
@@ -118,7 +126,7 @@ export default function Signup() {
         title: "Code resent",
         description: "A new verification code has been sent to your email.",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: "destructive",
         title: "Failed to resend",
@@ -138,7 +146,7 @@ export default function Signup() {
           user_type: userType,
         },
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: "destructive",
         title: "Sign up failed",
@@ -147,279 +155,311 @@ export default function Signup() {
     }
   };
 
-  return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#fafafa] dark:bg-background">
+  const promoCta = (
+    <>
+      <span className="mr-4 text-sm font-light opacity-80">
+        Already have an account?
+      </span>
+      <Link
+        href={`/login${searchParams.get("next") ? `?next=${encodeURIComponent(searchParams.get("next")!)}` : ""}`}
+        className="text-sm font-semibold px-6 py-2.5 border border-white/30 rounded-lg hover:bg-white/10 transition-all duration-300"
+      >
+        Sign in
+      </Link>
+    </>
+  );
 
-      <div className="w-full max-w-[400px] space-y-8 my-8">
-        <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
-          <CardContent className="pt-10 pb-8 px-8 space-y-6">
-            {/* Logo */}
-            <div className="text-center">
-              <Link href="/" className="font-serif text-3xl text-foreground hover:opacity-80 transition-opacity">
-                OpusFesta
-              </Link>
+  return (
+    <AuthPortalLayout promoCta={promoCta}>
+      <div className="w-full max-w-md space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-700">
+        <div className="flex flex-col items-center">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={AUTH_WORDMARK_URL}
+            alt="OpusFesta"
+            className="h-12 w-auto object-contain mb-6 lg:hidden"
+          />
+          <h1 className="text-4xl font-light text-gray-900 tracking-tight">
+            {step === "form" ? "Create an account" : "Verify your email"}
+          </h1>
+          <p className="mt-3 text-gray-500 font-light text-center">
+            {step === "form"
+              ? "Join thousands of couples planning their big day."
+              : `We sent a code to ${email}`}
+          </p>
+        </div>
+
+        {step === "form" ? (
+          <>
+            <div className="flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => handleOAuth("oauth_google")}
+                disabled={!isLoaded}
+                className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 py-3.5 px-4 rounded-xl border border-gray-200 font-semibold hover:bg-gray-50 transition-all hover:border-gray-300 shadow-sm"
+              >
+                <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
+                  <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
+                  <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
+                  <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
+                  <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
+                </svg>
+                Continue with Google
+              </button>
+              <button
+                type="button"
+                onClick={() => handleOAuth("oauth_apple")}
+                disabled={!isLoaded}
+                className="w-full flex items-center justify-center gap-3 bg-white text-gray-800 py-3.5 px-4 rounded-xl border border-gray-200 font-semibold hover:bg-gray-50 transition-all hover:border-gray-300 shadow-sm"
+              >
+                <svg className="h-5 w-5 shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
+                </svg>
+                Continue with Apple
+              </button>
             </div>
 
-            {step === "form" ? (
-              <>
-                <div className="text-center space-y-1">
-                  <h1 className="text-xl font-semibold tracking-tight text-foreground">Create an account</h1>
-                  <p className="text-sm text-muted-foreground">
-                    Join thousands of couples planning their big day
-                  </p>
+            <div className="relative flex items-center py-2">
+              <div className="flex-grow border-t border-gray-100" />
+              <span className="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-bold tracking-[0.2em]">
+                OR
+              </span>
+              <div className="flex-grow border-t border-gray-100" />
+            </div>
+
+            <form onSubmit={handleSubmit} className="space-y-5">
+              <div className="grid grid-cols-2 gap-1.5 p-1 bg-gray-100 rounded-lg">
+                <button
+                  type="button"
+                  onClick={() => setUserType("couple")}
+                  className={`text-sm font-medium py-2 px-3 rounded-md transition-all duration-200 ${
+                    userType === "couple"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  I&apos;m a Couple
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUserType("vendor")}
+                  className={`text-sm font-medium py-2 px-3 rounded-md transition-all duration-200 ${
+                    userType === "vendor"
+                      ? "bg-white text-gray-900 shadow-sm"
+                      : "text-gray-500 hover:text-gray-900"
+                  }`}
+                >
+                  I&apos;m a Vendor
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="relative group">
+                  <label
+                    className={`absolute left-0 transition-all duration-300 pointer-events-none ${
+                      firstName ? "-top-6 text-xs font-bold text-[#4f6cf6]" : "top-3 text-gray-400 text-sm"
+                    }`}
+                  >
+                    First Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Jane"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="block w-full px-0 py-3 border-b border-gray-200 focus:border-[#4f6cf6] outline-none transition-all bg-transparent text-gray-900"
+                  />
                 </div>
-
-                {/* OAuth Buttons */}
-                <div className="flex flex-col gap-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 w-full justify-center gap-3 font-normal border-border/40 bg-background hover:bg-muted/50 hover:border-border/80 transition-all"
-                    onClick={() => handleOAuth("oauth_google")}
+                <div className="relative group">
+                  <label
+                    className={`absolute left-0 transition-all duration-300 pointer-events-none ${
+                      lastName ? "-top-6 text-xs font-bold text-[#4f6cf6]" : "top-3 text-gray-400 text-sm"
+                    }`}
                   >
-                    <svg className="h-[18px] w-[18px] shrink-0" viewBox="0 0 24 24">
-                      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" />
-                      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" />
-                      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
-                      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
-                    </svg>
-                    Continue with Google
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="h-10 w-full justify-center gap-3 font-normal border-border/40 bg-background hover:bg-muted/50 hover:border-border/80 transition-all"
-                    onClick={() => handleOAuth("oauth_apple")}
-                  >
-                    <svg className="h-[18px] w-[18px] shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M12.152 6.896c-.948 0-2.415-1.078-3.96-1.04-2.04.027-3.91 1.183-4.961 3.014-2.117 3.675-.546 9.103 1.519 12.09 1.013 1.454 2.208 3.09 3.792 3.039 1.52-.065 2.09-.987 3.935-.987 1.831 0 2.35.987 3.96.948 1.637-.026 2.676-1.48 3.676-2.948 1.156-1.688 1.636-3.325 1.662-3.415-.039-.013-3.182-1.221-3.22-4.857-.026-3.04 2.48-4.494 2.597-4.559-1.429-2.09-3.623-2.324-4.39-2.376-2-.156-3.675 1.09-4.61 1.09zM15.53 3.83c.843-1.012 1.4-2.427 1.245-3.83-1.207.052-2.662.805-3.532 1.818-.78.896-1.454 2.338-1.273 3.714 1.338.104 2.715-.688 3.559-1.701" />
-                    </svg>
-                    Continue with Apple
-                  </Button>
+                    Last Name
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="Doe"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                    disabled={isLoading}
+                    className="block w-full px-0 py-3 border-b border-gray-200 focus:border-[#4f6cf6] outline-none transition-all bg-transparent text-gray-900"
+                  />
                 </div>
+              </div>
 
-                {/* Divider */}
-                <div className="relative">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-border/40" />
-                  </div>
-                  <div className="relative flex justify-center text-xs uppercase">
-                    <span className="bg-card px-3 text-muted-foreground/60">or</span>
-                  </div>
-                </div>
+              <div className="relative group">
+                <label
+                  className={`absolute left-0 transition-all duration-300 pointer-events-none ${
+                    email ? "-top-6 text-xs font-bold text-[#4f6cf6]" : "top-3 text-gray-400 text-sm"
+                  }`}
+                >
+                  Email address
+                </label>
+                <input
+                  type="email"
+                  placeholder="name@example.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="block w-full px-0 py-3 border-b border-gray-200 focus:border-[#4f6cf6] outline-none transition-all bg-transparent text-gray-900"
+                />
+              </div>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {/* User Type Toggle */}
-                  <div className="grid grid-cols-2 gap-1.5 p-1 bg-muted/40 rounded-lg">
-                    <button
-                      type="button"
-                      onClick={() => setUserType("couple")}
-                      className={`text-sm font-medium py-2 px-3 rounded-md transition-all duration-200 ${
-                        userType === "couple"
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      I&apos;m a Couple
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setUserType("vendor")}
-                      className={`text-sm font-medium py-2 px-3 rounded-md transition-all duration-200 ${
-                        userType === "vendor"
-                        ? "bg-background text-foreground shadow-sm"
-                        : "text-muted-foreground hover:text-foreground"
-                      }`}
-                    >
-                      I&apos;m a Vendor
-                    </button>
-                  </div>
+              <div className="relative group">
+                <label
+                  className={`absolute left-0 transition-all duration-300 pointer-events-none ${
+                    phone ? "-top-6 text-xs font-bold text-[#4f6cf6]" : "top-3 text-gray-400 text-sm"
+                  }`}
+                >
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="+255 123 456 789"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  disabled={isLoading}
+                  className="block w-full px-0 py-3 border-b border-gray-200 focus:border-[#4f6cf6] outline-none transition-all bg-transparent text-gray-900"
+                />
+              </div>
 
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="firstName" className="text-sm font-medium text-foreground">First Name</Label>
-                      <Input
-                        id="firstName"
-                        type="text"
-                        placeholder="Jane"
-                        value={firstName}
-                        onChange={(e) => setFirstName(e.target.value)}
-                        required
-                        disabled={isLoading}
-                        className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="lastName" className="text-sm font-medium text-foreground">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        type="text"
-                        placeholder="Doe"
-                        value={lastName}
-                        onChange={(e) => setLastName(e.target.value)}
-                        required
-                        disabled={isLoading}
-                        className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="email" className="text-sm font-medium text-foreground">Email address</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="name@example.com"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      required
-                      disabled={isLoading}
-                      className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="phone" className="text-sm font-medium text-foreground">Phone Number</Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+255 123 456 789"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      disabled={isLoading}
-                      className="h-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20"
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <Label htmlFor="password" className="text-sm font-medium text-foreground">Password</Label>
-                    <div className="relative">
-                      <Input
-                        id="password"
-                        type={showPassword ? "text" : "password"}
-                        placeholder="Create a password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                        disabled={isLoading}
-                        className="h-10 pr-10 border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-                      >
-                        {showPassword ? <EyeOff size={16} /> : <Eye size={16} />}
-                      </button>
-                    </div>
-                    <p className="text-xs text-muted-foreground/60">
-                      Must be at least 8 characters long.
-                    </p>
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={isLoading || !isLoaded}
-                    className="w-full h-10 mt-1"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating account...
-                      </>
-                    ) : (
-                      "Continue"
-                    )}
-                  </Button>
-                </form>
-              </>
-            ) : (
-              <>
-                <div className="text-center space-y-1">
-                  <h1 className="text-xl font-semibold tracking-tight text-foreground">Verify your email</h1>
-                  <p className="text-sm text-muted-foreground">
-                    We sent a code to <span className="font-medium text-foreground">{email}</span>
-                  </p>
-                </div>
-
-                <form onSubmit={handleVerifyCode} className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label htmlFor="code" className="text-sm font-medium text-foreground">Verification code</Label>
-                    <Input
-                      id="code"
-                      type="text"
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      placeholder="Enter 6-digit code"
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      required
-                      disabled={isLoading}
-                      className="h-10 text-center tracking-[0.3em] text-lg border-border/40 focus-visible:border-primary/50 focus-visible:ring-primary/20"
-                    />
-                  </div>
-
-                  <Button
-                    type="submit"
-                    disabled={isLoading || !isLoaded}
-                    className="w-full h-10"
-                  >
-                    {isLoading ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      "Verify & Continue"
-                    )}
-                  </Button>
-                </form>
-
-                <p className="text-center text-sm text-muted-foreground">
-                  Didn&apos;t receive the code?{" "}
-                  <button
-                    onClick={handleResendCode}
-                    className="text-primary font-medium hover:text-primary/80 transition-colors"
-                  >
-                    Resend
-                  </button>
+              <div className="relative group">
+                <label
+                  className={`absolute left-0 transition-all duration-300 pointer-events-none ${
+                    password ? "-top-6 text-xs font-bold text-[#4f6cf6]" : "top-3 text-gray-400 text-sm"
+                  }`}
+                >
+                  Password
+                </label>
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Create a password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="block w-full px-0 py-3 border-b border-gray-200 focus:border-[#4f6cf6] outline-none transition-all bg-transparent text-gray-900 pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-0 top-3 text-gray-400 hover:text-[#4f6cf6] transition-colors"
+                  aria-label={showPassword ? "Hide password" : "Show password"}
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-5 h-5" />
+                  ) : (
+                    <Eye className="w-5 h-5" />
+                  )}
+                </button>
+                <p className="text-xs text-gray-500 mt-1">
+                  Must be at least 8 characters long.
                 </p>
-              </>
-            )}
+              </div>
 
-            <p className="text-center text-sm text-muted-foreground">
-              Already have an account?{" "}
-              <Link
-                href="/login"
-                className="text-primary font-medium hover:text-primary/80 transition-colors"
+              <button
+                type="submit"
+                disabled={isLoading || !isLoaded}
+                className="w-full bg-[#4f6cf6] text-white py-4 px-4 rounded-xl font-bold hover:bg-[#3f57c5] transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-blue-500/20 disabled:opacity-70 disabled:transform-none"
               >
-                Sign in
-              </Link>
-            </p>
-          </CardContent>
-        </Card>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin inline-block align-middle" />
+                    Creating account...
+                  </>
+                ) : (
+                  "Continue"
+                )}
+              </button>
+            </form>
+          </>
+        ) : (
+          <>
+            <form onSubmit={handleVerifyCode} className="space-y-5">
+              <div className="relative group">
+                <label className="absolute -top-6 left-0 text-xs font-bold text-[#4f6cf6]">
+                  Verification code
+                </label>
+                <input
+                  id="code"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  placeholder="Enter 6-digit code"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  required
+                  disabled={isLoading}
+                  className="block w-full px-0 py-3 border-b border-gray-200 focus:border-[#4f6cf6] outline-none transition-all bg-transparent text-gray-900 text-center tracking-[0.3em] text-lg"
+                />
+              </div>
 
-        <p className="text-center text-xs text-muted-foreground/60 leading-relaxed px-6">
+              <button
+                type="submit"
+                disabled={isLoading || !isLoaded}
+                className="w-full bg-[#4f6cf6] text-white py-4 px-4 rounded-xl font-bold hover:bg-[#3f57c5] transition-all disabled:opacity-70"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin inline-block align-middle" />
+                    Verifying...
+                  </>
+                ) : (
+                  "Verify & Continue"
+                )}
+              </button>
+            </form>
+
+            <p className="text-center text-sm text-gray-600">
+              Didn&apos;t receive the code?{" "}
+              <button
+                type="button"
+                onClick={handleResendCode}
+                className="text-[#4f6cf6] font-medium hover:text-[#3f57c5] transition-colors"
+              >
+                Resend
+              </button>
+            </p>
+          </>
+        )}
+
+        <p className="text-center text-sm text-gray-600">
+          Already have an account?{" "}
+          <Link
+            href={`/login${searchParams.get("next") ? `?next=${encodeURIComponent(searchParams.get("next")!)}` : ""}`}
+            className="text-[#4f6cf6] font-medium hover:text-[#3f57c5] transition-colors"
+          >
+            Sign in
+          </Link>
+        </p>
+
+        <p className="text-center text-xs text-gray-500 leading-relaxed px-2">
           By continuing, you agree to OpusFesta&apos;s{" "}
-          <Link href="/terms" className="underline underline-offset-4 hover:text-muted-foreground transition-colors">
+          <Link href="/terms" className="underline underline-offset-4 hover:text-gray-700">
             Terms of Service
           </Link>{" "}
           and{" "}
-          <Link href="/privacy" className="underline underline-offset-4 hover:text-muted-foreground transition-colors">
+          <Link href="/privacy" className="underline underline-offset-4 hover:text-gray-700">
             Privacy Policy
           </Link>
           .
         </p>
 
-        <div className="text-center px-6" suppressHydrationWarning>
-          <p className="text-sm text-muted-foreground/50 italic" suppressHydrationWarning>
+        <div className="text-center px-2" suppressHydrationWarning>
+          <p className="text-sm text-gray-500 italic" suppressHydrationWarning>
             &ldquo;{quote.text}&rdquo;
           </p>
-          <p className="text-xs text-muted-foreground/40 mt-1.5" suppressHydrationWarning>
+          <p className="text-xs text-gray-400 mt-1.5" suppressHydrationWarning>
             &mdash; {quote.author}
           </p>
         </div>
       </div>
-    </div>
+    </AuthPortalLayout>
   );
 }
