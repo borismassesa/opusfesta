@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { ShieldCheck, Loader2, ArrowLeft } from "lucide-react";
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
@@ -23,6 +23,14 @@ import { useOpusFestaAuth } from "@opusfesta/auth";
 import { useAuthGate } from "@/hooks/useAuthGate";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 export function VendorDetailsClient({
   params,
@@ -43,8 +51,11 @@ export function VendorDetailsClient({
   const [showNavBar, setShowNavBar] = useState(false);
   const [isSidebarSticky, setIsSidebarSticky] = useState(true);
   const [hasShownAuthGate, setHasShownAuthGate] = useState(false);
+  const [showDelayedLoginPrompt, setShowDelayedLoginPrompt] = useState(false);
   const galleryRef = useRef<HTMLDivElement>(null);
+  const delayedLoginTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const router = useRouter();
   const { isLoaded: isAuthLoaded, isSignedIn, getToken } = useOpusFestaAuth();
   const isAuthenticated = isAuthLoaded ? !!isSignedIn : false;
   const { openAuthModal } = useAuthGate();
@@ -78,10 +89,18 @@ export function VendorDetailsClient({
         });
 
         if (!response.ok) {
+          let apiMessage: string | null = null;
+          try {
+            const errorBody = (await response.json()) as { error?: string; details?: string };
+            apiMessage = errorBody.error || errorBody.details || null;
+          } catch {}
+
           if (response.status === 404) {
-            throw new Error("Vendor not found");
+            setError(apiMessage || "Vendor not found");
+            setIsLoading(false);
+            return;
           }
-          throw new Error("Failed to load vendor");
+          throw new Error(apiMessage || `Failed to load vendor (HTTP ${response.status})`);
         }
 
         const data = (await response.json()) as VendorBySlugResponse;
@@ -187,6 +206,24 @@ export function VendorDetailsClient({
     const intent = intentParam === "booking" ? "booking" : "details";
     showAuthGate(intent);
   }, [searchParams, isAuthenticated]);
+
+  // Delayed login prompt: 30s after guest lands on vendor profile
+  useEffect(() => {
+    if (!vendor || !slug || !isAuthLoaded || isAuthenticated || hasShownAuthGate) return;
+    delayedLoginTimerRef.current = setTimeout(() => {
+      setShowDelayedLoginPrompt(true);
+      setHasShownAuthGate(true);
+      if (typeof window !== "undefined") {
+        sessionStorage.setItem(authGateStorageKey, "true");
+      }
+    }, 30_000);
+    return () => {
+      if (delayedLoginTimerRef.current) {
+        clearTimeout(delayedLoginTimerRef.current);
+        delayedLoginTimerRef.current = null;
+      }
+    };
+  }, [vendor, slug, isAuthLoaded, isAuthenticated, hasShownAuthGate, authGateStorageKey]);
 
   useEffect(() => {
     if (!vendor) return;
@@ -314,11 +351,37 @@ export function VendorDetailsClient({
     );
   }
 
+  const handleDelayedLoginContinue = () => {
+    setShowDelayedLoginPrompt(false);
+    router.push(`/login?next=${encodeURIComponent(`/vendors/${slug}`)}`);
+  };
+
+  const handleDelayedLoginDismiss = () => {
+    setShowDelayedLoginPrompt(false);
+  };
+
   // Vendor details
   return (
     <div className="bg-background text-primary min-h-screen">
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} sticky={false} />
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
+
+      <Dialog open={showDelayedLoginPrompt} onOpenChange={(open) => !open && handleDelayedLoginDismiss()}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Get more from this profile</DialogTitle>
+            <DialogDescription>
+              Sign in to save vendors, request quotes, and see full details and reviews.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex gap-2 sm:gap-0">
+            <Button variant="outline" onClick={handleDelayedLoginDismiss}>
+              Maybe later
+            </Button>
+            <Button onClick={handleDelayedLoginContinue}>Continue to login</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <main className="pt-12 lg:pt-16 pb-24 lg:pb-0">
         {/* Sticky Navigation Bar */}

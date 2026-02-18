@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   BadgeCheck,
@@ -436,14 +437,6 @@ const CATEGORIES = [
   },
 ];
 
-// Helper function to generate slug from vendor name
-const generateSlug = (name: string): string => {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
-};
-
 // Helper function to resolve image source (handles both string URLs and imported images)
 const getImageSrc = (image: string | typeof vendorPhoto): string => {
   if (typeof image === 'string') {
@@ -755,6 +748,88 @@ interface VendorRowSection {
   items: VendorItem[];
 }
 
+const CATEGORY_DISPLAY_MAP: Record<string, string> = {
+  "Wedding Planners": "Planning",
+  "Venues": "Venues",
+  "Photographers": "Photography",
+  "Videographers": "Videography",
+  "Caterers": "Catering",
+  "Florists": "Florals",
+  "DJs & Music": "Music",
+  "Beauty & Makeup": "Beauty",
+  "Bridal Salons": "Bridal shops",
+  "Officiants": "Officiants",
+  "Decorators": "Decor",
+};
+
+function parseLocationForVendor(v: { location?: unknown }): { city?: string } {
+  if (v.location == null) return {};
+  if (typeof v.location === "object") return (v.location as { city?: string }) || {};
+  if (typeof v.location !== "string") return {};
+  const s = (v.location as string).trim();
+  if (s.startsWith("{")) {
+    try {
+      const parsed = JSON.parse(v.location as string) as { city?: string };
+      return parsed || {};
+    } catch {
+      return { city: s || undefined };
+    }
+  }
+  return { city: s || undefined };
+}
+
+function parseStatsForVendor(v: { stats?: unknown }): Record<string, unknown> {
+  if (v.stats == null) return {};
+  if (typeof v.stats === "object") return (v.stats as Record<string, unknown>) || {};
+  if (typeof v.stats !== "string") return {};
+  const s = (v.stats as string).trim();
+  if (!s.startsWith("{")) return {};
+  try {
+    return (JSON.parse(v.stats as string) as Record<string, unknown>) || {};
+  } catch {
+    return {};
+  }
+}
+
+function transformVendors(vendors: any[]): VendorItem[] {
+  return vendors.map((vendor) => {
+    const location = parseLocationForVendor(vendor);
+    const stats = parseStatsForVendor(vendor);
+    const displayCategory = CATEGORY_DISPLAY_MAP[vendor.category] || vendor.category;
+    return {
+      id: vendor.id,
+      name: vendor.business_name || vendor.name,
+      category: displayCategory,
+      location: location?.city || "Unknown",
+      price: vendor.price_range || "$$",
+      rating: Number(stats.averageRating) || vendor.rating || 0,
+      reviews: Number(stats.reviewCount) || vendor.reviews || 0,
+      image: vendor.cover_image || vendor.logo || vendor.image || vendorPhoto,
+      slug: vendor.slug,
+      featured: vendor.tier === "premium" || vendor.tier === "pro",
+      fastResponse: (Number(stats.inquiryCount) || 0) > 10,
+    };
+  });
+}
+
+function transformCollectionVendors(vendors: any[]): any[] {
+  return (vendors || []).map((v: any) => {
+    const city = parseLocationForVendor(v)?.city || "Unknown";
+    const stats = parseStatsForVendor(v);
+    return {
+      id: v.id,
+      name: v.name || v.business_name,
+      category: CATEGORY_DISPLAY_MAP[v.category] || v.category,
+      location: city,
+      price: v.price_range || "$$",
+      rating: Number(stats.averageRating) || 0,
+      reviews: Number(stats.reviewCount) || 0,
+      image: v.image || v.cover_image || v.logo || vendorPhoto,
+      slug: v.slug,
+    };
+  });
+}
+
 export default function VendorsPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
@@ -799,49 +874,55 @@ export default function VendorsPage() {
     fetchStats();
   }, []);
 
-  // Fetch all vendor data from Supabase
+  // Fetch all vendor data in parallel to reduce waterfall
   useEffect(() => {
+    const categoryMap: Record<string, string> = {
+      "planners": "Wedding Planners",
+      "venues": "Venues",
+      "photographers": "Photographers",
+      "beauty": "Beauty & Makeup",
+      "bridal-shops": "Bridal Salons",
+      "officiants": "Officiants",
+    };
+
     const fetchVendorData = async () => {
       setLoading(true);
       try {
-        // Fetch featured vendors (high-rated, verified vendors)
-        const featuredResponse = await fetch("/api/vendors/search?verified=true&sort=rating&limit=12");
+        const [
+          featuredResponse,
+          ...categoryResponses
+        ] = await Promise.all([
+          fetch("/api/vendors/search?verified=true&sort=rating&limit=12"),
+          ...Object.entries(categoryMap).map(([, category]) =>
+            fetch(`/api/vendors/search?category=${encodeURIComponent(category)}&limit=4`)
+          ),
+          fetch("/api/vendors/collections/deals?limit=6"),
+          fetch("/api/vendors/collections/new?limit=6"),
+          fetch("/api/vendors/collections/trending?limit=6"),
+          fetch("/api/vendors/collections/budget?limit=6"),
+          fetch("/api/vendors/collections/fast-responders?limit=6"),
+          fetch(`/api/vendors/search?location=${encodeURIComponent(DEFAULT_SPOTLIGHT_LOCATION)}&limit=6`),
+        ]);
+
+        const categoryCount = Object.keys(categoryMap).length;
         const featuredData = featuredResponse.ok ? await featuredResponse.json() : { vendors: [] };
-        
-        // Fetch vendors by category for category rows
-        // Map frontend category IDs to database category values
-        const categoryMap: Record<string, string> = {
-          "planners": "Wedding Planners",
-          "venues": "Venues",
-          "photographers": "Photographers",
-          "beauty": "Beauty & Makeup",
-          "bridal-shops": "Bridal Salons",
-          "officiants": "Officiants",
-        };
-        
-        // Map database categories to frontend category IDs for display
-        const categoryDisplayMap: Record<string, string> = {
-          "Wedding Planners": "Planning",
-          "Venues": "Venues",
-          "Photographers": "Photography",
-          "Videographers": "Videography",
-          "Caterers": "Catering",
-          "Florists": "Florals",
-          "DJs & Music": "Music",
-          "Beauty & Makeup": "Beauty",
-          "Bridal Salons": "Bridal shops",
-          "Officiants": "Officiants",
-          "Decorators": "Decor",
-        };
-        
-        const categoryPromises = Object.entries(categoryMap).map(async ([id, category]) => {
-          const response = await fetch(`/api/vendors/search?category=${encodeURIComponent(category)}&limit=4`);
-          const data = response.ok ? await response.json() : { vendors: [] };
-          const sectionConfig = VENDOR_ROW_SECTIONS.find(s => s.id === id);
-          const transformedVendors = transformVendors(data.vendors || []).map(v => ({
-            ...v,
-            category: categoryDisplayMap[v.category] || v.category,
-          }));
+        const categoryResults = await Promise.all(
+          categoryResponses.slice(0, categoryCount).map((r) => (r.ok ? r.json() : { vendors: [] }))
+        );
+        const [promosRes, newRes, trendingRes, budgetRes, fastRes, spotlightRes] = categoryResponses.slice(categoryCount);
+        const [promosData, newData, trendingData, budgetData, fastData, spotlightData] = await Promise.all([
+          promosRes.ok ? promosRes.json() : { vendors: [] },
+          newRes.ok ? newRes.json() : { vendors: [] },
+          trendingRes.ok ? trendingRes.json() : { vendors: [] },
+          budgetRes.ok ? budgetRes.json() : { vendors: [] },
+          fastRes.ok ? fastRes.json() : { vendors: [] },
+          spotlightRes.ok ? spotlightRes.json() : { vendors: [] },
+        ]);
+
+        const categoryRows = Object.entries(categoryMap).map(([id, category], i) => {
+          const data = categoryResults[i] || { vendors: [] };
+          const sectionConfig = VENDOR_ROW_SECTIONS.find((s) => s.id === id);
+          const transformedVendors = transformVendors(data.vendors || []);
           return {
             id,
             title: sectionConfig?.title || category,
@@ -849,27 +930,7 @@ export default function VendorsPage() {
             items: transformedVendors,
           };
         });
-        
-        const categoryRows = await Promise.all(categoryPromises);
-        
-        // Fetch collections
-        const [promosRes, newRes, trendingRes, budgetRes, fastRes] = await Promise.all([
-          fetch("/api/vendors/collections/deals?limit=6"),
-          fetch("/api/vendors/collections/new?limit=6"),
-          fetch("/api/vendors/collections/trending?limit=6"),
-          fetch("/api/vendors/collections/budget?limit=6"),
-          fetch("/api/vendors/collections/fast-responders?limit=6"),
-        ]);
-        
-        const [promosData, newData, trendingData, budgetData, fastData] = await Promise.all([
-          promosRes.ok ? promosRes.json() : { vendors: [] },
-          newRes.ok ? newRes.json() : { vendors: [] },
-          trendingRes.ok ? trendingRes.json() : { vendors: [] },
-          budgetRes.ok ? budgetRes.json() : { vendors: [] },
-          fastRes.ok ? fastRes.json() : { vendors: [] },
-        ]);
-        
-        // Transform and set data
+
         setFeaturedVendors(transformVendors(featuredData.vendors || []).slice(0, 12));
         setVendorRowSections(categoryRows);
         setPromotions(transformCollectionVendors(promosData.vendors || []));
@@ -877,14 +938,9 @@ export default function VendorsPage() {
         setMostBooked(transformCollectionVendors(trendingData.vendors || []));
         setBudgetFriendly(transformCollectionVendors(budgetData.vendors || []));
         setQuickResponders(transformCollectionVendors(fastData.vendors || []));
-        
-        // Fetch spotlight vendors based on default location
-        const spotlightRes = await fetch(`/api/vendors/search?location=${encodeURIComponent(DEFAULT_SPOTLIGHT_LOCATION)}&limit=6`);
-        const spotlightData = spotlightRes.ok ? await spotlightRes.json() : { vendors: [] };
         setSpotlightVendors(transformVendors(spotlightData.vendors || []).slice(0, 6));
       } catch (error) {
         console.error("Failed to fetch vendor data:", error);
-        // Fallback to empty arrays on error
       } finally {
         setLoading(false);
       }
@@ -892,63 +948,6 @@ export default function VendorsPage() {
 
     fetchVendorData();
   }, []);
-
-  // Helper function to transform API vendor data to VendorItem format
-  const transformVendors = (vendors: any[]): VendorItem[] => {
-    return vendors.map((vendor) => {
-      const location = typeof vendor.location === 'string' 
-        ? JSON.parse(vendor.location) 
-        : vendor.location || {};
-      const stats = typeof vendor.stats === 'string'
-        ? JSON.parse(vendor.stats)
-        : vendor.stats || {};
-      
-      // Map database category to frontend category ID
-      const categoryDisplayMap: Record<string, string> = {
-        "Wedding Planners": "Planning",
-        "Venues": "Venues",
-        "Photographers": "Photography",
-        "Videographers": "Videography",
-        "Caterers": "Catering",
-        "Florists": "Florals",
-        "DJs & Music": "Music",
-        "Beauty & Makeup": "Beauty",
-        "Bridal Salons": "Bridal shops",
-        "Officiants": "Officiants",
-        "Decorators": "Decor",
-      };
-      
-      const displayCategory = categoryDisplayMap[vendor.category] || vendor.category;
-      
-      return {
-        id: vendor.id,
-        name: vendor.business_name || vendor.name,
-        category: displayCategory,
-        location: location?.city || "Unknown",
-        price: vendor.price_range || "$$",
-        rating: stats.averageRating || vendor.rating || 0,
-        reviews: stats.reviewCount || vendor.reviews || 0,
-        image: vendor.cover_image || vendor.logo || vendor.image || vendorPhoto,
-        slug: vendor.slug,
-        featured: vendor.tier === "premium" || vendor.tier === "pro",
-        fastResponse: (stats.inquiryCount || 0) > 10,
-      };
-    });
-  };
-
-  // Helper function to transform collection vendor data
-  const transformCollectionVendors = (vendors: any[]): any[] => {
-    return vendors.map((vendor) => ({
-      id: vendor.id,
-      name: vendor.name,
-      category: vendor.category,
-      location: vendor.location,
-      rating: vendor.rating || 0,
-      reviews: vendor.reviews || 0,
-      image: vendor.image || vendorPhoto,
-      slug: vendor.slug,
-    }));
-  };
 
   const [activeLocation, setActiveLocation] = useState("All");
   const [priceFilter, setPriceFilter] = useState("Any budget");
@@ -1172,10 +1171,13 @@ export default function VendorsPage() {
                   clipPath: "polygon(8% 0, 100% 0, 100% 100%, 0 100%)",
                 }}
               >
-                <img
-                  src={resolveAssetSrc(heroMain)}
+                <Image
+                  src={heroMain}
                   alt="Elegant wedding venue"
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
+                  priority
+                  sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-background/30 via-transparent to-transparent" />
               </div>
@@ -1224,10 +1226,13 @@ export default function VendorsPage() {
                           isActive ? "border-primary" : "border-border"
                         }`}
                       >
-                        <img
-                          src={resolveAssetSrc(category.image)}
+                        <Image
+                          src={category.image}
                           alt={category.label}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          fill
+                          className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
+                          loading="lazy"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-background/50 via-transparent to-transparent" />
                       </div>
@@ -1274,14 +1279,17 @@ export default function VendorsPage() {
                   return (
                   <div key={promo.id}>
                     <Link
-                      href={`/vendors/${promo.slug || generateSlug(promo.name)}`}
+                      href={promo.slug ? `/vendors/${promo.slug}` : "/vendors/all"}
                       className="promo-card group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
                     >
                       <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
-                        <img
+                        <Image
                           src={getImageSrc(promo.image)}
                           alt={promo.name}
-                          className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
+                          fill
+                          className="object-cover transition-transform duration-300 group-hover/image:scale-105"
+                          sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                          loading="lazy"
                         />
                         <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-amber-500 text-background text-[0.6rem] font-semibold">
                           <BadgeIcon className="w-2.5 h-2.5" />
@@ -1438,14 +1446,17 @@ export default function VendorsPage() {
                 return (
                 <div key={vendor.id}>
                   <Link
-                    href={`/vendors/${generateSlug(vendor.name)}`}
+                    href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"}
                     className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
                   >
                     <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
-                      <img
+                      <Image
                         src={getImageSrc(vendor.image)}
                         alt={vendor.name}
-                        className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
+                        fill
+                        className="object-cover transition-transform duration-300 group-hover/image:scale-105"
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                        loading="lazy"
                       />
                       <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-blue-500 text-background text-[0.6rem] font-semibold">
                         <BadgeIcon className="w-2.5 h-2.5" />
@@ -1597,9 +1608,9 @@ export default function VendorsPage() {
                 const BadgeIcon = getBadgeIcon("Trending");
                 return (
                 <div key={vendor.id}>
-                  <Link href={`/vendors/${generateSlug(vendor.name)}`} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
+                  <Link href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
                     <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
-                      <img src={resolveAssetSrc(vendor.image)} alt={vendor.name} className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105" />
+                      <Image src={typeof vendor.image === "string" ? vendor.image : resolveAssetSrc(vendor.image)} alt={vendor.name} fill className="object-cover transition-transform duration-300 group-hover/image:scale-105" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw" loading="lazy" />
                       <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-purple-500 text-background text-[0.6rem] font-semibold">
                         <BadgeIcon className="w-2.5 h-2.5" />
                         Trending
@@ -1748,9 +1759,9 @@ export default function VendorsPage() {
                 const BadgeIcon = getBadgeIcon("Great value");
                 return (
                 <div key={vendor.id}>
-                  <Link href={`/vendors/${generateSlug(vendor.name)}`} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
+                  <Link href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
                     <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
-                      <img src={resolveAssetSrc(vendor.image)} alt={vendor.name} className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105" />
+                      <Image src={typeof vendor.image === "string" ? vendor.image : resolveAssetSrc(vendor.image)} alt={vendor.name} fill className="object-cover transition-transform duration-300 group-hover/image:scale-105" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw" loading="lazy" />
                       <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-emerald-500 text-background text-[0.6rem] font-semibold">
                         <BadgeIcon className="w-2.5 h-2.5" />
                         Great value
@@ -1899,9 +1910,9 @@ export default function VendorsPage() {
                 const BadgeIcon = getBadgeIcon("Fast reply");
                 return (
                 <div key={vendor.id}>
-                  <Link href={`/vendors/${generateSlug(vendor.name)}`} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
+                  <Link href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
                     <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
-                      <img src={resolveAssetSrc(vendor.image)} alt={vendor.name} className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105" />
+                      <Image src={typeof vendor.image === "string" ? vendor.image : resolveAssetSrc(vendor.image)} alt={vendor.name} fill className="object-cover transition-transform duration-300 group-hover/image:scale-105" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw" loading="lazy" />
                       <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-orange-500 text-background text-[0.6rem] font-semibold">
                         <BadgeIcon className="w-2.5 h-2.5" />
                         Fast reply
@@ -2050,9 +2061,9 @@ export default function VendorsPage() {
                 const BadgeIcon = getBadgeIcon("Featured");
                 return (
                 <div key={vendor.id}>
-                  <Link href={`/vendors/${generateSlug(vendor.name)}`} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
+                  <Link href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"} className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block">
                     <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
-                      <img src={resolveAssetSrc(vendor.image)} alt={vendor.name} className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105" />
+                      <Image src={typeof vendor.image === "string" ? vendor.image : resolveAssetSrc(vendor.image)} alt={vendor.name} fill className="object-cover transition-transform duration-300 group-hover/image:scale-105" sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw" loading="lazy" />
                       <div className="absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 bg-indigo-500 text-background text-[0.6rem] font-semibold">
                         <BadgeIcon className="w-2.5 h-2.5" />
                         Featured

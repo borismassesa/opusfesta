@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import {
   ArrowRight,
   Bookmark,
@@ -52,13 +53,6 @@ type CollectionConfig = {
   badgeLabel: string;
   badgeClassName: string;
   items: VendorCollectionItem[];
-};
-
-const generateSlug = (name: string): string => {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
 };
 
 const COLLECTIONS: Record<string, CollectionConfig> = {
@@ -252,7 +246,7 @@ export function VendorCollectionView({
       rating: stats.averageRating || 0,
       reviews: stats.reviewCount || 0,
       image: vendor.cover_image || vendor.logo || "",
-      slug: vendor.slug || generateSlug(vendor.business_name),
+      slug: vendor.slug ?? undefined,
     };
   };
 
@@ -548,15 +542,26 @@ export function VendorCollectionView({
                   return (
                     <div key={vendor.id}>
                       <Link
-                        href={`/vendors/${vendor.slug || generateSlug(vendor.name)}`}
+                        href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"}
                         className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
                       >
                         <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
-                          <img
-                            src={resolveAssetSrc(vendor.image)}
-                            alt={vendor.name}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
-                          />
+                          {vendor.image ? (
+                            <Image
+                              src={typeof vendor.image === "string" ? vendor.image : resolveAssetSrc(vendor.image)}
+                              alt={vendor.name}
+                              fill
+                              className="object-cover transition-transform duration-300 group-hover/image:scale-105"
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                              loading="lazy"
+                            />
+                          ) : (
+                            <div className="w-full h-full bg-surface flex items-center justify-center">
+                              <span className="text-4xl font-bold text-foreground">
+                                {vendor.name?.charAt(0)?.toUpperCase() ?? "V"}
+                              </span>
+                            </div>
+                          )}
                           <div
                             className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${collection.badgeClassName} text-background text-[0.6rem] font-semibold`}
                           >
