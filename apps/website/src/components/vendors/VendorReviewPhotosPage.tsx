@@ -41,7 +41,7 @@ export function VendorReviewPhotosPage({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const photoCount = reviewImages.length;
-  const backHref = `/vendors/${vendor.slug}#section-reviews`;
+  const backHref = vendor.slug ? `/vendors/${vendor.slug}#section-reviews` : "/vendors/all";
 
   // Create bento grid layout with varied sizes
   const bentoGrid = useMemo(() => {
@@ -155,7 +155,7 @@ export function VendorReviewPhotosPage({
             className="inline-flex items-center gap-2 text-sm text-secondary hover:text-primary transition-colors"
           >
             <ChevronLeft className="w-4 h-4" />
-            Back to {vendor.business_name}
+            {vendor.slug ? `Back to ${vendor.business_name}` : "Back to all vendors"}
           </Link>
 
           <div className="mt-6 flex flex-col gap-4">

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { Star, MapPin, ArrowRight, Eye } from "lucide-react";
 import { resolveAssetSrc } from "@/lib/assets";
 import { VendorSaveButton } from "./VendorSaveButton";
@@ -49,15 +50,18 @@ export function SimilarVendors({ vendors, title, subtitle }: SimilarVendorsProps
           return (
             <div key={vendor.id}>
               <Link 
-                href={`/vendors/${vendor.slug}`} 
+                href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"} 
                 className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
               >
                 <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
                   {coverImage ? (
-                    <img 
-                      src={resolveAssetSrc(coverImage)} 
-                      alt={vendor.business_name} 
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105" 
+                    <Image
+                      src={typeof coverImage === "string" ? coverImage : resolveAssetSrc(coverImage)}
+                      alt={vendor.business_name}
+                      fill
+                      className="object-cover transition-transform duration-300 group-hover/image:scale-105"
+                      sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                      loading="lazy"
                     />
                   ) : (
                     <div className="w-full h-full bg-surface flex items-center justify-center">

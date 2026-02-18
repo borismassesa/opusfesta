@@ -143,7 +143,9 @@ export async function GET(
         );
       }
 
-      return NextResponse.json(parsedEmptyResponse.data);
+      return NextResponse.json(parsedEmptyResponse.data, {
+        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      });
     }
 
     const totalPages = Math.ceil(total / limit);
@@ -190,7 +192,9 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(parsedResponse.data);
+    return NextResponse.json(parsedResponse.data, {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    });
   } catch (error) {
     console.error("Unexpected error in collection fetch:", error);
     return NextResponse.json(

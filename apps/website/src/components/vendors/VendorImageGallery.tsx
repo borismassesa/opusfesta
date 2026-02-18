@@ -238,7 +238,7 @@ export const VendorImageGallery = forwardRef<HTMLDivElement, VendorImageGalleryP
                     
                     {/* Show all button positioned at bottom-right - navigates to gallery page */}
                     <Link
-                      href={`/vendors/${vendor.slug}/gallery`}
+                      href={vendor.slug ? `/vendors/${vendor.slug}/gallery` : "/vendors/all"}
                       onClick={(e) => {
                         e.stopPropagation();
                       }}

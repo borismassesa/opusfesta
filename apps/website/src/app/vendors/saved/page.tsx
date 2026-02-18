@@ -246,7 +246,7 @@ export default function SavedVendorsPage() {
                     key={vendor.id}
                     className="bg-surface border border-border rounded-xl overflow-hidden hover:shadow-lg transition-shadow group"
                   >
-                    <Link href={`/vendors/${vendor.slug}`}>
+                    <Link href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"}>
                       <div className="relative aspect-4/3 overflow-hidden bg-surface">
                         <img
                           src={vendor.cover_image || resolveAssetSrc("/placeholder-vendor.jpg")}
@@ -272,7 +272,7 @@ export default function SavedVendorsPage() {
                       </div>
                     </Link>
                     <div className="p-4">
-                      <Link href={`/vendors/${vendor.slug}`}>
+                      <Link href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"}>
                         <h3 className="font-semibold text-lg text-primary mb-2 hover:underline line-clamp-1">
                           {vendor.business_name}
                         </h3>
@@ -296,7 +296,7 @@ export default function SavedVendorsPage() {
                           </span>
                         </div>
                         <Link
-                          href={`/vendors/${vendor.slug}`}
+                          href={vendor.slug ? `/vendors/${vendor.slug}` : "/vendors/all"}
                           className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:text-accent transition-colors"
                         >
                           View

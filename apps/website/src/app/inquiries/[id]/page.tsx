@@ -252,7 +252,7 @@ export default async function InquiryPage({ params }: PageProps) {
         {/* Vendor Link */}
         <div className="mt-6">
           <a
-            href={`/vendors/${inquiry.vendors.slug}`}
+            href={inquiry.vendors?.slug ? `/vendors/${inquiry.vendors.slug}` : "/vendors/all"}
             className="text-primary hover:underline text-sm"
           >
             ← Back to {inquiry.vendors.business_name}

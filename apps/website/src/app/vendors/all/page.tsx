@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useSearchParams } from "next/navigation";
 import {
   ArrowRight,
@@ -630,19 +631,19 @@ export default function AllVendorsPage() {
 
                   return (
                     <div key={vendor.id}>
-                      <Link
+                      {vendor.slug ? (
+                        <Link
                           href={`/vendors/${vendor.slug}`}
-                        className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
-                      >
-                        <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
-                          <img
-                              src={vendorImage}
-                              alt={vendorName}
-                            className="w-full h-full object-cover transition-transform duration-300 group-hover/image:scale-105"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).src =
-                                  "/placeholder-vendor.jpg";
-                              }}
+                          className="group rounded-lg overflow-visible hover:shadow-lg transition-shadow duration-200 block"
+                        >
+                          <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
+                          <Image
+                            src={vendorImage}
+                            alt={vendorName}
+                            fill
+                            className="object-cover transition-transform duration-300 group-hover/image:scale-105"
+                            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                            loading="lazy"
                           />
                             {badge && (
                             <div className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${badge.className} text-background text-[0.6rem] font-semibold`}>
@@ -663,7 +664,43 @@ export default function AllVendorsPage() {
                             </div>
                           </div>
                         </div>
-                      </Link>
+                        </Link>
+                      ) : (
+                        <div
+                          className="group rounded-lg overflow-visible block opacity-75 cursor-default"
+                          aria-disabled="true"
+                          role="presentation"
+                        >
+                          <div className="relative aspect-4/3 overflow-hidden rounded-lg bg-surface group/image">
+                            <Image
+                              src={vendorImage}
+                              alt={vendorName}
+                              fill
+                              className="object-cover transition-transform duration-300 group-hover/image:scale-105"
+                              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                              loading="lazy"
+                            />
+                            {badge && (
+                              <div className={`absolute top-2 left-2 inline-flex items-center gap-1 rounded px-1.5 py-0.5 ${badge.className} text-background text-[0.6rem] font-semibold`}>
+                                <BadgeIcon className="w-2.5 h-2.5" />
+                                {badge.label}
+                              </div>
+                            )}
+                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                              <div className="flex items-start justify-between gap-2 mb-1">
+                                <div className="flex-1">
+                                  <h4 className="text-background font-bold text-base line-clamp-2">
+                                    {vendor.category}
+                                  </h4>
+                                </div>
+                                <div className="flex items-center gap-2 shrink-0">
+                                  <VendorSaveButton vendorId={vendor.id} />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                       <div className="mt-2.5 relative">
                         <div className="flex items-center justify-between gap-2">
                           <div className="flex items-center gap-2">

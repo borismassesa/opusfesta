@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { VENDOR_COLUMNS } from "@/lib/vendor-columns";
 import type {
   VendorRecord,
   VendorPortfolioItem,
@@ -14,14 +15,13 @@ export type VendorAward = VendorAwardRecord;
 export async function getVendorBySlug(slug: string): Promise<Vendor | null> {
   const { data, error } = await supabase
     .from("vendors")
-    .select("*")
+    .select(VENDOR_COLUMNS)
     .eq("slug", slug)
     .single();
 
   if (error || !data) {
     return null;
   }
-
   return data as Vendor;
 }
 
@@ -83,7 +83,7 @@ export async function getSimilarVendors(
 ): Promise<Vendor[]> {
   const { data, error } = await supabase
     .from("vendors")
-    .select("*")
+    .select(VENDOR_COLUMNS)
     .eq("category", category)
     .eq("verified", true)
     .neq("id", excludeId)
