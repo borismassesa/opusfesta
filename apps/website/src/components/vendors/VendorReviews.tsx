@@ -82,7 +82,7 @@ export function VendorReviews({ vendor, reviews }: VendorReviewsProps) {
     photoIndexByKey.set(`${item.reviewId}:${item.url}`, index);
   });
   const getPhotoHref = (index: number) =>
-    `${reviewGalleryHref}?photo=${index}`;
+    vendor.slug ? `${reviewGalleryHref}?photo=${index}` : reviewGalleryHref;
 
   const toggleReviewExpanded = (reviewId: string) => {
     const newExpanded = new Set(expandedReviews);

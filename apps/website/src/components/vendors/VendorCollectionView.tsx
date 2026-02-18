@@ -382,7 +382,7 @@ export function VendorCollectionView({
 
   if (!collection) {
     return (
-      <div className="min-h-screen bg-background text-primary">
+      <div className="min-h-screen bg-background text-foreground">
         <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
         <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
         <main className="pt-24 px-6 lg:px-12 xl:px-12 2xl:px-16">
@@ -406,7 +406,7 @@ export function VendorCollectionView({
   }
 
   return (
-    <div className="bg-background text-primary min-h-screen overflow-hidden">
+    <div className="bg-background text-foreground min-h-screen overflow-hidden">
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
@@ -636,27 +636,31 @@ export function VendorCollectionView({
                                     </div>
                                   </div>
                                   <div className="grid grid-cols-3 gap-2">
-                                    <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
-                                      <img
-                                        src={resolveAssetSrc(vendor.image)}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                    <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
-                                      <img
-                                        src={resolveAssetSrc(vendor.image)}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
-                                    <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
-                                      <img
-                                        src={resolveAssetSrc(vendor.image)}
-                                        alt=""
-                                        className="w-full h-full object-cover"
-                                      />
-                                    </div>
+                                    {vendor.image && (
+                                      <>
+                                        <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
+                                          <img
+                                            src={resolveAssetSrc(vendor.image)}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </div>
+                                        <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
+                                          <img
+                                            src={resolveAssetSrc(vendor.image)}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </div>
+                                        <div className="aspect-4/3 overflow-hidden rounded-lg bg-surface">
+                                          <img
+                                            src={resolveAssetSrc(vendor.image)}
+                                            alt=""
+                                            className="w-full h-full object-cover"
+                                          />
+                                        </div>
+                                      </>
+                                    )}
                                   </div>
                                 </div>
                                 <div

@@ -180,7 +180,9 @@ export async function GET() {
       isMissingRpcFunctionError(categoryCountsResult.error)
     ) {
       const fallbackStats = await getFallbackStatistics();
-      return NextResponse.json(ensureStatisticsContract(fallbackStats));
+      return NextResponse.json(ensureStatisticsContract(fallbackStats), {
+        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      });
     }
 
     if (statsResult.error) {
@@ -192,7 +194,9 @@ export async function GET() {
     }
 
     if (!statsResult.data || statsResult.data.length === 0) {
-      return NextResponse.json(defaultStatistics());
+      return NextResponse.json(defaultStatistics(), {
+        headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+      });
     }
 
     const stats = statsResult.data[0];
@@ -226,6 +230,8 @@ export async function GET() {
     );
   } catch (error) {
     console.error("Error in statistics API:", error);
-    return NextResponse.json(defaultStatistics());
+    return NextResponse.json(defaultStatistics(), {
+      headers: { "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300" },
+    });
   }
 }

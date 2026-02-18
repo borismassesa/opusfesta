@@ -5,18 +5,7 @@ import {
   type VendorSearchResponse,
 } from "@opusfesta/lib";
 import { getAuthenticatedUser } from "@/lib/api-auth";
-
-// Helper function to truncate text
-function truncateText(text: string | null, maxLength: number = 100): string | null {
-  if (!text) return null;
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + "...";
-}
-
-function toFiniteNumber(value: unknown, fallback = 0): number {
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : fallback;
-}
+import { toFiniteNumber, truncateText } from "@/lib/vendor-utils";
 
 function normalizeStats(stats: unknown): {
   viewCount: number;
@@ -50,13 +39,8 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "20", 10);
 
     // Check if user is authenticated (optional - route works without auth too).
-    // Auth can throw in some contexts; treat failure as guest.
-    let user = null;
-    try {
-      user = await getAuthenticatedUser();
-    } catch (authError) {
-      console.warn("Non-fatal auth lookup failure in vendor search route:", authError);
-    }
+    // getAuthenticatedUser never throws; it returns null on any auth failure.
+    const user = await getAuthenticatedUser();
     const isAuthenticated = !!user;
 
     // Validate pagination
@@ -142,9 +126,16 @@ export async function GET(request: NextRequest) {
         cover_image: row.cover_image != null ? String(row.cover_image) : null,
         logo: row.logo != null ? String(row.logo) : null,
         created_at: (() => {
-          if (row.created_at == null) return new Date().toISOString();
+          if (row.created_at == null) {
+            console.warn(`Vendor search: missing created_at for row id=${row.id}`);
+            return null;
+          }
           const date = new Date(row.created_at as string | number | Date);
-          return Number.isFinite(date.getTime()) ? date.toISOString() : new Date().toISOString();
+          if (!Number.isFinite(date.getTime())) {
+            console.warn(`Vendor search: invalid created_at "${row.created_at}" for row id=${row.id}`);
+            return null;
+          }
+          return date.toISOString();
         })(),
       };
 
@@ -191,7 +182,10 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(parsedResponse.data, {
       headers: {
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        // Authenticated responses contain full vendor bios; never cache publicly.
+        "Cache-Control": isAuthenticated
+          ? "private, no-store"
+          : "public, s-maxage=60, stale-while-revalidate=300",
         "Vary": "Cookie, Authorization",
       },
     });
