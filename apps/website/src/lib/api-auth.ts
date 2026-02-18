@@ -43,14 +43,17 @@ function getSupabaseAdmin() {
  * @returns The authenticated user info, or null if not authenticated
  */
 export async function getAuthenticatedUser(): Promise<AuthenticatedUser | null> {
+  // Initialize Supabase outside the try-catch so configuration errors (missing
+  // env vars) propagate as real errors instead of being silently swallowed as
+  // auth failures.
+  const supabaseAdmin = getSupabaseAdmin();
+
   try {
     const { userId: clerkUserId } = await auth();
 
     if (!clerkUserId) {
       return null;
     }
-
-    const supabaseAdmin = getSupabaseAdmin();
 
     const { data: dbUser, error } = await supabaseAdmin
       .from("users")
