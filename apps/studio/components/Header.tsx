@@ -11,6 +11,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
         <div className="flex items-center justify-between h-20">
           <button
             onClick={onMenuToggle}
+            aria-label="Menu"
             className="flex items-center gap-2 sm:gap-3 text-xs font-bold uppercase tracking-widest text-brand-dark hover:text-brand-accent transition-all duration-200 px-2 sm:px-3 py-2 border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1"
           >
             <svg
@@ -37,7 +38,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           </a>
 
           <div className="flex items-center gap-2 sm:gap-6">
-            <button className="text-brand-dark hover:text-brand-accent transition-all duration-200 p-2 border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+            <button aria-label="Search" className="text-brand-dark hover:text-brand-accent transition-all duration-200 p-2 border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="20"
