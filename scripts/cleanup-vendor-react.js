@@ -2,16 +2,16 @@ const fs = require('fs');
 const path = require('path');
 
 const rootDir = path.resolve(__dirname, '..');
-const vendorNodeModules = path.join(rootDir, 'apps', 'vendor-portal', 'node_modules');
 
-const targets = [
-  path.join(vendorNodeModules, 'react'),
-  path.join(vendorNodeModules, 'react-dom'),
-  path.join(vendorNodeModules, 'scheduler'),
-];
+const appDirs = ['vendor-portal', 'studio'];
+const packages = ['react', 'react-dom', 'scheduler'];
 
-for (const target of targets) {
-  if (fs.existsSync(target)) {
-    fs.rmSync(target, { recursive: true, force: true });
+for (const app of appDirs) {
+  const nodeModules = path.join(rootDir, 'apps', app, 'node_modules');
+  for (const pkg of packages) {
+    const target = path.join(nodeModules, pkg);
+    if (fs.existsSync(target)) {
+      fs.rmSync(target, { recursive: true, force: true });
+    }
   }
 }
