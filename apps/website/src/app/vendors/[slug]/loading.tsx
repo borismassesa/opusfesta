@@ -1,6 +1,6 @@
 export default function VendorLoading() {
   return (
-    <div className="bg-background text-primary min-h-screen">
+    <div className="bg-background text-foreground min-h-screen">
       <div className="max-w-[1280px] mx-auto px-6 lg:px-12">
         {/* Hero Skeleton */}
         <div className="pt-20 pb-8">

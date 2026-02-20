@@ -143,6 +143,9 @@ export function SimilarVendors({ vendors, title, subtitle }: SimilarVendorsProps
                                   <img
                                     src={resolveAssetSrc(coverImage)}
                                     alt=""
+                                    width={120}
+                                    height={90}
+                                    loading="lazy"
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
@@ -150,6 +153,9 @@ export function SimilarVendors({ vendors, title, subtitle }: SimilarVendorsProps
                                   <img
                                     src={resolveAssetSrc(coverImage)}
                                     alt=""
+                                    width={120}
+                                    height={90}
+                                    loading="lazy"
                                     className="w-full h-full object-cover"
                                   />
                                 </div>
@@ -157,6 +163,9 @@ export function SimilarVendors({ vendors, title, subtitle }: SimilarVendorsProps
                                   <img
                                     src={resolveAssetSrc(coverImage)}
                                     alt=""
+                                    width={120}
+                                    height={90}
+                                    loading="lazy"
                                     className="w-full h-full object-cover"
                                   />
                                 </div>

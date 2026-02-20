@@ -23,6 +23,7 @@
     "db:push": "turbo db:push",
     "db:migrate": "turbo db:migrate",
     "db:studio": "turbo db:studio",
+    "db:run:sql": "node scripts/run-sql-migration.js",
     "cleanup:duplicates": "tsx scripts/cleanup-duplicate-users.ts",
     "cleanup:duplicates:dry-run": "tsx scripts/cleanup-duplicate-users.ts --dry-run",
     "cleanup:vendor-duplicates": "tsx scripts/cleanup-duplicate-vendors.ts",
@@ -59,6 +60,10 @@
       "react-dom": "18.3.1"
     },
     "@opusfesta/customersupport": {
+      "react": "18.3.1",
+      "react-dom": "18.3.1"
+    },
+    "opusfesta-studio": {
       "react": "18.3.1",
       "react-dom": "18.3.1"
     }

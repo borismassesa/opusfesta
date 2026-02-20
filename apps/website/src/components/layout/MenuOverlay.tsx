@@ -17,7 +17,7 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
   const linksRef = useRef<HTMLDivElement>(null);
 
   const NAV_LINKS = [
-    { name: t('nav.planning'), href: "/planning" },
+    { name: t('nav.planning'), href: "/planning-tools" },
     { name: t('nav.vendors'), href: "/vendors" },
     { name: t('nav.guests'), href: "/guests" },
     { name: t('nav.websites'), href: "/websites" },
@@ -71,7 +71,7 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
       {/* Close Button Area (invisible hit area or handled by Navbar button z-index) */}
       <button
         onClick={onClose}
-        className="absolute top-6 right-6 p-4 text-primary hover:opacity-70 transition-opacity lg:hidden"
+        className="absolute top-6 right-6 p-4 text-foreground hover:text-primary transition-colors xl:hidden"
         aria-label="Close Menu"
       >
         <span className="sr-only">Close</span>
@@ -84,53 +84,57 @@ export function MenuOverlay({ isOpen, onClose }: { isOpen: boolean; onClose: () 
             key={item.href}
             href={item.href}
             onClick={onClose}
-            className="menu-link text-3xl md:text-5xl font-bold tracking-tight text-secondary hover:text-primary transition-colors"
+            className="menu-link text-3xl md:text-5xl font-bold tracking-tight text-foreground hover:text-primary transition-colors"
           >
             {item.name}
           </Link>
         ))}
 
-        <div className="h-px w-20 bg-border mx-auto my-4"></div>
+        <div className="mx-auto my-4 h-px w-20 bg-border" />
 
-        <div className="flex flex-col gap-3">
+        <div className="mx-auto w-full max-w-sm rounded-2xl border border-border/70 bg-background/65 p-3 shadow-sm backdrop-blur">
           {isAuthenticated ? (
-            <>
+            <div className="flex flex-col gap-2">
+              <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-secondary/80">
+                Your Account
+              </p>
               <Link
                 href="/my-inquiries"
                 onClick={onClose}
-                className="text-lg font-medium text-primary"
+                className="inline-flex w-full items-center justify-center rounded-xl border border-border/70 bg-background px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-primary/5"
               >
                 My Inquiries
               </Link>
               <Link
                 href="/careers/my-applications"
                 onClick={onClose}
-                className="text-lg font-medium text-primary"
+                className="inline-flex w-full items-center justify-center rounded-xl border border-border/70 bg-background px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-primary/5"
               >
                 My Applications
               </Link>
-            </>
-          ) : isCheckingAuth ? (
-            <div className="text-lg font-medium text-muted-foreground">
-              Loading...
             </div>
+          ) : isCheckingAuth ? (
+            <p className="py-3 text-center text-base font-medium text-muted-foreground">Loading...</p>
           ) : (
-            <>
+            <div className="flex flex-col gap-2">
+              <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-secondary/80">
+                Welcome
+              </p>
               <Link
                 href="/login"
                 onClick={onClose}
-                className="text-lg font-medium text-primary"
+                className="inline-flex w-full items-center justify-center rounded-xl border border-border/70 bg-background px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-primary/5"
               >
                 {t("nav.login")}
               </Link>
               <Link
                 href="/signup"
                 onClick={onClose}
-                className="text-lg font-medium bg-primary text-background px-6 py-2 rounded-full hover:bg-primary/90 transition-colors"
+                className="inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3.5 text-base font-semibold text-background shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:bg-primary/90"
               >
                 {t("nav.getStarted")}
               </Link>
-            </>
+            </div>
           )}
         </div>
       </div>

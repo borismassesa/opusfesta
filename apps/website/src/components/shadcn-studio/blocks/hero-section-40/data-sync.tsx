@@ -1,6 +1,16 @@
 'use client'
 
-import { ChartPieIcon, Clock8Icon, FileChartPieIcon, LoaderIcon, ThumbsUpIcon } from 'lucide-react'
+import {
+  BookmarkIcon,
+  Clock8Icon,
+  FolderIcon,
+  ImageIcon,
+  ListChecksIcon,
+  LoaderIcon,
+  Share2Icon,
+  SparklesIcon,
+  ThumbsUpIcon
+} from 'lucide-react'
 import { motion } from 'motion/react'
 
 import { Badge } from '@/components/ui/badge'
@@ -13,20 +23,17 @@ const DataSync = () => {
     <div className='flex max-md:flex-col max-md:space-y-8 md:items-start'>
       <WorkflowItem
         type='input'
-        icon={<ChartPieIcon />}
-        title='Saved Looks'
-        description='Collect outfits, decor, and palettes you love.'
+        icon={<BookmarkIcon />}
+        title='Favorites Captured'
+        description='Save venues, looks, florals, and vendors you love.'
         time='0.4 sec'
+        hasMenu={false}
         className='relative md:mt-10.5 md:mr-11.25 md:w-70'
       >
         <div className='bg-muted rounded-lg px-2.5 py-3'>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-44.png'
-              alt='Style pins'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Style pins</span>
+            <ImageIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Inspiration board updated</span>
           </div>
         </div>
 
@@ -90,20 +97,17 @@ const DataSync = () => {
 
       <WorkflowItem
         type='action'
-        icon={<FileChartPieIcon />}
-        title='Collection Match'
+        icon={<SparklesIcon />}
+        title='Collection Matching Engine'
         time='16 sec'
         delay={1.2}
+        hasMenu={false}
         className='relative md:mt-56 md:mr-3.5'
       >
         <div className='bg-muted rounded-lg px-2.5 py-3'>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-44.png'
-              alt='Collection board'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>The Engagement Era Collection</span>
+            <FolderIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Signature Mood Collection</span>
           </div>
         </div>
         <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
@@ -112,11 +116,13 @@ const DataSync = () => {
               variant='outline'
               className='bg-muted/60 text-muted-foreground rounded-full border-0 px-2.5 py-0.5 text-xs font-medium'
             >
-              Curating selections...
+              Curating your shortlist...
             </Badge>
             <LoaderIcon className='size-4' />
           </div>
-          <p className='text-muted-foreground text-sm'>Matching styles to your palette, venue, and budget.</p>
+          <p className='text-muted-foreground text-sm'>
+            Matching selections to your style profile, venue details, and budget targets.
+          </p>
         </div>
 
         {/* Arrow for large screens */}
@@ -181,20 +187,17 @@ const DataSync = () => {
         <WorkflowItem
           type='pending'
           icon={<Clock8Icon />}
-          title='Curator Review'
-          description='Confirm favorites before finalizing the set.'
+          title='Planner Review'
+          description='Review and approve the shortlist before final lock.'
           time='24 min'
           delay={2.4}
+          hasMenu={false}
           className='relative md:w-70'
         >
           <div className='bg-muted rounded-lg px-2.5 py-3'>
             <div className='flex items-center gap-2'>
-              <img
-                src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-44.png'
-                alt='Shortlist'
-                className='size-4.5'
-              />
-              <span className='text-muted-foreground text-sm'>Shortlist ready</span>
+              <ListChecksIcon className='text-muted-foreground size-4.5' />
+              <span className='text-muted-foreground text-sm'>Shortlist ready for approval</span>
             </div>
           </div>
 
@@ -260,19 +263,16 @@ const DataSync = () => {
           type='output'
           icon={<ThumbsUpIcon />}
           title='Collection Ready'
-          description='Your Engagement Era Collection is organized and shareable.'
+          description='Your curated wedding collection is organized and shareable.'
           time='4.1 sec'
           delay={3.6}
+          hasMenu={false}
           className='md:ml-41 md:w-72.5'
         >
           <div className='bg-muted rounded-lg px-2.5 py-3'>
             <div className='flex items-center gap-2'>
-              <img
-                src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-44.png'
-                alt='Collection saved'
-                className='size-4.5'
-              />
-              <span className='text-muted-foreground text-sm'>Collection saved</span>
+              <Share2Icon className='text-muted-foreground size-4.5' />
+              <span className='text-muted-foreground text-sm'>Collection shared with partner</span>
             </div>
           </div>
         </WorkflowItem>

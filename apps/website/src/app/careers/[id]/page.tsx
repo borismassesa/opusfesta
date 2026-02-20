@@ -107,7 +107,7 @@ export default function JobDescriptionPage({
   return (
     <Suspense
       fallback={
-        <div className="bg-background text-primary min-h-screen flex items-center justify-center">
+        <div className="bg-background text-foreground min-h-screen flex items-center justify-center">
           <div className="text-muted-foreground">Loading job details...</div>
         </div>
       }

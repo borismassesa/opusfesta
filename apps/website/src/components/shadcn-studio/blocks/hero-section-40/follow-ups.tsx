@@ -1,6 +1,6 @@
 'use client'
 
-import { BellRingIcon, LoaderIcon, MessageSquareTextIcon, ScanEyeIcon } from 'lucide-react'
+import { BookmarkIcon, ImageIcon, LoaderIcon, PaletteIcon, SparklesIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 
@@ -13,10 +13,11 @@ const FollowUps = () => {
     <div className='flex max-md:flex-col max-md:space-y-8 md:items-center md:space-x-16'>
       <WorkflowItem
         type='input'
-        icon={<BellRingIcon />}
+        icon={<PaletteIcon />}
         title='Style Quiz Started'
-        description='Answer a few quick questions about your vibe and venue.'
+        description='Answer quick prompts about your venue, vibe, and must-have details.'
         time='0.4 sec'
+        hasMenu={false}
         className='relative'
       >
         {/* Arrow for large screens */}
@@ -28,28 +29,21 @@ const FollowUps = () => {
 
       <WorkflowItem
         type='action'
-        icon={<ScanEyeIcon />}
-        title='Preference Analysis'
+        icon={<SparklesIcon />}
+        title='Style Signal Analysis'
         time='1.6 sec'
         delay={1.2}
+        hasMenu={false}
         className='relative'
       >
         <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-45.png'
-              alt='Moodboard'
-              className='size-4.5 dark:invert'
-            />
-            <span className='text-muted-foreground text-sm'>Moodboard cues</span>
+            <ImageIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Moodboard inspirations</span>
           </div>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-48.png'
-              alt='Saved looks'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Saved looks and pins</span>
+            <BookmarkIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Saved outfits and decor pins</span>
           </div>
         </div>
         <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
@@ -58,12 +52,12 @@ const FollowUps = () => {
               variant='outline'
               className='bg-muted/60 text-muted-foreground rounded-full border-0 px-2.5 py-0.5 text-xs font-medium'
             >
-              Generating profile...
+              Generating style profile...
             </Badge>
             <LoaderIcon className='size-4' />
           </div>
           <p className='text-muted-foreground text-sm'>
-            We translate your answers into a clear style direction and palette.
+            Converts your answers into a clear palette, mood direction, and vendor-fit guidance.
           </p>
         </div>
 
@@ -76,20 +70,17 @@ const FollowUps = () => {
 
       <WorkflowItem
         type='output'
-        icon={<MessageSquareTextIcon />}
-        title='Style Profile Ready'
-        description='Your personalized style summary is ready to use.'
+        icon={<PaletteIcon />}
+        title='Style Direction Ready'
+        description='Your personalized aesthetic brief is ready to share and apply.'
         time='0.3 sec'
         delay={2.4}
+        hasMenu={false}
       >
         <div className='bg-muted rounded-lg px-2.5 py-3'>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-48.png'
-              alt='Style profile'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Profile saved</span>
+            <PaletteIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Mood direction saved</span>
           </div>
         </div>
       </WorkflowItem>

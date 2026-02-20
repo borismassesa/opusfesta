@@ -6,6 +6,7 @@ import {
 } from "@opusfesta/lib";
 import { getAuthenticatedUser } from "@/lib/api-auth";
 import { VENDOR_COLUMNS } from "@/lib/vendor-columns";
+import { toFiniteNumber, truncateText } from "@/lib/vendor-utils";
 
 // Get Supabase admin client for database queries
 function getSupabaseAdmin() {
@@ -25,26 +26,15 @@ function getSupabaseAdmin() {
   );
 }
 
-// Helper function to truncate text
-function truncateText(text: string | null, maxLength: number = 100): string | null {
-  if (!text) return null;
-  if (text.length <= maxLength) return text;
-  return text.substring(0, maxLength) + "...";
-}
-
-function toFiniteNumber(value: unknown, fallback = 0): number {
-  const numericValue = Number(value);
-  return Number.isFinite(numericValue) ? numericValue : fallback;
-}
-
-function normalizeVendorForBySlug(vendor: Record<string, any>, isTeaser: boolean) {
+// Shared field normalization for any vendor record. Used by both
+// normalizeVendorForBySlug and normalizeSimilarVendor to avoid duplication.
+function baseNormalizeVendor(vendor: Record<string, any>) {
   const statsSource =
     vendor.stats && typeof vendor.stats === "object" ? vendor.stats : {};
   const location =
     vendor.location && typeof vendor.location === "object" ? vendor.location : {};
 
   return {
-    ...vendor,
     id: typeof vendor.id === "string" ? vendor.id : "",
     slug: typeof vendor.slug === "string" ? vendor.slug : "",
     business_name:
@@ -72,45 +62,19 @@ function normalizeVendorForBySlug(vendor: Record<string, any>, isTeaser: boolean
       typeof vendor.created_at === "string"
         ? vendor.created_at
         : new Date().toISOString(),
+  };
+}
+
+function normalizeVendorForBySlug(vendor: Record<string, any>, isTeaser: boolean) {
+  return {
+    ...vendor,
+    ...baseNormalizeVendor(vendor),
     isTeaser,
   };
 }
 
 function normalizeSimilarVendor(vendor: Record<string, any>) {
-  const statsSource =
-    vendor.stats && typeof vendor.stats === "object" ? vendor.stats : {};
-  const location =
-    vendor.location && typeof vendor.location === "object" ? vendor.location : {};
-
-  return {
-    id: typeof vendor.id === "string" ? vendor.id : "",
-    slug: typeof vendor.slug === "string" ? vendor.slug : "",
-    business_name:
-      typeof vendor.business_name === "string" ? vendor.business_name : "Vendor",
-    category: typeof vendor.category === "string" ? vendor.category : "Other",
-    location,
-    price_range:
-      typeof vendor.price_range === "string" ? vendor.price_range : null,
-    verified: Boolean(vendor.verified),
-    tier: typeof vendor.tier === "string" ? vendor.tier : "free",
-    stats: {
-      viewCount: toFiniteNumber(statsSource.viewCount),
-      inquiryCount: toFiniteNumber(statsSource.inquiryCount),
-      saveCount: toFiniteNumber(statsSource.saveCount),
-      averageRating: toFiniteNumber(statsSource.averageRating),
-      reviewCount: toFiniteNumber(statsSource.reviewCount),
-    },
-    cover_image:
-      typeof vendor.cover_image === "string" ? vendor.cover_image : null,
-    logo: typeof vendor.logo === "string" ? vendor.logo : null,
-    bio: typeof vendor.bio === "string" ? vendor.bio : null,
-    description:
-      typeof vendor.description === "string" ? vendor.description : null,
-    created_at:
-      typeof vendor.created_at === "string"
-        ? vendor.created_at
-        : new Date().toISOString(),
-  };
+  return baseNormalizeVendor(vendor);
 }
 
 // Track vendor view

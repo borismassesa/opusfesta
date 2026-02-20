@@ -42,7 +42,7 @@ export function CareersClient() {
   }, []);
 
   return (
-    <div className="bg-background text-primary min-h-screen selection:bg-accent/20 selection:text-primary overflow-hidden">
+    <div className="bg-background text-foreground min-h-screen selection:bg-accent/20 selection:text-primary overflow-hidden">
       <CareersNavbar />
       
       <main>

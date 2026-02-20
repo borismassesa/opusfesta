@@ -12,8 +12,10 @@
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
   --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-ring: var(--ring);
   --color-popover: var(--popover);
   --color-popover-foreground: var(--popover-foreground);
   --color-card: var(--card);
@@ -62,19 +64,21 @@
     /* Light Mode */
     --background: #ffffff;
     --foreground: #050505;
-    --surface: #f4f4f5;
-    --border: rgba(0, 0, 0, 0.08);
-    --primary: #050505;
+    --surface: #f7f3fb;
+    --border: rgba(91, 45, 142, 0.18);
+    --primary: #5B2D8E;
     --primary-foreground: #ffffff;
-    --secondary: #52525b;
-    --accent: #18181b;
-    --accent-foreground: #fafafa;
+    --secondary: #5f6470;
+    --secondary-foreground: #ffffff;
+    --accent: #C9A0DC;
+    --accent-foreground: #2f1d45;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
     --popover: #ffffff;
     --popover-foreground: #050505;
     --card: var(--background);
-    --muted-foreground: var(--secondary);
+    --muted-foreground: #5f6470;
+    --ring: #7B4FA2;
     --shadow-color: #000000;
     
     --grid-line: rgba(0, 0, 0, 0.06);
@@ -84,21 +88,23 @@
 
   .dark {
     /* Dark Mode (Original) */
-    --background: #050505;
-    --foreground: #ffffff;
-    --surface: #0A0A0A;
-    --border: rgba(255, 255, 255, 0.08);
-    --primary: #FFFFFF;
-    --primary-foreground: #050505;
-    --secondary: #888888;
-    --accent: #fafafa;
-    --accent-foreground: #18181b;
+    --background: #120a1c;
+    --foreground: #f7f1ff;
+    --surface: #1a1028;
+    --border: rgba(201, 160, 220, 0.24);
+    --primary: #C9A0DC;
+    --primary-foreground: #1a1028;
+    --secondary: #a1a1aa;
+    --secondary-foreground: #111111;
+    --accent: #7B4FA2;
+    --accent-foreground: #f7f1ff;
     --destructive: #f87171;
     --destructive-foreground: #050505;
     --popover: #050505;
     --popover-foreground: #ffffff;
     --card: var(--background);
-    --muted-foreground: var(--secondary);
+    --muted-foreground: #a1a1aa;
+    --ring: #C9A0DC;
     --shadow-color: #000000;
 
     --grid-line: rgba(255, 255, 255, 0.06);
@@ -107,46 +113,50 @@
   }
 
   .orion-theme {
-    --background: #f8f8f9;
-    --foreground: #111111;
-    --surface: #f2f2f3;
-    --border: rgba(0, 0, 0, 0.08);
-    --primary: #111111;
+    --background: #F8F9FA;
+    --foreground: #000000;
+    --surface: #F8F9FA;
+    --border: rgba(126, 115, 131, 0.28);
+    --primary: #6F3393;
     --primary-foreground: #ffffff;
-    --secondary: #6b7280;
-    --accent: #111111;
-    --accent-foreground: #fafafa;
+    --secondary: #591C7D;
+    --secondary-foreground: #ffffff;
+    --accent: #D0B1D4;
+    --accent-foreground: #000000;
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
     --popover: #ffffff;
-    --popover-foreground: #111111;
+    --popover-foreground: #000000;
     --card: #ffffff;
-    --muted-foreground: #6b7280;
+    --muted-foreground: #7E7383;
     --shadow-color: #000000;
+    --ring: #591C7D;
   }
 
   .dark .orion-theme {
-    --background: #0b0b0c;
-    --foreground: #f5f5f5;
-    --surface: #111114;
-    --border: rgba(255, 255, 255, 0.12);
-    --primary: #f5f5f5;
-    --primary-foreground: #0b0b0c;
-    --secondary: #a1a1aa;
-    --accent: #f5f5f5;
-    --accent-foreground: #111111;
+    --background: #16111D;
+    --foreground: #F8F9FA;
+    --surface: #20182A;
+    --border: rgba(208, 177, 212, 0.24);
+    --primary: #D0B1D4;
+    --primary-foreground: #140D1D;
+    --secondary: #A287AF;
+    --secondary-foreground: #140D1D;
+    --accent: #6F3393;
+    --accent-foreground: #F8F9FA;
     --destructive: #f87171;
     --destructive-foreground: #0b0b0c;
-    --popover: #0b0b0c;
-    --popover-foreground: #f5f5f5;
-    --card: #111114;
-    --muted-foreground: #a1a1aa;
+    --popover: #16111D;
+    --popover-foreground: #F8F9FA;
+    --card: #20182A;
+    --muted-foreground: #A287AF;
     --shadow-color: #000000;
+    --ring: #D0B1D4;
   }
 
   body {
     background-color: var(--background);
-    color: var(--primary);
+    color: var(--foreground);
     font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
@@ -250,11 +260,32 @@
     width: 1.875rem;
     height: 1.875rem;
   }
+  .h-25 {
+    height: 6.25rem;
+  }
+  .h-27 {
+    height: 6.75rem;
+  }
+  .rotate-15 {
+    rotate: 15deg;
+  }
+  .-rotate-30 {
+    rotate: -30deg;
+  }
+  .-rotate-40 {
+    rotate: -40deg;
+  }
   .h-5\.5 {
     height: 1.375rem;
   }
   .h-6\.5 {
     height: 1.625rem;
+  }
+  .h-39\.25 {
+    height: 9.8125rem;
+  }
+  .h-84 {
+    height: 21rem;
   }
   .h-7\.5 {
     height: 1.875rem;
@@ -274,8 +305,17 @@
   .w-70 {
     width: 17.5rem;
   }
+  .w-71\.5 {
+    width: 17.875rem;
+  }
   .w-72\.5 {
     width: 18.125rem;
+  }
+  .w-58 {
+    width: 14.5rem;
+  }
+  .w-27 {
+    width: 6.75rem;
   }
   .w-75 {
     width: 18.75rem;
@@ -288,6 +328,22 @@
   }
   .pt-7\.5 {
     padding-top: 1.875rem;
+  }
+  .px-2\.75 {
+    padding-left: 0.6875rem;
+    padding-right: 0.6875rem;
+  }
+  .px-4\.5 {
+    padding-left: 1.125rem;
+    padding-right: 1.125rem;
+  }
+  .px-5\.75 {
+    padding-left: 1.4375rem;
+    padding-right: 1.4375rem;
+  }
+  .py-4\.75 {
+    padding-top: 1.1875rem;
+    padding-bottom: 1.1875rem;
   }
   .pl-4\.5 {
     padding-left: 1.125rem;
@@ -319,6 +375,18 @@
   .gap-40\.5 {
     gap: 10.125rem;
   }
+  .gap-26\.5 {
+    gap: 6.625rem;
+  }
+  .min-h-25 {
+    min-height: 6.25rem;
+  }
+  .min-h-29 {
+    min-height: 7.25rem;
+  }
+  .left-15 {
+    left: 3.75rem;
+  }
   .bottom-19\.5 {
     bottom: 4.875rem;
   }
@@ -338,6 +406,35 @@
   }
   .z-2 {
     z-index: 2;
+  }
+  .size-9\.5 {
+    width: 2.375rem;
+    height: 2.375rem;
+  }
+  .size-13 {
+    width: 3.25rem;
+    height: 3.25rem;
+  }
+  .size-30 {
+    width: 7.5rem;
+    height: 7.5rem;
+  }
+  .size-45 {
+    width: 11.25rem;
+    height: 11.25rem;
+  }
+  .size-118 {
+    width: 29.5rem;
+    height: 29.5rem;
+  }
+  .rotate-10 {
+    rotate: 10deg;
+  }
+  .-rotate-5 {
+    rotate: -5deg;
+  }
+  .-rotate-10 {
+    rotate: -10deg;
   }
 }
 
@@ -391,4 +488,13 @@
 
 .animate-scroll-down {
   animation: scroll-down linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .planning-motion * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

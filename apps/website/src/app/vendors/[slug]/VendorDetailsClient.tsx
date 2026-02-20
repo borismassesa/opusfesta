@@ -63,8 +63,10 @@ export function VendorDetailsClient({
   const ratingSectionRef = useRef<HTMLDivElement>(null);
   const authGateRef = useRef<HTMLDivElement>(null);
 
-  // Load vendor data - PUBLIC, no authentication required initially
+  // Load vendor data - wait for auth to settle, then fetch once
   useEffect(() => {
+    if (!isAuthLoaded) return;
+
     async function loadVendor() {
       try {
         setIsLoading(true);
@@ -75,9 +77,11 @@ export function VendorDetailsClient({
 
         // Fetch vendor data from API (will return teaser or full based on auth)
         let token: string | null = null;
-        try {
-          token = await getToken();
-        } catch {}
+        if (isSignedIn) {
+          try {
+            token = await getToken();
+          } catch {}
+        }
 
         const headers: HeadersInit = {};
         if (token) {
@@ -153,7 +157,7 @@ export function VendorDetailsClient({
     }
 
     loadVendor();
-  }, [params, isAuthLoaded, isSignedIn]);
+  }, [params, isAuthLoaded]);
 
   const rating = vendor?.stats?.averageRating || 0;
   const reviewCount = Math.max(vendor?.stats?.reviewCount || 0, reviews.length);
@@ -305,6 +309,16 @@ export function VendorDetailsClient({
     }
   }, [vendor, isAuthenticated, hasShownAuthGate]);
 
+  // Declare handlers before early returns so they are always initialized.
+  const handleDelayedLoginContinue = () => {
+    setShowDelayedLoginPrompt(false);
+    router.push(`/login?next=${encodeURIComponent(`/vendors/${slug}`)}`);
+  };
+
+  const handleDelayedLoginDismiss = () => {
+    setShowDelayedLoginPrompt(false);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-background">
@@ -351,18 +365,9 @@ export function VendorDetailsClient({
     );
   }
 
-  const handleDelayedLoginContinue = () => {
-    setShowDelayedLoginPrompt(false);
-    router.push(`/login?next=${encodeURIComponent(`/vendors/${slug}`)}`);
-  };
-
-  const handleDelayedLoginDismiss = () => {
-    setShowDelayedLoginPrompt(false);
-  };
-
   // Vendor details
   return (
-    <div className="bg-background text-primary min-h-screen">
+    <div className="bg-background text-foreground min-h-screen">
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} sticky={false} />
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
