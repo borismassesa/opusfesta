@@ -133,7 +133,7 @@ export default async function AdviceIdeasSlugPage({ params }: { params: Promise<
   }
 
   return (
-    <div className="bg-background text-primary min-h-screen">
+    <div className="bg-background text-foreground min-h-screen">
       <Script
         id='advice-ideas-post-jsonld'
         type='application/ld+json'

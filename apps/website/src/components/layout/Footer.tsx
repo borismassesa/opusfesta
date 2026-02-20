@@ -47,7 +47,7 @@ export function Footer() {
           <div className="flex flex-col gap-6">
             <Link
               href="/"
-              className="font-serif text-2xl md:text-3xl text-primary hover:text-primary/80 transition-colors select-none inline-block"
+              className="font-serif text-2xl md:text-3xl text-foreground hover:text-primary transition-colors select-none inline-block"
               onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
             >
               OpusFesta
@@ -76,19 +76,19 @@ export function Footer() {
           <div className="md:hidden">
             <Accordion type="single" collapsible className="w-full">
               <AccordionItem value="platform" className="border-border/50">
-                <AccordionTrigger className="text-primary font-semibold text-sm uppercase tracking-wide">Platform</AccordionTrigger>
+                <AccordionTrigger className="text-foreground font-semibold text-sm uppercase tracking-wide">Platform</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col gap-3 pt-2">
                     <FooterLink href="/venues">Venue Marketplace</FooterLink>
                     <FooterLink href="/vendors">Find Vendors</FooterLink>
-                    <FooterLink href="/planning">Planning Tools</FooterLink>
+                    <FooterLink href="/planning-tools">Planning Tools</FooterLink>
                     <FooterLink href="/websites">Wedding Websites</FooterLink>
                     <FooterLink href="/invitations">Digital Invites</FooterLink>
                   </div>
                 </AccordionContent>
               </AccordionItem>
               <AccordionItem value="company" className="border-border/50">
-                <AccordionTrigger className="text-primary font-semibold text-sm uppercase tracking-wide">Company</AccordionTrigger>
+                <AccordionTrigger className="text-foreground font-semibold text-sm uppercase tracking-wide">Company</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col gap-3 pt-2">
                     <FooterLink href="/about">About Us</FooterLink>
@@ -104,11 +104,11 @@ export function Footer() {
 
           {/* Desktop Links Column 1 */}
           <div className="hidden md:flex flex-col gap-6">
-            <h4 className="font-semibold text-primary text-sm tracking-wide uppercase">Platform</h4>
+            <h4 className="font-semibold text-foreground text-sm tracking-wide uppercase">Platform</h4>
             <div className="flex flex-col gap-3">
               <FooterLink href="/venues">Venue Marketplace</FooterLink>
               <FooterLink href="/vendors">Find Vendors</FooterLink>
-              <FooterLink href="/planning">Planning Tools</FooterLink>
+              <FooterLink href="/planning-tools">Planning Tools</FooterLink>
               <FooterLink href="/websites">Wedding Websites</FooterLink>
               <FooterLink href="/invitations">Digital Invites</FooterLink>
             </div>
@@ -116,7 +116,7 @@ export function Footer() {
 
           {/* Desktop Links Column 2 */}
           <div className="hidden md:flex flex-col gap-6">
-            <h4 className="font-semibold text-primary text-sm tracking-wide uppercase">Company</h4>
+            <h4 className="font-semibold text-foreground text-sm tracking-wide uppercase">Company</h4>
             <div className="flex flex-col gap-3">
               <FooterLink href="/about">About Us</FooterLink>
               <FooterLink href="/careers">Careers</FooterLink>
@@ -128,7 +128,7 @@ export function Footer() {
 
           {/* Newsletter Column */}
           <div className="flex flex-col gap-6">
-            <h4 className="font-semibold text-primary text-sm tracking-wide uppercase">Stay Updated</h4>
+            <h4 className="font-semibold text-foreground text-sm tracking-wide uppercase">Stay Updated</h4>
             <p className="text-secondary text-sm leading-relaxed">
               Subscribe to our newsletter for the latest wedding trends and planning tips.
             </p>
@@ -155,7 +155,7 @@ export function Footer() {
             <FooterLink href="/privacy" className="text-xs">Privacy Policy</FooterLink>
             <FooterLink href="/terms" className="text-xs">Terms of Service</FooterLink>
             <FooterLink href="/cookies" className="text-xs">Cookie Settings</FooterLink>
-            <FooterLink href="/admin" className="text-xs text-primary/40 hover:text-primary">Admin</FooterLink>
+            <FooterLink href="/admin" className="text-xs text-foreground/40 hover:text-primary">Admin</FooterLink>
           </div>
         </div>
       </div>

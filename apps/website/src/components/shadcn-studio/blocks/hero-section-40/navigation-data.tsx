@@ -1,18 +1,22 @@
 import {
-  BrainCircuitIcon,
-  GitCompareArrowsIcon,
-  GitPullRequestDraftIcon,
-  HeadphonesIcon,
-  Trash2Icon,
-  UserIcon
+  CalendarDaysIcon,
+  GemIcon,
+  LayoutDashboardIcon,
+  ListChecksIcon,
+  PaletteIcon,
+  WalletIcon
 } from 'lucide-react'
 
 import type { Navigation } from '@/components/shadcn-studio/blocks/hero-section-40/hero-navigation'
 
 const defaultNavigationData: Navigation[] = [
   {
-    title: 'Features',
-    href: '#'
+    title: 'Home',
+    href: '/'
+  },
+  {
+    title: 'Planning Tools',
+    href: '/planning-tools'
   },
   {
     title: 'Use cases',
@@ -21,61 +25,61 @@ const defaultNavigationData: Navigation[] = [
     items: [
       {
         type: 'section',
-        title: 'Sales & Customer Operations',
+        title: 'For Couples',
         items: [
           {
-            title: 'Pipeline Management',
-            href: '#',
-            description: 'Track movement, update statuses, and flag stalled deals.',
-            icon: <GitPullRequestDraftIcon className='size-4' />
+            title: 'Planning Dashboard',
+            href: '/planning#planning-workspace',
+            description: 'See milestones, decisions, and next actions in one calm workspace.',
+            icon: <LayoutDashboardIcon className='size-4' />
           },
           {
-            title: 'Customer Onboarding',
-            href: '#',
-            description: 'Automate welcome emails, account setup, and key guidance.',
-            icon: <UserIcon className='size-4' />
+            title: 'Smart Checklist',
+            href: '/planning#planning-workspace',
+            description: 'Stay on schedule with dynamic tasks aligned to your wedding date.',
+            icon: <ListChecksIcon className='size-4' />
           },
           {
-            title: 'Support Escalations',
-            href: '#',
-            description: 'Detect urgency and route issues to the right team faster.',
-            icon: <HeadphonesIcon className='size-4' />
+            title: 'Budget Advisor',
+            href: '/planning#planning-workspace',
+            description: 'Track deposits, forecast spending, and avoid budget surprises.',
+            icon: <WalletIcon className='size-4' />
           }
         ]
       },
       {
         type: 'section',
-        title: 'Internal Productivity Workflows',
+        title: 'For Planning Clarity',
         items: [
           {
-            title: 'Knowledge Retrieval',
-            href: '#',
-            description: 'Ask AI and get instant answers from your tools/docs.',
-            icon: <BrainCircuitIcon className='size-4' />
+            title: 'Style Quiz',
+            href: '/planning#planning-workspace',
+            description: 'Turn your taste into practical guidance for decor and vendors.',
+            icon: <PaletteIcon className='size-4' />
           },
           {
-            title: 'Task Automation',
-            href: '#',
-            description: 'Convert messages into tasks and assign them automatically.',
-            icon: <GitCompareArrowsIcon className='size-4' />
+            title: 'Engagement Collection',
+            href: '/planning#planning-workspace',
+            description: 'Save favorites, compare options, and share decisions quickly.',
+            icon: <GemIcon className='size-4' />
           },
           {
-            title: 'Data Cleanup',
-            href: '#',
-            description: 'Auto-correct entries, remove duplicates, sync records.',
-            icon: <Trash2Icon className='size-4' />
+            title: 'Planning Timeline',
+            href: '/planning#planning-workspace',
+            description: 'Coordinate deadlines and keep your day-of execution stress-free.',
+            icon: <CalendarDaysIcon className='size-4' />
           }
         ]
       }
     ]
   },
   {
-    title: 'Testimonials',
-    href: '#'
+    title: 'Couples Stories',
+    href: '/#testimonials'
   },
   {
     title: 'Pricing',
-    href: '#'
+    href: '/#pricing'
   }
 ]
 

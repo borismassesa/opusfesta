@@ -1,6 +1,16 @@
 'use client'
 
-import { CheckIcon, FileIcon, MessageSquareTextIcon, PresentationIcon, SearchIcon } from 'lucide-react'
+import {
+  CheckIcon,
+  ClipboardListIcon,
+  FileIcon,
+  FileSignatureIcon,
+  MessageCircleIcon,
+  MessageSquareTextIcon,
+  PresentationIcon,
+  SearchIcon,
+  UsersIcon
+} from 'lucide-react'
 import { motion } from 'motion/react'
 
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +25,7 @@ const MeetingPrep = () => {
         type='input'
         icon={<PresentationIcon />}
         title='Upcoming Milestone'
-        description='Your next planning deadline is approaching.'
+        description='Final guest-count confirmation is coming up.'
         time='Due in 5 days'
         hasMenu={false}
         className='relative md:hidden'
@@ -37,31 +47,19 @@ const MeetingPrep = () => {
             variant='outline'
             className='bg-muted/60 text-muted-foreground rounded-full border-0 px-2.5 py-0.5 text-xs font-medium'
           >
-            Syncing details...
+            Syncing your workspace...
           </Badge>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-48.png'
-              alt='Vendor updates'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Latest vendor updates</span>
+            <MessageCircleIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Latest vendor replies</span>
           </div>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-43.png'
-              alt='Guest list'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Guest list changes</span>
+            <UsersIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Guest list updates</span>
           </div>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-42.png'
-              alt='Contracts'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Contracts & deposits</span>
+            <FileSignatureIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Contract and payment reminders</span>
           </div>
         </div>
 
@@ -128,7 +126,7 @@ const MeetingPrep = () => {
           type='input'
           icon={<PresentationIcon />}
           title='Upcoming Milestone'
-          description='Your next planning deadline is approaching.'
+          description='Final guest-count confirmation is coming up.'
           time='Due in 5 days'
           hasMenu={false}
           className='relative'
@@ -246,19 +244,15 @@ const MeetingPrep = () => {
           type='output'
           icon={<MessageSquareTextIcon />}
           title='Today’s Focus'
-          description='A concise list of what to do next.'
+          description='A focused brief of today’s highest-impact tasks.'
           time='0.8 sec'
           delay={2.4}
           className='relative z-2'
         >
           <div className='bg-muted rounded-lg px-2.5 py-3'>
             <div className='flex items-center gap-2'>
-              <img
-                src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-50.png'
-                alt='Planning brief'
-                className='size-4.5'
-              />
-              <span className='text-muted-foreground text-sm'>Shared with your team</span>
+              <ClipboardListIcon className='text-muted-foreground size-4.5' />
+              <span className='text-muted-foreground text-sm'>Shared with partner and planner</span>
             </div>
           </div>
         </WorkflowItem>
@@ -278,19 +272,19 @@ const MeetingPrep = () => {
             variant='outline'
             className='bg-muted/60 text-muted-foreground rounded-full border-0 px-2.5 py-0.5 text-xs font-medium'
           >
-            Building plan
+            Building priority plan
           </Badge>
           <div className='text-muted-foreground flex items-center gap-2'>
             <CheckIcon className='size-4' />
-            <span className='text-sm'>Top priorities</span>
+            <span className='text-sm'>Finalize high-impact tasks</span>
           </div>
           <div className='text-muted-foreground flex items-center gap-2'>
             <CheckIcon className='size-4' />
-            <span className='text-sm'>Open decisions</span>
+            <span className='text-sm'>Resolve open vendor decisions</span>
           </div>
           <div className='text-muted-foreground flex items-center gap-2'>
             <CheckIcon className='size-4' />
-            <span className='text-sm'>Suggested deadlines</span>
+            <span className='text-sm'>Confirm this week’s deadlines</span>
           </div>
         </div>
 
@@ -363,19 +357,19 @@ const MeetingPrep = () => {
             variant='outline'
             className='bg-muted/60 text-muted-foreground rounded-full border-0 px-2.5 py-0.5 text-xs font-medium'
           >
-            Building plan
+            Building priority plan
           </Badge>
           <div className='text-muted-foreground flex items-center gap-2'>
             <CheckIcon className='size-4' />
-            <span className='text-sm'>Top priorities</span>
+            <span className='text-sm'>Finalize high-impact tasks</span>
           </div>
           <div className='text-muted-foreground flex items-center gap-2'>
             <CheckIcon className='size-4' />
-            <span className='text-sm'>Open decisions</span>
+            <span className='text-sm'>Resolve open vendor decisions</span>
           </div>
           <div className='text-muted-foreground flex items-center gap-2'>
             <CheckIcon className='size-4' />
-            <span className='text-sm'>Suggested deadlines</span>
+            <span className='text-sm'>Confirm this week’s deadlines</span>
           </div>
         </div>
 
@@ -387,19 +381,15 @@ const MeetingPrep = () => {
         type='output'
         icon={<MessageSquareTextIcon />}
         title='Today’s Focus'
-        description='A concise list of what to do next.'
+        description='A focused brief of today’s highest-impact tasks.'
         time='0.8 sec'
         delay={3.7}
         className='md:hidden'
       >
         <div className='bg-muted rounded-lg px-2.5 py-3'>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-50.png'
-              alt='Planning brief'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Shared with your team</span>
+            <ClipboardListIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Shared with partner and planner</span>
           </div>
         </div>
       </WorkflowItem>
