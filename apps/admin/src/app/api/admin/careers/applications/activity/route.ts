@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
+interface ActivityLogEntry {
+  id: string;
+  application_id: string;
+  action_type: string;
+  action_details: Record<string, unknown> | null;
+  performed_by: string | null;
+  performed_at: string;
+  [key: string]: unknown;
+}
+
+interface ActivityUser {
+  id: string;
+  email: string;
+  full_name: string | null;
+}
+
 // Check if user is admin
 async function isAdmin(): Promise<boolean> {
   const { userId: clerkUserId } = await auth();
@@ -56,16 +72,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const typedActivities: ActivityLogEntry[] = (activities || []) as ActivityLogEntry[];
+
     // Deduplicate activities - filter out entries that are duplicates
     // Prefer entries with performed_by (user ID) over those without
-    if (activities && activities.length > 0) {
+    if (typedActivities.length > 0) {
       // Group activities by a key that includes application_id, action_type, and normalized action_details
-      const activityGroups = new Map<string, typeof activities>();
+      const activityGroups = new Map<string, ActivityLogEntry[]>();
       
-      for (const activity of activities) {
+      for (const activity of typedActivities) {
         // Normalize action_details for comparison (sort keys and stringify)
-        const normalizedDetails = activity.action_details 
-          ? JSON.stringify(activity.action_details, Object.keys(activity.action_details).sort())
+        const normalizedDetails = activity.action_details
+          ? JSON.stringify(
+              activity.action_details,
+              Object.keys(activity.action_details).sort()
+            )
           : '';
 
         // Create a key without timestamp to group similar activities
@@ -78,13 +99,13 @@ export async function GET(request: NextRequest) {
       }
 
       // For each group, keep only the best entry (prefer entries with performed_by, then most recent)
-      const deduplicatedActivities: typeof activities = [];
-      
-      for (const [, groupActivities] of activityGroups.entries()) {
+      const deduplicatedActivities: ActivityLogEntry[] = [];
+
+      activityGroups.forEach((groupActivities) => {
         // If only one entry in group, keep it
         if (groupActivities.length === 1) {
           deduplicatedActivities.push(groupActivities[0]);
-          continue;
+          return;
         }
 
         // Sort: entries with performed_by first, then by timestamp (most recent first)
@@ -119,7 +140,7 @@ export async function GET(request: NextRequest) {
           // No nearby duplicates, keep all entries
           deduplicatedActivities.push(...groupActivities);
         }
-      }
+      });
 
       // Sort all activities by performed_at (most recent first)
       deduplicatedActivities.sort((a, b) => 
@@ -128,14 +149,16 @@ export async function GET(request: NextRequest) {
 
       // Filter out entries without performed_by (legacy duplicates)
       // These are old entries created before we fixed user context tracking
-      activities = deduplicatedActivities.filter(activity => activity.performed_by !== null);
+      activities = deduplicatedActivities.filter((activity) => activity.performed_by !== null);
+    } else {
+      activities = typedActivities;
     }
 
     // If we have activities, try to fetch user data for performed_by
     if (activities && activities.length > 0) {
       const performedByUserIds = activities
-        .filter(a => a.performed_by)
-        .map(a => a.performed_by)
+        .filter((a) => a.performed_by)
+        .map((a) => a.performed_by as string)
         .filter((id, index, self) => self.indexOf(id) === index); // unique IDs
       
       if (performedByUserIds.length > 0) {
@@ -150,7 +173,7 @@ export async function GET(request: NextRequest) {
         }
         
         // Also try to get user metadata from auth.users for better name data
-        const userMap = new Map();
+        const userMap = new Map<string, ActivityUser>();
         
         if (users && users.length > 0) {
           // Process users from public.users table

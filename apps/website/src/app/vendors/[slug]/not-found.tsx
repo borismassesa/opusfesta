@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react";
 
 export default function VendorNotFound() {
   return (
-    <div className="bg-background text-primary min-h-screen flex items-center justify-center px-6">
+    <div className="bg-background text-foreground min-h-screen flex items-center justify-center px-6">
       <div className="max-w-2xl w-full text-center space-y-8">
         <div>
           <h1 className="text-4xl md:text-6xl font-semibold mb-4">

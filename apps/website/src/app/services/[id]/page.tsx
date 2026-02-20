@@ -15,7 +15,7 @@ export default async function ServiceDetail({
     : "Service";
 
   return (
-    <div className="min-h-screen bg-background text-primary flex flex-col items-center justify-center p-6">
+    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center p-6">
       <div className="max-w-2xl w-full text-center space-y-8">
         <Link
           href="/"

@@ -260,7 +260,7 @@ export function VendorGalleryPage({
   }, [isLightboxOpen, allMedia.length]);
 
   return (
-    <div className="bg-background text-primary min-h-screen">
+    <div className="bg-background text-foreground min-h-screen">
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 

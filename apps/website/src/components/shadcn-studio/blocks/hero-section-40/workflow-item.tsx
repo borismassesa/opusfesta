@@ -9,6 +9,7 @@ import {
   SparklesIcon,
   TriangleAlertIcon
 } from 'lucide-react'
+import { useReducedMotion } from 'motion/react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -46,15 +47,17 @@ const WorkflowItem = ({
   children,
   delay = 0,
   hasMenu = true,
-  listItems = ['Share', 'Update', 'Refresh']
+  listItems = ['Open details', 'Add note', 'Share update']
 }: WorkflowItemProps) => {
+  const prefersReducedMotion = useReducedMotion()
+
   return (
     <MotionPreset
       fade
-      transition={{ duration: 0.5 }}
-      delay={delay}
+      transition={{ duration: prefersReducedMotion ? 0 : 0.5 }}
+      delay={prefersReducedMotion ? 0 : delay}
       inView={false}
-      className={cn('relative z-1 w-full pt-7.5 max-md:max-w-sm md:w-82.5', className)}
+      className={cn('relative z-1 w-full pt-7.5 max-md:max-w-sm md:w-76 lg:w-82.5', className)}
     >
       <div
         className={cn('absolute top-0 left-0 -z-1 flex items-center gap-2.5 rounded-t-2xl p-4 pt-1.5 capitalize', {
@@ -75,7 +78,7 @@ const WorkflowItem = ({
         <span className='text-sm font-medium'>{type}</span>
       </div>
 
-      <div className='bg-card text-card-foreground flex flex-col gap-3.5 rounded-2xl border-0 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.25)] transition-shadow duration-300 hover:shadow-[0_24px_60px_-34px_rgba(15,23,42,0.3)]'>
+      <div className='bg-card text-card-foreground flex flex-col gap-3.5 rounded-2xl border-0 p-4 shadow-[0_18px_48px_-30px_rgba(15,23,42,0.25)] transition-shadow duration-300 motion-reduce:transition-none hover:shadow-[0_24px_60px_-34px_rgba(15,23,42,0.3)]'>
         <div className='flex flex-col gap-2'>
           <div className='flex w-full items-center gap-2.5'>
             <span className='[&>svg]:size-5'>{icon}</span>

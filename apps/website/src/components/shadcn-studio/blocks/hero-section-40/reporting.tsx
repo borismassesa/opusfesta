@@ -1,6 +1,6 @@
 'use client'
 
-import { BellRingIcon, FileChartPieIcon, LoaderIcon, MessageSquareTextIcon } from 'lucide-react'
+import { BellRingIcon, CalculatorIcon, CreditCardIcon, FileChartPieIcon, LoaderIcon, WalletIcon } from 'lucide-react'
 
 import { Badge } from '@/components/ui/badge'
 
@@ -14,9 +14,10 @@ const Reporting = () => {
       <WorkflowItem
         type='input'
         icon={<BellRingIcon />}
-        title='New Quote Added'
-        description='Vendor pricing is added to your budget.'
+        title='New Expense Logged'
+        description='A vendor quote was added to your live wedding budget.'
         time='0.5 sec'
+        hasMenu={false}
         className='relative'
       >
         {/* Arrow for large screens */}
@@ -29,27 +30,20 @@ const Reporting = () => {
       <WorkflowItem
         type='action'
         icon={<FileChartPieIcon />}
-        title='Budget Breakdown'
+        title='Budget Intelligence'
         time='18 sec'
         delay={1.2}
+        hasMenu={false}
         className='relative'
       >
         <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-44.png'
-              alt='Budget sheet'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Vendor quotes</span>
+            <CalculatorIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Vendor quotes synced</span>
           </div>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-40.png'
-              alt='Payment schedule'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Payment schedule</span>
+            <CreditCardIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Payment timeline updated</span>
           </div>
         </div>
         <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
@@ -58,12 +52,12 @@ const Reporting = () => {
               variant='outline'
               className='bg-muted/60 text-muted-foreground rounded-full border-0 px-2.5 py-0.5 text-xs font-medium'
             >
-              Updating totals...
+              Reforecasting budget...
             </Badge>
             <LoaderIcon className='size-4' />
           </div>
           <p className='text-muted-foreground text-sm'>
-            Recalculates totals, deposits, and remaining balance in real time.
+            Recalculates category totals, deposits, and remaining balance in real time.
           </p>
         </div>
 
@@ -76,29 +70,22 @@ const Reporting = () => {
 
       <WorkflowItem
         type='output'
-        icon={<MessageSquareTextIcon />}
-        title='Budget Summary'
-        description="Updated totals with what’s left to allocate."
+        icon={<WalletIcon />}
+        title='Budget Health Summary'
+        description='Live totals, runway, and what you still need to allocate.'
         time='1.1 sec'
         delay={2.4}
+        hasMenu={false}
         className='md:w-72.5'
       >
         <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-48.png'
-              alt='Budget summary'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Summary shared</span>
+            <WalletIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Summary shared with partner</span>
           </div>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.simpleicons.org/whatsapp/25D366'
-              alt='WhatsApp logo'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>WhatsApp alerts queued</span>
+            <BellRingIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>WhatsApp budget alert sent</span>
           </div>
         </div>
       </WorkflowItem>

@@ -104,7 +104,7 @@ export function About() {
           {/* Subtle background glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[60%] h-[80%] bg-accent/10 blur-[120px] -z-10 rounded-full pointer-events-none"></div>
 
-          <h3 className="leading-[1.1] text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-medium text-primary/40 tracking-tight max-w-6xl">
+          <h3 className="leading-[1.1] text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-medium text-foreground/40 tracking-tight max-w-6xl">
             {headlineText.split(" ").map((word, j) => (
               <span key={j} className="reveal-text inline-block mr-2 sm:mr-3">
                 {word}
@@ -117,7 +117,7 @@ export function About() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-y-8 md:gap-y-12 gap-x-4 md:gap-x-8 mt-16 md:mt-24 pt-8 md:pt-12 border-t border-primary/10 animate-on-scroll">
           {/* Stat 1 */}
           <div className="flex flex-col gap-1 md:gap-2">
-            <div className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-none font-light text-primary tracking-tighter">
+            <div className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-none font-light text-foreground tracking-tighter">
               {stats.weddings?.value || "15k+"}
             </div>
             <div className="text-sm sm:text-base md:text-xl font-medium pl-1 text-secondary">
@@ -127,7 +127,7 @@ export function About() {
 
           {/* Stat 2 */}
           <div className="flex flex-col gap-1 md:gap-2">
-            <div className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-none font-light text-primary tracking-tighter">
+            <div className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-none font-light text-foreground tracking-tighter">
               {stats.satisfaction?.value || "99%"}
             </div>
             <div className="text-sm sm:text-base md:text-xl font-medium pl-1 text-secondary">
@@ -137,7 +137,7 @@ export function About() {
 
           {/* Stat 3 */}
           <div className="flex flex-col gap-1 md:gap-2">
-            <div className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-none font-light text-primary tracking-tighter">
+            <div className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-none font-light text-foreground tracking-tighter">
               {stats.guests?.value || "2M+"}
             </div>
             <div className="text-sm sm:text-base md:text-xl font-medium pl-1 text-secondary">
@@ -147,7 +147,7 @@ export function About() {
 
           {/* Stat 4 */}
           <div className="flex flex-col gap-1 md:gap-2">
-            <div className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-none font-light text-primary tracking-tighter">
+            <div className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl leading-none font-light text-foreground tracking-tighter">
               {stats.rating?.value || "4.9"}
             </div>
             <div className="text-sm sm:text-base md:text-xl font-medium pl-1 text-secondary">

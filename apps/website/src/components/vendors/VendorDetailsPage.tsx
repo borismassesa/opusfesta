@@ -206,7 +206,7 @@ export function VendorDetailsPage({
   // Show loading state while checking authentication
   if (isCheckingAuth) {
     return (
-      <div className="bg-background text-primary min-h-screen flex items-center justify-center">
+      <div className="bg-background text-foreground min-h-screen flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-12 h-12 animate-spin text-primary mx-auto mb-4" />
           <p className="text-secondary">Loading vendor profile...</p>
@@ -216,7 +216,7 @@ export function VendorDetailsPage({
   }
 
   return (
-    <div className="bg-background text-primary min-h-screen">
+    <div className="bg-background text-foreground min-h-screen">
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} sticky={false} />
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 

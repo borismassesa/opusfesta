@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import type { Route } from "next";
 import {
   LayoutDashboard,
   FileText,
@@ -281,6 +282,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
   const authChecked = isUserLoaded;
   const session = isSignedIn ? clerkUser : null;
   const role = (clerkUser?.publicMetadata?.role as string) || userRole || "";
+  const safeReplace = (path: string) => router.replace(path as Route);
   
   // Check if we're on a route that should show secondary sidebar (primary sidebar collapses to icon + hover overlay)
   const hasSecondarySidebar = pathname.startsWith("/content") || pathname.startsWith("/careers") || pathname.startsWith("/editor/careers") || pathname.startsWith("/editorial/advice-ideas") || pathname.startsWith("/users");
@@ -366,7 +368,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
       setIsRedirecting(true);
       // Use replace to avoid adding to history; only add ?next= when not going to "/" (clean URL)
       const targetPath = pathname === "/" ? "/login" : `/login?next=${encodeURIComponent(pathname)}`;
-      router.replace(targetPath);
+      safeReplace(targetPath);
       // Fallback: if router.replace doesn't work quickly, use window.location as backup
       const timeoutId = setTimeout(() => {
         if (window.location.pathname !== "/login") {
@@ -418,7 +420,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
     if (!isRedirecting) {
       setIsRedirecting(true);
       const loginPath = pathname === "/" ? "/login" : `/login?next=${encodeURIComponent(pathname)}`;
-      router.replace(loginPath);
+      safeReplace(loginPath);
     }
     // Show minimal loading state while redirecting
     return (
@@ -442,7 +444,7 @@ export default function ClientLayoutContent({ children }: { children: ReactNode 
       <Providers>
         <UnauthorizedPage 
           session={session} 
-          userEmail={session?.user?.email}
+          userEmail={clerkUser?.primaryEmailAddress?.emailAddress}
         />
       </Providers>
     );

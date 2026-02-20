@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --background: #F8F9FA;
+  --foreground: #171717;
+  --primary: #6F3393;
+  --secondary: #591C7D;
+  --accent: #D0B1D4;
+  --muted-foreground: #7E7383;
+  --primary-foreground: #FFFFFF;
+  --border: #171717;
+  --radius: 0px;
+}
+
+body {
+  @apply bg-brand-bg text-brand-dark antialiased overflow-x-hidden;
+  font-family: var(--font-sans), 'DM Sans', sans-serif;
+}
+
+*:not(.rounded-full) {
+  border-radius: 0 !important;
+}
+
+.avatar-circle {
+  border-radius: 9999px !important;
+}
+
+.text-stroke {
+  -webkit-text-stroke: 2px #171717;
+  color: transparent;
+  transition: color 0.3s ease;
+}
+
+.text-stroke:hover {
+  color: #6F3393;
+}
+
+.text-stroke-accent {
+  -webkit-text-stroke: 2px #6F3393;
+  color: transparent;
+}
+
+.text-stroke-light {
+  -webkit-text-stroke: 2px rgba(255, 255, 255, 0.4);
+  color: transparent;
+}
+
+::selection {
+  background-color: #6F3393;
+  color: #F8F9FA;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-33.333%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 25s linear infinite;
+}

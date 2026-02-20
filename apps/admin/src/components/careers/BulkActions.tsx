@@ -16,8 +16,8 @@ interface BulkActionsProps {
   onDelete: () => void;
   onActivate: () => void;
   onDeactivate: () => void;
-  onArchive: () => void;
-  onUnarchive: () => void;
+  onArchive?: () => void;
+  onUnarchive?: () => void;
   onExport: () => void;
   onClearSelection: () => void;
 }
@@ -35,6 +35,8 @@ export function BulkActions({
   if (selectedCount === 0) {
     return null;
   }
+
+  const hasArchiveActions = Boolean(onArchive || onUnarchive);
 
   return (
     <div className="flex items-center gap-3 p-3 bg-primary/5 border rounded-lg">
@@ -66,15 +68,19 @@ export function BulkActions({
             <PowerOff className="h-4 w-4 mr-2" />
             Deactivate
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={onArchive}>
-            <Archive className="h-4 w-4 mr-2" />
-            Archive
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={onUnarchive}>
-            <ArchiveRestore className="h-4 w-4 mr-2" />
-            Unarchive
-          </DropdownMenuItem>
+          {hasArchiveActions && <DropdownMenuSeparator />}
+          {onArchive && (
+            <DropdownMenuItem onClick={onArchive}>
+              <Archive className="h-4 w-4 mr-2" />
+              Archive
+            </DropdownMenuItem>
+          )}
+          {onUnarchive && (
+            <DropdownMenuItem onClick={onUnarchive}>
+              <ArchiveRestore className="h-4 w-4 mr-2" />
+              Unarchive
+            </DropdownMenuItem>
+          )}
           <DropdownMenuSeparator />
           <DropdownMenuItem onClick={onExport}>
             <Download className="h-4 w-4 mr-2" />

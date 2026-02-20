@@ -112,7 +112,7 @@ export function Community() {
                         <div className="flex-1">
                           <div className="flex items-center justify-between gap-3">
                             <div className="flex flex-col">
-                              <span className="text-sm font-semibold text-primary">{vendor.name}</span>
+                              <span className="text-sm font-semibold text-foreground">{vendor.name}</span>
                               <span className="text-[11px] font-medium text-accent uppercase tracking-wide">
                                 {vendor.role}
                               </span>
@@ -124,7 +124,7 @@ export function Community() {
                               Verified
                             </div>
                             {vendor.rating && (
-                              <div className="flex items-center gap-1 text-xs text-primary/70">
+                              <div className="flex items-center gap-1 text-xs text-foreground/70">
                                 <span className="font-semibold">{vendor.rating.toFixed(1)}</span>
                                 <span className="text-amber-500">★</span>
                               </div>
@@ -134,11 +134,11 @@ export function Community() {
                       </div>
                     </div>
                     <div className="px-4 pt-3 pb-4">
-                      <p className="text-sm text-primary/80 italic leading-relaxed">
+                      <p className="text-sm text-foreground/80 italic leading-relaxed">
                         "{vendor.quote}"
                       </p>
                       <div className="mt-3 flex items-center justify-end text-xs text-secondary">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-primary/70">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-border/60 bg-muted/40 px-2.5 py-1 text-[11px] font-medium uppercase tracking-wide text-foreground/70">
                           <TagIcon className={`h-3.5 w-3.5 ${tag.color}`} />
                           {tag.label}
                         </span>
@@ -153,7 +153,7 @@ export function Community() {
 
         {/* Text Content */}
         <div className="text-center community-text max-w-3xl px-4">
-           <h2 className="text-3xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-primary leading-[1.1] mb-6">
+           <h2 className="text-3xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-foreground leading-[1.1] mb-6">
             {community?.headline || "Connecting you with"} <br/>
             <span className="font-serif italic font-normal text-secondary">
               {community?.subheadline || "top-tier professionals."}
@@ -173,7 +173,7 @@ export function Community() {
              </Link>
              <Link 
                href={community?.secondaryButtonLink || "/vendor-signup"}
-               className="px-8 py-3 rounded-full border border-border text-primary text-sm font-medium hover:bg-surface transition-colors"
+               className="px-8 py-3 rounded-full border border-border text-foreground text-sm font-medium hover:bg-surface transition-colors"
              >
                {community?.secondaryButtonText || "Join as a Vendor"}
              </Link>

@@ -10,8 +10,13 @@ for (const app of appDirs) {
   const nodeModules = path.join(rootDir, 'apps', app, 'node_modules');
   for (const pkg of packages) {
     const target = path.join(nodeModules, pkg);
-    if (fs.existsSync(target)) {
-      fs.rmSync(target, { recursive: true, force: true });
+    try {
+      if (fs.existsSync(target)) {
+        fs.rmSync(target, { recursive: true, force: true });
+        console.log(`removed ${pkg} from ${app}`);
+      }
+    } catch (err) {
+      console.log(`failed to remove ${pkg} from ${app}: ${err.message}`);
     }
   }
 }
