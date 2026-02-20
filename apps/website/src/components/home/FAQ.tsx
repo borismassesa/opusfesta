@@ -76,7 +76,7 @@ export function FAQ() {
             </span>
             <span className="md:hidden w-12 h-px bg-accent"></span>
           </div>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-primary leading-[1.1] mb-6">
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-foreground leading-[1.1] mb-6">
             Got questions? <br/>
             <span className="font-serif italic font-normal text-secondary">We have answers.</span>
           </h2>
@@ -90,7 +90,7 @@ export function FAQ() {
           <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq, index) => (
               <AccordionItem key={index} value={`item-${index}`} className="border-border/60 accordion-item-reveal opacity-0">
-                <AccordionTrigger className="text-lg md:text-xl py-6 font-medium text-primary hover:text-accent transition-colors hover:no-underline">
+                <AccordionTrigger className="text-lg md:text-xl py-6 font-medium text-foreground hover:text-accent transition-colors hover:no-underline">
                   {faq.question}
                 </AccordionTrigger>
                 <AccordionContent className="text-secondary text-base leading-relaxed pb-6 max-w-xl font-light">

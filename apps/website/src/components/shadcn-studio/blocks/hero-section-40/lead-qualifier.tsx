@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowDownUpIcon, FileInputIcon, MessageCircleIcon, MessageSquareTextIcon } from 'lucide-react'
+import { ArrowDownUpIcon, BellRingIcon, CheckSquareIcon, FileInputIcon, ListChecksIcon, MessageCircleIcon } from 'lucide-react'
 import { motion } from 'motion/react'
 
 import { Badge } from '@/components/ui/badge'
@@ -15,8 +15,9 @@ const LeadQualifier = () => {
         type='input'
         icon={<FileInputIcon />}
         title='New Task Added'
-        description='Capture to-dos from notes, vendors, or inspiration.'
+        description='Capture to-dos from notes, vendor chats, or inspiration saves.'
         time='0.4 sec'
+        hasMenu={false}
         className='relative md:mr-22'
       >
         <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
@@ -24,19 +25,15 @@ const LeadQualifier = () => {
             variant='outline'
             className='bg-muted/60 text-muted-foreground rounded-full border-0 px-2.5 py-0.5 text-xs font-medium'
           >
-            Syncing tasks...
+            Collecting tasks...
           </Badge>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-44.png'
-              alt='Checklist board'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Checklist board</span>
+            <ListChecksIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Checklist board updated</span>
           </div>
           <div className='flex items-center gap-2'>
             <MessageCircleIcon className='text-muted-foreground size-4.5' />
-            <span className='text-muted-foreground text-sm'>Vendor messages</span>
+            <span className='text-muted-foreground text-sm'>Vendor inbox follow-ups</span>
           </div>
         </div>
 
@@ -104,11 +101,12 @@ const LeadQualifier = () => {
         title='Checklist Sequencing'
         time='1.8 sec'
         delay={1.2}
+        hasMenu={false}
         className='relative md:mt-68 md:mr-15'
       >
         <div className='bg-muted rounded-lg px-2.5 py-3'>
           <p className='text-muted-foreground text-sm'>
-            Tasks are ordered by deadline, dependencies, and effort so you know what to do next.
+            Tasks are sequenced by due date, dependencies, and effort so your next move is always clear.
           </p>
         </div>
 
@@ -172,11 +170,12 @@ const LeadQualifier = () => {
 
       <WorkflowItem
         type='output'
-        icon={<MessageSquareTextIcon />}
+        icon={<CheckSquareIcon />}
         title='Checklist Updated'
-        description='Your next steps are organized and ready.'
+        description='Your next tasks are sorted, scheduled, and ready to execute.'
         time='0.6 sec'
         delay={2.4}
+        hasMenu={false}
         className='md:mt-17'
       >
         <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
@@ -184,18 +183,14 @@ const LeadQualifier = () => {
             variant='outline'
             className='bg-muted/60 text-muted-foreground rounded-full border-0 px-2.5 py-0.5 text-xs font-medium'
           >
-            Ready
+            Ready to execute
           </Badge>
           <p className='text-muted-foreground text-sm'>
-            Prioritized tasks with gentle reminders for upcoming deadlines.
+            Prioritized tasks with reminders tuned to your upcoming deadlines.
           </p>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-45.png'
-              alt='Planning hub'
-              className='size-4.5 dark:invert'
-            />
-            <span className='text-muted-foreground text-sm'>Checklist saved</span>
+            <BellRingIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Checklist synced across devices</span>
           </div>
         </div>
       </WorkflowItem>

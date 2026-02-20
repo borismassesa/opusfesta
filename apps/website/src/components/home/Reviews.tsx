@@ -212,7 +212,7 @@ export function Reviews() {
               </span>
               <span className="md:hidden w-12 h-px bg-accent"></span>
             </div>
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-primary leading-[1.1] mb-6">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-[1.1] mb-6">
               Loved by couples <br/>
               <span className="font-serif italic font-normal text-secondary">& professionals.</span>
             </h2>
@@ -223,12 +223,12 @@ export function Reviews() {
 
           <div className="flex justify-center md:justify-start gap-16 mt-8">
              <div className="flex flex-col items-center md:items-start gap-2">
-               <span className="text-4xl font-bold text-primary">4.9/5</span>
+               <span className="text-4xl font-bold text-foreground">4.9/5</span>
                <span className="text-xs text-secondary uppercase tracking-wider font-medium">Average Rating</span>
              </div>
              
              <div className="flex flex-col items-center md:items-start gap-2">
-               <span className="text-4xl font-bold text-primary">2k+</span>
+               <span className="text-4xl font-bold text-foreground">2k+</span>
                <span className="text-xs text-secondary uppercase tracking-wider font-medium">Verified Reviews</span>
              </div>
           </div>
@@ -307,7 +307,7 @@ function ReviewCard({ review }: { review: ReviewItem }) {
         </div>
 
         {/* Middle: Content - Smaller text, tighter leading */}
-        <p className="text-primary/90 text-[15px] font-medium leading-relaxed mb-6 relative">
+        <p className="text-foreground/90 text-[15px] font-medium leading-relaxed mb-6 relative">
           "{review.content}"
         </p>
 
@@ -321,7 +321,7 @@ function ReviewCard({ review }: { review: ReviewItem }) {
             />
           </div>
           <div className="flex flex-col items-start gap-1">
-            <h4 className="font-bold text-primary text-xs tracking-tight">{review.name}</h4>
+            <h4 className="font-bold text-foreground text-xs tracking-tight">{review.name}</h4>
             <span className={`text-xs font-medium tracking-normal px-2.5 py-1 rounded-full ${badgeColor}`}>
               {review.role}
             </span>

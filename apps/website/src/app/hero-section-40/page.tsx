@@ -4,7 +4,7 @@ import { defaultNavigationData } from '@/components/shadcn-studio/blocks/hero-se
 
 const HeroSectionPage = () => {
   return (
-    <div className='orion-theme bg-background text-primary flex min-h-screen flex-col'>
+    <div className='orion-theme bg-background text-foreground flex min-h-screen flex-col'>
       {/* Header Section */}
       <Header navigationData={defaultNavigationData} />
 

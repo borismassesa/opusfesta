@@ -139,7 +139,7 @@ export function Hero() {
         <div ref={contentRef} className="hero-content relative flex flex-col items-center md:items-start text-center md:text-left space-y-2 z-10 w-full max-w-xl mx-auto md:mx-0">
           
           {/* Headline with Masked Reveal */}
-          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-primary leading-[1.1] tracking-tight max-w-full lg:max-w-none min-h-[100px] sm:min-h-[120px] md:min-h-[140px] lg:min-h-[160px]">
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-foreground leading-[1.1] tracking-tight max-w-full lg:max-w-none min-h-[100px] sm:min-h-[120px] md:min-h-[140px] lg:min-h-[160px]">
             <span className="block overflow-hidden hero-word">
               <span className="block">{hero.headlinePrefix}</span>
             </span>
@@ -188,7 +188,7 @@ export function Hero() {
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 placeholder={t(`hero.searchPlaceholders.${activeTab}`)}
-                className="w-full pl-10 lg:pl-12 pr-12 lg:pr-4 py-3 lg:py-4 bg-transparent border-none rounded-full text-primary placeholder:text-secondary/60 focus:outline-none focus:ring-0 text-[13px] sm:text-base font-normal relative z-10 truncate"
+                className="w-full pl-10 lg:pl-12 pr-12 lg:pr-4 py-3 lg:py-4 bg-transparent border-none rounded-full text-foreground placeholder:text-secondary/60 focus:outline-none focus:ring-0 text-[13px] sm:text-base font-normal relative z-10 truncate"
               />
               <div className="absolute right-1.5 top-1.5 bottom-1.5">
                  <button className="h-full bg-primary hover:bg-primary/90 text-background w-10 lg:w-auto lg:px-6 rounded-full text-sm font-medium transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
@@ -248,7 +248,7 @@ export function Hero() {
         
         {/* Dynamic Artist Credit */}
         <div className="absolute bottom-4 right-4 lg:bottom-6 lg:right-6 flex items-center gap-2 lg:gap-3 bg-surface/90 backdrop-blur-sm px-3 py-1.5 lg:px-4 lg:py-2 rounded-full shadow-lg hover:scale-105 transition-all cursor-pointer z-20 border border-border">
-          <span className="text-xs lg:text-sm font-semibold text-primary transition-all duration-300">
+          <span className="text-xs lg:text-sm font-semibold text-foreground transition-all duration-300">
             {hero.slides[currentSlide].author}
           </span>
           <img 

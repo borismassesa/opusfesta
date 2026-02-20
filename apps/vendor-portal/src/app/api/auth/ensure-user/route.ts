@@ -14,7 +14,11 @@ function getSupabaseAdmin() {
   });
 }
 
-async function getPortalAccess(supabase: ReturnType<typeof createClient>, dbUserId: string, userRole: string) {
+async function getPortalAccess(
+  supabase: ReturnType<typeof getSupabaseAdmin>,
+  dbUserId: string,
+  userRole: string
+) {
   // Look up vendor membership
   const { data: memberships } = await supabase
     .from("vendor_memberships")

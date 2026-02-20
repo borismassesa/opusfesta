@@ -95,7 +95,7 @@ export function Issues() {
   return (
     <div className="relative w-full"> 
     {/* Wrapper for pin spacer */}
-      <section ref={containerRef} id="advice-ideas" className="bg-surface text-primary min-h-screen pt-20 pb-12 md:py-24 overflow-hidden relative border-b border-border flex flex-col justify-center">
+      <section ref={containerRef} id="advice-ideas" className="bg-surface text-foreground min-h-screen pt-20 pb-12 md:py-24 overflow-hidden relative border-b border-border flex flex-col justify-center">
         
         {/* Editorial Header */}
         <div className="editorial-header max-w-[1400px] mx-auto px-6 lg:px-12 mb-8 md:mb-12 w-full shrink-0">
@@ -108,7 +108,7 @@ export function Issues() {
                 </span>
                 <span className="md:hidden w-12 h-px bg-accent"></span>
               </div>
-              <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-primary leading-[1.1]">
+              <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-foreground leading-[1.1]">
                 {content.advice?.headline || "Inspiration for"} <br/>
                 <span className="font-serif italic font-normal text-secondary">
                   {content.advice?.subheadline || "your big day."}

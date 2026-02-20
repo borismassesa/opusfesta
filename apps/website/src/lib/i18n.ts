@@ -15,7 +15,7 @@ i18n
       en: {
         translation: {
           nav: {
-            planning: "Planning",
+            planning: "Planning Tools",
             vendors: "Vendors",
             guests: "Guests",
             websites: "Websites",
@@ -48,7 +48,7 @@ i18n
           tabs: {
             venues: "Venues",
             vendors: "Vendors",
-            planning: "Planning",
+            planning: "Planning Tools",
             inspiration: "Advice & Ideas"
           },
           about: {
@@ -84,7 +84,7 @@ i18n
       sw: {
         translation: {
           nav: {
-            planning: "Mipango",
+            planning: "Zana za Mipango",
             vendors: "Wauzaji",
             guests: "Wageni",
             websites: "Tovuti",
@@ -117,7 +117,7 @@ i18n
           tabs: {
             venues: "Ukumbi",
             vendors: "Wauzaji",
-            planning: "Mipango",
+            planning: "Zana za Mipango",
             inspiration: "Hamasa"
           },
           about: {

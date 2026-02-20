@@ -1,10 +1,13 @@
 'use client'
 
 import { motion } from 'motion/react'
+import { useReducedMotion } from 'motion/react'
 
 import { cn } from '@/lib/utils'
 
 const ArrowRight = ({ delay = 0, className }: { delay?: number; className?: string }) => {
+  const prefersReducedMotion = useReducedMotion()
+
   return (
     <motion.svg
       width='71'
@@ -18,24 +21,24 @@ const ArrowRight = ({ delay = 0, className }: { delay?: number; className?: stri
       )}
     >
       <motion.path
-        initial={{ opacity: 0 }}
+        initial={prefersReducedMotion ? { opacity: 1 } : { opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{
-          duration: 0.4,
+          duration: prefersReducedMotion ? 0 : 0.4,
           ease: 'easeInOut',
-          delay
+          delay: prefersReducedMotion ? 0 : delay
         }}
         d='M6 1.35791L12 7.35791L6 13.3579L0 7.35791L6 1.35791Z'
         fill='color-mix(in oklab, var(--foreground) 15%, var(--background))'
         className='dark:fill-[color-mix(in_oklab,_var(--foreground)_25%,_var(--background))]'
       />
       <motion.path
-        initial={{ pathLength: 0 }}
+        initial={prefersReducedMotion ? { pathLength: 1 } : { pathLength: 0 }}
         animate={{ pathLength: 1 }}
         transition={{
-          duration: 0.4,
+          duration: prefersReducedMotion ? 0 : 0.4,
           ease: 'easeInOut',
-          delay: delay + 0.24
+          delay: prefersReducedMotion ? 0 : delay + 0.24
         }}
         d='M6 7.35791H70'
         stroke='color-mix(in oklab, var(--foreground) 15%, var(--background))'
@@ -43,15 +46,15 @@ const ArrowRight = ({ delay = 0, className }: { delay?: number; className?: stri
         className='dark:stroke-[color-mix(in_oklab,_var(--foreground)_25%,_var(--background))]'
       />
       <motion.path
-        initial={{ pathLength: 0, opacity: 0 }}
+        initial={prefersReducedMotion ? { pathLength: 1, opacity: 1 } : { pathLength: 0, opacity: 0 }}
         animate={{ pathLength: 1, opacity: 1 }}
         transition={{
           pathLength: {
-            duration: 0.3,
+            duration: prefersReducedMotion ? 0 : 0.3,
             ease: 'easeInOut',
-            delay: delay + 0.64
+            delay: prefersReducedMotion ? 0 : delay + 0.64
           },
-          opacity: { duration: 0.1, delay: delay + 0.64 }
+          opacity: { duration: prefersReducedMotion ? 0 : 0.1, delay: prefersReducedMotion ? 0 : delay + 0.64 }
         }}
         d='M63.4941 1L69.8768 7.35817L63.4944 13.7158'
         stroke='color-mix(in oklab, var(--foreground) 15%, var(--background))'

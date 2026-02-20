@@ -109,6 +109,7 @@ export default function JobViewClient() {
   const handleExportPDF = async () => {
     try {
       const exportData: JobPostingForExport = {
+        id: job.id,
         title: job.title,
         department: job.department,
         location: job.location,
@@ -117,6 +118,7 @@ export default function JobViewClient() {
         requirements: job.requirements || [],
         responsibilities: job.responsibilities || [],
         salary_range: job.salary_range || "",
+        is_active: job.is_active,
         about_thefesta: job.about_thefesta || "",
         benefits: job.benefits || [],
         growth_description: job.growth_description || "",
@@ -134,6 +136,7 @@ export default function JobViewClient() {
   const handleExportWord = async () => {
     try {
       const exportData: JobPostingForExport = {
+        id: job.id,
         title: job.title,
         department: job.department,
         location: job.location,
@@ -142,6 +145,7 @@ export default function JobViewClient() {
         requirements: job.requirements || [],
         responsibilities: job.responsibilities || [],
         salary_range: job.salary_range || "",
+        is_active: job.is_active,
         about_thefesta: job.about_thefesta || "",
         benefits: job.benefits || [],
         growth_description: job.growth_description || "",

@@ -39,6 +39,7 @@ import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
 import { resolveAssetSrc } from "@/lib/assets";
 import { useSaveVendor } from "@/hooks/useSaveVendor";
+import CTASection04 from "@/components/shadcn-studio/blocks/cta-section-04/cta-section-04";
 
 import heroMain from "@assets/stock_images/elegant_wedding_venu_86ae752a.jpg";
 import vendorPlanning from "@assets/stock_images/wedding_planning_che_871a1473.jpg";
@@ -772,7 +773,7 @@ function parseLocationForVendor(v: { location?: unknown }): { city?: string } {
       const parsed = JSON.parse(v.location as string) as { city?: string };
       return parsed || {};
     } catch {
-      return { city: s || undefined };
+      return {};
     }
   }
   return { city: s || undefined };
@@ -818,13 +819,13 @@ function transformCollectionVendors(vendors: any[]): any[] {
     const stats = parseStatsForVendor(v);
     return {
       id: v.id,
-      name: v.name || v.business_name,
+      name: v.business_name || v.name,
       category: CATEGORY_DISPLAY_MAP[v.category] || v.category,
       location: city,
       price: v.price_range || "$$",
       rating: Number(stats.averageRating) || 0,
       reviews: Number(stats.reviewCount) || 0,
-      image: v.image || v.cover_image || v.logo || vendorPhoto,
+      image: v.cover_image || v.image || v.logo || vendorPhoto,
       slug: v.slug,
     };
   });
@@ -1082,7 +1083,7 @@ export default function VendorsPage() {
   return (
     <div
       ref={pageRef}
-      className="bg-background text-primary min-h-screen overflow-hidden"
+      className="bg-background text-foreground min-h-screen overflow-hidden"
     >
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
@@ -2215,42 +2216,7 @@ export default function VendorsPage() {
           </div>
         </section>
 
-        <section className="py-20 px-6 lg:px-12 xl:px-12 2xl:px-16 border-t border-border">
-          <div className="max-w-[1400px] mx-auto rounded-[28px] md:rounded-[36px] border border-white/10 bg-[radial-gradient(120%_120%_at_100%_0%,#2f2f34_0%,#141417_48%,#0b0b0d_100%)] text-white p-10 md:p-14 xl:p-12 relative overflow-hidden shadow-[0_30px_80px_rgba(0,0,0,0.45)]">
-            <div className="absolute -top-24 -right-16 h-56 w-56 rounded-full bg-white/10 blur-3xl" />
-            <div className="absolute -bottom-24 right-24 h-40 w-40 rounded-full bg-white/5 blur-3xl" />
-            <div className="relative z-10 grid gap-6 lg:grid-cols-[1.15fr_0.85fr] lg:gap-8 items-center">
-              <div>
-                <div className="flex items-center gap-3 text-[11px] font-mono tracking-[0.4em] uppercase text-white/60">
-                  <span className="h-px w-10 bg-white/30" />
-                  For vendors
-                </div>
-                <h2 className="text-3xl md:text-5xl font-semibold mt-5 leading-tight">
-                  Grow your business with couples ready to book.
-                </h2>
-                <p className="text-base md:text-lg text-white/70 mt-4 leading-relaxed max-w-2xl">
-                  Join the curated marketplace trusted by modern couples across
-                  East Africa. Highlight your portfolio and respond to qualified
-                  leads.
-                </p>
-              </div>
-              <div className="flex flex-col gap-3 sm:gap-4 items-start lg:items-end lg:text-right">
-                <div className="flex w-full flex-col gap-3 sm:w-auto">
-                  <Link
-                    href="/signup"
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#0b0b0d] shadow-lg transition-all hover:bg-white/95 hover:shadow-xl sm:w-[280px] sm:text-base"
-                  >
-                    Apply to join
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </div>
-                <div className="text-xs text-white/60 sm:text-sm">
-                  Approval in 48 hours for qualified teams.
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
+        <CTASection04 />
       </main>
 
       <Footer />

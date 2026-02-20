@@ -1,13 +1,15 @@
 'use client'
 
 import {
+  CalendarDaysIcon,
   CalendarCheckIcon,
+  ClipboardListIcon,
   Clock8Icon,
   FileChartPieIcon,
   LoaderIcon,
   MailIcon,
-  MessageSquareTextIcon,
-  ThumbsUpIcon
+  Share2Icon,
+  UsersIcon
 } from 'lucide-react'
 import { motion } from 'motion/react'
 
@@ -22,28 +24,21 @@ const ContentDrafting = () => {
     <div className='flex max-md:flex-col max-md:space-y-8 md:items-start'>
       <WorkflowItem
         type='input'
-        icon={<ThumbsUpIcon />}
-        title='Key Dates Captured'
-        description='Venue and vendor dates are confirmed and ready.'
+        icon={<CalendarDaysIcon />}
+        title='Milestone Inputs Confirmed'
+        description='Key dates from venue, vendors, and guest milestones are synced.'
         time='0.5 sec'
+        hasMenu={false}
         className='relative md:mr-4 md:w-70 md:self-end'
       >
         <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-41.png'
-              alt='Venue details'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Venue & vendor dates</span>
+            <CalendarCheckIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Venue and vendor commitments</span>
           </div>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-44.png'
-              alt='Guest list'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>Guest list milestones</span>
+            <UsersIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Guest communication milestones</span>
           </div>
         </div>
 
@@ -108,19 +103,16 @@ const ContentDrafting = () => {
       <WorkflowItem
         type='action'
         icon={<FileChartPieIcon />}
-        title='Milestone Scheduling'
+        title='Timeline Orchestration'
         time='16 sec'
         delay={1.2}
+        hasMenu={false}
         className='relative md:mt-3 md:mr-16'
       >
         <div className='bg-muted rounded-lg px-2.5 py-3'>
           <div className='flex items-center gap-2'>
-            <img
-              src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-41.png'
-              alt='Timeline draft'
-              className='size-4.5'
-            />
-            <span className='text-muted-foreground text-sm'>First pass timeline</span>
+            <ClipboardListIcon className='text-muted-foreground size-4.5' />
+            <span className='text-muted-foreground text-sm'>Draft day-of timeline</span>
           </div>
         </div>
         <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
@@ -129,12 +121,12 @@ const ContentDrafting = () => {
               variant='outline'
               className='bg-muted/60 text-muted-foreground rounded-full border-0 px-2.5 py-0.5 text-xs font-medium'
             >
-              Checking deadlines...
+              Validating lead times...
             </Badge>
             <LoaderIcon className='size-4' />
           </div>
           <p className='text-muted-foreground text-sm'>
-            Validating lead times and spacing between key moments.
+            Checks dependencies and buffers so your day-of flow stays realistic and calm.
           </p>
         </div>
 
@@ -149,20 +141,17 @@ const ContentDrafting = () => {
         <WorkflowItem
           type='pending'
           icon={<Clock8Icon />}
-          title='Review Pending'
-          description='Final timeline review before it is locked in.'
+          title='Final Review Pending'
+          description='One final check before publishing the timeline to everyone.'
           time='6 min'
           delay={2.4}
+          hasMenu={false}
           className='relative md:w-70'
         >
           <div className='bg-muted rounded-lg px-2.5 py-3'>
             <div className='flex items-center gap-2'>
-              <img
-                src='https://cdn.shadcnstudio.com/ss-assets/template/landing-page/orion/image-41.png'
-                alt='Timeline draft'
-                className='size-4.5'
-              />
-              <span className='text-muted-foreground text-sm'>Draft timeline</span>
+              <ClipboardListIcon className='text-muted-foreground size-4.5' />
+              <span className='text-muted-foreground text-sm'>Draft timeline ready</span>
             </div>
           </div>
 
@@ -226,21 +215,22 @@ const ContentDrafting = () => {
 
         <WorkflowItem
           type='output'
-          icon={<MessageSquareTextIcon />}
-          title='Timeline Shared'
-          description='Your day-of plan is ready to share.'
+          icon={<Share2Icon />}
+          title='Timeline Published'
+          description='Your wedding-day run sheet is ready for your full team.'
           time='4.1 sec'
           delay={3.6}
+          hasMenu={false}
           className='md:ml-41 md:w-72.5'
         >
           <div className='bg-muted space-y-2.5 rounded-lg px-2.5 py-3'>
             <div className='flex items-center gap-2'>
               <MailIcon className='text-muted-foreground size-4.5' />
-              <span className='text-muted-foreground text-sm'>Vendor updates emailed</span>
+              <span className='text-muted-foreground text-sm'>Vendor timeline email sent</span>
             </div>
             <div className='flex items-center gap-2'>
               <CalendarCheckIcon className='text-muted-foreground size-4.5' />
-              <span className='text-muted-foreground text-sm'>Calendar invites emailed</span>
+              <span className='text-muted-foreground text-sm'>Calendar blocks issued</span>
             </div>
           </div>
         </WorkflowItem>

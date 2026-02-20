@@ -25,6 +25,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
+  const isPlanningRoute = pathname === "/planning" || pathname?.startsWith("/planning-tools");
 
   const { clerkUser, isLoaded, isSignedIn, signOut } = useOpusFestaAuth();
 
@@ -38,7 +39,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
   } : null;
 
   const NAV_LINKS = [
-    { name: t('nav.planning'), href: "/planning" },
+    { name: t('nav.planning'), href: "/planning-tools" },
     { name: t('nav.vendors'), href: "/vendors" },
     { name: t('nav.guests'), href: "/guests" },
     { name: t('nav.websites'), href: "/websites" },
@@ -107,14 +108,20 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
 
   return (
     <nav
-      className={`${sticky ? 'fixed' : 'relative'} top-0 w-full z-50 px-6 md:px-12 pb-1 pt-3 flex justify-between items-center transition-all duration-300 ${
-        sticky && scrolled ? "bg-background/80 backdrop-blur-md border-b border-border/50 pb-0.5 pt-2" : sticky ? "bg-transparent pb-1 pt-3" : "bg-background pb-1 pt-3"
+      className={`${sticky ? 'fixed' : 'relative'} top-0 z-50 flex w-full items-center justify-between gap-3 px-4 pb-1 pt-3 transition-all duration-300 sm:px-6 lg:px-8 xl:px-12 ${
+        sticky && scrolled
+          ? isPlanningRoute
+            ? "bg-[color-mix(in_oklab,var(--background)_89%,var(--primary)_11%)] backdrop-blur-xl shadow-[0_16px_38px_-24px_color-mix(in_oklab,var(--primary)_70%,transparent)] ring-1 ring-[color-mix(in_oklab,var(--primary)_16%,transparent)] pb-0.5 pt-2"
+            : "bg-[color-mix(in_oklab,var(--background)_94%,var(--primary)_6%)] backdrop-blur-xl shadow-[0_14px_36px_-26px_color-mix(in_oklab,var(--primary)_55%,transparent)] pb-0.5 pt-2"
+          : sticky
+            ? "bg-transparent pb-1 pt-3"
+            : "bg-background pb-1 pt-3"
       }`}
     >
       {/* Logo */}
       <Link
         href="/"
-        className="font-serif text-2xl md:text-3xl text-primary hover:text-primary/80 transition-colors select-none z-50"
+        className="z-50 shrink-0 select-none font-serif text-2xl text-foreground transition-colors hover:text-primary md:text-3xl"
         onClick={() => {
           if (isOpen) onMenuClick();
           window.scrollTo({ top: 0, behavior: "smooth" });
@@ -124,23 +131,30 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
       </Link>
 
       {/* Desktop Navigation */}
-      <div className="hidden lg:flex items-center gap-8 bg-background/50 px-8 py-2.5 rounded-full border border-border/40 backdrop-blur-sm shadow-sm">
-        {NAV_LINKS.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={`text-sm font-medium transition-colors hover:text-primary ${
-              pathname === link.href ? "text-primary" : "text-secondary"
-            }`}
-          >
-            {link.name}
-          </Link>
-        ))}
+      <div className="hidden xl:flex flex-1 min-w-0 justify-center px-2">
+        <div className="flex max-w-full items-center gap-3 2xl:gap-5 overflow-x-auto whitespace-nowrap rounded-full border border-border/40 bg-background/50 px-4 py-2.5 shadow-sm backdrop-blur-sm 2xl:px-7 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {NAV_LINKS.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={`group relative shrink-0 px-0.5 py-0.5 text-sm font-medium transition-colors 2xl:text-base ${
+                pathname === link.href
+                  ? "text-foreground"
+                  : "text-secondary hover:text-primary"
+              }`}
+            >
+              {link.name}
+              <span className={`pointer-events-none absolute -bottom-0.5 left-0 h-0.5 rounded-full bg-primary transition-all duration-300 ${
+                pathname === link.href ? "w-full" : "w-0 group-hover:w-full"
+              }`} />
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Right Actions */}
-      <div className="flex items-center gap-4 z-50">
-        <div className="hidden md:flex items-center gap-4">
+      <div className="z-50 flex shrink-0 items-center gap-2 sm:gap-3">
+        <div className="hidden items-center gap-2 lg:flex xl:gap-3">
           {isAuthenticated === true ? (
             <>
               {/* Action Icons */}
@@ -161,7 +175,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
                 aria-label="Notifications"
               >
                 <Bell size={20} />
-                <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-purple-500 rounded-full border-2 border-background"></span>
+                <span className="absolute top-1 right-1 h-2.5 w-2.5 bg-accent rounded-full border-2 border-background"></span>
               </button>
 
               {/* User Avatar with Dropdown */}
@@ -176,7 +190,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
                         {userData ? getUserInitials(userData.name, userData.email) : "U"}
                       </AvatarFallback>
                     </Avatar>
-                    <span className="absolute top-0 right-0 h-3 w-3 bg-purple-500 rounded-full border-2 border-background"></span>
+                    <span className="absolute top-0 right-0 h-3 w-3 bg-accent rounded-full border-2 border-background"></span>
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-72 p-3 bg-popover border border-border/60 shadow-lg dark:shadow-2xl">
@@ -192,7 +206,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-primary dark:text-primary truncate leading-tight">
+                        <p className="text-sm font-semibold text-foreground truncate leading-tight">
                           {userData?.name || "User"}
                         </p>
                         {userData?.email && (
@@ -214,7 +228,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
                         className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-black! dark:hover:bg-white! hover:text-white! dark:hover:text-black! border border-transparent hover:border-border/60 transition-all duration-200 group w-full"
                       >
                         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/50 dark:bg-muted/30 group-hover:bg-black/10! dark:group-hover:bg-white/10! transition-colors">
-                          <FileText className="h-4 w-4 text-primary group-hover:text-white! dark:group-hover:text-black! transition-colors" />
+                          <FileText className="h-4 w-4 text-foreground group-hover:text-white! dark:group-hover:text-black! transition-colors" />
                         </div>
                         <span className="flex-1 font-medium text-foreground group-hover:text-white! dark:group-hover:text-black! transition-colors">My Inquiries</span>
                         <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-white! dark:group-hover:text-black! transition-colors" />
@@ -227,7 +241,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
                         className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-black! dark:hover:bg-white! hover:text-white! dark:hover:text-black! border border-transparent hover:border-border/60 transition-all duration-200 group w-full"
                       >
                         <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/50 dark:bg-muted/30 group-hover:bg-black/10! dark:group-hover:bg-white/10! transition-colors">
-                          <Briefcase className="h-4 w-4 text-primary group-hover:text-white! dark:group-hover:text-black! transition-colors" />
+                          <Briefcase className="h-4 w-4 text-foreground group-hover:text-white! dark:group-hover:text-black! transition-colors" />
                         </div>
                         <span className="flex-1 font-medium text-foreground group-hover:text-white! dark:group-hover:text-black! transition-colors">My Applications</span>
                         <ChevronRight className="h-4 w-4 text-muted-foreground opacity-0 group-hover:opacity-100 group-hover:text-white! dark:group-hover:text-black! transition-colors" />
@@ -262,13 +276,13 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
             <>
               <Link
                 href="/login"
-                className="text-sm font-medium text-primary hover:text-primary/80 transition-colors px-4 py-2"
+                className="hidden whitespace-nowrap px-2 py-2 text-sm font-medium text-foreground transition-colors hover:text-primary xl:inline-flex xl:px-3"
               >
                 {t("nav.login")}
               </Link>
               <Link
                 href="/signup"
-                className="text-sm font-semibold bg-primary text-background px-5 py-2.5 rounded-full hover:bg-primary/90 transition-all hover:scale-105 shadow-lg shadow-primary/20"
+                className="whitespace-nowrap rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-background shadow-lg shadow-primary/20 transition-all hover:scale-105 hover:bg-primary/90 xl:px-5"
               >
                 {t("nav.getStarted")}
               </Link>
@@ -288,7 +302,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
         {/* Mobile Menu Button - Right end */}
         <button
           onClick={onMenuClick}
-          className={`lg:hidden group relative z-50 w-11 h-11 flex items-center justify-center rounded-full border transition-all duration-500 ${
+          className={`group relative z-50 flex h-11 w-11 items-center justify-center rounded-full border transition-all duration-500 xl:hidden ${
             isOpen
               ? "bg-primary border-primary rotate-90"
               : "bg-background/50 backdrop-blur-md border-border/60 hover:bg-primary/5"

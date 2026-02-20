@@ -1,5 +1,6 @@
 'use client'
 
+import * as React from 'react'
 import { motion } from 'motion/react'
 import type { MotionStyle, Transition } from 'motion/react'
 
@@ -32,18 +33,18 @@ function BorderBeam({
   initialOffset = 0,
   borderWidth = 1
 }: BorderBeamProps) {
-  const supportsOffsetPath =
-    typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports('offset-path', 'rect(0 0 0 0)')
+  const [isMounted, setIsMounted] = React.useState(false)
+
+  React.useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const beamStyle: MotionStyle = {
-    width: size,
+    width: `${size}px`,
     '--color-from': colorFrom,
     '--color-to': colorTo,
+    offsetPath: `rect(0 auto auto 0 round ${size}px)`,
     ...style
-  }
-
-  if (supportsOffsetPath) {
-    beamStyle.offsetPath = `rect(0 auto auto 0 round ${size}px)`
   }
 
   return (
@@ -55,27 +56,37 @@ function BorderBeam({
         } as React.CSSProperties
       }
     >
-      <motion.div
-        className={cn(
-          'absolute aspect-square',
-          'rounded-full bg-gradient-to-l from-[var(--color-from)] via-[var(--color-to)] to-transparent',
-          className
-        )}
-        style={beamStyle}
-        initial={{ offsetDistance: `${initialOffset}%` }}
-        animate={{
-          offsetDistance: reverse
-            ? [`${100 - initialOffset}%`, `${-initialOffset}%`]
-            : [`${initialOffset}%`, `${100 + initialOffset}%`]
-        }}
-        transition={{
-          repeat: Infinity,
-          ease: 'linear',
-          duration,
-          delay: -delay,
-          ...transition
-        }}
-      />
+      {isMounted ? (
+        <motion.div
+          className={cn(
+            'absolute aspect-square',
+            'rounded-full bg-gradient-to-l from-[var(--color-from)] via-[var(--color-to)] to-transparent',
+            className
+          )}
+          style={beamStyle}
+          initial={{ offsetDistance: `${initialOffset}%` }}
+          animate={{
+            offsetDistance: reverse
+              ? [`${100 - initialOffset}%`, `${-initialOffset}%`]
+              : [`${initialOffset}%`, `${100 + initialOffset}%`]
+          }}
+          transition={{
+            repeat: Infinity,
+            ease: 'linear',
+            duration,
+            delay: -delay,
+            ...transition
+          }}
+        />
+      ) : (
+        <div
+          className={cn(
+            'absolute aspect-square rounded-full bg-gradient-to-l from-[var(--color-from)] via-[var(--color-to)] to-transparent',
+            className
+          )}
+          style={{ ...(beamStyle as React.CSSProperties), offsetDistance: `${initialOffset}%` }}
+        />
+      )}
     </div>
   )
 }
