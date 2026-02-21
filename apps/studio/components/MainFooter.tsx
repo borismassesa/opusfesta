@@ -1,6 +1,8 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { STUDIO_SOCIAL_LINKS } from '@/lib/studio-content';
 
 export default function MainFooter() {
   const [isVisible, setIsVisible] = useState(false);
@@ -81,26 +83,26 @@ export default function MainFooter() {
                   Connect
                 </p>
                 <div className="flex gap-3">
-                  <a href="#" className="w-11 h-11 border-4 border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200 shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+                  <a href={STUDIO_SOCIAL_LINKS.instagram} target="_blank" rel="noreferrer" aria-label="Instagram" className="w-11 h-11 border-4 border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200 shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
                       <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                       <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
                     </svg>
                   </a>
-                  <a href="#" className="w-11 h-11 border-4 border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200 shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+                  <a href={STUDIO_SOCIAL_LINKS.x} target="_blank" rel="noreferrer" aria-label="X / Twitter" className="w-11 h-11 border-4 border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200 shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M22 4s-.7 2.1-2 3.4c1.6 10-9.4 17.3-18 11.6 2.2.1 4.4-.6 6-2C3 15.5.5 9.6 3 5c2.2 2.6 5.6 4.1 9 4-.9-4.2 4-6.6 7-3.8 1.1 0 3-1.2 3-1.2z"></path>
                     </svg>
                   </a>
-                  <a href="#" className="w-11 h-11 border-4 border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200 shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+                  <a href={STUDIO_SOCIAL_LINKS.linkedin} target="_blank" rel="noreferrer" aria-label="LinkedIn" className="w-11 h-11 border-4 border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200 shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
                       <rect width="4" height="12" x="2" y="9"></rect>
                       <circle cx="4" cy="4" r="2"></circle>
                     </svg>
                   </a>
-                  <a href="#" className="w-11 h-11 border-4 border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200 shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
+                  <a href={STUDIO_SOCIAL_LINKS.telegram} target="_blank" rel="noreferrer" aria-label="Telegram" className="w-11 h-11 border-4 border-white/20 flex items-center justify-center text-white/60 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200 shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <path d="m22 2-7 20-4-9-9-4z"></path>
                       <path d="M22 2 11 13"></path>
@@ -137,12 +139,12 @@ export default function MainFooter() {
             </p>
 
             <div className="flex gap-6">
-              <a href="#" className="text-[10px] text-white/20 font-mono hover:text-white/50 transition-colors tracking-wide">
+              <Link href="/privacy" className="text-[10px] text-white/20 font-mono hover:text-white/50 transition-colors tracking-wide">
                 Privacy Policy
-              </a>
-              <a href="#" className="text-[10px] text-white/20 font-mono hover:text-white/50 transition-colors tracking-wide">
+              </Link>
+              <Link href="/terms" className="text-[10px] text-white/20 font-mono hover:text-white/50 transition-colors tracking-wide">
                 Terms
-              </a>
+              </Link>
             </div>
           </div>
         </div>

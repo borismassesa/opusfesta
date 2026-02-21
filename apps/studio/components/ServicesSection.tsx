@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
+import BookingTriggerButton from '@/components/booking/BookingTriggerButton';
 
 export default function ServicesSection() {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
@@ -215,8 +216,9 @@ export default function ServicesSection() {
                           <span className="text-xl font-bold text-brand-dark font-mono tracking-tight md:hidden">
                             {service.price}
                           </span>
-                          <a
-                            href="#"
+                          <BookingTriggerButton
+                            source={`services-${service.id.toLowerCase()}-enquire`}
+                            eventType={service.title}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
                           >
                             Enquire Now
@@ -233,7 +235,7 @@ export default function ServicesSection() {
                             >
                               <path d="M5 12h14m-7-7l7 7l-7 7"></path>
                             </svg>
-                          </a>
+                          </BookingTriggerButton>
                         </div>
                       </div>
 

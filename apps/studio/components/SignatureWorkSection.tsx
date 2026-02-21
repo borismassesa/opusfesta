@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { STUDIO_PROJECTS } from '@/lib/studio-content';
 
 export default function SignatureWorkSection() {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
@@ -34,40 +36,7 @@ export default function SignatureWorkSection() {
     return () => observer.disconnect();
   }, []);
 
-  const projects = [
-    {
-      id: 'proj-1',
-      number: '01',
-      category: 'Wedding Film',
-      title: 'THE MERIDIAN EXPERIENCE',
-      description: 'A full-day cinematic wedding captured across three stunning venues in the Scottish Highlands.',
-      image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/bcced374-a515-4136-bef9-e31a8cd1c18f_1600w.jpg',
-    },
-    {
-      id: 'proj-2',
-      number: '02',
-      category: 'Event Coverage',
-      title: 'ROOFTOP GALA NIGHT',
-      description: 'High-energy photography capturing 400 guests at an exclusive London rooftop charity gala.',
-      image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/ffd0641a-688d-4761-a530-60fec416aab1_1600w.webp',
-    },
-    {
-      id: 'proj-3',
-      number: '03',
-      category: 'Corporate',
-      title: 'VISION 2030 SUMMIT',
-      description: 'Brand film and event documentation for a Fortune 500 annual leadership summit.',
-      image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/792defd4-d702-4f36-b352-ba625129dfb5_3840w.webp',
-    },
-    {
-      id: 'proj-4',
-      number: '04',
-      category: 'Commercial',
-      title: 'BRAND LAUNCH FILM',
-      description: 'Concept-to-delivery commercial for a luxury heritage brand entering a new market.',
-      image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/d2607b57-3a19-48e4-8ad4-bdcf6e69b207_3840w.webp',
-    },
-  ];
+  const projects = STUDIO_PROJECTS;
 
   return (
     <section id="work" className="py-24 relative z-10 bg-brand-bg">
@@ -90,8 +59,8 @@ export default function SignatureWorkSection() {
                 <span className="text-stroke">WORK.</span>
               </h2>
             </div>
-            <a
-              href="#"
+            <Link
+              href="/work"
               className="group inline-flex items-center gap-3 text-xs font-bold text-brand-dark uppercase tracking-widest px-5 py-3 border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:text-white hover:border-brand-accent transition-all duration-200"
             >
               View All Projects
@@ -109,7 +78,7 @@ export default function SignatureWorkSection() {
               >
                 <path d="M5 12h14m-7-7l7 7l-7 7"></path>
               </svg>
-            </a>
+            </Link>
           </div>
         </div>
 
@@ -185,8 +154,8 @@ export default function SignatureWorkSection() {
                   <div className={`transition-all duration-700 delay-500 ${
                     isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
                   }`}>
-                    <a
-                      href="#"
+                    <Link
+                      href={`/work/${project.slug}`}
                       className="inline-flex items-center gap-3 px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
                     >
                       View Case Study
@@ -203,7 +172,7 @@ export default function SignatureWorkSection() {
                       >
                         <path d="M5 12h14m-7-7l7 7l-7 7"></path>
                       </svg>
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>

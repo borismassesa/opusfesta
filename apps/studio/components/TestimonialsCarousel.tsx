@@ -77,6 +77,7 @@ export default function TestimonialsCarousel() {
 
   return (
     <section
+      id="testimonials"
       ref={sectionRef}
       className="py-28 lg:py-36 relative bg-brand-bg z-10 overflow-hidden"
     >
@@ -139,6 +140,7 @@ export default function TestimonialsCarousel() {
                 <button
                   key={i}
                   onClick={() => goTo(i)}
+                aria-label={`Show testimonial from ${t.author}`}
                   className={`w-full flex items-center gap-5 py-4 px-5 text-left transition-all duration-300 border-l-4 ${
                     currentIndex === i
                       ? 'border-brand-accent bg-brand-panel'
@@ -176,6 +178,7 @@ export default function TestimonialsCarousel() {
               <button
                 key={i}
                 onClick={() => goTo(i)}
+                aria-label={`Show testimonial from ${t.author}`}
                 className={`w-10 h-10 border-2 overflow-hidden transition-all duration-300 ${
                   currentIndex === i
                     ? 'border-brand-accent shadow-brutal-sm'

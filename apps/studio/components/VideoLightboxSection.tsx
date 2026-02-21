@@ -3,10 +3,15 @@
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 
+const STUDIO_REEL_EMBED_URL =
+  'https://www.youtube-nocookie.com/embed/ScMzIvxBSi4?autoplay=1&rel=0&modestbranding=1';
+
 export default function VideoLightboxSection() {
   const [isVisible, setIsVisible] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
+  const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -18,6 +23,25 @@ export default function VideoLightboxSection() {
     if (sectionRef.current) observer.observe(sectionRef.current);
     return () => observer.disconnect();
   }, []);
+
+  useEffect(() => {
+    if (!isPlaying) return;
+
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+    closeButtonRef.current?.focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsPlaying(false);
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      previousFocusRef.current?.focus();
+    };
+  }, [isPlaying]);
 
   return (
     <section
@@ -51,7 +75,9 @@ export default function VideoLightboxSection() {
 
           <div className="flex items-center gap-8">
             <button
+              type="button"
               onClick={() => setIsPlaying(true)}
+              aria-label="Play studio reel"
               className="inline-flex items-center gap-4 text-xs font-bold text-white uppercase tracking-widest px-6 py-4 border-2 border-white/30 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:border-brand-accent hover:text-brand-accent transition-all duration-200"
             >
               <svg
@@ -77,7 +103,16 @@ export default function VideoLightboxSection() {
           className={`relative group cursor-pointer transition-all duration-700 delay-200 ${
             isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.02]'
           }`}
+          role="button"
+          tabIndex={0}
+          aria-label="Open studio reel"
           onClick={() => setIsPlaying(true)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              setIsPlaying(true);
+            }
+          }}
         >
           <Image
             src="https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/bcced374-a515-4136-bef9-e31a8cd1c18f_1600w.jpg"
@@ -137,11 +172,17 @@ export default function VideoLightboxSection() {
 
       {isPlaying && (
         <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Studio reel video player"
           className="fixed inset-0 z-[100] bg-black/95 flex items-center justify-center p-4 sm:p-8"
           onClick={() => setIsPlaying(false)}
         >
           <button
+            type="button"
+            ref={closeButtonRef}
             onClick={() => setIsPlaying(false)}
+            aria-label="Close video player"
             className="absolute top-6 right-6 sm:top-10 sm:right-10 w-12 h-12 border-2 border-white/30 flex items-center justify-center text-white hover:border-brand-accent hover:text-brand-accent transition-colors z-10"
           >
             <svg
@@ -162,26 +203,14 @@ export default function VideoLightboxSection() {
             className="relative w-full max-w-5xl aspect-video border-4 border-white/10"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="absolute inset-0 flex items-center justify-center bg-brand-dark">
-              <div className="text-center">
-                <div className="w-16 h-16 border-2 border-white/20 flex items-center justify-center mx-auto mb-4">
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="24"
-                    height="24"
-                    viewBox="0 0 24 24"
-                    fill="white"
-                    stroke="none"
-                    className="ml-1"
-                  >
-                    <path d="M5 5a2 2 0 0 1 3.008-1.728l11.997 6.998a2 2 0 0 1 .003 3.458l-12 7A2 2 0 0 1 5 19z"></path>
-                  </svg>
-                </div>
-                <p className="text-white/30 text-xs font-mono uppercase tracking-widest">
-                  Video Player Placeholder
-                </p>
-              </div>
-            </div>
+            <iframe
+              title="Opusfesta Studio Reel"
+              src={STUDIO_REEL_EMBED_URL}
+              className="w-full h-full bg-brand-dark"
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+              referrerPolicy="strict-origin-when-cross-origin"
+              allowFullScreen
+            />
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 
 export default function FeaturedProjects() {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
@@ -128,8 +129,8 @@ export default function FeaturedProjects() {
             <p className="text-white/50 text-base lg:text-lg leading-relaxed font-light mb-8">
               OpusFesta Studio is a team of filmmakers, photographers, and creative directors who believe every milestone deserves a cinematic treatment. From intimate elopements to 500-guest galas, we bring the same obsessive attention to light, composition, and narrative.
             </p>
-            <a
-              href="#"
+            <Link
+              href="/about"
               className="inline-flex items-center gap-3 text-xs font-bold text-white uppercase tracking-widest px-6 py-3 border border-white/30 hover:border-brand-accent hover:text-brand-accent transition-all duration-300"
             >
               Our Story
@@ -146,7 +147,7 @@ export default function FeaturedProjects() {
               >
                 <path d="M5 12h14m-7-7l7 7l-7 7"></path>
               </svg>
-            </a>
+            </Link>
           </div>
         </div>
       </div>
