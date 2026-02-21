@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
 
 export default function JournalSection() {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
@@ -91,8 +92,8 @@ export default function JournalSection() {
                 <span className="text-stroke-light">JOURNAL.</span>
               </h2>
             </div>
-            <a
-              href="#"
+            <Link
+              href="/journal"
               className="group inline-flex items-center gap-3 text-xs font-bold text-white uppercase tracking-widest px-5 py-3 border-2 border-white/30 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:border-brand-accent hover:text-brand-accent transition-all duration-200"
             >
               All Articles
@@ -110,7 +111,7 @@ export default function JournalSection() {
               >
                 <path d="M5 12h14m-7-7l7 7l-7 7"></path>
               </svg>
-            </a>
+            </Link>
           </div>
         </div>
 

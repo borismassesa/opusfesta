@@ -125,6 +125,7 @@ export default function ProcessSection() {
               <div key={step.id} className="flex items-center flex-1 last:flex-none">
                 <button
                   onClick={() => setActiveStep(index)}
+                  aria-label={`Show ${step.title} step`}
                   className={`flex items-center gap-3 group cursor-pointer transition-all duration-300 ${
                     activeStep === index ? 'opacity-100' : 'opacity-40 hover:opacity-70'
                   }`}
@@ -241,6 +242,7 @@ export default function ProcessSection() {
                   <button
                     onClick={() => setActiveStep((prev) => Math.max(0, prev - 1))}
                     disabled={activeStep === 0}
+                    aria-label="Show previous process step"
                     className={`w-12 h-12 border-4 flex items-center justify-center transition-all duration-200 cursor-pointer ${
                       activeStep === 0
                         ? 'border-white/10 text-white/20'
@@ -254,6 +256,7 @@ export default function ProcessSection() {
                   <button
                     onClick={() => setActiveStep((prev) => Math.min(steps.length - 1, prev + 1))}
                     disabled={activeStep === steps.length - 1}
+                    aria-label="Show next process step"
                     className={`w-12 h-12 border-4 flex items-center justify-center transition-all duration-200 cursor-pointer ${
                       activeStep === steps.length - 1
                         ? 'border-white/10 text-white/20'

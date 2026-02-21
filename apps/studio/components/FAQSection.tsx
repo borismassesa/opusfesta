@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
+import BookingTriggerButton from '@/components/booking/BookingTriggerButton';
 
 export default function FAQSection() {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
@@ -63,7 +64,7 @@ export default function FAQSection() {
   ];
 
   return (
-    <section className="py-24 relative z-10 bg-brand-bg">
+    <section id="faq" className="py-24 relative z-10 bg-brand-bg">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-12 lg:gap-20">
           <div
@@ -84,8 +85,8 @@ export default function FAQSection() {
             <p className="text-neutral-500 text-lg leading-relaxed font-light max-w-sm mb-8">
               Everything you need to know before booking. Still have questions? Get in touch.
             </p>
-            <a
-              href="#contact"
+            <BookingTriggerButton
+              source="faq-ask-us-anything"
               className="inline-flex items-center gap-3 px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-4 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
             >
               Ask Us Anything
@@ -102,7 +103,7 @@ export default function FAQSection() {
               >
                 <path d="M5 12h14m-7-7l7 7l-7 7"></path>
               </svg>
-            </a>
+            </BookingTriggerButton>
           </div>
 
           <div className="border-t-4 border-brand-border">
@@ -121,6 +122,8 @@ export default function FAQSection() {
                 >
                   <button
                     onClick={() => setExpandedId(isExpanded ? null : faq.id)}
+                    aria-expanded={isExpanded}
+                    aria-controls={`faq-answer-${faq.id}`}
                     className="w-full py-6 flex items-start gap-4 sm:gap-6 group text-left cursor-pointer"
                   >
                     <span className="text-lg sm:text-xl font-bold text-brand-dark tracking-tight flex-1 group-hover:text-brand-accent transition-colors duration-300">
@@ -150,6 +153,7 @@ export default function FAQSection() {
                     </div>
                   </button>
                   <div
+                    id={`faq-answer-${faq.id}`}
                     className={`grid transition-all duration-500 ease-in-out ${
                       isExpanded ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
                     }`}

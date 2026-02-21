@@ -1,5 +1,7 @@
 'use client';
 
+import BookingTriggerButton from "@/components/booking/BookingTriggerButton";
+
 interface HeaderProps {
   onMenuToggle: () => void;
 }
@@ -31,7 +33,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           </button>
 
           <a
-            href="#"
+            href="/"
             className="px-3 sm:px-5 h-10 sm:h-12 border-4 border-brand-dark bg-brand-dark text-white flex items-center justify-center font-black text-[10px] sm:text-sm uppercase tracking-widest hover:bg-brand-accent hover:border-brand-accent transition-all duration-200 whitespace-nowrap shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1"
           >
             OpusFesta — Studio
@@ -54,12 +56,12 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                 <circle cx="11" cy="11" r="8"></circle>
               </svg>
             </button>
-            <a
-              href="#contact"
+            <BookingTriggerButton
+              source="header-book-now"
               className="hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white bg-brand-accent px-4 py-2 border-2 border-brand-accent shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-dark hover:border-brand-dark transition-all duration-200"
             >
               Book Now
-            </a>
+            </BookingTriggerButton>
           </div>
         </div>
       </div>

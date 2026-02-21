@@ -1,15 +1,26 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
+import Image from 'next/image';
 
 export default function HeroSection() {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [reducedMotion, setReducedMotion] = useState(false);
 
   useEffect(() => {
-    if (videoRef.current) {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updateMotionPreference = () => setReducedMotion(mediaQuery.matches);
+    updateMotionPreference();
+    mediaQuery.addEventListener('change', updateMotionPreference);
+
+    return () => mediaQuery.removeEventListener('change', updateMotionPreference);
+  }, []);
+
+  useEffect(() => {
+    if (videoRef.current && !reducedMotion) {
       videoRef.current.play().catch(() => {});
     }
-  }, []);
+  }, [reducedMotion]);
 
   return (
     <section className="relative h-screen flex flex-col justify-center overflow-hidden border-b-4 border-brand-border bg-brand-dark">
@@ -17,10 +28,11 @@ export default function HeroSection() {
         <div className="absolute inset-0 overflow-hidden">
           <video
             ref={videoRef}
-            autoPlay
+            autoPlay={!reducedMotion}
             muted
             loop
             playsInline
+            preload="metadata"
             className="absolute top-0 right-0 w-full h-full object-cover opacity-90"
           >
             <source src="/videos/hero-bg.mp4" type="video/mp4" />
@@ -62,14 +74,17 @@ export default function HeroSection() {
           <div className="mt-5 sm:mt-6 flex items-center gap-4">
             <div className="flex -space-x-2.5">
               {[
-                'https://randomuser.me/api/portraits/men/32.jpg',
-                'https://randomuser.me/api/portraits/women/44.jpg',
-                'https://randomuser.me/api/portraits/men/75.jpg',
+                'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/df748c19-7840-497b-84a2-85f34b0da910_320w.webp',
+                'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/c6ec4622-d827-4c9e-9744-0c24c81f9515_320w.webp',
+                'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/c8e30b9a-d4b3-47aa-9b4c-9f7d54f25460_320w.webp',
               ].map((src, i) => (
-                <img
+                <Image
                   key={i}
                   src={src}
                   alt="Client"
+                  width={40}
+                  height={40}
+                  loading="lazy"
                   className="avatar-circle w-9 h-9 sm:w-10 sm:h-10 object-cover border-2 border-white/20 grayscale hover:grayscale-0 transition-all duration-300"
                 />
               ))}
