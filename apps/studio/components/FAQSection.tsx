@@ -1,11 +1,13 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
+import { useBookingModal } from '@/components/BookingModalProvider';
 
 export default function FAQSection() {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const refs = useRef<Map<string, HTMLElement>>(new Map());
+  const { openBookingModal } = useBookingModal();
 
   const setRef = useCallback((id: string) => (el: HTMLElement | null) => {
     if (el) refs.current.set(id, el);
@@ -33,17 +35,17 @@ export default function FAQSection() {
     {
       id: 'faq-1',
       question: 'How far in advance should we book?',
-      answer: 'We recommend booking 6–12 months ahead for weddings and large events. For corporate work and smaller projects, 4–6 weeks is usually enough. Popular dates fill fast, so the earlier the better.',
+      answer: 'We recommend booking 6\u201312 months ahead for weddings and large events. For corporate work and smaller projects, 4\u20136 weeks is usually enough. Popular dates fill fast, so the earlier the better.',
     },
     {
       id: 'faq-2',
       question: 'Do you travel for destination events?',
-      answer: 'Absolutely. We cover events across the UK and internationally. Travel and accommodation costs are quoted separately and transparently — no hidden fees.',
+      answer: 'Absolutely. We cover events across the UK and internationally. Travel and accommodation costs are quoted separately and transparently \u2014 no hidden fees.',
     },
     {
       id: 'faq-3',
       question: 'How long until we receive our final deliverables?',
-      answer: 'Wedding films and photo galleries are typically delivered within 4–6 weeks. Corporate and commercial projects vary, but we always agree on a timeline before we begin.',
+      answer: 'Wedding films and photo galleries are typically delivered within 4\u20136 weeks. Corporate and commercial projects vary, but we always agree on a timeline before we begin.',
     },
     {
       id: 'faq-4',
@@ -58,12 +60,12 @@ export default function FAQSection() {
     {
       id: 'faq-6',
       question: 'What happens if the weather is bad on the day?',
-      answer: 'We plan for every scenario. Overcast skies often produce the most beautiful, soft light for photos. Rain? We bring covers, find sheltered spots, and honestly — some of our best work has been in the rain.',
+      answer: 'We plan for every scenario. Overcast skies often produce the most beautiful, soft light for photos. Rain? We bring covers, find sheltered spots, and honestly \u2014 some of our best work has been in the rain.',
     },
   ];
 
   return (
-    <section className="py-24 relative z-10 bg-brand-bg">
+    <section id="faq" className="py-24 relative z-10 bg-brand-bg">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.5fr] gap-12 lg:gap-20">
           <div
@@ -84,8 +86,8 @@ export default function FAQSection() {
             <p className="text-neutral-500 text-lg leading-relaxed font-light max-w-sm mb-8">
               Everything you need to know before booking. Still have questions? Get in touch.
             </p>
-            <a
-              href="#contact"
+            <button
+              onClick={() => openBookingModal()}
               className="inline-flex items-center gap-3 px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-4 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
             >
               Ask Us Anything
@@ -102,7 +104,7 @@ export default function FAQSection() {
               >
                 <path d="M5 12h14m-7-7l7 7l-7 7"></path>
               </svg>
-            </a>
+            </button>
           </div>
 
           <div className="border-t-4 border-brand-border">

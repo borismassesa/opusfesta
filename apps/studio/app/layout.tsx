@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Space_Mono } from "next/font/google";
 import "./globals.css";
+import BookingModalProvider from "@/components/BookingModalProvider";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -27,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${dmSans.variable} ${spaceMono.variable} font-sans`}>
-        {children}
+        <BookingModalProvider>{children}</BookingModalProvider>
       </body>
     </html>
   );

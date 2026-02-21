@@ -46,7 +46,7 @@ export default function FeaturedProjects() {
   ];
 
   return (
-    <section className="relative z-10 bg-brand-dark">
+    <section id="about" className="relative z-10 bg-brand-dark">
       <div className="grid grid-cols-2 md:grid-cols-4 border-b border-white/10">
         {stats.map((stat, index) => {
           const borders = [
@@ -129,7 +129,7 @@ export default function FeaturedProjects() {
               OpusFesta Studio is a team of filmmakers, photographers, and creative directors who believe every milestone deserves a cinematic treatment. From intimate elopements to 500-guest galas, we bring the same obsessive attention to light, composition, and narrative.
             </p>
             <a
-              href="#"
+              href="#about"
               className="inline-flex items-center gap-3 text-xs font-bold text-white uppercase tracking-widest px-6 py-3 border border-white/30 hover:border-brand-accent hover:text-brand-accent transition-all duration-300"
             >
               Our Story
