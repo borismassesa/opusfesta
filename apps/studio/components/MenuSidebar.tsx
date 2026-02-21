@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface MenuSidebarProps {
   isOpen: boolean;
@@ -8,6 +9,8 @@ interface MenuSidebarProps {
 }
 
 export default function MenuSidebar({ isOpen, onClose }: MenuSidebarProps) {
+  const pathname = usePathname();
+
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = 'hidden';
@@ -18,14 +21,20 @@ export default function MenuSidebar({ isOpen, onClose }: MenuSidebarProps) {
   }, [isOpen]);
 
   const links = [
-    { label: 'HOME', href: '#', active: true },
-    { label: 'PORTFOLIO', href: '#work' },
-    { label: 'SERVICES', href: '#services' },
-    { label: 'PROCESS', href: '#process' },
-    { label: 'TESTIMONIALS', href: '#testimonials' },
-    { label: 'FAQ', href: '#faq' },
-    { label: 'CONTACT', href: '#contact' },
+    { label: 'HOME', href: '/' },
+    { label: 'PORTFOLIO', href: '/portfolio' },
+    { label: 'SERVICES', href: '/#services' },
+    { label: 'PROCESS', href: '/#process' },
+    { label: 'TESTIMONIALS', href: '/#testimonials' },
+    { label: 'FAQ', href: '/#faq' },
+    { label: 'CONTACT', href: '/#contact' },
   ];
+
+  function isActive(href: string) {
+    if (href === '/') return pathname === '/';
+    if (href.startsWith('/#')) return pathname === '/';
+    return pathname.startsWith(href);
+  }
 
   return (
     <div
@@ -55,33 +64,36 @@ export default function MenuSidebar({ isOpen, onClose }: MenuSidebarProps) {
 
           <nav className="flex-1 flex flex-col justify-center -mt-16">
             <div className="space-y-1">
-              {links.map((link, index) => (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={onClose}
-                  className={`group flex items-center gap-4 py-3 transition-all duration-300 ${
-                    isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
-                  }`}
-                  style={{ transitionDelay: isOpen ? `${150 + index * 60}ms` : '0ms' }}
-                >
-                  <span className={`text-[10px] font-mono tracking-widest transition-colors duration-200 ${
-                    link.active ? 'text-brand-accent' : 'text-white/20 group-hover:text-brand-accent'
-                  }`}>
-                    0{index + 1}
-                  </span>
-                  <span className={`text-3xl sm:text-4xl font-bold tracking-tight transition-colors duration-200 ${
-                    link.active
-                      ? 'text-white'
-                      : 'text-white/30 group-hover:text-white'
-                  }`}>
-                    {link.label}
-                  </span>
-                  <div className={`h-[2px] flex-1 max-w-[40px] transition-all duration-300 ${
-                    link.active ? 'bg-brand-accent w-full' : 'bg-transparent w-0 group-hover:bg-white/30 group-hover:w-full'
-                  }`} />
-                </a>
-              ))}
+              {links.map((link, index) => {
+                const active = isActive(link.href);
+                return (
+                  <a
+                    key={link.label}
+                    href={link.href}
+                    onClick={onClose}
+                    className={`group flex items-center gap-4 py-3 transition-all duration-300 ${
+                      isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
+                    }`}
+                    style={{ transitionDelay: isOpen ? `${150 + index * 60}ms` : '0ms' }}
+                  >
+                    <span className={`text-[10px] font-mono tracking-widest transition-colors duration-200 ${
+                      active ? 'text-brand-accent' : 'text-white/20 group-hover:text-brand-accent'
+                    }`}>
+                      0{index + 1}
+                    </span>
+                    <span className={`text-3xl sm:text-4xl font-bold tracking-tight transition-colors duration-200 ${
+                      active
+                        ? 'text-white'
+                        : 'text-white/30 group-hover:text-white'
+                    }`}>
+                      {link.label}
+                    </span>
+                    <div className={`h-[2px] flex-1 max-w-[40px] transition-all duration-300 ${
+                      active ? 'bg-brand-accent w-full' : 'bg-transparent w-0 group-hover:bg-white/30 group-hover:w-full'
+                    }`} />
+                  </a>
+                );
+              })}
             </div>
           </nav>
 

@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import Link from 'next/link';
 
 export default function MainFooter() {
   const [isVisible, setIsVisible] = useState(false);
@@ -115,19 +116,19 @@ export default function MainFooter() {
         <div className={`py-10 transition-all duration-700 delay-200 ${isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`}>
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <nav className="flex flex-wrap gap-x-6 gap-y-2">
-              <a href="#work" className="text-[10px] font-mono text-white/30 uppercase tracking-widest hover:text-brand-accent transition-colors">
+              <a href="/#work" className="text-[10px] font-mono text-white/30 uppercase tracking-widest hover:text-brand-accent transition-colors">
                 Work
               </a>
-              <a href="#services" className="text-[10px] font-mono text-white/30 uppercase tracking-widest hover:text-brand-accent transition-colors">
+              <a href="/#services" className="text-[10px] font-mono text-white/30 uppercase tracking-widest hover:text-brand-accent transition-colors">
                 Services
               </a>
-              <a href="#process" className="text-[10px] font-mono text-white/30 uppercase tracking-widest hover:text-brand-accent transition-colors">
+              <a href="/#process" className="text-[10px] font-mono text-white/30 uppercase tracking-widest hover:text-brand-accent transition-colors">
                 Process
               </a>
-              <a href="#testimonials" className="text-[10px] font-mono text-white/30 uppercase tracking-widest hover:text-brand-accent transition-colors">
+              <a href="/#testimonials" className="text-[10px] font-mono text-white/30 uppercase tracking-widest hover:text-brand-accent transition-colors">
                 Testimonials
               </a>
-              <a href="#faq" className="text-[10px] font-mono text-white/30 uppercase tracking-widest hover:text-brand-accent transition-colors">
+              <a href="/#faq" className="text-[10px] font-mono text-white/30 uppercase tracking-widest hover:text-brand-accent transition-colors">
                 FAQ
               </a>
             </nav>
@@ -137,12 +138,12 @@ export default function MainFooter() {
             </p>
 
             <div className="flex gap-6">
-              <a href="#" className="text-[10px] text-white/20 font-mono hover:text-white/50 transition-colors tracking-wide">
+              <Link href="/privacy" className="text-[10px] text-white/20 font-mono hover:text-white/50 transition-colors tracking-wide">
                 Privacy Policy
-              </a>
-              <a href="#" className="text-[10px] text-white/20 font-mono hover:text-white/50 transition-colors tracking-wide">
+              </Link>
+              <Link href="/terms" className="text-[10px] text-white/20 font-mono hover:text-white/50 transition-colors tracking-wide">
                 Terms
-              </a>
+              </Link>
             </div>
           </div>
         </div>

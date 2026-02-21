@@ -2,6 +2,8 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { articles } from '@/lib/data';
 
 export default function JournalSection() {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
@@ -34,39 +36,6 @@ export default function JournalSection() {
     return () => observer.disconnect();
   }, []);
 
-  const articles = [
-    {
-      id: 'article-1',
-      image:
-        'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/74ce626d-5eba-470d-a4e4-159b9c6cad3c_3840w.webp',
-      date: 'July 11, 2025',
-      title: "Designing Systems That Don't Feel Systematic",
-      author: 'OpusFesta Studio',
-      category: 'Process',
-      excerpt: 'How we build creative workflows that leave room for instinct, improvisation, and happy accidents.',
-    },
-    {
-      id: 'article-2',
-      image:
-        'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/79b36b7a-a9b2-4eb8-a45d-27fe69423a98_3840w.jpg',
-      date: 'June 03, 2025',
-      title: 'Behind the Scenes of Our Latest Product Film',
-      author: 'OpusFesta Studio',
-      category: 'Motion',
-      excerpt: 'A look inside the three-day shoot that brought a heritage brand to life through cinematic storytelling.',
-    },
-    {
-      id: 'article-3',
-      image:
-        'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/bb37e13b-1cf2-4a1f-ad35-d5499d2a18a2_3840w.webp',
-      date: 'May 19, 2025',
-      title: 'Why We Treat Every Brief Like a Short Film',
-      author: 'OpusFesta Studio',
-      category: 'Culture',
-      excerpt: 'Our philosophy on approaching client work with the same craft and narrative rigour as independent filmmaking.',
-    },
-  ];
-
   const featured = articles[0];
   const rest = articles.slice(1);
 
@@ -91,8 +60,8 @@ export default function JournalSection() {
                 <span className="text-stroke-light">JOURNAL.</span>
               </h2>
             </div>
-            <a
-              href="#"
+            <Link
+              href="/journal"
               className="group inline-flex items-center gap-3 text-xs font-bold text-white uppercase tracking-widest px-5 py-3 border-2 border-white/30 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.15)] hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:border-brand-accent hover:text-brand-accent transition-all duration-200"
             >
               All Articles
@@ -110,13 +79,14 @@ export default function JournalSection() {
               >
                 <path d="M5 12h14m-7-7l7 7l-7 7"></path>
               </svg>
-            </a>
+            </Link>
           </div>
         </div>
 
-        <div
-          ref={setRef('journal-featured')}
-          className={`group grid grid-cols-1 lg:grid-cols-2 gap-0 border-4 border-white/10 mb-8 cursor-pointer transition-all duration-700 hover:border-brand-accent/40 ${
+        <Link
+          href={`/journal/${featured.slug}`}
+          ref={setRef('journal-featured') as React.Ref<HTMLAnchorElement>}
+          className={`group grid grid-cols-1 lg:grid-cols-2 gap-0 border-4 border-white/10 mb-8 cursor-pointer transition-all duration-700 hover:border-brand-accent/40 block ${
             visibleItems.has('journal-featured')
               ? 'opacity-100 translate-y-0'
               : 'opacity-0 translate-y-12'
@@ -174,14 +144,15 @@ export default function JournalSection() {
               </span>
             </div>
           </div>
-        </div>
+        </Link>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
           {rest.map((article, index) => (
-            <article
+            <Link
               key={article.id}
-              ref={setRef(article.id)}
-              className={`group cursor-pointer border-4 border-white/10 hover:border-brand-accent/40 transition-all duration-700 ${
+              href={`/journal/${article.slug}`}
+              ref={setRef(article.id) as React.Ref<HTMLAnchorElement>}
+              className={`group cursor-pointer border-4 border-white/10 hover:border-brand-accent/40 transition-all duration-700 block ${
                 visibleItems.has(article.id)
                   ? 'opacity-100 translate-y-0'
                   : 'opacity-0 translate-y-8'
@@ -231,7 +202,7 @@ export default function JournalSection() {
                   </svg>
                 </span>
               </div>
-            </article>
+            </Link>
           ))}
         </div>
       </div>
