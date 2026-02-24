@@ -11,7 +11,7 @@ const CareersCTA: React.FC = () => {
   return (
     <div className="relative flex flex-col items-center justify-center pt-8 pb-16">
       <div className="relative">
-        <Link href={hero.buttonLink || "/careers/positions"}>
+        <Link href={hero.buttonLink || "/careers"}>
           <button 
             className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-3 rounded-full text-sm font-medium transition-all transform hover:scale-105 active:scale-95 shadow-lg z-20 relative"
           >

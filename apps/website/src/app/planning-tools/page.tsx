@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { Navbar } from '@/components/layout/Navbar'
 import { MenuOverlay } from '@/components/layout/MenuOverlay'
+import { Footer } from '@/components/layout/Footer'
 import PlanningToolsSections from '@/components/planning/planning-tools-sections'
 import HeroSection from '@/components/shadcn-studio/blocks/hero-section-40/hero-section-40'
 
@@ -16,9 +17,10 @@ const PlanningToolsPage = () => {
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 
       <main className='flex flex-col'>
-        <HeroSection />
+        <HeroSection navbarOffset />
         <PlanningToolsSections />
       </main>
+      <Footer />
     </div>
   )
 }

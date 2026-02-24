@@ -57,14 +57,23 @@ export function StudentsClient() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="careers-page min-h-screen bg-background">
       <CareersNavbar />
       
-      <main className="pt-14 sm:pt-18">
+      <main>
         {/* Hero Section with Carousel */}
-        <section id="hero-section" className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 py-6 sm:py-8 md:py-12 flex flex-col items-center gap-3 sm:gap-4">
-          <Header />
-          <Carousel />
+        <section id="hero-section" className="relative isolate overflow-hidden">
+          <div className="pointer-events-none absolute inset-0 -z-20 overflow-hidden">
+            <div className="absolute inset-0 bg-[radial-gradient(130%_85%_at_10%_0%,color-mix(in_oklab,var(--primary)_10%,transparent)_0%,transparent_62%),radial-gradient(90%_70%_at_90%_20%,color-mix(in_oklab,var(--primary)_7%,transparent)_0%,transparent_64%),linear-gradient(180deg,color-mix(in_oklab,var(--background)_98%,var(--primary)_2%)_0%,var(--background)_70%)]" />
+            <div className="absolute -top-24 left-[8%] h-72 w-72 rounded-full bg-[color-mix(in_oklab,var(--primary)_10%,transparent)] blur-3xl" />
+            <div className="absolute right-[5%] top-24 h-64 w-64 rounded-full bg-[color-mix(in_oklab,var(--primary)_8%,transparent)] blur-3xl" />
+            <div className="absolute bottom-[-7rem] left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-[color-mix(in_oklab,var(--primary)_9%,transparent)] blur-3xl" />
+            <div className="absolute inset-0 opacity-28 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_8%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_8%,transparent)_1px,transparent_1px)] [background-size:52px_52px] [mask-image:radial-gradient(circle_at_center,black_42%,transparent_100%)]" />
+          </div>
+          <div className="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-12 pt-20 sm:pt-24 md:pt-28 pb-6 sm:pb-8 md:pb-12 flex flex-col items-center gap-3 sm:gap-4">
+            <Header />
+            <Carousel />
+          </div>
         </section>
 
         {/* Opportunities */}
@@ -187,7 +196,7 @@ export function StudentsClient() {
                 <span className="font-playfair italic font-medium">Ready</span>{' '}
                 <span className="font-sans font-medium tracking-tighter">to get started?</span>
               </h2>
-              <Link href="/careers/positions">
+              <Link href="/careers">
                 <Button size="lg" className="text-base px-8 group">
                   View Open Positions
                   <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />

@@ -47,7 +47,7 @@ export function CareersFooter() {
               <h4 className="font-semibold text-primary text-sm tracking-wide uppercase">Company</h4>
               <div className="flex flex-col gap-3">
                 <FooterLink href="/careers#about">About Us</FooterLink>
-                <FooterLink href="/careers/positions">Open Positions</FooterLink>
+                <FooterLink href="/careers">Open Positions</FooterLink>
                 <FooterLink href="mailto:careers@opusfesta.com">Contact</FooterLink>
               </div>
             </div>
@@ -58,7 +58,7 @@ export function CareersFooter() {
             <h4 className="font-semibold text-primary text-sm tracking-wide uppercase">Company</h4>
             <div className="flex flex-col gap-3">
               <FooterLink href="/careers#about">About Us</FooterLink>
-              <FooterLink href="/careers/positions">Open Positions</FooterLink>
+              <FooterLink href="/careers">Open Positions</FooterLink>
               <FooterLink href="mailto:careers@opusfesta.com">Contact</FooterLink>
             </div>
           </div>

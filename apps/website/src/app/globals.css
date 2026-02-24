@@ -87,7 +87,7 @@
   }
 
   .dark {
-    /* Dark Mode (Original) */
+    /* Dark Mode (Starry Night Palette) */
     --background: #120a1c;
     --foreground: #f7f1ff;
     --surface: #1a1028;
@@ -113,9 +113,9 @@
   }
 
   .orion-theme {
-    --background: #F8F9FA;
+    --background: #FAF8FC;
     --foreground: #000000;
-    --surface: #F8F9FA;
+    --surface: #FAF8FC;
     --border: rgba(126, 115, 131, 0.28);
     --primary: #6F3393;
     --primary-foreground: #ffffff;
@@ -427,6 +427,15 @@
     width: 29.5rem;
     height: 29.5rem;
   }
+  .w-50 {
+    width: 12.5rem;
+  }
+  .w-57\.5 {
+    width: 14.375rem;
+  }
+  .min-h-30 {
+    min-height: 7.5rem;
+  }
   .rotate-10 {
     rotate: 10deg;
   }
@@ -497,4 +506,26 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* Careers titles theme rule */
+.careers-page main :is(h1, h2, h3, h4, h5, h6) {
+  color: #000 !important;
+}
+
+.dark .careers-page main :is(h1, h2, h3, h4, h5, h6) {
+  color: #fff !important;
+}
+
+/* Homepage titles theme rule */
+.home-page main :is(h1, h2, h3, h4, h5, h6) {
+  color: #000 !important;
+}
+
+.dark .home-page main :is(h1, h2, h3, h4, h5, h6) {
+  color: #fff !important;
+}
+
+.home-page .home-cta-headline-white {
+  color: #fff !important;
 }

@@ -49,7 +49,7 @@ const Jobs: React.FC = () => {
          </div>
          <div className="flex flex-col md:flex-row justify-between items-start md:items-baseline gap-4">
            <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold text-primary tracking-tight">Open roles</h2>
-           <Link href="/careers/positions" className="text-base font-medium text-secondary hover:text-primary transition-colors flex items-center gap-2 group">
+           <Link href="/careers" className="text-base font-medium text-secondary hover:text-primary transition-colors flex items-center gap-2 group">
              View all positions 
              <span className="group-hover:translate-x-1 transition-transform">&rarr;</span>
            </Link>

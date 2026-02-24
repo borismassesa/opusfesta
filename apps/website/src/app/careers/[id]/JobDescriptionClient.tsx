@@ -99,7 +99,7 @@ export function JobDescriptionClient({
       <div className="min-h-screen bg-background">
         <CareersNavbar />
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-24">
-          <Link href="/careers/positions">
+          <Link href="/careers">
             <Button variant="ghost" className="mb-8">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back to Positions
@@ -113,7 +113,7 @@ export function JobDescriptionClient({
             </div>
             <h3 className="text-2xl font-semibold mb-2 text-primary">Job Not Found</h3>
             <p className="text-destructive mb-6">{error || "Job posting not found"}</p>
-            <Link href="/careers/positions">
+            <Link href="/careers">
               <Button>Browse All Positions</Button>
             </Link>
           </div>
@@ -173,7 +173,7 @@ export function JobDescriptionClient({
       <section className="pt-24 pb-20 md:pt-32 md:pb-32">
         <div className="max-w-4xl mx-auto px-6 lg:px-12">
           {/* Back Button */}
-          <Link href="/careers/positions">
+          <Link href="/careers">
             <Button variant="ghost" className="mb-8 group">
               <ArrowLeft className="w-4 h-4 mr-2 group-hover:-translate-x-1 transition-transform" />
               Back to Positions

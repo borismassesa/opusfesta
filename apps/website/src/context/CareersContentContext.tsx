@@ -137,7 +137,7 @@ const INITIAL_CONTENT: CareersContentState = {
       headline: "Why you should join us\nBuild something meaningful",
       description: "At OpusFesta, you'll build products that matter to real people, work with cutting-edge technology, and grow your career while making a meaningful impact on Tanzanian celebrations.",
       ctaText: "View Open Positions",
-      ctaLink: "/careers/positions",
+      ctaLink: "/careers",
     },
     reasons: {
       headline: "Why work at OpusFesta",
@@ -207,14 +207,14 @@ const INITIAL_CONTENT: CareersContentState = {
       headline: "Ready to join us?",
       description: "Check out our open positions and see where you can make an impact. We're always looking for talented, passionate people who want to build something meaningful.",
       buttonText: "View Open Positions",
-      buttonLink: "/careers/positions",
+      buttonLink: "/careers",
     },
   },
   hero: {
     title: "Build the future\nof Event Planning",
     description: "We believe that when every person and business can tailor event planning to their unique needs, the world becomes better at celebrating life's moments. Our mission is to make that vision a reality.",
     buttonText: "View open positions",
-    buttonLink: "/careers/positions",
+    buttonLink: "/careers",
     image: null,
     carouselImages: [
       "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=600&h=800&fit=crop&q=80",
@@ -241,7 +241,7 @@ const INITIAL_CONTENT: CareersContentState = {
     ],
     image: null,
     linkText: "Browse open positions",
-    linkUrl: "/careers/positions",
+    linkUrl: "/careers",
   },
   diversity: {
     quote: "We believe the best companies bring together diversity in race, age, physical and mental ability, sexuality, gender identity, ethnicity, perspectives and ideas. And people do their best work when they feel like they belong — included, valued, and equal. This is the OpusFesta we want to build, where everyone brings their full selves to work knowing that they'll be heard, championed, and supported to succeed. We hope you'll join us.",
