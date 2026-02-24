@@ -1,176 +1,136 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-
-import { TrendingDownIcon, TrendingUpIcon, TriangleAlertIcon, UserPlusIcon, UsersIcon } from 'lucide-react'
 import { motion } from 'motion/react'
+import { AlbumIcon, ApertureIcon } from 'lucide-react'
 
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { MotionPreset } from '@/components/ui/motion-preset'
-import { NumberTicker } from '@/components/ui/number-ticker'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
 
-import RegularUpdatesRippleBg from '@/components/shadcn-studio/blocks/bento-grid-13/regular-updates-ripple-bg'
-
-import Logo from '@/assets/svg/logo'
-
-export type NotificationCard = {
-  id: string
-  productName: string
-  productImage: string
-  productAlt: string
-  percentageChange: number
-  stats: {
-    reach: number
-    users: number
-    queries: number
-  }
-}
-
-const notificationsList: NotificationCard[] = [
-  {
-    id: '1',
-    productName: 'Headset 22R',
-    productImage: 'https://cdn.shadcnstudio.com/ss-assets/blocks/bento-grid/image-57.png',
-    productAlt: 'headset',
-    percentageChange: -2.5,
-    stats: { reach: 1276, users: 139, queries: 28 }
-  },
-  {
-    id: '2',
-    productName: 'Dell Vision 7',
-    productImage: 'https://cdn.shadcnstudio.com/ss-assets/blocks/bento-grid/image-56.png',
-    productAlt: 'laptop',
-    percentageChange: 5.6,
-    stats: { reach: 1235, users: 138, queries: 28 }
-  },
-  {
-    id: '3',
-    productName: 'Playstation 5',
-    productImage: 'https://cdn.shadcnstudio.com/ss-assets/blocks/bento-grid/image-58.png',
-    productAlt: 'console',
-    percentageChange: 10,
-    stats: { reach: 2696, users: 169, queries: 18 }
-  }
+const IMAGES = [
+  '/images/advice-ideas/post-1.webp',
+  '/images/advice-ideas/post-2.webp',
+  '/images/advice-ideas/post-3.webp',
+  '/images/advice-ideas/post-4.webp',
+  '/images/advice-ideas/post-5.webp',
+  '/images/advice-ideas/post-6.webp',
+  '/images/advice-ideas/post-7.webp',
+  '/images/advice-ideas/post-8.webp',
 ]
 
-const RegularUpdatesCard = () => {
-  const [notifications, setNotifications] = useState<NotificationCard[]>(notificationsList)
-  const [activeIndex, setActiveIndex] = useState<NotificationCard>(notificationsList[0])
+// Duplicate arrays for seamless CSS/Framer looping
+const COLUMN_1 = [...IMAGES.slice(0, 4), ...IMAGES.slice(0, 4)]
+const COLUMN_2 = [...IMAGES.slice(4, 8), ...IMAGES.slice(4, 8)]
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setNotifications(prevCards => {
-        const newArray = [...prevCards]
-
-        setActiveIndex(newArray[newArray.length - 1])
-        newArray.unshift(newArray.pop()!)
-
-        return newArray
-      })
-    }, 2000)
-
-    return () => clearInterval(interval)
-  }, [])
-
+export const RegularUpdatesCard = ({ className }: { className?: string }) => {
   return (
-    <Card className='gap-12 rounded-3xl border border-border/70 bg-background/65 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.4)]'>
-      <MotionPreset
-        fade
-        slide={{ direction: 'down', offset: 35 }}
-        delay={0.15}
-        transition={{ duration: 0.5 }}
-        className='relative flex h-full justify-center pt-4'
-      >
-        <div className='absolute top-5 right-5 left-5 flex min-h-29 justify-center gap-3 sm:gap-4'>
-          <div className='flex w-[7.2rem] flex-col items-start gap-2.5 rounded-2xl border border-border/70 bg-card p-3 shadow-[0_16px_34px_-26px_rgba(15,23,42,0.42)] sm:w-[7.6rem]'>
-            <div className='grid size-9.5 place-content-center rounded-full border'>
-              <UsersIcon className='size-5' />
-            </div>
-            <div className='space-y-1'>
-              <h5 className='font-medium'>
-                <NumberTicker value={activeIndex.stats.reach} />
-              </h5>
-              <p className='text-muted-foreground text-xs'>Product Reach</p>
-            </div>
-          </div>
-          <div className='flex w-[7.2rem] flex-col items-start gap-2.5 rounded-2xl border border-border/70 bg-card p-3 shadow-[0_16px_34px_-26px_rgba(15,23,42,0.42)] sm:w-[7.6rem]'>
-            <div className='grid size-9.5 place-content-center rounded-full border'>
-              <UserPlusIcon className='size-5' />
-            </div>
-            <div className='space-y-1'>
-              <h5 className='font-medium'>
-                <NumberTicker value={activeIndex.stats.users} />
-              </h5>
-              <p className='text-muted-foreground text-xs'>New users</p>
-            </div>
-          </div>
-          <div className='flex w-[7.2rem] flex-col items-start gap-2.5 rounded-2xl border border-border/70 bg-card p-3 shadow-[0_16px_34px_-26px_rgba(15,23,42,0.42)] sm:w-[7.6rem]'>
-            <div className='grid size-9.5 place-content-center rounded-full border'>
-              <TriangleAlertIcon className='size-5' />
-            </div>
-            <div className='space-y-1'>
-              <h5 className='font-medium'>
-                <NumberTicker value={activeIndex.stats.queries} />
-              </h5>
-              <p className='text-muted-foreground text-xs'>User queries</p>
-            </div>
-          </div>
-        </div>
-        <RegularUpdatesRippleBg className='text-border pointer-events-none size-118 select-none' />
-        <Logo className='absolute top-1/2 size-30 -translate-y-1/2' />
+    <Card className={`relative flex h-full flex-col gap-0 border-border/70 bg-background/65 pt-0 shadow-[0_24px_60px_-44px_rgba(15,23,42,0.4)] overflow-hidden ${className || ''}`}>
+      {/* Dynamic Background Glow */}
+      <motion.div
+        animate={{ opacity: [0.2, 0.4, 0.2], scale: [1, 1.05, 1] }}
+        transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
+        className='absolute -bottom-32 -right-32 size-72 rounded-full bg-rose-500/10 blur-3xl pointer-events-none'
+      />
+      <motion.div
+        animate={{ opacity: [0.1, 0.3, 0.1], scale: [1, 1.1, 1] }}
+        transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
+        className='absolute top-20 -left-16 size-56 rounded-full bg-primary/10 blur-3xl pointer-events-none'
+      />
 
-        {notifications.map((notification, index) => (
+      <div className='z-10 flex flex-col gap-6 p-6 pb-0'>
+        {/* Header Ribbon */}
+        <MotionPreset fade slide={{ direction: 'down', offset: 20 }} className='flex w-full items-center justify-between rounded-xl border border-border/50 bg-card p-3 shadow-sm'>
+          <div className='flex items-center gap-3'>
+            <Avatar className='size-8 rounded-md'>
+              <AvatarFallback className='bg-primary/10 text-primary shrink-0 rounded-md'>
+                <AlbumIcon className='size-4' />
+              </AvatarFallback>
+            </Avatar>
+            <span className='font-semibold text-sm'>Engagement Collection</span>
+          </div>
+          <Button variant='outline' size='sm' className='h-7 text-xs'>
+            Details
+          </Button>
+        </MotionPreset>
+      </div>
+
+      <MotionPreset fade slide={{ direction: 'up', offset: 20 }} delay={0.3} className='relative flex-1 mt-6 h-full min-h-[300px] overflow-hidden bg-muted/20 border-t border-border/50'>
+        {/* Soft fading edges for the infinite scroll */}
+        <div className='pointer-events-none absolute inset-x-0 top-0 z-10 h-16 bg-linear-to-b from-background to-transparent' />
+        <div className='pointer-events-none absolute inset-x-0 bottom-0 z-10 h-16 bg-linear-to-t from-background to-transparent' />
+
+        <div className='absolute inset-0 flex justify-center gap-4 px-6 pt-2'>
+          {/* Column 1 (Scrolls Up) */}
           <motion.div
-            key={notification.id}
-            className='absolute bottom-0 left-1/2 flex h-20 w-72 -translate-x-1/2 items-center justify-between rounded-2xl border border-border/70 bg-card p-4 shadow-[0_16px_34px_-26px_rgba(15,23,42,0.42)] md:w-75 xl:w-72'
-            style={{
-              transformOrigin: 'bottom center'
-            }}
-            animate={{
-              bottom: (index - 2) * -8,
-              scale: 1 - index * 0.1,
-              opacity: 1 - index * 0.25,
-              zIndex: notifications.length - index
-            }}
-            transition={{
-              duration: 0.5,
-              ease: 'easeInOut'
-            }}
+            className='flex w-1/2 flex-col gap-4'
+            animate={{ y: ['0%', '-50%'] }}
+            transition={{ ease: 'linear', duration: 40, repeat: Infinity }}
           >
-            <div className='flex flex-col gap-1'>
-              <h5 className='text-xl font-semibold'>{notification.productName}</h5>
-              <Badge className='bg-primary/10 [a&]:hover:bg-primary/5 focus-visible:ring-primary/20 dark:focus-visible:ring-primary/40 text-primary focus-visible:outline-none'>
-                {notification.percentageChange > 0 ? <TrendingUpIcon /> : <TrendingDownIcon />}
-                {notification.percentageChange}%
-              </Badge>
-            </div>
-
-            <img src={notification.productImage} alt={notification.productAlt} className='size-13' />
+            {COLUMN_1.map((src, idx) => (
+              <img
+                key={`col1-${idx}`}
+                src={src}
+                alt='Inspiration'
+                className='h-[160px] w-full rounded-[16px] object-cover shadow-sm'
+              />
+            ))}
           </motion.div>
-        ))}
+
+          {/* Column 2 (Scrolls Down) */}
+          <motion.div
+            className='flex w-1/2 flex-col gap-4'
+            animate={{ y: ['-50%', '0%'] }}
+            transition={{ ease: 'linear', duration: 35, repeat: Infinity }}
+          >
+            {COLUMN_2.map((src, idx) => (
+              <img
+                key={`col2-${idx}`}
+                src={src}
+                alt='Inspiration'
+                className='h-[200px] w-full rounded-[16px] object-cover shadow-sm'
+              />
+            ))}
+          </motion.div>
+        </div>
+
+        {/* Center Premium Badge Overlaying the feed */}
+        <div className='absolute inset-0 z-20 flex items-center justify-center p-4'>
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: 10 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: 'spring', delay: 0.6, bounce: 0.4 }}
+            className='flex items-center gap-3 rounded-2xl border border-border/50 bg-background/80 px-5 py-3 shadow-xl backdrop-blur-xl transition-transform hover:scale-105'
+          >
+            <div className='flex size-10 items-center justify-center rounded-xl bg-primary/10 text-primary'>
+              <span className='font-bold text-sm'>1.2K</span>
+            </div>
+            <div className='flex flex-col pr-2'>
+              <span className='text-sm font-semibold leading-none text-rose-500'>Ideas</span>
+              <span className='pt-1 text-[10px] text-muted-foreground leading-none'>Saved to boards</span>
+            </div>
+          </motion.div>
+        </div>
       </MotionPreset>
 
-      <CardContent className='flex flex-col gap-4 pt-6'>
+      <CardContent className='relative z-10 mt-auto flex flex-col gap-3 pb-6 pt-4 px-6 border-t border-border/40 bg-card/30'>
         <MotionPreset
           component='h5'
           fade
-          slide={{ direction: 'down', offset: 35 }}
-          delay={0.3}
-          transition={{ duration: 0.5 }}
-          className='text-2xl font-semibold'
+          slide={{ direction: 'down', offset: 20 }}
+          delay={0.7}
+          className='text-2xl font-semibold flex items-center gap-2'
         >
-          Regular Updates
+          Organize inspiration into decisions.
         </MotionPreset>
         <MotionPreset
           component='p'
           fade
-          slide={{ direction: 'down', offset: 35 }}
-          delay={0.45}
-          transition={{ duration: 0.5 }}
-          className='text-muted-foreground text-lg'
+          slide={{ direction: 'down', offset: 20 }}
+          delay={0.8}
+          className='text-muted-foreground text-base'
         >
-          Get regular real-time alerts or notification about orders, payments and customer activity.
+          Moodboards syncing with your vendor palette.
         </MotionPreset>
       </CardContent>
     </Card>

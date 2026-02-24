@@ -1,11 +1,11 @@
 "use client";
 
-import React from 'react';
-import { motion } from 'framer-motion';
-import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
+import React, { useEffect, useRef } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { useCareersContent } from "@/context/CareersContentContext";
-import Carousel3D from './Carousel3D';
+import Carousel3D from "./Carousel3D";
 
 // Default slides - fallback if CMS has no images
 const DEFAULT_SLIDES = [
@@ -22,6 +22,8 @@ const DEFAULT_SLIDES = [
 export function CareersHero() {
   const { content, contentVersion } = useCareersContent();
   const { hero } = content;
+  const sectionRef = useRef<HTMLElement>(null);
+  const prefersReducedMotion = useReducedMotion();
   
   // Use carousel images from CMS, or fallback to defaults
   const carouselImages = hero.carouselImages && hero.carouselImages.length > 0 
@@ -33,9 +35,86 @@ export function CareersHero() {
     return `${img}${separator}v=${encodeURIComponent(contentVersion)}`;
   });
 
+  useEffect(() => {
+    const section = sectionRef.current;
+    if (!section) return;
+
+    if (prefersReducedMotion) {
+      section.style.setProperty("--spot-x", "50%");
+      section.style.setProperty("--spot-y", "18%");
+      section.style.setProperty("--spot-opacity", "0.08");
+      return;
+    }
+
+    let rafId: number | null = null;
+    const pointer = { x: 50, y: 20, active: false };
+
+    const renderSpotlight = () => {
+      rafId = null;
+      section.style.setProperty("--spot-x", `${pointer.x}%`);
+      section.style.setProperty("--spot-y", `${pointer.y}%`);
+      section.style.setProperty("--spot-opacity", pointer.active ? "0.2" : "0.1");
+    };
+
+    const queueRender = () => {
+      if (rafId !== null) return;
+      rafId = requestAnimationFrame(renderSpotlight);
+    };
+
+    const handlePointerMove = (event: PointerEvent) => {
+      const bounds = section.getBoundingClientRect();
+      const nextX = ((event.clientX - bounds.left) / bounds.width) * 100;
+      const nextY = ((event.clientY - bounds.top) / bounds.height) * 100;
+
+      pointer.x = Math.max(0, Math.min(100, nextX));
+      pointer.y = Math.max(0, Math.min(100, nextY));
+      pointer.active = true;
+      queueRender();
+    };
+
+    const handlePointerLeave = () => {
+      pointer.active = false;
+      pointer.x = 50;
+      pointer.y = 18;
+      queueRender();
+    };
+
+    renderSpotlight();
+    section.addEventListener("pointermove", handlePointerMove);
+    section.addEventListener("pointerleave", handlePointerLeave);
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      section.removeEventListener("pointermove", handlePointerMove);
+      section.removeEventListener("pointerleave", handlePointerLeave);
+    };
+  }, [prefersReducedMotion]);
+
   return (
-    <section className="min-h-screen w-full flex flex-col items-center justify-center py-12 sm:py-16 md:py-20 bg-background text-primary selection:bg-primary selection:text-primary-foreground overflow-hidden">
-      
+    <section
+      ref={sectionRef}
+      className="planning-motion relative isolate flex min-h-screen w-full flex-col items-center justify-center overflow-x-clip overflow-y-visible bg-background py-12 text-primary selection:bg-primary selection:text-primary-foreground sm:py-16 md:py-20 [--spot-opacity:0.1] [--spot-x:50%] [--spot-y:18%]"
+    >
+      <div className="pointer-events-none absolute inset-0 -z-20 overflow-hidden">
+        <div className="absolute inset-0 bg-[radial-gradient(130%_85%_at_10%_0%,color-mix(in_oklab,var(--primary)_10%,transparent)_0%,transparent_62%),radial-gradient(90%_70%_at_90%_20%,color-mix(in_oklab,var(--primary)_7%,transparent)_0%,transparent_64%),linear-gradient(180deg,color-mix(in_oklab,var(--background)_98%,var(--primary)_2%)_0%,var(--background)_70%)]" />
+        <div
+          className="absolute inset-0 bg-[radial-gradient(460px_circle_at_var(--spot-x)_var(--spot-y),color-mix(in_oklab,var(--primary)_14%,transparent)_0%,transparent_62%)] transition-opacity duration-300 motion-reduce:transition-none"
+          style={{ opacity: "var(--spot-opacity)" }}
+        />
+        <div
+          className={`absolute -top-24 left-[8%] h-72 w-72 rounded-full bg-[color-mix(in_oklab,var(--primary)_10%,transparent)] blur-3xl ${prefersReducedMotion ? "" : "animate-pulse"}`}
+        />
+        <div
+          className={`absolute right-[5%] top-24 h-64 w-64 rounded-full bg-[color-mix(in_oklab,var(--primary)_8%,transparent)] blur-3xl ${prefersReducedMotion ? "" : "animate-pulse"}`}
+          style={{ animationDelay: "1.3s", animationDuration: "9s" }}
+        />
+        <div
+          className={`absolute bottom-[-7rem] left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-[color-mix(in_oklab,var(--primary)_9%,transparent)] blur-3xl ${prefersReducedMotion ? "" : "animate-pulse"}`}
+          style={{ animationDelay: "2.1s", animationDuration: "10s" }}
+        />
+        <div className="absolute inset-0 opacity-28 [background-image:linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_8%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_8%,transparent)_1px,transparent_1px)] [background-size:52px_52px] [mask-image:radial-gradient(circle_at_center,black_42%,transparent_100%)]" />
+      </div>
+
       {/* Header Section */}
       <div className="w-full max-w-4xl px-4 sm:px-6 mb-6 sm:mb-8 md:mb-12 relative z-20">
         <div className="text-center flex flex-col items-center">
@@ -43,7 +122,7 @@ export function CareersHero() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, ease: "easeOut" }}
-            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-primary leading-[1.1] mb-4 sm:mb-6 px-2"
+            className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold tracking-tight text-black dark:text-white leading-[1.1] mb-4 sm:mb-6 px-2"
           >
             {hero.title.split('\n').map((line, i) => (
               <React.Fragment key={i}>

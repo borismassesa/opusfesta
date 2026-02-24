@@ -123,7 +123,7 @@ export function CTA() {
         <div className="relative z-10 flex flex-col items-center max-w-4xl mx-auto">
 
           <h2 className="text-3xl sm:text-4xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-white mb-4 md:mb-6 leading-none md:leading-[0.95]">
-            {cta?.headline || "Plan the wedding"} <br />
+            <span className="home-cta-headline-white">{cta?.headline || "Plan the wedding"}</span> <br />
             <span className="font-serif font-normal italic text-white/90">
               {cta?.subheadline || "of the century."}
             </span>
