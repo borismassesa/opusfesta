@@ -1,60 +1,65 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
-import { Moon, Sun, LogOut, Briefcase, ChevronRight, Menu, X } from "lucide-react";
+import { Moon, Sun, LogOut, Briefcase } from "lucide-react";
+import gsap from "gsap";
 import { useOpusFestaAuth } from "@opusfesta/auth";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSeparator,
-} from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 
 export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
   const { theme, setTheme } = useTheme();
   const router = useRouter();
+  const pathname = usePathname();
+
   const [mounted, setMounted] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
+
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const linksRef = useRef<HTMLDivElement>(null);
 
   const { clerkUser, isLoaded, isSignedIn, signOut } = useOpusFestaAuth();
-
   const isAuthenticated = isLoaded ? isSignedIn : null;
   const isCheckingAuth = !isLoaded;
 
-  const userData = clerkUser ? {
-    name: clerkUser.fullName,
-    email: clerkUser.primaryEmailAddress?.emailAddress || null,
-    avatar: clerkUser.imageUrl || null,
-  } : null;
+  const userData = clerkUser
+    ? {
+        name: clerkUser.fullName,
+        email: clerkUser.primaryEmailAddress?.emailAddress || null,
+        avatar: clerkUser.imageUrl || null,
+      }
+    : null;
 
-  // Careers-specific navigation - only careers-related links
   const NAV_LINKS = [
-    { name: "Why OpusFesta", href: "/careers/why-opusfesta" },
+    { name: "Home", href: "/" },
+    { name: "Careers", href: "/careers" },
     { name: "Students", href: "/careers/students" },
-    { name: "Open Positions", href: "/careers/positions" },
   ];
 
-  // Add "My Applications" to nav if authenticated
-  const authenticatedNavLinks = isAuthenticated === true ? [
-    { name: "My Applications", href: "/careers/my-applications" },
-  ] : [];
+  const authenticatedNavLinks =
+    isAuthenticated === true ? [{ name: "My Applications", href: "/careers/my-applications" }] : [];
 
   const allNavLinks = [...NAV_LINKS, ...authenticatedNavLinks];
 
+  const isActiveLink = (href: string) => {
+    if (href === "/") return pathname === "/";
+    if (href === "/careers") return pathname === "/careers";
+    if (href === "/careers/my-applications") return pathname === "/careers/my-applications";
+    return pathname === href;
+  };
+
   const getUserInitials = (name: string | null, email: string | null): string => {
     if (name) {
-      const parts = name.trim().split(/\s+/);
+      const parts = name.trim().split(/\s+/).filter(Boolean);
       if (parts.length >= 2) {
         return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
       }
-      return name.substring(0, 2).toUpperCase();
+      if (parts.length === 1) {
+        return parts[0].substring(0, 2).toUpperCase();
+      }
     }
     if (email) {
       return email.substring(0, 2).toUpperCase();
@@ -74,169 +79,134 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
 
   useEffect(() => {
     setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    // Close mobile menu when clicking outside
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (mobileMenuOpen && !target.closest('nav') && !target.closest('button[aria-label="Toggle menu"]')) {
-        setMobileMenuOpen(false);
-      }
-    };
-
-    if (mobileMenuOpen) {
-      document.addEventListener('click', handleClickOutside);
-      return () => document.removeEventListener('click', handleClickOutside);
-    }
-  }, [mobileMenuOpen]);
-
-  useEffect(() => {
-    // Close mobile menu on route change
-    setMobileMenuOpen(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-
+    const handleScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      const tl = gsap.timeline();
+      tl.to(overlayRef.current, {
+        clipPath: "inset(0 0 0 0)",
+        duration: 0.6,
+        ease: "power4.inOut",
+        pointerEvents: "all",
+      });
+
+      const links = linksRef.current?.children;
+      if (links) {
+        tl.fromTo(
+          links,
+          { y: 50, opacity: 0 },
+          {
+            y: 0,
+            opacity: 1,
+            duration: 0.4,
+            stagger: 0.05,
+            ease: "power2.out",
+          },
+          "-=0.2",
+        );
+      }
+    } else {
+      gsap.to(overlayRef.current, {
+        clipPath: "inset(0 0 100% 0)",
+        duration: 0.6,
+        ease: "power4.inOut",
+        pointerEvents: "none",
+      });
+    }
+  }, [mobileMenuOpen]);
+
   return (
     <>
       <nav
-        className={`${sticky ? 'fixed' : 'relative'} top-0 w-full z-50 px-6 md:px-12 pb-1 pt-3 flex justify-between items-center transition-all duration-300 ${
-          sticky && scrolled ? "bg-background/80 backdrop-blur-md border-b border-border/50 pb-0.5 pt-2" : sticky ? "bg-transparent pb-1 pt-3" : "bg-background pb-1 pt-3"
+        className={`orion-theme ${sticky ? "fixed" : "relative"} top-0 z-50 flex w-full items-center justify-between gap-3 px-4 pb-1 pt-3 transition-all duration-300 sm:px-6 lg:px-8 xl:px-12 ${
+          sticky && scrolled
+            ? "bg-[color-mix(in_oklab,var(--background)_89%,var(--primary)_11%)] backdrop-blur-xl shadow-[0_16px_38px_-24px_color-mix(in_oklab,var(--primary)_70%,transparent)] ring-1 ring-[color-mix(in_oklab,var(--primary)_16%,transparent)] pb-0.5 pt-2"
+            : sticky
+              ? "bg-transparent pb-1 pt-3"
+              : "bg-background pb-1 pt-3"
         }`}
       >
-        {/* Logo */}
         <Link
           href="/careers"
-          className="font-serif text-lg sm:text-xl md:text-2xl lg:text-3xl text-primary hover:text-primary/80 transition-colors select-none z-50"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+          className="z-50 shrink-0 select-none font-serif text-xl text-foreground transition-colors hover:text-primary sm:text-2xl md:text-3xl"
+          onClick={() => {
+            if (mobileMenuOpen) setMobileMenuOpen(false);
+            window.scrollTo({ top: 0, behavior: "smooth" });
+          }}
         >
           <span className="hidden sm:inline">OpusFesta Careers</span>
           <span className="sm:hidden">Careers</span>
         </Link>
 
-        {/* Desktop Navigation */}
-        {allNavLinks.length > 0 && (
-          <div className="hidden lg:flex items-center gap-8 bg-background/50 px-8 py-2.5 rounded-full border border-border/40 backdrop-blur-sm shadow-sm">
-            {allNavLinks.map((link) => {
-              const isActive = pathname === link.href ||
-                (link.href === "/careers/positions" && pathname?.startsWith("/careers/positions")) ||
-                (link.href === "/careers/my-applications" && pathname === "/careers/my-applications") ||
-                (link.href === "/careers/why-opusfesta" && pathname === "/careers/why-opusfesta") ||
-                (link.href === "/careers/students" && pathname === "/careers/students");
-
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`text-sm font-medium transition-colors hover:text-primary ${
-                    isActive ? "text-primary" : "text-secondary"
+        <div className="hidden xl:flex flex-1 min-w-0 justify-center px-2">
+          <div className="flex max-w-full items-center gap-3 2xl:gap-5 overflow-x-auto whitespace-nowrap rounded-full border border-border/40 bg-background/50 px-4 py-2.5 shadow-sm backdrop-blur-sm 2xl:px-7 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            {allNavLinks.map(link => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={`group relative shrink-0 px-0.5 py-0.5 text-sm font-medium transition-colors 2xl:text-base ${
+                  isActiveLink(link.href) ? "text-foreground" : "text-secondary hover:text-primary"
+                }`}
+              >
+                {link.name}
+                <span
+                  className={`pointer-events-none absolute -bottom-0.5 left-0 h-0.5 rounded-full bg-primary transition-all duration-300 ${
+                    isActiveLink(link.href) ? "w-full" : "w-0 group-hover:w-full"
                   }`}
-                >
-                  {link.name}
-                </Link>
-              );
-            })}
+                />
+              </Link>
+            ))}
           </div>
-        )}
+        </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-4 z-50">
-          {/* Desktop Auth Section */}
-          <div className="hidden md:flex items-center gap-4">
+        <div className="z-50 flex shrink-0 items-center gap-2 sm:gap-3">
+          <div className="hidden items-center gap-2 lg:flex xl:gap-3">
             {isAuthenticated === true ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="relative focus:outline-none focus:ring-0 rounded-full">
-                    <Avatar className="h-10 w-10">
-                      {userData?.avatar ? (
-                        <AvatarImage src={userData.avatar} alt={userData.name || "User"} />
-                      ) : null}
-                      <AvatarFallback className="bg-secondary text-background font-semibold">
-                        {userData ? getUserInitials(userData.name, userData.email) : "U"}
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-72 p-3 bg-popover border border-border/60 shadow-lg">
-                  <div className="px-4 py-4 mb-3 rounded-xl bg-surface border border-border/40 shadow-sm">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-14 w-14 shadow-md ring-2 ring-background">
-                        {userData?.avatar ? (
-                          <AvatarImage src={userData.avatar} alt={userData.name || "User"} />
-                        ) : null}
-                        <AvatarFallback className="bg-primary text-primary-foreground font-semibold text-lg">
-                          {userData ? getUserInitials(userData.name, userData.email) : "U"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-primary truncate">
-                          {userData?.name || "User"}
-                        </p>
-                        {userData?.email && (
-                          <p className="text-xs text-secondary truncate mt-1.5">
-                            {userData.email}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <DropdownMenuSeparator className="my-2" />
-
-                  <div className="space-y-1">
-                    <DropdownMenuItem asChild className="p-0! focus:bg-transparent">
-                      <Link
-                        href="/careers/my-applications"
-                        className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-primary hover:text-primary-foreground transition-all w-full"
-                      >
-                        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-muted/50">
-                          <Briefcase className="h-4 w-4" />
-                        </div>
-                        <span className="flex-1 font-medium">My Applications</span>
-                        <ChevronRight className="h-4 w-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      </Link>
-                    </DropdownMenuItem>
-                  </div>
-
-                  <DropdownMenuSeparator className="my-2" />
-
-                  <DropdownMenuItem
-                    onSelect={(e) => {
-                      e.preventDefault();
-                      handleLogout().catch(console.error);
-                    }}
-                    className="p-0! focus:bg-transparent"
-                  >
-                    <div className="cursor-pointer flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-destructive hover:text-destructive-foreground transition-all w-full">
-                      <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-destructive/10">
-                        <LogOut className="h-4 w-4" />
-                      </div>
-                      <span className="flex-1 font-medium">Log out</span>
-                    </div>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <>
+                <Link
+                  href="/careers/my-applications"
+                  className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-border/60 bg-background/65 px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:text-primary"
+                >
+                  <Briefcase className="h-4 w-4" />
+                  My Applications
+                </Link>
+                <Avatar className="h-10 w-10">
+                  {userData?.avatar ? <AvatarImage src={userData.avatar} alt={userData.name || "User"} /> : null}
+                  <AvatarFallback className="bg-secondary text-background font-semibold">
+                    {userData ? getUserInitials(userData.name, userData.email) : "U"}
+                  </AvatarFallback>
+                </Avatar>
+                <button
+                  onClick={() => {
+                    handleLogout().catch(console.error);
+                  }}
+                  className="inline-flex items-center gap-2 whitespace-nowrap rounded-full border border-destructive/30 bg-background px-4 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10"
+                >
+                  <LogOut className="h-4 w-4" />
+                  Log out
+                </button>
+              </>
             ) : isCheckingAuth && isAuthenticated === null ? (
-              <div className="w-20 h-8" />
+              <div className="h-8 w-20" />
             ) : (
               <>
                 <Link
                   href="/careers/login"
-                  className="text-sm font-medium text-primary hover:text-primary/80 transition-colors px-4 py-2"
+                  className="whitespace-nowrap px-2 py-2 text-sm font-medium text-foreground transition-colors hover:text-primary xl:px-3"
                 >
                   Sign in
                 </Link>
                 <Link
                   href="/careers/signup"
-                  className="text-sm font-semibold bg-primary text-background px-5 py-2.5 rounded-full hover:bg-primary/90 transition-all hover:scale-105 shadow-lg shadow-primary/20"
+                  className="whitespace-nowrap rounded-full bg-primary px-4 py-2.5 text-sm font-semibold text-background shadow-lg shadow-primary/20 transition-all hover:scale-105 hover:bg-primary/90 xl:px-5"
                 >
                   Apply Now
                 </Link>
@@ -244,136 +214,128 @@ export function CareersNavbar({ sticky = true }: { sticky?: boolean }) {
             )}
           </div>
 
-          {/* Theme Toggle and Mobile Menu - Right end */}
           <button
-            onClick={() => {
-              if (!mounted) return;
-              const currentTheme = theme || "system";
-              if (currentTheme === "dark") {
-                setTheme("light");
-              } else if (currentTheme === "light") {
-                setTheme("dark");
-              } else {
-                // If system, toggle to dark
-                setTheme("dark");
-              }
-            }}
-            className="text-secondary hover:text-primary transition-colors cursor-pointer p-2 rounded-full hover:bg-primary/5"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="cursor-pointer rounded-full p-2 text-secondary transition-colors hover:bg-primary/5 hover:text-primary"
             aria-label="Toggle theme"
             disabled={!mounted}
           >
             {mounted && theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
           </button>
 
-          {/* Mobile Menu Button - Right end */}
           <button
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="lg:hidden text-secondary hover:text-primary transition-colors p-2"
-            aria-label="Toggle menu"
+            onClick={() => setMobileMenuOpen(prev => !prev)}
+            className={`group relative z-50 flex h-11 w-11 items-center justify-center rounded-full border transition-all duration-500 xl:hidden ${
+              mobileMenuOpen
+                ? "rotate-90 border-primary bg-primary"
+                : "border-border/60 bg-background/50 backdrop-blur-md hover:bg-primary/5"
+            }`}
+            aria-label={mobileMenuOpen ? "Close Menu" : "Open Menu"}
           >
-            {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+            <div className="relative flex h-3.5 w-5 flex-col items-end justify-between">
+              <span
+                className={`absolute right-0 h-[1.5px] rounded-full transition-all duration-500 ${
+                  mobileMenuOpen
+                    ? "top-1/2 w-5 -translate-y-1/2 rotate-45 bg-background"
+                    : "top-0 w-full bg-primary group-hover:w-4/5"
+                }`}
+              />
+              <span
+                className={`absolute right-0 top-1/2 h-[1.5px] rounded-full transition-all duration-500 ${
+                  mobileMenuOpen
+                    ? "w-0 -translate-y-1/2 opacity-0"
+                    : "w-4/5 -translate-y-1/2 bg-primary group-hover:w-full"
+                }`}
+              />
+              <span
+                className={`absolute right-0 h-[1.5px] rounded-full transition-all duration-500 ${
+                  mobileMenuOpen
+                    ? "top-1/2 w-5 -translate-y-1/2 -rotate-45 bg-background"
+                    : "bottom-0 w-3/5 bg-primary group-hover:w-full"
+                }`}
+              />
+            </div>
           </button>
         </div>
       </nav>
 
-      {/* Mobile Menu */}
-      {mobileMenuOpen && (
-        <div className="lg:hidden fixed inset-0 top-[72px] bg-background/95 backdrop-blur-md z-40 border-t border-border">
-          <div className="flex flex-col h-full overflow-y-auto">
-            <nav className="flex flex-col p-6 gap-2">
-              {allNavLinks.map((link) => {
-                const isActive = pathname === link.href ||
-                  (link.href === "/careers/positions" && pathname?.startsWith("/careers/positions")) ||
-                  (link.href === "/careers/my-applications" && pathname === "/careers/my-applications") ||
-                  (link.href === "/careers/why-opusfesta" && pathname === "/careers/why-opusfesta") ||
-                  (link.href === "/careers/how-we-hire" && pathname === "/careers/how-we-hire") ||
-                  (link.href === "/careers/benefits" && pathname === "/careers/benefits");
+      <div
+        ref={overlayRef}
+        className="orion-theme menu-overlay fixed inset-0 z-40 flex flex-col items-center justify-center bg-background/95 backdrop-blur-xl xl:hidden"
+        style={{ clipPath: "inset(0 0 100% 0)", pointerEvents: "none" }}
+      >
+        <button
+          onClick={() => setMobileMenuOpen(false)}
+          className="absolute right-6 top-6 p-4 text-foreground transition-colors hover:text-primary xl:hidden"
+          aria-label="Close Menu"
+        >
+          <span className="sr-only">Close</span>
+        </button>
 
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`px-4 py-3 rounded-lg text-base font-medium transition-colors ${
-                      isActive
-                        ? "bg-primary text-primary-foreground"
-                        : "text-secondary hover:bg-surface hover:text-primary"
-                    }`}
-                  >
-                    {link.name}
-                  </Link>
-                );
-              })}
-            </nav>
+        <div ref={linksRef} className="flex flex-col gap-4 text-center">
+          {allNavLinks.map(item => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setMobileMenuOpen(false)}
+              className="menu-link text-3xl font-bold tracking-tight text-foreground transition-colors hover:text-primary md:text-5xl"
+            >
+              {item.name}
+            </Link>
+          ))}
 
-            {/* Mobile Auth Section */}
-            <div className="mt-auto p-6 border-t border-border">
-              {isAuthenticated === true ? (
-                <div className="flex items-center gap-3 mb-4">
-                  <Avatar className="h-10 w-10">
-                    {userData?.avatar ? (
-                      <AvatarImage src={userData.avatar} alt={userData.name || "User"} />
-                    ) : null}
-                    <AvatarFallback className="bg-secondary text-background font-semibold">
-                      {userData ? getUserInitials(userData.name, userData.email) : "U"}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-primary truncate">
-                      {userData?.name || "User"}
-                    </p>
-                    {userData?.email && (
-                      <p className="text-xs text-secondary truncate">
-                        {userData.email}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ) : isCheckingAuth && isAuthenticated === null ? (
-                <div className="h-10" />
-              ) : (
-                <div className="flex flex-col gap-3">
-                  <Link
-                    href="/careers/login"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors px-4 py-2.5 rounded-lg border border-border"
-                  >
-                    Sign in
-                  </Link>
-                  <Link
-                    href="/careers/signup"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="text-center text-sm font-semibold bg-primary text-background px-4 py-2.5 rounded-lg hover:bg-primary/90 transition-colors"
-                  >
-                    Apply Now
-                  </Link>
-                </div>
-              )}
+          <div className="mx-auto my-4 h-px w-20 bg-border" />
 
-              {isAuthenticated === true && (
-                <>
-                  <Link
-                    href="/careers/my-applications"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="block w-full text-center text-sm font-medium text-primary hover:text-primary/80 transition-colors px-4 py-2.5 rounded-lg border border-border mb-3"
-                  >
-                    My Applications
-                  </Link>
-                  <button
-                    onClick={async () => {
-                      await handleLogout();
-                      setMobileMenuOpen(false);
-                    }}
-                    className="w-full text-center text-sm font-medium text-destructive hover:text-destructive/80 transition-colors px-4 py-2.5 rounded-lg border border-destructive/20"
-                  >
-                    Log out
-                  </button>
-                </>
-              )}
-            </div>
+          <div className="mx-auto w-full max-w-sm rounded-2xl border border-border/70 bg-background/65 p-3 shadow-sm backdrop-blur">
+            {isAuthenticated ? (
+              <div className="flex flex-col gap-2">
+                <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-secondary/80">Your Account</p>
+                <Link
+                  href="/careers/my-applications"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-border/70 bg-background px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-primary/5"
+                >
+                  My Applications
+                </Link>
+                <button
+                  onClick={async () => {
+                    await handleLogout();
+                    setMobileMenuOpen(false);
+                  }}
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-destructive/30 bg-background px-4 py-3 text-base font-medium text-destructive transition-colors hover:bg-destructive/10"
+                >
+                  Log out
+                </button>
+              </div>
+            ) : isCheckingAuth ? (
+              <p className="py-3 text-center text-base font-medium text-muted-foreground">Loading...</p>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <p className="px-1 text-xs font-semibold uppercase tracking-[0.18em] text-secondary/80">Welcome</p>
+                <Link
+                  href="/careers/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="inline-flex w-full items-center justify-center rounded-xl border border-border/70 bg-background px-4 py-3 text-base font-medium text-foreground transition-colors hover:bg-primary/5"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  href="/careers/signup"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="inline-flex w-full items-center justify-center rounded-xl bg-primary px-4 py-3.5 text-base font-semibold text-background shadow-lg shadow-primary/25 transition-all hover:-translate-y-0.5 hover:bg-primary/90"
+                >
+                  Apply Now
+                </Link>
+              </div>
+            )}
           </div>
         </div>
-      )}
+
+        <div className="absolute bottom-10 left-[5vw] right-[5vw] flex justify-between text-xs font-mono uppercase text-secondary opacity-50">
+          <span>&copy; {new Date().getFullYear()} OpusFesta</span>
+          <span>Made with love</span>
+        </div>
+      </div>
     </>
   );
 }

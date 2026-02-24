@@ -46,10 +46,10 @@ export default function ForgotPassword() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-[#fafafa] dark:bg-background">
+    <div className="min-h-screen flex items-center justify-center bg-background p-4 transition-colors">
 
       <div className="w-full max-w-[400px] space-y-8">
-        <Card className="border-0 shadow-[0_4px_24px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.2)]">
+        <Card className="border-border/40 bg-card shadow-[0_4px_24px_rgba(0,0,0,0.08)] dark:shadow-[0_4px_24px_rgba(0,0,0,0.28)] transition-colors">
           <CardContent className="pt-10 pb-8 px-8 space-y-6">
             <div className="text-center">
               <Link href="/" className="font-serif text-3xl text-foreground hover:opacity-80 transition-opacity">
