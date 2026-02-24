@@ -96,7 +96,11 @@ const tabs = [
   }
 ]
 
-const HeroSection = () => {
+type HeroSectionProps = {
+  navbarOffset?: boolean
+}
+
+const HeroSection = ({ navbarOffset = false }: HeroSectionProps) => {
   const [activeTab, setActiveTab] = useState(tabs[0]?.value || 'dashboard')
   const sectionRef = useRef<HTMLElement>(null)
   const workspaceRef = useRef<HTMLDivElement>(null)
@@ -185,13 +189,17 @@ const HeroSection = () => {
     }
   }, [prefersReducedMotion])
 
+  const introSpacingClass = navbarOffset
+    ? 'pt-[5.5rem] pb-7 sm:pt-[6.25rem] sm:pb-14 lg:pt-[7rem] lg:pb-22'
+    : 'py-7 sm:py-14 lg:py-22'
+
   return (
     <MotionConfig reducedMotion={prefersReducedMotion ? 'always' : 'never'}>
       <section
         ref={sectionRef}
-        className='planning-motion relative isolate flex flex-col overflow-hidden [--spot-opacity:0.1] [--spot-x:50%] [--spot-y:18%]'
+        className='planning-motion relative isolate flex flex-col overflow-x-clip overflow-y-visible [--spot-opacity:0.1] [--spot-x:50%] [--spot-y:18%]'
       >
-        <div className='pointer-events-none absolute inset-0 -z-20 overflow-hidden'>
+        <div className='pointer-events-none absolute inset-0 -bottom-32 -z-20 overflow-hidden'>
           <div className='absolute inset-0 bg-[radial-gradient(130%_85%_at_10%_0%,color-mix(in_oklab,var(--primary)_10%,transparent)_0%,transparent_62%),radial-gradient(90%_70%_at_90%_20%,color-mix(in_oklab,var(--primary)_7%,transparent)_0%,transparent_64%),linear-gradient(180deg,color-mix(in_oklab,var(--background)_98%,var(--primary)_2%)_0%,var(--background)_70%)]' />
           <div
             className='absolute inset-0 bg-[radial-gradient(460px_circle_at_var(--spot-x)_var(--spot-y),color-mix(in_oklab,var(--primary)_14%,transparent)_0%,transparent_62%)] transition-opacity duration-300 motion-reduce:transition-none'
@@ -212,7 +220,7 @@ const HeroSection = () => {
         </div>
 
         <div className='px-3 sm:px-6 lg:px-8'>
-          <div className='mx-auto flex max-w-7xl flex-col gap-5 py-7 sm:py-14 lg:py-22'>
+          <div className={`mx-auto flex max-w-7xl flex-col gap-5 ${introSpacingClass}`}>
             <div className='flex flex-col items-center gap-3.5 text-center sm:gap-4'>
             <Badge variant='outline' className='bg-muted relative gap-2.5 px-1.5 py-1 border-0 shadow-none'>
               <span className='bg-primary text-primary-foreground flex h-5.5 items-center rounded-full px-2 py-0.5'>

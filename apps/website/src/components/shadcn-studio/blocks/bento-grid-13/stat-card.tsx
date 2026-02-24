@@ -8,12 +8,24 @@ import { cn } from '@/lib/utils'
 type Props = {
   className?: string
   avatarIcon: ReactNode
-  title: string
+  title?: string
   statNumber: string
-  percentage: number
+  percentage?: number
+  badgeText?: string
+  showBadge?: boolean
+  showStatRow?: boolean
 }
 
-const StatCard = ({ className, avatarIcon, title, statNumber, percentage }: Props) => {
+const StatCard = ({
+  className,
+  avatarIcon,
+  title,
+  statNumber,
+  percentage = 0,
+  badgeText,
+  showBadge = true,
+  showStatRow = true
+}: Props) => {
   return (
     <div
       className={cn(
@@ -26,19 +38,27 @@ const StatCard = ({ className, avatarIcon, title, statNumber, percentage }: Prop
           <Avatar className='size-8 rounded-sm'>
             <AvatarFallback className='bg-primary/10 text-primary shrink-0 rounded-sm'>{avatarIcon}</AvatarFallback>
           </Avatar>
-          <span>{title}</span>
+          {title ? <span>{title}</span> : null}
         </div>
         <Button variant='outline' className='h-7 px-2 py-1 text-xs'>
           Details
         </Button>
       </div>
-      <div className='flex items-center gap-2'>
-        <span className='text-2xl font-semibold'>{statNumber}</span>
-        <Badge className='bg-primary/10 [a&]:hover:bg-primary/5 focus-visible:ring-primary/20 dark:focus-visible:ring-primary/40 text-primary rounded-sm focus-visible:outline-none'>
-          {percentage > 0 && '+'}
-          {percentage}%
-        </Badge>
-      </div>
+      {showStatRow ? (
+        <div className='flex items-center gap-2'>
+          <span className='text-2xl font-semibold'>{statNumber}</span>
+          {showBadge ? (
+            <Badge className='bg-primary/10 [a&]:hover:bg-primary/5 focus-visible:ring-primary/20 dark:focus-visible:ring-primary/40 text-primary rounded-sm focus-visible:outline-none'>
+              {badgeText ?? (
+                <>
+                  {percentage > 0 && '+'}
+                  {percentage}%
+                </>
+              )}
+            </Badge>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   )
 }

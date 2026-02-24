@@ -1,8 +1,5 @@
-import { ArrowRightIcon } from 'lucide-react'
-
 import QuestionMark from '@/assets/svg/question-mark'
 
-import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
   Carousel,
@@ -130,29 +127,35 @@ const FAQ = ({ faqItems }: FAQComponentProps) => {
           <QuestionMark className='h-25' />
         </MotionPreset>
 
-        <div className='mb-12 space-y-4 text-center sm:mb-16 lg:mb-24'>
+        <div className='mb-12 space-y-2 text-center sm:mb-16 lg:mb-24'>
           <MotionPreset
-            component='h2'
-            className='text-2xl font-semibold md:text-3xl lg:text-4xl'
+            component='p'
+            className='text-muted-foreground text-xs font-semibold tracking-[0.2em] uppercase'
             fade
             slide={{ direction: 'up', offset: 50 }}
             transition={{ duration: 0.7 }}
           >
-            <span className='relative z-10'>
-              Before You Ask,
-              <span className='bg-primary absolute bottom-1 left-0 -z-10 h-px w-full'></span>
-            </span>
-            <span> Check Here</span>
+            Frequently Asked
+          </MotionPreset>
+          <MotionPreset
+            component='h2'
+            className='text-2xl font-semibold sm:text-3xl lg:text-4xl'
+            fade
+            slide={{ direction: 'up', offset: 50 }}
+            delay={0.1}
+            transition={{ duration: 0.7 }}
+          >
+            Questions about planning with OpusFesta.
           </MotionPreset>
           <MotionPreset
             component='p'
-            className='text-muted-foreground text-xl'
+            className='text-muted-foreground mx-auto max-w-2xl text-sm sm:text-base'
             fade
             slide={{ direction: 'up', offset: 50 }}
             delay={0.3}
             transition={{ duration: 0.7 }}
           >
-            Leverage artificial intelligence algorithms to provide users with valuable insights
+            Everything you need to know about the planning suite, collaboration, and getting started.
           </MotionPreset>
         </div>
 
@@ -175,17 +178,6 @@ const FAQ = ({ faqItems }: FAQComponentProps) => {
                           <h3 className='text-xl font-semibold leading-tight'>{item.question}</h3>
                           <p className='text-muted-foreground text-sm leading-relaxed sm:text-base'>{item.answer}</p>
                         </div>
-
-                        <Button
-                          variant='link'
-                          className='text-primary mt-auto w-fit !px-0 !no-underline'
-                          asChild
-                        >
-                          <a href='#'>
-                            {item.linkText}
-                            <ArrowRightIcon className='transition-transform duration-200 group-hover:translate-x-0.5' />
-                          </a>
-                        </Button>
                       </CardContent>
                     </Card>
                   </CarouselItem>
@@ -203,7 +195,9 @@ const FAQ = ({ faqItems }: FAQComponentProps) => {
           delay={1.2}
           transition={{ duration: 0.7 }}
         >
-          <Button size='lg'>Read All Articles</Button>
+          <a href='/blog' className='inline-flex h-11 items-center justify-center rounded-md bg-primary px-8 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors'>
+            Read All Articles
+          </a>
         </MotionPreset>
       </div>
     </section>

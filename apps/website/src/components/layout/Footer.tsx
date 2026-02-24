@@ -79,23 +79,23 @@ export function Footer() {
                 <AccordionTrigger className="text-foreground font-semibold text-sm uppercase tracking-wide">Platform</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col gap-3 pt-2">
-                    <FooterLink href="/venues">Venue Marketplace</FooterLink>
-                    <FooterLink href="/vendors">Find Vendors</FooterLink>
                     <FooterLink href="/planning-tools">Planning Tools</FooterLink>
-                    <FooterLink href="/websites">Wedding Websites</FooterLink>
-                    <FooterLink href="/invitations">Digital Invites</FooterLink>
+                    <FooterLink href="/vendors">Vendors</FooterLink>
+                    <FooterLink href="/guests">Guests</FooterLink>
+                    <FooterLink href="/websites">Websites</FooterLink>
+                    <FooterLink href="/advice-and-ideas">Inspiration</FooterLink>
+                    <FooterLink href="/attireandrings">Attire & Rings</FooterLink>
                   </div>
                 </AccordionContent>
               </AccordionItem>
-              <AccordionItem value="company" className="border-border/50">
-                <AccordionTrigger className="text-foreground font-semibold text-sm uppercase tracking-wide">Company</AccordionTrigger>
+              <AccordionItem value="resources" className="border-border/50">
+                <AccordionTrigger className="text-foreground font-semibold text-sm uppercase tracking-wide">Resources</AccordionTrigger>
                 <AccordionContent>
                   <div className="flex flex-col gap-3 pt-2">
-                    <FooterLink href="/about">About Us</FooterLink>
                     <FooterLink href="/careers">Careers</FooterLink>
-                    <FooterLink href="/blog">Magazine</FooterLink>
-                    <FooterLink href="/press">Press</FooterLink>
-                    <FooterLink href="/contact">Contact Support</FooterLink>
+                    <FooterLink href="/my-inquiries">My Inquiries</FooterLink>
+                    <FooterLink href="/advice-and-ideas">Advice & Ideas</FooterLink>
+                    <FooterLink href="mailto:support@opusfesta.com">Contact Support</FooterLink>
                   </div>
                 </AccordionContent>
               </AccordionItem>
@@ -106,23 +106,23 @@ export function Footer() {
           <div className="hidden md:flex flex-col gap-6">
             <h4 className="font-semibold text-foreground text-sm tracking-wide uppercase">Platform</h4>
             <div className="flex flex-col gap-3">
-              <FooterLink href="/venues">Venue Marketplace</FooterLink>
-              <FooterLink href="/vendors">Find Vendors</FooterLink>
               <FooterLink href="/planning-tools">Planning Tools</FooterLink>
-              <FooterLink href="/websites">Wedding Websites</FooterLink>
-              <FooterLink href="/invitations">Digital Invites</FooterLink>
+              <FooterLink href="/vendors">Vendors</FooterLink>
+              <FooterLink href="/guests">Guests</FooterLink>
+              <FooterLink href="/websites">Websites</FooterLink>
+              <FooterLink href="/advice-and-ideas">Inspiration</FooterLink>
+              <FooterLink href="/attireandrings">Attire & Rings</FooterLink>
             </div>
           </div>
 
           {/* Desktop Links Column 2 */}
           <div className="hidden md:flex flex-col gap-6">
-            <h4 className="font-semibold text-foreground text-sm tracking-wide uppercase">Company</h4>
+            <h4 className="font-semibold text-foreground text-sm tracking-wide uppercase">Resources</h4>
             <div className="flex flex-col gap-3">
-              <FooterLink href="/about">About Us</FooterLink>
               <FooterLink href="/careers">Careers</FooterLink>
-              <FooterLink href="/blog">Magazine</FooterLink>
-              <FooterLink href="/press">Press</FooterLink>
-              <FooterLink href="/contact">Contact Support</FooterLink>
+              <FooterLink href="/my-inquiries">My Inquiries</FooterLink>
+              <FooterLink href="/advice-and-ideas">Advice & Ideas</FooterLink>
+              <FooterLink href="mailto:support@opusfesta.com">Contact Support</FooterLink>
             </div>
           </div>
 
@@ -133,9 +133,10 @@ export function Footer() {
               Subscribe to our newsletter for the latest wedding trends and planning tips.
             </p>
             <form className="flex flex-col gap-3" onSubmit={(e) => e.preventDefault()}>
-              <input 
-                type="email" 
-                placeholder="Enter your email" 
+              <input
+                type="email"
+                placeholder="Enter your email"
+                aria-label="Email address for newsletter"
                 className="w-full px-4 py-3 rounded-lg bg-background border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary/20 transition-all placeholder:text-secondary/50"
               />
               <button className="w-full px-4 py-3 rounded-lg bg-primary text-background text-sm font-medium hover:bg-primary/90 transition-colors">
@@ -149,7 +150,7 @@ export function Footer() {
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
           <p className="text-secondary/60 text-xs">
-            © {new Date().getFullYear()} The Festa. All rights reserved.
+            © {new Date().getFullYear()} OpusFesta. All rights reserved.
           </p>
           <div className="flex flex-wrap justify-center items-center gap-4 md:gap-6">
             <FooterLink href="/privacy" className="text-xs">Privacy Policy</FooterLink>
@@ -165,9 +166,11 @@ export function Footer() {
 
 function SocialLink({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
   return (
-    <a 
-      href={href} 
+    <a
+      href={href}
       aria-label={label}
+      target="_blank"
+      rel="noopener noreferrer"
       className="w-10 h-10 rounded-full bg-background border border-border flex items-center justify-center text-secondary hover:text-primary hover:border-primary/30 transition-all duration-300"
     >
       {icon}
@@ -184,6 +187,21 @@ function FooterLink({
   children: React.ReactNode;
   className?: string;
 }) {
+  const isExternal = href.startsWith("http") || href.startsWith("mailto:");
+
+  if (isExternal) {
+    return (
+      <a
+        href={href}
+        className={`text-secondary hover:text-primary transition-colors text-sm ${className}`}
+        target={href.startsWith("http") ? "_blank" : undefined}
+        rel={href.startsWith("http") ? "noopener noreferrer" : undefined}
+      >
+        {children}
+      </a>
+    );
+  }
+
   return (
     <Link
       href={href}

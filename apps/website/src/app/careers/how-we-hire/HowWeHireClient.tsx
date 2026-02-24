@@ -16,7 +16,7 @@ export function HowWeHireClient() {
         
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 pb-12">
           <div className="text-center">
-            <Link href="/careers/positions">
+            <Link href="/careers">
               <Button size="lg" className="text-base px-8">
                 View Open Positions
               </Button>

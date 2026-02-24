@@ -73,7 +73,7 @@ export function HomeClient() {
   }, [isPreview]);
 
   return (
-    <div className="bg-background text-foreground min-h-screen selection:bg-accent/20 selection:text-primary overflow-hidden">
+    <div className="home-page bg-background text-foreground min-h-screen selection:bg-accent/20 selection:text-primary overflow-hidden">
       {/* Loader - Hidden in preview mode */}
       {!isPreview && (
         <div ref={loaderRef} className="loader fixed top-0 left-0 w-full h-screen bg-background z-9999 flex flex-col justify-center items-center">
@@ -94,7 +94,6 @@ export function HomeClient() {
       
       <main>
         <Hero />
-        <LogoCloudSection />
         <Services />
         <BentoGrid />
         {/* <Marquee /> */}
@@ -102,6 +101,7 @@ export function HomeClient() {
         <Issues />
         <Reviews />
         <FAQ />
+        <LogoCloudSection />
         <CTA />
       </main>
       

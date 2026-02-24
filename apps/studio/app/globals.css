@@ -69,3 +69,23 @@ html {
 .animate-marquee {
   animation: marquee 25s linear infinite;
 }
+
+@keyframes booking-confetti-fall {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -125%, 0) rotate(0deg);
+  }
+  12% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 430px, 0) rotate(680deg);
+  }
+}
+
+.booking-confetti-piece {
+  animation-name: booking-confetti-fall;
+  animation-timing-function: cubic-bezier(0.2, 0.85, 0.25, 1);
+  animation-fill-mode: forwards;
+}
