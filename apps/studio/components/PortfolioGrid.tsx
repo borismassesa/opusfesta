@@ -59,7 +59,7 @@ export default function PortfolioGrid() {
                 key={project.id}
                 href={`/portfolio/${project.slug}`}
                 ref={setRef(project.id) as React.Ref<HTMLAnchorElement>}
-                className={`group grid grid-cols-1 lg:grid-cols-2 gap-0 border-4 border-brand-border transition-all duration-700 hover:shadow-brutal-lg block ${
+                className={`group grid grid-cols-1 lg:grid-cols-2 gap-0 border-4 border-brand-border transition-all duration-700 hover:shadow-brutal-lg ${
                   isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-12'
                 }`}
                 style={{ transitionDelay: `${index * 100}ms` }}

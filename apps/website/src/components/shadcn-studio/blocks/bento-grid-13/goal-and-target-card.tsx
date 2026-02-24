@@ -15,9 +15,6 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export const GoalAndTargetCard = ({ className }: { className?: string }) => {
-  const max = 25
-  const step = 2.5
-  const ticks = [...Array(Math.floor(max / step) + 1)].map((_, i) => i * step)
   const [value, setValue] = useState([12.5])
 
   return (

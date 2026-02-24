@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { serviceNames } from '@/lib/data';
 
 interface BookingModalProps {
@@ -50,6 +50,52 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
   const [service, setService] = useState('');
   const [message, setMessage] = useState('');
   const finalStepIndex = journeySteps.length - 1;
+  const modalRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Escape key handler
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, onClose]);
+
+  // Focus trap and focus restoration
+  useEffect(() => {
+    if (!isOpen || !modalRef.current) return;
+
+    previousFocusRef.current = document.activeElement as HTMLElement | null;
+
+    const focusableSelector = 'a[href], button:not([disabled]), input:not([disabled]), textarea:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
+    const focusableElements = modalRef.current.querySelectorAll<HTMLElement>(focusableSelector);
+    if (focusableElements.length > 0) {
+      focusableElements[0].focus();
+    }
+
+    const handleTab = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !modalRef.current) return;
+      const focusable = modalRef.current.querySelectorAll<HTMLElement>(focusableSelector);
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', handleTab);
+    return () => {
+      document.removeEventListener('keydown', handleTab);
+      previousFocusRef.current?.focus();
+    };
+  }, [isOpen]);
   const schedulingUrl =
     process.env.NEXT_PUBLIC_STUDIO_BOOKING_CALL_URL ||
     'mailto:studio@opusfesta.com?subject=Schedule%20my%20discovery%20call';
@@ -239,6 +285,10 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
       <div className="absolute inset-0 bg-brand-dark/70 backdrop-blur-sm" onClick={onClose} />
 
       <div
+        ref={modalRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="booking-modal-title"
         className={`absolute inset-0 h-dvh w-full bg-brand-bg border-0 overflow-hidden transform transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-[90vh] sm:w-[560px] sm:border-4 sm:border-brand-border sm:shadow-brutal-xl ${
           isOpen
             ? 'translate-y-0 opacity-100 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:scale-100'
@@ -251,7 +301,7 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
               <span className="text-xs font-bold text-brand-accent tracking-widest uppercase font-mono block mb-1">
                 Booking
               </span>
-              <h2 className="text-2xl sm:text-3xl font-bold text-brand-dark tracking-tighter">LET&apos;S TALK.</h2>
+              <h2 id="booking-modal-title" className="text-2xl sm:text-3xl font-bold text-brand-dark tracking-tighter">LET&apos;S TALK.</h2>
             </div>
             <button
               onClick={onClose}
@@ -394,8 +444,9 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
                     <div className="space-y-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
-                          <label className={labelClasses}>Event Type *</label>
+                          <label htmlFor="booking-eventType" className={labelClasses}>Event Type *</label>
                           <input
+                            id="booking-eventType"
                             type="text"
                             required
                             value={eventType}
@@ -408,8 +459,9 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
                           />
                         </div>
                         <div>
-                          <label className={labelClasses}>Preferred Date</label>
+                          <label htmlFor="booking-preferredDate" className={labelClasses}>Preferred Date</label>
                           <input
+                            id="booking-preferredDate"
                             type="date"
                             value={preferredDate}
                             onChange={(e) => {
@@ -422,8 +474,9 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
                       </div>
 
                       <div>
-                        <label className={labelClasses}>Location</label>
+                        <label htmlFor="booking-location" className={labelClasses}>Location</label>
                         <input
+                          id="booking-location"
                           type="text"
                           value={location}
                           onChange={(e) => {
@@ -466,8 +519,9 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
                     <div className="space-y-5">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                         <div>
-                          <label className={labelClasses}>Name *</label>
+                          <label htmlFor="booking-name" className={labelClasses}>Name *</label>
                           <input
+                            id="booking-name"
                             type="text"
                             required
                             value={name}
@@ -480,8 +534,9 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
                           />
                         </div>
                         <div>
-                          <label className={labelClasses}>Email *</label>
+                          <label htmlFor="booking-email" className={labelClasses}>Email *</label>
                           <input
+                            id="booking-email"
                             type="email"
                             required
                             value={email}
@@ -496,8 +551,9 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
                       </div>
 
                       <div>
-                        <label className={labelClasses}>Phone</label>
+                        <label htmlFor="booking-phone" className={labelClasses}>Phone</label>
                         <input
+                          id="booking-phone"
                           type="tel"
                           value={phone}
                           onChange={(e) => {
@@ -514,8 +570,9 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
                   {currentStep === 3 && (
                     <div className="space-y-5">
                       <div>
-                        <label className={labelClasses}>Message</label>
+                        <label htmlFor="booking-message" className={labelClasses}>Message</label>
                         <textarea
+                          id="booking-message"
                           value={message}
                           onChange={(e) => {
                             setMessage(e.target.value);
