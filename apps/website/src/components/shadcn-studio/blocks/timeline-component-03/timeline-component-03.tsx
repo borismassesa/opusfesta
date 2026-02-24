@@ -5,7 +5,7 @@ import { BoxIcon, CodeIcon, LightbulbIcon, RocketIcon } from 'lucide-react'
 import { motion, AnimatePresence } from 'motion/react'
 
 interface TimelineStep {
-  icon: string
+  icon: keyof typeof iconMap
   title: string
   description: string
   progress: number
@@ -93,7 +93,7 @@ const FeatureCard = ({
   onMouseEnter: () => void
   onMouseLeave: () => void
 }) => {
-  const Icon = iconMap[step.icon as keyof typeof iconMap]
+  const Icon = iconMap[step.icon]
   const isHighlighted = isActive || isHovered
 
   return (

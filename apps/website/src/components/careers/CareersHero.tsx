@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
-import { motion, useReducedMotion } from "framer-motion";
+import { motion, useReducedMotion } from "motion/react";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { useCareersContent } from "@/context/CareersContentContext";
