@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { serviceNames } from '@/lib/data';
 
 interface BookingModalProps {
@@ -33,12 +33,15 @@ const journeySteps = [
 const eventTypeSuggestions = ['Wedding', 'Engagement', 'Corporate Event', 'Brand Launch', 'Private Celebration'];
 const BOOKING_DRAFT_KEY = 'opusfesta_studio_booking_draft_v1';
 const BOOKING_DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
+const CONFETTI_COLORS = ['#6F3393', '#591C7D', '#D0B1D4', '#171717', '#9E83B0'];
 
 export default function BookingModal({ isOpen, onClose, prefilledService }: BookingModalProps) {
   const [formState, setFormState] = useState<FormState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
   const [currentStep, setCurrentStep] = useState(0);
   const [stepError, setStepError] = useState('');
+  const [celebrationKey, setCelebrationKey] = useState(0);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
 
   const [name, setName] = useState('');
@@ -181,6 +184,27 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
     contentRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
   }, [currentStep, isOpen]);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const syncMotionPreference = () => setPrefersReducedMotion(mediaQuery.matches);
+    syncMotionPreference();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', syncMotionPreference);
+      return () => mediaQuery.removeEventListener('change', syncMotionPreference);
+    }
+
+    mediaQuery.addListener(syncMotionPreference);
+    return () => mediaQuery.removeListener(syncMotionPreference);
+  }, []);
+
+  useEffect(() => {
+    if (!isOpen || formState !== 'success' || prefersReducedMotion) return;
+    setCelebrationKey((prev) => prev + 1);
+  }, [isOpen, formState, prefersReducedMotion]);
+
   function validateStep(step: number): string {
     if (step === 1 && !eventType.trim()) {
       return 'Please add your event type before continuing.';
@@ -219,7 +243,7 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
 
     if (currentStep < finalStepIndex) {
@@ -275,6 +299,17 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
   const selectedService = service || 'Not selected yet';
   const selectedDate = preferredDate || 'Flexible';
   const selectedLocation = location || 'TBD';
+  const confettiPieces = Array.from({ length: 34 }, (_, index) => ({
+    id: `${celebrationKey}-${index}`,
+    left: `${3 + ((index * 11) % 94)}%`,
+    size: `${6 + (index % 4)}px`,
+    height: `${10 + (index % 5) * 2}px`,
+    delay: `${(index * 55) % 520}ms`,
+    duration: `${1.5 + (index % 6) * 0.2}s`,
+    rotate: `${(index * 47) % 360}deg`,
+    radius: index % 5 === 0 ? '999px' : '1px',
+    color: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
+  }));
 
   return (
     <div
@@ -289,10 +324,10 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
         role="dialog"
         aria-modal="true"
         aria-labelledby="booking-modal-title"
-        className={`absolute inset-0 h-dvh w-full bg-brand-bg border-0 overflow-hidden transform transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:inset-auto sm:left-1/2 sm:top-1/2 sm:h-[90vh] sm:w-[560px] sm:border-4 sm:border-brand-border sm:shadow-brutal-xl ${
+        className={`absolute inset-0 h-dvh w-full bg-brand-bg border-0 overflow-hidden transform transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] sm:top-0 sm:bottom-0 sm:left-auto sm:right-0 sm:h-dvh sm:w-[560px] sm:max-w-[100vw] sm:origin-right sm:border-l-4 sm:border-brand-border sm:shadow-brutal-xl ${
           isOpen
-            ? 'translate-y-0 opacity-100 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:scale-100'
-            : 'translate-y-full opacity-0 sm:-translate-x-1/2 sm:-translate-y-[48%] sm:scale-95'
+            ? 'translate-y-0 opacity-100 sm:translate-x-0 sm:translate-y-0 sm:scale-100'
+            : 'translate-y-full opacity-0 sm:translate-x-10 sm:translate-y-0 sm:scale-95'
         }`}
       >
         <div className="px-6 sm:px-12 py-6 sm:py-8 h-full flex flex-col">
@@ -316,31 +351,51 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
           </div>
 
           {formState === 'success' ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center py-20">
-              <div className="w-16 h-16 border-4 border-brand-accent flex items-center justify-center mb-8">
+            <div className="relative flex-1 flex flex-col items-center justify-center text-center py-20">
+              {!prefersReducedMotion && (
+                <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
+                  {confettiPieces.map((piece) => (
+                    <span
+                      key={piece.id}
+                      className="booking-confetti-piece absolute top-0 block opacity-0"
+                      style={{
+                        left: piece.left,
+                        width: piece.size,
+                        height: piece.height,
+                        borderRadius: piece.radius,
+                        backgroundColor: piece.color,
+                        transform: `rotate(${piece.rotate})`,
+                        animationDuration: piece.duration,
+                        animationDelay: piece.delay,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              <div className="relative z-30 w-16 h-16 border-4 border-brand-accent flex items-center justify-center mb-8">
                 <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6F3393" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 6L9 17l-5-5" />
                 </svg>
               </div>
-              <h3 className="text-2xl font-bold text-brand-dark tracking-tighter mb-3">BOOKING RECEIVED.</h3>
-              <p className="text-neutral-500 font-light leading-relaxed max-w-sm mb-8">
+              <h3 className="relative z-30 text-2xl font-bold text-brand-dark tracking-tighter mb-3">BOOKING RECEIVED.</h3>
+              <p className="relative z-30 text-neutral-500 font-light leading-relaxed max-w-sm mb-8">
                 Thank you! We&apos;ll review your enquiry and get back to you within 24 hours.
               </p>
-              <p className="text-[10px] font-mono text-brand-accent uppercase tracking-widest mb-4">
+              <p className="relative z-30 text-[10px] font-mono text-brand-accent uppercase tracking-widest mb-4">
                 Next Step: Schedule Your Call
               </p>
               <a
                 href={schedulingUrl}
                 target={schedulingUrl.startsWith('http') ? '_blank' : undefined}
                 rel={schedulingUrl.startsWith('http') ? 'noreferrer' : undefined}
-                className="inline-flex items-center justify-center gap-2 w-full max-w-xs px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200 mb-3"
+                className="relative z-30 inline-flex items-center justify-center gap-2 w-full max-w-xs px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200 mb-3"
               >
                 Book a Discovery Call
               </a>
               <button
                 type="button"
                 onClick={onClose}
-                className="inline-flex items-center justify-center gap-2 w-full max-w-xs px-6 py-3 bg-transparent text-brand-dark text-xs font-bold uppercase tracking-widest border-2 border-brand-border shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:border-brand-accent hover:text-brand-accent transition-all duration-200"
+                className="relative z-30 inline-flex items-center justify-center gap-2 w-full max-w-xs px-6 py-3 bg-transparent text-brand-dark text-xs font-bold uppercase tracking-widest border-2 border-brand-border shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:border-brand-accent hover:text-brand-accent transition-all duration-200"
               >
                 Close
               </button>
