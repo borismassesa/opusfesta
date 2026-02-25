@@ -56,6 +56,7 @@ export function VendorBookingSidebar({
   const [loadingMobileMoneyAccounts, setLoadingMobileMoneyAccounts] = useState(false);
   const [message, setMessage] = useState('');
   const [createdInquiryId, setCreatedInquiryId] = useState<string | null>(null);
+  const [emailConfigured, setEmailConfigured] = useState<boolean>(true);
   const confettiTriggered = useRef(false);
   const [reviewForm, setReviewForm] = useState({
     name: '',
@@ -1428,6 +1429,7 @@ export function VendorBookingSidebar({
                             if (data?.inquiry?.id) {
                               setCreatedInquiryId(data.inquiry.id);
                             }
+                            setEmailConfigured(data?.emailConfigured !== false);
                             setBookingStep('success');
                             
                             // Reset form after a delay
@@ -1445,6 +1447,7 @@ export function VendorBookingSidebar({
                               setDateRange({ from: undefined, to: undefined });
                               setSubmitError(null);
                               setCreatedInquiryId(null);
+                              setEmailConfigured(true);
                               confettiTriggered.current = false;
                               // Reset payment-related state (not used in inquiry but kept for cleanup)
                               setSelectedPayment('full');
@@ -1535,6 +1538,13 @@ export function VendorBookingSidebar({
                         <p className="text-sm sm:text-base text-secondary mb-4">
                           Your inquiry has been sent to <strong>{vendor.business_name}</strong>. They will respond to you soon.
                         </p>
+                        {!emailConfigured && (
+                          <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg mb-4 text-left">
+                            <p className="text-sm text-amber-800 dark:text-amber-200">
+                              Your inquiry was sent. Note: Confirmation emails could not be sent because email is not configured on this server.
+                            </p>
+                          </div>
+                        )}
                         {createdInquiryId && (
                           <p className="text-xs text-muted-foreground mb-6">
                             Inquiry ID: <span className="font-mono">{createdInquiryId.substring(0, 8)}...</span>
@@ -1564,6 +1574,7 @@ export function VendorBookingSidebar({
                               setMessage('');
                               setDateRange({ from: undefined, to: undefined });
                               setCreatedInquiryId(null);
+                              setEmailConfigured(true);
                               confettiTriggered.current = false;
                             }}
                           >

@@ -40,6 +40,7 @@ export function VendorInquiryFlow({ vendor, onSuccess }: VendorInquiryFlowProps)
   const [currentStep, setCurrentStep] = useState<InquiryStep>('date');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [emailConfigured, setEmailConfigured] = useState<boolean>(true);
   
   // Date selection
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
@@ -146,6 +147,7 @@ export function VendorInquiryFlow({ vendor, onSuccess }: VendorInquiryFlowProps)
         throw new Error(data.error || "Failed to submit inquiry");
       }
 
+      setEmailConfigured(data.emailConfigured !== false);
       setCurrentStep('success');
       onSuccess?.(data.inquiry.id);
     } catch (err: any) {
@@ -547,11 +549,19 @@ export function VendorInquiryFlow({ vendor, onSuccess }: VendorInquiryFlowProps)
           {vendor.business_name} will review your inquiry and get back to you soon.
         </p>
       </div>
-      <div className="p-4 bg-muted/50 rounded-lg">
-        <p className="text-sm text-muted-foreground">
-          You'll receive a confirmation email at <strong>{formData.email}</strong>
-        </p>
-      </div>
+      {emailConfigured ? (
+        <div className="p-4 bg-muted/50 rounded-lg">
+          <p className="text-sm text-muted-foreground">
+            You'll receive a confirmation email at <strong>{formData.email}</strong>
+          </p>
+        </div>
+      ) : (
+        <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            Your inquiry was sent. Note: Confirmation emails could not be sent because email is not configured on this server.
+          </p>
+        </div>
+      )}
     </div>
   );
 
