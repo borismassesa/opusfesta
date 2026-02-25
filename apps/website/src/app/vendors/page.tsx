@@ -38,6 +38,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Footer } from "@/components/layout/Footer";
 import { resolveAssetSrc } from "@/lib/assets";
+import { createItemListSchema, SITE_URL } from "@/lib/seo";
 import { useSaveVendor } from "@/hooks/useSaveVendor";
 import CTASection04 from "@/components/shadcn-studio/blocks/cta-section-04/cta-section-04";
 
@@ -1085,6 +1086,19 @@ export default function VendorsPage() {
       ref={pageRef}
       className="bg-background text-foreground min-h-screen overflow-hidden"
     >
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(
+            createItemListSchema(
+              VENDOR_TAGS.map((tag) => ({
+                name: tag.label,
+                url: `${SITE_URL}/vendors/all?category=${encodeURIComponent(tag.category)}`,
+              }))
+            )
+          ),
+        }}
+      />
       <Navbar isOpen={menuOpen} onMenuClick={() => setMenuOpen(!menuOpen)} />
       <MenuOverlay isOpen={menuOpen} onClose={() => setMenuOpen(false)} />
 

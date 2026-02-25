@@ -42,7 +42,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
     { name: t('nav.planning'), href: "/planning-tools" },
     { name: t('nav.vendors'), href: "/vendors" },
     { name: t('nav.guests'), href: "/guests" },
-    { name: t('nav.websites'), href: "/websites" },
+    { name: t('nav.websites'), href: "/" },
     { name: t('nav.inspiration'), href: "/advice-and-ideas" },
     { name: t('nav.attireAndRings'), href: "/attireandrings" },
     { name: "Careers", href: "/careers" },
@@ -181,7 +181,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
               {/* User Avatar with Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button className="relative focus:outline-none focus:ring-0 rounded-full">
+                  <button aria-label="User menu" className="relative focus:outline-none focus:ring-0 rounded-full">
                     <Avatar className="h-10 w-10">
                       {userData?.avatar ? (
                         <AvatarImage src={userData.avatar} alt={userData.name || "User"} />

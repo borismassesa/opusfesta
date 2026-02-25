@@ -3,7 +3,6 @@
 import { useRef, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { ArrowUpRight } from "lucide-react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { resolveAssetSrc } from "@/lib/assets";
@@ -94,10 +93,7 @@ export function Issues() {
 
   return (
     <div className="relative w-full"> 
-    {/* Wrapper for pin spacer */}
       <section ref={containerRef} id="advice-ideas" className="bg-surface text-foreground min-h-screen pt-20 pb-12 md:py-24 overflow-hidden relative border-b border-border flex flex-col justify-center">
-        
-        {/* Editorial Header */}
         <div className="editorial-header max-w-[1400px] mx-auto px-6 lg:px-12 mb-8 md:mb-12 w-full shrink-0">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-12 items-end border-b border-border/50 pb-8 md:pb-12">
             <div className="text-center md:text-left">
@@ -109,32 +105,30 @@ export function Issues() {
                 <span className="md:hidden w-12 h-px bg-accent"></span>
               </div>
               <h2 className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-foreground leading-[1.1]">
-                {content.advice?.headline || "Inspiration for"} <br/>
+                {content.advice?.headline || "Inspiration for"} <br />
                 <span className="font-serif italic font-normal text-secondary">
                   {content.advice?.subheadline || "your big day."}
                 </span>
               </h2>
             </div>
             
-            <div className="flex flex-col items-center md:items-end gap-6 md:gap-8">
-              <p className="text-secondary text-base md:text-lg max-w-md text-center md:text-right leading-relaxed font-light">
+            <div className="flex flex-col items-center md:items-end gap-6">
+              <p className="text-secondary text-base md:text-lg max-w-md text-center md:text-right leading-relaxed font-light line-clamp-3">
                 {content.advice?.description || "Expert guides, trending styles, and real wedding stories to help you plan a celebration that's uniquely yours."}
               </p>
               <Link
                 href={content.advice?.buttonLink || "/services/advice"}
-                className="group inline-flex items-center gap-2 px-6 py-3 rounded-full bg-primary text-background text-sm font-medium transition-all hover:bg-primary/90 hover:scale-105"
+                className="inline-flex items-center px-6 py-3 rounded-full bg-primary text-background text-sm font-medium transition-all hover:bg-primary/90"
               >
                 {content.advice?.buttonText || "Browse All Articles"}
-                <ArrowUpRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
               </Link>
             </div>
           </div>
         </div>
 
-        {/* Mobile: Vertical Grid, Desktop: Horizontal Scroll */}
         <div className="mobile-issues-grid w-full md:hidden px-6 pb-12 flex flex-col gap-6">
            {issues.map((issue) => (
-              <div key={issue.id} className="mobile-issue-card w-full aspect-4/5 relative group cursor-pointer overflow-hidden rounded-xl border border-border">
+              <div key={issue.id} className="mobile-issue-card w-full aspect-[4/5] relative group cursor-pointer overflow-hidden rounded-2xl border border-border">
                   <Image 
                     src={resolveAssetSrc(issue.img)} 
                     fill
@@ -142,14 +136,11 @@ export function Issues() {
                     alt={issue.title}
                     sizes="(max-width: 768px) 100vw, 50vw"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-transparent"></div>
                   <div className="absolute bottom-0 left-0 p-6 w-full text-white">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-white/70 mb-2">Trend Story</p>
                     <h3 className="text-2xl font-semibold tracking-tight mb-2">{issue.title}</h3>
-                    <p className="text-zinc-300 text-sm line-clamp-2 mb-4">{issue.desc}</p>
-                    <button className="flex items-center gap-2 text-xs font-medium uppercase tracking-wider hover:text-accent transition-colors">
-                      Read More
-                      <ArrowUpRight className="w-3 h-3" />
-                    </button>
+                    <p className="text-zinc-200/90 text-sm line-clamp-2">{issue.desc}</p>
                   </div>
               </div>
            ))}
@@ -158,40 +149,32 @@ export function Issues() {
         <div className="hidden md:flex horizontal-scroll-container w-full overflow-visible no-scrollbar grow items-center">
           <div ref={wrapperRef} className="horizontal-wrapper flex gap-[4vw] px-[5vw] w-fit items-center h-full">
             {issues.map((issue) => (
-              <div key={issue.id} className="w-[26vw] h-[45vh] lg:h-[50vh] relative shrink-0 group cursor-pointer">
-                <div className="absolute inset-0 bg-background rounded-xl overflow-hidden border border-border">
+              <article key={issue.id} className="w-[30vw] min-w-[340px] h-[50vh] lg:h-[56vh] relative shrink-0 group cursor-pointer">
+                <div className="absolute inset-0 bg-background rounded-[1.8rem] overflow-hidden border border-border">
                   <Image 
                     src={resolveAssetSrc(issue.img)} 
                     fill
                     className="object-cover opacity-80 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500" 
                     alt={issue.title}
-                    sizes="26vw"
+                    sizes="30vw"
                   />
                   <div className="absolute inset-0 bg-gradient-to-b from-transparent to-black/60 dark:to-black/90"></div>
-                  <div className="absolute bottom-0 left-0 p-4 sm:p-5 md:p-6 w-full text-white">
-                    <div className="flex justify-between items-end border-b border-white/20 pb-2 md:pb-3 mb-2 md:mb-3">
-                      <span className="text-xl sm:text-2xl md:text-2xl lg:text-3xl font-semibold tracking-tighter">
-                        {issue.title}
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-zinc-300 line-clamp-2 mb-3 md:mb-4 leading-relaxed">
+                  <div className="absolute bottom-0 left-0 p-6 w-full text-white">
+                    <p className="text-[10px] uppercase tracking-[0.24em] text-white/70 mb-3">Curated Guide</p>
+                    <h3 className="text-2xl lg:text-3xl font-semibold tracking-tight mb-2">
+                      {issue.title}
+                    </h3>
+                    <p className="text-sm text-zinc-200 line-clamp-2 leading-relaxed max-w-sm">
                       {issue.desc}
                     </p>
-                    <div className="flex items-end w-full">
-                      <button className="flex items-center gap-2 text-xs sm:text-sm font-medium uppercase tracking-wider hover:text-accent transition-colors">
-                        View Article
-                        <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4" />
-                      </button>
-                    </div>
                   </div>
                 </div>
-              </div>
+              </article>
             ))}
             
           </div>
         </div>
 
-        {/* Button moved under description */}
       </section>
     </div>
   );

@@ -9,7 +9,6 @@ import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Hero } from "@/components/home/Hero";
 import { LogoCloudSection } from "@/components/home/LogoCloudSection";
-import { Marquee } from "@/components/home/Marquee";
 import { Services } from "@/components/home/Services";
 import { Issues } from "@/components/home/Issues";
 import { Reviews } from "@/components/home/Reviews";
@@ -17,7 +16,6 @@ import { FAQ } from "@/components/home/FAQ";
 import { Community } from "@/components/home/Community";
 import { CTA } from "@/components/home/CTA";
 import { Footer } from "@/components/layout/Footer";
-import BentoGrid from "@/components/shadcn-studio/blocks/bento-grid-19/bento-grid-19";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -95,8 +93,6 @@ export function HomeClient() {
       <main>
         <Hero />
         <Services />
-        <BentoGrid />
-        {/* <Marquee /> */}
         <Community />
         <Issues />
         <Reviews />
