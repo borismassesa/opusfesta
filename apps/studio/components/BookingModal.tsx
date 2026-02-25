@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, type FormEvent } from 'react';
 import { serviceNames } from '@/lib/data';
+import { startFireworksConfetti } from '@/lib/fireworksConfetti';
 
 interface BookingModalProps {
   isOpen: boolean;
@@ -41,8 +42,12 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
   const [currentStep, setCurrentStep] = useState(0);
   const [stepError, setStepError] = useState('');
   const [celebrationKey, setCelebrationKey] = useState(0);
+  const [useCssConfettiFallback, setUseCssConfettiFallback] = useState(false);
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
   const contentRef = useRef<HTMLDivElement>(null);
+  const confettiCleanupRef = useRef<(() => void) | null>(null);
+  const hasCelebratedSuccessRef = useRef(false);
+  const previousFormStateRef = useRef<FormState>('idle');
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -201,9 +206,68 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
   }, []);
 
   useEffect(() => {
-    if (!isOpen || formState !== 'success' || prefersReducedMotion) return;
-    setCelebrationKey((prev) => prev + 1);
+    const stopFireworks = () => {
+      confettiCleanupRef.current?.();
+      confettiCleanupRef.current = null;
+    };
+
+    const enteringSuccess = previousFormStateRef.current !== 'success' && formState === 'success' && isOpen;
+
+    if (!isOpen || formState !== 'success') {
+      stopFireworks();
+      previousFormStateRef.current = formState;
+      return;
+    }
+
+    if (prefersReducedMotion) {
+      stopFireworks();
+      setUseCssConfettiFallback(false);
+      previousFormStateRef.current = formState;
+      return;
+    }
+
+    if (enteringSuccess && !hasCelebratedSuccessRef.current) {
+      hasCelebratedSuccessRef.current = true;
+      stopFireworks();
+
+      try {
+        const controller = startFireworksConfetti({
+          durationMs: 4500,
+          intervalMs: 250,
+          baseParticleCount: 46,
+          colors: CONFETTI_COLORS,
+          zIndex: 9999,
+        });
+        confettiCleanupRef.current = controller.stop;
+        const canvasConfettiFailed = controller.didFail();
+        if (controller.isRunning() && !canvasConfettiFailed) {
+          setUseCssConfettiFallback(false);
+        } else {
+          setUseCssConfettiFallback(true);
+          setCelebrationKey((prev) => prev + 1);
+        }
+      } catch {
+        setUseCssConfettiFallback(true);
+        setCelebrationKey((prev) => prev + 1);
+      }
+    }
+
+    previousFormStateRef.current = formState;
   }, [isOpen, formState, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (isOpen) return;
+    confettiCleanupRef.current?.();
+    confettiCleanupRef.current = null;
+    hasCelebratedSuccessRef.current = false;
+    previousFormStateRef.current = 'idle';
+    setUseCssConfettiFallback(false);
+  }, [isOpen]);
+
+  useEffect(() => () => {
+    confettiCleanupRef.current?.();
+    confettiCleanupRef.current = null;
+  }, []);
 
   function validateStep(step: number): string {
     if (step === 1 && !eventType.trim()) {
@@ -305,7 +369,7 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
     size: `${6 + (index % 4)}px`,
     height: `${10 + (index % 5) * 2}px`,
     delay: `${(index * 55) % 520}ms`,
-    duration: `${1.5 + (index % 6) * 0.2}s`,
+    duration: `${3.2 + (index % 7) * 0.28}s`,
     rotate: `${(index * 47) % 360}deg`,
     radius: index % 5 === 0 ? '999px' : '1px',
     color: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
@@ -352,7 +416,7 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
 
           {formState === 'success' ? (
             <div className="relative flex-1 flex flex-col items-center justify-center text-center py-20">
-              {!prefersReducedMotion && (
+              {!prefersReducedMotion && useCssConfettiFallback && (
                 <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20 overflow-hidden">
                   {confettiPieces.map((piece) => (
                     <span
