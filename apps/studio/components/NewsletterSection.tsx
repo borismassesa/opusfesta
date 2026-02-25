@@ -49,7 +49,7 @@ export default function NewsletterSection() {
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold tracking-tighter text-white leading-[0.95] mb-4">
               BEHIND-THE-SCENES,
               <br />
-              <span className="text-stroke-light text-transparent">DIRECT TO YOU.</span>
+              <span className="stroke-text stroke-text-light stroke-fill-none">DIRECT TO YOU.</span>
             </h2>
             <p className="text-white/40 text-base lg:text-lg leading-relaxed font-light max-w-md">
               Monthly updates with exclusive behind-the-scenes content, booking availability, and early access to new work.

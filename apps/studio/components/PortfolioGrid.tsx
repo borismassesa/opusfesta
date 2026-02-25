@@ -45,7 +45,7 @@ export default function PortfolioGrid() {
           </span>
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-brand-dark leading-[0.9]">
             OUR<br />
-            <span className="text-stroke">WORK.</span>
+            <span className="stroke-text stroke-text-default stroke-fill-none stroke-interactive">WORK.</span>
           </h1>
         </div>
 

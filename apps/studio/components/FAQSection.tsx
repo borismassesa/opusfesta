@@ -81,7 +81,7 @@ export default function FAQSection() {
             </span>
             <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-brand-dark leading-[0.9] mb-6">
               COMMON<br />
-              <span className="text-stroke">QUESTIONS.</span>
+              <span className="stroke-text stroke-text-default stroke-fill-none stroke-interactive">QUESTIONS.</span>
             </h2>
             <p className="text-neutral-500 text-lg leading-relaxed font-light max-w-sm mb-8">
               Everything you need to know before booking. Still have questions? Get in touch.

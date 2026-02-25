@@ -61,7 +61,7 @@ export default function ServicesSection() {
               </span>
               <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-brand-dark leading-[0.9]">
                 WE CAPTURE<br />
-                <span className="text-stroke">EVERYTHING.</span>
+                <span className="stroke-text stroke-text-default stroke-fill-none stroke-interactive">EVERYTHING.</span>
               </h2>
             </div>
             <p className="text-neutral-500 text-lg max-w-sm leading-relaxed font-light md:text-right">

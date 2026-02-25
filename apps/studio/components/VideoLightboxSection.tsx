@@ -40,7 +40,7 @@ export default function VideoLightboxSection() {
           <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold tracking-tighter text-white leading-[0.9] mb-6">
             SEE THE
             <br />
-            <span className="text-stroke-light text-transparent">WORK IN</span>
+            <span className="stroke-text stroke-text-light stroke-fill-none">WORK IN</span>
             <br />
             MOTION.
           </h2>

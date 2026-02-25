@@ -45,7 +45,7 @@ export default function JournalGrid() {
           </span>
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-brand-dark leading-[0.9]">
             STUDIO<br />
-            <span className="text-stroke">JOURNAL.</span>
+            <span className="stroke-text stroke-text-default stroke-fill-none stroke-interactive">JOURNAL.</span>
           </h1>
         </div>
 

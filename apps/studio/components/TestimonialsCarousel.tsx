@@ -77,6 +77,7 @@ export default function TestimonialsCarousel() {
 
   return (
     <section
+      id="testimonials"
       ref={sectionRef}
       className="py-28 lg:py-36 relative bg-brand-bg z-10 overflow-hidden"
     >
