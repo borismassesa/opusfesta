@@ -54,7 +54,7 @@ export default function SignatureWorkSection() {
               </span>
               <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-brand-dark leading-[0.9]">
                 SIGNATURE<br />
-                <span className="text-stroke">WORK.</span>
+                <span className="stroke-text stroke-text-default stroke-fill-none stroke-interactive">WORK.</span>
               </h2>
             </div>
             <Link

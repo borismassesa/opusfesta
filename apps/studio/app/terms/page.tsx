@@ -16,7 +16,7 @@ export default function TermsPage() {
           </span>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tighter text-brand-dark leading-[0.9] mb-12">
             TERMS OF<br />
-            <span className="text-stroke">SERVICE.</span>
+            <span className="stroke-text stroke-text-default stroke-fill-none stroke-interactive">SERVICE.</span>
           </h1>
 
           <div className="space-y-8 text-neutral-600 font-light leading-relaxed">

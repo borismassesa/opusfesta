@@ -3,7 +3,6 @@
 import { useState, useMemo, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { Flag, Sparkles, Calendar as CalendarIcon, Tag, Send, CheckCircle2, XCircle, Star, MapPin } from "lucide-react";
-import confetti from "canvas-confetti";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -13,6 +12,7 @@ import Image from "next/image";
 import type { Vendor } from "@/lib/supabase/vendors";
 import { useAuth } from "@clerk/nextjs";
 import { useAuthGate } from "@/hooks/useAuthGate";
+import { startFireworksConfetti } from "@/lib/fireworksConfetti";
 
 interface VendorBookingSidebarProps {
   vendor: Vendor;
@@ -56,7 +56,12 @@ export function VendorBookingSidebar({
   const [loadingMobileMoneyAccounts, setLoadingMobileMoneyAccounts] = useState(false);
   const [message, setMessage] = useState('');
   const [createdInquiryId, setCreatedInquiryId] = useState<string | null>(null);
-  const confettiTriggered = useRef(false);
+  const [emailConfigured, setEmailConfigured] = useState<boolean>(true);
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+  const confettiCleanupRef = useRef<(() => void) | null>(null);
+  const hasCelebratedSuccessRef = useRef(false);
+  const prevBookingStepRef = useRef<'customer' | 'payment' | 'method' | 'review' | 'success' | 'error'>('customer');
+  const resetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [reviewForm, setReviewForm] = useState({
     name: '',
     email: '',
@@ -86,6 +91,128 @@ export function VendorBookingSidebar({
 
   // Get today's date at start of day for comparison
   const today = useMemo(() => startOfDay(new Date()), []);
+
+  const stopFireworks = () => {
+    confettiCleanupRef.current?.();
+    confettiCleanupRef.current = null;
+  };
+
+  const clearResetTimeout = () => {
+    if (!resetTimeoutRef.current) return;
+    clearTimeout(resetTimeoutRef.current);
+    resetTimeoutRef.current = null;
+  };
+
+  const resetBookingFlow = () => {
+    clearResetTimeout();
+    stopFireworks();
+    hasCelebratedSuccessRef.current = false;
+    prevBookingStepRef.current = 'customer';
+    setIsFormOpen(false);
+    setBookingStep('customer');
+    setReviewForm({
+      name: '',
+      email: '',
+      phone: '',
+      eventType: '',
+      budget: ''
+    });
+    setMessage('');
+    setDateRange({ from: undefined, to: undefined });
+    setSubmitError(null);
+    setCreatedInquiryId(null);
+    setEmailConfigured(true);
+    // Reset payment-related state (not used in inquiry but kept for cleanup)
+    setSelectedPayment('full');
+    setSelectedPaymentMethod(null);
+    setCardDetails({
+      number: '',
+      expiry: '',
+      cvv: '',
+      postalCode: '',
+      country: 'Tanzania'
+    });
+    setReceiptFile(null);
+    setReceiptPreview(null);
+    setReceiptNumber('');
+    setSelectedLipaNamba(null);
+  };
+
+  const closeBookingFlow = () => {
+    clearResetTimeout();
+    stopFireworks();
+    hasCelebratedSuccessRef.current = false;
+    prevBookingStepRef.current = 'customer';
+    setIsFormOpen(false);
+    setBookingStep('customer');
+    setMessage('');
+    setReviewForm({
+      name: '',
+      email: '',
+      phone: '',
+      eventType: '',
+      budget: ''
+    });
+    setSubmitError(null);
+  };
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const syncMotionPreference = () => setPrefersReducedMotion(mediaQuery.matches);
+
+    syncMotionPreference();
+
+    if (typeof mediaQuery.addEventListener === "function") {
+      mediaQuery.addEventListener("change", syncMotionPreference);
+      return () => mediaQuery.removeEventListener("change", syncMotionPreference);
+    }
+
+    mediaQuery.addListener(syncMotionPreference);
+    return () => mediaQuery.removeListener(syncMotionPreference);
+  }, []);
+
+  useEffect(() => {
+    const enteringSuccess = prevBookingStepRef.current !== 'success' && bookingStep === 'success';
+
+    if (bookingStep === 'success' && prefersReducedMotion) {
+      stopFireworks();
+    }
+
+    if (enteringSuccess && !hasCelebratedSuccessRef.current) {
+      hasCelebratedSuccessRef.current = true;
+      if (!prefersReducedMotion) {
+        const controller = startFireworksConfetti({
+          durationMs: 5000,
+          intervalMs: 250,
+          baseParticleCount: 50,
+          colors: ['#667eea', '#764ba2', '#f093fb', '#4facfe'],
+          zIndex: 0,
+        });
+        confettiCleanupRef.current = controller.stop;
+      }
+    }
+
+    if (bookingStep !== 'success') {
+      stopFireworks();
+    }
+
+    prevBookingStepRef.current = bookingStep;
+  }, [bookingStep, prefersReducedMotion]);
+
+  useEffect(() => {
+    if (isFormOpen) return;
+    clearResetTimeout();
+    stopFireworks();
+    hasCelebratedSuccessRef.current = false;
+    prevBookingStepRef.current = 'customer';
+  }, [isFormOpen]);
+
+  useEffect(() => () => {
+    clearResetTimeout();
+    stopFireworks();
+  }, []);
 
   // Fetch availability from API
   useEffect(() => {
@@ -897,16 +1024,7 @@ export function VendorBookingSidebar({
             <div className="flex items-center gap-2 sm:gap-4 mb-4 sm:mb-6 lg:mb-8">
               <button
                 onClick={() => {
-                  setIsFormOpen(false);
-                  setBookingStep('customer');
-                  setMessage('');
-                  setReviewForm({
-                    name: '',
-                    email: '',
-                    phone: '',
-                    eventType: '',
-                    budget: ''
-                  });
+                  closeBookingFlow();
                 }}
                 className="p-2 hover:bg-surface rounded-lg transition-colors shrink-0"
               >
@@ -1428,38 +1546,13 @@ export function VendorBookingSidebar({
                             if (data?.inquiry?.id) {
                               setCreatedInquiryId(data.inquiry.id);
                             }
+                            setEmailConfigured(data?.emailConfigured !== false);
                             setBookingStep('success');
                             
                             // Reset form after a delay
-                            setTimeout(() => {
-                              setIsFormOpen(false);
-                              setBookingStep('customer');
-                              setReviewForm({
-                                name: '',
-                                email: '',
-                                phone: '',
-                                eventType: '',
-                                budget: ''
-                              });
-                              setMessage('');
-                              setDateRange({ from: undefined, to: undefined });
-                              setSubmitError(null);
-                              setCreatedInquiryId(null);
-                              confettiTriggered.current = false;
-                              // Reset payment-related state (not used in inquiry but kept for cleanup)
-                              setSelectedPayment('full');
-                              setSelectedPaymentMethod(null);
-                              setCardDetails({
-                                number: '',
-                                expiry: '',
-                                cvv: '',
-                                postalCode: '',
-                                country: 'Tanzania'
-                              });
-                              setReceiptFile(null);
-                              setReceiptPreview(null);
-                              setReceiptNumber('');
-                              setSelectedLipaNamba(null);
+                            clearResetTimeout();
+                            resetTimeoutRef.current = setTimeout(() => {
+                              resetBookingFlow();
                             }, 10000); // Increased delay to allow user to see success state
                             
                           } catch (error) {
@@ -1497,83 +1590,47 @@ export function VendorBookingSidebar({
                   )}
 
                 {/* Success State */}
-                {bookingStep === 'success' && (() => {
-                  // Trigger confetti once when success state is shown
-                  if (!confettiTriggered.current) {
-                    confettiTriggered.current = true;
-                    // Trigger confetti animation
-                    confetti({
-                      particleCount: 100,
-                      spread: 70,
-                      origin: { y: 0.6 },
-                      colors: ['#667eea', '#764ba2', '#f093fb', '#4facfe'],
-                    });
-                    // Additional burst after a short delay
-                    setTimeout(() => {
-                      confetti({
-                        particleCount: 50,
-                        angle: 60,
-                        spread: 55,
-                        origin: { x: 0 },
-                        colors: ['#667eea', '#764ba2'],
-                      });
-                      confetti({
-                        particleCount: 50,
-                        angle: 120,
-                        spread: 55,
-                        origin: { x: 1 },
-                        colors: ['#f093fb', '#4facfe'],
-                      });
-                    }, 250);
-                  }
-                  
-                  return (
-                    <div className="rounded-xl sm:rounded-2xl bg-background shadow-sm p-4 sm:p-5 lg:p-6 mt-3 sm:mt-4">
-                      <div className="text-center py-6 sm:py-8">
-                        <CheckCircle2 className="w-16 h-16 sm:w-20 sm:h-20 text-green-500 mx-auto mb-4" />
-                        <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-foreground">Inquiry Sent Successfully! 🎉</h2>
-                        <p className="text-sm sm:text-base text-secondary mb-4">
-                          Your inquiry has been sent to <strong>{vendor.business_name}</strong>. They will respond to you soon.
-                        </p>
-                        {createdInquiryId && (
-                          <p className="text-xs text-muted-foreground mb-6">
-                            Inquiry ID: <span className="font-mono">{createdInquiryId.substring(0, 8)}...</span>
+                {bookingStep === 'success' && (
+                  <div className="rounded-xl sm:rounded-2xl bg-background shadow-sm p-4 sm:p-5 lg:p-6 mt-3 sm:mt-4">
+                    <div className="text-center py-6 sm:py-8">
+                      <CheckCircle2 className="w-16 h-16 sm:w-20 sm:h-20 text-green-500 mx-auto mb-4" />
+                      <h2 className="text-xl sm:text-2xl font-semibold mb-2 text-foreground">Inquiry Sent Successfully! 🎉</h2>
+                      <p className="text-sm sm:text-base text-secondary mb-4">
+                        Your inquiry has been sent to <strong>{vendor.business_name}</strong>. They will respond to you soon.
+                      </p>
+                      {!emailConfigured && (
+                        <div className="p-4 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg mb-4 text-left">
+                          <p className="text-sm text-amber-800 dark:text-amber-200">
+                            Your inquiry was sent. Note: Confirmation emails could not be sent because email is not configured on this server.
                           </p>
-                        )}
-                        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-                          <Button
-                            onClick={() => {
-                              router.push('/my-inquiries');
-                            }}
-                            className="bg-primary text-primary-foreground"
-                          >
-                            View My Inquiries
-                          </Button>
-                          <Button
-                            variant="outline"
-                            onClick={() => {
-                              setIsFormOpen(false);
-                              setBookingStep('customer');
-                              setReviewForm({
-                                name: '',
-                                email: '',
-                                phone: '',
-                                eventType: '',
-                                budget: ''
-                              });
-                              setMessage('');
-                              setDateRange({ from: undefined, to: undefined });
-                              setCreatedInquiryId(null);
-                              confettiTriggered.current = false;
-                            }}
-                          >
-                            Close
-                          </Button>
                         </div>
+                      )}
+                      {createdInquiryId && (
+                        <p className="text-xs text-muted-foreground mb-6">
+                          Inquiry ID: <span className="font-mono">{createdInquiryId.substring(0, 8)}...</span>
+                        </p>
+                      )}
+                      <div className="flex flex-col sm:flex-row gap-3 justify-center">
+                        <Button
+                          onClick={() => {
+                            router.push('/my-inquiries');
+                          }}
+                          className="bg-primary text-primary-foreground"
+                        >
+                          View My Inquiries
+                        </Button>
+                        <Button
+                          variant="outline"
+                          onClick={() => {
+                            resetBookingFlow();
+                          }}
+                        >
+                          Close
+                        </Button>
                       </div>
                     </div>
-                  );
-                })()}
+                  </div>
+                )}
                 </div>
 
                 {/* Error State */}
@@ -1597,9 +1654,7 @@ export function VendorBookingSidebar({
                         </Button>
                         <Button
                           onClick={() => {
-                            setIsFormOpen(false);
-                            setBookingStep('customer');
-                            setSubmitError(null);
+                            closeBookingFlow();
                           }}
                         >
                           Close

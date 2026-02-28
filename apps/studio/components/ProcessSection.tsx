@@ -104,7 +104,7 @@ export default function ProcessSection() {
                 </span>
                 <h2 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-bold tracking-tighter text-white leading-[0.85]">
                   OUR<br />
-                  <span className="text-stroke-light">PROCESS.</span>
+                  <span className="stroke-text stroke-text-light stroke-fill-none">PROCESS.</span>
                 </h2>
               </div>
               <p className="text-white/40 text-lg max-w-sm leading-relaxed font-light lg:text-right">

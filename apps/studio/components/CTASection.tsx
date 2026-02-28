@@ -36,7 +36,7 @@ export default function CTASection() {
           <h2 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-brand-dark leading-[0.9] mb-6">
             LET&apos;S MAKE
             <br />
-            <span className="text-stroke">SOMETHING</span>
+            <span className="stroke-text stroke-text-default stroke-fill-none stroke-interactive">SOMETHING</span>
             <br />
             UNFORGETTABLE.
           </h2>

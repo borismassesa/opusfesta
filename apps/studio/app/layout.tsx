@@ -28,6 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${dmSans.variable} ${spaceMono.variable} font-sans`}>
+        {/* @ts-expect-error Dual @types/react versions in monorepo cause ReactNode mismatch */}
         <BookingModalProvider>{children}</BookingModalProvider>
       </body>
     </html>

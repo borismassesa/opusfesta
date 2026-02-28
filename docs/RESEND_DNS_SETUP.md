@@ -124,6 +124,7 @@ Once DNS records are verified:
 ## Current Configuration
 
 The application is configured to use:
-- **From Address**: `OpusFesta <noreply@thefestaevents.com>`
+- **From Address (production)**: `OpusFesta <noreply@thefestaevents.com>`
+- **From Address (development fallback)**: `OpusFesta <onboarding@resend.dev>`
 - **Domain**: `thefestaevents.com`
 - **Environment Variable Override**: Set `RESEND_FROM_EMAIL` to override if needed

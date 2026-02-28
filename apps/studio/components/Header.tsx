@@ -1,12 +1,22 @@
 'use client';
 
+import Link from 'next/link';
+import type { RefObject } from 'react';
 import { useBookingModal } from '@/components/BookingModalProvider';
 
 interface HeaderProps {
   onMenuToggle: () => void;
+  isMenuOpen: boolean;
+  menuButtonRef: RefObject<HTMLButtonElement | null>;
+  menuControlsId: string;
 }
 
-export default function Header({ onMenuToggle }: HeaderProps) {
+export default function Header({
+  onMenuToggle,
+  isMenuOpen,
+  menuButtonRef,
+  menuControlsId,
+}: HeaderProps) {
   const { openBookingModal } = useBookingModal();
 
   return (
@@ -14,9 +24,12 @@ export default function Header({ onMenuToggle }: HeaderProps) {
       <div className="max-w-[1920px] mx-auto px-6 lg:px-12">
         <div className="flex items-center justify-between h-20">
           <button
+            ref={menuButtonRef}
             onClick={onMenuToggle}
-            aria-label="Menu"
-            className="flex items-center gap-2 sm:gap-3 text-xs font-bold uppercase tracking-widest text-brand-dark hover:text-brand-accent transition-all duration-200 px-2 sm:px-3 py-2 border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+            aria-label={isMenuOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMenuOpen}
+            aria-controls={menuControlsId}
+            className="flex items-center gap-2 sm:gap-3 text-xs font-bold uppercase tracking-widest text-brand-dark hover:text-brand-accent transition-all duration-200 px-2 sm:px-3 py-2 border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-brand-accent/50"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -34,12 +47,12 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             <span className="hidden sm:inline">Menu</span>
           </button>
 
-          <a
+          <Link
             href="/"
             className="px-3 sm:px-5 h-10 sm:h-12 border-4 border-brand-dark bg-brand-dark text-white flex items-center justify-center font-black text-[10px] sm:text-sm uppercase tracking-widest hover:bg-brand-accent hover:border-brand-accent transition-all duration-200 whitespace-nowrap shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1"
           >
             OpusFesta — Studio
-          </a>
+          </Link>
 
           <div className="flex items-center gap-2 sm:gap-6">
             <button

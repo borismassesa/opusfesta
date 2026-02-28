@@ -46,6 +46,9 @@ export async function POST(request: NextRequest) {
     // Percent-encode email for use in mailto: URI
     const mailtoEmail = encodeURIComponent(String(email));
 
+    const studioNotificationTo =
+      process.env.STUDIO_NOTIFICATION_EMAIL ?? 'ibadatt.aulakh@opusfesta.com';
+
     // Send notification to studio
     const studioHtml = `
       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #F8F9FA; border: 4px solid #171717;">
@@ -68,17 +71,14 @@ export async function POST(request: NextRequest) {
     `;
 
     const studioResult = await sendEmail({
-      to: 'studio@opusfesta.com',
+      to: studioNotificationTo,
       subject: `New Booking: ${safeEventType} — ${safeName}`,
       html: studioHtml,
       replyTo: email,
     });
 
     if (!studioResult.success) {
-      return NextResponse.json(
-        { success: false, error: studioResult.error || 'Failed to send notification email.' },
-        { status: 502 }
-      );
+      console.error('[BOOKING API] Failed to send studio notification email:', studioResult.error);
     }
 
     // Send confirmation to customer
@@ -106,13 +106,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!confirmResult.success) {
-      return NextResponse.json(
-        { success: false, error: confirmResult.error || 'Failed to send confirmation email.' },
-        { status: 502 }
-      );
+      console.error('[BOOKING API] Failed to send customer confirmation email:', confirmResult.error);
     }
 
-    return NextResponse.json({ success: true });
+    const emailSent = studioResult.success && confirmResult.success;
+    return NextResponse.json({ success: true, emailSent });
   } catch (error: unknown) {
     console.error('[BOOKING API] Error:', error);
     const message = error instanceof Error ? error.message : 'Internal server error';

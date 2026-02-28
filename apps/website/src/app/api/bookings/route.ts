@@ -281,7 +281,8 @@ export async function POST(request: NextRequest) {
     const vendorContactInfo = (vendor.contact_info as any) || {};
     const vendorEmail = vendorContactInfo.email;
     const platformEmail = process.env.PLATFORM_ADMIN_EMAIL || 'admin@opusfesta.com';
-    
+    const emailConfigured = !!process.env.RESEND_API_KEY;
+
     // Calculate if inquiry is urgent (event date within 7 days)
     const isUrgent = eventDate && (new Date(eventDate).getTime() - Date.now()) < 7 * 24 * 60 * 60 * 1000;
 
@@ -400,6 +401,7 @@ export async function POST(request: NextRequest) {
         status: inquiry.status,
         createdAt: inquiry.created_at,
       },
+      emailConfigured,
     });
   } catch (error) {
     console.error("Unexpected error creating inquiry:", error);

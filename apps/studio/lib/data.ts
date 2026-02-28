@@ -13,6 +13,29 @@ export interface Project {
   fullDescription: string;
 }
 
+export type PortfolioMediaType = 'image' | 'video';
+export type VideoSourceType = 'mp4' | 'youtube' | 'vimeo';
+export type PortfolioAspectRatio = '1:1' | '4:5' | '3:2' | '16:9' | '9:16';
+
+export interface PortfolioItem {
+  id: string;
+  slug: string;
+  title: string;
+  type: PortfolioMediaType;
+  mediaUrl: string;
+  thumbnailUrl: string;
+  posterUrl?: string;
+  category: string;
+  tags: string[];
+  date: string;
+  description: string;
+  featured: boolean;
+  aspectRatio: PortfolioAspectRatio;
+  videoSourceType?: VideoSourceType;
+  embedUrl?: string;
+  alt?: string;
+}
+
 export interface Article {
   id: string;
   slug: string;
@@ -122,6 +145,73 @@ export const projects: Project[] = [
       'Achieved 2.4 million views within first month of launch',
     ],
     fullDescription: 'When a luxury heritage brand approached us to create their market entry film, we knew this demanded nothing less than cinematic excellence. Over five production days across four carefully scouted locations, we crafted a 90-second commercial that captured the brand\'s essence — timeless craftsmanship meeting modern ambition. Shot on RED cinema cameras with premium anamorphic lenses, every frame was composed to communicate luxury. Our in-house colour grade gave the piece a distinctive warmth that set it apart in a market saturated with cold, clinical brand content. The film launched across digital and social channels, accumulating 2.4 million views in its first month and becoming the centrepiece of the brand\'s market entry campaign.',
+  },
+];
+
+export const portfolioItems: PortfolioItem[] = [
+  {
+    id: 'portfolio-1',
+    slug: 'the-meridian-experience',
+    title: 'THE MERIDIAN EXPERIENCE',
+    type: 'image',
+    mediaUrl: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/bcced374-a515-4136-bef9-e31a8cd1c18f_1600w.jpg',
+    thumbnailUrl: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/bcced374-a515-4136-bef9-e31a8cd1c18f_1600w.jpg',
+    category: 'Wedding Film',
+    tags: ['Wedding', 'Cinematic', 'Highlands'],
+    date: '2025-07-11',
+    description: 'Cinematic wedding storytelling across three venues in the Scottish Highlands.',
+    featured: true,
+    aspectRatio: '16:9',
+    alt: 'Bride and groom embracing during a mountain sunset wedding portrait.',
+  },
+  {
+    id: 'portfolio-2',
+    slug: 'rooftop-gala-night',
+    title: 'ROOFTOP GALA NIGHT',
+    type: 'video',
+    mediaUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4',
+    thumbnailUrl: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/ffd0641a-688d-4761-a530-60fec416aab1_1600w.webp',
+    posterUrl: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/ffd0641a-688d-4761-a530-60fec416aab1_1600w.webp',
+    category: 'Event Coverage',
+    tags: ['Gala', 'Live Event', 'Photography'],
+    date: '2025-06-03',
+    description: 'A high-energy rooftop charity gala captured in photo and motion.',
+    featured: false,
+    aspectRatio: '16:9',
+    videoSourceType: 'mp4',
+    alt: 'Guests mingling at an evening rooftop gala event in London.',
+  },
+  {
+    id: 'portfolio-3',
+    slug: 'vision-2030-summit',
+    title: 'VISION 2030 SUMMIT',
+    type: 'video',
+    mediaUrl: 'https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4',
+    thumbnailUrl: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/792defd4-d702-4f36-b352-ba625129dfb5_3840w.webp',
+    posterUrl: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/792defd4-d702-4f36-b352-ba625129dfb5_3840w.webp',
+    category: 'Corporate',
+    tags: ['Summit', 'Brand Film', 'Leadership'],
+    date: '2025-05-19',
+    description: 'Three days of keynote sessions transformed into a flagship brand film.',
+    featured: true,
+    aspectRatio: '16:9',
+    videoSourceType: 'mp4',
+    alt: 'Wide shot of a corporate summit stage with keynote speaker and audience.',
+  },
+  {
+    id: 'portfolio-4',
+    slug: 'brand-launch-film',
+    title: 'BRAND LAUNCH FILM',
+    type: 'image',
+    mediaUrl: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/d2607b57-3a19-48e4-8ad4-bdcf6e69b207_3840w.webp',
+    thumbnailUrl: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/d2607b57-3a19-48e4-8ad4-bdcf6e69b207_3840w.webp',
+    category: 'Commercial',
+    tags: ['Commercial', 'Luxury', 'Launch'],
+    date: '2025-04-28',
+    description: 'Concept-to-delivery launch film for a luxury heritage brand.',
+    featured: false,
+    aspectRatio: '3:2',
+    alt: 'Luxury commercial scene featuring product hero shot in dramatic lighting.',
   },
 ];
 
@@ -235,6 +325,10 @@ export const services: Service[] = [
 
 export function getProjectBySlug(slug: string): Project | undefined {
   return projects.find((p) => p.slug === slug);
+}
+
+export function getPortfolioItemBySlug(slug: string): PortfolioItem | undefined {
+  return portfolioItems.find((item) => item.slug === slug);
 }
 
 export function getArticleBySlug(slug: string): Article | undefined {
