@@ -1,29 +1,47 @@
-## Description
+## Jira Ticket
 
-<!-- What does this PR do? One or two sentences. -->
+<!-- Link your Jira ticket below -->
+[OF-TD-](https://opusfesta.atlassian.net/browse/OF-TD-)
 
-## Type of change
+## Summary
 
-- [ ] Bug fix (non-breaking)
-- [ ] New feature (non-breaking)
-- [ ] Breaking change
-- [ ] Docs / config / chores
+<!-- 2-3 bullet points describing what this PR does -->
+-
+-
 
-## Affected areas
+## Type of Change
 
-<!-- Which apps, services, or packages are touched? e.g. apps/website, apps/admin, services/api -->
+- [ ] `feature` — New functionality
+- [ ] `fix` — Bug fix (non-breaking)
+- [ ] `hotfix` — Urgent production fix
+- [ ] `chore` — Maintenance, deps, config
+- [ ] `refactor` — Code restructuring
+- [ ] `docs` — Documentation only
 
-## How to test / verify
+## Affected Areas
 
-<!-- Steps for reviewers or QA to verify the change. -->
+<!-- Which apps/packages are touched? e.g. apps/website, packages/db -->
+
+## How to Test
+
+<!-- Step-by-step instructions for reviewers -->
+1.
+2.
+3.
+
+## Screenshots (if UI changes)
+
+<!-- Paste screenshots or screen recordings here -->
 
 ## Checklist
 
 - [ ] Code follows project conventions
 - [ ] Self-reviewed the diff
-- [ ] Ran `npm run check:prepush` (or equivalent) locally
-- [ ] No unnecessary console logs or debug code
+- [ ] Ran `npm run check:prepush` locally
+- [ ] No unnecessary `console.log` or debug code
+- [ ] Commit messages reference Jira ticket (`OF-TD-<NUMBER>`)
+- [ ] PR title follows format: `OF-TD-<NUMBER>: <description>`
 
-## Additional context
+## Additional Context
 
-<!-- Screenshots, links to issues, design notes, or anything that helps CodeRabbit and reviewers. -->
+<!-- Links to design docs, architecture notes, or anything that helps reviewers and CodeRabbit -->

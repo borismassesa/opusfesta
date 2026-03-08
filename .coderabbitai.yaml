@@ -1,0 +1,52 @@
+# CodeRabbit Configuration for OpusFesta
+# Docs: https://docs.coderabbit.ai/guides/configuration
+
+language: en
+
+reviews:
+  auto_review:
+    enabled: true
+    drafts: false
+    ignore:
+      - "**/*.lock"
+      - "**/package-lock.json"
+      - "**/.next/**"
+      - "**/node_modules/**"
+      - "supabase/migrations/**"
+      - "**/*.generated.*"
+
+  profile: assertive
+  request_changes_workflow: true
+  high_level_summary: true
+  high_level_summary_placeholder: "@coderabbitai summary"
+  review_status: true
+
+  path_instructions:
+    - path: "apps/website/**"
+      instructions: "Main customer-facing Next.js 15 app. Check SEO, performance, accessibility, and SSR/SSG patterns."
+    - path: "apps/admin/**"
+      instructions: "Admin dashboard. Focus on authorization checks, data validation, and secure API routes."
+    - path: "apps/vendor-portal/**"
+      instructions: "Vendor-facing app. Ensure proper auth, data isolation between vendors, and input validation."
+    - path: "packages/db/**"
+      instructions: "Shared database package with Prisma. Check for migration safety, proper relations, and index usage."
+    - path: "packages/auth/**"
+      instructions: "Shared auth package using Clerk + Supabase. Security is critical — check for auth bypasses."
+    - path: "packages/lib/**"
+      instructions: "Shared utilities and types. Ensure backwards compatibility and proper Zod schema validation."
+    - path: "**/*.ts"
+      instructions: "TypeScript strict mode is enabled. No `any` types. Use proper error handling."
+    - path: "**/api/**"
+      instructions: "API routes must validate inputs with Zod, handle errors consistently, and check auth."
+
+chat:
+  auto_reply: true
+
+tools:
+  eslint:
+    enabled: true
+  biome:
+    enabled: false
+  github-checks:
+    enabled: true
+    timeout_ms: 120000

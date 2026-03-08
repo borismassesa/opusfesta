@@ -1,7 +1,6 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react";
-import { Search } from "lucide-react";
 import gsap from "gsap";
 import { useTranslation } from "react-i18next";
 import { useContent } from "@/context/ContentContext";
@@ -71,6 +70,7 @@ export function Hero() {
   const [activeTab, setActiveTab] = useState('venues');
   const [searchText, setSearchText] = useState('');
   const [currentSlide, setCurrentSlide] = useState(0);
+  const socialProofAvatars = hero.slides.slice(0, 3).map((slide) => slide.avatar);
 
   const HERO_TABS = [
     { id: 'venues', label: t('tabs.venues') },
@@ -157,8 +157,7 @@ export function Hero() {
             </span>
           </h1>
           
-          {/* Subhead - Simplified */}
-          <p className="hero-fade text-secondary text-sm sm:text-base md:text-lg max-w-md leading-relaxed px-1 sm:px-0">
+          <p className="hero-fade text-secondary text-sm sm:text-base md:text-lg max-w-md leading-relaxed px-1 sm:px-0 line-clamp-3">
             {hero.subhead}
           </p>
 
@@ -167,11 +166,14 @@ export function Hero() {
             
             {/* Quick Actions Row - Moved ABOVE search bar */}
             <div className="w-full flex justify-center md:justify-start">
-              <div className="flex flex-nowrap overflow-x-auto pb-2 -mb-2 mask-linear-fade lg:overflow-visible lg:pb-0 lg:mb-0 lg:flex-wrap gap-2 items-center text-xs font-medium no-scrollbar max-w-[100vw] px-4 lg:px-0 -mx-4 lg:mx-0">
+              <div role="tablist" className="flex flex-nowrap overflow-x-auto pb-2 -mb-2 mask-linear-fade lg:overflow-visible lg:pb-0 lg:mb-0 lg:flex-wrap gap-2 items-center text-xs font-medium no-scrollbar max-w-[100vw] px-4 lg:px-0 -mx-4 lg:mx-0">
                 <span className="text-secondary/80 uppercase tracking-wider mr-1 hidden md:inline-block">{t('hero.browse')}:</span>
                 {HERO_TABS.map((tab) => (
                   <button
                     key={tab.id}
+                    role="tab"
+                    id={`tab-${tab.id}`}
+                    aria-selected={activeTab === tab.id}
                     onClick={() => setActiveTab(tab.id)}
                     className={`px-3 py-1.5 rounded-lg border transition-all duration-200 whitespace-nowrap shrink-0 text-xs sm:text-sm ${
                       activeTab === tab.id
@@ -185,37 +187,33 @@ export function Hero() {
               </div>
             </div>
 
-            {/* Search Bar with Beam Effect - Cleaner look */}
-            <div className="group w-full shiny-beam-input relative bg-surface rounded-full border border-border/50 transition-all focus-within:ring-2 focus-within:ring-primary/5 hover:border-primary/20 shadow-sm hover:shadow-md">
-              <div className="absolute inset-y-0 left-4 lg:left-5 flex items-center pointer-events-none z-10">
-                <Search className="text-secondary group-focus-within:text-primary transition-colors w-4 h-4 lg:w-5 lg:h-5" />
-              </div>
+            <div role="search" className="group w-full shiny-beam-input relative bg-surface rounded-full border border-border/50 transition-all focus-within:ring-2 focus-within:ring-primary/5 hover:border-primary/20 shadow-sm hover:shadow-md">
               <input
                 type="text"
                 value={searchText}
                 onChange={(e) => setSearchText(e.target.value)}
                 placeholder={t(`hero.searchPlaceholders.${activeTab}`)}
-                className="w-full pl-10 lg:pl-12 pr-12 lg:pr-4 py-3 lg:py-4 bg-transparent border-none rounded-full text-foreground placeholder:text-secondary/60 focus:outline-none focus:ring-0 text-[13px] sm:text-base font-normal relative z-10 truncate"
+                aria-label={t(`hero.searchPlaceholders.${activeTab}`)}
+                className="w-full pl-5 lg:pl-6 pr-24 lg:pr-32 py-3 lg:py-4 bg-transparent border-none rounded-full text-foreground placeholder:text-secondary/60 focus:outline-none focus:ring-0 text-[13px] sm:text-base font-normal relative z-10 truncate"
               />
               <div className="absolute right-1.5 top-1.5 bottom-1.5">
-                 <button className="h-full bg-primary hover:bg-primary/90 text-background w-10 lg:w-auto lg:px-6 rounded-full text-sm font-medium transition-all shadow-sm cursor-pointer flex items-center justify-center gap-2">
-                   <span className="hidden lg:inline">{t('hero.search')}</span>
-                   <Search className="lg:hidden w-4 h-4" />
+                 <button aria-label={t('hero.search')} className="h-full bg-primary hover:bg-primary/90 text-background px-4 lg:px-6 rounded-full text-xs sm:text-sm font-medium tracking-wide transition-all shadow-sm cursor-pointer">
+                   {t('hero.search')}
                  </button>
               </div>
             </div>
 
           </div>
 
-          {/* Social Proof Badge - Updated to match design */}
           <div className="hero-fade flex items-center gap-3 sm:gap-4 mt-8 pl-2 pr-4 sm:pr-6 py-2 bg-surface rounded-full shadow-sm border border-border w-full sm:w-fit hover:scale-105 transition-transform duration-300 cursor-default max-w-full">
              <div className="flex -space-x-3 shrink-0">
-               {[10, 15, 20].map((i) => (
-                 <div key={i} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-[3px] border-surface overflow-hidden relative ring-1 ring-border">
-                    <img 
-                      src={`https://picsum.photos/seed/${i}/100/100`} 
-                      alt="User" 
-                      className="w-full h-full object-cover grayscale-20" 
+               {socialProofAvatars.map((avatar, i) => (
+                 <div key={`${avatar}-${i}`} className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border-[3px] border-surface overflow-hidden relative ring-1 ring-border">
+                    <img
+                      src={avatar}
+                      alt=""
+                      aria-hidden="true"
+                      className="w-full h-full object-cover grayscale-20"
                     />
                  </div>
                ))}
@@ -258,10 +256,11 @@ export function Hero() {
           <span className="text-xs lg:text-sm font-semibold text-foreground transition-all duration-300">
             {hero.slides[currentSlide].author}
           </span>
-          <img 
-            src={hero.slides[currentSlide].avatar} 
-            alt="Artist" 
-            className="w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-border" 
+          <img
+            src={hero.slides[currentSlide].avatar}
+            alt=""
+            aria-hidden="true"
+            className="w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-border"
           />
         </div>
         
