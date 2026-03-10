@@ -6,6 +6,7 @@ import MenuSidebar from '@/components/MenuSidebar';
 import GridOverlay from '@/components/GridOverlay';
 import HeroSection from '@/components/HeroSection';
 import FeaturedProjects from '@/components/FeaturedProjects';
+import GallerySection from '@/components/GallerySection';
 import ServicesSection from '@/components/ServicesSection';
 import ProcessSection from '@/components/ProcessSection';
 import SignatureWorkSection from '@/components/SignatureWorkSection';
@@ -26,6 +27,7 @@ export default function Home() {
       <HeroSection />
       <FeaturedProjects />
       <ServicesSection />
+      <GallerySection />
       <ProcessSection />
       <SignatureWorkSection />
       <TestimonialsCarousel />

@@ -4,7 +4,7 @@ import PortfolioGrid from '@/components/PortfolioGrid';
 
 export const metadata: Metadata = {
   title: 'Portfolio | OpusFesta Studio',
-  description: 'Explore our signature work — cinematic weddings, event coverage, corporate films, and commercial productions.',
+  description: 'Browse our gallery of production photos and videos across commercial, documentary, music video, and branded work.',
 };
 
 export default function PortfolioPage() {

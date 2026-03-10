@@ -65,7 +65,7 @@ export default function ServicesSection() {
               </h2>
             </div>
             <p className="text-neutral-500 text-lg max-w-sm leading-relaxed font-light md:text-right">
-              From intimate weddings to large-scale productions. If it moves us, we shoot it.
+              From one-off productions to long-term content retainers. If your story needs motion, we build it.
             </p>
           </div>
         </div>

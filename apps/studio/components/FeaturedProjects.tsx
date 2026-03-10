@@ -46,8 +46,8 @@ export default function FeaturedProjects() {
   ];
 
   return (
-    <section id="about" className="relative z-10 bg-brand-dark">
-      <div className="grid grid-cols-2 md:grid-cols-4 border-b border-white/10">
+    <section id="about" className="relative z-10 bg-brand-bg">
+      <div className="grid grid-cols-2 md:grid-cols-4 bg-brand-dark border-b border-white/10">
         {stats.map((stat, index) => {
           const borders = [
             'border-r border-b md:border-b-0 border-white/10',
@@ -79,7 +79,7 @@ export default function FeaturedProjects() {
 
       <div
         ref={setRef('clients-strip')}
-        className={`bg-brand-dark py-8 sm:py-10 overflow-hidden transition-all duration-700 ${
+        className={`bg-brand-dark border-b border-white/10 py-8 sm:py-10 overflow-hidden transition-all duration-700 ${
           visibleItems.has('clients-strip')
             ? 'opacity-100'
             : 'opacity-0'
@@ -120,17 +120,17 @@ export default function FeaturedProjects() {
             <span className="text-xs font-bold text-brand-accent tracking-widest uppercase font-mono mb-6 block">
               About the Studio
             </span>
-            <h2 className="text-3xl lg:text-5xl font-bold text-white tracking-tighter leading-[1.1]">
+            <h2 className="text-3xl lg:text-5xl font-bold text-brand-dark tracking-tighter leading-[1.1]">
               We don&apos;t just document moments — we craft visual stories that live forever.
             </h2>
           </div>
           <div>
-            <p className="text-white/50 text-base lg:text-lg leading-relaxed font-light mb-8">
+            <p className="text-neutral-500 text-base lg:text-lg leading-relaxed font-light mb-8">
               OpusFesta Studio is a team of filmmakers, photographers, and creative directors who believe every milestone deserves a cinematic treatment. From intimate elopements to 500-guest galas, we bring the same obsessive attention to light, composition, and narrative.
             </p>
             <a
-              href="#about"
-              className="inline-flex items-center gap-3 text-xs font-bold text-white uppercase tracking-widest px-6 py-3 border border-white/30 hover:border-brand-accent hover:text-brand-accent transition-all duration-300"
+              href="/about"
+              className="inline-flex items-center gap-3 px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
             >
               Our Story
               <svg
