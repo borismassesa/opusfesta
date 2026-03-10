@@ -7,6 +7,9 @@ export interface Project {
   category: string;
   title: string;
   description: string;
+  client: string;
+  role: string;
+  videoUrl: string;
   image: string;
   stats: { label: string; value: string }[];
   highlights: string[];
@@ -39,9 +42,12 @@ export const projects: Project[] = [
     id: 'proj-1',
     slug: 'the-meridian-experience',
     number: '01',
-    category: 'Wedding Film',
+    category: 'Documentary',
     title: 'THE MERIDIAN EXPERIENCE',
     description: 'A full-day cinematic wedding captured across three stunning venues in the Scottish Highlands.',
+    client: 'Meridian Collective',
+    role: 'Direction, Cinematography, Editorial',
+    videoUrl: '/videos/hero-bg.mp4',
     image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/bcced374-a515-4136-bef9-e31a8cd1c18f_1600w.jpg',
     stats: [
       { label: 'Duration', value: '14 Hours' },
@@ -61,9 +67,12 @@ export const projects: Project[] = [
     id: 'proj-2',
     slug: 'rooftop-gala-night',
     number: '02',
-    category: 'Event Coverage',
+    category: 'Branded Content',
     title: 'ROOFTOP GALA NIGHT',
     description: 'High-energy photography capturing 400 guests at an exclusive London rooftop charity gala.',
+    client: 'Aster Foundation',
+    role: 'Live Coverage, Photography, Post-Production',
+    videoUrl: '/videos/hero-bg.mp4',
     image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/ffd0641a-688d-4761-a530-60fec416aab1_1600w.webp',
     stats: [
       { label: 'Guests', value: '400+' },
@@ -83,9 +92,12 @@ export const projects: Project[] = [
     id: 'proj-3',
     slug: 'vision-2030-summit',
     number: '03',
-    category: 'Corporate',
+    category: 'Commercial',
     title: 'VISION 2030 SUMMIT',
     description: 'Brand film and event documentation for a Fortune 500 annual leadership summit.',
+    client: 'Vanta Group',
+    role: 'Creative Direction, Production, Social Cutdowns',
+    videoUrl: '/videos/hero-bg.mp4',
     image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/792defd4-d702-4f36-b352-ba625129dfb5_3840w.webp',
     stats: [
       { label: 'Attendees', value: '1,200' },
@@ -105,9 +117,12 @@ export const projects: Project[] = [
     id: 'proj-4',
     slug: 'brand-launch-film',
     number: '04',
-    category: 'Commercial',
+    category: 'Music Video',
     title: 'BRAND LAUNCH FILM',
     description: 'Concept-to-delivery commercial for a luxury heritage brand entering a new market.',
+    client: 'Northline Labs',
+    role: 'Concept, Production Design, Finishing',
+    videoUrl: '/videos/hero-bg.mp4',
     image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/d2607b57-3a19-48e4-8ad4-bdcf6e69b207_3840w.webp',
     stats: [
       { label: 'Production Days', value: '5' },
@@ -185,51 +200,51 @@ export const articles: Article[] = [
 export const services: Service[] = [
   {
     id: '01',
-    title: 'WEDDING CINEMA',
-    description: 'Full-day coverage capturing every emotion, from the quiet preparations to the last dance. Delivered as a cinematic short film and full ceremony edit.',
-    price: 'From \u00a32,500',
+    title: 'VIDEO PRODUCTION',
+    description: 'End-to-end production for commercials, documentaries, branded series, and campaign films.',
+    price: 'From TZS 15,000,000',
     image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/048e0a68-a97c-46dd-aed4-734f98009a4c_3840w.webp',
-    includes: ['Cinematic Highlight Film', 'Full Ceremony Edit', 'Drone Coverage'],
+    includes: ['Creative Development', 'Production Crew', 'Camera + Lighting'],
   },
   {
     id: '02',
-    title: 'EVENT PHOTOGRAPHY',
-    description: 'High-energy event coverage that captures the atmosphere, the people, and the moments in between. Perfect for galas, launches, and private celebrations.',
-    price: 'From \u00a31,200',
+    title: 'POST-PRODUCTION',
+    description: 'Editorial finishing for teams that need polished stories delivered fast across multiple channels.',
+    price: 'From TZS 7,000,000',
     image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/ad97e439-6931-4e5e-bcf3-b69be4018905_3840w.webp',
-    includes: ['300+ Edited Photos', 'Same-Day Previews', 'Online Gallery'],
+    includes: ['Editing', 'Color + Sound', 'Versioning + Captions'],
   },
   {
     id: '03',
-    title: 'CORPORATE MILESTONES',
-    description: "Professional documentation of your company's key moments \u2014 conferences, team retreats, product launches, and annual celebrations.",
-    price: 'From \u00a33,000',
+    title: 'MOTION GRAPHICS',
+    description: '2D/3D motion systems that clarify product stories, elevate campaigns, and sharpen social assets.',
+    price: 'From TZS 5,500,000',
     image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/52b4be58-0ae9-4f19-88ed-d742fc1abef3_3840w.jpg',
-    includes: ['Photo & Video Package', 'Brand-Ready Edits', 'Social Media Cuts'],
+    includes: ['Explainer Motion', 'Titles + Supers', 'Animated Brand Kits'],
   },
   {
     id: '04',
-    title: 'COMMERCIAL ADS',
-    description: 'Concept-to-delivery commercial production for brands that want to stand out. We handle creative direction, filming, and post-production.',
-    price: 'From \u00a35,000',
+    title: 'PHOTOGRAPHY',
+    description: 'Commercial, editorial, and behind-the-scenes photography aligned with your campaign look.',
+    price: 'From TZS 4,800,000',
     image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/71087bc3-4cb0-48eb-b49a-6a1587f575d7_3840w.jpg',
-    includes: ['Creative Direction', '4K Production', 'Colour Grading'],
+    includes: ['Campaign Stills', 'Portrait Sessions', 'Retouching'],
   },
   {
     id: '05',
-    title: 'MUSIC VIDEOS',
-    description: 'Visually striking music videos that match the energy and emotion of your sound. From concept through final colour grade.',
-    price: 'From \u00a33,500',
+    title: 'AUDIO PRODUCTION',
+    description: 'On-set audio capture and post audio finishing built for cinematic, branded, and documentary work.',
+    price: 'From TZS 3,500,000',
     image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/74ce626d-5eba-470d-a4e4-159b9c6cad3c_3840w.webp',
-    includes: ['Storyboarding', 'Multi-Location Shoot', 'Post-Production'],
+    includes: ['Sound Design', 'Voiceover Direction', 'Final Mix + Master'],
   },
   {
     id: '06',
-    title: 'BRAND CONTENT',
-    description: 'Ongoing visual content for brands that need a consistent, high-quality presence across digital platforms and campaigns.',
-    price: 'From \u00a31,800',
+    title: 'CREATIVE DIRECTION',
+    description: 'Strategic creative leadership from brief to final delivery to keep ideas cohesive and effective.',
+    price: 'From TZS 8,000,000',
     image: 'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/bb37e13b-1cf2-4a1f-ad35-d5499d2a18a2_3840w.webp',
-    includes: ['Monthly Content Plan', 'Reels & Shorts', 'Product Photography'],
+    includes: ['Campaign Concepting', 'Treatment Development', 'On-Set Leadership'],
   },
 ];
 

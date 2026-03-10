@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'hoirqrkdgbmvpwutwuwj.supabase.co',
       },
+      {
+        protocol: 'https',
+        hostname: 'ppdapuqehwlfwofbpbvb.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.clerk.com',
+      },
     ],
   },
   allowedDevOrigins: [

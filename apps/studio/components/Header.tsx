@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useBookingModal } from '@/components/BookingModalProvider';
 
 interface HeaderProps {
@@ -12,7 +13,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-brand-bg border-b-4 border-brand-border">
       <div className="max-w-[1920px] mx-auto px-6 lg:px-12">
-        <div className="flex items-center justify-between h-20">
+        <div className="relative flex items-center h-20">
           <button
             onClick={onMenuToggle}
             aria-label="Menu"
@@ -34,19 +35,19 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             <span className="hidden sm:inline">Menu</span>
           </button>
 
-          <a
+          <Link
             href="/"
-            className="px-3 sm:px-5 h-10 sm:h-12 border-4 border-brand-dark bg-brand-dark text-white flex items-center justify-center font-black text-[10px] sm:text-sm uppercase tracking-widest hover:bg-brand-accent hover:border-brand-accent transition-all duration-200 whitespace-nowrap shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+            className="absolute left-1/2 -translate-x-1/2 px-3 sm:px-5 h-10 sm:h-12 border-4 border-brand-dark bg-brand-dark text-white flex items-center justify-center font-black text-[10px] sm:text-sm uppercase tracking-widest hover:bg-brand-accent hover:border-brand-accent transition-all duration-200 whitespace-nowrap shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1"
           >
             OpusFesta — Studio
-          </a>
+          </Link>
 
-          <div className="flex items-center gap-2 sm:gap-6">
+          <div className="ml-auto flex items-center gap-2 sm:gap-6">
             <button
               onClick={() => openBookingModal()}
               className="hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white bg-brand-accent px-4 py-2 border-2 border-brand-accent shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-dark hover:border-brand-dark transition-all duration-200"
             >
-              Book Now
+              Start Project
             </button>
           </div>
         </div>

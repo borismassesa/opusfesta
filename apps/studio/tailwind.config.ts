@@ -10,12 +10,12 @@ export default {
     extend: {
       colors: {
         'brand-dark': '#171717',
-        'brand-panel': '#D0B1D4',
-        'brand-accent': '#6F3393',
-        'brand-secondary': '#591C7D',
+        'brand-panel': '#FFE7CE',
+        'brand-accent': '#FF8800',
+        'brand-secondary': '#CC6500',
         'brand-bg': '#F8F9FA',
         'brand-border': '#171717',
-        'brand-muted': '#7E7383',
+        'brand-muted': '#8A7662',
       },
       fontFamily: {
         sans: ['var(--font-sans)', 'DM Sans', 'sans-serif'],
@@ -37,7 +37,7 @@ export default {
         'brutal-md': '4px 4px 0px 0px #171717, 4px 2px 4px -1px #171717',
         'brutal-lg': '4px 4px 0px 0px #171717, 4px 4px 6px -1px #171717',
         'brutal-xl': '4px 4px 0px 0px #171717, 4px 8px 10px -1px #171717',
-        'brutal-accent': '4px 4px 0px 0px #6F3393',
+        'brutal-accent': '4px 4px 0px 0px #FF8800',
       },
     },
   },
