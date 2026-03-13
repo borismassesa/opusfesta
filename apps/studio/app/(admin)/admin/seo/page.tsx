@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { AdminInput, AdminTextarea } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminToast from '@/components/admin/ui/AdminToast';
-import { Save } from 'lucide-react';
+import { BsSave } from 'react-icons/bs';
 
 interface SeoEntry {
   page_key: string;
@@ -105,9 +105,9 @@ export default function SeoPage() {
                 size="sm"
                 onClick={() => handleSave(page.key)}
                 loading={savingKey === page.key}
-                icon={<Save className="w-3.5 h-3.5" />}
+                icon={<BsSave className="w-3.5 h-3.5" />}
               >
-                Save
+                BsSave
               </AdminButton>
             </div>
           );

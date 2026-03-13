@@ -6,9 +6,9 @@
   color-scheme: light;
   --background: #F8F9FA;
   --foreground: #171717;
-  --primary: #FF8800;
-  --secondary: #CC6500;
-  --accent: #FFE7CE;
+  --primary: #171717;
+  --secondary: #333333;
+  --accent: #F5F5F5;
   --muted-foreground: #8A7662;
   --primary-foreground: #FFFFFF;
   --border: #171717;
@@ -35,11 +35,11 @@ body {
 }
 
 .text-stroke:hover {
-  color: #FF8800;
+  color: #171717;
 }
 
 .text-stroke-accent {
-  -webkit-text-stroke: 2px #FF8800;
+  -webkit-text-stroke: 2px #171717;
   color: transparent;
 }
 
@@ -49,8 +49,8 @@ body {
 }
 
 ::selection {
-  background-color: #FF8800;
-  color: #FFF8F1;
+  background-color: #171717;
+  color: #FFFFFF;
 }
 
 html {
@@ -95,11 +95,20 @@ html {
   border-radius: 6px !important;
 }
 
+.admin-shell svg,
+.admin-shell svg * {
+  border-radius: 0 !important;
+}
+
+.admin-shell svg {
+  overflow: visible;
+}
+
 .admin-shell body {
   @apply bg-gray-50 text-gray-900;
 }
 
 .admin-shell ::selection {
-  background-color: #FF8800;
+  background-color: #171717;
   color: #fff;
 }

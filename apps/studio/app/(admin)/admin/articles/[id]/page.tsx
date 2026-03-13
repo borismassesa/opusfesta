@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2 } from 'lucide-react';
+import { BsArrowLeft, BsTrash } from 'react-icons/bs';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import { ConfirmDeleteModal } from '@/components/admin/ui/AdminModal';
 import ArticleForm from '@/components/admin/forms/ArticleForm';
@@ -41,8 +41,8 @@ export default function EditArticlePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <AdminButton variant="ghost" onClick={() => router.push('/admin/articles')} icon={<ArrowLeft className="w-4 h-4" />}>Back</AdminButton>
-        <AdminButton variant="danger" size="sm" onClick={() => setShowDelete(true)} icon={<Trash2 className="w-4 h-4" />}>Delete</AdminButton>
+        <AdminButton variant="ghost" onClick={() => router.push('/admin/articles')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+        <AdminButton variant="danger" size="sm" onClick={() => setShowDelete(true)} icon={<BsTrash className="w-4 h-4" />}>Delete</AdminButton>
       </div>
       <h1 className="text-xl font-bold text-gray-900">Edit Article</h1>
       <ArticleForm initialData={article} onSubmit={handleSubmit} />

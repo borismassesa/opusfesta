@@ -1,9 +1,8 @@
 import { ClerkProvider } from "@clerk/nextjs";
-import { auth } from "@clerk/nextjs/server";
 import { redirect } from "next/navigation";
 import AdminSidebar from "@/components/admin/layout/AdminSidebar";
 import AdminTopbar from "@/components/admin/layout/AdminTopbar";
-import type { StudioRole } from "@/lib/studio-types";
+import { getCurrentStudioAccess } from "@/lib/admin-auth";
 
 export const metadata = {
   title: "Admin | OpusFesta Studio",
@@ -14,17 +13,14 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { userId, sessionClaims } = await auth();
+  const { clerkId, role: studioRole } = await getCurrentStudioAccess();
 
-  if (!userId) {
-    redirect("/admin/sign-in");
+  if (!clerkId) {
+    redirect("/studio-admin/sign-in");
   }
 
-  const meta = sessionClaims?.publicMetadata as Record<string, unknown> | undefined;
-  const studioRole = (meta?.studio_role as StudioRole) || null;
-
   if (!studioRole) {
-    redirect("/");
+    redirect("/studio-admin/no-access");
   }
 
   return (

@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { CheckCircle, XCircle, X } from 'lucide-react';
+import { BsCheckCircle, BsXCircle, BsX } from 'react-icons/bs';
 
 function ToastInner() {
   const searchParams = useSearchParams();
@@ -39,9 +39,9 @@ function ToastInner() {
 
   return (
     <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 shadow-lg text-sm font-medium ${type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
-      {type === 'success' ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+      {type === 'success' ? <BsCheckCircle className="w-4 h-4" /> : <BsXCircle className="w-4 h-4" />}
       {message}
-      <button onClick={() => setVisible(false)} className="ml-2 p-0.5 hover:opacity-70"><X className="w-3 h-3" /></button>
+      <button onClick={() => setVisible(false)} className="ml-2 p-0.5 hover:opacity-70"><BsX className="w-3 h-3" /></button>
     </div>
   );
 }

@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
         <div style="padding: 32px;">
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Name</td><td style="padding: 8px 0; font-size: 15px; color: #171717;">${safeName}</td></tr>
-            <tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Email</td><td style="padding: 8px 0; font-size: 15px; color: #171717;"><a href="mailto:${mailtoEmail}" style="color: #FF8800;">${safeEmail}</a></td></tr>
+            <tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Email</td><td style="padding: 8px 0; font-size: 15px; color: #171717;"><a href="mailto:${mailtoEmail}" style="color: #171717;">${safeEmail}</a></td></tr>
             ${safePhone ? `<tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Phone</td><td style="padding: 8px 0; font-size: 15px; color: #171717;">${safePhone}</td></tr>` : ''}
             <tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Event Type</td><td style="padding: 8px 0; font-size: 15px; color: #171717;">${safeEventType}</td></tr>
             ${safePreferredDate ? `<tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Preferred Date</td><td style="padding: 8px 0; font-size: 15px; color: #171717;">${safePreferredDate}</td></tr>` : ''}

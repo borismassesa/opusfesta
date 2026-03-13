@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AdminInput, AdminTextarea } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
-import { Plus, X } from 'lucide-react';
+import { BsPlus, BsX } from 'react-icons/bs';
 import type { StudioTeamMember } from '@/lib/studio-types';
 
 export default function TeamMemberForm({ initialData, onSubmit }: { initialData?: StudioTeamMember; onSubmit: (data: Record<string, unknown>) => Promise<void> }) {
@@ -36,13 +36,13 @@ export default function TeamMemberForm({ initialData, onSubmit }: { initialData?
       <div className="bg-white border border-gray-200 p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700">Social Links</h3>
-          <button type="button" onClick={() => setSocialLinks([...socialLinks, ['', '']])} className="text-brand-accent text-xs font-medium flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
+          <button type="button" onClick={() => setSocialLinks([...socialLinks, ['', '']])} className="text-brand-accent text-xs font-medium flex items-center gap-1"><BsPlus className="w-3 h-3" />Add</button>
         </div>
         {socialLinks.map(([platform, url], i) => (
           <div key={i} className="flex gap-2 items-start">
             <AdminInput label="Platform" value={platform} onChange={(e) => { const n = [...socialLinks]; n[i] = [e.target.value, n[i][1]]; setSocialLinks(n as [string, string][]); }} placeholder="instagram" />
             <AdminInput label="URL" value={url} onChange={(e) => { const n = [...socialLinks]; n[i] = [n[i][0], e.target.value]; setSocialLinks(n as [string, string][]); }} placeholder="https://..." />
-            <button type="button" onClick={() => setSocialLinks(socialLinks.filter((_, j) => j !== i))} className="mt-7 p-1 text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
+            <button type="button" onClick={() => setSocialLinks(socialLinks.filter((_, j) => j !== i))} className="mt-7 p-1 text-red-400 hover:text-red-600"><BsX className="w-4 h-4" /></button>
           </div>
         ))}
       </div>

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminTable from '@/components/admin/ui/AdminTable';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminToast from '@/components/admin/ui/AdminToast';
-import { Plus } from 'lucide-react';
+import { BsPlus } from 'react-icons/bs';
 
 interface Project {
   id: string;
@@ -31,9 +31,8 @@ export default function ProjectsPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Projects</h1>
-        <AdminButton href="/admin/projects/new" icon={<Plus className="w-4 h-4" />}>New Project</AdminButton>
+      <div className="flex items-center justify-end">
+        <AdminButton href="/admin/projects/new" icon={<BsPlus className="w-4 h-4" />}>New Project</AdminButton>
       </div>
 
       {loading ? (

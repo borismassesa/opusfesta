@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { coreNavLinks } from '@/lib/navigation';
+import SocialLinks from '@/components/SocialLinks';
 
 interface MenuSidebarProps {
   isOpen: boolean;
@@ -95,37 +96,11 @@ export default function MenuSidebar({ isOpen, onClose }: MenuSidebarProps) {
             <p className="text-[10px] font-mono text-white/70 uppercase tracking-widest mb-4">
               Lets Connect
             </p>
-            <div className="flex flex-wrap gap-3 mb-6">
-              <a aria-label="Facebook" href="https://facebook.com" target="_blank" rel="noreferrer" className="w-10 h-10 border-4 border-white/60 bg-white/10 flex items-center justify-center text-white/90 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M13 22v-8h3l1-4h-4V8c0-1.2.3-2 2-2h2V2.5c-.4-.1-1.8-.2-3.4-.2-3.3 0-5.6 2-5.6 5.7V10H5v4h3v8h5z" />
-                </svg>
-              </a>
-              <a aria-label="Instagram" href="https://instagram.com" target="_blank" rel="noreferrer" className="w-10 h-10 border-4 border-white/60 bg-white/10 flex items-center justify-center text-white/90 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <rect width="20" height="20" x="2" y="2" rx="5" ry="5"></rect>
-                  <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-                  <line x1="17.5" x2="17.51" y1="6.5" y2="6.5"></line>
-                </svg>
-              </a>
-              <a aria-label="TikTok" href="https://tiktok.com" target="_blank" rel="noreferrer" className="w-10 h-10 border-4 border-white/60 bg-white/10 flex items-center justify-center text-white/90 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M12.75 2h3a4.5 4.5 0 0 0 4.5 4.5v3a7.5 7.5 0 0 1-4.5-1.5v6.75A6.75 6.75 0 1 1 9 8.03v3.09A3.75 3.75 0 1 0 12.75 14V2z" />
-                </svg>
-              </a>
-              <a aria-label="LinkedIn" href="https://linkedin.com" target="_blank" rel="noreferrer" className="w-10 h-10 border-4 border-white/60 bg-white/10 flex items-center justify-center text-white/90 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path>
-                  <rect width="4" height="12" x="2" y="9"></rect>
-                  <circle cx="4" cy="4" r="2"></circle>
-                </svg>
-              </a>
-              <a aria-label="YouTube" href="https://youtube.com" target="_blank" rel="noreferrer" className="w-10 h-10 border-4 border-white/60 bg-white/10 flex items-center justify-center text-white/90 hover:text-white hover:border-brand-accent hover:bg-brand-accent transition-all duration-200">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                  <path d="M23 12s0-3-1-4.5c-.6-.8-1.3-1.3-2.2-1.4C16.9 5.8 12 5.8 12 5.8h0s-4.9 0-7.8.3c-.9.1-1.6.6-2.2 1.4C1 9 1 12 1 12s0 3 1 4.5c.6.8 1.3 1.3 2.2 1.4 2.9.3 7.8.3 7.8.3s4.9 0 7.8-.3c.9-.1 1.6-.6 2.2-1.4 1-1.5 1-4.5 1-4.5zM10 15.5v-7l6 3.5-6 3.5z" />
-                </svg>
-              </a>
-            </div>
+            <SocialLinks
+              containerClassName="mb-6 flex flex-wrap gap-3"
+              linkClassName="inline-flex h-10 w-10 items-center justify-center border-2 border-white/60 bg-white/10 text-white/90 transition-all duration-200 hover:border-brand-accent hover:bg-brand-accent hover:text-white"
+              iconClassName="h-[18px] w-[18px] shrink-0"
+            />
             <p className="text-[11px] font-mono text-white/85 tracking-wide">
               studio@opusfesta.com
             </p>

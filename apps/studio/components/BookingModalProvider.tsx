@@ -30,7 +30,6 @@ export default function BookingModalProvider({ children }: { children: ReactNode
   }, []);
 
   return (
-    // @ts-expect-error Dual @types/react versions in monorepo (root=18, studio=19) cause ReactNode mismatch
     <BookingModalContext value={{ openBookingModal }}>
       {children}
       <BookingModal isOpen={isOpen} onClose={closeModal} prefilledService={prefilledService} />

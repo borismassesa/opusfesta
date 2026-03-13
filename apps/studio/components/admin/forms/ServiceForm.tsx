@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AdminInput, AdminTextarea } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
-import { Plus, X } from 'lucide-react';
+import { BsPlus, BsX } from 'react-icons/bs';
 import type { StudioService } from '@/lib/studio-types';
 
 export default function ServiceForm({ initialData, onSubmit }: { initialData?: StudioService; onSubmit: (data: Record<string, unknown>) => Promise<void> }) {
@@ -36,13 +36,13 @@ export default function ServiceForm({ initialData, onSubmit }: { initialData?: S
       <div className="bg-white border border-gray-200 p-6 space-y-4">
         <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-700">Includes</h3>
-          <button type="button" onClick={() => setIncludes([...includes, ''])} className="text-brand-accent text-xs font-medium flex items-center gap-1"><Plus className="w-3 h-3" />Add</button>
+          <button type="button" onClick={() => setIncludes([...includes, ''])} className="text-brand-accent text-xs font-medium flex items-center gap-1"><BsPlus className="w-3 h-3" />Add</button>
         </div>
         {includes.map((item, i) => (
           <div key={i} className="flex gap-2">
             <input value={item} onChange={(e) => { const n = [...includes]; n[i] = e.target.value; setIncludes(n); }}
               className="flex-1 px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/20" />
-            <button type="button" onClick={() => setIncludes(includes.filter((_, j) => j !== i))} className="p-2 text-red-400 hover:text-red-600"><X className="w-4 h-4" /></button>
+            <button type="button" onClick={() => setIncludes(includes.filter((_, j) => j !== i))} className="p-2 text-red-400 hover:text-red-600"><BsX className="w-4 h-4" /></button>
           </div>
         ))}
       </div>

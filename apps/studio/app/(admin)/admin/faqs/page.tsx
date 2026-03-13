@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminTable from '@/components/admin/ui/AdminTable';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminToast from '@/components/admin/ui/AdminToast';
-import { Plus } from 'lucide-react';
+import { BsPlus } from 'react-icons/bs';
 
 interface Faq {
   id: string;
@@ -29,9 +29,8 @@ export default function FaqsPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">FAQs</h1>
-        <AdminButton href="/admin/faqs/new" icon={<Plus className="w-4 h-4" />}>New FAQ</AdminButton>
+      <div className="flex items-center justify-end">
+        <AdminButton href="/admin/faqs/new" icon={<BsPlus className="w-4 h-4" />}>New FAQ</AdminButton>
       </div>
 
       {loading ? (
