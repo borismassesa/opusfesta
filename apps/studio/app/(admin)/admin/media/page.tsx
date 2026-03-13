@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { Upload, Trash2, Copy, Check, X } from 'lucide-react';
+import { BsUpload, BsTrash, BsCopy, BsCheck, BsX } from 'react-icons/bs';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import { ConfirmDeleteModal } from '@/components/admin/ui/AdminModal';
 import AdminToast from '@/components/admin/ui/AdminToast';
@@ -96,9 +96,8 @@ export default function MediaPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
-      <h1 className="text-xl font-bold text-gray-900">Media Library</h1>
 
-      {/* Upload Zone */}
+      {/* BsUpload Zone */}
       <div
         onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
         onDragLeave={() => setDragOver(false)}
@@ -117,7 +116,7 @@ export default function MediaPage() {
           </div>
         ) : (
           <>
-            <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+            <BsUpload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
             <p className="text-sm text-gray-600 mb-2">Drag and drop images here, or click to browse</p>
             <AdminButton variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
               Choose Files
@@ -167,16 +166,16 @@ export default function MediaPage() {
                 <button
                   onClick={() => handleCopy(file.publicUrl)}
                   className="p-1.5 bg-white/90 shadow-sm hover:bg-white transition-colors"
-                  title="Copy URL"
+                  title="BsCopy URL"
                 >
-                  {copied === file.publicUrl ? <Check className="w-3.5 h-3.5 text-green-600" /> : <Copy className="w-3.5 h-3.5 text-gray-600" />}
+                  {copied === file.publicUrl ? <BsCheck className="w-3.5 h-3.5 text-green-600" /> : <BsCopy className="w-3.5 h-3.5 text-gray-600" />}
                 </button>
                 <button
                   onClick={() => setDeleteTarget(file)}
                   className="p-1.5 bg-white/90 shadow-sm hover:bg-white transition-colors"
                   title="Delete"
                 >
-                  <Trash2 className="w-3.5 h-3.5 text-red-500" />
+                  <BsTrash className="w-3.5 h-3.5 text-red-500" />
                 </button>
               </div>
             </div>

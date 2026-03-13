@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import AdminBadge from '@/components/admin/ui/AdminBadge';
 import AdminToast from '@/components/admin/ui/AdminToast';
-import { Mail, Calendar, ArrowRight } from 'lucide-react';
+import { BsEnvelope, BsCalendar, BsArrowRight } from 'react-icons/bs';
 import type { StudioBookingStatus } from '@/lib/studio-types';
 
 interface Booking {
@@ -35,7 +35,6 @@ export default function MessagesPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
-      <h1 className="text-xl font-bold text-gray-900">Messages & Inquiries</h1>
 
       {loading ? (
         <div className="space-y-3">
@@ -45,7 +44,7 @@ export default function MessagesPage() {
         </div>
       ) : bookings.length === 0 ? (
         <div className="bg-white border border-gray-200 p-12 text-center">
-          <Mail className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+          <BsEnvelope className="w-8 h-8 text-gray-300 mx-auto mb-2" />
           <p className="text-sm text-gray-500">No inquiries yet.</p>
         </div>
       ) : (
@@ -64,12 +63,12 @@ export default function MessagesPage() {
                   </div>
                   <div className="flex items-center gap-4 text-xs text-gray-500">
                     <span className="flex items-center gap-1">
-                      <Mail className="w-3 h-3" />
+                      <BsEnvelope className="w-3 h-3" />
                       {booking.email}
                     </span>
                     <span>{booking.event_type}</span>
                     <span className="flex items-center gap-1">
-                      <Calendar className="w-3 h-3" />
+                      <BsCalendar className="w-3 h-3" />
                       {new Date(booking.created_at).toLocaleDateString()}
                     </span>
                   </div>
@@ -77,7 +76,7 @@ export default function MessagesPage() {
                     <p className="text-xs text-gray-400 truncate max-w-xl">{booking.message}</p>
                   )}
                 </div>
-                <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-brand-accent transition-colors mt-1 flex-shrink-0" />
+                <BsArrowRight className="w-4 h-4 text-gray-300 group-hover:text-brand-accent transition-colors mt-1 flex-shrink-0" />
               </div>
             </button>
           ))}

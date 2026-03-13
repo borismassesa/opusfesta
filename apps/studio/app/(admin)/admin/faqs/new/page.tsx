@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { ArrowLeft } from 'lucide-react';
+import { BsArrowLeft } from 'react-icons/bs';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import FaqForm from '@/components/admin/forms/FaqForm';
 
@@ -23,7 +23,7 @@ export default function NewFaqPage() {
 
   return (
     <div className="space-y-6">
-      <AdminButton variant="ghost" onClick={() => router.push('/admin/faqs')} icon={<ArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+      <AdminButton variant="ghost" onClick={() => router.push('/admin/faqs')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
       <h1 className="text-xl font-bold text-gray-900">New FAQ</h1>
       <FaqForm onSubmit={handleSubmit} />
     </div>

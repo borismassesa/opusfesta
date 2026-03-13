@@ -110,6 +110,7 @@ export interface StudioTeamMember {
 export interface StudioAvailability {
   id: string;
   date: string;
+  time_slot: string;
   is_available: boolean;
   note: string | null;
   booking_id: string | null;

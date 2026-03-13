@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Trash2, Send } from 'lucide-react';
+import { BsArrowLeft, BsTrash, BsSend } from 'react-icons/bs';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminBadge from '@/components/admin/ui/AdminBadge';
 import { AdminSelect } from '@/components/admin/ui/AdminInput';
@@ -72,8 +72,8 @@ export default function BookingDetailPage() {
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center justify-between">
-        <AdminButton variant="ghost" onClick={() => router.push('/admin/bookings')} icon={<ArrowLeft className="w-4 h-4" />}>Back</AdminButton>
-        <AdminButton variant="danger" size="sm" onClick={() => setShowDelete(true)} icon={<Trash2 className="w-4 h-4" />}>Delete</AdminButton>
+        <AdminButton variant="ghost" onClick={() => router.push('/admin/bookings')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+        <AdminButton variant="danger" size="sm" onClick={() => setShowDelete(true)} icon={<BsTrash className="w-4 h-4" />}>Delete</AdminButton>
       </div>
 
       <div className="bg-white border border-gray-200 p-6">
@@ -121,7 +121,7 @@ export default function BookingDetailPage() {
             className="flex-1 px-3 py-2 border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-brand-accent/20"
             onKeyDown={(e) => { if (e.key === 'Enter') handleSendMessage(); }}
           />
-          <AdminButton onClick={handleSendMessage} icon={<Send className="w-4 h-4" />} size="md">Send</AdminButton>
+          <AdminButton onClick={handleSendMessage} icon={<BsSend className="w-4 h-4" />} size="md">BsSend</AdminButton>
         </div>
       </div>
 

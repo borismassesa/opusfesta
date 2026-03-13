@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { AdminInput } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminToast from '@/components/admin/ui/AdminToast';
-import { Save } from 'lucide-react';
+import { BsSave } from 'react-icons/bs';
 
 const SETTINGS_FIELDS = [
   { key: 'studio_name', label: 'Studio Name', placeholder: 'OpusFesta Studio' },
@@ -60,8 +60,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-gray-900">Settings</h1>
+      <div className="flex items-center justify-end">
         {saved && <span className="text-sm text-green-600 font-medium">All settings saved</span>}
       </div>
 
@@ -92,8 +91,8 @@ export default function SettingsPage() {
           ))}
         </div>
 
-        <AdminButton onClick={handleSave} loading={saving} icon={<Save className="w-4 h-4" />}>
-          Save All Settings
+        <AdminButton onClick={handleSave} loading={saving} icon={<BsSave className="w-4 h-4" />}>
+          BsSave All Settings
         </AdminButton>
       </div>
     </div>

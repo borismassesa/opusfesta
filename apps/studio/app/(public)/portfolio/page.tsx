@@ -1,3 +1,4 @@
+import { Suspense } from 'react';
 import type { Metadata } from 'next';
 import PageLayout from '@/components/PageLayout';
 import PortfolioGrid from '@/components/PortfolioGrid';
@@ -10,7 +11,9 @@ export const metadata: Metadata = {
 export default function PortfolioPage() {
   return (
     <PageLayout>
-      <PortfolioGrid />
+      <Suspense>
+        <PortfolioGrid />
+      </Suspense>
     </PageLayout>
   );
 }

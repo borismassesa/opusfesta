@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import { X } from 'lucide-react';
+import { BsX } from 'react-icons/bs';
 import AdminButton from './AdminButton';
 
 interface AdminModalProps {
@@ -30,7 +30,7 @@ export default function AdminModal({ open, onClose, title, children, actions }: 
       <div className="bg-white w-full max-w-lg mx-4 shadow-lg">
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600"><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600"><BsX className="w-5 h-5" /></button>
         </div>
         <div className="px-6 py-4">{children}</div>
         {actions && <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">{actions}</div>}
