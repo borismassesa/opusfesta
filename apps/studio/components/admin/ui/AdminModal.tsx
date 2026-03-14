@@ -26,14 +26,14 @@ export default function AdminModal({ open, onClose, title, children, actions }: 
   if (!open) return null;
 
   return (
-    <div ref={overlayRef} className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}>
-      <div className="bg-white w-full max-w-lg mx-4 shadow-lg">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <h2 className="text-lg font-bold text-gray-900">{title}</h2>
-          <button onClick={onClose} className="p-1 text-gray-400 hover:text-gray-600"><BsX className="w-5 h-5" /></button>
+    <div ref={overlayRef} className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,26,26,0.42)] backdrop-blur-sm" onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}>
+      <div className="mx-4 w-full max-w-lg border border-[var(--admin-border)] bg-[var(--admin-popover)] shadow-[var(--admin-shadow-lg)]">
+        <div className="flex items-center justify-between border-b border-[var(--admin-border)] px-6 py-4">
+          <h2 className="text-lg font-bold text-[var(--admin-popover-foreground)]">{title}</h2>
+          <button onClick={onClose} className="p-1 text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-primary)]"><BsX className="w-5 h-5" /></button>
         </div>
         <div className="px-6 py-4">{children}</div>
-        {actions && <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 bg-gray-50">{actions}</div>}
+        {actions && <div className="flex justify-end gap-3 border-t border-[var(--admin-border)] bg-[var(--admin-secondary)] px-6 py-4">{actions}</div>}
       </div>
     </div>
   );
@@ -44,7 +44,7 @@ export function ConfirmDeleteModal({ open, onClose, onConfirm, title, descriptio
 }) {
   return (
     <AdminModal open={open} onClose={onClose} title={title} actions={<><AdminButton variant="secondary" onClick={onClose}>Cancel</AdminButton><AdminButton variant="danger" onClick={onConfirm} loading={loading}>Delete</AdminButton></>}>
-      <p className="text-sm text-gray-600">{description}</p>
+      <p className="text-sm text-[var(--admin-accent-foreground)]">{description}</p>
     </AdminModal>
   );
 }

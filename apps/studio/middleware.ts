@@ -11,7 +11,9 @@ const isPublicRoute = createRouteMatcher([
   '/contact(.*)',
   '/privacy',
   '/terms',
-  '/api/booking',
+  '/book(.*)',
+  '/api/booking(.*)',
+  '/api/webhooks/flutterwave',
   '/admin/sign-in(.*)',
   '/studio-admin/sign-in(.*)',
 ]);

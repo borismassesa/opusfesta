@@ -11,14 +11,14 @@ export function AdminInput({ label, error, hint, id, className = '', ref, ...pro
   const inputId = id || label.toLowerCase().replace(/\s+/g, '-');
   return (
     <div className="space-y-1.5">
-      <label htmlFor={inputId} className="block text-sm font-medium text-gray-700">{label}</label>
+      <label htmlFor={inputId} className="block text-[11px] font-mono uppercase tracking-[0.18em] text-[var(--admin-accent-foreground)]">{label}</label>
       <input
         ref={ref} id={inputId}
-        className={`w-full px-3 py-2 border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent ${error ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'} ${className}`}
+        className={`w-full border px-3 py-2.5 text-sm text-[var(--admin-card-foreground)] transition-colors focus:border-[var(--admin-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] ${error ? 'border-[rgba(239,67,67,0.35)] bg-[rgba(239,67,67,0.06)]' : 'border-[var(--admin-input)] bg-[var(--admin-card)]'} ${className}`}
         {...props}
       />
-      {error && <p className="text-xs text-red-600">{error}</p>}
-      {hint && !error && <p className="text-xs text-gray-400">{hint}</p>}
+      {error && <p className="text-xs text-[var(--admin-destructive)]">{error}</p>}
+      {hint && !error && <p className="text-xs text-[var(--admin-muted)]">{hint}</p>}
     </div>
   );
 }
@@ -33,13 +33,13 @@ export function AdminTextarea({ label, error, id, className = '', ref, ...props 
   const textareaId = id || label.toLowerCase().replace(/\s+/g, '-');
   return (
     <div className="space-y-1.5">
-      <label htmlFor={textareaId} className="block text-sm font-medium text-gray-700">{label}</label>
+      <label htmlFor={textareaId} className="block text-[11px] font-mono uppercase tracking-[0.18em] text-[var(--admin-accent-foreground)]">{label}</label>
       <textarea
         ref={ref} id={textareaId} rows={4}
-        className={`w-full px-3 py-2 border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent ${error ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'} ${className}`}
+        className={`w-full border px-3 py-2.5 text-sm text-[var(--admin-card-foreground)] transition-colors focus:border-[var(--admin-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] ${error ? 'border-[rgba(239,67,67,0.35)] bg-[rgba(239,67,67,0.06)]' : 'border-[var(--admin-input)] bg-[var(--admin-card)]'} ${className}`}
         {...props}
       />
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-[var(--admin-destructive)]">{error}</p>}
     </div>
   );
 }
@@ -55,15 +55,15 @@ export function AdminSelect({ label, error, options, id, className = '', ref, ..
   const selectId = id || label.toLowerCase().replace(/\s+/g, '-');
   return (
     <div className="space-y-1.5">
-      <label htmlFor={selectId} className="block text-sm font-medium text-gray-700">{label}</label>
+      <label htmlFor={selectId} className="block text-[11px] font-mono uppercase tracking-[0.18em] text-[var(--admin-accent-foreground)]">{label}</label>
       <select
         ref={ref} id={selectId}
-        className={`w-full px-3 py-2 border text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-brand-accent/20 focus:border-brand-accent ${error ? 'border-red-300 bg-red-50' : 'border-gray-300 bg-white'} ${className}`}
+        className={`w-full border px-3 py-2.5 text-sm text-[var(--admin-card-foreground)] transition-colors focus:border-[var(--admin-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] ${error ? 'border-[rgba(239,67,67,0.35)] bg-[rgba(239,67,67,0.06)]' : 'border-[var(--admin-input)] bg-[var(--admin-card)]'} ${className}`}
         {...props}
       >
         {options.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
       </select>
-      {error && <p className="text-xs text-red-600">{error}</p>}
+      {error && <p className="text-xs text-[var(--admin-destructive)]">{error}</p>}
     </div>
   );
 }

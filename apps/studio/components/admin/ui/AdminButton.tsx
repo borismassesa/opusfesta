@@ -5,10 +5,10 @@ type Variant = 'primary' | 'secondary' | 'danger' | 'ghost';
 type Size = 'sm' | 'md' | 'lg';
 
 const variantStyles: Record<Variant, string> = {
-  primary: 'bg-brand-accent text-white hover:bg-brand-secondary',
-  secondary: 'bg-white text-gray-700 border border-gray-300 hover:bg-gray-50',
-  danger: 'bg-red-600 text-white hover:bg-red-700',
-  ghost: 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+  primary: 'border border-[var(--admin-primary)] bg-[var(--admin-primary)] text-[var(--admin-primary-foreground)] shadow-[var(--admin-shadow-sm)] hover:bg-[#e67900] hover:border-[#e67900]',
+  secondary: 'border border-[var(--admin-border)] bg-[var(--admin-card)] text-[var(--admin-secondary-foreground)] hover:bg-[var(--admin-secondary)]',
+  danger: 'border border-[var(--admin-destructive)] bg-[var(--admin-destructive)] text-[var(--admin-destructive-foreground)] hover:bg-[#d93a3a] hover:border-[#d93a3a]',
+  ghost: 'text-[var(--admin-accent-foreground)] hover:bg-[var(--admin-accent)] hover:text-[var(--admin-secondary-foreground)]',
 };
 
 const sizeStyles: Record<Size, string> = {
@@ -29,7 +29,7 @@ interface AdminButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 export default function AdminButton({
   variant = 'primary', size = 'md', href, icon, loading, children, className = '', disabled, ref, ...props
 }: AdminButtonProps) {
-  const styles = `inline-flex items-center justify-center gap-2 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
+  const styles = `inline-flex items-center justify-center gap-2 rounded-[calc(var(--admin-radius)-2px)] font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${variantStyles[variant]} ${sizeStyles[size]} ${className}`;
 
   if (href) {
     return <Link href={href} className={styles}>{icon}{children}</Link>;

@@ -38,10 +38,14 @@ function ToastInner() {
   if (!visible) return null;
 
   return (
-    <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 shadow-lg text-sm font-medium ${type === 'success' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
+    <div className={`fixed bottom-6 right-6 z-50 flex items-center gap-3 border px-4 py-3 text-sm font-medium shadow-[var(--admin-shadow-lg)] ${
+      type === 'success'
+        ? 'border-[var(--admin-border)] bg-[var(--admin-card)] text-[var(--admin-card-foreground)]'
+        : 'border-[rgba(239,67,67,0.2)] bg-[var(--admin-card)] text-[var(--admin-destructive)]'
+    }`}>
       {type === 'success' ? <BsCheckCircle className="w-4 h-4" /> : <BsXCircle className="w-4 h-4" />}
       {message}
-      <button onClick={() => setVisible(false)} className="ml-2 p-0.5 hover:opacity-70"><BsX className="w-3 h-3" /></button>
+      <button onClick={() => setVisible(false)} className="ml-2 p-0.5 transition-opacity hover:opacity-70"><BsX className="w-3 h-3" /></button>
     </div>
   );
 }

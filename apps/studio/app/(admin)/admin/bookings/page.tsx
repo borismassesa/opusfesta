@@ -2,17 +2,32 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import AdminTable from '@/components/admin/ui/AdminTable';
-import AdminBadge from '@/components/admin/ui/AdminBadge';
+import AdminLifecycleBadge from '@/components/admin/ui/AdminLifecycleBadge';
 import AdminToast from '@/components/admin/ui/AdminToast';
 import AdminPagination from '@/components/admin/ui/AdminPagination';
-import type { StudioBooking, StudioBookingStatus } from '@/lib/studio-types';
+import { STATUS_LABELS } from '@/lib/booking-state-machine';
+import { formatTZS } from '@/lib/booking-types';
+import type { BookingLifecycleStatus } from '@/lib/booking-types';
 
-const statuses = ['all', 'new', 'contacted', 'quoted', 'confirmed', 'completed', 'cancelled'];
+const lifecycleFilters: Array<{ value: string; label: string }> = [
+  { value: 'all', label: 'All' },
+  { value: 'intake_submitted', label: 'New Intakes' },
+  { value: 'qualified', label: 'Qualified' },
+  { value: 'quote_sent', label: 'Quote Sent' },
+  { value: 'quote_accepted', label: 'Quote Accepted' },
+  { value: 'contract_sent', label: 'Contract Sent' },
+  { value: 'contract_signed', label: 'Contract Signed' },
+  { value: 'deposit_pending', label: 'Deposit Pending' },
+  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'cancelled', label: 'Cancelled' },
+];
 
 export default function BookingsPage() {
-  const [bookings, setBookings] = useState<StudioBooking[]>([]);
-  const [status, setStatus] = useState('all');
+  const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
+  const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -20,37 +35,60 @@ export default function BookingsPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/admin/bookings?status=${status}&page=${page}`)
+    fetch(`/api/admin/bookings?lifecycle_status=${filter}&page=${page}`)
       .then((r) => r.json())
       .then((d) => { setBookings(d.bookings || []); setTotalPages(d.totalPages || 1); })
       .finally(() => setLoading(false));
-  }, [status, page]);
+  }, [filter, page]);
 
   return (
     <div className="space-y-4">
       <AdminToast />
-      <div className="flex gap-2 flex-wrap">
-        {statuses.map((s) => (
-          <button key={s} onClick={() => { setStatus(s); setPage(1); }}
-            className={`px-3 py-1.5 text-xs font-medium capitalize transition-colors ${status === s ? 'bg-brand-accent text-white' : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'}`}>
-            {s}
+
+      <div className="flex items-center justify-between">
+        <h1 className="text-xl font-bold text-[var(--admin-foreground)]">Bookings</h1>
+        <Link
+          href="/admin/bookings/queue"
+          className="border-2 border-brand-accent bg-brand-accent text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-brand-dark hover:border-brand-dark transition-colors"
+        >
+          Operational Queue
+        </Link>
+      </div>
+
+      <div className="flex gap-1.5 flex-wrap">
+        {lifecycleFilters.map((f) => (
+          <button key={f.value} onClick={() => { setFilter(f.value); setPage(1); }}
+            className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider transition-colors border-2 ${
+              filter === f.value
+                ? 'bg-brand-dark text-white border-brand-dark'
+                : 'bg-white text-brand-muted border-brand-border hover:bg-brand-bg hover:text-brand-dark'
+            }`}>
+            {f.label}
           </button>
         ))}
       </div>
 
-      {loading ? <div className="bg-white border border-gray-200 h-64 animate-pulse" /> : (
+      {loading ? <div className="bg-white border-3 border-brand-border h-64 animate-pulse" /> : (
         <>
           <AdminTable
             data={bookings} keyField="id" emptyMessage="No bookings found."
             onRowClick={(b) => router.push(`/admin/bookings/${b.id}`)}
             columns={[
-              { key: 'name', header: 'Name', render: (b) => <span className="font-medium text-gray-900">{b.name}</span> },
-              { key: 'email', header: 'Email', render: (b) => b.email },
-              { key: 'event_type', header: 'Event', render: (b) => b.event_type },
-              { key: 'service', header: 'Service', render: (b) => b.service || '—' },
-              { key: 'preferred_date', header: 'Date', render: (b) => b.preferred_date || '—' },
-              { key: 'status', header: 'Status', render: (b) => <AdminBadge status={b.status as StudioBookingStatus} /> },
-              { key: 'created_at', header: 'Created', render: (b) => new Date(b.created_at).toLocaleDateString() },
+              { key: 'name', header: 'Client', render: (b) => <span className="font-bold text-brand-dark">{b.name as string}</span> },
+              { key: 'email', header: 'Email', render: (b) => <span className="text-sm">{b.email as string}</span> },
+              { key: 'event_type', header: 'Event', render: (b) => <span className="text-sm">{b.event_type as string}</span> },
+              { key: 'lifecycle_status', header: 'Status', render: (b) => (
+                <AdminLifecycleBadge status={(b.lifecycle_status || 'intake_submitted') as BookingLifecycleStatus} />
+              )},
+              { key: 'total_amount_tzs', header: 'Total', render: (b) => (
+                <span className="text-sm font-mono">{(b.total_amount_tzs as number) > 0 ? formatTZS(b.total_amount_tzs as number) : '—'}</span>
+              )},
+              { key: 'event_date', header: 'Event Date', render: (b) => (
+                <span className="text-sm">{b.event_date ? new Date(b.event_date as string).toLocaleDateString('en-TZ', { dateStyle: 'medium' }) : '—'}</span>
+              )},
+              { key: 'created_at', header: 'Created', render: (b) => (
+                <span className="text-sm text-brand-muted">{new Date(b.created_at as string).toLocaleDateString()}</span>
+              )},
             ]}
           />
           <AdminPagination page={page} totalPages={totalPages} onPageChange={setPage} />

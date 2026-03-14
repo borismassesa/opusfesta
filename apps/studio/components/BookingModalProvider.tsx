@@ -1,7 +1,7 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
-import BookingModal from '@/components/BookingModal';
+import { createContext, useContext, useCallback, type ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 
 interface BookingModalContextValue {
   openBookingModal: (prefilledService?: string) => void;
@@ -16,23 +16,16 @@ export function useBookingModal() {
 }
 
 export default function BookingModalProvider({ children }: { children: ReactNode }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const [prefilledService, setPrefilledService] = useState<string | undefined>();
+  const router = useRouter();
 
   const openBookingModal = useCallback((service?: string) => {
-    setPrefilledService(service);
-    setIsOpen(true);
-  }, []);
-
-  const closeModal = useCallback(() => {
-    setIsOpen(false);
-    setPrefilledService(undefined);
-  }, []);
+    const url = service ? `/book?service=${encodeURIComponent(service)}` : '/book';
+    router.push(url);
+  }, [router]);
 
   return (
     <BookingModalContext value={{ openBookingModal }}>
       {children}
-      <BookingModal isOpen={isOpen} onClose={closeModal} prefilledService={prefilledService} />
     </BookingModalContext>
   );
 }
