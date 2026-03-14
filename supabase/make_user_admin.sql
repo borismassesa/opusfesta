@@ -1,53 +1,76 @@
--- Make User Admin
--- User ID: ebbe9f4d-b5aa-4e59-aa03-f0a8acdc265e
--- Email: boris.massesa@opusfestaevents.com
+-- Make User Admin + Studio Admin Access Fallback
+-- Target email: bmmassesa@gmail.com
+--
+-- This script:
+-- 1) Sets public.users.role = 'admin' for the target email
+-- 2) If missing in public.users but present in auth.users, inserts user row as admin
+-- 3) Updates auth.users raw_app_meta_data.role = 'admin' (when auth row exists)
+-- 4) Verifies final status
+--
+-- Note:
+-- Studio admin in app code now accepts public.users.role='admin' as fallback,
+-- mapping it to studio_admin access.
 
 -- ============================================
--- STEP 1: Ensure user exists in public.users and set role to admin
+-- STEP 1: Promote existing public.users row by email
 -- ============================================
-INSERT INTO users (id, email, name, role, password)
-SELECT 
-  id,
-  email,
-  COALESCE(raw_user_meta_data->>'name', split_part(email, '@', 1)) as name,
-  'admin' as role,
-  encrypted_password as password
-FROM auth.users
-WHERE id = 'ebbe9f4d-b5aa-4e59-aa03-f0a8acdc265e'
-ON CONFLICT (id) DO UPDATE 
-SET 
-  role = 'admin',
-  name = COALESCE(EXCLUDED.name, users.name),
-  email = EXCLUDED.email
+UPDATE users
+SET role = 'admin'
+WHERE lower(email) = lower('bmmassesa@gmail.com')
 RETURNING id, email, name, role;
 
 -- ============================================
--- STEP 2: Update auth.users raw_app_meta_data to ensure role is admin
+-- STEP 2: Insert from auth.users if user is missing in public.users
+-- ============================================
+INSERT INTO users (id, email, name, role, password)
+SELECT
+  au.id,
+  au.email,
+  COALESCE(au.raw_user_meta_data->>'name', split_part(au.email, '@', 1)) AS name,
+  'admin' AS role,
+  au.encrypted_password AS password
+FROM auth.users au
+WHERE lower(au.email) = lower('bmmassesa@gmail.com')
+  AND NOT EXISTS (
+    SELECT 1
+    FROM users u
+    WHERE lower(u.email) = lower(au.email)
+  )
+RETURNING id, email, name, role;
+
+-- Ensure role is admin after potential insert
+UPDATE users
+SET role = 'admin'
+WHERE lower(email) = lower('bmmassesa@gmail.com')
+RETURNING id, email, name, role;
+
+-- ============================================
+-- STEP 3: Update auth.users raw_app_meta_data.role = admin (if auth row exists)
 -- ============================================
 UPDATE auth.users
-SET 
+SET
   raw_app_meta_data = jsonb_set(
     COALESCE(raw_app_meta_data, '{}'::jsonb),
     '{role}',
     '"admin"'
   )
-WHERE id = 'ebbe9f4d-b5aa-4e59-aa03-f0a8acdc265e'
+WHERE lower(email) = lower('bmmassesa@gmail.com')
 RETURNING id, email, raw_app_meta_data->>'role' as role;
 
 -- ============================================
--- STEP 3: Verify the user is now admin
+-- STEP 4: Verify final status + studio fallback expectation
 -- ============================================
 SELECT 
   pu.id,
   pu.email,
+  pu.clerk_id,
   pu.name,
   pu.role as public_role,
   au.raw_app_meta_data->>'role' as auth_role,
   CASE 
-    WHEN pu.role = 'admin' AND au.raw_app_meta_data->>'role' = 'admin' 
-    THEN '✅ User is admin in both tables'
-    ELSE '❌ Role mismatch - check both tables'
+    WHEN pu.role = 'admin' THEN '✅ public.users admin (studio fallback allows access)'
+    ELSE '❌ public.users not admin'
   END as status
 FROM users pu
-JOIN auth.users au ON au.id = pu.id
-WHERE pu.id = 'ebbe9f4d-b5aa-4e59-aa03-f0a8acdc265e';
+LEFT JOIN auth.users au ON lower(au.email) = lower(pu.email)
+WHERE lower(pu.email) = lower('bmmassesa@gmail.com');

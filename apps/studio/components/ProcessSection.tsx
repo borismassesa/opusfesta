@@ -5,6 +5,9 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 export default function ProcessSection() {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const [activeStep, setActiveStep] = useState<number>(0);
+  const [isProcessInView, setIsProcessInView] = useState(false);
+  const [isAutoPaused, setIsAutoPaused] = useState(false);
+  const processRef = useRef<HTMLElement>(null);
   const refs = useRef<Map<string, HTMLElement>>(new Map());
 
   const setRef = useCallback((id: string) => (el: HTMLElement | null) => {
@@ -26,6 +29,18 @@ export default function ProcessSection() {
       { threshold: 0.15, rootMargin: '0px 0px -50px 0px' }
     );
     refs.current.forEach((el) => observer.observe(el));
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (!processRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => setIsProcessInView(entry.isIntersecting),
+      { threshold: 0.35 }
+    );
+
+    observer.observe(processRef.current);
     return () => observer.disconnect();
   }, []);
 
@@ -85,8 +100,24 @@ export default function ProcessSection() {
     },
   ];
 
+  useEffect(() => {
+    if (!isProcessInView || isAutoPaused) return;
+
+    const interval = setInterval(() => {
+      setActiveStep((prev) => (prev + 1) % steps.length);
+    }, 3200);
+
+    return () => clearInterval(interval);
+  }, [isProcessInView, isAutoPaused, steps.length]);
+
   return (
-    <section id="process" className="relative z-10 bg-brand-dark overflow-hidden">
+    <section
+      id="process"
+      ref={processRef}
+      className="relative z-10 bg-brand-dark overflow-hidden"
+      onMouseEnter={() => setIsAutoPaused(true)}
+      onMouseLeave={() => setIsAutoPaused(false)}
+    >
       <div className="border-y-4 border-white/10">
         <div className="max-w-[1400px] mx-auto px-6 lg:px-12 py-24 lg:py-32">
           <div
