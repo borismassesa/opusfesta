@@ -178,7 +178,7 @@ export async function GET() {
       servicesResult,
       availabilityResult,
     ] = await Promise.all([
-      db.from('studio_bookings').select('id, name, email, event_type, preferred_date, location, service, status, lifecycle_status, total_amount_tzs, deposit_amount_tzs, balance_due_tzs, event_date, responded_at, created_at').limit(5000),
+      db.from('studio_bookings').select('id, name, email, event_type, preferred_date, location, service, status, responded_at, created_at').limit(5000),
       db.from('studio_messages').select('booking_id, sender, created_at').limit(10000),
       db.from('studio_projects').select('id, title, is_published, updated_at').limit(2000),
       db.from('studio_articles').select('id, title, is_published, updated_at').limit(2000),
@@ -195,7 +195,23 @@ export async function GET() {
       availabilityResult.error;
     if (queryError) return NextResponse.json({ error: queryError.message }, { status: 500 });
 
-    const bookings = (bookingsResult.data || []) as BookingRow[];
+    // Try to fetch lifecycle columns if they exist (migration may not have been applied yet)
+    let lifecycleData: Record<string, { lifecycle_status: string | null; total_amount_tzs: number; deposit_amount_tzs: number; balance_due_tzs: number; event_date: string | null }> = {};
+    const lifecycleResult = await db.from('studio_bookings').select('id, lifecycle_status, total_amount_tzs, deposit_amount_tzs, balance_due_tzs, event_date').limit(5000);
+    if (!lifecycleResult.error && lifecycleResult.data) {
+      for (const row of lifecycleResult.data) {
+        lifecycleData[row.id] = row;
+      }
+    }
+
+    const bookings = (bookingsResult.data || []).map((b: Record<string, unknown>) => ({
+      ...b,
+      lifecycle_status: lifecycleData[b.id as string]?.lifecycle_status ?? null,
+      total_amount_tzs: lifecycleData[b.id as string]?.total_amount_tzs ?? 0,
+      deposit_amount_tzs: lifecycleData[b.id as string]?.deposit_amount_tzs ?? 0,
+      balance_due_tzs: lifecycleData[b.id as string]?.balance_due_tzs ?? 0,
+      event_date: lifecycleData[b.id as string]?.event_date ?? null,
+    })) as BookingRow[];
     const messages = (messagesResult.data || []) as MessageRow[];
     const projects = (projectsResult.data || []) as ProjectRow[];
     const articles = (articlesResult.data || []) as ArticleRow[];
