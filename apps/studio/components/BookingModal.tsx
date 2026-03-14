@@ -33,7 +33,7 @@ const journeySteps = [
 const eventTypeSuggestions = ['Wedding', 'Engagement', 'Corporate Event', 'Brand Launch', 'Private Celebration'];
 const BOOKING_DRAFT_KEY = 'opusfesta_studio_booking_draft_v1';
 const BOOKING_DRAFT_MAX_AGE_MS = 1000 * 60 * 60 * 24 * 7;
-const CONFETTI_COLORS = ['#6F3393', '#591C7D', '#D0B1D4', '#171717', '#9E83B0'];
+const CONFETTI_COLORS = ['#171717', '#333333', '#8A7662', '#F5F5F5', '#E5E5E5'];
 
 export default function BookingModal({ isOpen, onClose, prefilledService }: BookingModalProps) {
   const [formState, setFormState] = useState<FormState>('idle');
@@ -373,7 +373,7 @@ export default function BookingModal({ isOpen, onClose, prefilledService }: Book
                 </div>
               )}
               <div className="relative z-30 w-16 h-16 border-4 border-brand-accent flex items-center justify-center mb-8">
-                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#6F3393" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#171717" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20 6L9 17l-5-5" />
                 </svg>
               </div>

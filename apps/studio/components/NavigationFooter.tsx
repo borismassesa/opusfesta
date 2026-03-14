@@ -25,9 +25,10 @@ export default function NavigationFooter() {
         </button>
         <div className="flex-1 flex justify-center gap-4 sm:gap-8 md:gap-24 overflow-x-auto">
           <button onClick={scrollToTop} className="text-brand-accent hover:text-brand-dark transition-colors whitespace-nowrap hidden sm:block">01 Home</button>
-          <a href="#work" className="hover:text-brand-dark transition-colors whitespace-nowrap">02 Work</a>
-          <a href="#services" className="hover:text-brand-dark transition-colors whitespace-nowrap">03 Services</a>
-          <a href="#contact" className="hover:text-brand-dark transition-colors whitespace-nowrap">04 Contact</a>
+          <a href="/journal" className="hover:text-brand-dark transition-colors whitespace-nowrap">02 Journal</a>
+          <a href="/portfolio" className="hover:text-brand-dark transition-colors whitespace-nowrap">03 Portfolio</a>
+          <a href="#services" className="hover:text-brand-dark transition-colors whitespace-nowrap">04 Services</a>
+          <a href="#contact" className="hover:text-brand-dark transition-colors whitespace-nowrap">05 Contact</a>
         </div>
         <button
           onClick={scrollToTop}

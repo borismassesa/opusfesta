@@ -64,7 +64,7 @@ export default function CTASection() {
               </svg>
             </button>
             <a
-              href="/#services"
+              href="/services"
               className="inline-flex items-center justify-center px-10 py-5 text-xs font-bold text-brand-dark uppercase tracking-widest border-4 border-brand-border shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:border-brand-accent hover:text-brand-accent transition-all duration-200"
             >
               View Services
