@@ -3,6 +3,7 @@
 import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import { BsGrid1X2, BsFolder2Open, BsFileText, BsWrench, BsCalendarCheck, BsCalendar3, BsChatSquareText, BsStar, BsQuestionCircle, BsPeople, BsImage, BsSearch, BsGear } from 'react-icons/bs';
 import type { StudioRole } from '@/lib/studio-types';
 import { hasMinimumRole } from '@/lib/admin-auth-client';
@@ -33,17 +34,28 @@ export default function AdminSidebar({ role }: { role: StudioRole }) {
   const pathname = usePathname();
   const canManageSettings = hasMinimumRole(role, 'studio_admin');
   const isSettingsActive = pathname === '/studio-admin/settings' || pathname.startsWith('/studio-admin/settings/');
+  const [queueCount, setQueueCount] = useState(0);
+
+  useEffect(() => {
+    fetch('/api/admin/bookings/queue')
+      .then(r => r.json())
+      .then(d => {
+        const q = d.queue;
+        if (q) setQueueCount((q.needs_qualification?.length || 0) + (q.awaiting_deposit?.length || 0) + (q.overdue_balances?.length || 0));
+      })
+      .catch(() => {});
+  }, []);
 
   return (
-    <aside className="w-60 bg-white border-r border-gray-200 flex flex-col h-full">
-      <div className="px-5 py-5 border-b border-gray-200">
+    <aside className="flex h-full w-64 flex-col border-r border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar)] text-[var(--admin-sidebar-foreground)]">
+      <div className="border-b border-[var(--admin-sidebar-border)] px-5 py-6">
         <Link href="/studio-admin" className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-brand-accent flex items-center justify-center">
-            <span className="text-white text-xs font-bold">OF</span>
+          <div className="flex h-10 w-10 items-center justify-center rounded-[calc(var(--admin-radius)-2px)] bg-[var(--admin-primary)] text-[var(--admin-primary-foreground)] shadow-[var(--admin-shadow-sm)]">
+            <span className="text-xs font-bold tracking-[0.24em]">OF</span>
           </div>
           <div>
-            <p className="text-sm font-bold text-gray-900 leading-tight">OpusFesta</p>
-            <p className="text-[10px] text-gray-500 uppercase tracking-widest">Studio Admin</p>
+            <p className="text-sm font-bold leading-tight text-[var(--admin-foreground)]">OpusFesta</p>
+            <p className="text-[10px] uppercase tracking-[0.24em] text-[color:rgba(51,51,51,0.56)]">Studio Admin</p>
           </div>
         </Link>
       </div>
@@ -59,25 +71,51 @@ export default function AdminSidebar({ role }: { role: StudioRole }) {
                 <li key={item.href}>
                   <Link
                     href={item.href}
-                    className={`flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${
-                      isActive ? 'bg-brand-accent/10 text-brand-accent' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+                    className={`flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${
+                      isActive
+                        ? 'border border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-accent)] text-[var(--admin-sidebar-accent-foreground)] shadow-[var(--admin-shadow-sm)]'
+                        : 'text-[color:rgba(51,51,51,0.72)] hover:bg-[var(--admin-secondary)] hover:text-[var(--admin-foreground)]'
                     }`}
                   >
                     <Icon className="w-4 h-4 flex-shrink-0" />
                     {item.label}
+                    {item.label === 'Bookings' && queueCount > 0 && (
+                      <span className="ml-auto inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                        {queueCount}
+                      </span>
+                    )}
                   </Link>
+                  {item.label === 'Bookings' && (
+                    <Link
+                      href="/admin/bookings/queue"
+                      className={`ml-7 flex items-center gap-2 px-3 py-1.5 text-xs font-medium transition-colors ${
+                        pathname.includes('/bookings/queue')
+                          ? 'text-[var(--admin-sidebar-accent-foreground)] font-bold'
+                          : 'text-[color:rgba(51,51,51,0.56)] hover:text-[var(--admin-foreground)]'
+                      }`}
+                    >
+                      Queue
+                      {queueCount > 0 && (
+                        <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                          {queueCount}
+                        </span>
+                      )}
+                    </Link>
+                  )}
                 </li>
               );
             })}
         </ul>
       </nav>
 
-      <div className="px-5 py-4 border-t border-gray-200">
+      <div className="border-t border-[var(--admin-sidebar-border)] bg-[rgba(255,255,255,0.55)] px-5 py-4 backdrop-blur-sm">
         {canManageSettings && (
           <Link
             href="/studio-admin/settings"
-            className={`mb-3 flex items-center gap-3 px-3 py-2 text-sm font-medium transition-colors ${
-              isSettingsActive ? 'bg-brand-accent/10 text-brand-accent' : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+            className={`mb-3 flex items-center gap-3 px-3 py-2.5 text-sm font-medium transition-colors ${
+              isSettingsActive
+                ? 'border border-[var(--admin-sidebar-border)] bg-[var(--admin-sidebar-accent)] text-[var(--admin-sidebar-accent-foreground)] shadow-[var(--admin-shadow-sm)]'
+                : 'text-[color:rgba(51,51,51,0.72)] hover:bg-[var(--admin-secondary)] hover:text-[var(--admin-foreground)]'
             }`}
           >
             <BsGear className="w-4 h-4 flex-shrink-0" />
@@ -87,11 +125,11 @@ export default function AdminSidebar({ role }: { role: StudioRole }) {
         <div className="mb-4 flex items-center gap-2 px-1">
           <UserButton
             afterSignOutUrl="/"
-            appearance={{ elements: { avatarBox: 'w-8 h-8 border border-gray-200' } }}
+            appearance={{ elements: { avatarBox: 'h-8 w-8 border border-[var(--admin-sidebar-border)] shadow-none' } }}
           />
-          <span className="text-xs font-medium text-gray-600">Profile</span>
+          <span className="text-xs font-medium text-[color:rgba(51,51,51,0.78)]">Profile</span>
         </div>
-        <Link href="/" target="_blank" className="text-xs text-gray-400 hover:text-brand-accent transition-colors">
+        <Link href="/" target="_blank" className="text-xs text-[color:rgba(51,51,51,0.52)] transition-colors hover:text-[var(--admin-primary)]">
           View live site &rarr;
         </Link>
       </div>

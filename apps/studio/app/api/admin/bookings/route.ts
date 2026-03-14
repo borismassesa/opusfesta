@@ -10,10 +10,15 @@ export async function GET(req: NextRequest) {
     const db = getStudioSupabaseAdmin();
     const { searchParams } = new URL(req.url);
     const status = searchParams.get('status');
+    const lifecycleStatus = searchParams.get('lifecycle_status');
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
 
     let query = db.from('studio_bookings').select('*', { count: 'exact' });
-    if (status && status !== 'all') query = query.eq('status', status);
+    if (lifecycleStatus && lifecycleStatus !== 'all') {
+      query = query.eq('lifecycle_status', lifecycleStatus);
+    } else if (status && status !== 'all') {
+      query = query.eq('status', status);
+    }
     query = query.order('created_at', { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
     const { data, count, error } = await query;

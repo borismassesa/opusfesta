@@ -9,14 +9,14 @@ interface AdminCardProps {
 
 export default function AdminCard({ title, value, subtitle, icon }: AdminCardProps) {
   return (
-    <div className="bg-white border border-gray-200 p-5 hover:shadow-sm transition-shadow">
+    <div className="border border-[var(--admin-border)] bg-[var(--admin-card)] p-5 shadow-[var(--admin-shadow-sm)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--admin-shadow-md)]">
       <div className="flex items-start justify-between">
         <div>
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wider">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
-          {subtitle && <p className="text-sm text-gray-500 mt-1">{subtitle}</p>}
+          <p className="mt-0 text-[11px] font-mono uppercase tracking-[0.22em] text-[var(--admin-muted)]">{title}</p>
+          <p className="mt-2 text-2xl font-bold text-[var(--admin-card-foreground)]">{value}</p>
+          {subtitle && <p className="mt-1.5 text-sm text-[var(--admin-accent-foreground)]">{subtitle}</p>}
         </div>
-        {icon && <div className="p-2 bg-brand-accent/10 text-brand-accent">{icon}</div>}
+        {icon && <div className="bg-[var(--admin-accent)] p-2.5 text-[var(--admin-accent-foreground)]">{icon}</div>}
       </div>
     </div>
   );

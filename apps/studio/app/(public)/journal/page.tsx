@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import PageLayout from '@/components/PageLayout';
-import JournalGrid from '@/components/JournalGrid';
+import JournalFeed from '@/components/JournalFeed';
 
 export const metadata: Metadata = {
   title: 'Journal | OpusFesta Studio',
@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 export default function JournalPage() {
   return (
     <PageLayout>
-      <JournalGrid />
+      <JournalFeed />
     </PageLayout>
   );
 }

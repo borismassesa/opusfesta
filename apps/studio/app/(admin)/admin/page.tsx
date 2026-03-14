@@ -67,6 +67,30 @@ interface DashboardData {
   };
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+function isDashboardData(payload: unknown): payload is DashboardData {
+  if (!isRecord(payload)) return false;
+  if (!isRecord(payload.priorities)) return false;
+  if (!isRecord(payload.kpis)) return false;
+  if (!isRecord(payload.pipeline)) return false;
+  if (!isRecord(payload.stats)) return false;
+  if (!isRecord(payload.cms)) return false;
+  if (!isRecord(payload.performance)) return false;
+  if (!isRecord(payload.finance)) return false;
+  if (!isRecord(payload.pipeline.statuses)) return false;
+  if (!Array.isArray(payload.upcoming)) return false;
+  if (!Array.isArray(payload.recentBookings)) return false;
+  return true;
+}
+
+function getErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error && error.message) return error.message;
+  return fallback;
+}
+
 const PIPELINE_ORDER: StudioBookingStatus[] = ['new', 'contacted', 'quoted', 'confirmed', 'completed', 'cancelled'];
 
 const STATUS_TONE: Record<StudioBookingStatus, string> = {
@@ -110,15 +134,15 @@ function MetricCard({
   return (
     <Link
       href={href}
-      className="group border border-gray-200 bg-white p-4 transition-all hover:border-brand-accent hover:shadow-sm"
+      className="group border border-[var(--admin-border)] bg-[var(--admin-card)] p-4 shadow-[var(--admin-shadow-sm)] transition-all hover:-translate-y-0.5 hover:shadow-[var(--admin-shadow-md)]"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-gray-500">{label}</p>
-          <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-gray-900">{value}</p>
-          <p className="mt-2 text-xs text-gray-500">{hint}</p>
+          <p className="text-[11px] font-mono uppercase tracking-[0.2em] text-[var(--admin-muted)]">{label}</p>
+          <p className="mt-2 text-2xl font-semibold tracking-[-0.03em] text-[var(--admin-card-foreground)]">{value}</p>
+          <p className="mt-2 text-xs text-[var(--admin-accent-foreground)]">{hint}</p>
         </div>
-        <div className="mt-1 border border-brand-accent/20 bg-brand-accent/10 p-2 text-brand-accent">{icon}</div>
+        <div className="mt-1 border border-[var(--admin-border)] bg-[var(--admin-secondary)] p-2 text-[var(--admin-primary)]">{icon}</div>
       </div>
     </Link>
   );
@@ -127,13 +151,51 @@ function MetricCard({
 export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/admin/dashboard')
-      .then((res) => res.json())
-      .then((payload) => setData(payload))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+
+    const loadDashboard = async () => {
+      try {
+        setLoading(true);
+        setErrorMessage(null);
+
+        const response = await fetch('/api/admin/dashboard');
+        const payload = await response.json().catch(() => null);
+
+        if (!response.ok) {
+          const message = isRecord(payload) && typeof payload.error === 'string'
+            ? payload.error
+            : 'Failed to load dashboard data.';
+          throw new Error(message);
+        }
+
+        if (!isDashboardData(payload)) {
+          throw new Error('Dashboard response was incomplete.');
+        }
+
+        if (!cancelled) {
+          setData(payload);
+        }
+      } catch (error: unknown) {
+        if (!cancelled) {
+          setData(null);
+          setErrorMessage(getErrorMessage(error, 'Failed to load dashboard data.'));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadDashboard();
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (loading) {
@@ -155,7 +217,7 @@ export default function DashboardPage() {
   if (!data) {
     return (
       <div className="border border-red-200 bg-red-50 p-5 text-sm text-red-700">
-        Failed to load dashboard data.
+        {errorMessage || 'Failed to load dashboard data.'}
       </div>
     );
   }
@@ -176,7 +238,7 @@ export default function DashboardPage() {
     count,
   }));
 
-  const pieColors = ['#171717', '#333333', '#555555', '#777777', '#999999'];
+  const pieColors = ['#ff8800', '#a36a29', '#6b4f2e', '#eb9e47', '#f7b76e'];
 
   const pipelineBase = Math.max(1, data.stats.totalBookings);
 
@@ -184,23 +246,23 @@ export default function DashboardPage() {
     <div className="space-y-6">
       <AdminToast />
 
-      <section className="border border-gray-200 bg-white p-5">
+      <section className="border border-[var(--admin-border)] bg-[var(--admin-card)] p-5 shadow-[var(--admin-shadow-sm)]">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-[11px] font-mono uppercase tracking-[0.25em] text-brand-accent">Studio command center</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-gray-900">Operations and CMS Control</h1>
-            <p className="mt-2 max-w-3xl text-sm text-gray-500">
+            <p className="text-[11px] font-mono uppercase tracking-[0.25em] text-[var(--admin-muted)]">Studio command center</p>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--admin-card-foreground)]">Operations and CMS Control</h1>
+            <p className="mt-2 max-w-3xl text-sm text-[var(--admin-accent-foreground)]">
               Monitor urgent work first, then manage publishing and performance from one admin surface.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Link href="/studio-admin/bookings" className="border border-brand-dark bg-brand-dark px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition-colors hover:border-brand-accent hover:bg-brand-accent">
+            <Link href="/studio-admin/bookings" className="border border-[var(--admin-primary)] bg-[var(--admin-primary)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--admin-primary-foreground)] transition-colors hover:bg-[#e67900] hover:border-[#e67900]">
               Open bookings
             </Link>
-            <Link href="/studio-admin/messages" className="border border-gray-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 transition-colors hover:border-brand-accent hover:text-brand-accent">
+            <Link href="/studio-admin/messages" className="border border-[var(--admin-border)] bg-[var(--admin-card)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--admin-secondary-foreground)] transition-colors hover:border-[var(--admin-primary)] hover:text-[var(--admin-primary)]">
               Open inbox
             </Link>
-            <Link href="/studio-admin/articles/new" className="border border-gray-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-gray-700 transition-colors hover:border-brand-accent hover:text-brand-accent">
+            <Link href="/studio-admin/articles/new" className="border border-[var(--admin-border)] bg-[var(--admin-card)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--admin-secondary-foreground)] transition-colors hover:border-[var(--admin-primary)] hover:text-[var(--admin-primary)]">
               New article
             </Link>
           </div>
@@ -271,8 +333,8 @@ export default function DashboardPage() {
               <BarChart data={pipelineChartData} layout="vertical" margin={{ top: 0, right: 30, left: 20, bottom: 0 }}>
                 <XAxis type="number" hide />
                 <YAxis dataKey="status" type="category" axisLine={false} tickLine={false} width={80} />
-                <Tooltip cursor={{ fill: '#f5f5f5' }} contentStyle={{ borderRadius: '0', borderColor: '#171717', fontSize: '11px', textTransform: 'uppercase' }} />
-                <Bar dataKey="count" fill="#171717" radius={[0, 4, 4, 0]} barSize={24} />
+                <Tooltip cursor={{ fill: '#fff5eb' }} contentStyle={{ borderRadius: '12px', borderColor: '#e6e6e6', fontSize: '11px', textTransform: 'uppercase' }} />
+                <Bar dataKey="count" fill="#ff8800" radius={[0, 8, 8, 0]} barSize={24} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -361,7 +423,7 @@ export default function DashboardPage() {
                           <Cell key={`cell-${index}`} fill={pieColors[index % pieColors.length]} />
                         ))}
                       </Pie>
-                      <Tooltip contentStyle={{ borderRadius: '0', borderColor: '#171717', fontSize: '11px', textTransform: 'uppercase' }} />
+                      <Tooltip contentStyle={{ borderRadius: '12px', borderColor: '#e6e6e6', fontSize: '11px', textTransform: 'uppercase' }} />
                     </PieChart>
                   </ResponsiveContainer>
                 )}

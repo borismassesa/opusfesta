@@ -25,11 +25,11 @@ export default async function AdminLayout({
 
   return (
     <ClerkProvider>
-      <div className="admin-shell flex h-screen bg-gray-50">
+      <div className="admin-shell flex h-screen">
         <AdminSidebar role={studioRole} />
         <div className="flex-1 flex flex-col overflow-hidden">
           <AdminTopbar />
-          <main className="flex-1 overflow-y-auto p-6">
+          <main className="flex-1 overflow-y-auto p-6 lg:p-8">
             {children}
           </main>
         </div>

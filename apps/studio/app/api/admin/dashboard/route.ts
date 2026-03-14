@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 import type { StudioBookingStatus } from '@/lib/studio-types';
+import type { BookingLifecycleStatus } from '@/lib/booking-types';
 
 type BookingRow = {
   id: string;
@@ -12,6 +13,11 @@ type BookingRow = {
   location: string | null;
   service: string | null;
   status: StudioBookingStatus;
+  lifecycle_status: BookingLifecycleStatus | null;
+  total_amount_tzs: number;
+  deposit_amount_tzs: number;
+  balance_due_tzs: number;
+  event_date: string | null;
   responded_at: string | null;
   created_at: string;
 };
@@ -105,6 +111,60 @@ function resolveServiceValue(serviceName: string | null, services: ServiceRow[])
   return partialMatch ? parseServiceValue(partialMatch.price) : 0;
 }
 
+const LIFECYCLE_PIPELINE: BookingLifecycleStatus[] = [
+  'intake_submitted', 'qualified', 'quote_sent', 'quote_accepted',
+  'contract_sent', 'contract_signed', 'deposit_pending', 'confirmed',
+];
+
+function buildLifecycleMetrics(bookings: BookingRow[]) {
+  const counts: Partial<Record<BookingLifecycleStatus, number>> = {};
+  let totalRevenue = 0;
+  let totalDeposits = 0;
+  let totalOutstanding = 0;
+
+  for (const b of bookings) {
+    const ls = b.lifecycle_status;
+    if (ls) {
+      counts[ls] = (counts[ls] || 0) + 1;
+    }
+    if (ls === 'confirmed' || ls === 'completed') {
+      totalRevenue += b.total_amount_tzs || 0;
+      totalDeposits += b.deposit_amount_tzs || 0;
+    }
+    if (ls === 'confirmed') {
+      totalOutstanding += b.balance_due_tzs || 0;
+    }
+  }
+
+  const pipelineCount = LIFECYCLE_PIPELINE.reduce((sum, s) => sum + (counts[s] || 0), 0);
+
+  // Conversion funnel
+  const intakeCount = counts['intake_submitted'] || 0;
+  const qualifiedCount = counts['qualified'] || 0;
+  const quoteSentCount = counts['quote_sent'] || 0;
+  const confirmedCount = counts['confirmed'] || 0;
+  const completedCount = counts['completed'] || 0;
+  const totalActive = intakeCount + qualifiedCount + quoteSentCount + confirmedCount + completedCount;
+
+  return {
+    statusCounts: counts,
+    pipelineCount,
+    funnel: {
+      intake: intakeCount,
+      qualified: qualifiedCount,
+      quoted: quoteSentCount,
+      confirmed: confirmedCount,
+      completed: completedCount,
+    },
+    revenue: {
+      total_tzs: totalRevenue,
+      deposits_collected_tzs: totalDeposits,
+      outstanding_balance_tzs: totalOutstanding,
+      currency: 'TZS',
+    },
+  };
+}
+
 export async function GET() {
   try {
     await requireStudioRole('studio_viewer');
@@ -118,7 +178,7 @@ export async function GET() {
       servicesResult,
       availabilityResult,
     ] = await Promise.all([
-      db.from('studio_bookings').select('id, name, email, event_type, preferred_date, location, service, status, responded_at, created_at').limit(5000),
+      db.from('studio_bookings').select('id, name, email, event_type, preferred_date, location, service, status, lifecycle_status, total_amount_tzs, deposit_amount_tzs, balance_due_tzs, event_date, responded_at, created_at').limit(5000),
       db.from('studio_messages').select('booking_id, sender, created_at').limit(10000),
       db.from('studio_projects').select('id, title, is_published, updated_at').limit(2000),
       db.from('studio_articles').select('id, title, is_published, updated_at').limit(2000),
@@ -377,6 +437,7 @@ export async function GET() {
         pipelineValue: activePipelineValue,
         currency: 'TZS',
       },
+      lifecycle: buildLifecycleMetrics(bookings),
       generatedAt: toIsoDay(now),
     });
   } catch (e) {
