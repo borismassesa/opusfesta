@@ -14,14 +14,28 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
 
     let query = db.from('studio_bookings').select('*', { count: 'exact' });
-    if (lifecycleStatus && lifecycleStatus !== 'all') {
-      query = query.eq('lifecycle_status', lifecycleStatus);
-    } else if (status && status !== 'all') {
+    if (status && status !== 'all') {
       query = query.eq('status', status);
     }
     query = query.order('created_at', { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
-    const { data, count, error } = await query;
+    let { data, count, error } = await query;
+
+    // If lifecycle_status filter requested, try it — if columns don't exist yet, fall back to unfiltered
+    if (!error && lifecycleStatus && lifecycleStatus !== 'all' && !(status && status !== 'all')) {
+      const lcQuery = db.from('studio_bookings').select('*', { count: 'exact' })
+        .eq('lifecycle_status', lifecycleStatus)
+        .order('created_at', { ascending: false })
+        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
+      const lcResult = await lcQuery;
+      if (!lcResult.error) {
+        data = lcResult.data;
+        count = lcResult.count;
+        error = lcResult.error;
+      }
+      // If lifecycle_status column doesn't exist, silently fall back to the unfiltered result
+    }
+
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     return NextResponse.json({ bookings: data || [], total: count || 0, page, totalPages: Math.ceil((count || 0) / PAGE_SIZE) });
