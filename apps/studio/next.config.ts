@@ -2,10 +2,23 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
+    qualities: [100, 75],
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'hoirqrkdgbmvpwutwuwj.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'ppdapuqehwlfwofbpbvb.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'img.clerk.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
       },
     ],
   },
@@ -15,6 +28,23 @@ const nextConfig: NextConfig = {
     '.spock.replit.dev',
     '.replit.dev',
   ],
+  async redirects() {
+    return [
+      {
+        source: '/admin/:path*',
+        destination: '/studio-admin/:path*',
+        permanent: false,
+      },
+    ];
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/studio-admin/:path*',
+        destination: '/admin/:path*',
+      },
+    ];
+  },
 };
 
 export default nextConfig;

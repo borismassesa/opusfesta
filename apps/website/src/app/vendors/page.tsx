@@ -470,7 +470,6 @@ const getBadgeIcon = (label: string | undefined | null): LucideIcon => {
 function VendorSaveButton({ vendorId }: { vendorId: string }) {
   const { isSaved, isLoading, toggleSave } = useSaveVendor({
     vendorId,
-    redirectToLogin: true,
   });
 
   return (
@@ -1180,7 +1179,7 @@ export default function VendorsPage() {
                   priority
                   sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-background/30 via-transparent to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-background/30 via-transparent to-transparent" />
               </div>
             </div>
           </div>
@@ -1191,7 +1190,7 @@ export default function VendorsPage() {
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
-                  <span className="h-[1px] w-10 bg-accent" />
+                  <span className="h-px w-10 bg-accent" />
                   Explore categories
                 </div>
                 <h2 className="text-3xl md:text-4xl font-semibold mt-4">
@@ -1235,7 +1234,7 @@ export default function VendorsPage() {
                           sizes="(max-width: 640px) 50vw, (max-width: 1024px) 25vw, 16vw"
                           loading="lazy"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-background/50 via-transparent to-transparent" />
+                        <div className="absolute inset-0 bg-linear-to-t from-background/50 via-transparent to-transparent" />
                       </div>
                       <div className="mt-4">
                         <h3 className="text-lg font-semibold text-primary">
@@ -1257,7 +1256,7 @@ export default function VendorsPage() {
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
-                  <span className="h-[1px] w-10 bg-accent" />
+                  <span className="h-px w-10 bg-accent" />
                   Promotions
                 </div>
                 <h2 className="text-2xl md:text-3xl font-semibold mt-4">
@@ -1298,7 +1297,7 @@ export default function VendorsPage() {
                         </div>
 
                         {/* Hover overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                        <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
                           <div className="flex items-start justify-between gap-2 mb-1">
                             <div className="flex-1">
                               <h4 className="text-background font-bold text-base line-clamp-2">
@@ -1321,7 +1320,7 @@ export default function VendorsPage() {
                             </div>
                             {/* Rich hover card */}
                             <div
-                              className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-[9999] ${
+                              className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-9999 ${
                                 isRightEdge ? "right-0" : "left-[-10px]"
                               }`}
                             >
@@ -1424,7 +1423,7 @@ export default function VendorsPage() {
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
-                  <span className="h-[1px] w-10 bg-accent" />
+                  <span className="h-px w-10 bg-accent" />
                   New vendors
                 </div>
                 <h2 className="text-2xl md:text-3xl font-semibold mt-4">
@@ -1463,7 +1462,7 @@ export default function VendorsPage() {
                         <BadgeIcon className="w-2.5 h-2.5" />
                         New
                       </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div className="flex-1">
                             <h4 className="text-background font-bold text-base line-clamp-2">
@@ -1486,7 +1485,7 @@ export default function VendorsPage() {
                           </div>
                           {/* Rich hover card */}
                           <div
-                            className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-[9999] ${
+                            className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-9999 ${
                               isRightEdge ? "right-0" : "left-[-10px]"
                             }`}
                           >
@@ -1587,7 +1586,7 @@ export default function VendorsPage() {
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
-                  <span className="h-[1px] w-10 bg-accent" />
+                  <span className="h-px w-10 bg-accent" />
                   Most booked this month
                 </div>
                 <h2 className="text-2xl md:text-3xl font-semibold mt-4">
@@ -1616,7 +1615,7 @@ export default function VendorsPage() {
                         <BadgeIcon className="w-2.5 h-2.5" />
                         Trending
                       </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div className="flex-1">
                             <h4 className="text-background font-bold text-base line-clamp-2">{vendor.category}</h4>
@@ -1637,7 +1636,7 @@ export default function VendorsPage() {
                           </div>
                           {/* Rich hover card */}
                           <div
-                            className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-[9999] ${
+                            className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-9999 ${
                               isRightEdge ? "right-0" : "left-[-10px]"
                             }`}
                           >
@@ -1738,7 +1737,7 @@ export default function VendorsPage() {
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
-                  <span className="h-[1px] w-10 bg-accent" />
+                  <span className="h-px w-10 bg-accent" />
                   Budget-friendly picks
                 </div>
                 <h2 className="text-2xl md:text-3xl font-semibold mt-4">
@@ -1767,7 +1766,7 @@ export default function VendorsPage() {
                         <BadgeIcon className="w-2.5 h-2.5" />
                         Great value
                       </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div className="flex-1">
                             <h4 className="text-background font-bold text-base line-clamp-2">{vendor.category}</h4>
@@ -1788,7 +1787,7 @@ export default function VendorsPage() {
                           </div>
                           {/* Rich hover card */}
                           <div
-                            className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-[9999] ${
+                            className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-9999 ${
                               isRightEdge ? "right-0" : "left-[-10px]"
                             }`}
                           >
@@ -1889,7 +1888,7 @@ export default function VendorsPage() {
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
-                  <span className="h-[1px] w-10 bg-accent" />
+                  <span className="h-px w-10 bg-accent" />
                   Quick responders
                 </div>
                 <h2 className="text-2xl md:text-3xl font-semibold mt-4">
@@ -1918,7 +1917,7 @@ export default function VendorsPage() {
                         <BadgeIcon className="w-2.5 h-2.5" />
                         Fast reply
                       </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div className="flex-1">
                             <h4 className="text-background font-bold text-base line-clamp-2">{vendor.category}</h4>
@@ -1939,7 +1938,7 @@ export default function VendorsPage() {
                           </div>
                           {/* Rich hover card */}
                           <div
-                            className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-[9999] ${
+                            className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-9999 ${
                               isRightEdge ? "right-0" : "left-[-10px]"
                             }`}
                           >
@@ -2040,7 +2039,7 @@ export default function VendorsPage() {
             <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6 mb-8">
               <div>
                 <div className="flex items-center gap-3 text-xs font-mono tracking-[0.3em] uppercase text-secondary">
-                  <span className="h-[1px] w-10 bg-accent" />
+                  <span className="h-px w-10 bg-accent" />
                   {spotlightLocation} spotlight
                 </div>
                 <h2 className="text-2xl md:text-3xl font-semibold mt-4">
@@ -2069,7 +2068,7 @@ export default function VendorsPage() {
                         <BadgeIcon className="w-2.5 h-2.5" />
                         Featured
                       </div>
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
+                      <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/40 to-transparent opacity-0 group-hover/image:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-3">
                         <div className="flex items-start justify-between gap-2 mb-1">
                           <div className="flex-1">
                             <h4 className="text-background font-bold text-base line-clamp-2">{vendor.category}</h4>
@@ -2090,7 +2089,7 @@ export default function VendorsPage() {
                           </div>
                           {/* Rich hover card */}
                           <div
-                            className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-[9999] ${
+                            className={`absolute bottom-full mb-3 w-[420px] bg-background border border-border rounded-2xl shadow-2xl opacity-0 invisible group-hover/avatar:opacity-100 group-hover/avatar:visible transition-all z-9999 ${
                               isRightEdge ? "right-0" : "left-[-10px]"
                             }`}
                           >

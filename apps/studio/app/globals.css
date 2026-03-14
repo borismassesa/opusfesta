@@ -4,12 +4,12 @@
 
 :root {
   color-scheme: light;
-  --background: #F8F9FA;
+  --background: #FFF8F1;
   --foreground: #171717;
-  --primary: #6F3393;
-  --secondary: #591C7D;
-  --accent: #D0B1D4;
-  --muted-foreground: #7E7383;
+  --primary: #FF8800;
+  --secondary: #CC6500;
+  --accent: #FFE7CE;
+  --muted-foreground: #8A7662;
   --primary-foreground: #FFFFFF;
   --border: #171717;
   --radius: 0px;
@@ -35,11 +35,11 @@ body {
 }
 
 .text-stroke:hover {
-  color: #6F3393;
+  color: #FF8800;
 }
 
 .text-stroke-accent {
-  -webkit-text-stroke: 2px #6F3393;
+  -webkit-text-stroke: 2px #FF8800;
   color: transparent;
 }
 
@@ -49,8 +49,8 @@ body {
 }
 
 ::selection {
-  background-color: #6F3393;
-  color: #F8F9FA;
+  background-color: #FF8800;
+  color: #FFF8F1;
 }
 
 html {
@@ -88,4 +88,220 @@ html {
   animation-name: booking-confetti-fall;
   animation-timing-function: cubic-bezier(0.2, 0.85, 0.25, 1);
   animation-fill-mode: forwards;
+}
+
+/* ===== Admin Portal Styles ===== */
+.admin-shell {
+  --admin-background: #ffffff;
+  --admin-foreground: #1a1a1a;
+  --admin-card: #ffffff;
+  --admin-card-foreground: #1a1a1a;
+  --admin-popover: #ffffff;
+  --admin-popover-foreground: #1a1a1a;
+  --admin-primary: #ff8800;
+  --admin-primary-foreground: #ffffff;
+  --admin-secondary: #fff5eb;
+  --admin-secondary-foreground: #663600;
+  --admin-muted-surface: #f7f5f3;
+  --admin-muted: #737373;
+  --admin-accent: #ffecd6;
+  --admin-accent-foreground: #995200;
+  --admin-destructive: #ef4343;
+  --admin-destructive-foreground: #ffffff;
+  --admin-border: #e6e6e6;
+  --admin-input: #e6e6e6;
+  --admin-ring: rgba(255, 136, 0, 0.22);
+  --admin-sidebar: #fbfaf9;
+  --admin-sidebar-foreground: #333333;
+  --admin-sidebar-primary: #ff8800;
+  --admin-sidebar-primary-foreground: #ffffff;
+  --admin-sidebar-accent: #fff1e0;
+  --admin-sidebar-accent-foreground: #cc6d00;
+  --admin-sidebar-border: #ebebeb;
+  --admin-sidebar-ring: rgba(255, 136, 0, 0.24);
+  --admin-shadow-sm: 0px 2px 10px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
+  --admin-shadow-md: 0px 2px 10px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
+  --admin-shadow-lg: 0px 2px 10px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
+  --admin-radius: 0.75rem;
+  background:
+    radial-gradient(circle at top left, rgba(255, 136, 0, 0.10), transparent 28%),
+    linear-gradient(180deg, #fffdfb 0%, #fffaf5 100%);
+  color: var(--admin-foreground);
+  letter-spacing: -0.01em;
+}
+
+.admin-shell.dark,
+.dark .admin-shell {
+  --admin-background: #121212;
+  --admin-foreground: #f2f2f2;
+  --admin-card: #1a1a1a;
+  --admin-card-foreground: #f2f2f2;
+  --admin-popover: #1a1a1a;
+  --admin-popover-foreground: #f2f2f2;
+  --admin-primary: #ff8800;
+  --admin-primary-foreground: #1a1a1a;
+  --admin-secondary: #32271b;
+  --admin-secondary-foreground: #ffcf99;
+  --admin-muted-surface: #262626;
+  --admin-muted: #a6a6a6;
+  --admin-accent: #4d2900;
+  --admin-accent-foreground: #ffb866;
+  --admin-destructive: #7c1d1d;
+  --admin-destructive-foreground: #f2f2f2;
+  --admin-border: #333333;
+  --admin-input: #333333;
+  --admin-ring: rgba(255, 136, 0, 0.28);
+  --admin-sidebar: #171717;
+  --admin-sidebar-foreground: #e6e6e6;
+  --admin-sidebar-primary: #ff8800;
+  --admin-sidebar-primary-foreground: #1a1a1a;
+  --admin-sidebar-accent: #3d2100;
+  --admin-sidebar-accent-foreground: #ffa033;
+  --admin-sidebar-border: #2e2e2e;
+  --admin-sidebar-ring: rgba(255, 136, 0, 0.28);
+  --admin-shadow-sm: 0px 4px 15px 0px hsl(0 0% 0% / 0.30), 0px 1px 2px -1px hsl(0 0% 0% / 0.30);
+  --admin-shadow-md: 0px 4px 15px 0px hsl(0 0% 0% / 0.30), 0px 2px 4px -1px hsl(0 0% 0% / 0.30);
+  --admin-shadow-lg: 0px 4px 15px 0px hsl(0 0% 0% / 0.30), 0px 4px 6px -1px hsl(0 0% 0% / 0.30);
+  background:
+    radial-gradient(circle at top left, rgba(255, 136, 0, 0.16), transparent 24%),
+    linear-gradient(180deg, #191511 0%, #121212 100%);
+}
+
+.admin-shell *:not(.rounded-full):not(.avatar-circle) {
+  border-radius: var(--admin-radius) !important;
+}
+
+.admin-shell svg,
+.admin-shell svg * {
+  border-radius: 0 !important;
+}
+
+.admin-shell svg {
+  overflow: visible;
+}
+
+.admin-shell body {
+  background-color: var(--admin-background);
+  color: var(--admin-foreground);
+}
+
+.admin-shell ::selection {
+  background-color: var(--admin-primary);
+  color: var(--admin-primary-foreground);
+}
+
+.admin-shell .bg-white {
+  background-color: var(--admin-card) !important;
+}
+
+.admin-shell .bg-gray-50,
+.admin-shell .bg-gray-100 {
+  background-color: var(--admin-secondary) !important;
+}
+
+.admin-shell .border-gray-100,
+.admin-shell .border-gray-200 {
+  border-color: var(--admin-border) !important;
+}
+
+.admin-shell .border-gray-300 {
+  border-color: var(--admin-input) !important;
+}
+
+.admin-shell .text-gray-900 {
+  color: var(--admin-card-foreground) !important;
+}
+
+.admin-shell .text-gray-700 {
+  color: var(--admin-secondary-foreground) !important;
+}
+
+.admin-shell .text-gray-600 {
+  color: var(--admin-accent-foreground) !important;
+}
+
+.admin-shell .text-gray-500,
+.admin-shell .text-gray-400 {
+  color: var(--admin-muted) !important;
+}
+
+.admin-shell .hover\:bg-gray-50:hover,
+.admin-shell .hover\:bg-gray-100:hover {
+  background-color: rgba(255, 136, 0, 0.08) !important;
+}
+
+.admin-shell .hover\:text-gray-900:hover,
+.admin-shell .hover\:text-gray-600:hover {
+  color: var(--admin-card-foreground) !important;
+}
+
+.admin-shell .focus\:border-brand-accent:focus,
+.admin-shell .focus\:ring-brand-accent\/20:focus {
+  border-color: var(--admin-primary) !important;
+}
+
+.admin-shell .bg-white.border,
+.admin-shell .border.border-gray-200,
+.admin-shell .border-2.border-dashed {
+  box-shadow: var(--admin-shadow-md);
+}
+
+.admin-shell .bg-brand-accent,
+.admin-shell .hover\:bg-brand-accent:hover,
+.admin-shell .focus\:bg-brand-accent:focus {
+  background-color: var(--admin-primary) !important;
+}
+
+.admin-shell [class*="bg-brand-accent/"] {
+  background-color: rgba(255, 136, 0, 0.10) !important;
+}
+
+.admin-shell .text-brand-accent,
+.admin-shell .text-brand-secondary,
+.admin-shell .hover\:text-brand-accent:hover,
+.admin-shell .hover\:text-brand-secondary:hover,
+.admin-shell .focus\:text-brand-accent:focus {
+  color: var(--admin-primary) !important;
+}
+
+.admin-shell .border-brand-accent,
+.admin-shell .border-brand-secondary,
+.admin-shell .hover\:border-brand-accent:hover,
+.admin-shell .hover\:border-brand-secondary:hover,
+.admin-shell .focus\:border-brand-accent:focus {
+  border-color: var(--admin-primary) !important;
+}
+
+.admin-shell [class*="border-brand-accent/"] {
+  border-color: rgba(255, 136, 0, 0.22) !important;
+}
+
+.admin-shell .ring-brand-accent,
+.admin-shell .focus\:ring-brand-accent\/20:focus {
+  --tw-ring-color: var(--admin-ring) !important;
+}
+
+.admin-shell .accent-brand-accent {
+  accent-color: var(--admin-primary) !important;
+}
+
+/* Fix browser autofill background */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  transition: background-color 5000s ease-in-out 0s !important;
+  -webkit-text-fill-color: #171717 !important;
+}
+
+/* Hide native password reveal icons */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+input::-webkit-credentials-auto-fill-button {
+  visibility: hidden;
+  pointer-events: none;
+  position: absolute;
+  right: 0;
 }
