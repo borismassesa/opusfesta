@@ -46,11 +46,19 @@ function formatDateLabel(isoDate: string) {
   return local.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function formatTimeSlot(slot: string) {
-  const [h, m] = slot.split(':').map(Number);
+function formatTime(t: string) {
+  const [h, m] = t.split(':').map(Number);
   const ampm = h >= 12 ? 'PM' : 'AM';
   const hour = h % 12 || 12;
   return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+function formatTimeSlot(slot: string) {
+  if (slot.includes('-')) {
+    const [from, to] = slot.split('-');
+    return `${formatTime(from)} \u2013 ${formatTime(to)}`;
+  }
+  return formatTime(slot);
 }
 
 export default function AvailabilityPage() {
@@ -62,7 +70,8 @@ export default function AvailabilityPage() {
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(() => toIsoDate(new Date()));
-  const [newSlotTime, setNewSlotTime] = useState('09:00');
+  const [newSlotFrom, setNewSlotFrom] = useState('09:00');
+  const [newSlotTo, setNewSlotTo] = useState('17:00');
   const [newSlotStatus, setNewSlotStatus] = useState<'available' | 'blocked'>('blocked');
   const [newSlotNote, setNewSlotNote] = useState('');
 
@@ -189,18 +198,24 @@ export default function AvailabilityPage() {
   };
 
   const addOrUpdateSpecificSlot = () => {
-    if (!/^\d{2}:\d{2}$/.test(newSlotTime)) return;
+    if (!/^\d{2}:\d{2}$/.test(newSlotFrom) || !/^\d{2}:\d{2}$/.test(newSlotTo)) return;
+    if (newSlotFrom >= newSlotTo) {
+      setError('End time must be after start time');
+      return;
+    }
 
-    const key = getEntryKey(selectedDate, newSlotTime);
+    const timeSlot = `${newSlotFrom}-${newSlotTo}`;
+    const key = getEntryKey(selectedDate, timeSlot);
     const existing = availability.get(key);
     upsertEntry({
       id: existing?.id,
       date: selectedDate,
-      time_slot: newSlotTime,
+      time_slot: timeSlot,
       is_available: newSlotStatus === 'available',
       note: newSlotNote.trim() || null,
     });
     setNewSlotNote('');
+    setError(null);
   };
 
   const toggleSpecificSlot = (entry: AvailabilityEntry) => {
@@ -539,22 +554,38 @@ export default function AvailabilityPage() {
               <div>
                 <p className="text-xs font-medium text-[var(--admin-muted)] uppercase tracking-wider mb-3">Add Time Slot</p>
                 <div className="space-y-2.5">
-                  <div className="grid grid-cols-2 gap-2.5">
-                    <input
-                      type="time"
-                      value={newSlotTime}
-                      onChange={(e) => setNewSlotTime(e.target.value)}
-                      className="h-9 border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-3 text-sm text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] focus:border-[var(--admin-primary)]"
-                    />
-                    <select
-                      value={newSlotStatus}
-                      onChange={(e) => setNewSlotStatus(e.target.value as 'available' | 'blocked')}
-                      className="h-9 border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-3 text-sm text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] focus:border-[var(--admin-primary)]"
-                    >
-                      <option value="blocked">Blocked</option>
-                      <option value="available">Open</option>
-                    </select>
+                  {/* From / To row */}
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <div>
+                      <label className="block text-[11px] text-[var(--admin-muted)] mb-1">From</label>
+                      <input
+                        type="time"
+                        value={newSlotFrom}
+                        onChange={(e) => setNewSlotFrom(e.target.value)}
+                        className="w-full h-9 border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-3 text-sm text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] focus:border-[var(--admin-primary)]"
+                      />
+                    </div>
+                    <span className="text-[var(--admin-muted)] text-xs mt-5">&rarr;</span>
+                    <div>
+                      <label className="block text-[11px] text-[var(--admin-muted)] mb-1">To</label>
+                      <input
+                        type="time"
+                        value={newSlotTo}
+                        onChange={(e) => setNewSlotTo(e.target.value)}
+                        className="w-full h-9 border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-3 text-sm text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] focus:border-[var(--admin-primary)]"
+                      />
+                    </div>
                   </div>
+                  {/* Status */}
+                  <select
+                    value={newSlotStatus}
+                    onChange={(e) => setNewSlotStatus(e.target.value as 'available' | 'blocked')}
+                    className="w-full h-9 border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-3 text-sm text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] focus:border-[var(--admin-primary)]"
+                  >
+                    <option value="blocked">Blocked</option>
+                    <option value="available">Open</option>
+                  </select>
+                  {/* Note */}
                   <input
                     type="text"
                     placeholder="Optional note..."

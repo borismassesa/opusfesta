@@ -14,7 +14,10 @@ function isMonthKey(value: string) {
 
 function normalizeTimeSlot(slot?: string | null) {
   if (!slot || slot === ALL_DAY_SLOT) return ALL_DAY_SLOT;
-  return /^\d{2}:\d{2}$/.test(slot) ? slot : null;
+  // Accept single time "HH:MM" or range "HH:MM-HH:MM"
+  if (/^\d{2}:\d{2}$/.test(slot)) return slot;
+  if (/^\d{2}:\d{2}-\d{2}:\d{2}$/.test(slot)) return slot;
+  return null;
 }
 
 export async function GET(req: NextRequest) {
