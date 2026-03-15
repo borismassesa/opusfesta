@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { BsChevronLeft, BsChevronRight, BsTrash, BsClock, BsCalendar3, BsPlusLg, BsCircleFill } from 'react-icons/bs';
+import { BsChevronLeft, BsChevronRight, BsTrash, BsClock, BsCalendar3, BsPlusLg, BsCircleFill, BsBuilding } from 'react-icons/bs';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminToast from '@/components/admin/ui/AdminToast';
 
@@ -13,7 +13,28 @@ interface AvailabilityEntry {
   note: string | null;
 }
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+interface DayHours {
+  open: boolean;
+  from: string;
+  to: string;
+}
+
+type WorkingHours = Record<string, DayHours>;
+
+const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const DEFAULT_WORKING_HOURS: WorkingHours = {
+  sunday: { open: false, from: '09:00', to: '17:00' },
+  monday: { open: true, from: '09:00', to: '18:00' },
+  tuesday: { open: true, from: '09:00', to: '18:00' },
+  wednesday: { open: true, from: '09:00', to: '18:00' },
+  thursday: { open: true, from: '09:00', to: '18:00' },
+  friday: { open: true, from: '09:00', to: '18:00' },
+  saturday: { open: true, from: '10:00', to: '15:00' },
+};
+
+const DAYS = DAY_LABELS;
 const ALL_DAY_SLOT = 'all-day';
 
 function getMonthKey(d: Date) {
@@ -74,6 +95,12 @@ export default function AvailabilityPage() {
   const [newSlotTo, setNewSlotTo] = useState('17:00');
   const [newSlotStatus, setNewSlotStatus] = useState<'available' | 'blocked'>('blocked');
   const [newSlotNote, setNewSlotNote] = useState('');
+
+  // Working hours state
+  const [workingHours, setWorkingHours] = useState<WorkingHours>(DEFAULT_WORKING_HOURS);
+  const [workingHoursLoading, setWorkingHoursLoading] = useState(true);
+  const [workingHoursSaving, setWorkingHoursSaving] = useState(false);
+  const [workingHoursDirty, setWorkingHoursDirty] = useState(false);
 
   const year = current.getFullYear();
   const month = current.getMonth();
@@ -137,6 +164,46 @@ export default function AvailabilityPage() {
   }, [monthKey]);
 
   useEffect(() => { fetchAvailability(); }, [fetchAvailability]);
+
+  // Fetch working hours from studio_settings
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/settings');
+        if (res.ok) {
+          const data = await res.json();
+          const wh = (data.settings || []).find((s: { key: string }) => s.key === 'working_hours');
+          if (wh?.value) setWorkingHours({ ...DEFAULT_WORKING_HOURS, ...wh.value });
+        }
+      } catch { /* ignore */ }
+      setWorkingHoursLoading(false);
+    })();
+  }, []);
+
+  const saveWorkingHours = async () => {
+    setWorkingHoursSaving(true);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'working_hours', value: workingHours }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setWorkingHoursDirty(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save working hours');
+    } finally {
+      setWorkingHoursSaving(false);
+    }
+  };
+
+  const updateDayHours = (dayKey: string, updates: Partial<DayHours>) => {
+    setWorkingHours(prev => ({
+      ...prev,
+      [dayKey]: { ...prev[dayKey], ...updates },
+    }));
+    setWorkingHoursDirty(true);
+  };
 
   useEffect(() => {
     const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
@@ -598,6 +665,93 @@ export default function AvailabilityPage() {
                   </AdminButton>
                 </div>
               </div>
+            </div>
+          </div>
+
+          {/* Working Hours */}
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-[var(--admin-radius)] shadow-[var(--admin-shadow-sm)] overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--admin-border)] flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 flex items-center justify-center rounded-[calc(var(--admin-radius)-2px)] bg-[var(--admin-secondary)]">
+                  <BsBuilding className="w-4 h-4 text-[var(--admin-accent-foreground)]" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--admin-foreground)]">Studio Hours</p>
+                  <p className="text-xs text-[var(--admin-muted)] mt-0.5">Default weekly schedule</p>
+                </div>
+              </div>
+              {workingHoursDirty && (
+                <AdminButton size="sm" onClick={saveWorkingHours} loading={workingHoursSaving}>
+                  Save
+                </AdminButton>
+              )}
+            </div>
+
+            <div className="p-5">
+              {workingHoursLoading ? (
+                <div className="space-y-3">
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <div key={i} className="h-10 bg-[var(--admin-muted-surface)] animate-pulse rounded-[calc(var(--admin-radius)-4px)]" />
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {DAY_KEYS.map((dayKey, i) => {
+                    const day = workingHours[dayKey];
+                    return (
+                      <div
+                        key={dayKey}
+                        className={`
+                          flex items-center gap-3 px-3.5 py-2.5 rounded-[calc(var(--admin-radius)-4px)] border transition-colors
+                          ${day.open
+                            ? 'border-[var(--admin-border)] bg-[var(--admin-card)]'
+                            : 'border-[var(--admin-border)] bg-[var(--admin-muted-surface)]'
+                          }
+                        `}
+                      >
+                        {/* Day toggle */}
+                        <button
+                          onClick={() => updateDayHours(dayKey, { open: !day.open })}
+                          className={`
+                            relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors duration-200
+                            ${day.open ? 'bg-emerald-500' : 'bg-gray-300'}
+                          `}
+                        >
+                          <span className={`
+                            inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200
+                            ${day.open ? 'translate-x-[18px]' : 'translate-x-[3px]'}
+                          `} />
+                        </button>
+
+                        {/* Day label */}
+                        <span className={`text-sm font-medium w-10 ${day.open ? 'text-[var(--admin-foreground)]' : 'text-[var(--admin-muted)]'}`}>
+                          {DAY_LABELS[i]}
+                        </span>
+
+                        {day.open ? (
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                            <input
+                              type="time"
+                              value={day.from}
+                              onChange={(e) => updateDayHours(dayKey, { from: e.target.value })}
+                              className="h-7 w-[5.5rem] border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-2 text-xs text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-1 focus:ring-[var(--admin-ring)]"
+                            />
+                            <span className="text-[var(--admin-muted)] text-[10px]">&ndash;</span>
+                            <input
+                              type="time"
+                              value={day.to}
+                              onChange={(e) => updateDayHours(dayKey, { to: e.target.value })}
+                              className="h-7 w-[5.5rem] border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-2 text-xs text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-1 focus:ring-[var(--admin-ring)]"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[var(--admin-muted)] italic">Closed</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
