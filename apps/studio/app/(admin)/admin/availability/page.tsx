@@ -509,6 +509,91 @@ export default function AvailabilityPage() {
               </div>
             </div>
           )}
+
+          {/* Working Hours — below calendar */}
+          <div className="border-t border-[var(--admin-border)]">
+            <div className="px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 flex items-center justify-center rounded-[calc(var(--admin-radius)-2px)] bg-[var(--admin-secondary)]">
+                  <BsBuilding className="w-4 h-4 text-[var(--admin-accent-foreground)]" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--admin-foreground)]">Studio Hours</p>
+                  <p className="text-xs text-[var(--admin-muted)] mt-0.5">Default weekly schedule</p>
+                </div>
+              </div>
+              {workingHoursDirty && (
+                <AdminButton size="sm" onClick={saveWorkingHours} loading={workingHoursSaving}>
+                  Save
+                </AdminButton>
+              )}
+            </div>
+
+            <div className="px-6 pb-5">
+              {workingHoursLoading ? (
+                <div className="grid grid-cols-7 gap-3">
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <div key={i} className="h-20 bg-[var(--admin-muted-surface)] animate-pulse rounded-[calc(var(--admin-radius)-4px)]" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                  {DAY_KEYS.map((dayKey, i) => {
+                    const day = workingHours[dayKey];
+                    return (
+                      <div
+                        key={dayKey}
+                        className={`
+                          flex flex-col items-center gap-2.5 px-3 py-3.5 rounded-[calc(var(--admin-radius)-4px)] border transition-colors
+                          ${day.open
+                            ? 'border-[var(--admin-border)] bg-[var(--admin-card)]'
+                            : 'border-[var(--admin-border)] bg-[var(--admin-muted-surface)]'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <span className={`text-xs font-semibold uppercase tracking-wide ${day.open ? 'text-[var(--admin-foreground)]' : 'text-[var(--admin-muted)]'}`}>
+                            {DAY_LABELS[i]}
+                          </span>
+                          <button
+                            onClick={() => updateDayHours(dayKey, { open: !day.open })}
+                            className={`
+                              relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors duration-200
+                              ${day.open ? 'bg-emerald-500' : 'bg-gray-300'}
+                            `}
+                          >
+                            <span className={`
+                              inline-block h-3 w-3 rounded-full bg-white shadow-sm transition-transform duration-200
+                              ${day.open ? 'translate-x-[13px]' : 'translate-x-[2px]'}
+                            `} />
+                          </button>
+                        </div>
+
+                        {day.open ? (
+                          <div className="flex flex-col gap-1 w-full">
+                            <input
+                              type="time"
+                              value={day.from}
+                              onChange={(e) => updateDayHours(dayKey, { from: e.target.value })}
+                              className="h-7 w-full border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-2 text-xs text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-1 focus:ring-[var(--admin-ring)]"
+                            />
+                            <input
+                              type="time"
+                              value={day.to}
+                              onChange={(e) => updateDayHours(dayKey, { to: e.target.value })}
+                              className="h-7 w-full border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-2 text-xs text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-1 focus:ring-[var(--admin-ring)]"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[var(--admin-muted)] italic py-3.5">Closed</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Day detail panel */}
@@ -665,93 +750,6 @@ export default function AvailabilityPage() {
                   </AdminButton>
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Working Hours */}
-          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-[var(--admin-radius)] shadow-[var(--admin-shadow-sm)] overflow-hidden">
-            <div className="px-5 py-4 border-b border-[var(--admin-border)] flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 flex items-center justify-center rounded-[calc(var(--admin-radius)-2px)] bg-[var(--admin-secondary)]">
-                  <BsBuilding className="w-4 h-4 text-[var(--admin-accent-foreground)]" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-[var(--admin-foreground)]">Studio Hours</p>
-                  <p className="text-xs text-[var(--admin-muted)] mt-0.5">Default weekly schedule</p>
-                </div>
-              </div>
-              {workingHoursDirty && (
-                <AdminButton size="sm" onClick={saveWorkingHours} loading={workingHoursSaving}>
-                  Save
-                </AdminButton>
-              )}
-            </div>
-
-            <div className="p-5">
-              {workingHoursLoading ? (
-                <div className="space-y-3">
-                  {Array.from({ length: 7 }).map((_, i) => (
-                    <div key={i} className="h-10 bg-[var(--admin-muted-surface)] animate-pulse rounded-[calc(var(--admin-radius)-4px)]" />
-                  ))}
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {DAY_KEYS.map((dayKey, i) => {
-                    const day = workingHours[dayKey];
-                    return (
-                      <div
-                        key={dayKey}
-                        className={`
-                          flex items-center gap-3 px-3.5 py-2.5 rounded-[calc(var(--admin-radius)-4px)] border transition-colors
-                          ${day.open
-                            ? 'border-[var(--admin-border)] bg-[var(--admin-card)]'
-                            : 'border-[var(--admin-border)] bg-[var(--admin-muted-surface)]'
-                          }
-                        `}
-                      >
-                        {/* Day toggle */}
-                        <button
-                          onClick={() => updateDayHours(dayKey, { open: !day.open })}
-                          className={`
-                            relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors duration-200
-                            ${day.open ? 'bg-emerald-500' : 'bg-gray-300'}
-                          `}
-                        >
-                          <span className={`
-                            inline-block h-3.5 w-3.5 rounded-full bg-white shadow-sm transition-transform duration-200
-                            ${day.open ? 'translate-x-[18px]' : 'translate-x-[3px]'}
-                          `} />
-                        </button>
-
-                        {/* Day label */}
-                        <span className={`text-sm font-medium w-10 ${day.open ? 'text-[var(--admin-foreground)]' : 'text-[var(--admin-muted)]'}`}>
-                          {DAY_LABELS[i]}
-                        </span>
-
-                        {day.open ? (
-                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
-                            <input
-                              type="time"
-                              value={day.from}
-                              onChange={(e) => updateDayHours(dayKey, { from: e.target.value })}
-                              className="h-7 w-[5.5rem] border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-2 text-xs text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-1 focus:ring-[var(--admin-ring)]"
-                            />
-                            <span className="text-[var(--admin-muted)] text-[10px]">&ndash;</span>
-                            <input
-                              type="time"
-                              value={day.to}
-                              onChange={(e) => updateDayHours(dayKey, { to: e.target.value })}
-                              className="h-7 w-[5.5rem] border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-2 text-xs text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-1 focus:ring-[var(--admin-ring)]"
-                            />
-                          </div>
-                        ) : (
-                          <span className="text-xs text-[var(--admin-muted)] italic">Closed</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
             </div>
           </div>
 
