@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 interface HeroSectionProps {
   content?: Record<string, unknown>;
@@ -22,7 +22,29 @@ export default function HeroSection({ content }: HeroSectionProps) {
     'https://randomuser.me/api/portraits/women/44.jpg',
     'https://randomuser.me/api/portraits/men/75.jpg',
   ];
+
+  // Video controls from CMS
+  const videoSpeed = Number(content?.video_speed) || 0.5;
+  const videoStart = Number(content?.video_start) || 0;
+  const videoEnd = Number(content?.video_end) || 0;
+
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleLoadedMetadata = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.playbackRate = videoSpeed;
+    if (videoStart > 0) video.currentTime = videoStart;
+    video.play().catch(() => {});
+  }, [videoSpeed, videoStart]);
+
+  const handleTimeUpdate = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (videoEnd > 0 && video.currentTime >= videoEnd) {
+      video.currentTime = videoStart;
+    }
+  }, [videoStart, videoEnd]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -40,6 +62,8 @@ export default function HeroSection({ content }: HeroSectionProps) {
             muted
             loop
             playsInline
+            onLoadedMetadata={handleLoadedMetadata}
+            onTimeUpdate={videoEnd > 0 ? handleTimeUpdate : undefined}
             className="absolute top-0 right-0 w-full h-full object-cover opacity-90"
           >
             <source src={videoUrl} type="video/mp4" />
