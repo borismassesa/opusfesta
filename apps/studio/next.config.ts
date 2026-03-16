@@ -36,18 +36,6 @@ const nextConfig: NextConfig = {
     '.spock.replit.dev',
     '.replit.dev',
   ],
-  async rewrites() {
-    return [
-      {
-        source: '/studio-admin',
-        destination: '/admin',
-      },
-      {
-        source: '/studio-admin/:path*',
-        destination: '/admin/:path*',
-      },
-    ];
-  },
 };
 
 export default nextConfig;
