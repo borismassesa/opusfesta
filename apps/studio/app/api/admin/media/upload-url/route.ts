@@ -14,9 +14,7 @@ export async function POST(req: NextRequest) {
     const { data, error } = await db.storage.from('studio-assets').createSignedUploadUrl(path);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/studio-assets/${path}`;
-    // Extract the token from the signed URL for client-side upload
-    const token = new URL(data.signedUrl).searchParams.get('token') ?? '';
     revalidatePath('/', 'layout');
-    return NextResponse.json({ signedUrl: data.signedUrl, publicUrl, path, token });
+    return NextResponse.json({ signedUrl: data.signedUrl, publicUrl, path });
   } catch (e) { if (e instanceof NextResponse) return e; return NextResponse.json({ error: 'Internal server error' }, { status: 500 }); }
 }
