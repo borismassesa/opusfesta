@@ -2,7 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { BsArrowLeft, BsTrash, BsSend } from 'react-icons/bs';
+import Link from 'next/link';
+import { BsArrowLeft, BsTrash, BsSend, BsChatSquareText, BsBoxArrowUpRight } from 'react-icons/bs';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminLifecycleBadge from '@/components/admin/ui/AdminLifecycleBadge';
 import { AdminTextarea } from '@/components/admin/ui/AdminInput';
@@ -15,13 +16,14 @@ import type { BookingWithRelations, BookingLifecycleStatus } from '@/lib/booking
 import { formatTZS } from '@/lib/booking-types';
 import type { StudioMessage } from '@/lib/studio-types';
 
+const MAX_PREVIEW_MESSAGES = 3;
+
 export default function BookingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [booking, setBooking] = useState<BookingWithRelations | null>(null);
   const [messages, setMessages] = useState<StudioMessage[]>([]);
   const [notes, setNotes] = useState('');
-  const [newMessage, setNewMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -77,18 +79,6 @@ export default function BookingDetailPage() {
     router.push('/admin/bookings?deleted=1');
   };
 
-  const handleSendMessage = async () => {
-    if (!newMessage.trim()) return;
-    const res = await fetch(`/api/admin/bookings/${id}/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ content: newMessage, sender: 'admin' }),
-    });
-    const data = await res.json();
-    if (data.message) setMessages(prev => [...prev, data.message]);
-    setNewMessage('');
-  };
-
   if (!booking) return <div className="bg-white border-3 border-brand-border h-64 animate-pulse" />;
 
   const ls = booking.lifecycle_status as BookingLifecycleStatus;
@@ -97,7 +87,7 @@ export default function BookingDetailPage() {
   const showPaymentTracker = ['contract_signed', 'deposit_pending', 'confirmed', 'rescheduled', 'completed'].includes(ls);
 
   return (
-    <div className="space-y-6 max-w-5xl">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <AdminButton variant="ghost" onClick={() => router.push('/admin/bookings')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
@@ -214,27 +204,54 @@ export default function BookingDetailPage() {
         <BookingTimeline events={booking.events} />
       </Section>
 
-      {/* Messages */}
+      {/* Messages Preview */}
       <Section title="Messages">
-        <div className="space-y-3 max-h-64 overflow-y-auto mb-4">
-          {messages.length === 0 && <p className="text-sm text-brand-muted">No messages yet.</p>}
-          {messages.map(m => (
-            <div key={m.id} className={`p-3 text-sm ${m.sender === 'admin' ? 'bg-brand-accent/5 border-l-2 border-brand-accent' : 'bg-brand-bg'}`}>
-              <p className="text-brand-dark">{m.content}</p>
-              <p className="text-xs text-brand-muted mt-1">{m.sender} · {new Date(m.created_at).toLocaleString()}</p>
+        {messages.length === 0 ? (
+          <div className="text-center py-4">
+            <BsChatSquareText className="w-8 h-8 text-brand-border mx-auto mb-3" />
+            <p className="text-sm text-brand-muted mb-3">No messages yet.</p>
+            <Link
+              href={`/admin/messages?booking=${id}`}
+              className="inline-flex items-center gap-2 text-sm font-bold text-brand-accent hover:underline"
+            >
+              <BsSend className="w-3.5 h-3.5" />
+              Start a conversation in Messages
+            </Link>
+          </div>
+        ) : (
+          <>
+            <div className="space-y-2 mb-4">
+              {messages.slice(-MAX_PREVIEW_MESSAGES).map(m => {
+                const isAdmin = (m.sender_type || m.sender) === 'admin';
+                return (
+                  <div key={m.id} className={`p-3 text-sm ${isAdmin ? 'bg-brand-accent/5 border-l-3 border-brand-accent ml-8' : 'bg-blue-50 border-l-3 border-blue-400 mr-8'}`}>
+                    <p className="text-brand-dark line-clamp-2">{m.content}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-xs text-brand-muted">
+                        {m.sender_name || (isAdmin ? 'Studio Admin' : 'Client')} · {new Date(m.created_at).toLocaleString()}
+                      </span>
+                      {!isAdmin && !m.read_at && (
+                        <span className="text-[10px] font-mono text-blue-500 font-bold">NEW</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            value={newMessage}
-            onChange={e => setNewMessage(e.target.value)}
-            placeholder="Type a message..."
-            className="flex-1 px-3 py-2 border-2 border-brand-border text-sm focus:outline-none focus:border-brand-accent"
-            onKeyDown={e => { if (e.key === 'Enter') handleSendMessage(); }}
-          />
-          <AdminButton onClick={handleSendMessage} icon={<BsSend className="w-4 h-4" />} size="md">Send</AdminButton>
-        </div>
+            {messages.length > MAX_PREVIEW_MESSAGES && (
+              <p className="text-xs text-brand-muted mb-3">
+                Showing last {MAX_PREVIEW_MESSAGES} of {messages.length} messages
+              </p>
+            )}
+            <Link
+              href={`/admin/messages?booking=${id}`}
+              className="inline-flex items-center gap-2 text-sm font-bold text-brand-accent hover:underline"
+            >
+              <BsBoxArrowUpRight className="w-3.5 h-3.5" />
+              Open full conversation in Messages
+            </Link>
+          </>
+        )}
       </Section>
 
       {/* Admin Notes */}

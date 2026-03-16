@@ -146,6 +146,102 @@ export async function releaseSlotHold(holdToken: string): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Admin: Create Booking on behalf of client
+// ---------------------------------------------------------------------------
+
+export async function createBookingAsAdmin(
+  intake: BookingIntakeData & { admin_notes?: string; source?: string },
+  initialStatus: 'intake_submitted' | 'qualified',
+  adminClerkId: string
+): Promise<StudioBookingLifecycle> {
+  const db = getStudioSupabaseAdmin();
+
+  // Normalize email
+  const normalizedEmail = intake.email.toLowerCase().trim();
+
+  // Find or create client profile
+  const { data: existingClient } = await db
+    .from('studio_client_profiles')
+    .select('id')
+    .ilike('email', normalizedEmail)
+    .limit(1)
+    .single();
+
+  let clientId: string;
+  if (existingClient) {
+    clientId = existingClient.id;
+    await db.from('studio_client_profiles').update({
+      name: intake.name,
+      phone: intake.phone || null,
+      whatsapp: intake.whatsapp || null,
+    }).eq('id', clientId);
+  } else {
+    const { data: newClient, error: clientError } = await db
+      .from('studio_client_profiles')
+      .insert({
+        email: normalizedEmail,
+        name: intake.name,
+        phone: intake.phone || null,
+        whatsapp: intake.whatsapp || null,
+      })
+      .select()
+      .single();
+
+    if (clientError || !newClient) {
+      throw new Error(`Failed to create client profile: ${clientError?.message}`);
+    }
+    clientId = newClient.id;
+  }
+
+  // Build admin notes with source prefix
+  const noteParts: string[] = [];
+  if (intake.source) noteParts.push(`[Source: ${intake.source}]`);
+  if (intake.admin_notes) noteParts.push(intake.admin_notes);
+  const adminNotes = noteParts.length > 0 ? noteParts.join('\n') : null;
+
+  // Create booking
+  const { data: booking, error: bookingError } = await db
+    .from('studio_bookings')
+    .insert({
+      name: intake.name,
+      email: normalizedEmail,
+      phone: intake.phone || null,
+      event_type: intake.event_type,
+      preferred_date: intake.preferred_date || intake.event_date || null,
+      location: intake.location || null,
+      service: intake.service || null,
+      message: intake.message || null,
+      admin_notes: adminNotes,
+      status: initialStatus === 'qualified' ? 'contacted' : 'new',
+      lifecycle_status: initialStatus,
+      client_id: clientId,
+      package_id: intake.package_id || null,
+      event_date: intake.event_date || null,
+      event_time_slot: intake.event_time_slot || null,
+      guest_count: intake.guest_count || null,
+    })
+    .select()
+    .single();
+
+  if (bookingError || !booking) {
+    throw new Error(`Failed to create booking: ${bookingError?.message}`);
+  }
+
+  // Log audit event
+  await logEvent(
+    booking.id,
+    'admin_created',
+    `admin:${adminClerkId}`,
+    null,
+    initialStatus,
+    `Booking created by admin${intake.source ? ` (source: ${intake.source})` : ''}`,
+    { source: intake.source || null }
+  );
+
+  return booking as StudioBookingLifecycle;
+}
+
+// ---------------------------------------------------------------------------
 // Intake Submission
 // ---------------------------------------------------------------------------
 
@@ -172,11 +268,15 @@ export async function submitIntake(
     throw new Error('Slot hold has expired. Please select a new time slot.');
   }
 
-  // Create or find client profile
+  // Normalize email to lowercase for consistent matching
+  const normalizedEmail = intake.email.toLowerCase().trim();
+
+  // Create or find client profile (case-insensitive to match portal-auth behavior)
   const { data: existingClient } = await db
     .from('studio_client_profiles')
     .select('id')
-    .eq('email', intake.email)
+    .ilike('email', normalizedEmail)
+    .limit(1)
     .single();
 
   let clientId: string;
@@ -192,7 +292,7 @@ export async function submitIntake(
     const { data: newClient, error: clientError } = await db
       .from('studio_client_profiles')
       .insert({
-        email: intake.email,
+        email: normalizedEmail,
         name: intake.name,
         phone: intake.phone || null,
         whatsapp: intake.whatsapp || null,
@@ -211,7 +311,7 @@ export async function submitIntake(
     .from('studio_bookings')
     .insert({
       name: intake.name,
-      email: intake.email,
+      email: normalizedEmail,
       phone: intake.phone || null,
       event_type: intake.event_type,
       preferred_date: intake.preferred_date || hold.date,
@@ -239,7 +339,7 @@ export async function submitIntake(
     .eq('hold_token', holdToken);
 
   // Log event
-  await logEvent(booking.id, 'intake_submitted', `client:${intake.email}`, null, 'intake_submitted', 'Booking request submitted');
+  await logEvent(booking.id, 'intake_submitted', `client:${normalizedEmail}`, null, 'intake_submitted', 'Booking request submitted');
 
   // Generate view token
   const viewToken = generateClientToken(booking.id, 'view_booking');

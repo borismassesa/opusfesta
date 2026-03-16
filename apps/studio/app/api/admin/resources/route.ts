@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 
@@ -27,6 +28,7 @@ export async function POST(req: NextRequest) {
       is_active: body.is_active ?? true, metadata: body.metadata || {},
     }).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    revalidatePath('/', 'layout');
     return NextResponse.json({ resource: data }, { status: 201 });
   } catch (e) {
     if (e instanceof NextResponse) return e;

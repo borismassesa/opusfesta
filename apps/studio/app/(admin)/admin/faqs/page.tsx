@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminTable from '@/components/admin/ui/AdminTable';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminToast from '@/components/admin/ui/AdminToast';
+import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import { BsPlus } from 'react-icons/bs';
 
 interface Faq {
@@ -29,6 +30,16 @@ export default function FaqsPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
+      <AdminPageHeader
+        title="FAQs"
+        description="Manage frequently asked questions. These appear on the FAQ section of your website, helping clients find answers without reaching out."
+        tips={[
+          'Published FAQs are visible on the public site. Use drafts to prepare answers before publishing.',
+          'Sort order controls display sequence — put the most commonly asked questions first.',
+          'Keep answers concise but helpful. Link to relevant pages if more detail is needed.',
+          'Common topics: pricing, booking process, turnaround time, cancellation policy, what to expect.',
+        ]}
+      />
       <div className="flex items-center justify-end">
         <AdminButton href="/admin/faqs/new" icon={<BsPlus className="w-4 h-4" />}>New FAQ</AdminButton>
       </div>

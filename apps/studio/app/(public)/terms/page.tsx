@@ -2,8 +2,8 @@ import type { Metadata } from 'next';
 import PageLayout from '@/components/PageLayout';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | OpusFesta Studio',
-  description: 'Terms and conditions for using OpusFesta Studio services.',
+  title: 'Terms of Service | OpusStudio',
+  description: 'Terms and conditions for using OpusStudio services.',
 };
 
 export default function TermsPage() {
@@ -22,7 +22,7 @@ export default function TermsPage() {
           <div className="space-y-8 text-neutral-600 font-light leading-relaxed">
             <div>
               <h2 className="text-lg font-bold text-brand-dark tracking-tight mb-3">1. Services</h2>
-              <p>OpusFesta Studio provides professional photography, videography, and visual content creation services. All services are subject to availability and confirmed upon receipt of a signed agreement and deposit payment.</p>
+              <p>OpusStudio provides professional photography, videography, and visual content creation services. All services are subject to availability and confirmed upon receipt of a signed agreement and deposit payment.</p>
             </div>
 
             <div>
@@ -42,7 +42,7 @@ export default function TermsPage() {
 
             <div>
               <h2 className="text-lg font-bold text-brand-dark tracking-tight mb-3">5. Copyright & Usage</h2>
-              <p>OpusFesta Studio retains copyright of all produced content. Clients receive a perpetual, non-exclusive licence to use delivered materials for personal or agreed commercial purposes. We reserve the right to use completed work in our portfolio and marketing materials unless a confidentiality agreement is in place.</p>
+              <p>OpusStudio retains copyright of all produced content. Clients receive a perpetual, non-exclusive licence to use delivered materials for personal or agreed commercial purposes. We reserve the right to use completed work in our portfolio and marketing materials unless a confidentiality agreement is in place.</p>
             </div>
 
             <div>

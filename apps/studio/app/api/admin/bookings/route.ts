@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
+import { createBookingAsAdmin } from '@/lib/booking-service';
 
 const PAGE_SIZE = 20;
 
@@ -42,5 +43,47 @@ export async function GET(req: NextRequest) {
   } catch (e) {
     if (e instanceof NextResponse) return e;
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
+export async function POST(req: NextRequest) {
+  try {
+    const { clerkId } = await requireStudioRole('studio_editor');
+    const body = await req.json();
+
+    // Validate required fields
+    const { name, email, event_type } = body;
+    if (!name?.trim()) return NextResponse.json({ error: 'Client name is required' }, { status: 400 });
+    if (!email?.trim()) return NextResponse.json({ error: 'Client email is required' }, { status: 400 });
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    if (!event_type?.trim()) return NextResponse.json({ error: 'Event type is required' }, { status: 400 });
+
+    const initialStatus = body.initial_status === 'intake_submitted' ? 'intake_submitted' : 'qualified';
+
+    const booking = await createBookingAsAdmin(
+      {
+        name: body.name.trim(),
+        email: body.email.trim(),
+        phone: body.phone || undefined,
+        whatsapp: body.whatsapp || undefined,
+        event_type: body.event_type,
+        event_date: body.event_date || undefined,
+        event_time_slot: body.event_time_slot || undefined,
+        location: body.location || undefined,
+        service: body.service || undefined,
+        guest_count: body.guest_count ? parseInt(body.guest_count) : undefined,
+        message: body.message || undefined,
+        admin_notes: body.admin_notes || undefined,
+        source: body.source || undefined,
+      },
+      initialStatus,
+      clerkId
+    );
+
+    return NextResponse.json({ booking }, { status: 201 });
+  } catch (e) {
+    if (e instanceof NextResponse) return e;
+    const message = e instanceof Error ? e.message : 'Failed to create booking';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

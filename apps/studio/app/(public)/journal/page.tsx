@@ -1,16 +1,19 @@
 import type { Metadata } from 'next';
 import PageLayout from '@/components/PageLayout';
 import JournalFeed from '@/components/JournalFeed';
+import { getPublishedArticles } from '@/lib/data-access';
 
 export const metadata: Metadata = {
-  title: 'Journal | OpusFesta Studio',
-  description: 'Insights, behind-the-scenes, and creative thinking from the OpusFesta Studio team.',
+  title: 'Journal | OpusStudio',
+  description: 'Insights, behind-the-scenes, and creative thinking from the OpusStudio team.',
 };
 
-export default function JournalPage() {
+export default async function JournalPage() {
+  const articles = await getPublishedArticles();
+
   return (
     <PageLayout>
-      <JournalFeed />
+      <JournalFeed articles={articles} />
     </PageLayout>
   );
 }

@@ -19,7 +19,7 @@ export default function BookingModalProvider({ children }: { children: ReactNode
   const router = useRouter();
 
   const openBookingModal = useCallback((service?: string) => {
-    const url = service ? `/book?service=${encodeURIComponent(service)}` : '/book';
+    const url = service ? `/portal/book?service=${encodeURIComponent(service)}` : '/portal/book';
     router.push(url);
   }, [router]);
 

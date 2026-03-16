@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 
@@ -14,6 +15,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   try { await requireStudioRole('studio_editor'); const { id } = await params; const body = await req.json();
     const { data, error } = await getStudioSupabaseAdmin().from('studio_team_members').update(body).eq('id', id).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    revalidatePath('/', 'layout');
+    revalidatePath('/about');
     return NextResponse.json({ member: data });
   } catch (e) { if (e instanceof NextResponse) return e; return NextResponse.json({ error: 'Internal server error' }, { status: 500 }); }
 }
@@ -22,6 +25,8 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   try { await requireStudioRole('studio_admin'); const { id } = await params;
     const { error } = await getStudioSupabaseAdmin().from('studio_team_members').delete().eq('id', id);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    revalidatePath('/', 'layout');
+    revalidatePath('/about');
     return NextResponse.json({ success: true });
   } catch (e) { if (e instanceof NextResponse) return e; return NextResponse.json({ error: 'Internal server error' }, { status: 500 }); }
 }

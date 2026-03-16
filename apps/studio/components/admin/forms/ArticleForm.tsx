@@ -3,6 +3,7 @@
 import { useState, lazy, Suspense } from 'react';
 import { AdminInput, AdminTextarea, AdminSelect } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
+import AdminMediaUpload from '@/components/admin/ui/AdminMediaUpload';
 import type { StudioArticle } from '@/lib/studio-types';
 
 const RichTextEditor = lazy(() => import('@/components/admin/editor/RichTextEditor'));
@@ -19,7 +20,7 @@ export default function ArticleForm({ initialData, onSubmit }: { initialData?: S
   const [form, setForm] = useState({
     title: initialData?.title || '', slug: initialData?.slug || '', excerpt: initialData?.excerpt || '',
     body_html: initialData?.body_html || '', cover_image: initialData?.cover_image || '',
-    author: initialData?.author || 'OpusFesta Studio', category: initialData?.category || 'Process',
+    author: initialData?.author || 'OpusStudio', category: initialData?.category || 'Process',
     is_published: initialData?.is_published || false, seo_title: initialData?.seo_title || '',
     seo_description: initialData?.seo_description || '',
   });
@@ -35,7 +36,7 @@ export default function ArticleForm({ initialData, onSubmit }: { initialData?: S
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-3xl">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-white border border-gray-200 p-6 space-y-4">
         <AdminInput label="Title" value={form.title} onChange={(e) => { set('title', e.target.value); if (!initialData) set('slug', slugify(e.target.value)); }} required />
         <AdminInput label="Slug" value={form.slug} onChange={(e) => set('slug', e.target.value)} required />
@@ -44,7 +45,7 @@ export default function ArticleForm({ initialData, onSubmit }: { initialData?: S
           <AdminInput label="Author" value={form.author} onChange={(e) => set('author', e.target.value)} />
           <AdminSelect label="Category" value={form.category} onChange={(e) => set('category', e.target.value)} options={categories} />
         </div>
-        <AdminInput label="Cover Image URL" value={form.cover_image} onChange={(e) => set('cover_image', e.target.value)} required />
+        <AdminMediaUpload label="Cover Image" value={form.cover_image} onChange={(url) => set('cover_image', url)} mediaType="image" />
       </div>
 
       <div className="bg-white border border-gray-200 p-6 space-y-4">

@@ -1,88 +1,64 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { projects, services } from '@/lib/data';
+import type { StudioProject, StudioService } from '@/lib/studio-types';
 
-const galleryItems = [
-  {
-    id: 'gallery-1',
-    title: projects[0].title,
-    subtitle: projects[0].category,
-    image: projects[0].image,
-    href: `/portfolio/${projects[0].slug}`,
-    cta: 'Open Project',
-    layout: 'md:col-span-6 md:row-span-2',
-  },
-  {
-    id: 'gallery-2',
-    title: projects[1].title,
-    subtitle: projects[1].category,
-    image: projects[1].image,
-    href: `/portfolio/${projects[1].slug}`,
-    cta: 'Open Project',
-    layout: 'md:col-span-3 md:row-span-1',
-  },
-  {
-    id: 'gallery-3',
-    title: services[0].title,
-    subtitle: 'Service Snapshot',
-    image: services[0].image,
-    href: '/services',
-    cta: 'View Service',
-    layout: 'md:col-span-3 md:row-span-1',
-  },
-  {
-    id: 'gallery-4',
-    title: projects[2].title,
-    subtitle: projects[2].category,
-    image: projects[2].image,
-    href: `/portfolio/${projects[2].slug}`,
-    cta: 'Open Project',
-    layout: 'md:col-span-3 md:row-span-1',
-  },
-  {
-    id: 'gallery-5',
-    title: projects[3].title,
-    subtitle: projects[3].category,
-    image: projects[3].image,
-    href: `/portfolio/${projects[3].slug}`,
-    cta: 'Open Project',
-    layout: 'md:col-span-3 md:row-span-1',
-  },
-  {
-    id: 'gallery-6',
-    title: services[2].title,
-    subtitle: 'Service Snapshot',
-    image: services[2].image,
-    href: '/services',
-    cta: 'View Service',
-    layout: 'md:col-span-4 md:row-span-1',
-  },
-  {
-    id: 'gallery-7',
-    title: services[3].title,
-    subtitle: 'Service Snapshot',
-    image: services[3].image,
-    href: '/services',
-    cta: 'View Service',
-    layout: 'md:col-span-4 md:row-span-1',
-  },
-  {
-    id: 'gallery-8',
-    title: services[4].title,
-    subtitle: 'Service Snapshot',
-    image: services[4].image,
-    href: '/services',
-    cta: 'View Service',
-    layout: 'md:col-span-4 md:row-span-1',
-  },
+interface GallerySectionProps {
+  projects?: StudioProject[];
+  services?: StudioService[];
+}
+
+const layouts = [
+  'md:col-span-6 md:row-span-2',
+  'md:col-span-3 md:row-span-1',
+  'md:col-span-3 md:row-span-1',
+  'md:col-span-3 md:row-span-1',
+  'md:col-span-3 md:row-span-1',
+  'md:col-span-4 md:row-span-1',
+  'md:col-span-4 md:row-span-1',
+  'md:col-span-4 md:row-span-1',
 ];
 
-export default function GallerySection() {
+export default function GallerySection({ projects = [], services = [] }: GallerySectionProps) {
   const sectionRef = useRef<HTMLElement>(null);
   const [isVisible, setIsVisible] = useState(false);
+
+  const galleryItems = useMemo(() => {
+    const items: { id: string; title: string; subtitle: string; image: string; href: string; cta: string; layout: string }[] = [];
+    // Interleave projects and services into the gallery grid
+    const projectSlots = [0, 1, 3, 4]; // gallery positions for projects
+    const serviceSlots = [2, 5, 6, 7]; // gallery positions for services
+    let pi = 0;
+    let si = 0;
+    for (let i = 0; i < 8; i++) {
+      if (projectSlots.includes(i) && pi < projects.length) {
+        const p = projects[pi++];
+        items.push({
+          id: `gallery-${i + 1}`,
+          title: p.title,
+          subtitle: p.category,
+          image: p.cover_image,
+          href: `/portfolio/${p.slug}`,
+          cta: 'Open Project',
+          layout: layouts[i],
+        });
+      } else if (serviceSlots.includes(i) && si < services.length) {
+        const s = services[si++];
+        items.push({
+          id: `gallery-${i + 1}`,
+          title: s.title,
+          subtitle: 'Service Snapshot',
+          image: s.cover_image,
+          href: '/services',
+          cta: 'View Service',
+          layout: layouts[i],
+        });
+      }
+    }
+    return items;
+  }, [projects, services]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -100,6 +76,8 @@ export default function GallerySection() {
 
     return () => observer.disconnect();
   }, []);
+
+  if (galleryItems.length === 0) return null;
 
   return (
     <section id="gallery" ref={sectionRef} className="relative z-10 py-24 bg-brand-bg">
