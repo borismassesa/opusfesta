@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 import { createAndSendQuote } from '@/lib/booking-service';
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const quote = await createAndSendQuote(id, body, clerkId);
+    revalidatePath('/', 'layout');
     return NextResponse.json({ quote });
   } catch (e) {
     if (e instanceof NextResponse) return e;

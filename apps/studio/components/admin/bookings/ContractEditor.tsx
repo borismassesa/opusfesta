@@ -50,7 +50,7 @@ ${quote ? `
 </li>
 <li><strong>Reschedule:</strong> First reschedule is free if requested 7+ days before the event. Subsequent reschedules incur a TZS 50,000 fee. Maximum 2 reschedules per booking.</li>
 <li><strong>Deliverables:</strong> Final deliverables will be provided within 14 business days after the event.</li>
-<li><strong>Usage Rights:</strong> OpusFesta Studio retains the right to use images/footage for portfolio and marketing purposes unless otherwise agreed in writing.</li>
+<li><strong>Usage Rights:</strong> OpusStudio retains the right to use images/footage for portfolio and marketing purposes unless otherwise agreed in writing.</li>
 </ol>
 
 <p>By signing this contract, the client agrees to the terms and conditions outlined above.</p>

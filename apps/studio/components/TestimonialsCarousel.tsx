@@ -2,54 +2,23 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import type { StudioTestimonial } from '@/lib/studio-types';
 
-export default function TestimonialsCarousel() {
+interface TestimonialsCarouselProps {
+  testimonials?: StudioTestimonial[];
+}
+
+export default function TestimonialsCarousel({ testimonials: dbTestimonials }: TestimonialsCarouselProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
 
-  const testimonials = [
-    {
-      quote:
-        "They didn't just ship visuals, they helped us rewrite how we talk about our product. The team feels proud to send people to our site now.",
-      author: 'Jamie Collins',
-      role: 'HEAD OF DESIGN, ORBITAL',
-      avatar:
-        'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/df748c19-7840-497b-84a2-85f34b0da910_320w.webp',
-    },
-    {
-      quote:
-        'OpusFesta Studio transformed our brand identity completely. Their attention to detail and creative vision exceeded all our expectations.',
-      author: 'Sarah Mitchell',
-      role: 'CEO, NEXUS TECH',
-      avatar:
-        'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/c6ec4622-d827-4c9e-9744-0c24c81f9515_320w.webp',
-    },
-    {
-      quote:
-        'Working with them felt like having an extension of our own team. They understood our vision from day one and delivered beyond imagination.',
-      author: 'Marcus Chen',
-      role: 'CREATIVE DIRECTOR, PULSE',
-      avatar:
-        'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/c8e30b9a-d4b3-47aa-9b4c-9f7d54f25460_320w.webp',
-    },
-    {
-      quote:
-        'The motion work they created for our launch was absolutely stunning. Our engagement metrics doubled within the first week.',
-      author: 'Elena Rodriguez',
-      role: 'FOUNDER, LUMINARE',
-      avatar:
-        'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/0c1f53d0-cc07-4bcf-8a06-9a7cf61f4757_320w.webp',
-    },
-    {
-      quote:
-        'Professional, creative, and incredibly responsive. They made the entire design process feel effortless and enjoyable.',
-      author: 'David Park',
-      role: 'VP MARKETING, HORIZON',
-      avatar:
-        'https://hoirqrkdgbmvpwutwuwj.supabase.co/storage/v1/object/public/assets/assets/3e6a3c0b-6b9e-4eb4-8fe1-9182d0819de9_320w.webp',
-    },
-  ];
+  const testimonials = (dbTestimonials ?? []).map((t) => ({
+    quote: t.quote,
+    author: t.author,
+    role: t.role,
+    avatar: t.avatar_url || '',
+  }));
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -72,6 +41,8 @@ export default function TestimonialsCarousel() {
   const goTo = useCallback((index: number) => {
     setCurrentIndex(index);
   }, []);
+
+  if (testimonials.length === 0) return null;
 
   const current = testimonials[currentIndex];
 

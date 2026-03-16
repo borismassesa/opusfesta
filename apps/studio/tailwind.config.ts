@@ -10,10 +10,10 @@ export default {
     extend: {
       colors: {
         'brand-dark': '#171717',
-        'brand-panel': '#FFF1E3',
-        'brand-accent': '#FF8800',
-        'brand-secondary': '#CC6500',
-        'brand-bg': '#FFF8F1',
+        'brand-panel': '#FCEAE5',
+        'brand-accent': '#D6492A',
+        'brand-secondary': '#B03A20',
+        'brand-bg': '#FDF5F3',
         'brand-border': '#171717',
         'brand-muted': '#8A7662',
       },
@@ -37,7 +37,7 @@ export default {
         'brutal-md': '4px 4px 0px 0px #171717, 4px 2px 4px -1px #171717',
         'brutal-lg': '4px 4px 0px 0px #171717, 4px 4px 6px -1px #171717',
         'brutal-xl': '4px 4px 0px 0px #171717, 4px 8px 10px -1px #171717',
-        'brutal-accent': '4px 4px 0px 0px #FF8800',
+        'brutal-accent': '4px 4px 0px 0px #D6492A',
       },
     },
   },

@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, useCallback } from 'react';
 import { BsUpload, BsTrash, BsCopy, BsCheck, BsX } from 'react-icons/bs';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import { ConfirmDeleteModal } from '@/components/admin/ui/AdminModal';
+import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import AdminToast from '@/components/admin/ui/AdminToast';
 
 interface MediaFile {
@@ -96,6 +97,16 @@ export default function MediaPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
+      <AdminPageHeader
+        title="Media Library"
+        description="Upload and manage images and videos used across your website. Files uploaded here can be used in projects, articles, team profiles, and page sections."
+        tips={[
+          'Supported formats: JPEG, PNG, WebP, AVIF for images — MP4, WebM for videos.',
+          'Maximum file size is 50MB. Use optimized/compressed images for faster page loading.',
+          'Hover over any image to copy its URL or delete it. Copied URLs can be pasted into other admin fields.',
+          'Deleting a file here does NOT automatically remove it from pages that reference it — update those pages too.',
+        ]}
+      />
 
       {/* BsUpload Zone */}
       <div

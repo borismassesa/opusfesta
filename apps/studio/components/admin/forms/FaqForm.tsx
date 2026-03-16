@@ -14,7 +14,7 @@ export default function FaqForm({ initialData, onSubmit }: { initialData?: Studi
   const set = (f: string, v: unknown) => setForm((p) => ({ ...p, [f]: v }));
 
   return (
-    <form onSubmit={async (e) => { e.preventDefault(); setLoading(true); await onSubmit(form); setLoading(false); }} className="space-y-6 max-w-2xl">
+    <form onSubmit={async (e) => { e.preventDefault(); setLoading(true); await onSubmit(form); setLoading(false); }} className="space-y-6">
       <div className="bg-white border border-gray-200 p-6 space-y-4">
         <AdminInput label="Question" value={form.question} onChange={(e) => set('question', e.target.value)} required />
         <AdminTextarea label="Answer" value={form.answer} onChange={(e) => set('answer', e.target.value)} required rows={5} />

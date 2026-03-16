@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 import { createAndSendContract } from '@/lib/booking-service';
@@ -39,6 +40,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const result = await createAndSendContract(id, body.contentHtml, clerkId);
+    revalidatePath('/', 'layout');
     return NextResponse.json(result);
   } catch (e) {
     if (e instanceof NextResponse) return e;

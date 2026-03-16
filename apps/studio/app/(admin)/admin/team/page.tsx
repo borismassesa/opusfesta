@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminTable from '@/components/admin/ui/AdminTable';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminToast from '@/components/admin/ui/AdminToast';
+import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import { BsPlus } from 'react-icons/bs';
 
 interface TeamMember {
@@ -30,6 +31,16 @@ export default function TeamPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
+      <AdminPageHeader
+        title="Team"
+        description="Manage your studio team members. Team profiles help clients know who they'll be working with and add a personal touch to your brand."
+        tips={[
+          'Published team members are visible on the public site. Draft profiles are hidden.',
+          'Add a professional photo, name, role/title, and a short bio for each member.',
+          'Sort order controls the display sequence — typically the studio owner/lead appears first.',
+          'Update profiles when team members change roles or new members join.',
+        ]}
+      />
       <div className="flex items-center justify-end">
         <AdminButton href="/admin/team/new" icon={<BsPlus className="w-4 h-4" />}>New Member</AdminButton>
       </div>

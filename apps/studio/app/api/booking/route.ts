@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     const confirmHtml = `
       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #F8F9FA; border: 4px solid #171717;">
         <div style="background: #171717; padding: 24px 32px;">
-          <h1 style="color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin: 0;">OPUSFESTA STUDIO</h1>
+          <h1 style="color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin: 0;">OpusStudio</h1>
         </div>
         <div style="padding: 32px;">
           <h2 style="font-size: 24px; font-weight: 800; color: #171717; letter-spacing: -0.5px; margin: 0 0 16px;">Thanks, ${safeName}.</h2>
@@ -106,14 +106,14 @@ export async function POST(request: NextRequest) {
           <div style="padding: 16px; background: #fff; border: 2px solid #171717;">
             <p style="margin: 0; font-size: 13px; color: #7E7383;">In the meantime, feel free to reply to this email with any additional details, inspiration, or questions.</p>
           </div>
-          <p style="margin-top: 32px; font-size: 12px; color: #999;">&mdash; The OpusFesta Studio Team</p>
+          <p style="margin-top: 32px; font-size: 12px; color: #999;">&mdash; The OpusStudio Team</p>
         </div>
       </div>
     `;
 
     const confirmResult = await sendEmail({
       to: email,
-      subject: `We've received your enquiry — OpusFesta Studio`,
+      subject: `We've received your enquiry — OpusStudio`,
       html: confirmHtml,
       replyTo: 'studio@opusfesta.com',
     });

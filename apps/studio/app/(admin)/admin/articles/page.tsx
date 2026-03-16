@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminTable from '@/components/admin/ui/AdminTable';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminToast from '@/components/admin/ui/AdminToast';
+import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import { BsPlus } from 'react-icons/bs';
 
 interface Article {
@@ -32,6 +33,17 @@ export default function ArticlesPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
+      <AdminPageHeader
+        title="Articles"
+        description="Write and publish blog posts for the Journal page. Articles help with SEO and showcase your expertise to potential clients."
+        livePage={{ label: 'View Journal', href: '/journal' }}
+        tips={[
+          'Published articles appear on the Journal page sorted by publish date (newest first).',
+          'Each article has its own page at /journal/[slug] — the slug is auto-generated from the title.',
+          'Add a compelling cover image and excerpt to attract readers from the listing page.',
+          'Use categories to organize articles (e.g. Behind the Scenes, Tips, Studio News).',
+        ]}
+      />
       <div className="flex items-center justify-end">
         <AdminButton href="/admin/articles/new" icon={<BsPlus className="w-4 h-4" />}>New Article</AdminButton>
       </div>

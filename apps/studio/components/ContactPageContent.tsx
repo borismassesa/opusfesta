@@ -193,7 +193,7 @@ export default function ContactPageContent() {
 
             <div className="border-4 border-brand-border overflow-hidden bg-white">
               <iframe
-                title="OpusFesta Studio Location"
+                title="OpusStudio Location"
                 src="https://www.openstreetmap.org/export/embed.html?bbox=39.1970%2C-6.7605%2C39.2754%2C-6.7002&amp;layer=mapnik&amp;marker=-6.7303%2C39.2362"
                 className="w-full h-[280px] border-0"
                 loading="lazy"

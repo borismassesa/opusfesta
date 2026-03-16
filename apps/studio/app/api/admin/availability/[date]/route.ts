@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 
@@ -31,6 +32,7 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
 
     const { error } = await query;
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    revalidatePath('/', 'layout');
     return NextResponse.json({ success: true });
   } catch (e) {
     if (e instanceof NextResponse) return e;

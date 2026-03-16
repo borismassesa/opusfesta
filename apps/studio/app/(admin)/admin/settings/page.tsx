@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react';
 import { AdminInput } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
+import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import AdminToast from '@/components/admin/ui/AdminToast';
 import { BsSave } from 'react-icons/bs';
 
 const SETTINGS_FIELDS = [
-  { key: 'studio_name', label: 'Studio Name', placeholder: 'OpusFesta Studio' },
+  { key: 'studio_name', label: 'Studio Name', placeholder: 'OpusStudio' },
   { key: 'studio_email', label: 'Email', placeholder: 'hello@opusfesta.com' },
   { key: 'studio_phone', label: 'Phone', placeholder: '+1 (555) 123-4567' },
   { key: 'studio_address', label: 'Address', placeholder: '123 Studio Street...' },
@@ -60,11 +61,21 @@ export default function SettingsPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
+      <AdminPageHeader
+        title="Settings"
+        description="Configure your studio's core information and social media links. These details are used in the website footer, contact page, and email notifications."
+        tips={[
+          'Studio name and contact details appear in the website footer and contact page.',
+          'Social media links are shown as icons in the footer — leave blank to hide a platform.',
+          'Changes are saved instantly and reflected on the live site within a minute.',
+          'Make sure your email and phone number are correct — clients use these to reach you.',
+        ]}
+      />
       <div className="flex items-center justify-end">
         {saved && <span className="text-sm text-green-600 font-medium">All settings saved</span>}
       </div>
 
-      <div className="bg-white border border-gray-200 p-6 space-y-6 max-w-2xl">
+      <div className="bg-white border border-gray-200 p-6 space-y-6">
         <div className="space-y-4">
           <h2 className="text-sm font-semibold text-gray-700 border-b border-gray-100 pb-2">Studio Information</h2>
           {SETTINGS_FIELDS.slice(0, 4).map((field) => (

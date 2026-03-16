@@ -38,7 +38,7 @@ SET cancelled_at = updated_at
 WHERE status = 'cancelled' AND cancelled_at IS NULL;
 
 -- Create audit events for backfilled bookings
-INSERT INTO studio_booking_events (booking_id, event_type, to_status, actor_type, metadata)
+INSERT INTO studio_booking_events (booking_id, event_type, to_status, actor, metadata)
 SELECT
   id,
   'status_change',

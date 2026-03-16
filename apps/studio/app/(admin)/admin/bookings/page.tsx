@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AdminTable from '@/components/admin/ui/AdminTable';
 import AdminLifecycleBadge from '@/components/admin/ui/AdminLifecycleBadge';
+import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import AdminToast from '@/components/admin/ui/AdminToast';
 import AdminPagination from '@/components/admin/ui/AdminPagination';
 import { STATUS_LABELS } from '@/lib/booking-state-machine';
@@ -44,9 +45,24 @@ export default function BookingsPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
+      <AdminPageHeader
+        title="Bookings"
+        description="Track and manage all client bookings through their lifecycle — from initial inquiry to completed event. Use filters to find bookings by status."
+        tips={[
+          'Each booking moves through stages: Intake → Qualified → Quote → Contract → Deposit → Confirmed → Completed.',
+          'Use the "Queue" view for action items that need your attention (new intakes, pending deposits, overdue follow-ups).',
+          'Click any booking to see full details, update its status, add notes, or send communications.',
+          'Cancelled bookings are kept for records but hidden from the active pipeline.',
+        ]}
+      />
 
-      <div className="flex items-center justify-between">
-        <h1 className="text-xl font-bold text-[var(--admin-foreground)]">Bookings</h1>
+      <div className="flex items-center justify-end gap-3">
+        <Link
+          href="/admin/bookings/new"
+          className="border-2 border-brand-dark bg-brand-dark text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-brand-accent hover:border-brand-accent transition-colors"
+        >
+          + New Booking
+        </Link>
         <Link
           href="/admin/bookings/queue"
           className="border-2 border-brand-accent bg-brand-accent text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-brand-dark hover:border-brand-dark transition-colors"

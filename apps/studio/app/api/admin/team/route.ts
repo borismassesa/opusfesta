@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 
@@ -18,6 +19,8 @@ export async function POST(req: NextRequest) {
       is_published: body.is_published ?? true, sort_order: body.sort_order || 0, social_links: body.social_links || {},
     }).select().single();
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    revalidatePath('/', 'layout');
+    revalidatePath('/about');
     return NextResponse.json({ member: data }, { status: 201 });
   } catch (e) { if (e instanceof NextResponse) return e; return NextResponse.json({ error: 'Internal server error' }, { status: 500 }); }
 }
