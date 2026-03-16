@@ -86,7 +86,7 @@ export async function initiatePayment(options: FlutterwavePaymentOptions): Promi
           phonenumber: options.phone || '',
         },
         customizations: {
-          title: 'OpusFesta Studio',
+          title: 'OpusStudio',
           description: `${options.paymentType} payment for booking`,
           logo: 'https://thefestaevents.com/logo.png',
         },

@@ -26,14 +26,14 @@ function layout(title: string, body: string): string {
 <tr><td align="center">
 <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border:3px solid #1a1a1a;max-width:600px">
 <tr><td style="background:#1a1a1a;color:#f5f5f0;padding:24px 32px;font-size:14px;font-weight:700;letter-spacing:1px">
-OPUSFESTA STUDIO
+OpusStudio
 </td></tr>
 <tr><td style="padding:32px;font-size:14px;line-height:1.6;color:#1a1a1a">
 <h2 style="margin:0 0 16px;font-size:18px;font-weight:700">${esc(title)}</h2>
 ${body}
 </td></tr>
 <tr><td style="padding:16px 32px;font-size:11px;color:#888;border-top:1px solid #e0e0e0;text-align:center">
-OpusFesta Studio — Dar es Salaam, Tanzania
+OpusStudio — Dar es Salaam, Tanzania
 </td></tr>
 </table>
 </td></tr>
@@ -55,10 +55,10 @@ function detailRow(label: string, value: string): string {
 // ---------------------------------------------------------------------------
 export function intakeReceivedEmail(booking: StudioBookingLifecycle) {
   return {
-    subject: `We've received your booking request — OpusFesta Studio`,
+    subject: `We've received your booking request — OpusStudio`,
     html: layout('Booking Request Received', `
 <p>Hi ${esc(booking.name)},</p>
-<p>Thank you for your interest in OpusFesta Studio! We've received your booking request and our team will review it shortly.</p>
+<p>Thank you for your interest in OpusStudio! We've received your booking request and our team will review it shortly.</p>
 <table cellpadding="0" cellspacing="0" style="width:100%;border:2px solid #1a1a1a;margin:16px 0">
 ${detailRow('Event Type', booking.event_type)}
 ${booking.event_date ? detailRow('Event Date', booking.event_date) : ''}
@@ -108,7 +108,7 @@ export function quoteSentEmail(
     .join('');
 
   return {
-    subject: `Your Quote from OpusFesta Studio — ${quote.quote_number}`,
+    subject: `Your Quote from OpusStudio — ${quote.quote_number}`,
     html: layout('Your Personalized Quote', `
 <p>Hi ${esc(booking.name)},</p>
 <p>We've prepared a quote for your ${esc(booking.event_type)}. Please review the details below.</p>
@@ -136,7 +136,7 @@ export function contractSentEmail(
   signDeadline: string
 ) {
   return {
-    subject: `Contract Ready for Signing — OpusFesta Studio`,
+    subject: `Contract Ready for Signing — OpusStudio`,
     html: layout('Your Contract is Ready', `
 <p>Hi ${esc(booking.name)},</p>
 <p>Your contract for the ${esc(booking.event_type)} is ready for your review and signature.</p>
@@ -155,7 +155,7 @@ export function depositRequestEmail(
   paymentUrl: string
 ) {
   return {
-    subject: `Deposit Payment Required — OpusFesta Studio`,
+    subject: `Deposit Payment Required — OpusStudio`,
     html: layout('Complete Your Deposit', `
 <p>Hi ${esc(booking.name)},</p>
 <p>Your contract has been signed! To confirm your booking, please complete the deposit payment.</p>
@@ -178,7 +178,7 @@ export function bookingConfirmedEmail(
   statusUrl: string
 ) {
   return {
-    subject: `Booking Confirmed! — OpusFesta Studio`,
+    subject: `Booking Confirmed! — OpusStudio`,
     html: layout('Your Booking is Confirmed', `
 <p>Hi ${esc(booking.name)},</p>
 <p>Great news — your booking has been confirmed! We're looking forward to your ${esc(booking.event_type)}.</p>
@@ -204,7 +204,7 @@ export function balanceReminderEmail(
   paymentUrl: string
 ) {
   return {
-    subject: `Balance Payment Reminder — OpusFesta Studio`,
+    subject: `Balance Payment Reminder — OpusStudio`,
     html: layout('Balance Payment Due Soon', `
 <p>Hi ${esc(booking.name)},</p>
 <p>This is a friendly reminder that your remaining balance is due soon.</p>
@@ -227,7 +227,7 @@ export function balanceOverdueEmail(
   paymentUrl: string
 ) {
   return {
-    subject: `URGENT: Balance Payment Overdue — OpusFesta Studio`,
+    subject: `URGENT: Balance Payment Overdue — OpusStudio`,
     html: layout('Balance Payment Overdue', `
 <p>Hi ${esc(booking.name)},</p>
 <p><strong>Your balance payment is overdue.</strong> You have a 48-hour grace period to complete payment before your booking is automatically cancelled.</p>
@@ -249,7 +249,7 @@ export function cancellationEmail(
   refund: { policyApplied: string; totalRefund: number }
 ) {
   return {
-    subject: `Booking Cancelled — OpusFesta Studio`,
+    subject: `Booking Cancelled — OpusStudio`,
     html: layout('Booking Cancelled', `
 <p>Hi ${esc(booking.name)},</p>
 <p>Your booking for ${esc(booking.event_type)} has been cancelled.</p>
@@ -275,7 +275,7 @@ export function rescheduleConfirmationEmail(
   statusUrl: string
 ) {
   return {
-    subject: `Booking Rescheduled — OpusFesta Studio`,
+    subject: `Booking Rescheduled — OpusStudio`,
     html: layout('Booking Rescheduled', `
 <p>Hi ${esc(booking.name)},</p>
 <p>Your booking has been rescheduled.</p>

@@ -1,15 +1,35 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { CATEGORIES, MOCK_JOURNAL_POSTS, JournalPost } from '@/app/(public)/journal/data';
+import type { StudioArticle } from '@/lib/studio-types';
 
-export default function JournalFeed() {
+interface JournalFeedProps {
+  articles?: StudioArticle[];
+}
+
+export default function JournalFeed({ articles = [] }: JournalFeedProps) {
   const [activeCategory, setActiveCategory] = useState('All');
-  
-  const filteredPosts = MOCK_JOURNAL_POSTS.filter(post => 
+
+  const categories = useMemo(() => {
+    const cats = new Set(articles.map((a) => a.category));
+    return ['All', ...Array.from(cats).sort()];
+  }, [articles]);
+
+  const posts = useMemo(() => articles.map((a) => ({
+    id: a.id,
+    slug: a.slug,
+    title: a.title,
+    excerpt: a.excerpt,
+    category: a.category,
+    date: a.published_at ? new Date(a.published_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '',
+    readTime: `${Math.max(1, Math.ceil((a.body_html?.length || 0) / 1500))} min read`,
+    imageUrl: a.cover_image,
+  })), [articles]);
+
+  const filteredPosts = posts.filter(post =>
     activeCategory === 'All' || post.category === activeCategory
   );
 
@@ -17,7 +37,7 @@ export default function JournalFeed() {
   const standardPosts = filteredPosts.slice(1);
 
   return (
-    <div className="w-full bg-[#FFF8F1] min-h-screen pb-32">
+    <div className="w-full bg-[#FDF5F3] min-h-screen pb-32">
       {/* Hero Header */}
       <section className="pt-40 pb-16 px-6 md:px-12 lg:px-24">
         <motion.div 
@@ -27,7 +47,7 @@ export default function JournalFeed() {
           className="max-w-4xl"
         >
           <span className="text-xs tracking-[0.3em] uppercase text-[#8A7662] mb-6 block font-mono">
-            OpusFesta Studio
+            OpusStudio
           </span>
           <h1 className="text-5xl md:text-7xl lg:text-8xl font-light text-[#171717] tracking-tighter leading-[1.1] mb-8">
             The Journal
@@ -41,7 +61,7 @@ export default function JournalFeed() {
       {/* Filter Navigation */}
       <section className="px-6 md:px-12 lg:px-24 mb-16">
         <div className="flex flex-nowrap overflow-x-auto gap-8 pb-4 border-b border-[#171717]/10 no-scrollbar">
-          {CATEGORIES.map((category) => (
+          {categories.map((category) => (
             <button
               key={category}
               onClick={() => setActiveCategory(category)}
@@ -98,7 +118,7 @@ export default function JournalFeed() {
                         <span className="w-1 h-1 bg-[#8A7662]/30 rounded-full"></span>
                         <span>{featuredPost.readTime}</span>
                       </div>
-                      <h2 className="text-3xl md:text-5xl font-light text-[#171717] tracking-tight mb-4 group-hover:text-[#FF8800] transition-colors duration-500">
+                      <h2 className="text-3xl md:text-5xl font-light text-[#171717] tracking-tight mb-4 group-hover:text-[#D6492A] transition-colors duration-500">
                         {featuredPost.title}
                       </h2>
                     </div>
@@ -145,7 +165,7 @@ export default function JournalFeed() {
                           <span className="w-1 h-1 bg-[#8A7662]/30 rounded-full"></span>
                           <span>{post.date}</span>
                         </div>
-                        <h3 className={`font-light text-[#171717] tracking-tight mb-3 group-hover:text-[#FF8800] transition-colors duration-500 ${index % 3 === 0 ? 'text-3xl md:text-4xl' : 'text-2xl md:text-3xl'}`}>
+                        <h3 className={`font-light text-[#171717] tracking-tight mb-3 group-hover:text-[#D6492A] transition-colors duration-500 ${index % 3 === 0 ? 'text-3xl md:text-4xl' : 'text-2xl md:text-3xl'}`}>
                           {post.title}
                         </h3>
                         {index % 3 === 0 && (

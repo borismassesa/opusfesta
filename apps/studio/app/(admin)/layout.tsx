@@ -5,7 +5,7 @@ import AdminTopbar from "@/components/admin/layout/AdminTopbar";
 import { getCurrentStudioAccess } from "@/lib/admin-auth";
 
 export const metadata = {
-  title: "Admin | OpusFesta Studio",
+  title: "Admin | OpusStudio",
 };
 
 export default async function AdminLayout({

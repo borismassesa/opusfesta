@@ -2,7 +2,11 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 
-export default function ProcessSection() {
+interface ProcessSectionProps {
+  content?: Record<string, unknown>;
+}
+
+export default function ProcessSection({ content }: ProcessSectionProps) {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const [activeStep, setActiveStep] = useState<number>(0);
   const [isProcessInView, setIsProcessInView] = useState(false);
@@ -44,61 +48,29 @@ export default function ProcessSection() {
     return () => observer.disconnect();
   }, []);
 
-  const steps = [
-    {
-      id: 'step-1',
-      number: '01',
-      title: 'ENQUIRY',
-      description: 'Tell us about your event, your vision, and the moments that matter most. We respond within 24 hours.',
-      detail: 'Free consultation call',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        </svg>
-      ),
-    },
-    {
-      id: 'step-2',
-      number: '02',
-      title: 'PLANNING',
-      description: 'We build a custom timeline and shot list tailored to your day. Every angle, every detail, mapped out in advance.',
-      detail: 'Bespoke creative brief',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-          <polyline points="14 2 14 8 20 8"></polyline>
-          <line x1="16" y1="13" x2="8" y2="13"></line>
-          <line x1="16" y1="17" x2="8" y2="17"></line>
-        </svg>
-      ),
-    },
-    {
-      id: 'step-3',
-      number: '03',
-      title: 'SHOOT DAY',
-      description: 'Our team arrives early, captures everything — the quiet moments, the big reveals, the in-betweens nobody else notices.',
-      detail: 'Full-day coverage',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path>
-          <circle cx="12" cy="13" r="4"></circle>
-        </svg>
-      ),
-    },
-    {
-      id: 'step-4',
-      number: '04',
-      title: 'DELIVERY',
-      description: 'Cinematic edits, colour-graded photos, and a private online gallery — delivered within 4–6 weeks.',
-      detail: 'Private gallery access',
-      icon: (
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-          <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-        </svg>
-      ),
-    },
+  const icons = [
+    <svg key="msg" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>,
+    <svg key="doc" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>,
+    <svg key="cam" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"></path><circle cx="12" cy="13" r="4"></circle></svg>,
+    <svg key="box" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>,
   ];
+
+  const defaultSteps = [
+    { title: 'ENQUIRY', description: 'Tell us about your event, your vision, and the moments that matter most. We respond within 24 hours.', detail: 'Free consultation call' },
+    { title: 'PLANNING', description: 'We build a custom timeline and shot list tailored to your day. Every angle, every detail, mapped out in advance.', detail: 'Bespoke creative brief' },
+    { title: 'SHOOT DAY', description: 'Our team arrives early, captures everything — the quiet moments, the big reveals, the in-betweens nobody else notices.', detail: 'Full-day coverage' },
+    { title: 'DELIVERY', description: 'Cinematic edits, colour-graded photos, and a private online gallery — delivered within 4–6 weeks.', detail: 'Private gallery access' },
+  ];
+
+  const contentSteps = content?.steps as { title: string; description: string; detail: string }[] | undefined;
+  const steps = (contentSteps || defaultSteps).map((s, i) => ({
+    id: `step-${i + 1}`,
+    number: String(i + 1).padStart(2, '0'),
+    title: s.title,
+    description: s.description,
+    detail: s.detail,
+    icon: icons[i] || icons[0],
+  }));
 
   useEffect(() => {
     if (!isProcessInView || isAutoPaused) return;
@@ -131,7 +103,7 @@ export default function ProcessSection() {
             <div className="flex flex-col lg:flex-row justify-between items-start lg:items-end gap-8">
               <div>
                 <span className="text-xs font-bold text-brand-accent tracking-widest uppercase font-mono mb-6 block">
-                  How It Works
+                  {(content?.tagline as string) || 'How It Works'}
                 </span>
                 <h2 className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl xl:text-9xl font-bold tracking-tighter text-white leading-[0.85]">
                   OUR<br />
@@ -139,7 +111,7 @@ export default function ProcessSection() {
                 </h2>
               </div>
               <p className="text-white/40 text-lg max-w-sm leading-relaxed font-light lg:text-right">
-                From first contact to final delivery. Four clear steps, zero surprises.
+                {(content?.description as string) || 'From first contact to final delivery. Four clear steps, zero surprises.'}
               </p>
             </div>
           </div>

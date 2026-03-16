@@ -4,6 +4,9 @@ import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 import type { StudioBookingStatus } from '@/lib/studio-types';
 import type { BookingLifecycleStatus } from '@/lib/booking-types';
 
+// ---------------------------------------------------------------------------
+// Row types
+// ---------------------------------------------------------------------------
 type BookingRow = {
   id: string;
   name: string;
@@ -22,42 +25,27 @@ type BookingRow = {
   created_at: string;
 };
 
-type MessageRow = {
-  booking_id: string | null;
-  sender: string;
-  created_at: string;
-};
+type MessageRow = { booking_id: string | null; sender: string; created_at: string };
+type ProjectRow = { id: string; title: string; is_published: boolean; updated_at: string };
+type ArticleRow = { id: string; title: string; is_published: boolean; updated_at: string };
+type ServiceRow = { id: string; title: string; price: string; is_active: boolean; updated_at: string };
+type AvailabilityRow = { date: string; is_available: boolean };
+type BookingEventRow = { id: string; booking_id: string; event_type: string; actor: string; description: string | null; created_at: string };
 
-type ProjectRow = {
-  id: string;
-  title: string;
-  is_published: boolean;
-  updated_at: string;
-};
-
-type ArticleRow = {
-  id: string;
-  title: string;
-  is_published: boolean;
-  updated_at: string;
-};
-
-type ServiceRow = {
-  id: string;
-  title: string;
-  price: string;
-  is_active: boolean;
-  updated_at: string;
-};
-
-type AvailabilityRow = {
-  date: string;
-  is_available: boolean;
-};
-
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
 const ACTIVE_PIPELINE_STATUSES: StudioBookingStatus[] = ['new', 'contacted', 'quoted', 'confirmed'];
 const SUCCESS_STATUSES: StudioBookingStatus[] = ['confirmed', 'completed'];
 
+const LIFECYCLE_PIPELINE: BookingLifecycleStatus[] = [
+  'intake_submitted', 'qualified', 'quote_sent', 'quote_accepted',
+  'contract_sent', 'contract_signed', 'deposit_pending', 'confirmed',
+];
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 function asDate(value: string | null | undefined): Date | null {
   if (!value) return null;
   const parsed = new Date(value);
@@ -79,9 +67,9 @@ function toIsoDay(date: Date): string {
 }
 
 function getPeriodCount(bookings: BookingRow[], from: Date, to: Date): number {
-  return bookings.filter((booking) => {
-    const createdAt = asDate(booking.created_at);
-    return !!createdAt && createdAt >= from && createdAt < to;
+  return bookings.filter((b) => {
+    const c = asDate(b.created_at);
+    return !!c && c >= from && c < to;
   }).length;
 }
 
@@ -90,32 +78,26 @@ function getDeltaPercent(current: number, previous: number): number {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
-function parseServiceValue(price: string): number {
-  const numeric = Number(price.replace(/[^\d]/g, ''));
-  return Number.isFinite(numeric) ? numeric : 0;
+/** Resolve the effective event date — prefer event_date (lifecycle) over preferred_date */
+function resolveEventDate(b: BookingRow): Date | null {
+  return asDate(b.event_date) || asDate(b.preferred_date);
 }
 
-function resolveServiceValue(serviceName: string | null, services: ServiceRow[]): number {
-  if (!serviceName) return 0;
-  const normalized = serviceName.trim().toLowerCase();
-  if (!normalized) return 0;
-
-  const directMatch = services.find((service) => service.title.trim().toLowerCase() === normalized);
-  if (directMatch) return parseServiceValue(directMatch.price);
-
-  const partialMatch = services.find((service) => {
-    const title = service.title.trim().toLowerCase();
-    return title.includes(normalized) || normalized.includes(title);
-  });
-
-  return partialMatch ? parseServiceValue(partialMatch.price) : 0;
+/** Get the Monday of the ISO week for a given date */
+function getWeekStart(date: Date): Date {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1); // Monday
+  return startOfDay(new Date(d.setDate(diff)));
 }
 
-const LIFECYCLE_PIPELINE: BookingLifecycleStatus[] = [
-  'intake_submitted', 'qualified', 'quote_sent', 'quote_accepted',
-  'contract_sent', 'contract_signed', 'deposit_pending', 'confirmed',
-];
+function formatWeekLabel(date: Date): string {
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
 
+// ---------------------------------------------------------------------------
+// Lifecycle metrics
+// ---------------------------------------------------------------------------
 function buildLifecycleMetrics(bookings: BookingRow[]) {
   const counts: Partial<Record<BookingLifecycleStatus, number>> = {};
   let totalRevenue = 0;
@@ -124,9 +106,7 @@ function buildLifecycleMetrics(bookings: BookingRow[]) {
 
   for (const b of bookings) {
     const ls = b.lifecycle_status;
-    if (ls) {
-      counts[ls] = (counts[ls] || 0) + 1;
-    }
+    if (ls) counts[ls] = (counts[ls] || 0) + 1;
     if (ls === 'confirmed' || ls === 'completed') {
       totalRevenue += b.total_amount_tzs || 0;
       totalDeposits += b.deposit_amount_tzs || 0;
@@ -138,23 +118,15 @@ function buildLifecycleMetrics(bookings: BookingRow[]) {
 
   const pipelineCount = LIFECYCLE_PIPELINE.reduce((sum, s) => sum + (counts[s] || 0), 0);
 
-  // Conversion funnel
-  const intakeCount = counts['intake_submitted'] || 0;
-  const qualifiedCount = counts['qualified'] || 0;
-  const quoteSentCount = counts['quote_sent'] || 0;
-  const confirmedCount = counts['confirmed'] || 0;
-  const completedCount = counts['completed'] || 0;
-  const totalActive = intakeCount + qualifiedCount + quoteSentCount + confirmedCount + completedCount;
-
   return {
     statusCounts: counts,
     pipelineCount,
     funnel: {
-      intake: intakeCount,
-      qualified: qualifiedCount,
-      quoted: quoteSentCount,
-      confirmed: confirmedCount,
-      completed: completedCount,
+      intake: counts['intake_submitted'] || 0,
+      qualified: counts['qualified'] || 0,
+      quoted: counts['quote_sent'] || 0,
+      confirmed: counts['confirmed'] || 0,
+      completed: counts['completed'] || 0,
     },
     revenue: {
       total_tzs: totalRevenue,
@@ -165,11 +137,55 @@ function buildLifecycleMetrics(bookings: BookingRow[]) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// Weekly inquiry bucketing (past 8 weeks)
+// ---------------------------------------------------------------------------
+function buildWeeklyInquiries(bookings: BookingRow[], now: Date): Array<{ week: string; count: number }> {
+  const weeks: Array<{ start: Date; label: string; count: number }> = [];
+  const currentWeekStart = getWeekStart(now);
+
+  for (let i = 7; i >= 0; i--) {
+    const weekStart = addDays(currentWeekStart, -7 * i);
+    weeks.push({ start: weekStart, label: formatWeekLabel(weekStart), count: 0 });
+  }
+
+  for (const b of bookings) {
+    const created = asDate(b.created_at);
+    if (!created) continue;
+    const bWeekStart = getWeekStart(created);
+    const match = weeks.find((w) => w.start.getTime() === bWeekStart.getTime());
+    if (match) match.count += 1;
+  }
+
+  return weeks.map((w) => ({ week: w.label, count: w.count }));
+}
+
+// ---------------------------------------------------------------------------
+// Revenue by service (top 5)
+// ---------------------------------------------------------------------------
+function buildRevenueByService(bookings: BookingRow[]): Array<{ service: string; total_tzs: number }> {
+  const map: Record<string, number> = {};
+  for (const b of bookings) {
+    if (b.status !== 'confirmed' && b.status !== 'completed') continue;
+    if (!b.total_amount_tzs) continue;
+    const svc = b.service?.trim() || 'Unspecified';
+    map[svc] = (map[svc] || 0) + (b.total_amount_tzs || 0);
+  }
+  return Object.entries(map)
+    .map(([service, total_tzs]) => ({ service, total_tzs }))
+    .sort((a, b) => b.total_tzs - a.total_tzs)
+    .slice(0, 5);
+}
+
+// ---------------------------------------------------------------------------
+// GET handler
+// ---------------------------------------------------------------------------
 export async function GET() {
   try {
     await requireStudioRole('studio_viewer');
     const db = getStudioSupabaseAdmin();
 
+    // Single consolidated query set
     const [
       bookingsResult,
       messagesResult,
@@ -177,47 +193,37 @@ export async function GET() {
       articlesResult,
       servicesResult,
       availabilityResult,
+      eventsResult,
     ] = await Promise.all([
-      db.from('studio_bookings').select('id, name, email, event_type, preferred_date, location, service, status, responded_at, created_at').limit(5000),
+      // Single booking query with all columns (lifecycle + CRM)
+      db.from('studio_bookings')
+        .select('id, name, email, event_type, preferred_date, location, service, status, responded_at, created_at, lifecycle_status, total_amount_tzs, deposit_amount_tzs, balance_due_tzs, event_date')
+        .limit(5000),
       db.from('studio_messages').select('booking_id, sender, created_at').limit(10000),
       db.from('studio_projects').select('id, title, is_published, updated_at').limit(2000),
       db.from('studio_articles').select('id, title, is_published, updated_at').limit(2000),
       db.from('studio_services').select('id, title, price, is_active, updated_at').limit(2000),
       db.from('studio_availability').select('date, is_available').eq('is_available', false).eq('time_slot', 'all-day').limit(5000),
+      // Activity feed — recent booking events
+      db.from('studio_booking_events').select('id, booking_id, event_type, actor, description, created_at').order('created_at', { ascending: false }).limit(8),
     ]);
 
     const queryError =
-      bookingsResult.error ||
-      messagesResult.error ||
-      projectsResult.error ||
-      articlesResult.error ||
-      servicesResult.error ||
-      availabilityResult.error;
+      bookingsResult.error || messagesResult.error || projectsResult.error ||
+      articlesResult.error || servicesResult.error || availabilityResult.error;
     if (queryError) return NextResponse.json({ error: queryError.message }, { status: 500 });
 
-    // Try to fetch lifecycle columns if they exist (migration may not have been applied yet)
-    let lifecycleData: Record<string, { lifecycle_status: string | null; total_amount_tzs: number; deposit_amount_tzs: number; balance_due_tzs: number; event_date: string | null }> = {};
-    const lifecycleResult = await db.from('studio_bookings').select('id, lifecycle_status, total_amount_tzs, deposit_amount_tzs, balance_due_tzs, event_date').limit(5000);
-    if (!lifecycleResult.error && lifecycleResult.data) {
-      for (const row of lifecycleResult.data) {
-        lifecycleData[row.id] = row;
-      }
-    }
-
-    const bookings = (bookingsResult.data || []).map((b: Record<string, unknown>) => ({
-      ...b,
-      lifecycle_status: lifecycleData[b.id as string]?.lifecycle_status ?? null,
-      total_amount_tzs: lifecycleData[b.id as string]?.total_amount_tzs ?? 0,
-      deposit_amount_tzs: lifecycleData[b.id as string]?.deposit_amount_tzs ?? 0,
-      balance_due_tzs: lifecycleData[b.id as string]?.balance_due_tzs ?? 0,
-      event_date: lifecycleData[b.id as string]?.event_date ?? null,
-    })) as BookingRow[];
+    const bookings = (bookingsResult.data || []) as BookingRow[];
     const messages = (messagesResult.data || []) as MessageRow[];
     const projects = (projectsResult.data || []) as ProjectRow[];
     const articles = (articlesResult.data || []) as ArticleRow[];
     const services = (servicesResult.data || []) as ServiceRow[];
     const blockedAvailability = (availabilityResult.data || []) as AvailabilityRow[];
+    const recentActivity = (eventsResult.data || []) as BookingEventRow[];
 
+    // -----------------------------------------------------------------------
+    // Computed values
+    // -----------------------------------------------------------------------
     const now = new Date();
     const today = startOfDay(now);
     const sevenDaysAgo = addDays(today, -7);
@@ -228,168 +234,117 @@ export async function GET() {
     const staleThreshold = addDays(today, -30);
     const overdueThreshold = addDays(now, -1);
 
-    const statusCounts = {
-      new: 0,
-      contacted: 0,
-      quoted: 0,
-      confirmed: 0,
-      completed: 0,
-      cancelled: 0,
-    } as Record<StudioBookingStatus, number>;
+    // Status counts (legacy)
+    const statusCounts: Record<StudioBookingStatus, number> = {
+      new: 0, contacted: 0, quoted: 0, confirmed: 0, completed: 0, cancelled: 0,
+    };
+    for (const b of bookings) statusCounts[b.status] += 1;
 
-    for (const booking of bookings) {
-      statusCounts[booking.status] += 1;
-    }
-
+    // Recent bookings (5)
     const recentBookings = [...bookings]
       .sort((a, b) => (asDate(b.created_at)?.getTime() || 0) - (asDate(a.created_at)?.getTime() || 0))
-      .slice(0, 6);
+      .slice(0, 5);
 
+    // Unread conversations
     const openConversationIds = new Set(
-      bookings
-        .filter((booking) => booking.status !== 'completed' && booking.status !== 'cancelled')
-        .map((booking) => booking.id)
+      bookings.filter((b) => b.status !== 'completed' && b.status !== 'cancelled').map((b) => b.id)
     );
-
     let unreadConversations = 0;
     if (messages.length > 0) {
       const byBooking = new Map<string, MessageRow[]>();
-      for (const message of messages) {
-        if (!message.booking_id) continue;
-        const bucket = byBooking.get(message.booking_id) || [];
-        bucket.push(message);
-        byBooking.set(message.booking_id, bucket);
+      for (const m of messages) {
+        if (!m.booking_id) continue;
+        const bucket = byBooking.get(m.booking_id) || [];
+        bucket.push(m);
+        byBooking.set(m.booking_id, bucket);
       }
-
       for (const bookingId of openConversationIds) {
         const thread = byBooking.get(bookingId);
         if (!thread || thread.length === 0) continue;
         thread.sort((a, b) => (asDate(a.created_at)?.getTime() || 0) - (asDate(b.created_at)?.getTime() || 0));
-        const last = thread[thread.length - 1];
-        if (last.sender !== 'admin') unreadConversations += 1;
+        if (thread[thread.length - 1].sender !== 'admin') unreadConversations += 1;
       }
     }
 
+    // Upcoming events (5) — prefer event_date over preferred_date
     const upcomingBookings = bookings
-      .filter((booking) => {
-        if (booking.status === 'cancelled' || booking.status === 'completed') return false;
-        const date = asDate(booking.preferred_date);
+      .filter((b) => {
+        if (b.status === 'cancelled' || b.status === 'completed') return false;
+        const date = resolveEventDate(b);
         return !!date && date >= today && date <= inSevenDays;
       })
-      .sort((a, b) => (asDate(a.preferred_date)?.getTime() || 0) - (asDate(b.preferred_date)?.getTime() || 0));
+      .sort((a, b) => (resolveEventDate(a)?.getTime() || 0) - (resolveEventDate(b)?.getTime() || 0))
+      .slice(0, 5);
 
-    const blockedDays = new Set(blockedAvailability.map((item) => item.date));
-    const availabilityConflicts = bookings.filter((booking) => {
-      if (booking.status === 'cancelled' || booking.status === 'completed') return false;
-      if (!booking.preferred_date) return false;
-      return blockedDays.has(booking.preferred_date);
+    // Availability conflicts
+    const blockedDays = new Set(blockedAvailability.map((i) => i.date));
+    const availabilityConflicts = bookings.filter((b) => {
+      if (b.status === 'cancelled' || b.status === 'completed') return false;
+      if (!b.preferred_date) return false;
+      return blockedDays.has(b.preferred_date);
     }).length;
 
-    const overdueFollowUps = bookings.filter((booking) => {
-      if (!['new', 'contacted'].includes(booking.status)) return false;
-      if (booking.responded_at) return false;
-      const createdAt = asDate(booking.created_at);
-      return !!createdAt && createdAt < overdueThreshold;
+    // Overdue follow-ups
+    const overdueFollowUps = bookings.filter((b) => {
+      if (!['new', 'contacted'].includes(b.status)) return false;
+      if (b.responded_at) return false;
+      const c = asDate(b.created_at);
+      return !!c && c < overdueThreshold;
     }).length;
 
+    // Inquiry KPIs
     const inquiries7d = getPeriodCount(bookings, sevenDaysAgo, now);
     const inquiriesPrev7d = getPeriodCount(bookings, fourteenDaysAgo, sevenDaysAgo);
 
-    const recent30 = bookings.filter((booking) => {
-      const createdAt = asDate(booking.created_at);
-      return !!createdAt && createdAt >= thirtyDaysAgo;
-    });
-    const prev30 = bookings.filter((booking) => {
-      const createdAt = asDate(booking.created_at);
-      return !!createdAt && createdAt >= sixtyDaysAgo && createdAt < thirtyDaysAgo;
-    });
-
+    // Conversion
+    const recent30 = bookings.filter((b) => { const c = asDate(b.created_at); return !!c && c >= thirtyDaysAgo; });
+    const prev30 = bookings.filter((b) => { const c = asDate(b.created_at); return !!c && c >= sixtyDaysAgo && c < thirtyDaysAgo; });
     const conversionRecent = recent30.length
-      ? Math.round((recent30.filter((booking) => SUCCESS_STATUSES.includes(booking.status)).length / recent30.length) * 1000) / 10
+      ? Math.round((recent30.filter((b) => SUCCESS_STATUSES.includes(b.status)).length / recent30.length) * 1000) / 10
       : 0;
     const conversionPrev = prev30.length
-      ? Math.round((prev30.filter((booking) => SUCCESS_STATUSES.includes(booking.status)).length / prev30.length) * 1000) / 10
+      ? Math.round((prev30.filter((b) => SUCCESS_STATUSES.includes(b.status)).length / prev30.length) * 1000) / 10
       : 0;
 
-    const confirmedValue = bookings
-      .filter((booking) => booking.status === 'confirmed')
-      .reduce((sum, booking) => sum + resolveServiceValue(booking.service, services), 0);
-    const activePipelineValue = bookings
-      .filter((booking) => ACTIVE_PIPELINE_STATUSES.includes(booking.status))
-      .reduce((sum, booking) => sum + resolveServiceValue(booking.service, services), 0);
-
-    const publishedProjects = projects.filter((project) => project.is_published).length;
-    const publishedArticles = articles.filter((article) => article.is_published).length;
-    const activeServices = services.filter((service) => service.is_active).length;
-
+    // CMS
+    const publishedProjects = projects.filter((p) => p.is_published).length;
+    const publishedArticles = articles.filter((a) => a.is_published).length;
+    const activeServices = services.filter((s) => s.is_active).length;
     const totalContent = projects.length + articles.length + services.length;
     const publishedContent = publishedProjects + publishedArticles + activeServices;
     const cmsHealthPercent = totalContent ? Math.round((publishedContent / totalContent) * 100) : 0;
 
-    const staleProjects = projects.filter((project) => {
-      const updatedAt = asDate(project.updated_at);
-      return !!updatedAt && updatedAt < staleThreshold;
-    }).length;
-    const staleArticles = articles.filter((article) => {
-      const updatedAt = asDate(article.updated_at);
-      return !!updatedAt && updatedAt < staleThreshold;
-    }).length;
-    const staleServices = services.filter((service) => {
-      const updatedAt = asDate(service.updated_at);
-      return !!updatedAt && updatedAt < staleThreshold;
-    }).length;
+    const staleProjects = projects.filter((p) => { const u = asDate(p.updated_at); return !!u && u < staleThreshold; }).length;
+    const staleArticles = articles.filter((a) => { const u = asDate(a.updated_at); return !!u && u < staleThreshold; }).length;
+    const staleServices = services.filter((s) => { const u = asDate(s.updated_at); return !!u && u < staleThreshold; }).length;
 
-    const cmsRecentUpdates = [
-      ...projects.map((project) => ({
-        id: project.id,
-        type: 'project',
-        title: project.title,
-        status: project.is_published ? 'published' : 'draft',
-        updated_at: project.updated_at,
-        href: `/studio-admin/projects/${project.id}`,
-      })),
-      ...articles.map((article) => ({
-        id: article.id,
-        type: 'article',
-        title: article.title,
-        status: article.is_published ? 'published' : 'draft',
-        updated_at: article.updated_at,
-        href: `/studio-admin/articles/${article.id}`,
-      })),
-      ...services.map((service) => ({
-        id: service.id,
-        type: 'service',
-        title: service.title,
-        status: service.is_active ? 'active' : 'inactive',
-        updated_at: service.updated_at,
-        href: `/studio-admin/services/${service.id}`,
-      })),
-    ]
-      .sort((a, b) => (asDate(b.updated_at)?.getTime() || 0) - (asDate(a.updated_at)?.getTime() || 0))
-      .slice(0, 8);
+    const cmsRecentUpdates: Array<{ id: string; type: string; title: string; status: string; updated_at: string; href: string }> = [
+      ...projects.map((p) => ({ id: p.id, type: 'project', title: p.title, status: p.is_published ? 'published' : 'draft', updated_at: p.updated_at, href: `/studio-admin/projects/${p.id}` })),
+      ...articles.map((a) => ({ id: a.id, type: 'article', title: a.title, status: a.is_published ? 'published' : 'draft', updated_at: a.updated_at, href: `/studio-admin/articles/${a.id}` })),
+      ...services.map((s) => ({ id: s.id, type: 'service', title: s.title, status: s.is_active ? 'active' : 'inactive', updated_at: s.updated_at, href: `/studio-admin/services/${s.id}` })),
+    ].sort((a, b) => (asDate(b.updated_at)?.getTime() || 0) - (asDate(a.updated_at)?.getTime() || 0)).slice(0, 4);
 
+    // Performance
     const topServices = Object.entries(
-      bookings.reduce<Record<string, number>>((acc, booking) => {
-        const name = booking.service?.trim() || 'Unspecified';
-        acc[name] = (acc[name] || 0) + 1;
-        return acc;
-      }, {})
-    )
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+      bookings.reduce<Record<string, number>>((acc, b) => { const n = b.service?.trim() || 'Unspecified'; acc[n] = (acc[n] || 0) + 1; return acc; }, {})
+    ).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5);
 
     const topEventTypes = Object.entries(
-      bookings.reduce<Record<string, number>>((acc, booking) => {
-        const name = booking.event_type?.trim() || 'Other';
-        acc[name] = (acc[name] || 0) + 1;
-        return acc;
-      }, {})
-    )
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
+      bookings.reduce<Record<string, number>>((acc, b) => { const n = b.event_type?.trim() || 'Other'; acc[n] = (acc[n] || 0) + 1; return acc; }, {})
+    ).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 4);
 
+    // Lifecycle metrics
+    const lifecycle = buildLifecycleMetrics(bookings);
+
+    // Weekly inquiry trend (past 8 weeks)
+    const weeklyInquiries = buildWeeklyInquiries(bookings, now);
+
+    // Revenue by service (top 5)
+    const revenueByService = buildRevenueByService(bookings);
+
+    // -----------------------------------------------------------------------
+    // Response
+    // -----------------------------------------------------------------------
     return NextResponse.json({
       priorities: {
         newInquiries: statusCounts.new,
@@ -400,43 +355,14 @@ export async function GET() {
         availabilityConflicts,
       },
       kpis: {
-        inquiries7d: {
-          value: inquiries7d,
-          deltaPercent: getDeltaPercent(inquiries7d, inquiriesPrev7d),
-        },
-        activePipeline: {
-          value: ACTIVE_PIPELINE_STATUSES.reduce((sum, status) => sum + statusCounts[status], 0),
-          totalBookings: bookings.length,
-        },
-        conversion30d: {
-          value: conversionRecent,
-          deltaPercent: Math.round((conversionRecent - conversionPrev) * 10) / 10,
-        },
-        confirmedValue: {
-          value: confirmedValue,
-          currency: 'TZS',
-          pipelineValue: activePipelineValue,
-        },
-        cmsHealth: {
-          value: cmsHealthPercent,
-          published: publishedContent,
-          total: totalContent,
-        },
+        inquiries7d: { value: inquiries7d, deltaPercent: getDeltaPercent(inquiries7d, inquiriesPrev7d) },
+        activePipeline: { value: ACTIVE_PIPELINE_STATUSES.reduce((sum, s) => sum + statusCounts[s], 0), totalBookings: bookings.length },
+        conversion30d: { value: conversionRecent, deltaPercent: Math.round((conversionRecent - conversionPrev) * 10) / 10 },
+        confirmedValue: { value: lifecycle.revenue.total_tzs, currency: 'TZS', pipelineValue: 0 },
+        cmsHealth: { value: cmsHealthPercent, published: publishedContent, total: totalContent },
       },
-      pipeline: {
-        statuses: statusCounts,
-        activeTotal: ACTIVE_PIPELINE_STATUSES.reduce((sum, status) => sum + statusCounts[status], 0),
-      },
-      upcoming: upcomingBookings.slice(0, 8),
-      stats: {
-        totalBookings: bookings.length,
-        newBookings: statusCounts.new,
-        totalProjects: projects.length,
-        publishedProjects,
-        totalArticles: articles.length,
-        publishedArticles,
-        activeServices: activeServices,
-      },
+      pipeline: { statuses: statusCounts, activeTotal: ACTIVE_PIPELINE_STATUSES.reduce((sum, s) => sum + statusCounts[s], 0) },
+      upcoming: upcomingBookings,
       recentBookings,
       cms: {
         projects: { total: projects.length, published: publishedProjects, stale: staleProjects },
@@ -444,16 +370,11 @@ export async function GET() {
         services: { total: services.length, published: activeServices, stale: staleServices },
         recentUpdates: cmsRecentUpdates,
       },
-      performance: {
-        topServices,
-        topEventTypes,
-      },
-      finance: {
-        confirmedValue,
-        pipelineValue: activePipelineValue,
-        currency: 'TZS',
-      },
-      lifecycle: buildLifecycleMetrics(bookings),
+      performance: { topServices, topEventTypes },
+      lifecycle,
+      weeklyInquiries,
+      revenueByService,
+      recentActivity,
       generatedAt: toIsoDay(now),
     });
   } catch (e) {

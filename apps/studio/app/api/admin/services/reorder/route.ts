@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 
@@ -8,6 +9,7 @@ export async function POST(req: NextRequest) {
     const items: { id: string; sort_order: number }[] = await req.json();
     const db = getStudioSupabaseAdmin();
     await Promise.all(items.map((item) => db.from('studio_services').update({ sort_order: item.sort_order }).eq('id', item.id)));
+    revalidatePath('/', 'layout');
     return NextResponse.json({ success: true });
   } catch (e) {
     if (e instanceof NextResponse) return e;

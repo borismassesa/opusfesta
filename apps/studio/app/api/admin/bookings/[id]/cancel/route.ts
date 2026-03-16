@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { cancelBooking } from '@/lib/booking-service';
 
@@ -13,6 +14,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
 
     const result = await cancelBooking(id, body.reason, `admin:${clerkId}`);
+    revalidatePath('/', 'layout');
     return NextResponse.json({ booking: result.booking, refund: result.refund });
   } catch (e) {
     if (e instanceof NextResponse) return e;

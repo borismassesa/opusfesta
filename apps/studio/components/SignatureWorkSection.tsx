@@ -3,9 +3,13 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { projects } from '@/lib/data';
+import type { StudioProject } from '@/lib/studio-types';
 
-export default function SignatureWorkSection() {
+interface SignatureWorkSectionProps {
+  projects?: StudioProject[];
+}
+
+export default function SignatureWorkSection({ projects = [] }: SignatureWorkSectionProps) {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const refs = useRef<Map<string, HTMLElement>>(new Map());
 
@@ -35,6 +39,8 @@ export default function SignatureWorkSection() {
     refs.current.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, []);
+
+  if (projects.length === 0) return null;
 
   return (
     <section id="work" className="py-24 relative z-10 bg-brand-bg">
@@ -111,7 +117,7 @@ export default function SignatureWorkSection() {
                   }`}
                 >
                   <Image
-                    src={project.image}
+                    src={project.cover_image}
                     alt={project.title}
                     fill
                     sizes="(max-width: 1024px) 100vw, 50vw"

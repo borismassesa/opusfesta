@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { requireStudioRole } from '@/lib/admin-auth';
 import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 import { recordPayment } from '@/lib/booking-service';
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
       providerReference: body.reference || undefined,
     }, `admin:${clerkId}`);
 
+    revalidatePath('/', 'layout');
     return NextResponse.json({ booking });
   } catch (e) {
     if (e instanceof NextResponse) return e;

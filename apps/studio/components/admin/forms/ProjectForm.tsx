@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AdminInput, AdminTextarea, AdminSelect } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
+import AdminMediaUpload from '@/components/admin/ui/AdminMediaUpload';
 import { BsPlus, BsX } from 'react-icons/bs';
 import type { StudioProject } from '@/lib/studio-types';
 
@@ -35,7 +36,7 @@ export default function ProjectForm({ initialData, onSubmit }: { initialData?: S
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 max-w-2xl">
+    <form onSubmit={handleSubmit} className="space-y-6">
       <div className="bg-white border border-gray-200 p-6 space-y-4">
         <AdminInput label="Title" value={form.title} onChange={(e) => { set('title', e.target.value); if (!initialData) set('slug', slugify(e.target.value)); }} required />
         <AdminInput label="Slug" value={form.slug} onChange={(e) => set('slug', e.target.value)} required hint="URL-friendly identifier" />
@@ -45,7 +46,7 @@ export default function ProjectForm({ initialData, onSubmit }: { initialData?: S
         </div>
         <AdminTextarea label="Short Description" value={form.description} onChange={(e) => set('description', e.target.value)} required />
         <AdminTextarea label="Full Description" value={form.full_description} onChange={(e) => set('full_description', e.target.value)} required rows={6} />
-        <AdminInput label="Cover Image URL" value={form.cover_image} onChange={(e) => set('cover_image', e.target.value)} required />
+        <AdminMediaUpload label="Cover Image" value={form.cover_image} onChange={(url) => set('cover_image', url)} mediaType="image" />
       </div>
 
       <div className="bg-white border border-gray-200 p-6 space-y-4">

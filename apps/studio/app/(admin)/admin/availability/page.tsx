@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { BsChevronLeft, BsChevronRight, BsTrash, BsClock, BsCalendar3, BsPlusLg, BsCircleFill, BsBuilding } from 'react-icons/bs';
 import AdminButton from '@/components/admin/ui/AdminButton';
+import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import AdminToast from '@/components/admin/ui/AdminToast';
 
 interface AvailabilityEntry {
@@ -350,21 +351,38 @@ export default function AvailabilityPage() {
   // Stats for the month
   const monthStats = useMemo(() => {
     let blocked = 0;
+    let closed = 0;
     let withSlots = 0;
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dayEntries = entriesByDate.get(dateStr) || [];
       const allDay = dayEntries.find((e) => e.time_slot === ALL_DAY_SLOT);
-      if (allDay && !allDay.is_available) blocked++;
+      if (allDay && !allDay.is_available) {
+        blocked++;
+      } else {
+        const dow = new Date(year, month, d).getDay();
+        const dk = DAY_KEYS[dow];
+        if (!workingHours[dk]?.open) closed++;
+      }
       const specific = dayEntries.filter((e) => e.time_slot !== ALL_DAY_SLOT);
       if (specific.length > 0) withSlots++;
     }
-    return { blocked, withSlots, open: daysInMonth - blocked };
-  }, [entriesByDate, daysInMonth, year, month]);
+    return { blocked, closed, withSlots, open: daysInMonth - blocked - closed };
+  }, [entriesByDate, daysInMonth, year, month, workingHours]);
 
   return (
     <div className="space-y-6">
       <AdminToast />
+      <AdminPageHeader
+        title="Availability"
+        description="Manage your studio's availability calendar. Set working hours, block specific dates, and control when clients can book sessions."
+        tips={[
+          'Green dates are open for bookings. Red/blocked dates won\'t appear as available to clients.',
+          'Set your default working hours per day of the week — these apply to all future dates.',
+          'Override specific dates by clicking on them to block or open them individually.',
+          'Confirmed bookings are shown on the calendar — avoid double-booking by checking before confirming.',
+        ]}
+      />
 
       {/* Error banner */}
       {error && (
@@ -376,17 +394,21 @@ export default function AvailabilityPage() {
       {/* Month stats + save bar */}
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-6">
-          <div className="flex items-center gap-2 text-sm text-[var(--admin-muted)]">
-            <BsCircleFill className="w-2 h-2 text-emerald-500" />
-            <span><strong className="text-[var(--admin-foreground)]">{monthStats.open}</strong> open</span>
+          <div className="flex items-center gap-2 text-sm">
+            <BsCircleFill className="w-2.5 h-2.5 text-emerald-500" />
+            <span className="text-[var(--admin-foreground)]"><strong>{monthStats.open}</strong> <span className="text-[var(--admin-muted)]">open</span></span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-[var(--admin-muted)]">
-            <BsCircleFill className="w-2 h-2 text-red-400" />
-            <span><strong className="text-[var(--admin-foreground)]">{monthStats.blocked}</strong> blocked</span>
+          <div className="flex items-center gap-2 text-sm">
+            <BsCircleFill className="w-2.5 h-2.5 text-gray-400" />
+            <span className="text-[var(--admin-foreground)]"><strong>{monthStats.closed}</strong> <span className="text-[var(--admin-muted)]">closed</span></span>
           </div>
-          <div className="flex items-center gap-2 text-sm text-[var(--admin-muted)]">
-            <BsClock className="w-2.5 h-2.5 text-[var(--admin-primary)]" />
-            <span><strong className="text-[var(--admin-foreground)]">{monthStats.withSlots}</strong> with slots</span>
+          <div className="flex items-center gap-2 text-sm">
+            <BsCircleFill className="w-2.5 h-2.5 text-red-500" />
+            <span className="text-[var(--admin-foreground)]"><strong>{monthStats.blocked}</strong> <span className="text-[var(--admin-muted)]">blocked</span></span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <BsClock className="w-3 h-3 text-[var(--admin-primary)]" />
+            <span className="text-[var(--admin-foreground)]"><strong>{monthStats.withSlots}</strong> <span className="text-[var(--admin-muted)]">with slots</span></span>
           </div>
         </div>
         {totalPendingChanges > 0 && (
@@ -451,12 +473,20 @@ export default function AvailabilityPage() {
                   const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                   const dayEntries = entriesByDate.get(dateStr) || [];
                   const allDayEntry = dayEntries.find((entry) => entry.time_slot === ALL_DAY_SLOT);
-                  const isAvailable = allDayEntry ? allDayEntry.is_available : true;
+                  const isBlocked = allDayEntry ? !allDayEntry.is_available : false;
                   const slotsCount = dayEntries.filter((entry) => entry.time_slot !== ALL_DAY_SLOT).length;
                   const isPending = pendingDates.has(dateStr);
                   const isToday = new Date().toISOString().slice(0, 10) === dateStr;
                   const isSelected = selectedDate === dateStr;
                   const isPast = dateStr < new Date().toISOString().slice(0, 10);
+
+                  // Check if this day is closed according to studio working hours
+                  const dayOfWeekIndex = new Date(year, month, day).getDay();
+                  const dayKey = DAY_KEYS[dayOfWeekIndex];
+                  const isClosed = !workingHours[dayKey]?.open;
+
+                  // Determine the display status
+                  const isAvailable = !isBlocked && !isClosed;
 
                   return (
                     <button
@@ -464,45 +494,53 @@ export default function AvailabilityPage() {
                       onClick={() => selectDate(dateStr)}
                       className={`
                         relative h-20 flex flex-col items-center justify-center gap-1 transition-all duration-150
-                        rounded-[calc(var(--admin-radius)-4px)] border
+                        rounded-[calc(var(--admin-radius)-4px)] border-2
                         ${isSelected
-                          ? 'border-[var(--admin-primary)] bg-[var(--admin-primary)]/5 shadow-[0_0_0_1px_var(--admin-primary)]'
+                          ? 'border-[var(--admin-primary)] bg-[var(--admin-primary)]/10 shadow-[0_0_0_1px_var(--admin-primary)]'
                           : isPending
-                            ? 'border-[var(--admin-primary)]/40 bg-[var(--admin-primary)]/5'
-                            : isAvailable
-                              ? 'border-[var(--admin-border)] bg-[var(--admin-card)] hover:border-[var(--admin-primary)]/40 hover:bg-[var(--admin-secondary)]'
-                              : 'border-red-200 bg-red-50/60 hover:bg-red-50'
+                            ? 'border-amber-400 bg-amber-50'
+                            : isBlocked
+                              ? 'border-red-300 bg-red-50 hover:bg-red-100'
+                              : isClosed
+                                ? 'border-gray-300 bg-gray-100 hover:bg-gray-150'
+                                : 'border-emerald-300 bg-emerald-50/50 hover:border-emerald-500 hover:bg-emerald-50'
                         }
-                        ${isPast ? 'opacity-50' : ''}
+                        ${isPast ? 'opacity-40' : ''}
                       `}
                     >
                       {/* Today indicator */}
                       {isToday && (
-                        <div className="absolute top-1.5 right-1.5 w-1.5 h-1.5 rounded-full bg-[var(--admin-primary)]" />
+                        <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--admin-primary)]" />
                       )}
 
                       {/* Pending dot */}
                       {isPending && !isSelected && (
-                        <div className="absolute top-1.5 left-1.5 w-1.5 h-1.5 rounded-full bg-[var(--admin-primary)]" />
+                        <div className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-amber-400" />
                       )}
 
-                      <span className={`text-sm font-medium ${
+                      <span className={`text-sm font-semibold ${
                         isToday
                           ? 'text-[var(--admin-primary)]'
-                          : isAvailable
-                            ? 'text-[var(--admin-foreground)]'
-                            : 'text-red-600'
+                          : isBlocked
+                            ? 'text-red-600'
+                            : isClosed
+                              ? 'text-gray-400'
+                              : 'text-[var(--admin-foreground)]'
                       }`}>
                         {day}
                       </span>
 
-                      {!isAvailable ? (
-                        <span className="text-[10px] font-medium text-red-500">Blocked</span>
+                      {isBlocked ? (
+                        <span className="text-[10px] font-semibold text-red-500">Blocked</span>
+                      ) : isClosed ? (
+                        <span className="text-[10px] font-semibold text-gray-400">Closed</span>
                       ) : slotsCount > 0 ? (
-                        <span className="text-[10px] text-[var(--admin-muted)]">
+                        <span className="text-[10px] font-medium text-emerald-600">
                           {slotsCount} slot{slotsCount > 1 ? 's' : ''}
                         </span>
-                      ) : null}
+                      ) : (
+                        <span className="text-[10px] font-medium text-emerald-500">Open</span>
+                      )}
                     </button>
                   );
                 })}
@@ -755,22 +793,26 @@ export default function AvailabilityPage() {
 
           {/* Legend */}
           <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-[var(--admin-radius)] px-5 py-3.5">
-            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--admin-muted)]">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--admin-foreground)]">
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-[3px] border border-[var(--admin-border)] bg-[var(--admin-card)]" />
-                <span>Available</span>
+                <div className="w-3.5 h-3.5 rounded-[3px] border-2 border-emerald-500 bg-emerald-100" />
+                <span className="font-medium">Available</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-[3px] border border-red-200 bg-red-50/60" />
-                <span>Blocked</span>
+                <div className="w-3.5 h-3.5 rounded-[3px] border-2 border-gray-300 bg-gray-100" />
+                <span className="font-medium">Closed</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-3 h-3 rounded-[3px] border border-[var(--admin-primary)]/40 bg-[var(--admin-primary)]/5" />
-                <span>Unsaved</span>
+                <div className="w-3.5 h-3.5 rounded-[3px] border-2 border-red-400 bg-red-100" />
+                <span className="font-medium">Blocked</span>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-[var(--admin-primary)]" />
-                <span>Today</span>
+                <div className="w-3.5 h-3.5 rounded-[3px] border-2 border-amber-400 bg-amber-100" />
+                <span className="font-medium">Unsaved</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3.5 h-3.5 rounded-[3px] border-2 border-[var(--admin-primary)] bg-[var(--admin-primary)]" />
+                <span className="font-medium">Today</span>
               </div>
             </div>
           </div>

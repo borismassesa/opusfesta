@@ -5,7 +5,11 @@ import Link from 'next/link';
 import { coreNavLinks } from '@/lib/navigation';
 import SocialLinks from '@/components/SocialLinks';
 
-export default function MainFooter() {
+interface MainFooterProps {
+  settings?: Record<string, string>;
+}
+
+export default function MainFooter({ settings }: MainFooterProps) {
   const [isVisible, setIsVisible] = useState(false);
   const footerRef = useRef<HTMLElement>(null);
 
@@ -24,7 +28,7 @@ export default function MainFooter() {
     <footer id="contact" ref={footerRef} className="bg-brand-dark relative z-10 overflow-hidden">
       <div className="absolute inset-0 flex items-end justify-center pointer-events-none select-none">
         <div className="text-center text-[40px] sm:text-[70px] md:text-[100px] lg:text-[140px] xl:text-[180px] font-bold text-white/[0.04] leading-none tracking-tighter pb-6 sm:pb-8 lg:pb-10">
-          OpusFesta Studio
+          OpusStudio
         </div>
       </div>
 
@@ -49,12 +53,8 @@ export default function MainFooter() {
                 <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest mb-3 font-mono">
                   Office Address
                 </p>
-                <p className="text-white text-xl sm:text-2xl leading-relaxed font-bold tracking-tight">
-                  Plot 185C, RM A25, Samaki Wabichi Annex,
-                  <br />
-                  Mbezi Beach, Dar es Salaam, Tanzania
-                  <br />
-                  P.O.Box 7787
+                <p className="text-white text-xl sm:text-2xl leading-relaxed font-bold tracking-tight whitespace-pre-line">
+                  {settings?.studio_address || 'Plot 185C, RM A25, Samaki Wabichi Annex,\nMbezi Beach, Dar es Salaam, Tanzania\nP.O.Box 7787'}
                 </p>
               </div>
 
@@ -63,10 +63,10 @@ export default function MainFooter() {
                   Phone Number
                 </p>
                 <a
-                  href="tel:+255799242475"
+                  href={`tel:${(settings?.studio_phone || '+255799242475').replace(/\s/g, '')}`}
                   className="text-xl sm:text-2xl font-bold text-white hover:text-brand-accent transition-colors tracking-tight"
                 >
-                  +255 799 242 475
+                  {settings?.studio_phone || '+255 799 242 475'}
                 </a>
               </div>
 
@@ -75,10 +75,10 @@ export default function MainFooter() {
                   Email Address
                 </p>
                 <a
-                  href="mailto:studio@opusfesta.com"
+                  href={`mailto:${settings?.studio_email || 'studio@opusfesta.com'}`}
                   className="text-xl sm:text-2xl font-bold text-white hover:text-brand-accent transition-colors tracking-tight"
                 >
-                  studio@opusfesta.com
+                  {settings?.studio_email || 'studio@opusfesta.com'}
                 </a>
               </div>
 
@@ -110,7 +110,7 @@ export default function MainFooter() {
             </nav>
 
             <p className="text-[11px] text-white/65 font-mono tracking-wide">
-              &copy; {new Date().getFullYear()} OpusFesta Studio. All rights reserved.
+              &copy; {new Date().getFullYear()} OpusStudio. All rights reserved.
             </p>
 
             <div className="flex gap-6">

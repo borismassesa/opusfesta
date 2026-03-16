@@ -43,7 +43,7 @@ export default function AdminTable<T>({ columns, data, keyField, emptyMessage = 
             {data.map((item) => (
               <tr
                 key={String(item[keyField])}
-                className={`${onRowClick ? 'cursor-pointer hover:bg-[rgba(255,136,0,0.05)]' : ''} transition-colors`}
+                className={`${onRowClick ? 'cursor-pointer hover:bg-[rgba(214,73,42,0.05)]' : ''} transition-colors`}
                 onClick={() => onRowClick?.(item)}
               >
                 {columns.map((col) => (

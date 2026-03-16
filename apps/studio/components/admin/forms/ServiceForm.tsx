@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AdminInput, AdminTextarea } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
+import AdminMediaUpload from '@/components/admin/ui/AdminMediaUpload';
 import { BsPlus, BsX } from 'react-icons/bs';
 import type { StudioService } from '@/lib/studio-types';
 
@@ -18,7 +19,7 @@ export default function ServiceForm({ initialData, onSubmit }: { initialData?: S
   const set = (f: string, v: unknown) => setForm((p) => ({ ...p, [f]: v }));
 
   return (
-    <form onSubmit={async (e) => { e.preventDefault(); setLoading(true); await onSubmit({ ...form, includes }); setLoading(false); }} className="space-y-6 max-w-2xl">
+    <form onSubmit={async (e) => { e.preventDefault(); setLoading(true); await onSubmit({ ...form, includes }); setLoading(false); }} className="space-y-6">
       <div className="bg-white border border-gray-200 p-6 space-y-4">
         <AdminInput label="Title" value={form.title} onChange={(e) => set('title', e.target.value)} required />
         <AdminTextarea label="Description" value={form.description} onChange={(e) => set('description', e.target.value)} required />
@@ -26,7 +27,7 @@ export default function ServiceForm({ initialData, onSubmit }: { initialData?: S
           <AdminInput label="Price" value={form.price} onChange={(e) => set('price', e.target.value)} required placeholder="From $2,500" />
           <AdminInput label="Sort Order" type="number" value={form.sort_order} onChange={(e) => set('sort_order', parseInt(e.target.value) || 0)} />
         </div>
-        <AdminInput label="Cover Image URL" value={form.cover_image} onChange={(e) => set('cover_image', e.target.value)} required />
+        <AdminMediaUpload label="Cover Image" value={form.cover_image} onChange={(url) => set('cover_image', url)} mediaType="image" />
         <div className="flex items-center gap-2">
           <input type="checkbox" id="is_active" checked={form.is_active} onChange={(e) => set('is_active', e.target.checked)} className="w-4 h-4 accent-brand-accent" />
           <label htmlFor="is_active" className="text-sm text-gray-700">Active</label>

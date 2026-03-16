@@ -18,7 +18,7 @@ function getDefaultFromAddress(): string {
   if (process.env.RESEND_FROM_EMAIL) {
     return process.env.RESEND_FROM_EMAIL;
   }
-  return 'OpusFesta Studio <noreply@thefestaevents.com>';
+  return 'OpusStudio <noreply@thefestaevents.com>';
 }
 
 export async function sendEmail(options: EmailOptions): Promise<{ success: boolean; error?: string }> {
