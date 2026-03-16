@@ -7,6 +7,9 @@ import PortalLoader from '@/components/portal/PortalLoader';
 import { useUser } from '@clerk/nextjs';
 import { useClientAuth } from '@/components/portal/ClientAuthProvider';
 import BookingCard from '@/components/portal/BookingCard';
+import DashboardStats from '@/components/portal/DashboardStats';
+import PendingActionBanner from '@/components/portal/PendingActionBanner';
+import UpcomingEventCard from '@/components/portal/UpcomingEventCard';
 
 interface Booking {
   id: string;
@@ -18,57 +21,92 @@ interface Booking {
   created_at: string;
 }
 
+interface DashboardData {
+  stats: {
+    activeBookings: number;
+    totalBookings: number;
+    unreadMessages: number;
+    outstandingBalance: number;
+    totalSpent: number;
+  };
+  nextEvent: {
+    id: string;
+    event_type: string;
+    event_date: string;
+    event_time_slot: string | null;
+    service: string | null;
+    lifecycle_status: string;
+  } | null;
+  pendingActions: {
+    id: string;
+    event_type: string;
+    lifecycle_status: string;
+    event_date: string | null;
+  }[];
+}
+
 export default function PortalDashboard() {
   const { user, isLoaded } = useUser();
   const { client, loading: clientLoading } = useClientAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchBookings = useCallback(async (retries = 2) => {
+  const fetchData = useCallback(async (retries = 2) => {
     try {
-      const res = await fetch('/api/portal/bookings');
-      if (res.ok) {
-        const data = await res.json();
-        setBookings(data.bookings || []);
+      const [bookingsRes, dashboardRes] = await Promise.all([
+        fetch('/api/portal/bookings'),
+        fetch('/api/portal/dashboard'),
+      ]);
+
+      if (bookingsRes.ok && dashboardRes.ok) {
+        const [bookingsData, dashboardData] = await Promise.all([
+          bookingsRes.json(),
+          dashboardRes.json(),
+        ]);
+        setBookings(bookingsData.bookings || []);
+        setDashboard(dashboardData);
         setLoading(false);
         return;
       }
 
       // If 401, auth might not be ready yet — retry after a short delay
-      if (res.status === 401 && retries > 0) {
-        await new Promise(r => setTimeout(r, 1000));
-        return fetchBookings(retries - 1);
+      if ((bookingsRes.status === 401 || dashboardRes.status === 401) && retries > 0) {
+        await new Promise((r) => setTimeout(r, 1000));
+        return fetchData(retries - 1);
       }
 
       setLoading(false);
     } catch {
       if (retries > 0) {
-        await new Promise(r => setTimeout(r, 1000));
-        return fetchBookings(retries - 1);
+        await new Promise((r) => setTimeout(r, 1000));
+        return fetchData(retries - 1);
       }
       setLoading(false);
     }
   }, []);
 
-  // Wait for BOTH Clerk user AND client profile to be ready before fetching bookings
+  // Wait for BOTH Clerk user AND client profile to be ready before fetching
   useEffect(() => {
     if (!isLoaded || !user || clientLoading) return;
     if (!client) {
       setLoading(false);
       return;
     }
-    fetchBookings();
-  }, [isLoaded, user, client, clientLoading, fetchBookings]);
+    fetchData();
+  }, [isLoaded, user, client, clientLoading, fetchData]);
 
   if (!isLoaded || clientLoading) {
     return <PortalLoader />;
   }
 
   const displayName = client?.name || user?.fullName || user?.firstName || 'Client';
-  const activeBookings = bookings.filter(b => !['completed', 'cancelled'].includes(b.lifecycle_status));
+  const activeBookings = bookings.filter(
+    (b) => !['completed', 'cancelled'].includes(b.lifecycle_status)
+  );
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Welcome header */}
       <div className="flex items-center justify-between">
         <div>
@@ -88,11 +126,28 @@ export default function PortalDashboard() {
         </Link>
       </div>
 
-      {/* Bookings preview */}
+      {/* Dashboard content */}
       {loading ? (
         <div className="space-y-4">
-          {[1, 2].map(i => (
-            <div key={i} className="border-3 border-brand-border/30 bg-white p-6 animate-pulse">
+          {/* Stats skeleton */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4].map((i) => (
+              <div
+                key={i}
+                className="border-3 border-brand-border/30 bg-white p-4 animate-pulse"
+              >
+                <div className="h-3 w-20 bg-brand-bg mb-3" />
+                <div className="h-5 w-16 bg-brand-bg mb-1" />
+                <div className="h-2 w-12 bg-brand-bg" />
+              </div>
+            ))}
+          </div>
+          {/* Cards skeleton */}
+          {[1, 2].map((i) => (
+            <div
+              key={i}
+              className="border-3 border-brand-border/30 bg-white p-6 animate-pulse"
+            >
               <div className="h-4 w-48 bg-brand-bg mb-3" />
               <div className="h-3 w-32 bg-brand-bg" />
             </div>
@@ -101,7 +156,9 @@ export default function PortalDashboard() {
       ) : bookings.length === 0 ? (
         <div className="border-3 border-brand-border bg-white p-12 text-center shadow-brutal">
           <BsCalendar3 className="w-10 h-10 text-brand-border mx-auto mb-4" />
-          <h2 className="text-lg font-bold text-brand-dark font-mono uppercase mb-2">No Bookings Yet</h2>
+          <h2 className="text-lg font-bold text-brand-dark font-mono uppercase mb-2">
+            No Bookings Yet
+          </h2>
           <p className="text-brand-muted text-sm mb-6">
             Start by booking a session with our studio.
           </p>
@@ -114,34 +171,106 @@ export default function PortalDashboard() {
           </Link>
         </div>
       ) : (
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="text-xs font-mono font-bold text-brand-muted uppercase tracking-wider">
-              {activeBookings.length > 0
-                ? `Active Bookings (${activeBookings.length})`
-                : `Recent Bookings (${bookings.length})`}
-            </h2>
-            <Link
-              href="/portal/bookings"
-              className="flex items-center gap-1 text-xs font-mono font-bold text-brand-accent hover:text-brand-dark transition-colors uppercase tracking-wider"
-            >
-              View All <BsArrowRight className="w-3 h-3" />
-            </Link>
-          </div>
-          <div className="space-y-3">
-            {(activeBookings.length > 0 ? activeBookings : bookings).slice(0, 3).map(b => (
-              <BookingCard key={b.id} booking={b} />
-            ))}
-          </div>
-          {bookings.length > 3 && (
-            <Link
-              href="/portal/bookings"
-              className="block mt-4 text-center text-sm font-mono font-bold text-brand-accent hover:text-brand-dark transition-colors"
-            >
-              View all {bookings.length} bookings →
-            </Link>
+        <>
+          {/* Stats row */}
+          {dashboard && (
+            <DashboardStats
+              activeBookings={dashboard.stats.activeBookings}
+              totalBookings={dashboard.stats.totalBookings}
+              unreadMessages={dashboard.stats.unreadMessages}
+              outstandingBalance={dashboard.stats.outstandingBalance}
+              totalSpent={dashboard.stats.totalSpent}
+            />
           )}
-        </section>
+
+          {/* Pending actions banner */}
+          {dashboard && dashboard.pendingActions.length > 0 && (
+            <PendingActionBanner actions={dashboard.pendingActions} />
+          )}
+
+          {/* Upcoming event + active bookings in 2-column layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            {/* Upcoming event card */}
+            {dashboard?.nextEvent && (
+              <UpcomingEventCard event={dashboard.nextEvent} />
+            )}
+
+            {/* Quick actions / messages teaser */}
+            <div className="border-3 border-brand-border bg-white shadow-brutal p-5">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-[10px] font-mono font-bold text-brand-muted uppercase tracking-wider">
+                  Quick Actions
+                </span>
+              </div>
+              <div className="space-y-2">
+                <Link
+                  href="/portal/bookings"
+                  className="flex items-center justify-between p-3 border-2 border-brand-border/50 hover:border-brand-accent transition-colors group"
+                >
+                  <span className="text-xs font-mono font-bold text-brand-dark uppercase tracking-wider">
+                    All Bookings
+                  </span>
+                  <BsArrowRight className="w-3 h-3 text-brand-muted group-hover:text-brand-accent transition-colors" />
+                </Link>
+                <Link
+                  href="/portal/messages"
+                  className="flex items-center justify-between p-3 border-2 border-brand-border/50 hover:border-brand-accent transition-colors group"
+                >
+                  <span className="text-xs font-mono font-bold text-brand-dark uppercase tracking-wider">
+                    Messages
+                    {dashboard && dashboard.stats.unreadMessages > 0 && (
+                      <span className="ml-2 inline-flex items-center justify-center w-5 h-5 bg-brand-accent text-white text-[9px] font-bold">
+                        {dashboard.stats.unreadMessages}
+                      </span>
+                    )}
+                  </span>
+                  <BsArrowRight className="w-3 h-3 text-brand-muted group-hover:text-brand-accent transition-colors" />
+                </Link>
+                <Link
+                  href="/portal/settings"
+                  className="flex items-center justify-between p-3 border-2 border-brand-border/50 hover:border-brand-accent transition-colors group"
+                >
+                  <span className="text-xs font-mono font-bold text-brand-dark uppercase tracking-wider">
+                    Account Settings
+                  </span>
+                  <BsArrowRight className="w-3 h-3 text-brand-muted group-hover:text-brand-accent transition-colors" />
+                </Link>
+              </div>
+            </div>
+          </div>
+
+          {/* Recent active bookings */}
+          <section>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-mono font-bold text-brand-muted uppercase tracking-wider">
+                {activeBookings.length > 0
+                  ? `Active Bookings (${activeBookings.length})`
+                  : `Recent Bookings (${bookings.length})`}
+              </h2>
+              <Link
+                href="/portal/bookings"
+                className="flex items-center gap-1 text-xs font-mono font-bold text-brand-accent hover:text-brand-dark transition-colors uppercase tracking-wider"
+              >
+                View All <BsArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+            <div className="space-y-3">
+              {(activeBookings.length > 0 ? activeBookings : bookings)
+                .slice(0, 3)
+                .map((b) => (
+                  <BookingCard key={b.id} booking={b} />
+                ))}
+            </div>
+            {bookings.length > 3 && (
+              <Link
+                href="/portal/bookings"
+                className="block mt-4 text-center text-sm font-mono font-bold text-brand-accent hover:text-brand-dark transition-colors"
+              >
+                View all {bookings.length} bookings →
+              </Link>
+            )}
+          </section>
+        </>
       )}
     </div>
   );
