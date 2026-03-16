@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 
 interface AboutHeroProps {
@@ -9,6 +9,7 @@ interface AboutHeroProps {
 
 export default function AboutHero({ content }: AboutHeroProps) {
   const [isVisible, setIsVisible] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const tagline = (content?.tagline as string) || 'About';
   const headingLine1 = (content?.heading_line1 as string) || 'THE TEAM';
@@ -19,10 +20,39 @@ export default function AboutHero({ content }: AboutHeroProps) {
   const imageUrl = content?.image_url as string | undefined;
   const videoUrl = content?.video_url as string | undefined;
 
+  // Video controls from CMS
+  const videoSpeed = Number(content?.video_speed) || 0.5;
+  const videoStart = Number(content?.video_start) || 0;
+  const videoEnd = Number(content?.video_end) || 0;
+
   useEffect(() => {
     const timer = setTimeout(() => setIsVisible(true), 100);
     return () => clearTimeout(timer);
   }, []);
+
+  const handleLoadedMetadata = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // Set playback speed
+    video.playbackRate = videoSpeed;
+
+    // Set start time
+    if (videoStart > 0) {
+      video.currentTime = videoStart;
+    }
+  }, [videoSpeed, videoStart]);
+
+  // Handle looping within the time range
+  const handleTimeUpdate = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+
+    // If videoEnd is set and we've passed it, loop back to start
+    if (videoEnd > 0 && video.currentTime >= videoEnd) {
+      video.currentTime = videoStart;
+    }
+  }, [videoStart, videoEnd]);
 
   return (
     <section className="relative min-h-[70vh] flex items-end overflow-hidden bg-brand-dark border-b-4 border-brand-border">
@@ -30,10 +60,13 @@ export default function AboutHero({ content }: AboutHeroProps) {
       {videoUrl ? (
         <div className="absolute inset-0 z-0">
           <video
+            ref={videoRef}
             autoPlay
             muted
             loop
             playsInline
+            onLoadedMetadata={handleLoadedMetadata}
+            onTimeUpdate={videoEnd > 0 ? handleTimeUpdate : undefined}
             className="absolute inset-0 w-full h-full object-cover opacity-40"
           >
             <source src={videoUrl} type="video/mp4" />
