@@ -3,7 +3,11 @@
 import { useRef, useEffect, useState } from 'react';
 import { useBookingModal } from '@/components/BookingModalProvider';
 
-export default function CTASection() {
+interface CTASectionProps {
+  content?: Record<string, unknown>;
+}
+
+export default function CTASection({ content }: CTASectionProps) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
   const { openBookingModal } = useBookingModal();
@@ -31,17 +35,17 @@ export default function CTASection() {
       >
         <div className="text-center max-w-3xl mx-auto">
           <span className="text-xs font-bold text-brand-accent tracking-widest uppercase font-mono mb-8 block">
-            Ready to Start?
+            {(content?.tagline as string) || 'Ready to Start?'}
           </span>
           <h2 className="text-4xl sm:text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-brand-dark leading-[0.9] mb-6">
-            LET&apos;S MAKE
+            {(content?.heading_line1 as string) || "LET\u2019S MAKE"}
             <br />
-            <span className="text-stroke">SOMETHING</span>
+            <span className="text-stroke">{(content?.heading_line2 as string) || 'SOMETHING'}</span>
             <br />
-            UNFORGETTABLE.
+            {(content?.heading_line3 as string) || 'UNFORGETTABLE.'}
           </h2>
           <p className="text-neutral-500 text-base sm:text-lg leading-relaxed font-light max-w-lg mx-auto mb-12">
-            Whether it&apos;s a wedding, a product launch, or a milestone celebration — we&apos;d love to hear about it.
+            {(content?.description as string) || "Whether it\u2019s a wedding, a product launch, or a milestone celebration \u2014 we\u2019d love to hear about it."}
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <button
@@ -64,7 +68,7 @@ export default function CTASection() {
               </svg>
             </button>
             <a
-              href="/#services"
+              href="/services"
               className="inline-flex items-center justify-center px-10 py-5 text-xs font-bold text-brand-dark uppercase tracking-widest border-4 border-brand-border shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:border-brand-accent hover:text-brand-accent transition-all duration-200"
             >
               View Services

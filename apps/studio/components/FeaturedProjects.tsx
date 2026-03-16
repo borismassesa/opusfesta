@@ -2,7 +2,15 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 
-export default function FeaturedProjects() {
+interface FeaturedProjectsProps {
+  content?: {
+    stats?: Record<string, unknown>;
+    clients?: Record<string, unknown>;
+    about?: Record<string, unknown>;
+  };
+}
+
+export default function FeaturedProjects({ content }: FeaturedProjectsProps) {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const refs = useRef<Map<string, HTMLElement>>(new Map());
 
@@ -33,21 +41,23 @@ export default function FeaturedProjects() {
     return () => observer.disconnect();
   }, []);
 
-  const stats = [
+  const defaultStats = [
     { id: 'stat-1', value: '200+', label: 'Projects Delivered' },
     { id: 'stat-2', value: '8+', label: 'Years Experience' },
     { id: 'stat-3', value: '4.9', label: 'Client Rating' },
     { id: 'stat-4', value: '50+', label: 'Awards & Features' },
   ];
+  const statsItems = (content?.stats?.items as { value: string; label: string }[]) || null;
+  const stats = statsItems
+    ? statsItems.map((s, i) => ({ id: `stat-${i + 1}`, ...s }))
+    : defaultStats;
 
-  const clients = [
-    'Vogue', 'Tatler', 'Harper\'s Bazaar', 'The Ritz', 'Claridge\'s',
-    'Harrods', 'Fortnum & Mason', 'Rolls-Royce',
-  ];
+  const defaultClients = ['Vogue', 'Tatler', 'Harper\'s Bazaar', 'The Ritz', 'Claridge\'s', 'Harrods', 'Fortnum & Mason', 'Rolls-Royce'];
+  const clients = (content?.clients?.names as string[]) || defaultClients;
 
   return (
-    <section id="about" className="relative z-10 bg-brand-dark">
-      <div className="grid grid-cols-2 md:grid-cols-4 border-b border-white/10">
+    <section id="about" className="relative z-10 bg-brand-bg">
+      <div className="grid grid-cols-2 md:grid-cols-4 bg-brand-dark border-b border-white/10">
         {stats.map((stat, index) => {
           const borders = [
             'border-r border-b md:border-b-0 border-white/10',
@@ -79,7 +89,7 @@ export default function FeaturedProjects() {
 
       <div
         ref={setRef('clients-strip')}
-        className={`bg-brand-dark py-8 sm:py-10 overflow-hidden transition-all duration-700 ${
+        className={`bg-brand-dark border-b border-white/10 py-8 sm:py-10 overflow-hidden transition-all duration-700 ${
           visibleItems.has('clients-strip')
             ? 'opacity-100'
             : 'opacity-0'
@@ -118,21 +128,21 @@ export default function FeaturedProjects() {
         <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-10 lg:gap-16 items-end">
           <div>
             <span className="text-xs font-bold text-brand-accent tracking-widest uppercase font-mono mb-6 block">
-              About the Studio
+              {(content?.about?.tagline as string) || 'About the Studio'}
             </span>
-            <h2 className="text-3xl lg:text-5xl font-bold text-white tracking-tighter leading-[1.1]">
-              We don&apos;t just document moments — we craft visual stories that live forever.
+            <h2 className="text-3xl lg:text-5xl font-bold text-brand-dark tracking-tighter leading-[1.1]">
+              {(content?.about?.heading as string) || "We don\u2019t just document moments \u2014 we craft visual stories that live forever."}
             </h2>
           </div>
           <div>
-            <p className="text-white/50 text-base lg:text-lg leading-relaxed font-light mb-8">
-              OpusFesta Studio is a team of filmmakers, photographers, and creative directors who believe every milestone deserves a cinematic treatment. From intimate elopements to 500-guest galas, we bring the same obsessive attention to light, composition, and narrative.
+            <p className="text-neutral-500 text-base lg:text-lg leading-relaxed font-light mb-8">
+              {(content?.about?.description as string) || 'OpusStudio is a team of filmmakers, photographers, and creative directors who believe every milestone deserves a cinematic treatment. From intimate elopements to 500-guest galas, we bring the same obsessive attention to light, composition, and narrative.'}
             </p>
             <a
-              href="#about"
-              className="inline-flex items-center gap-3 text-xs font-bold text-white uppercase tracking-widest px-6 py-3 border border-white/30 hover:border-brand-accent hover:text-brand-accent transition-all duration-300"
+              href={(content?.about?.button_url as string) || '/about'}
+              className="inline-flex items-center gap-3 px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
             >
-              Our Story
+              {(content?.about?.button_text as string) || 'Our Story'}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"

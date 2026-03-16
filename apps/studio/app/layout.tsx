@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { DM_Sans, Space_Mono } from "next/font/google";
+import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
-import BookingModalProvider from "@/components/BookingModalProvider";
 
 const dmSans = DM_Sans({
   subsets: ["latin"],
@@ -16,7 +16,7 @@ const spaceMono = Space_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OpusFesta Studio | Cinematic Wedding & Event Visuals",
+  title: "OpusStudio",
   description: "Capturing life's most defining moments.",
 };
 
@@ -28,7 +28,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${dmSans.variable} ${spaceMono.variable} font-sans`}>
-        <BookingModalProvider>{children}</BookingModalProvider>
+        <ClerkProvider
+          signInUrl="/portal/login"
+          signUpUrl="/portal/signup"
+          afterSignOutUrl="/"
+        >
+          {children}
+        </ClerkProvider>
       </body>
     </html>
   );

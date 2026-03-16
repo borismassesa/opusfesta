@@ -2,10 +2,14 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { services } from '@/lib/data';
 import { useBookingModal } from '@/components/BookingModalProvider';
+import type { StudioService } from '@/lib/studio-types';
 
-export default function ServicesSection() {
+interface ServicesSectionProps {
+  services?: StudioService[];
+}
+
+export default function ServicesSection({ services: dbServices }: ServicesSectionProps) {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const refs = useRef<Map<string, HTMLElement>>(new Map());
@@ -65,13 +69,14 @@ export default function ServicesSection() {
               </h2>
             </div>
             <p className="text-neutral-500 text-lg max-w-sm leading-relaxed font-light md:text-right">
-              From intimate weddings to large-scale productions. If it moves us, we shoot it.
+              From one-off productions to long-term content retainers. If your story needs motion, we build it.
             </p>
           </div>
         </div>
 
         <div className="border-t-4 border-brand-border">
-          {services.map((service, index) => {
+          {(dbServices ?? []).map((service, index) => {
+            const displayNum = String(index + 1).padStart(2, '0');
             const itemId = `service-${service.id}`;
             const isVisible = visibleItems.has(itemId);
             const isExpanded = expandedId === service.id;
@@ -94,7 +99,7 @@ export default function ServicesSection() {
                   className="w-full py-6 sm:py-8 lg:py-10 flex items-center gap-3 sm:gap-6 lg:gap-10 group text-left cursor-pointer focus-visible:outline-2 focus-visible:outline-brand-accent focus-visible:outline-offset-4"
                 >
                   <span className="text-2xl sm:text-4xl lg:text-6xl font-bold text-neutral-200 font-mono leading-none min-w-[40px] sm:min-w-[60px] lg:min-w-[90px] group-hover:text-brand-accent transition-colors duration-300">
-                    {service.id}
+                    {displayNum}
                   </span>
 
                   <h3 id={`heading-${service.id}`} className="text-lg sm:text-2xl lg:text-4xl xl:text-5xl font-bold text-brand-dark tracking-tighter group-hover:text-brand-accent transition-colors duration-300 flex-1">
@@ -185,7 +190,7 @@ export default function ServicesSection() {
 
                       <div className="relative border-4 border-brand-border shadow-brutal overflow-hidden aspect-[4/3]">
                         <Image
-                          src={service.image}
+                          src={service.cover_image}
                           alt={service.title}
                           fill
                           sizes="(max-width: 1024px) 100vw, 380px"

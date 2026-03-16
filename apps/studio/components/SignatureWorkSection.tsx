@@ -3,9 +3,13 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { projects } from '@/lib/data';
+import type { StudioProject } from '@/lib/studio-types';
 
-export default function SignatureWorkSection() {
+interface SignatureWorkSectionProps {
+  projects?: StudioProject[];
+}
+
+export default function SignatureWorkSection({ projects = [] }: SignatureWorkSectionProps) {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const refs = useRef<Map<string, HTMLElement>>(new Map());
 
@@ -36,6 +40,8 @@ export default function SignatureWorkSection() {
     return () => observer.disconnect();
   }, []);
 
+  if (projects.length === 0) return null;
+
   return (
     <section id="work" className="py-24 relative z-10 bg-brand-bg">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
@@ -50,37 +56,42 @@ export default function SignatureWorkSection() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b-4 border-brand-border pb-8">
             <div>
               <span className="text-xs font-bold text-brand-accent tracking-widest uppercase font-mono mb-6 block">
-                Portfolio
+                Journal Archive
               </span>
               <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-brand-dark leading-[0.9]">
-                SIGNATURE<br />
-                <span className="text-stroke">WORK.</span>
+                STORIES<br />
+                <span className="text-stroke">IN MOTION.</span>
               </h2>
             </div>
-            <Link
-              href="/portfolio"
-              className="group inline-flex items-center gap-3 text-xs font-bold text-brand-dark uppercase tracking-widest px-5 py-3 border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:text-white hover:border-brand-accent transition-all duration-200"
-            >
-              View All Projects
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="group-hover:translate-x-1 transition-transform"
+            <div className="flex flex-col items-start md:items-end gap-3">
+              <p className="text-neutral-500 text-base lg:text-lg max-w-sm leading-relaxed font-light md:text-right">
+                A curated selection of recent stories, campaigns, and cinematic case studies.
+              </p>
+              <Link
+                href="/portfolio"
+                className="group inline-flex items-center gap-3 text-xs font-bold text-brand-dark uppercase tracking-widest px-5 py-3 border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:text-white hover:border-brand-accent transition-all duration-200"
               >
-                <path d="M5 12h14m-7-7l7 7l-7 7"></path>
-              </svg>
-            </Link>
+                Explore Journal
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="group-hover:translate-x-1 transition-transform"
+                >
+                  <path d="M5 12h14m-7-7l7 7l-7 7"></path>
+                </svg>
+              </Link>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-12 lg:space-y-20">
+        <div className="space-y-6 lg:space-y-0">
           {projects.map((project, index) => {
             const isVisible = visibleItems.has(project.id);
             const isReversed = index % 2 === 1;
@@ -89,20 +100,24 @@ export default function SignatureWorkSection() {
               <div
                 key={project.id}
                 ref={setRef(project.id)}
-                className={`group grid grid-cols-1 lg:grid-cols-2 gap-0 border-4 border-brand-border transition-all duration-700 hover:shadow-brutal-lg ${
+                className={`group grid grid-cols-1 lg:grid-cols-2 gap-0 border-4 border-brand-border bg-brand-bg transition-all duration-700 hover:shadow-brutal-lg lg:sticky lg:min-h-[66vh] xl:min-h-[68vh] ${index > 0 ? 'lg:-mt-12' : ''} ${
                   isVisible
                     ? 'opacity-100 translate-y-0'
                     : 'opacity-0 translate-y-12'
                 }`}
-                style={{ transitionDelay: `${index * 100}ms` }}
+                style={{
+                  transitionDelay: `${index * 100}ms`,
+                  zIndex: index + 1,
+                  top: '5.25rem',
+                }}
               >
                 <div
-                  className={`relative overflow-hidden aspect-[16/10] lg:aspect-auto lg:min-h-[500px] ${
+                  className={`relative overflow-hidden aspect-[16/10] lg:aspect-auto lg:h-full ${
                     isReversed ? 'lg:order-2' : ''
                   }`}
                 >
                   <Image
-                    src={project.image}
+                    src={project.cover_image}
                     alt={project.title}
                     fill
                     sizes="(max-width: 1024px) 100vw, 50vw"
@@ -111,7 +126,7 @@ export default function SignatureWorkSection() {
                     } group-hover:scale-105`}
                   />
                   <div className="absolute top-6 left-6 z-10">
-                    <span className={`text-8xl lg:text-9xl font-bold text-white/10 font-mono leading-none transition-all duration-700 delay-300 ${
+                    <span className={`text-8xl lg:text-8xl xl:text-9xl font-bold text-white/10 font-mono leading-none transition-all duration-700 delay-300 ${
                       isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4'
                     }`}>
                       {project.number}
@@ -120,7 +135,7 @@ export default function SignatureWorkSection() {
                 </div>
 
                 <div
-                  className={`flex flex-col justify-between p-8 lg:p-14 bg-brand-bg group-hover:bg-brand-panel transition-colors duration-500 ${
+                  className={`flex flex-col justify-between p-8 lg:p-12 bg-brand-bg group-hover:bg-brand-panel transition-colors duration-500 ${
                     isReversed ? 'lg:order-1' : ''
                   }`}
                 >

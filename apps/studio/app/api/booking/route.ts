@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { sendEmail } from '@/lib/resend';
+import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 
 /** Escape a string for safe embedding in HTML content and attributes. */
 function escapeHtml(str: string): string {
@@ -34,6 +35,18 @@ export async function POST(request: NextRequest) {
 
     const { phone, preferredDate, location, service, message } = body;
 
+    // Persist booking to database
+    try {
+      const db = getStudioSupabaseAdmin();
+      await db.from('studio_bookings').insert({
+        name, email, phone: phone || null, event_type: eventType,
+        preferred_date: preferredDate || null, location: location || null,
+        service: service || null, message: message || null,
+      });
+    } catch (dbError) {
+      console.error('[BOOKING API] DB write failed (continuing with email):', dbError);
+    }
+
     // Escape all user input before embedding in HTML
     const safeName = escapeHtml(String(name));
     const safeEmail = escapeHtml(String(email));
@@ -55,7 +68,7 @@ export async function POST(request: NextRequest) {
         <div style="padding: 32px;">
           <table style="width: 100%; border-collapse: collapse;">
             <tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Name</td><td style="padding: 8px 0; font-size: 15px; color: #171717;">${safeName}</td></tr>
-            <tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Email</td><td style="padding: 8px 0; font-size: 15px; color: #171717;"><a href="mailto:${mailtoEmail}" style="color: #6F3393;">${safeEmail}</a></td></tr>
+            <tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Email</td><td style="padding: 8px 0; font-size: 15px; color: #171717;"><a href="mailto:${mailtoEmail}" style="color: #171717;">${safeEmail}</a></td></tr>
             ${safePhone ? `<tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Phone</td><td style="padding: 8px 0; font-size: 15px; color: #171717;">${safePhone}</td></tr>` : ''}
             <tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Event Type</td><td style="padding: 8px 0; font-size: 15px; color: #171717;">${safeEventType}</td></tr>
             ${safePreferredDate ? `<tr><td style="padding: 8px 0; color: #7E7383; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Preferred Date</td><td style="padding: 8px 0; font-size: 15px; color: #171717;">${safePreferredDate}</td></tr>` : ''}
@@ -85,7 +98,7 @@ export async function POST(request: NextRequest) {
     const confirmHtml = `
       <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 600px; margin: 0 auto; background: #F8F9FA; border: 4px solid #171717;">
         <div style="background: #171717; padding: 24px 32px;">
-          <h1 style="color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin: 0;">OPUSFESTA STUDIO</h1>
+          <h1 style="color: #fff; font-size: 20px; font-weight: 800; letter-spacing: -0.5px; margin: 0;">OpusStudio</h1>
         </div>
         <div style="padding: 32px;">
           <h2 style="font-size: 24px; font-weight: 800; color: #171717; letter-spacing: -0.5px; margin: 0 0 16px;">Thanks, ${safeName}.</h2>
@@ -93,14 +106,14 @@ export async function POST(request: NextRequest) {
           <div style="padding: 16px; background: #fff; border: 2px solid #171717;">
             <p style="margin: 0; font-size: 13px; color: #7E7383;">In the meantime, feel free to reply to this email with any additional details, inspiration, or questions.</p>
           </div>
-          <p style="margin-top: 32px; font-size: 12px; color: #999;">&mdash; The OpusFesta Studio Team</p>
+          <p style="margin-top: 32px; font-size: 12px; color: #999;">&mdash; The OpusStudio Team</p>
         </div>
       </div>
     `;
 
     const confirmResult = await sendEmail({
       to: email,
-      subject: `We've received your enquiry — OpusFesta Studio`,
+      subject: `We've received your enquiry — OpusStudio`,
       html: confirmHtml,
       replyTo: 'studio@opusfesta.com',
     });
