@@ -42,7 +42,7 @@ export default function TestimonialsPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/testimonials/new" icon={<BsPlus className="w-4 h-4" />}>New Testimonial</AdminButton>
+        <AdminButton href="/studio-admin/testimonials/new" icon={<BsPlus className="w-4 h-4" />}>New Testimonial</AdminButton>
       </div>
 
       {loading ? (

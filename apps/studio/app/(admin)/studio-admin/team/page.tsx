@@ -42,7 +42,7 @@ export default function TeamPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/team/new" icon={<BsPlus className="w-4 h-4" />}>New Member</AdminButton>
+        <AdminButton href="/studio-admin/team/new" icon={<BsPlus className="w-4 h-4" />}>New Member</AdminButton>
       </div>
 
       {loading ? (

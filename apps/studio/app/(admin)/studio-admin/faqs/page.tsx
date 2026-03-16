@@ -41,7 +41,7 @@ export default function FaqsPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/faqs/new" icon={<BsPlus className="w-4 h-4" />}>New FAQ</AdminButton>
+        <AdminButton href="/studio-admin/faqs/new" icon={<BsPlus className="w-4 h-4" />}>New FAQ</AdminButton>
       </div>
 
       {loading ? (
