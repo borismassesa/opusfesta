@@ -27,13 +27,13 @@ export default function EditProjectPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    router.push('/admin/projects?saved=1');
+    router.push('/studio-admin/projects?saved=1');
   };
 
   const handleDelete = async () => {
     setDeleting(true);
     await fetch(`/api/admin/projects/${id}`, { method: 'DELETE' });
-    router.push('/admin/projects?deleted=1');
+    router.push('/studio-admin/projects?deleted=1');
   };
 
   if (!project) return <div className="bg-white border border-gray-200 h-64 animate-pulse" />;
@@ -41,7 +41,7 @@ export default function EditProjectPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <AdminButton variant="ghost" onClick={() => router.push('/admin/projects')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+        <AdminButton variant="ghost" onClick={() => router.push('/studio-admin/projects')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
         <AdminButton variant="danger" size="sm" onClick={() => setShowDelete(true)} icon={<BsTrash className="w-4 h-4" />}>Delete</AdminButton>
       </div>
       <h1 className="text-xl font-bold text-gray-900">Edit Project</h1>

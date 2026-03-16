@@ -76,7 +76,7 @@ export default function BookingDetailPage() {
   const handleDelete = async () => {
     setDeleting(true);
     await fetch(`/api/admin/bookings/${id}`, { method: 'DELETE' });
-    router.push('/admin/bookings?deleted=1');
+    router.push('/studio-admin/bookings?deleted=1');
   };
 
   if (!booking) return <div className="bg-white border-3 border-brand-border h-64 animate-pulse" />;
@@ -90,7 +90,7 @@ export default function BookingDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <AdminButton variant="ghost" onClick={() => router.push('/admin/bookings')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+        <AdminButton variant="ghost" onClick={() => router.push('/studio-admin/bookings')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
         <div className="flex gap-2">
           {ls === 'intake_submitted' && (
             <AdminButton onClick={() => handleAction('qualify')} loading={actionLoading === 'qualify'}>

@@ -27,13 +27,13 @@ export default function EditArticlePage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    router.push('/admin/articles?saved=1');
+    router.push('/studio-admin/articles?saved=1');
   };
 
   const handleDelete = async () => {
     setDeleting(true);
     await fetch(`/api/admin/articles/${id}`, { method: 'DELETE' });
-    router.push('/admin/articles?deleted=1');
+    router.push('/studio-admin/articles?deleted=1');
   };
 
   if (!article) return <div className="bg-white border border-gray-200 h-64 animate-pulse" />;
@@ -41,7 +41,7 @@ export default function EditArticlePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <AdminButton variant="ghost" onClick={() => router.push('/admin/articles')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+        <AdminButton variant="ghost" onClick={() => router.push('/studio-admin/articles')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
         <AdminButton variant="danger" size="sm" onClick={() => setShowDelete(true)} icon={<BsTrash className="w-4 h-4" />}>Delete</AdminButton>
       </div>
       <h1 className="text-xl font-bold text-gray-900">Edit Article</h1>

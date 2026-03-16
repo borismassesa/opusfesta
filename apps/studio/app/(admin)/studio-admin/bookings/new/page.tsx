@@ -33,7 +33,7 @@ export default function NewBookingPage() {
     <div className="space-y-6">
       <AdminButton
         variant="ghost"
-        onClick={() => router.push('/admin/bookings')}
+        onClick={() => router.push('/studio-admin/bookings')}
         icon={<BsArrowLeft className="w-4 h-4" />}
       >
         Back to Bookings

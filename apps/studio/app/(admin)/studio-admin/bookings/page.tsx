@@ -58,13 +58,13 @@ export default function BookingsPage() {
 
       <div className="flex items-center justify-end gap-3">
         <Link
-          href="/admin/bookings/new"
+          href="/studio-admin/bookings/new"
           className="border-2 border-brand-dark bg-brand-dark text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-brand-accent hover:border-brand-accent transition-colors"
         >
           + New Booking
         </Link>
         <Link
-          href="/admin/bookings/queue"
+          href="/studio-admin/bookings/queue"
           className="border-2 border-brand-accent bg-brand-accent text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-brand-dark hover:border-brand-dark transition-colors"
         >
           Operational Queue
