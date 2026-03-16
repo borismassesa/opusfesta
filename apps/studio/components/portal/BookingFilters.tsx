@@ -24,14 +24,14 @@ export default function BookingFilters({
   counts,
 }: BookingFiltersProps) {
   return (
-    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-      {/* Status tabs */}
-      <div className="flex border-3 border-brand-border bg-white">
+    <div className="flex flex-col gap-2.5 sm:gap-3 sm:flex-row sm:items-center">
+      {/* Status tabs — full width on mobile */}
+      <div className="flex w-full sm:w-auto border-3 border-brand-border bg-white">
         {TABS.map((tab) => (
           <button
             key={tab.key}
             onClick={() => onTabChange(tab.key)}
-            className={`px-4 py-2 text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
+            className={`flex-1 sm:flex-none px-3 sm:px-4 py-2 text-[9px] sm:text-[10px] font-mono font-bold uppercase tracking-wider transition-colors ${
               activeTab === tab.key
                 ? 'bg-brand-dark text-white'
                 : 'text-brand-muted hover:text-brand-dark hover:bg-brand-bg'
@@ -50,7 +50,7 @@ export default function BookingFilters({
           placeholder="Search bookings..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="w-full border-3 border-brand-border bg-white pl-8 pr-3 py-2 text-xs font-mono text-brand-dark placeholder:text-brand-muted/60 focus:outline-none focus:border-brand-accent transition-colors"
+          className="w-full border-3 border-brand-border bg-white pl-8 pr-3 py-2 text-[11px] sm:text-xs font-mono text-brand-dark placeholder:text-brand-muted/60 focus:outline-none focus:border-brand-accent transition-colors"
         />
       </div>
     </div>
