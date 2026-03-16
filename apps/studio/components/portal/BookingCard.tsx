@@ -50,31 +50,31 @@ export default function BookingCard({ booking }: { booking: Booking }) {
       href={`/portal/bookings/${booking.id}`}
       className="block border-3 border-brand-border bg-white hover:border-brand-accent hover:shadow-brutal-accent transition-all group"
     >
-      <div className="p-5 flex items-start gap-4">
+      <div className="p-3.5 sm:p-5 flex items-start gap-3 sm:gap-4">
         <div className="flex-1 min-w-0">
           {/* Type + Service */}
-          <div className="flex items-center gap-3 flex-wrap mb-2">
-            <h3 className="font-bold text-brand-dark font-mono text-sm uppercase tracking-wider">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap mb-1.5 sm:mb-2">
+            <h3 className="font-bold text-brand-dark font-mono text-xs sm:text-sm uppercase tracking-wider">
               {booking.event_type}
             </h3>
             <StatusBadge status={booking.lifecycle_status} />
           </div>
 
           {booking.service && (
-            <p className="text-xs text-brand-muted mb-2">{booking.service}</p>
+            <p className="text-[11px] sm:text-xs text-brand-muted mb-1.5 sm:mb-2 truncate">{booking.service}</p>
           )}
 
           {/* Date & Time */}
-          <div className="flex items-center gap-4 text-xs text-brand-muted">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4 text-[11px] sm:text-xs text-brand-muted">
             {booking.event_date && (
               <span className="flex items-center gap-1">
-                <BsCalendar3 className="w-3 h-3" />
+                <BsCalendar3 className="w-3 h-3 shrink-0" />
                 {formatDate(booking.event_date)}
               </span>
             )}
             {booking.event_time_slot && (
               <span className="flex items-center gap-1">
-                <BsClock className="w-3 h-3" />
+                <BsClock className="w-3 h-3 shrink-0" />
                 {formatSlot(booking.event_time_slot)}
               </span>
             )}
@@ -82,13 +82,13 @@ export default function BookingCard({ booking }: { booking: Booking }) {
 
           {/* Next action hint */}
           {action && (
-            <p className="mt-3 text-xs font-mono font-bold text-brand-accent">
+            <p className="mt-2 sm:mt-3 text-[11px] sm:text-xs font-mono font-bold text-brand-accent">
               {action}
             </p>
           )}
         </div>
 
-        <BsChevronRight className="w-4 h-4 text-brand-muted group-hover:text-brand-accent transition-colors shrink-0 mt-1" />
+        <BsChevronRight className="w-4 h-4 text-brand-muted group-hover:text-brand-accent transition-colors shrink-0 mt-0.5 sm:mt-1" />
       </div>
     </Link>
   );

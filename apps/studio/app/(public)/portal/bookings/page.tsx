@@ -96,21 +96,22 @@ export default function PortalBookingsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-[11px] font-mono font-bold text-brand-accent uppercase tracking-[0.3em] mb-1">
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] sm:text-[11px] font-mono font-bold text-brand-accent uppercase tracking-[0.3em] mb-1">
             Client Portal
           </p>
-          <h1 className="text-2xl font-bold text-brand-dark font-mono uppercase tracking-wider">
+          <h1 className="text-lg sm:text-2xl font-bold text-brand-dark font-mono uppercase tracking-wider">
             My Bookings
           </h1>
         </div>
         <Link
           href="/portal/book"
-          className="flex items-center gap-2 border-3 border-brand-border bg-brand-dark text-white px-4 py-2.5 font-mono font-bold text-xs uppercase tracking-wider hover:bg-brand-accent hover:border-brand-accent transition-colors shadow-brutal"
+          className="flex items-center gap-1.5 sm:gap-2 border-3 border-brand-border bg-brand-dark text-white px-3 sm:px-4 py-2 sm:py-2.5 font-mono font-bold text-[10px] sm:text-xs uppercase tracking-wider hover:bg-brand-accent hover:border-brand-accent transition-colors shadow-brutal shrink-0"
         >
           <BsPlusLg className="w-3 h-3" />
-          New Booking
+          <span className="hidden sm:inline">New Booking</span>
+          <span className="sm:hidden">Book</span>
         </Link>
       </div>
 
