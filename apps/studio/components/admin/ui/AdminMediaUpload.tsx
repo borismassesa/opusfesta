@@ -23,8 +23,8 @@ const ACCEPT_MAP: Record<MediaType, string> = {
 
 const DEFAULT_MAX_SIZE_MB: Record<MediaType, number> = {
   image: 10,
-  video: 100,
-  any: 100,
+  video: 500,
+  any: 500,
 };
 
 function isVideoUrl(url: string): boolean {
@@ -98,7 +98,9 @@ export default function AdminMediaUpload({
       }
       const { signedUrl, publicUrl } = await res.json();
 
-      // Step 2: Upload with progress tracking via XMLHttpRequest
+      // Step 2: Upload directly to Supabase with progress tracking
+      // The signedUrl from createSignedUploadUrl already contains the full
+      // upload endpoint with token — just PUT the file binary to it
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhrRef.current = xhr;
@@ -130,7 +132,7 @@ export default function AdminMediaUpload({
 
         xhr.open('PUT', signedUrl);
         xhr.setRequestHeader('Content-Type', file.type);
-        xhr.timeout = 5 * 60 * 1000; // 5 minutes
+        xhr.timeout = 15 * 60 * 1000; // 15 minutes for large video uploads
         xhr.send(file);
       });
 

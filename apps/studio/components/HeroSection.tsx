@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
+import Image from 'next/image';
 
 interface HeroSectionProps {
   content?: Record<string, unknown>;
@@ -11,7 +12,8 @@ export default function HeroSection({ content }: HeroSectionProps) {
   const headingLine1 = (content?.heading_line1 as string) || 'CINEMATIC';
   const headingLine2 = (content?.heading_line2 as string) || 'VISUAL STORIES';
   const description = (content?.description as string) || 'We produce commercial films, documentaries, music videos, and branded campaigns from concept through final delivery.';
-  const videoUrl = (content?.video_url as string) || '/videos/hero-bg.mp4';
+  const imageUrl = content?.image_url as string | undefined;
+  const videoUrl = content?.video_url as string | undefined;
   const cta1Text = (content?.cta1_text as string) || 'Explore Journal';
   const cta1Url = (content?.cta1_url as string) || '/journal';
   const cta2Text = (content?.cta2_text as string) || 'View Services';
@@ -22,7 +24,29 @@ export default function HeroSection({ content }: HeroSectionProps) {
     'https://randomuser.me/api/portraits/women/44.jpg',
     'https://randomuser.me/api/portraits/men/75.jpg',
   ];
+
+  // Video controls from CMS
+  const videoSpeed = Number(content?.video_speed) || 0.5;
+  const videoStart = Number(content?.video_start) || 0;
+  const videoEnd = Number(content?.video_end) || 0;
+
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  const handleLoadedMetadata = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    video.playbackRate = videoSpeed;
+    if (videoStart > 0) video.currentTime = videoStart;
+    video.play().catch(() => {});
+  }, [videoSpeed, videoStart]);
+
+  const handleTimeUpdate = useCallback(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (videoEnd > 0 && video.currentTime >= videoEnd) {
+      video.currentTime = videoStart;
+    }
+  }, [videoStart, videoEnd]);
 
   useEffect(() => {
     if (videoRef.current) {
@@ -34,16 +58,28 @@ export default function HeroSection({ content }: HeroSectionProps) {
     <section className="relative h-screen flex flex-col justify-center overflow-hidden border-b-4 border-brand-border bg-brand-dark">
       <div className="absolute inset-0 z-0">
         <div className="absolute inset-0 overflow-hidden">
-          <video
-            ref={videoRef}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute top-0 right-0 w-full h-full object-cover opacity-90"
-          >
-            <source src={videoUrl} type="video/mp4" />
-          </video>
+          {videoUrl ? (
+            <video
+              ref={videoRef}
+              autoPlay
+              muted
+              loop
+              playsInline
+              onLoadedMetadata={handleLoadedMetadata}
+              onTimeUpdate={videoEnd > 0 ? handleTimeUpdate : undefined}
+              className="absolute top-0 right-0 w-full h-full object-cover opacity-90"
+            >
+              <source src={videoUrl} type="video/mp4" />
+            </video>
+          ) : imageUrl ? (
+            <Image
+              src={imageUrl}
+              alt=""
+              fill
+              className="object-cover opacity-80"
+              priority
+            />
+          ) : null}
         </div>
         <div className="absolute inset-0 bg-gradient-to-r from-brand-dark from-0% via-brand-dark/80 via-30% to-transparent pointer-events-none"></div>
         <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/60 via-transparent to-transparent pointer-events-none"></div>
