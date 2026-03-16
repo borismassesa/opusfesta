@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { AdminInput, AdminTextarea } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
+import AdminMediaUpload from '@/components/admin/ui/AdminMediaUpload';
 import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import { BsSave, BsChevronDown, BsChevronRight, BsArrowRepeat, BsPlus, BsTrash, BsPeople } from 'react-icons/bs';
 
@@ -18,9 +19,24 @@ interface PageSection {
 interface SectionField {
   key: string;
   label: string;
-  type: 'text' | 'textarea' | 'string_list';
+  type: 'text' | 'textarea' | 'string_list' | 'media_image' | 'media_video' | 'range' | 'select';
   hint?: string;
+  mediaType?: 'image' | 'video' | 'any';
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: { label: string; value: string }[];
 }
+
+const SPEED_OPTIONS = [
+  { label: '0.25x (Very Slow)', value: '0.25' },
+  { label: '0.3x', value: '0.3' },
+  { label: '0.4x', value: '0.4' },
+  { label: '0.5x (Half Speed)', value: '0.5' },
+  { label: '0.6x', value: '0.6' },
+  { label: '0.75x', value: '0.75' },
+  { label: '1x (Normal)', value: '1' },
+];
 
 const SECTION_CONFIG: { key: string; label: string; fields: SectionField[] }[] = [
   {
@@ -31,6 +47,11 @@ const SECTION_CONFIG: { key: string; label: string; fields: SectionField[] }[] =
       { key: 'heading_line1', label: 'Heading Line 1', type: 'text', hint: 'e.g. THE TEAM' },
       { key: 'heading_line2', label: 'Heading Line 2 (stroke text)', type: 'text', hint: 'e.g. BEHIND THE WORK.' },
       { key: 'description', label: 'Description', type: 'textarea' },
+      { key: 'image_url', label: 'Background Image', type: 'media_image', mediaType: 'image', hint: 'Fallback if no video is set' },
+      { key: 'video_url', label: 'Background Video', type: 'media_video', mediaType: 'video', hint: 'Plays as background behind hero text' },
+      { key: 'video_speed', label: 'Video Playback Speed', type: 'select', options: SPEED_OPTIONS, hint: 'Slower = more cinematic feel' },
+      { key: 'video_start', label: 'Video Start Time (seconds)', type: 'range', min: 0, max: 300, step: 1, hint: 'Skip to this point when the video starts' },
+      { key: 'video_end', label: 'Video End Time (seconds)', type: 'range', min: 0, max: 300, step: 1, hint: 'Loop back after this point (0 = play full video)' },
     ],
   },
   {
@@ -274,6 +295,67 @@ export default function AboutPageEditor() {
                 {config.fields.map((field) => {
                   const errorKey = `${config.key}.${field.key}`;
                   const fieldError = errors[errorKey];
+
+                  if (field.type === 'media_image' || field.type === 'media_video') {
+                    return (
+                      <AdminMediaUpload
+                        key={field.key}
+                        label={field.label}
+                        value={getFieldValue(config.key, field.key)}
+                        onChange={(url) => updateField(config.key, field.key, url)}
+                        mediaType={field.mediaType || 'any'}
+                        hint={field.hint}
+                        error={fieldError}
+                      />
+                    );
+                  }
+
+                  if (field.type === 'select') {
+                    const currentVal = getFieldValue(config.key, field.key) || (field.options?.[0]?.value ?? '');
+                    return (
+                      <div key={field.key} className="space-y-1.5">
+                        <label className="block text-[11px] font-mono uppercase tracking-[0.18em] text-[var(--admin-accent-foreground)]">
+                          {field.label}
+                        </label>
+                        <select
+                          value={currentVal}
+                          onChange={(e) => updateField(config.key, field.key, e.target.value)}
+                          className="w-full border border-[var(--admin-input)] bg-[var(--admin-card)] px-3 py-2 text-sm text-[var(--admin-card-foreground)] focus:border-[var(--admin-primary)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)]"
+                        >
+                          {(field.options || []).map((opt) => (
+                            <option key={opt.value} value={opt.value}>{opt.label}</option>
+                          ))}
+                        </select>
+                        {field.hint && <p className="text-xs text-[var(--admin-muted)]">{field.hint}</p>}
+                      </div>
+                    );
+                  }
+
+                  if (field.type === 'range') {
+                    const numVal = Number(getFieldValue(config.key, field.key)) || 0;
+                    return (
+                      <div key={field.key} className="space-y-1.5">
+                        <label className="block text-[11px] font-mono uppercase tracking-[0.18em] text-[var(--admin-accent-foreground)]">
+                          {field.label}
+                        </label>
+                        <div className="flex items-center gap-4">
+                          <input
+                            type="range"
+                            min={field.min ?? 0}
+                            max={field.max ?? 300}
+                            step={field.step ?? 1}
+                            value={numVal}
+                            onChange={(e) => updateField(config.key, field.key, Number(e.target.value))}
+                            className="flex-1 accent-[var(--admin-primary)]"
+                          />
+                          <span className="text-sm font-mono text-[var(--admin-card-foreground)] min-w-[4rem] text-right">
+                            {numVal}s
+                          </span>
+                        </div>
+                        {field.hint && <p className="text-xs text-[var(--admin-muted)]">{field.hint}</p>}
+                      </div>
+                    );
+                  }
 
                   if (field.type === 'string_list') {
                     const items = Array.isArray(sections[config.key]?.[field.key])
