@@ -96,11 +96,11 @@ export default function AdminMediaUpload({
         setUploading(false);
         return;
       }
-      const { signedUrl, publicUrl, token, path: storagePath } = await res.json();
+      const { signedUrl, publicUrl } = await res.json();
 
-      // Step 2: Upload with progress tracking via XMLHttpRequest
-      // Supabase signed upload URLs expect PUT with the file as binary body
-      // and the token passed as a query parameter
+      // Step 2: Upload directly to Supabase with progress tracking
+      // The signedUrl from createSignedUploadUrl already contains the full
+      // upload endpoint with token — just PUT the file binary to it
       await new Promise<void>((resolve, reject) => {
         const xhr = new XMLHttpRequest();
         xhrRef.current = xhr;
@@ -130,11 +130,8 @@ export default function AdminMediaUpload({
           reject(new Error('Upload timed out. The file may be too large for your connection speed.'));
         });
 
-        // Use the Supabase object upload endpoint with the signed token
-        const uploadUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/upload/sign/studio-assets/${storagePath}`;
-        xhr.open('PUT', `${uploadUrl}?token=${token}`);
+        xhr.open('PUT', signedUrl);
         xhr.setRequestHeader('Content-Type', file.type);
-        xhr.setRequestHeader('x-upsert', 'true');
         xhr.timeout = 15 * 60 * 1000; // 15 minutes for large video uploads
         xhr.send(file);
       });
