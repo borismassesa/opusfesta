@@ -9,7 +9,7 @@ export default function NewServicePage() {
   const router = useRouter();
 
   const handleSubmit = async (data: Record<string, unknown>) => {
-    const res = await fetch('/api/studio-admin/services', {
+    const res = await fetch('/api/admin/services', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
