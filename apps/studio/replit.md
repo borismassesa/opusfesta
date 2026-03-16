@@ -1,7 +1,7 @@
-# OpusFesta Studio - Photography & Videography Studio
+# OpusStudio - Photography & Videography Studio
 
 ## Overview
-Next.js 15 website for OpusFesta Studio, a photography and videography studio specializing in weddings, luxury events, and corporate milestones. Features a brutalist design theme.
+Next.js 15 website for OpusStudio, a photography and videography studio specializing in weddings, luxury events, and corporate milestones. Features a brutalist design theme.
 
 ## Tech Stack
 - **Framework**: Next.js 15.5.7

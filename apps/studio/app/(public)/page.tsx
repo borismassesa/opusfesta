@@ -1,9 +1,4 @@
-'use client';
-
-import { useState } from 'react';
-import Header from '@/components/Header';
-import MenuSidebar from '@/components/MenuSidebar';
-import GridOverlay from '@/components/GridOverlay';
+import HomePageShell from '@/components/HomePageShell';
 import HeroSection from '@/components/HeroSection';
 import FeaturedProjects from '@/components/FeaturedProjects';
 import GallerySection from '@/components/GallerySection';
@@ -14,27 +9,37 @@ import TestimonialsCarousel from '@/components/TestimonialsCarousel';
 import FAQSection from '@/components/FAQSection';
 import CTASection from '@/components/CTASection';
 import MainFooter from '@/components/MainFooter';
-import BackToTop from '@/components/BackToTop';
+import {
+  getPublishedServices,
+  getPublishedProjects,
+  getPublishedTestimonials,
+  getPublishedFaqs,
+  getSettings,
+  getPageSections,
+} from '@/lib/data-access';
 
-export default function Home() {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+export default async function Home() {
+  const [services, projects, testimonials, faqs, settings, sections] = await Promise.all([
+    getPublishedServices(),
+    getPublishedProjects(),
+    getPublishedTestimonials(),
+    getPublishedFaqs(),
+    getSettings(),
+    getPageSections('home'),
+  ]);
 
   return (
-    <main className="relative">
-      <GridOverlay />
-      <Header onMenuToggle={() => setIsMenuOpen(true)} />
-      <MenuSidebar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />
-      <HeroSection />
-      <FeaturedProjects />
-      <ServicesSection />
-      <GallerySection />
-      <ProcessSection />
-      <SignatureWorkSection />
-      <TestimonialsCarousel />
-      <FAQSection />
-      <CTASection />
-      <MainFooter />
-      <BackToTop />
-    </main>
+    <HomePageShell>
+      <HeroSection content={sections.hero} />
+      <FeaturedProjects content={{ stats: sections.stats, clients: sections.clients, about: sections.about }} />
+      <ServicesSection services={services} />
+      <GallerySection projects={projects} services={services} />
+      <ProcessSection content={sections.process} />
+      <SignatureWorkSection projects={projects} />
+      <TestimonialsCarousel testimonials={testimonials} />
+      <FAQSection faqs={faqs} />
+      <CTASection content={sections.cta} />
+      <MainFooter settings={settings} />
+    </HomePageShell>
   );
 }

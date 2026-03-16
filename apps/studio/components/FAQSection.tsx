@@ -2,8 +2,13 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import { useBookingModal } from '@/components/BookingModalProvider';
+import type { StudioFaq } from '@/lib/studio-types';
 
-export default function FAQSection() {
+interface FAQSectionProps {
+  faqs?: StudioFaq[];
+}
+
+export default function FAQSection({ faqs: dbFaqs }: FAQSectionProps) {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const refs = useRef<Map<string, HTMLElement>>(new Map());
@@ -31,38 +36,13 @@ export default function FAQSection() {
     return () => observer.disconnect();
   }, []);
 
-  const faqs = [
-    {
-      id: 'faq-1',
-      question: 'How far in advance should we book?',
-      answer: 'We recommend booking 6\u201312 months ahead for weddings and large events. For corporate work and smaller projects, 4\u20136 weeks is usually enough. Popular dates fill fast, so the earlier the better.',
-    },
-    {
-      id: 'faq-2',
-      question: 'Do you travel for destination events?',
-      answer: 'Absolutely. We cover events across the UK and internationally. Travel and accommodation costs are quoted separately and transparently \u2014 no hidden fees.',
-    },
-    {
-      id: 'faq-3',
-      question: 'How long until we receive our final deliverables?',
-      answer: 'Wedding films and photo galleries are typically delivered within 4\u20136 weeks. Corporate and commercial projects vary, but we always agree on a timeline before we begin.',
-    },
-    {
-      id: 'faq-4',
-      question: 'Can we request specific shots or styles?',
-      answer: 'Of course. We encourage sharing references, mood boards, and must-have moments. We build a custom shot list with you during the planning phase so nothing gets missed.',
-    },
-    {
-      id: 'faq-5',
-      question: 'What equipment do you use?',
-      answer: 'We shoot on cinema-grade cameras (RED, Sony FX series) with premium glass. For photography, we use full-frame mirrorless systems. We also carry drones, gimbals, and professional lighting for every shoot.',
-    },
-    {
-      id: 'faq-6',
-      question: 'What happens if the weather is bad on the day?',
-      answer: 'We plan for every scenario. Overcast skies often produce the most beautiful, soft light for photos. Rain? We bring covers, find sheltered spots, and honestly \u2014 some of our best work has been in the rain.',
-    },
-  ];
+  const faqs = (dbFaqs ?? []).map((f) => ({
+    id: f.id,
+    question: f.question,
+    answer: f.answer,
+  }));
+
+  if (faqs.length === 0) return null;
 
   return (
     <section id="faq" className="py-24 relative z-10 bg-brand-bg">

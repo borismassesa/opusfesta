@@ -137,8 +137,13 @@ export interface StudioMessage {
   id: string;
   booking_id: string | null;
   sender: string;
+  sender_type: 'admin' | 'client';
+  sender_name: string | null;
+  sender_client_id: string | null;
   content: string;
+  read_at: string | null;
   created_at: string;
+  updated_at: string;
 }
 
 export type StudioRole = 'studio_admin' | 'studio_editor' | 'studio_viewer';

@@ -1,8 +1,9 @@
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import { BsChevronLeft, BsChevronRight, BsTrash } from 'react-icons/bs';
+import { BsChevronLeft, BsChevronRight, BsTrash, BsClock, BsCalendar3, BsPlusLg, BsCircleFill, BsBuilding } from 'react-icons/bs';
 import AdminButton from '@/components/admin/ui/AdminButton';
+import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import AdminToast from '@/components/admin/ui/AdminToast';
 
 interface AvailabilityEntry {
@@ -13,7 +14,28 @@ interface AvailabilityEntry {
   note: string | null;
 }
 
-const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+interface DayHours {
+  open: boolean;
+  from: string;
+  to: string;
+}
+
+type WorkingHours = Record<string, DayHours>;
+
+const DAY_KEYS = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
+const DAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+const DEFAULT_WORKING_HOURS: WorkingHours = {
+  sunday: { open: false, from: '09:00', to: '17:00' },
+  monday: { open: true, from: '09:00', to: '18:00' },
+  tuesday: { open: true, from: '09:00', to: '18:00' },
+  wednesday: { open: true, from: '09:00', to: '18:00' },
+  thursday: { open: true, from: '09:00', to: '18:00' },
+  friday: { open: true, from: '09:00', to: '18:00' },
+  saturday: { open: true, from: '10:00', to: '15:00' },
+};
+
+const DAYS = DAY_LABELS;
 const ALL_DAY_SLOT = 'all-day';
 
 function getMonthKey(d: Date) {
@@ -46,6 +68,21 @@ function formatDateLabel(isoDate: string) {
   return local.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+function formatTime(t: string) {
+  const [h, m] = t.split(':').map(Number);
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const hour = h % 12 || 12;
+  return `${hour}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+function formatTimeSlot(slot: string) {
+  if (slot.includes('-')) {
+    const [from, to] = slot.split('-');
+    return `${formatTime(from)} \u2013 ${formatTime(to)}`;
+  }
+  return formatTime(slot);
+}
+
 export default function AvailabilityPage() {
   const [current, setCurrent] = useState(() => new Date());
   const [availability, setAvailability] = useState<Map<string, AvailabilityEntry>>(new Map());
@@ -55,9 +92,16 @@ export default function AvailabilityPage() {
   const [pendingDeletes, setPendingDeletes] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(() => toIsoDate(new Date()));
-  const [newSlotTime, setNewSlotTime] = useState('09:00');
+  const [newSlotFrom, setNewSlotFrom] = useState('09:00');
+  const [newSlotTo, setNewSlotTo] = useState('17:00');
   const [newSlotStatus, setNewSlotStatus] = useState<'available' | 'blocked'>('blocked');
   const [newSlotNote, setNewSlotNote] = useState('');
+
+  // Working hours state
+  const [workingHours, setWorkingHours] = useState<WorkingHours>(DEFAULT_WORKING_HOURS);
+  const [workingHoursLoading, setWorkingHoursLoading] = useState(true);
+  const [workingHoursSaving, setWorkingHoursSaving] = useState(false);
+  const [workingHoursDirty, setWorkingHoursDirty] = useState(false);
 
   const year = current.getFullYear();
   const month = current.getMonth();
@@ -89,6 +133,7 @@ export default function AvailabilityPage() {
   const selectedDayEntries = entriesByDate.get(selectedDate) || [];
   const selectedAllDayEntry = selectedDayEntries.find((entry) => entry.time_slot === ALL_DAY_SLOT);
   const selectedSpecificEntries = selectedDayEntries.filter((entry) => entry.time_slot !== ALL_DAY_SLOT);
+  const isDayOpen = selectedAllDayEntry ? selectedAllDayEntry.is_available : true;
 
   const fetchAvailability = useCallback(async () => {
     setLoading(true);
@@ -120,6 +165,46 @@ export default function AvailabilityPage() {
   }, [monthKey]);
 
   useEffect(() => { fetchAvailability(); }, [fetchAvailability]);
+
+  // Fetch working hours from studio_settings
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/settings');
+        if (res.ok) {
+          const data = await res.json();
+          const wh = (data.settings || []).find((s: { key: string }) => s.key === 'working_hours');
+          if (wh?.value) setWorkingHours({ ...DEFAULT_WORKING_HOURS, ...wh.value });
+        }
+      } catch { /* ignore */ }
+      setWorkingHoursLoading(false);
+    })();
+  }, []);
+
+  const saveWorkingHours = async () => {
+    setWorkingHoursSaving(true);
+    try {
+      const res = await fetch('/api/admin/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: 'working_hours', value: workingHours }),
+      });
+      if (!res.ok) throw new Error('Failed to save');
+      setWorkingHoursDirty(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to save working hours');
+    } finally {
+      setWorkingHoursSaving(false);
+    }
+  };
+
+  const updateDayHours = (dayKey: string, updates: Partial<DayHours>) => {
+    setWorkingHours(prev => ({
+      ...prev,
+      [dayKey]: { ...prev[dayKey], ...updates },
+    }));
+    setWorkingHoursDirty(true);
+  };
 
   useEffect(() => {
     const monthPrefix = `${year}-${String(month + 1).padStart(2, '0')}-`;
@@ -176,19 +261,29 @@ export default function AvailabilityPage() {
     });
   };
 
-  const addOrUpdateSpecificSlot = () => {
-    if (!/^\d{2}:\d{2}$/.test(newSlotTime)) return;
+  const selectDate = (dateStr: string) => {
+    setSelectedDate(dateStr);
+  };
 
-    const key = getEntryKey(selectedDate, newSlotTime);
+  const addOrUpdateSpecificSlot = () => {
+    if (!/^\d{2}:\d{2}$/.test(newSlotFrom) || !/^\d{2}:\d{2}$/.test(newSlotTo)) return;
+    if (newSlotFrom >= newSlotTo) {
+      setError('End time must be after start time');
+      return;
+    }
+
+    const timeSlot = `${newSlotFrom}-${newSlotTo}`;
+    const key = getEntryKey(selectedDate, timeSlot);
     const existing = availability.get(key);
     upsertEntry({
       id: existing?.id,
       date: selectedDate,
-      time_slot: newSlotTime,
+      time_slot: timeSlot,
       is_available: newSlotStatus === 'available',
       note: newSlotNote.trim() || null,
     });
     setNewSlotNote('');
+    setError(null);
   };
 
   const toggleSpecificSlot = (entry: AvailabilityEntry) => {
@@ -250,170 +345,476 @@ export default function AvailabilityPage() {
   const prevMonth = () => setCurrent(new Date(year, month - 1, 1));
   const nextMonth = () => setCurrent(new Date(year, month + 1, 1));
 
-  const monthName = current.toLocaleString('default', { month: 'long', year: 'numeric' });
+  const monthLabel = current.toLocaleString('default', { month: 'long' });
+  const yearLabel = current.getFullYear();
+
+  // Stats for the month
+  const monthStats = useMemo(() => {
+    let blocked = 0;
+    let closed = 0;
+    let withSlots = 0;
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const dayEntries = entriesByDate.get(dateStr) || [];
+      const allDay = dayEntries.find((e) => e.time_slot === ALL_DAY_SLOT);
+      if (allDay && !allDay.is_available) {
+        blocked++;
+      } else {
+        const dow = new Date(year, month, d).getDay();
+        const dk = DAY_KEYS[dow];
+        if (!workingHours[dk]?.open) closed++;
+      }
+      const specific = dayEntries.filter((e) => e.time_slot !== ALL_DAY_SLOT);
+      if (specific.length > 0) withSlots++;
+    }
+    return { blocked, closed, withSlots, open: daysInMonth - blocked - closed };
+  }, [entriesByDate, daysInMonth, year, month, workingHours]);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <AdminToast />
-      <div className="flex items-center justify-end">
-        {totalPendingChanges > 0 && (
-          <AdminButton onClick={handleSave} loading={saving}>
-            Save Changes ({totalPendingChanges})
-          </AdminButton>
-        )}
-      </div>
+      <AdminPageHeader
+        title="Availability"
+        description="Manage your studio's availability calendar. Set working hours, block specific dates, and control when clients can book sessions."
+        tips={[
+          'Green dates are open for bookings. Red/blocked dates won\'t appear as available to clients.',
+          'Set your default working hours per day of the week — these apply to all future dates.',
+          'Override specific dates by clicking on them to block or open them individually.',
+          'Confirmed bookings are shown on the calendar — avoid double-booking by checking before confirming.',
+        ]}
+      />
+
+      {/* Error banner */}
       {error && (
-        <div className="rounded border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="rounded-[var(--admin-radius)] border border-[var(--admin-destructive)]/20 bg-red-50 px-4 py-3 text-sm text-[var(--admin-destructive)]">
           {error}
         </div>
       )}
 
-      <div className="bg-white border border-gray-200 p-6">
-        <div className="flex items-center justify-between mb-6">
-          <button onClick={prevMonth} className="p-2 hover:bg-gray-100 transition-colors">
-            <BsChevronLeft className="w-5 h-5 text-gray-600" />
-          </button>
-          <h2 className="text-lg font-semibold text-gray-900">{monthName}</h2>
-          <button onClick={nextMonth} className="p-2 hover:bg-gray-100 transition-colors">
-            <BsChevronRight className="w-5 h-5 text-gray-600" />
-          </button>
+      {/* Month stats + save bar */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-6">
+          <div className="flex items-center gap-2 text-sm">
+            <BsCircleFill className="w-2.5 h-2.5 text-emerald-500" />
+            <span className="text-[var(--admin-foreground)]"><strong>{monthStats.open}</strong> <span className="text-[var(--admin-muted)]">open</span></span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <BsCircleFill className="w-2.5 h-2.5 text-gray-400" />
+            <span className="text-[var(--admin-foreground)]"><strong>{monthStats.closed}</strong> <span className="text-[var(--admin-muted)]">closed</span></span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <BsCircleFill className="w-2.5 h-2.5 text-red-500" />
+            <span className="text-[var(--admin-foreground)]"><strong>{monthStats.blocked}</strong> <span className="text-[var(--admin-muted)]">blocked</span></span>
+          </div>
+          <div className="flex items-center gap-2 text-sm">
+            <BsClock className="w-3 h-3 text-[var(--admin-primary)]" />
+            <span className="text-[var(--admin-foreground)]"><strong>{monthStats.withSlots}</strong> <span className="text-[var(--admin-muted)]">with slots</span></span>
+          </div>
         </div>
-
-        {loading ? (
-          <div className="h-64 animate-pulse bg-gray-50" />
-        ) : (
-          <>
-            <div className="grid grid-cols-7 gap-px mb-1">
-              {DAYS.map((d) => (
-                <div key={d} className="text-center text-xs font-semibold text-gray-500 uppercase py-2">{d}</div>
-              ))}
-            </div>
-            <div className="grid grid-cols-7 gap-px bg-gray-200">
-              {Array.from({ length: firstDay }).map((_, i) => (
-                <div key={`empty-${i}`} className="bg-gray-50 h-16" />
-              ))}
-              {Array.from({ length: daysInMonth }).map((_, i) => {
-                const day = i + 1;
-                const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                const dayEntries = entriesByDate.get(dateStr) || [];
-                const allDayEntry = dayEntries.find((entry) => entry.time_slot === ALL_DAY_SLOT);
-                const isAvailable = allDayEntry ? allDayEntry.is_available : true;
-                const blockedSlotsCount = dayEntries.filter((entry) => entry.time_slot !== ALL_DAY_SLOT && !entry.is_available).length;
-                const slotsCount = dayEntries.filter((entry) => entry.time_slot !== ALL_DAY_SLOT).length;
-                const isPending = pendingDates.has(dateStr);
-                const isToday = new Date().toISOString().slice(0, 10) === dateStr;
-                const isSelected = selectedDate === dateStr;
-
-                return (
-                  <button
-                    key={day}
-                    onClick={() => toggleAllDay(dateStr)}
-                    className={`h-16 flex flex-col items-center justify-center transition-colors relative ${
-                      isAvailable ? 'bg-white hover:bg-green-50' : 'bg-red-50 hover:bg-red-100'
-                    } ${isPending ? 'ring-2 ring-inset ring-brand-accent' : ''} ${isSelected ? 'outline outline-2 outline-offset-[-2px] outline-gray-900' : ''}`}
-                  >
-                    <span className={`text-sm font-medium ${isToday ? 'text-brand-accent' : isAvailable ? 'text-gray-900' : 'text-red-600'}`}>
-                      {day}
-                    </span>
-                    <span className={`text-[10px] mt-0.5 ${isAvailable ? 'text-green-600' : 'text-red-500'}`}>
-                      {isAvailable ? 'Open' : 'Blocked'}
-                    </span>
-                    {slotsCount > 0 && (
-                      <span className="text-[10px] text-gray-500 mt-0.5">
-                        {slotsCount} slot{slotsCount > 1 ? 's' : ''}{blockedSlotsCount > 0 ? ` • ${blockedSlotsCount} blocked` : ''}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </>
+        {totalPendingChanges > 0 && (
+          <AdminButton onClick={handleSave} loading={saving} size="sm">
+            Save {totalPendingChanges} change{totalPendingChanges > 1 ? 's' : ''}
+          </AdminButton>
         )}
+      </div>
 
-        <div className="flex items-center gap-4 mt-4 text-xs text-gray-500">
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 bg-white border border-gray-200" />
-            <span>Available</span>
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
+        {/* Calendar */}
+        <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-[var(--admin-radius)] shadow-[var(--admin-shadow-sm)] overflow-hidden">
+          {/* Month header */}
+          <div className="flex items-center justify-between px-6 py-5 border-b border-[var(--admin-border)]">
+            <button
+              onClick={prevMonth}
+              className="w-9 h-9 flex items-center justify-center rounded-[calc(var(--admin-radius)-2px)] border border-[var(--admin-border)] text-[var(--admin-muted)] hover:bg-[var(--admin-secondary)] hover:text-[var(--admin-foreground)] transition-colors"
+            >
+              <BsChevronLeft className="w-3.5 h-3.5" />
+            </button>
+            <div className="text-center">
+              <h2 className="text-lg font-semibold text-[var(--admin-foreground)] tracking-tight">{monthLabel}</h2>
+              <p className="text-xs text-[var(--admin-muted)] mt-0.5">{yearLabel}</p>
+            </div>
+            <button
+              onClick={nextMonth}
+              className="w-9 h-9 flex items-center justify-center rounded-[calc(var(--admin-radius)-2px)] border border-[var(--admin-border)] text-[var(--admin-muted)] hover:bg-[var(--admin-secondary)] hover:text-[var(--admin-foreground)] transition-colors"
+            >
+              <BsChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 bg-red-50 border border-red-200" />
-            <span>Blocked</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-3 h-3 bg-white ring-2 ring-brand-accent" />
-            <span>Unsaved</span>
+
+          {loading ? (
+            <div className="p-6">
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from({ length: 35 }).map((_, i) => (
+                  <div key={i} className="h-20 bg-[var(--admin-muted-surface)] animate-pulse rounded-[calc(var(--admin-radius)-4px)]" />
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="p-4">
+              {/* Day headers */}
+              <div className="grid grid-cols-7 gap-2 mb-2">
+                {DAYS.map((d) => (
+                  <div key={d} className="text-center text-[11px] font-semibold text-[var(--admin-muted)] uppercase tracking-wider py-2">
+                    {d}
+                  </div>
+                ))}
+              </div>
+
+              {/* Calendar grid */}
+              <div className="grid grid-cols-7 gap-2">
+                {/* Empty leading cells */}
+                {Array.from({ length: firstDay }).map((_, i) => (
+                  <div key={`empty-${i}`} className="h-20" />
+                ))}
+
+                {/* Day cells */}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1;
+                  const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                  const dayEntries = entriesByDate.get(dateStr) || [];
+                  const allDayEntry = dayEntries.find((entry) => entry.time_slot === ALL_DAY_SLOT);
+                  const isBlocked = allDayEntry ? !allDayEntry.is_available : false;
+                  const slotsCount = dayEntries.filter((entry) => entry.time_slot !== ALL_DAY_SLOT).length;
+                  const isPending = pendingDates.has(dateStr);
+                  const isToday = new Date().toISOString().slice(0, 10) === dateStr;
+                  const isSelected = selectedDate === dateStr;
+                  const isPast = dateStr < new Date().toISOString().slice(0, 10);
+
+                  // Check if this day is closed according to studio working hours
+                  const dayOfWeekIndex = new Date(year, month, day).getDay();
+                  const dayKey = DAY_KEYS[dayOfWeekIndex];
+                  const isClosed = !workingHours[dayKey]?.open;
+
+                  // Determine the display status
+                  const isAvailable = !isBlocked && !isClosed;
+
+                  return (
+                    <button
+                      key={day}
+                      onClick={() => selectDate(dateStr)}
+                      className={`
+                        relative h-20 flex flex-col items-center justify-center gap-1 transition-all duration-150
+                        rounded-[calc(var(--admin-radius)-4px)] border-2
+                        ${isSelected
+                          ? 'border-[var(--admin-primary)] bg-[var(--admin-primary)]/10 shadow-[0_0_0_1px_var(--admin-primary)]'
+                          : isPending
+                            ? 'border-amber-400 bg-amber-50'
+                            : isBlocked
+                              ? 'border-red-300 bg-red-50 hover:bg-red-100'
+                              : isClosed
+                                ? 'border-gray-300 bg-gray-100 hover:bg-gray-150'
+                                : 'border-emerald-300 bg-emerald-50/50 hover:border-emerald-500 hover:bg-emerald-50'
+                        }
+                        ${isPast ? 'opacity-40' : ''}
+                      `}
+                    >
+                      {/* Today indicator */}
+                      {isToday && (
+                        <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-[var(--admin-primary)]" />
+                      )}
+
+                      {/* Pending dot */}
+                      {isPending && !isSelected && (
+                        <div className="absolute top-1.5 left-1.5 w-2 h-2 rounded-full bg-amber-400" />
+                      )}
+
+                      <span className={`text-sm font-semibold ${
+                        isToday
+                          ? 'text-[var(--admin-primary)]'
+                          : isBlocked
+                            ? 'text-red-600'
+                            : isClosed
+                              ? 'text-gray-400'
+                              : 'text-[var(--admin-foreground)]'
+                      }`}>
+                        {day}
+                      </span>
+
+                      {isBlocked ? (
+                        <span className="text-[10px] font-semibold text-red-500">Blocked</span>
+                      ) : isClosed ? (
+                        <span className="text-[10px] font-semibold text-gray-400">Closed</span>
+                      ) : slotsCount > 0 ? (
+                        <span className="text-[10px] font-medium text-emerald-600">
+                          {slotsCount} slot{slotsCount > 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] font-medium text-emerald-500">Open</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Working Hours — below calendar */}
+          <div className="border-t border-[var(--admin-border)]">
+            <div className="px-6 py-4 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 flex items-center justify-center rounded-[calc(var(--admin-radius)-2px)] bg-[var(--admin-secondary)]">
+                  <BsBuilding className="w-4 h-4 text-[var(--admin-accent-foreground)]" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-[var(--admin-foreground)]">Studio Hours</p>
+                  <p className="text-xs text-[var(--admin-muted)] mt-0.5">Default weekly schedule</p>
+                </div>
+              </div>
+              {workingHoursDirty && (
+                <AdminButton size="sm" onClick={saveWorkingHours} loading={workingHoursSaving}>
+                  Save
+                </AdminButton>
+              )}
+            </div>
+
+            <div className="px-6 pb-5">
+              {workingHoursLoading ? (
+                <div className="grid grid-cols-7 gap-3">
+                  {Array.from({ length: 7 }).map((_, i) => (
+                    <div key={i} className="h-20 bg-[var(--admin-muted-surface)] animate-pulse rounded-[calc(var(--admin-radius)-4px)]" />
+                  ))}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+                  {DAY_KEYS.map((dayKey, i) => {
+                    const day = workingHours[dayKey];
+                    return (
+                      <div
+                        key={dayKey}
+                        className={`
+                          flex flex-col items-center gap-2.5 px-3 py-3.5 rounded-[calc(var(--admin-radius)-4px)] border transition-colors
+                          ${day.open
+                            ? 'border-[var(--admin-border)] bg-[var(--admin-card)]'
+                            : 'border-[var(--admin-border)] bg-[var(--admin-muted-surface)]'
+                          }
+                        `}
+                      >
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <span className={`text-xs font-semibold uppercase tracking-wide ${day.open ? 'text-[var(--admin-foreground)]' : 'text-[var(--admin-muted)]'}`}>
+                            {DAY_LABELS[i]}
+                          </span>
+                          <button
+                            onClick={() => updateDayHours(dayKey, { open: !day.open })}
+                            className={`
+                              relative inline-flex h-4 w-7 flex-shrink-0 items-center rounded-full transition-colors duration-200
+                              ${day.open ? 'bg-emerald-500' : 'bg-gray-300'}
+                            `}
+                          >
+                            <span className={`
+                              inline-block h-3 w-3 rounded-full bg-white shadow-sm transition-transform duration-200
+                              ${day.open ? 'translate-x-[13px]' : 'translate-x-[2px]'}
+                            `} />
+                          </button>
+                        </div>
+
+                        {day.open ? (
+                          <div className="flex flex-col gap-1 w-full">
+                            <input
+                              type="time"
+                              value={day.from}
+                              onChange={(e) => updateDayHours(dayKey, { from: e.target.value })}
+                              className="h-7 w-full border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-2 text-xs text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-1 focus:ring-[var(--admin-ring)]"
+                            />
+                            <input
+                              type="time"
+                              value={day.to}
+                              onChange={(e) => updateDayHours(dayKey, { to: e.target.value })}
+                              className="h-7 w-full border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-2 text-xs text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-1 focus:ring-[var(--admin-ring)]"
+                            />
+                          </div>
+                        ) : (
+                          <span className="text-xs text-[var(--admin-muted)] italic py-3.5">Closed</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div className="mt-6 border-t border-gray-200 pt-6">
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <div>
-              <h3 className="text-base font-semibold text-gray-900">Time Slots</h3>
-              <p className="text-xs text-gray-500 mt-1">{formatDateLabel(selectedDate)}</p>
+        {/* Day detail panel */}
+        <div className="space-y-4">
+          {/* Selected date card */}
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-[var(--admin-radius)] shadow-[var(--admin-shadow-sm)] overflow-hidden">
+            <div className="px-5 py-4 border-b border-[var(--admin-border)] flex items-center gap-3">
+              <div className="w-9 h-9 flex items-center justify-center rounded-[calc(var(--admin-radius)-2px)] bg-[var(--admin-secondary)]">
+                <BsCalendar3 className="w-4 h-4 text-[var(--admin-accent-foreground)]" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[var(--admin-foreground)]">{formatDateLabel(selectedDate)}</p>
+                <p className="text-xs text-[var(--admin-muted)] mt-0.5">
+                  {isDayOpen ? 'Open for bookings' : 'Blocked for the day'}
+                </p>
+              </div>
             </div>
-            <AdminButton size="sm" variant="secondary" onClick={() => toggleAllDay(selectedDate)}>
-              Toggle Day ({selectedAllDayEntry?.is_available ?? true ? 'Open' : 'Blocked'})
-            </AdminButton>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[140px_160px_1fr_auto] gap-3">
-            <input
-              type="time"
-              value={newSlotTime}
-              onChange={(e) => setNewSlotTime(e.target.value)}
-              className="h-10 border border-gray-300 px-3 text-sm"
-            />
-            <select
-              value={newSlotStatus}
-              onChange={(e) => setNewSlotStatus(e.target.value as 'available' | 'blocked')}
-              className="h-10 border border-gray-300 px-3 text-sm bg-white"
-            >
-              <option value="blocked">Blocked slot</option>
-              <option value="available">Open slot</option>
-            </select>
-            <input
-              type="text"
-              placeholder="Optional note"
-              value={newSlotNote}
-              onChange={(e) => setNewSlotNote(e.target.value)}
-              className="h-10 border border-gray-300 px-3 text-sm"
-            />
-            <AdminButton size="sm" onClick={addOrUpdateSpecificSlot}>
-              Add Time
-            </AdminButton>
-          </div>
+            <div className="p-5">
+              {/* Day toggle */}
+              <div className="flex items-center justify-between mb-5">
+                <span className="text-sm text-[var(--admin-foreground)]">Day status</span>
+                <button
+                  onClick={() => toggleAllDay(selectedDate)}
+                  className={`
+                    relative inline-flex h-7 w-12 items-center rounded-full transition-colors duration-200
+                    ${isDayOpen ? 'bg-emerald-500' : 'bg-red-400'}
+                  `}
+                >
+                  <span className={`
+                    inline-block h-5 w-5 rounded-full bg-white shadow-sm transition-transform duration-200
+                    ${isDayOpen ? 'translate-x-6' : 'translate-x-1'}
+                  `} />
+                </button>
+              </div>
 
-          <div className="mt-4 space-y-2">
-            {selectedSpecificEntries.length === 0 ? (
-              <p className="text-sm text-gray-500">No specific time allocations for this date yet.</p>
-            ) : (
-              selectedSpecificEntries.map((entry) => (
-                <div key={getEntryKey(entry.date, entry.time_slot)} className="flex flex-wrap items-center justify-between gap-3 border border-gray-200 px-3 py-2">
-                  <div className="flex items-center gap-3">
-                    <span className="font-mono text-sm text-gray-800">{entry.time_slot}</span>
-                    <span className={`text-xs font-medium ${entry.is_available ? 'text-green-700' : 'text-red-600'}`}>
-                      {entry.is_available ? 'Open' : 'Blocked'}
-                    </span>
-                    {entry.note && <span className="text-xs text-gray-500">{entry.note}</span>}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => toggleSpecificSlot(entry)}
-                      className="px-2.5 py-1.5 text-xs border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
-                    >
-                      Toggle
-                    </button>
-                    <button
-                      onClick={() => removeEntry(entry)}
-                      className="p-2 border border-red-200 text-red-600 hover:bg-red-50 transition-colors"
-                      aria-label={`Remove ${entry.time_slot} slot`}
-                    >
-                      <BsTrash className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+              {/* Divider */}
+              <div className="border-t border-[var(--admin-border)] -mx-5 mb-5" />
+
+              {/* Time slots header */}
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <BsClock className="w-3.5 h-3.5 text-[var(--admin-muted)]" />
+                  <span className="text-sm font-medium text-[var(--admin-foreground)]">Time Slots</span>
                 </div>
-              ))
-            )}
+                <span className="text-xs text-[var(--admin-muted)]">
+                  {selectedSpecificEntries.length} slot{selectedSpecificEntries.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+
+              {/* Existing slots */}
+              <div className="space-y-2 mb-5">
+                {selectedSpecificEntries.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <BsClock className="w-8 h-8 text-[var(--admin-border)] mx-auto mb-2" />
+                    <p className="text-sm text-[var(--admin-muted)]">No time slots</p>
+                    <p className="text-xs text-[var(--admin-muted)] mt-1 opacity-60">Add specific time blocks below</p>
+                  </div>
+                ) : (
+                  selectedSpecificEntries.map((entry) => (
+                    <div
+                      key={getEntryKey(entry.date, entry.time_slot)}
+                      className={`
+                        flex items-center justify-between gap-3 px-3.5 py-2.5 rounded-[calc(var(--admin-radius)-4px)] border transition-colors
+                        ${entry.is_available
+                          ? 'border-emerald-200 bg-emerald-50/50'
+                          : 'border-red-200 bg-red-50/50'
+                        }
+                      `}
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${entry.is_available ? 'bg-emerald-500' : 'bg-red-400'}`} />
+                        <span className="text-sm font-mono font-medium text-[var(--admin-foreground)]">
+                          {formatTimeSlot(entry.time_slot)}
+                        </span>
+                        {entry.note && (
+                          <span className="text-xs text-[var(--admin-muted)] truncate">{entry.note}</span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <button
+                          onClick={() => toggleSpecificSlot(entry)}
+                          className={`
+                            px-2.5 py-1 text-[11px] font-medium rounded-[calc(var(--admin-radius)-4px)] border transition-colors
+                            ${entry.is_available
+                              ? 'border-emerald-300 text-emerald-700 hover:bg-emerald-100'
+                              : 'border-red-300 text-red-600 hover:bg-red-100'
+                            }
+                          `}
+                        >
+                          {entry.is_available ? 'Open' : 'Blocked'}
+                        </button>
+                        <button
+                          onClick={() => removeEntry(entry)}
+                          className="w-7 h-7 flex items-center justify-center rounded-[calc(var(--admin-radius)-4px)] text-[var(--admin-muted)] hover:text-[var(--admin-destructive)] hover:bg-red-50 transition-colors"
+                          aria-label={`Remove ${entry.time_slot} slot`}
+                        >
+                          <BsTrash className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="border-t border-[var(--admin-border)] -mx-5 mb-5" />
+
+              {/* Add slot form */}
+              <div>
+                <p className="text-xs font-medium text-[var(--admin-muted)] uppercase tracking-wider mb-3">Add Time Slot</p>
+                <div className="space-y-2.5">
+                  {/* From / To row */}
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                    <div>
+                      <label className="block text-[11px] text-[var(--admin-muted)] mb-1">From</label>
+                      <input
+                        type="time"
+                        value={newSlotFrom}
+                        onChange={(e) => setNewSlotFrom(e.target.value)}
+                        className="w-full h-9 border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-3 text-sm text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] focus:border-[var(--admin-primary)]"
+                      />
+                    </div>
+                    <span className="text-[var(--admin-muted)] text-xs mt-5">&rarr;</span>
+                    <div>
+                      <label className="block text-[11px] text-[var(--admin-muted)] mb-1">To</label>
+                      <input
+                        type="time"
+                        value={newSlotTo}
+                        onChange={(e) => setNewSlotTo(e.target.value)}
+                        className="w-full h-9 border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-3 text-sm text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] focus:border-[var(--admin-primary)]"
+                      />
+                    </div>
+                  </div>
+                  {/* Status */}
+                  <select
+                    value={newSlotStatus}
+                    onChange={(e) => setNewSlotStatus(e.target.value as 'available' | 'blocked')}
+                    className="w-full h-9 border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-3 text-sm text-[var(--admin-foreground)] bg-[var(--admin-card)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] focus:border-[var(--admin-primary)]"
+                  >
+                    <option value="blocked">Blocked</option>
+                    <option value="available">Open</option>
+                  </select>
+                  {/* Note */}
+                  <input
+                    type="text"
+                    placeholder="Optional note..."
+                    value={newSlotNote}
+                    onChange={(e) => setNewSlotNote(e.target.value)}
+                    className="w-full h-9 border border-[var(--admin-input)] rounded-[calc(var(--admin-radius)-4px)] px-3 text-sm text-[var(--admin-foreground)] bg-[var(--admin-card)] placeholder:text-[var(--admin-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--admin-ring)] focus:border-[var(--admin-primary)]"
+                  />
+                  <AdminButton size="sm" onClick={addOrUpdateSpecificSlot} className="w-full" icon={<BsPlusLg className="w-3 h-3" />}>
+                    Add Slot
+                  </AdminButton>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Legend */}
+          <div className="bg-[var(--admin-card)] border border-[var(--admin-border)] rounded-[var(--admin-radius)] px-5 py-3.5">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-[var(--admin-foreground)]">
+              <div className="flex items-center gap-2">
+                <div className="w-3.5 h-3.5 rounded-[3px] border-2 border-emerald-500 bg-emerald-100" />
+                <span className="font-medium">Available</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3.5 h-3.5 rounded-[3px] border-2 border-gray-300 bg-gray-100" />
+                <span className="font-medium">Closed</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3.5 h-3.5 rounded-[3px] border-2 border-red-400 bg-red-100" />
+                <span className="font-medium">Blocked</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3.5 h-3.5 rounded-[3px] border-2 border-amber-400 bg-amber-100" />
+                <span className="font-medium">Unsaved</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-3.5 h-3.5 rounded-[3px] border-2 border-[var(--admin-primary)] bg-[var(--admin-primary)]" />
+                <span className="font-medium">Today</span>
+              </div>
+            </div>
           </div>
         </div>
       </div>

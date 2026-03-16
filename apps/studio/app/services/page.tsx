@@ -3,7 +3,7 @@ import PageLayout from '@/components/PageLayout';
 import ServicesSection from '@/components/ServicesSection';
 
 export const metadata: Metadata = {
-  title: 'Services | OpusFesta Studio',
+  title: 'Services | OpusStudio',
   description: 'Video production, post-production, motion graphics, photography, audio, and creative direction.',
 };
 

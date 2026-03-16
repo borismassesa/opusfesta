@@ -348,6 +348,30 @@ export interface CreateQuoteInput {
 }
 
 // ---------------------------------------------------------------------------
+// Shared Constants
+// ---------------------------------------------------------------------------
+
+export const EVENT_TYPES = [
+  'Wedding',
+  'Engagement',
+  'Send Off',
+  'Kitchen Party',
+  'Corporate Event',
+  'Portrait Session',
+  'Fashion Shoot',
+  'Product Photography',
+  'Other',
+] as const;
+
+export const BOOKING_SOURCES = [
+  'Phone Call',
+  'Walk-In',
+  'WhatsApp',
+  'Referral',
+  'Other',
+] as const;
+
+// ---------------------------------------------------------------------------
 // Currency formatting
 // ---------------------------------------------------------------------------
 export function formatTZS(amount: number): string {

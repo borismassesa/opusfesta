@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Image from 'next/image';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { projects } from '@/lib/data';
+import type { StudioProject } from '@/lib/studio-types';
 
 type GalleryKind = 'Photo' | 'Video';
 type SortBy = 'Newest' | 'A-Z' | 'Video First';
@@ -18,6 +18,10 @@ interface GalleryItem {
   image: string;
   videoUrl?: string;
   views: string;
+}
+
+interface PortfolioGridProps {
+  projects?: StudioProject[];
 }
 
 function parseViewValue(value: string): number | null {
@@ -48,7 +52,7 @@ function formatViews(count: number): string {
   return `${count}`;
 }
 
-export default function PortfolioGrid() {
+export default function PortfolioGrid({ projects = [] }: PortfolioGridProps) {
   const LIGHTBOX_HINT_KEY = 'portfolio-lightbox-hint-seen';
   const router = useRouter();
   const pathname = usePathname();
@@ -69,9 +73,10 @@ export default function PortfolioGrid() {
   const galleryItems = useMemo<GalleryItem[]>(
     () =>
       projects.flatMap((project, index) => {
+        const stats = Array.isArray(project.stats) ? project.stats : [];
         const baseViews =
           parseViewValue(
-            project.stats.find((stat) => stat.label.toLowerCase().includes('view'))?.value || ''
+            stats.find((stat) => stat.label.toLowerCase().includes('view'))?.value || ''
           ) ||
           4_800 + index * 1_350;
 
@@ -80,30 +85,28 @@ export default function PortfolioGrid() {
             id: `${project.id}-photo`,
             title: project.title,
             category: project.category,
-            kind: 'Photo',
+            kind: 'Photo' as GalleryKind,
             order: index,
-            image: project.image,
-            videoUrl: project.videoUrl,
+            image: project.cover_image,
             views: formatViews(baseViews),
           },
           {
             id: `${project.id}-video`,
             title: `${project.title} Reel`,
             category: project.category,
-            kind: 'Video',
+            kind: 'Video' as GalleryKind,
             order: index,
-            image: project.image,
-            videoUrl: project.videoUrl,
+            image: project.cover_image,
             views: formatViews(Math.round(baseViews * 1.25)),
           },
         ];
       }),
-    []
+    [projects]
   );
 
   const categories = useMemo(
     () => ['All', ...Array.from(new Set(projects.map((project) => project.category)))],
-    []
+    [projects]
   );
 
   const normalizedQuery = searchQuery.trim().toLowerCase();

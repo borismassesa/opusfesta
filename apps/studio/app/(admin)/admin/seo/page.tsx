@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { AdminInput, AdminTextarea } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
+import AdminMediaUpload from '@/components/admin/ui/AdminMediaUpload';
+import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import AdminToast from '@/components/admin/ui/AdminToast';
 import { BsSave } from 'react-icons/bs';
 
@@ -68,9 +70,18 @@ export default function SeoPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
-      <h1 className="text-xl font-bold text-gray-900">SEO Settings</h1>
+      <AdminPageHeader
+        title="SEO"
+        description="Configure search engine optimization for each page. These settings control how your site appears in Google search results and social media previews."
+        tips={[
+          'Title: Appears as the clickable headline in Google results. Keep it under 60 characters.',
+          'Description: The summary shown below the title in search results. Keep it 120–160 characters.',
+          'OG Image: The preview image shown when your page is shared on social media (Facebook, Twitter, WhatsApp).',
+          'Leave fields empty to use the default site title and description.',
+        ]}
+      />
 
-      <div className="space-y-6 max-w-3xl">
+      <div className="space-y-6">
         {PAGES.map((page) => {
           const entry = seoMap[page.key];
           if (!entry) return null;
@@ -86,7 +97,7 @@ export default function SeoPage() {
                 label="Title"
                 value={entry.title || ''}
                 onChange={(e) => updateField(page.key, 'title', e.target.value)}
-                placeholder={`${page.label} | OpusFesta Studio`}
+                placeholder={`${page.label} | OpusStudio`}
               />
               <AdminTextarea
                 label="Description"
@@ -95,11 +106,12 @@ export default function SeoPage() {
                 rows={2}
                 placeholder="Meta description for search engines..."
               />
-              <AdminInput
-                label="OG Image URL"
+              <AdminMediaUpload
+                label="OG Image"
                 value={entry.og_image || ''}
-                onChange={(e) => updateField(page.key, 'og_image', e.target.value)}
-                placeholder="https://..."
+                onChange={(url) => updateField(page.key, 'og_image', url)}
+                mediaType="image"
+                hint="Recommended: 1200×630px. Used for social media previews."
               />
               <AdminButton
                 size="sm"

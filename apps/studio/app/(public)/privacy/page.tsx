@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import PageLayout from '@/components/PageLayout';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | OpusFesta Studio',
+  title: 'Privacy Policy | OpusStudio',
   description: 'How we collect, use, and protect your personal information.',
 };
 

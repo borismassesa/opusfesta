@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { AdminInput, AdminTextarea } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
+import AdminMediaUpload from '@/components/admin/ui/AdminMediaUpload';
 import { BsPlus, BsX } from 'react-icons/bs';
 import type { StudioTeamMember } from '@/lib/studio-types';
 
@@ -16,14 +17,14 @@ export default function TeamMemberForm({ initialData, onSubmit }: { initialData?
   const set = (f: string, v: unknown) => setForm((p) => ({ ...p, [f]: v }));
 
   return (
-    <form onSubmit={async (e) => { e.preventDefault(); setLoading(true); await onSubmit({ ...form, social_links: Object.fromEntries(socialLinks.filter(([k]) => k)) }); setLoading(false); }} className="space-y-6 max-w-2xl">
+    <form onSubmit={async (e) => { e.preventDefault(); setLoading(true); await onSubmit({ ...form, social_links: Object.fromEntries(socialLinks.filter(([k]) => k)) }); setLoading(false); }} className="space-y-6">
       <div className="bg-white border border-gray-200 p-6 space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <AdminInput label="Name" value={form.name} onChange={(e) => set('name', e.target.value)} required />
           <AdminInput label="Role" value={form.role} onChange={(e) => set('role', e.target.value)} required placeholder="Lead Cinematographer" />
         </div>
         <AdminTextarea label="Bio" value={form.bio} onChange={(e) => set('bio', e.target.value)} rows={3} />
-        <AdminInput label="Avatar URL" value={form.avatar_url} onChange={(e) => set('avatar_url', e.target.value)} />
+        <AdminMediaUpload label="Avatar" value={form.avatar_url} onChange={(url) => set('avatar_url', url)} mediaType="image" />
         <div className="grid grid-cols-2 gap-4">
           <AdminInput label="Sort Order" type="number" value={form.sort_order} onChange={(e) => set('sort_order', parseInt(e.target.value) || 0)} />
           <div className="flex items-center gap-2 pt-7">

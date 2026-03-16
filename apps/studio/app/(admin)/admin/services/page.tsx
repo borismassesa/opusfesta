@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import AdminTable from '@/components/admin/ui/AdminTable';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminToast from '@/components/admin/ui/AdminToast';
+import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import { BsPlus } from 'react-icons/bs';
 
 interface Service {
@@ -31,6 +32,16 @@ export default function ServicesPage() {
   return (
     <div className="space-y-4">
       <AdminToast />
+      <AdminPageHeader
+        title="Services"
+        description="Manage the services you offer. These appear on the Services section of your website and help clients understand your packages."
+        tips={[
+          'Active services are visible on the public site. Set a service to "Inactive" to temporarily hide it.',
+          'Sort order controls the display sequence — arrange your most popular or premium services first.',
+          'Include clear pricing (e.g. "From TZS 500,000" or "Custom Quote") so clients know what to expect.',
+          'Each service can have a description, icon, and list of features/inclusions.',
+        ]}
+      />
       <div className="flex items-center justify-end">
         <AdminButton href="/admin/services/new" icon={<BsPlus className="w-4 h-4" />}>New Service</AdminButton>
       </div>
