@@ -3,7 +3,6 @@
 import { useRef, useEffect } from "react";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { Star } from "lucide-react";
 import reviewer1 from "@assets/stock_images/portrait_of_a_happy__5adf1c4f.jpg";
 import reviewer2 from "@assets/stock_images/portrait_of_a_happy__2fe75321.jpg";
 import reviewer3 from "@assets/stock_images/portrait_of_a_happy__419e5856.jpg";
@@ -213,23 +212,23 @@ export function Reviews() {
               <span className="md:hidden w-12 h-px bg-accent"></span>
             </div>
             <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold tracking-tight text-foreground leading-[1.1] mb-6">
-              Loved by couples <br/>
-              <span className="font-serif italic font-normal text-secondary">& professionals.</span>
+              Real stories from <br />
+              <span className="font-serif italic font-normal text-secondary">real celebrations.</span>
             </h2>
             <p className="text-secondary text-lg leading-relaxed max-w-md font-light">
-              Join thousands of happy users who have transformed their wedding planning experience with OpusFesta.
+              Curated feedback from couples and vendors planning with OpusFesta.
             </p>
           </div>
 
           <div className="flex justify-center md:justify-start gap-16 mt-8">
              <div className="flex flex-col items-center md:items-start gap-2">
                <span className="text-4xl font-bold text-foreground">4.9/5</span>
-               <span className="text-xs text-secondary uppercase tracking-wider font-medium">Average Rating</span>
+               <span className="text-xs text-secondary uppercase tracking-wider font-medium">Average Score</span>
              </div>
              
              <div className="flex flex-col items-center md:items-start gap-2">
                <span className="text-4xl font-bold text-foreground">2k+</span>
-               <span className="text-xs text-secondary uppercase tracking-wider font-medium">Verified Reviews</span>
+               <span className="text-xs text-secondary uppercase tracking-wider font-medium">Guest Reviews</span>
              </div>
           </div>
         </div>
@@ -243,7 +242,7 @@ export function Reviews() {
              ))}
              <div className="flex justify-center mt-4">
                <button className="text-sm font-medium text-primary hover:text-accent transition-colors border-b border-primary/20 hover:border-accent pb-0.5">
-                 View all reviews
+                 Explore all reviews
                </button>
              </div>
         </div>
@@ -279,7 +278,6 @@ export function Reviews() {
 }
 
 function ReviewCard({ review }: { review: ReviewItem }) {
-  // Determine badge color based on role content - tuned for readability
   let badgeColor = "bg-primary/10 text-primary";
   if (review.role.includes("Planner") || review.role.includes("Photographer") || review.role.includes("Owner")) {
     badgeColor = "bg-primary/10 text-primary";
@@ -289,29 +287,18 @@ function ReviewCard({ review }: { review: ReviewItem }) {
 
   return (
     <div className="bg-background border border-border/60 p-5 rounded-2xl shadow-[0_2px_10px_-2px_rgba(0,0,0,0.05)] hover:shadow-[0_8px_20px_-4px_rgba(0,0,0,0.1)] transition-all duration-300 group w-full relative overflow-hidden flex flex-col h-full">
-       {/* Decorative Quote Mark - Smaller and more subtle */}
-      <div className="absolute top-4 right-6 text-6xl font-serif text-primary/5 select-none pointer-events-none leading-none">
-        "
-      </div>
-
       <div className="relative z-10 flex flex-col h-full">
-        {/* Top: Stars */}
-        <div className="flex gap-0.5 mb-4">
-          {[...Array(5)].map((_, i) => (
-            <Star 
-              key={i} 
-              size={14} 
-              className={`${i < review.rating ? "fill-amber-400 text-amber-400" : "fill-border text-border/30"}`} 
-            />
-          ))}
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <span className="text-[10px] uppercase tracking-[0.24em] text-secondary/80">Verified Story</span>
+          <span className="rounded-full bg-foreground/5 px-2.5 py-1 text-xs font-medium text-foreground/80">
+            {review.rating.toFixed(1)}/5
+          </span>
         </div>
 
-        {/* Middle: Content - Smaller text, tighter leading */}
-        <p className="text-foreground/90 text-[15px] font-medium leading-relaxed mb-6 relative">
+        <p className="text-foreground/90 text-[15px] font-medium leading-relaxed line-clamp-4 mb-6">
           "{review.content}"
         </p>
 
-        {/* Bottom: User Info - Compact */}
         <div className="mt-auto pt-4 border-t border-border/50 flex items-center gap-3">
           <div className="w-10 h-10 rounded-full overflow-hidden border border-border shrink-0 bg-surface">
             <img

@@ -82,7 +82,7 @@ export function Footer() {
                     <FooterLink href="/planning-tools">Planning Tools</FooterLink>
                     <FooterLink href="/vendors">Vendors</FooterLink>
                     <FooterLink href="/guests">Guests</FooterLink>
-                    <FooterLink href="/websites">Websites</FooterLink>
+                    <FooterLink href="/">Wedding Website</FooterLink>
                     <FooterLink href="/advice-and-ideas">Inspiration</FooterLink>
                     <FooterLink href="/attireandrings">Attire & Rings</FooterLink>
                   </div>
@@ -109,7 +109,7 @@ export function Footer() {
               <FooterLink href="/planning-tools">Planning Tools</FooterLink>
               <FooterLink href="/vendors">Vendors</FooterLink>
               <FooterLink href="/guests">Guests</FooterLink>
-              <FooterLink href="/websites">Websites</FooterLink>
+              <FooterLink href="/">Wedding Website</FooterLink>
               <FooterLink href="/advice-and-ideas">Inspiration</FooterLink>
               <FooterLink href="/attireandrings">Attire & Rings</FooterLink>
             </div>

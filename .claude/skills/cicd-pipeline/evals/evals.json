@@ -1,0 +1,79 @@
+{
+  "skill_name": "cicd-pipeline",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "I need to start working on Jira ticket OF-TD-142. It's a new feature for vendor onboarding. Create a branch for me.",
+      "expected_output": "Creates a branch named feature/OF-TD-142-vendor-onboarding from latest main, pushes it to remote with tracking",
+      "files": [],
+      "assertions": [
+        {
+          "name": "correct_branch_naming",
+          "text": "Branch name follows the format: feature/OF-TD-142-<description>",
+          "type": "qualitative"
+        },
+        {
+          "name": "branches_from_main",
+          "text": "Fetches latest main and creates branch from origin/main",
+          "type": "qualitative"
+        },
+        {
+          "name": "pushes_with_tracking",
+          "text": "Pushes the branch with -u flag for tracking",
+          "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "I've finished my changes on the vendor onboarding feature (OF-TD-142). Create a PR for it targeting main. I want borismassesa to review it.",
+      "expected_output": "Creates a PR with Jira ticket link, proper template, type of change, and assigns borismassesa as reviewer",
+      "files": [],
+      "assertions": [
+        {
+          "name": "pr_title_format",
+          "text": "PR title follows format: OF-TD-142: <description>",
+          "type": "qualitative"
+        },
+        {
+          "name": "jira_link_included",
+          "text": "PR body includes Jira link to https://opusfesta.atlassian.net/browse/OF-TD-142",
+          "type": "qualitative"
+        },
+        {
+          "name": "reviewer_assigned",
+          "text": "borismassesa is assigned as reviewer",
+          "type": "qualitative"
+        },
+        {
+          "name": "uses_pr_template",
+          "text": "PR body includes the template sections (Summary, Type of Change, Checklist)",
+          "type": "qualitative"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Help me set up the CI/CD pipeline for our repo. I need GitHub Actions, CodeRabbit, and branch protection on main.",
+      "expected_output": "Creates/verifies ci.yml workflow, .coderabbitai.yaml config, and sets up branch protection rules with the setup script",
+      "files": [],
+      "assertions": [
+        {
+          "name": "ci_workflow_created",
+          "text": "Creates or references .github/workflows/ci.yml with lint, type-check, and build jobs",
+          "type": "qualitative"
+        },
+        {
+          "name": "coderabbit_configured",
+          "text": "Creates or references .coderabbitai.yaml with proper OpusFesta settings",
+          "type": "qualitative"
+        },
+        {
+          "name": "branch_protection_setup",
+          "text": "Sets up or references branch protection with required checks and 1 approval",
+          "type": "qualitative"
+        }
+      ]
+    }
+  ]
+}

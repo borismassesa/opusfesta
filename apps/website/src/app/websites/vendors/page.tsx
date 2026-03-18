@@ -1,7 +1,7 @@
-import CTA from "@/components/shadcn-studio/blocks/cta-section-04/cta-section-04";
+import { redirect } from "next/navigation";
 
 const WebsitesVendorsPage = () => {
-  return <CTA />;
+  redirect("/");
 };
 
 export default WebsitesVendorsPage;
