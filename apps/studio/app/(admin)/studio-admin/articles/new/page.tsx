@@ -18,12 +18,12 @@ export default function NewArticlePage() {
       const err = await res.json();
       throw new Error(err.error || 'Failed to create article');
     }
-    router.push('/admin/articles?saved=1');
+    router.push('/studio-admin/articles?saved=1');
   };
 
   return (
     <div className="space-y-6">
-      <AdminButton variant="ghost" onClick={() => router.push('/admin/articles')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+      <AdminButton variant="ghost" onClick={() => router.push('/studio-admin/articles')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
       <h1 className="text-xl font-bold text-gray-900">New Article</h1>
       <ArticleForm onSubmit={handleSubmit} />
     </div>

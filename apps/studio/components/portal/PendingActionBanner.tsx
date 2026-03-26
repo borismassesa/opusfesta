@@ -31,14 +31,14 @@ export default function PendingActionBanner({ actions }: { actions: PendingActio
   if (!config) return null;
 
   return (
-    <div className="border-3 border-brand-accent bg-brand-accent/5 p-4 shadow-brutal-accent">
-      <div className="flex items-start gap-3">
-        <BsExclamationTriangle className="w-5 h-5 text-brand-accent shrink-0 mt-0.5" />
+    <div className="border-3 border-brand-accent bg-brand-accent/5 p-3 sm:p-4 shadow-brutal-accent">
+      <div className="flex items-start gap-2.5 sm:gap-3">
+        <BsExclamationTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-brand-accent shrink-0 mt-0.5" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold text-brand-dark font-mono uppercase tracking-wider">
+          <p className="text-xs sm:text-sm font-bold text-brand-dark font-mono uppercase tracking-wider">
             Action Required
           </p>
-          <p className="text-xs text-brand-muted mt-1">
+          <p className="text-[11px] sm:text-xs text-brand-muted mt-1 leading-relaxed">
             Your <span className="font-semibold text-brand-dark">{top.event_type}</span> booking{' '}
             {config.label}.
             {actions.length > 1 && (
@@ -50,7 +50,7 @@ export default function PendingActionBanner({ actions }: { actions: PendingActio
           </p>
           <Link
             href={`/portal/bookings/${top.id}`}
-            className="inline-flex items-center gap-1.5 mt-3 text-xs font-mono font-bold text-brand-accent hover:text-brand-dark uppercase tracking-wider transition-colors"
+            className="inline-flex items-center gap-1.5 mt-2.5 sm:mt-3 text-[11px] sm:text-xs font-mono font-bold text-brand-accent hover:text-brand-dark uppercase tracking-wider transition-colors"
           >
             {config.cta} <BsArrowRight className="w-3 h-3" />
           </Link>

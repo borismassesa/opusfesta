@@ -1,5 +1,5 @@
 export type UserType = "couple" | "vendor" | "admin";
-export type UserRole = "user" | "vendor" | "admin";
+export type UserRole = "user" | "couple" | "vendor" | "admin";
 
 export interface OpusFestaUser {
   id: string;

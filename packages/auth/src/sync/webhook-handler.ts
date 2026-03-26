@@ -109,6 +109,8 @@ export async function handleClerkWebhook(
       case "user.created": {
         const email = getPrimaryEmail(data);
         const role = getUserRole(data);
+        const onboardingComplete =
+          (data.public_metadata?.onboardingComplete as boolean) ?? false;
 
         // Use upsert to be idempotent (webhook retries)
         const { error } = await supabase.from("users").upsert(
@@ -119,6 +121,7 @@ export async function handleClerkWebhook(
             name: getFullName(data),
             avatar: data.image_url,
             role,
+            onboarding_complete: onboardingComplete,
             password:
               "$2a$10$placeholder_password_not_used_with_clerk_auth",
             updated_at: new Date().toISOString(),
@@ -152,6 +155,8 @@ export async function handleClerkWebhook(
       case "user.updated": {
         const email = getPrimaryEmail(data);
         const role = getUserRole(data);
+        const onboardingComplete =
+          (data.public_metadata?.onboardingComplete as boolean) ?? false;
 
         const { error } = await supabase
           .from("users")
@@ -160,6 +165,7 @@ export async function handleClerkWebhook(
             name: getFullName(data),
             avatar: data.image_url,
             role,
+            onboarding_complete: onboardingComplete,
             updated_at: new Date().toISOString(),
           })
           .eq("clerk_id", data.id);

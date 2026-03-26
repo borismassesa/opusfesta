@@ -18,12 +18,12 @@ export default function NewProjectPage() {
       const err = await res.json();
       throw new Error(err.error || 'Failed to create project');
     }
-    router.push('/admin/projects?saved=1');
+    router.push('/studio-admin/projects?saved=1');
   };
 
   return (
     <div className="space-y-6">
-      <AdminButton variant="ghost" onClick={() => router.push('/admin/projects')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+      <AdminButton variant="ghost" onClick={() => router.push('/studio-admin/projects')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
       <h1 className="text-xl font-bold text-gray-900">New Project</h1>
       <ProjectForm onSubmit={handleSubmit} />
     </div>

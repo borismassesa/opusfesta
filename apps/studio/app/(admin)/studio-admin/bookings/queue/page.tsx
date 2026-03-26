@@ -63,7 +63,7 @@ export default function QueuePage() {
           </p>
         </div>
         <button
-          onClick={() => router.push('/admin/bookings')}
+          onClick={() => router.push('/studio-admin/bookings')}
           className="border-2 border-brand-border bg-white px-4 py-2 text-xs font-mono font-bold hover:bg-brand-bg transition-colors"
         >
           ALL BOOKINGS

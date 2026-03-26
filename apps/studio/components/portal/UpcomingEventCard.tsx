@@ -72,13 +72,13 @@ export default function UpcomingEventCard({ event }: { event: UpcomingEvent }) {
           : 'border-brand-border shadow-brutal hover:border-brand-accent hover:shadow-brutal-accent'
       }`}
     >
-      <div className="p-5">
-        <div className="flex items-center justify-between mb-3">
-          <span className="text-[10px] font-mono font-bold text-brand-muted uppercase tracking-wider">
+      <div className="p-4 sm:p-5">
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <span className="text-[9px] sm:text-[10px] font-mono font-bold text-brand-muted uppercase tracking-wider">
             Next Event
           </span>
           <span
-            className={`text-xs font-mono font-bold uppercase tracking-wider ${
+            className={`text-[11px] sm:text-xs font-mono font-bold uppercase tracking-wider ${
               isImminent ? 'text-brand-accent' : 'text-brand-dark'
             }`}
           >
@@ -88,45 +88,45 @@ export default function UpcomingEventCard({ event }: { event: UpcomingEvent }) {
 
         {/* Countdown number for imminent events */}
         {daysUntil <= 7 && daysUntil >= 0 && (
-          <div className="flex items-baseline gap-2 mb-3">
+          <div className="flex items-baseline gap-2 mb-2 sm:mb-3">
             <span
-              className={`text-4xl font-bold font-mono tracking-tighter ${
+              className={`text-3xl sm:text-4xl font-bold font-mono tracking-tighter ${
                 isImminent ? 'text-brand-accent' : 'text-brand-dark'
               }`}
             >
               {daysUntil}
             </span>
-            <span className="text-xs font-mono text-brand-muted uppercase tracking-wider">
+            <span className="text-[11px] sm:text-xs font-mono text-brand-muted uppercase tracking-wider">
               {daysUntil === 1 ? 'day' : 'days'}
             </span>
           </div>
         )}
 
-        <div className="flex items-center gap-3 flex-wrap mb-2">
-          <h3 className="font-bold text-brand-dark font-mono text-sm uppercase tracking-wider">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap mb-2">
+          <h3 className="font-bold text-brand-dark font-mono text-xs sm:text-sm uppercase tracking-wider">
             {event.event_type}
           </h3>
           <StatusBadge status={event.lifecycle_status} />
         </div>
 
         {event.service && (
-          <p className="text-xs text-brand-muted mb-2">{event.service}</p>
+          <p className="text-[11px] sm:text-xs text-brand-muted mb-2">{event.service}</p>
         )}
 
-        <div className="flex items-center gap-4 text-xs text-brand-muted">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4 text-[11px] sm:text-xs text-brand-muted">
           <span className="flex items-center gap-1">
-            <BsCalendar3 className="w-3 h-3" />
+            <BsCalendar3 className="w-3 h-3 shrink-0" />
             {formatDate(event.event_date)}
           </span>
           {event.event_time_slot && (
             <span className="flex items-center gap-1">
-              <BsClock className="w-3 h-3" />
+              <BsClock className="w-3 h-3 shrink-0" />
               {formatSlot(event.event_time_slot)}
             </span>
           )}
         </div>
 
-        <div className="flex items-center gap-1 mt-3 text-xs font-mono font-bold text-brand-accent group-hover:text-brand-dark uppercase tracking-wider transition-colors">
+        <div className="flex items-center gap-1 mt-2.5 sm:mt-3 text-[11px] sm:text-xs font-mono font-bold text-brand-accent group-hover:text-brand-dark uppercase tracking-wider transition-colors">
           View Details <BsArrowRight className="w-3 h-3" />
         </div>
       </div>

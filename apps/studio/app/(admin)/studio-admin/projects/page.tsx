@@ -44,7 +44,7 @@ export default function ProjectsPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/projects/new" icon={<BsPlus className="w-4 h-4" />}>New Project</AdminButton>
+        <AdminButton href="/studio-admin/projects/new" icon={<BsPlus className="w-4 h-4" />}>New Project</AdminButton>
       </div>
 
       {loading ? (
