@@ -1,132 +1,107 @@
 ---
 name: admin-cms
-description: Admin dashboard — content management, vendor moderation, review moderation, careers, employee management, platform analytics
+description: "Admin dashboard — content management, vendor moderation, review moderation, careers, employee management, platform analytics."
 ---
 
-# Admin & CMS Agent
+# Admin Dashboard
 
-You are the **admin and content management specialist** for OpusFesta. You own the admin dashboard, all content management workflows, moderation systems, and platform-level operations.
+## Route Structure
 
-## Your Domain
+All admin routes under `/studio-admin/*`:
 
-### Primary Ownership
-- `apps/admin/` — the entire admin Next.js app
-- `apps/admin/src/app/editorial/` — advice/ideas CMS
-- `apps/admin/src/app/content/` — page/component editors
-- `apps/admin/src/app/careers/` — job posting management
-- `apps/admin/src/app/org/` — employee management
-- `apps/admin/src/app/api/admin/` — all admin API routes (12 routes)
-- `apps/admin/src/components/` — admin dashboard components
-- `apps/admin/src/lib/` — admin business logic
+| Route | Purpose |
+|-------|---------|
+| `/studio-admin` | Dashboard with platform stats |
+| `/studio-admin/bookings` | Booking management pipeline |
+| `/studio-admin/bookings/[id]` | Booking detail and status transitions |
+| `/studio-admin/pages` | CMS page section editor |
+| `/studio-admin/pages/[page]` | Edit sections for specific page |
+| `/studio-admin/vendors` | Vendor moderation and management |
+| `/studio-admin/reviews` | Review moderation queue |
+| `/studio-admin/careers` | Job posting management |
+| `/studio-admin/employees` | Team member profiles and roles |
+| `/studio-admin/services` | Service catalog management |
+| `/studio-admin/analytics` | Platform analytics dashboard |
 
-### Database Tables You Own
-```
-admin_whitelist     — Role-based admin access (OWNER, ADMIN, EDITOR, VIEWER)
-published_content   — CMS pages and blog posts
-cms_drafts          — Draft content versions
-cms_versions        — Content version history
-job_postings        — Career listings
-career_applications — Job applications
-career_testimonials — Team testimonials
-```
+## Auth (Clerk)
 
-## Architecture Rules
+```typescript
+// Middleware protects all /studio-admin/* routes
+// Server component pattern:
+import { auth } from '@clerk/nextjs/server'
 
-### Tech Stack
-- **Framework:** Next.js 15 (App Router), React 18, TypeScript
-- **Auth:** Supabase (admin whitelist table, NOT Clerk)
-- **UI:** Radix UI + Tailwind CSS + Recharts (analytics charts)
-- **Rich Text:** TipTap editor with extensions
-- **PDF:** PDF export for reports
-
-### Admin Role Hierarchy
-```
-OWNER   — Full access, can manage other admins
-ADMIN   — Full access except admin management
-EDITOR  — Content management only
-VIEWER  — Read-only access to dashboards
+export default async function AdminPage() {
+  const { userId } = await auth()
+  if (!userId) redirect('/sign-in')
+  // Verify admin role from database
+  const admin = await getAdminProfile(userId)
+  if (!admin) redirect('/')
+}
 ```
 
-### Admin Auth Flow
-```
-1. User logs in via Supabase
-2. Check admin_whitelist table for email
-3. Load role (OWNER/ADMIN/EDITOR/VIEWER)
-4. Middleware enforces role-based route access
-5. Fallback: NEXT_PUBLIC_ADMIN_WHITELIST env var
-```
+## API Routes
 
-### API Routes You Own
-```
-GET/POST   /api/admin/whitelist              — CRUD admin users
-GET        /api/admin/whitelist/check         — Check if user is admin
-GET/POST   /api/admin/advice-ideas/posts      — Manage blog content
-GET/POST   /api/admin/careers/jobs            — Manage job listings
-GET/POST   /api/admin/careers/applications    — Manage applications
-POST       /api/admin/careers/applications/bulk — Bulk operations
-GET        /api/admin/careers/applications/activity — Activity log
-GET        /api/admin/careers/analytics       — Job analytics
-GET        /api/admin/careers/applications/tasks — Task management
-GET/POST   /api/admin/users                   — User management
-GET/POST   /api/admin/employees               — Employee management
-```
+All admin APIs under `/api/admin/*`:
 
-## Key Features You Own
+| Endpoint | Methods | Purpose |
+|----------|---------|---------|
+| `/api/admin/bookings` | GET | List bookings with filters |
+| `/api/admin/bookings/[id]` | GET, PATCH | View/update booking |
+| `/api/admin/bookings/[id]/status` | PATCH | Transition booking status |
+| `/api/admin/page-sections` | GET, POST, DELETE | CMS section CRUD |
+| `/api/admin/services` | GET, POST, PATCH, DELETE | Service catalog |
+| `/api/admin/vendors` | GET, PATCH | Vendor list, approve/reject |
+| `/api/admin/reviews` | GET, PATCH, DELETE | Review moderation |
+| `/api/admin/careers` | GET, POST, PATCH, DELETE | Job postings |
+| `/api/admin/employees` | GET, POST, PATCH | Team members |
+| `/api/admin/analytics` | GET | Platform stats |
 
-### Content Management (70% complete)
-- Blog/article CRUD with TipTap rich text editor
-- Draft/publish workflow
-- Version history
-- **TODO:** Scheduled publishing, content calendar, SEO scoring, image optimization pipeline
+### API Route Pattern
 
-### Review Moderation (85% complete)
-- Review flagging and moderation queue
-- Approve/reject/edit reviews
-- **TODO:** Automated sentiment analysis, spam detection, bulk moderation
+```typescript
+// apps/studio/app/api/admin/bookings/route.ts
+import { getStudioSupabaseAdmin } from '@/lib/supabase-admin'
+import { auth } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
-### Vendor Management (65% complete)
-- Vendor listing and search
-- KYC verification workflow
-- Category management
-- **TODO:** Vendor tier management, featured vendor selection, vendor suspension
+export async function GET(request: Request) {
+  const { userId } = await auth()
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-### Careers (65% complete)
-- Job posting CRUD
-- Application management
-- Analytics dashboard
-- **TODO:** Application pipeline stages, interview scheduling, offer management
+  const supabase = getStudioSupabaseAdmin()
+  const { data, error } = await supabase
+    .from('studio_bookings')
+    .select('*, studio_client_profiles(full_name, email)')
+    .order('created_at', { ascending: false })
 
-### Platform Analytics (40% complete)
-- Basic metrics display
-- **TODO:** Revenue dashboard, user growth charts, vendor performance, booking funnel, geographic distribution, mobile money vs card breakdown
-
-### Employee Management (50% complete)
-- Employee directory
-- **TODO:** Role assignment, department management, onboarding checklists
-
-## Production Checklist
-
-1. **Content pipeline** — draft → review → schedule → publish workflow
-2. **Moderation queue** — unified queue for reviews, vendor profiles, user content
-3. **Platform dashboard** — real-time KPIs (GMV, bookings, active vendors, user growth)
-4. **Vendor verification** — KYC document review interface, approve/reject with notes
-5. **Audit log** — track all admin actions (who changed what, when)
-6. **Bulk operations** — batch approve vendors, batch moderate reviews, batch publish content
-7. **Notification management** — control system emails, SMS templates, push notifications
-8. **Feature flags** — toggle features without deployment
-9. **Data export** — CSV/PDF export for reports, vendor lists, booking data
-10. **Role-based dashboards** — different views for OWNER vs EDITOR vs VIEWER
-
-## Environment Variables
-```
-NEXT_PUBLIC_SUPABASE_URL
-NEXT_PUBLIC_SUPABASE_ANON_KEY
-SUPABASE_SERVICE_ROLE_KEY
-NEXT_PUBLIC_ADMIN_WHITELIST (fallback)
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+  return NextResponse.json(data)
+}
 ```
 
-## Coordination
-- **With platform-architect:** Content display on public site, SEO metadata
-- **With vendor-ops:** Vendor verification workflow, category management
-- **With data-api:** Analytics queries, reporting aggregations, audit log schema
-- **With devops-quality:** Admin access security, audit logging, backup procedures
+## Admin UI Components
+
+| Component | Purpose |
+|-----------|---------|
+| `AdminSidebar` | Left navigation rail |
+| `AdminDataTable` | Sortable, filterable data table |
+| `AdminStatusBadge` | Booking/vendor status pill |
+| `AdminMediaUpload` | Image/video upload to Supabase storage |
+| `AdminPageSectionEditor` | CMS section field editor |
+| `AdminAnalyticsCard` | Stat card with trend indicator |
+
+## Key Management Areas
+
+- **Content Management** — CMS page section editing (Homepage, About, What We Do)
+- **Vendor Moderation** — approve/reject vendor applications, manage listings
+- **Review Moderation** — approve, flag, or remove user reviews
+- **Careers** — manage job postings and applications
+- **Employee Management** — team member profiles and roles
+- **Platform Analytics** — booking stats, revenue in TZS, vendor performance
+
+## Design
+
+- Consistent brutalist design: `border-3`, `shadow-brutal`, `font-mono`
+- Admin sidebar always visible on desktop
+- Data tables with pagination, sorting, and search
+- Action buttons with confirmation dialogs for destructive operations
