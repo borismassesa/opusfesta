@@ -132,13 +132,8 @@ export function Hero() {
   }, [hero.slides.length]);
 
   return (
-    <div ref={containerRef} className="relative isolate min-h-dvh w-full overflow-hidden border-b border-border bg-background flex flex-col justify-center">
+    <div ref={containerRef} className="relative isolate min-h-dvh w-full overflow-hidden bg-background flex flex-col justify-center">
       <div className="pointer-events-none absolute inset-0 -z-20 overflow-hidden">
-        <div className="absolute inset-0 bg-[radial-gradient(130%_85%_at_10%_0%,color-mix(in_oklab,var(--primary)_10%,transparent)_0%,transparent_62%),radial-gradient(90%_70%_at_90%_20%,color-mix(in_oklab,var(--primary)_7%,transparent)_0%,transparent_64%),linear-gradient(180deg,color-mix(in_oklab,var(--background)_98%,var(--primary)_2%)_0%,var(--background)_70%)]" />
-        <div className="absolute -top-24 left-[8%] h-72 w-72 rounded-full bg-[color-mix(in_oklab,var(--primary)_10%,transparent)] blur-3xl" />
-        <div className="absolute right-[5%] top-24 h-64 w-64 rounded-full bg-[color-mix(in_oklab,var(--primary)_8%,transparent)] blur-3xl" />
-        <div className="absolute -bottom-28 left-1/2 h-80 w-80 -translate-x-1/2 rounded-full bg-[color-mix(in_oklab,var(--primary)_9%,transparent)] blur-3xl" />
-        <div className="absolute inset-0 opacity-28 bg-[linear-gradient(to_right,color-mix(in_oklab,var(--foreground)_8%,transparent)_1px,transparent_1px),linear-gradient(to_bottom,color-mix(in_oklab,var(--foreground)_8%,transparent)_1px,transparent_1px)] bg-size-[52px_52px] mask-[radial-gradient(circle_at_center,black_42%,transparent_100%)]" />
       </div>
       <section id="hero" className="w-full max-w-[1400px] mx-auto px-6 lg:px-12 grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-16 items-center py-20 md:py-0">
         
@@ -151,7 +146,7 @@ export function Hero() {
               <span className="block">{hero.headlinePrefix}</span>
             </span>
             <span className="block hero-word">
-              <span className="block text-secondary">
+              <span className="block text-primary">
                 <TypingEffect words={TYPING_PHRASES} />
               </span>
             </span>

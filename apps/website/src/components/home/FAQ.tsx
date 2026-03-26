@@ -1,102 +1,46 @@
 "use client"
 
-import { useRef, useEffect } from "react";
-import gsap from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useContent } from "@/context/ContentContext";
-
-gsap.registerPlugin(ScrollTrigger);
+import { MotionPreset } from "@/components/ui/motion-preset";
+import { TextShimmer } from "@/components/ui/text-shimmer";
 
 export function FAQ() {
   const { content } = useContent();
   const faqs = content.faqs;
-  const containerRef = useRef<HTMLElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const accordionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const ctx = gsap.context(() => {
-      
-      // Header Animation - Slide Up and Fade In
-      gsap.fromTo(headerRef.current,
-        { y: 50, opacity: 0 },
-        {
-          y: 0,
-          opacity: 1,
-          duration: 1,
-          ease: "power3.out",
-          scrollTrigger: {
-            trigger: containerRef.current,
-            start: "top 70%",
-          }
-        }
-      );
-
-      // Accordion Items Animation - Staggered Slide In
-      if (accordionRef.current) {
-        const items = accordionRef.current.querySelectorAll('.accordion-item-reveal');
-        
-        gsap.fromTo(items,
-          { y: 30, opacity: 0 },
-          {
-            y: 0,
-            opacity: 1,
-            duration: 0.8,
-            stagger: 0.1,
-            ease: "power3.out",
-            scrollTrigger: {
-              trigger: accordionRef.current,
-              start: "top 75%",
-            }
-          }
-        );
-      }
-
-    }, containerRef);
-
-    return () => ctx.revert();
-  }, []);
 
   return (
-    <section ref={containerRef} className="py-24 lg:py-32 bg-background border-b border-border">
-      <div className="max-w-[1400px] mx-auto px-6 lg:px-12 grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-24 items-start">
-        
-        {/* Left Column: Header */}
-        <div ref={headerRef} className="sticky top-32 opacity-0 text-center md:text-left">
-          <div className="flex items-center justify-center md:justify-start gap-3 mb-6">
-            <span className="w-12 h-px bg-accent"></span>
-            <span className="font-mono text-accent text-xs tracking-widest uppercase">
+    <section className="py-8 sm:py-16 lg:py-24 bg-background">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-24 items-start">
+
+        <div className="md:sticky md:top-32 text-center md:text-left">
+          <MotionPreset fade blur slide={{ direction: 'down', offset: 50 }} transition={{ duration: 0.7 }} className="mb-6">
+            <TextShimmer className="text-sm font-medium uppercase" duration={1.75}>
               Common Questions
-            </span>
-            <span className="md:hidden w-12 h-px bg-accent"></span>
-          </div>
-          <h2 className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-foreground leading-[1.1] mb-6">
-            Got questions? <br/>
-            <span className="font-serif italic font-normal text-secondary">We have answers.</span>
-          </h2>
-          <p className="text-secondary text-lg leading-relaxed max-w-md mx-auto md:mx-0 font-light">
+            </TextShimmer>
+          </MotionPreset>
+          <MotionPreset component="h2" fade blur slide={{ direction: 'down', offset: 50 }} transition={{ duration: 0.7 }} delay={0.3} className="text-4xl md:text-5xl lg:text-6xl font-semibold tracking-tight text-foreground leading-[1.1] mb-6">
+            Got questions? <br />
+            <span className="font-serif italic font-normal text-primary">We have answers.</span>
+          </MotionPreset>
+          <MotionPreset component="p" fade blur slide={{ direction: 'down', offset: 50 }} transition={{ duration: 0.7 }} delay={0.6} className="text-secondary text-lg leading-relaxed max-w-md mx-auto md:mx-0 font-light">
             Everything you need to know about planning your perfect celebration with OpusFesta.
-          </p>
+          </MotionPreset>
         </div>
 
-        {/* Right Column: Accordion */}
-        <div ref={accordionRef} className="w-full">
+        <div className="w-full">
           <Accordion type="single" collapsible className="w-full">
             {faqs.map((faq, index) => (
-              <AccordionItem key={index} value={`item-${index}`} className="border-border/60 accordion-item-reveal opacity-0">
-                <AccordionTrigger className="text-lg md:text-xl py-6 font-medium text-foreground hover:text-accent transition-colors hover:no-underline">
-                  {faq.question}
-                </AccordionTrigger>
-                <AccordionContent className="text-secondary text-base leading-relaxed pb-6 max-w-xl font-light">
-                  {faq.answer}
-                </AccordionContent>
-              </AccordionItem>
+              <MotionPreset key={index} fade blur slide={{ direction: 'down', offset: 30 }} transition={{ duration: 0.6 }} delay={0.1 + index * 0.08}>
+                <AccordionItem value={`item-${index}`} className="border-border/60">
+                  <AccordionTrigger className="text-lg md:text-xl py-6 font-medium text-foreground hover:text-primary transition-colors hover:no-underline">
+                    {faq.question}
+                  </AccordionTrigger>
+                  <AccordionContent className="text-secondary text-base leading-relaxed pb-6 max-w-xl font-light">
+                    {faq.answer}
+                  </AccordionContent>
+                </AccordionItem>
+              </MotionPreset>
             ))}
           </Accordion>
         </div>
