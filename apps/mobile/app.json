@@ -1,0 +1,51 @@
+{
+  "expo": {
+    "name": "OpusFesta",
+    "slug": "opusfesta-mobile",
+    "version": "1.0.0",
+    "scheme": "opusfesta",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#5B2D8E",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.opusfesta.mobile"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#5B2D8E"
+      },
+      "package": "com.opusfesta.mobile"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single",
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#5B2D8E"
+        }
+      ],
+      "expo-image-picker",
+      "expo-web-browser"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

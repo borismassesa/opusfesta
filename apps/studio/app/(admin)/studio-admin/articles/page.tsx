@@ -45,7 +45,7 @@ export default function ArticlesPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/articles/new" icon={<BsPlus className="w-4 h-4" />}>New Article</AdminButton>
+        <AdminButton href="/studio-admin/articles/new" icon={<BsPlus className="w-4 h-4" />}>New Article</AdminButton>
       </div>
 
       {loading ? (

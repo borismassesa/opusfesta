@@ -165,7 +165,7 @@ export default function PortalSidebar() {
       </aside>
 
       {/* Mobile bottom nav */}
-      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t-3 border-brand-border flex items-center justify-around px-2 py-2 safe-area-pb">
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t-3 border-brand-border flex items-center justify-around px-1 py-1.5 safe-area-pb">
         {NAV_ITEMS.map((item) => {
           const isActive = item.exact
             ? pathname === item.href
@@ -175,19 +175,19 @@ export default function PortalSidebar() {
             <Link
               key={item.href}
               href={item.href}
-              className={`flex flex-col items-center gap-1 px-3 py-1.5 transition-colors ${
+              className={`flex flex-col items-center gap-0.5 px-1.5 sm:px-3 py-1 transition-colors min-w-0 ${
                 isActive ? 'text-brand-accent' : 'text-brand-muted'
               }`}
             >
               <span className="relative">
-                <Icon className="w-5 h-5" />
+                <Icon className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
                 {item.label === 'Messages' && unreadCount > 0 && (
-                  <span className="absolute -top-1.5 -right-2.5 inline-flex h-4 min-w-[16px] items-center justify-center bg-brand-accent text-white text-[8px] font-mono font-bold px-1 rounded-full">
+                  <span className="absolute -top-1.5 -right-2 inline-flex h-3.5 min-w-[14px] sm:h-4 sm:min-w-[16px] items-center justify-center bg-brand-accent text-white text-[7px] sm:text-[8px] font-mono font-bold px-0.5 sm:px-1 rounded-full">
                     {unreadCount}
                   </span>
                 )}
               </span>
-              <span className="text-[10px] font-mono font-bold uppercase tracking-wider">
+              <span className="text-[8px] sm:text-[10px] font-mono font-bold uppercase tracking-wider leading-tight">
                 {item.label}
               </span>
             </Link>
@@ -195,28 +195,28 @@ export default function PortalSidebar() {
         })}
         <Link
           href="/portal/book"
-          className="flex flex-col items-center gap-1 px-3 py-1.5 text-brand-dark"
+          className="flex flex-col items-center gap-0.5 px-1.5 sm:px-3 py-1 text-brand-dark min-w-0"
         >
-          <BsPlusLg className="w-5 h-5" />
-          <span className="text-[10px] font-mono font-bold uppercase tracking-wider">
+          <BsPlusLg className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+          <span className="text-[8px] sm:text-[10px] font-mono font-bold uppercase tracking-wider leading-tight">
             Book
           </span>
         </Link>
         <Link
           href="/"
-          className="flex flex-col items-center gap-1 px-3 py-1.5 text-brand-muted"
+          className="flex flex-col items-center gap-0.5 px-1.5 sm:px-3 py-1 text-brand-muted min-w-0"
         >
-          <BsHouseDoor className="w-5 h-5" />
-          <span className="text-[10px] font-mono font-bold uppercase tracking-wider">
+          <BsHouseDoor className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+          <span className="text-[8px] sm:text-[10px] font-mono font-bold uppercase tracking-wider leading-tight">
             Home
           </span>
         </Link>
         <button
           onClick={() => signOut({ redirectUrl: '/' })}
-          className="flex flex-col items-center gap-1 px-3 py-1.5 text-brand-muted"
+          className="flex flex-col items-center gap-0.5 px-1.5 sm:px-3 py-1 text-brand-muted min-w-0"
         >
-          <BsPerson className="w-5 h-5" />
-          <span className="text-[10px] font-mono font-bold uppercase tracking-wider">
+          <BsPerson className="w-[18px] h-[18px] sm:w-5 sm:h-5" />
+          <span className="text-[8px] sm:text-[10px] font-mono font-bold uppercase tracking-wider leading-tight">
             Account
           </span>
         </button>
