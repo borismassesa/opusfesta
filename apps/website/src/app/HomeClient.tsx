@@ -8,7 +8,6 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { Navbar } from "@/components/layout/Navbar";
 import { MenuOverlay } from "@/components/layout/MenuOverlay";
 import { Hero } from "@/components/home/Hero";
-import { LogoCloudSection } from "@/components/home/LogoCloudSection";
 import { Marquee } from "@/components/home/Marquee";
 import { Services } from "@/components/home/Services";
 import { Issues } from "@/components/home/Issues";
@@ -17,7 +16,8 @@ import { FAQ } from "@/components/home/FAQ";
 import { Community } from "@/components/home/Community";
 import { CTA } from "@/components/home/CTA";
 import { Footer } from "@/components/layout/Footer";
-import BentoGrid from "@/components/shadcn-studio/blocks/bento-grid-19/bento-grid-19";
+import AboutUs from "@/components/blocks/about-us-section/about-us-section";
+import { aboutUsData } from "@/assets/data/about-us-data";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -49,21 +49,15 @@ export function HomeClient() {
 
     // Lenis Setup
     const lenis = new Lenis({
-      duration: 1.2,
+      duration: 0.9,
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
     });
 
-    function raf(time: number) {
-      lenis.raf(time);
-      requestAnimationFrame(raf);
-    }
-    requestAnimationFrame(raf);
-
-    lenis.on('scroll', ScrollTrigger.update);
     gsap.ticker.add((time) => {
       lenis.raf(time * 1000);
     });
     gsap.ticker.lagSmoothing(0);
+    lenis.on('scroll', ScrollTrigger.update);
 
     return () => {
       ctx.revert();
@@ -95,13 +89,12 @@ export function HomeClient() {
       <main>
         <Hero />
         <Services />
-        <BentoGrid />
+        <AboutUs aboutUsData={aboutUsData} />
         {/* <Marquee /> */}
         <Community />
         <Issues />
         <Reviews />
         <FAQ />
-        <LogoCloudSection />
         <CTA />
       </main>
       

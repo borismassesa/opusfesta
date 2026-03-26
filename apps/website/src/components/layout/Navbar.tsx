@@ -110,9 +110,7 @@ export function Navbar({ onMenuClick, isOpen, sticky = true }: { onMenuClick: ()
     <nav
       className={`${sticky ? 'fixed' : 'relative'} top-0 z-50 flex w-full items-center justify-between gap-3 px-4 pb-1 pt-3 transition-all duration-300 sm:px-6 lg:px-8 xl:px-12 ${
         sticky && scrolled
-          ? isPlanningRoute
-            ? "bg-[color-mix(in_oklab,var(--background)_89%,var(--primary)_11%)] backdrop-blur-xl shadow-[0_16px_38px_-24px_color-mix(in_oklab,var(--primary)_70%,transparent)] ring-1 ring-[color-mix(in_oklab,var(--primary)_16%,transparent)] pb-0.5 pt-2"
-            : "bg-[color-mix(in_oklab,var(--background)_94%,var(--primary)_6%)] backdrop-blur-xl shadow-[0_14px_36px_-26px_color-mix(in_oklab,var(--primary)_55%,transparent)] pb-0.5 pt-2"
+          ? "bg-background/80 backdrop-blur-xl pb-0.5 pt-2"
           : sticky
             ? "bg-transparent pb-1 pt-3"
             : "bg-background pb-1 pt-3"
