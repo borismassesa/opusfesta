@@ -6,7 +6,7 @@ import type { UserType, UserRole } from "./types";
 export function mapUserTypeToRole(userType: UserType): UserRole {
   switch (userType) {
     case "couple":
-      return "user";
+      return "couple";
     case "vendor":
       return "vendor";
     case "admin":
@@ -21,6 +21,7 @@ export function mapUserTypeToRole(userType: UserType): UserRole {
  */
 export function mapRoleToUserType(role: UserRole): UserType {
   switch (role) {
+    case "couple":
     case "user":
       return "couple";
     case "vendor":
