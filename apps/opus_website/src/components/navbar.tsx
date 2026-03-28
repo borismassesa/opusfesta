@@ -305,7 +305,7 @@ export default function Navbar() {
             Sign up
           </button>
           <button
-            className="lg:hidden flex items-center justify-center w-10 h-10 -mr-2"
+            className="lg:hidden relative z-[1000] flex items-center justify-center w-10 h-10 -mr-2"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             onClick={() => setMobileOpen((v) => !v)}
           >
@@ -394,21 +394,20 @@ export default function Navbar() {
       )}
 
       {/* ─── Mobile drawer overlay ─── */}
-      <div
-        className={`lg:hidden fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 ${
-          mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        aria-hidden={!mobileOpen}
-        onClick={() => setMobileOpen(false)}
-      />
+      {mobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-[998] bg-black/40"
+          onClick={() => setMobileOpen(false)}
+        />
+      )}
 
       {/* ─── Mobile drawer panel ─── */}
       <div
-        className={`lg:hidden fixed top-0 right-0 z-50 h-full w-full max-w-[340px] bg-white shadow-2xl transform transition-transform duration-300 ease-out ${
+        className={`lg:hidden fixed top-0 right-0 z-[999] h-dvh w-full max-w-[340px] bg-white shadow-2xl transition-transform duration-300 ease-out ${
           mobileOpen ? 'translate-x-0' : 'translate-x-full'
         }`}
         role="dialog"
-        aria-modal="true"
+        aria-modal={mobileOpen}
         aria-label="Navigation menu"
       >
         {/* Drawer header */}
