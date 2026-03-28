@@ -298,7 +298,7 @@ export default function Navbar() {
               className="lg:hidden"
               style={{ padding: 8, WebkitTapHighlightColor: 'transparent' }}
               aria-label="Open menu"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => { alert('HAMBURGER CLICKED'); setMobileOpen(true) }}
             >
               <Menu size={24} />
             </button>
