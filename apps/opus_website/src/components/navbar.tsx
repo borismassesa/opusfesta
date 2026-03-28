@@ -1,10 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import type { KeyboardEvent } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import {
   Menu,
+  X,
   Heart,
   Users,
   Camera,
@@ -38,6 +40,7 @@ import {
   Gift,
   PartyPopper,
   ShoppingBag,
+  ChevronDown,
 } from 'lucide-react'
 
 type NavLink = { label: string; Icon?: LucideIcon; subLinks?: string[] }
@@ -238,18 +241,43 @@ const navItems: Array<{
 
 export default function Navbar() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
   const activeItem = activeMenu ? navItems.find((i) => i.label === activeMenu) ?? null : null
+
+  // Lock body scroll when mobile menu is open
+  useEffect(() => {
+    if (mobileOpen) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+    return () => { document.body.style.overflow = '' }
+  }, [mobileOpen])
+
+  // Close mobile menu on Escape
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setActiveMenu(null)
+      setMobileOpen(false)
+    }
+  }, [])
+
+  const toggleMobileSection = (label: string) => {
+    setMobileExpanded((prev) => (prev === label ? null : label))
+  }
 
   return (
     <div
       className="relative border-b border-gray-100"
       onMouseLeave={() => setActiveMenu(null)}
-      onKeyDown={(e) => { if (e.key === 'Escape') setActiveMenu(null) }}
+      onKeyDown={handleKeyDown}
     >
-      <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto relative z-50 bg-white">
+      {/* ─── Top bar ─── */}
+      <nav className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 max-w-6xl mx-auto relative z-50 bg-white">
         <div className="flex items-center gap-8">
           <div className="flex items-center">
-            <Logo className="h-10 w-auto" />
+            <Logo className="h-8 sm:h-10 w-auto" />
           </div>
           <div className="hidden lg:flex gap-2 font-semibold text-sm">
             {navItems.map((item) => (
@@ -269,21 +297,26 @@ export default function Navbar() {
             ))}
           </div>
         </div>
-        <div className="flex items-center gap-4 font-semibold text-sm">
+        <div className="flex items-center gap-3 sm:gap-4 font-semibold text-sm">
           <a href="#" className="hidden lg:block hover:text-[#1A1A1A] transition-colors whitespace-nowrap">
             Log in
           </a>
-          <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 py-2 rounded-full font-bold transition-colors whitespace-nowrap">
+          <button className="hidden sm:block bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 py-2 rounded-full font-bold transition-colors whitespace-nowrap">
             Sign up
           </button>
-          <button className="lg:hidden" aria-label="Open menu">
-            <Menu size={24} />
+          <button
+            className="lg:hidden flex items-center justify-center w-10 h-10 -mr-2"
+            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            onClick={() => setMobileOpen((v) => !v)}
+          >
+            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
           </button>
         </div>
       </nav>
 
+      {/* ─── Desktop mega-menu dropdown ─── */}
       {activeItem && (
-        <div className="absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-xl z-40 overflow-hidden">
+        <div className="hidden lg:block absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-xl z-40 overflow-hidden">
           <div className="max-w-6xl mx-auto px-6 py-8 flex gap-12">
             <div className="w-[300px] shrink-0 border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
               <div className="h-40 overflow-hidden">
@@ -359,6 +392,132 @@ export default function Navbar() {
           </div>
         </div>
       )}
+
+      {/* ─── Mobile drawer overlay ─── */}
+      <div
+        className={`lg:hidden fixed inset-0 z-40 bg-black/40 transition-opacity duration-300 ${
+          mobileOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
+        aria-hidden={!mobileOpen}
+        onClick={() => setMobileOpen(false)}
+      />
+
+      {/* ─── Mobile drawer panel ─── */}
+      <div
+        className={`lg:hidden fixed top-0 right-0 z-50 h-full w-full max-w-[340px] bg-white shadow-2xl transform transition-transform duration-300 ease-out ${
+          mobileOpen ? 'translate-x-0' : 'translate-x-full'
+        }`}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
+      >
+        {/* Drawer header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <Logo className="h-7 w-auto" />
+          <button
+            className="flex items-center justify-center w-10 h-10 -mr-2 rounded-full hover:bg-gray-100 transition-colors"
+            aria-label="Close menu"
+            onClick={() => setMobileOpen(false)}
+          >
+            <X size={22} />
+          </button>
+        </div>
+
+        {/* Drawer body */}
+        <div className="overflow-y-auto h-[calc(100%-68px)] overscroll-contain">
+          {/* Nav sections with accordion */}
+          <div className="py-2">
+            {navItems.map((item) => {
+              const isExpanded = mobileExpanded === item.label
+              return (
+                <div key={item.label} className="border-b border-gray-50">
+                  <button
+                    className="flex items-center justify-between w-full px-5 py-3.5 text-left"
+                    onClick={() => toggleMobileSection(item.label)}
+                    aria-expanded={isExpanded}
+                  >
+                    <span className="font-bold text-[15px] text-[#1A1A1A]">{item.label}</span>
+                    <ChevronDown
+                      size={18}
+                      className={`text-gray-400 transition-transform duration-200 ${
+                        isExpanded ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Expanded content */}
+                  <div
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
+                      isExpanded ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
+                    }`}
+                  >
+                    <div className="px-5 pb-4">
+                      {/* Card preview */}
+                      <a
+                        href="#"
+                        className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 mb-3"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.card.image}
+                            alt=""
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold text-[#1A1A1A] truncate">{item.card.title}</p>
+                          <p className="text-xs text-gray-500 line-clamp-2 leading-snug mt-0.5">{item.card.description}</p>
+                        </div>
+                        <ArrowRight size={14} className="text-gray-400 shrink-0" />
+                      </a>
+
+                      {/* Link columns */}
+                      {item.columns.map((col, idx) => (
+                        <div key={idx} className="mb-3 last:mb-0">
+                          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
+                            {col.title}
+                          </p>
+                          <div className="space-y-0.5">
+                            {col.links.map((link, lIdx) => (
+                              <a
+                                key={lIdx}
+                                href="#"
+                                className="flex items-center gap-3 px-1 py-2 rounded-lg active:bg-gray-50 transition-colors"
+                                onClick={() => setMobileOpen(false)}
+                              >
+                                {link.Icon && (
+                                  <div className="w-8 h-8 rounded-full bg-gray-100 text-[#1A1A1A] flex items-center justify-center shrink-0">
+                                    <link.Icon size={15} />
+                                  </div>
+                                )}
+                                <span className="font-semibold text-sm text-[#1A1A1A] leading-tight">
+                                  {link.label}
+                                </span>
+                              </a>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+
+          {/* Auth buttons at bottom of drawer */}
+          <div className="px-5 py-6 border-t border-gray-100 space-y-3">
+            <button className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] py-3 rounded-full font-bold text-[15px] transition-colors">
+              Sign up
+            </button>
+            <button className="w-full border border-gray-200 text-[#1A1A1A] py-3 rounded-full font-bold text-[15px] hover:bg-gray-50 transition-colors">
+              Log in
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
