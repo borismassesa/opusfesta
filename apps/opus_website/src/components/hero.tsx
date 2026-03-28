@@ -84,12 +84,13 @@ export default function Hero() {
           onCanPlay={(e) => { e.currentTarget.play().catch(console.error) }}
           className="w-full h-full object-cover"
         />
-        <div
+        <button
           onClick={togglePlay}
+          aria-label={isPlaying ? 'Pause video' : 'Play video'}
           className="absolute top-6 right-6 w-10 h-10 bg-white rounded-full flex items-center justify-center cursor-pointer shadow-sm text-[#1A1A1A] hover:bg-gray-50 transition-colors z-10"
         >
           {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} fill="currentColor" />}
-        </div>
+        </button>
       </motion.div>
 
     </section>

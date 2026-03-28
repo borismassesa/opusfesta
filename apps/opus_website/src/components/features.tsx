@@ -31,6 +31,7 @@ export default function Features() {
                 muted
                 loop
                 playsInline
+                aria-hidden="true"
                 className="w-full h-full object-cover object-top scale-105"
               />
             </div>
@@ -136,6 +137,7 @@ export default function Features() {
                 muted
                 loop
                 playsInline
+                aria-hidden="true"
                 className="w-full h-full object-cover object-center"
               />
             </div>
