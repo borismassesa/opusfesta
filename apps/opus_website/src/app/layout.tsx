@@ -22,6 +22,18 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             d.textContent = 'JS ERROR: ' + e.message + ' | ' + e.filename + ':' + e.lineno;
             document.body.prepend(d);
           });
+          // Native DOM test - bypass React entirely
+          document.addEventListener('click', function(e) {
+            var el = e.target;
+            // Walk up to find the button with aria-label
+            while (el && el !== document.body) {
+              if (el.getAttribute && el.getAttribute('aria-label') === 'Open menu') {
+                alert('NATIVE CLICK WORKS! React hydration may have failed.');
+                return;
+              }
+              el = el.parentElement;
+            }
+          });
         `}} />
         <SmoothScrollProvider>{children}</SmoothScrollProvider>
       </body>
