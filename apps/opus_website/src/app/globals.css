@@ -1,0 +1,46 @@
+@import 'tailwindcss';
+
+:root {
+  --accent: #C9A0DC;
+  --accent-hover: #b97fd0;
+  --on-accent: #1A1A1A;
+}
+
+/* Tailwind utility for on-accent text */
+.text-on-accent { color: var(--on-accent); }
+
+html,
+body {
+  background-color: #ffffff;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-33.333%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Accessibility: disable all motion for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
