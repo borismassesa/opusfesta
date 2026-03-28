@@ -11,6 +11,12 @@ export default function SmoothScrollProvider({ children }: { children: React.Rea
     // Only initialise Lenis when animations are safe (respects prefers-reduced-motion + Save-Data)
     if (!safe) return
 
+    // Disable Lenis on touch devices — its non-passive touch listeners
+    // block the browser from synthesising click events from taps,
+    // making buttons, links, and <details> elements unresponsive.
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0
+    if (isTouchDevice) return
+
     let lenis: Lenis
     try {
       lenis = new Lenis({
