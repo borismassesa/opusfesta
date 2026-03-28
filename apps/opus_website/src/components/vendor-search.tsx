@@ -90,26 +90,20 @@ export default function VendorSearch() {
   const Detail2Icon = v.detail2.icon
 
   return (
-    <section className="px-6 py-24 max-w-6xl mx-auto flex flex-col lg:flex-row items-center gap-16">
+    <section className="px-4 sm:px-6 py-14 sm:py-20 md:py-24 max-w-6xl mx-auto flex flex-col lg:flex-row items-center gap-10 sm:gap-14 lg:gap-16">
 
       {/* Left */}
-      <div className="flex-1">
-        <h2 className="text-4xl md:text-6xl lg:text-[80px] font-black tracking-tighter uppercase leading-[0.85] mb-6 text-[#1A1A1A]">
-          FIND YOUR DREAM TEAM EFFORTLESSLY
+      <div className="flex-1 flex flex-col text-center lg:text-left">
+        <h2 className="text-[2.4rem] sm:text-5xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-[0.9] mb-5 sm:mb-6 text-[#1A1A1A]">
+          Find your dream team effortlessly
         </h2>
-        <p className="text-lg text-gray-600 mb-8 font-medium leading-relaxed">
-          Save hundreds of hours on wedding research — with{' '}
-          <span className="font-bold text-[#1A1A1A] border-b-2 border-[var(--accent)]">
-            transparent pricing and verified reviews.
-          </span>
+        <p className="text-base sm:text-lg md:text-xl text-gray-600 font-medium leading-relaxed">
+          Save hundreds of hours on wedding research. With transparent pricing and verified reviews.
         </p>
-        <button className="bg-[#1A1A1A] hover:bg-[#333333] text-white px-8 py-4 rounded-full font-bold transition-colors">
-          Search vendors
-        </button>
       </div>
 
-      {/* Card */}
-      <div className="flex-1 w-full max-w-lg">
+      {/* Card + mobile button */}
+      <div className="flex-1 w-full max-w-lg flex flex-col gap-5">
         <div className="bg-white rounded-[32px] shadow-[0_20px_60px_rgba(0,0,0,0.08)] p-7 border border-gray-100">
           <div className="space-y-5">
 

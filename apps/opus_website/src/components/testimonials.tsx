@@ -52,7 +52,7 @@ const testimonials = [
     company: 'Bloom & Petal Florists',
     city: 'Nairobi',
     stars: 4,
-    quote: 'As a florist, managing enquiries used to be chaos. OpusFesta streamlined everything — bookings, messages, payments, all in one place.',
+    quote: 'As a florist, managing enquiries used to be chaos. OpusFesta streamlined everything: bookings, messages, payments, all in one place.',
     image: 'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?auto=format&fit=crop&w=200&q=80',
     bg: 'dark',
   },
@@ -123,17 +123,17 @@ export default function Testimonials() {
   const atEnd = index === testimonials.length - 1
 
   return (
-    <section className="py-24 px-6 max-w-6xl mx-auto overflow-hidden">
-      <div className="flex flex-col md:flex-row gap-12 md:gap-8 items-center">
+    <section className="py-14 sm:py-20 md:py-24 px-4 sm:px-6 max-w-6xl mx-auto">
+      <div className="flex flex-col md:flex-row gap-10 md:gap-8 items-center">
 
         {/* Left */}
-        <Reveal direction="up" className="md:w-[38%] shrink-0">
-          <h2 className="text-4xl md:text-6xl lg:text-[80px] font-black tracking-tighter uppercase leading-[0.85] mb-8 md:mb-12 text-[#1A1A1A]">
-            WHAT THEY SAY
+        <Reveal direction="up" className="md:w-[38%] shrink-0 text-center md:text-left">
+          <h2 className="text-[2.4rem] sm:text-5xl md:text-6xl lg:text-[80px] font-black tracking-tighter uppercase leading-[1.05] md:leading-[0.88] mb-6 md:mb-12 text-[#1A1A1A]">
+            What they say
             <br />
-            ABOUT US
+            about us
           </h2>
-          <div className="flex gap-3">
+          <div className="flex justify-center md:justify-start gap-3">
             {/* Left arrow — green when we can go back, gray when at start */}
             <button
               onClick={prev}
@@ -166,7 +166,7 @@ export default function Testimonials() {
         </Reveal>
 
         {/* Carousel */}
-        <div ref={containerRef} className="md:w-[62%] overflow-hidden">
+        <div ref={containerRef} className="w-full md:w-[62%] overflow-hidden">
           <motion.div
             className="flex"
             style={{ gap: GAP }}
@@ -179,7 +179,7 @@ export default function Testimonials() {
                 <div
                   key={i}
                   style={{ minWidth: cardWidth || '72%', maxWidth: cardWidth || '72%' }}
-                  className={`rounded-[32px] p-6 md:p-8 flex flex-col shrink-0 h-auto md:h-[420px] ${
+                  className={`rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 md:p-8 flex flex-col shrink-0 ${
                     isAccent ? 'bg-[var(--accent)]' : 'bg-[#1A1A1A]'
                   }`}
                 >
@@ -196,7 +196,7 @@ export default function Testimonials() {
                   </div>
 
                   {/* Quote */}
-                  <p className={`text-base md:text-xl font-semibold leading-snug flex-1 ${isAccent ? 'text-[var(--on-accent)]' : 'text-white'}`}>
+                  <p className={`text-sm sm:text-base md:text-xl font-semibold leading-snug flex-1 mb-6 ${isAccent ? 'text-[var(--on-accent)]' : 'text-white'}`}>
                     &ldquo;{t.quote}&rdquo;
                   </p>
 
