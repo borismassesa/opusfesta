@@ -19,8 +19,15 @@ export default function SmoothScrollProvider({ children }: { children: React.Rea
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         orientation: 'vertical',
         smoothWheel: true,
-        // Disable touch handling — prevents iOS Safari momentum scroll conflict
+        syncTouch: false,
         touchMultiplier: 0,
+        // Block Lenis from processing touch events entirely.
+        // Lenis registers non-passive touch listeners on window which
+        // prevents the browser from synthesising click events from taps.
+        virtualScroll: ({ event }) => {
+          if (event.type.includes('touch')) return false
+          return true
+        },
       })
     } catch (err) {
       console.error('Lenis initialisation failed', err)

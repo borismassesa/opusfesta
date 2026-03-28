@@ -261,7 +261,7 @@ export default function Navbar() {
   return (
     <>
       <div
-        className="relative border-b border-gray-100"
+        className="sticky top-0 z-50 bg-white border-b border-gray-100"
         onMouseLeave={() => setActiveMenu(null)}
       >
         {/* ─── Top bar ─── */}
@@ -293,16 +293,13 @@ export default function Navbar() {
             <button className="hidden sm:block bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 py-2 rounded-full font-bold transition-colors whitespace-nowrap">
               Sign up
             </button>
-            {/* Hamburger — TEST: using <a> tag to verify clickability */}
-            <a
-              href="#mobile-menu-open"
-              className="lg:hidden block"
-              style={{ padding: 8 }}
+            <button
+              className="lg:hidden p-2"
               aria-label="Open menu"
-              onClick={(e) => { e.preventDefault(); setMobileOpen(true) }}
+              onClick={() => setMobileOpen(true)}
             >
               <Menu size={24} />
-            </a>
+            </button>
           </div>
         </nav>
 
