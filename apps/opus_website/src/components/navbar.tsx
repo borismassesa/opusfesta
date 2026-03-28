@@ -293,15 +293,16 @@ export default function Navbar() {
             <button className="hidden sm:block bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 py-2 rounded-full font-bold transition-colors whitespace-nowrap">
               Sign up
             </button>
-            {/* Hamburger — uses inline style to guarantee visibility */}
-            <button
-              className="lg:hidden"
-              style={{ padding: 8, WebkitTapHighlightColor: 'transparent' }}
+            {/* Hamburger — TEST: using <a> tag to verify clickability */}
+            <a
+              href="#mobile-menu-open"
+              className="lg:hidden block"
+              style={{ padding: 8 }}
               aria-label="Open menu"
-              onClick={() => { alert('HAMBURGER CLICKED'); setMobileOpen(true) }}
+              onClick={(e) => { e.preventDefault(); setMobileOpen(true) }}
             >
               <Menu size={24} />
-            </button>
+            </a>
           </div>
         </nav>
 

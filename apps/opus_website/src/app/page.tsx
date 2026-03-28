@@ -15,6 +15,13 @@ import Footer from '@/components/footer'
 export default function Home() {
   return (
     <div className="font-sans text-[#1A1A1A] bg-[#FFFFFF] selection:bg-[var(--accent)] selection:text-[var(--on-accent)]">
+      {/* DEBUG: test if any button works */}
+      <button
+        style={{ position: 'fixed', top: 10, right: 10, zIndex: 99999, background: 'red', color: 'white', padding: '10px 20px', fontSize: 16, border: 'none', borderRadius: 8, cursor: 'pointer' }}
+        onClick={() => alert('TEST BUTTON WORKS')}
+      >
+        TEST
+      </button>
       <Navbar />
       <Hero />
       <Trust />
