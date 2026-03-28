@@ -1,8 +1,6 @@
 'use client'
 
-import type { KeyboardEvent } from 'react'
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { createPortal } from 'react-dom'
+import { useState, useEffect } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import {
@@ -244,11 +242,7 @@ export default function Navbar() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
-  const [portalMounted, setPortalMounted] = useState(false)
   const activeItem = activeMenu ? navItems.find((i) => i.label === activeMenu) ?? null : null
-
-  // Ensure portal only renders on the client after mount
-  useEffect(() => { setPortalMounted(true) }, [])
 
   // Lock body scroll when mobile menu is open
   useEffect(() => {
@@ -260,274 +254,258 @@ export default function Navbar() {
     return () => { document.body.style.overflow = '' }
   }, [mobileOpen])
 
-  // Close mobile menu on Escape
-  const handleKeyDown = useCallback((e: KeyboardEvent) => {
-    if (e.key === 'Escape') {
-      setActiveMenu(null)
-      setMobileOpen(false)
-    }
-  }, [])
-
   const toggleMobileSection = (label: string) => {
     setMobileExpanded((prev) => (prev === label ? null : label))
   }
 
   return (
-    <div
-      className="relative border-b border-gray-100"
-      onMouseLeave={() => setActiveMenu(null)}
-      onKeyDown={handleKeyDown}
-    >
-      {/* ─── Top bar ─── */}
-      <nav className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 max-w-6xl mx-auto relative z-50 bg-white">
-        <div className="flex items-center gap-8">
-          <div className="flex items-center">
+    <>
+      <div
+        className="relative border-b border-gray-100"
+        onMouseLeave={() => setActiveMenu(null)}
+      >
+        {/* ─── Top bar ─── */}
+        <nav className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 max-w-6xl mx-auto bg-white">
+          <div className="flex items-center gap-8">
             <Logo className="h-8 sm:h-10 w-auto" />
-          </div>
-          <div className="hidden lg:flex gap-2 font-semibold text-sm">
-            {navItems.map((item) => (
-              <button
-                key={item.label}
-                onMouseEnter={() => setActiveMenu(item.label)}
-                aria-expanded={activeMenu === item.label}
-                aria-haspopup="true"
-                className={`px-4 py-2 rounded-full transition-colors whitespace-nowrap ${
-                  activeMenu === item.label
-                    ? 'bg-[var(--accent)] text-[var(--on-accent)]'
-                    : 'hover:bg-[var(--accent)] hover:text-[var(--on-accent)] text-gray-800'
-                }`}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="flex items-center gap-3 sm:gap-4 font-semibold text-sm">
-          <a href="#" className="hidden lg:block hover:text-[#1A1A1A] transition-colors whitespace-nowrap">
-            Log in
-          </a>
-          <button className="hidden sm:block bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 py-2 rounded-full font-bold transition-colors whitespace-nowrap">
-            Sign up
-          </button>
-          <button
-            className="lg:hidden relative z-[1000] flex items-center justify-center w-10 h-10 -mr-2"
-            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
-            onClick={() => setMobileOpen((v) => !v)}
-          >
-            {mobileOpen ? <X size={24} /> : <Menu size={24} />}
-          </button>
-        </div>
-      </nav>
-
-      {/* ─── Desktop mega-menu dropdown ─── */}
-      {activeItem && (
-        <div className="hidden lg:block absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-xl z-40 overflow-hidden">
-          <div className="max-w-6xl mx-auto px-6 py-8 flex gap-12">
-            <div className="w-[300px] shrink-0 border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
-              <div className="h-40 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={activeItem.card.image}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="p-6 flex flex-col flex-1 bg-white">
-                <h3 className="text-2xl font-black tracking-tighter uppercase mb-2 text-[#1A1A1A]">
-                  {activeItem.card.title}
-                </h3>
-                <p className="text-gray-600 text-sm font-medium mb-6">
-                  {activeItem.card.description}
-                </p>
-                <a href="#" className="mt-auto flex items-center gap-2 text-[#1A1A1A] font-bold hover:underline">
-                  {activeItem.card.linkText}
-                  <ArrowRight size={16} />
-                </a>
-              </div>
+            <div className="hidden lg:flex gap-2 font-semibold text-sm">
+              {navItems.map((item) => (
+                <button
+                  key={item.label}
+                  onMouseEnter={() => setActiveMenu(item.label)}
+                  aria-expanded={activeMenu === item.label}
+                  aria-haspopup="true"
+                  className={`px-4 py-2 rounded-full transition-colors whitespace-nowrap ${
+                    activeMenu === item.label
+                      ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                      : 'hover:bg-[var(--accent)] hover:text-[var(--on-accent)] text-gray-800'
+                  }`}
+                >
+                  {item.label}
+                </button>
+              ))}
             </div>
+          </div>
+          <div className="flex items-center gap-3 sm:gap-4 font-semibold text-sm">
+            <a href="#" className="hidden lg:block hover:text-[#1A1A1A] transition-colors whitespace-nowrap">
+              Log in
+            </a>
+            <button className="hidden sm:block bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 py-2 rounded-full font-bold transition-colors whitespace-nowrap">
+              Sign up
+            </button>
+            {/* Hamburger — uses inline style to guarantee visibility */}
+            <button
+              className="lg:hidden"
+              style={{ padding: 8, WebkitTapHighlightColor: 'transparent' }}
+              aria-label="Open menu"
+              onClick={() => setMobileOpen(true)}
+            >
+              <Menu size={24} />
+            </button>
+          </div>
+        </nav>
 
-            <div className="flex-1 flex gap-16 pt-2">
-              {activeItem.columns.map((col, idx) => (
-                  <div key={idx} className="flex-1">
-                    <h4 className="text-gray-500 text-sm font-medium mb-6 border-b border-gray-100 pb-4">
-                      {col.title}
-                    </h4>
-                    <ul className="space-y-3">
-                      {col.links.map((link, lIdx) => (
-                        <li key={lIdx}>
-                          <a href="#" className="flex items-center gap-3 group">
-                            {link.Icon && (
-                              <div className="w-7 h-7 rounded-full bg-gray-100 text-[#1A1A1A] flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] transition-colors shrink-0">
-                                <link.Icon size={14} />
-                              </div>
-                            )}
-                            <span className="font-bold text-sm text-[#1A1A1A] group-hover:underline transition-colors leading-tight">
-                              {link.label}
-                            </span>
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-            </div>
-
-            {activeItem.label === 'Attire & Rings' && (
-              <div className="shrink-0 w-[260px] pt-2">
-                <h4 className="text-[#1A1A1A] text-xs font-black uppercase tracking-widest mb-5 border-b border-gray-100 pb-4">
-                  Get Fashion Inspiration
-                </h4>
-                <div className="grid grid-cols-2 gap-2">
-                  {attirePhotoGrid.map((item) => (
-                    <a key={item.label} href="#" className="group flex flex-col gap-1.5">
-                      <div className="rounded-xl overflow-hidden h-[90px]">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
-                          src={item.image}
-                          alt={item.label}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-                      <span className="font-bold text-xs text-[#1A1A1A] group-hover:underline leading-tight">{item.label}</span>
-                    </a>
-                  ))}
+        {/* ─── Desktop mega-menu dropdown ─── */}
+        {activeItem && (
+          <div className="hidden lg:block absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-xl z-40 overflow-hidden">
+            <div className="max-w-6xl mx-auto px-6 py-8 flex gap-12">
+              <div className="w-[300px] shrink-0 border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
+                <div className="h-40 overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={activeItem.card.image}
+                    alt=""
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+                <div className="p-6 flex flex-col flex-1 bg-white">
+                  <h3 className="text-2xl font-black tracking-tighter uppercase mb-2 text-[#1A1A1A]">
+                    {activeItem.card.title}
+                  </h3>
+                  <p className="text-gray-600 text-sm font-medium mb-6">
+                    {activeItem.card.description}
+                  </p>
+                  <a href="#" className="mt-auto flex items-center gap-2 text-[#1A1A1A] font-bold hover:underline">
+                    {activeItem.card.linkText}
+                    <ArrowRight size={16} />
+                  </a>
                 </div>
               </div>
-            )}
+
+              <div className="flex-1 flex gap-16 pt-2">
+                {activeItem.columns.map((col, idx) => (
+                    <div key={idx} className="flex-1">
+                      <h4 className="text-gray-500 text-sm font-medium mb-6 border-b border-gray-100 pb-4">
+                        {col.title}
+                      </h4>
+                      <ul className="space-y-3">
+                        {col.links.map((link, lIdx) => (
+                          <li key={lIdx}>
+                            <a href="#" className="flex items-center gap-3 group">
+                              {link.Icon && (
+                                <div className="w-7 h-7 rounded-full bg-gray-100 text-[#1A1A1A] flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] transition-colors shrink-0">
+                                  <link.Icon size={14} />
+                                </div>
+                              )}
+                              <span className="font-bold text-sm text-[#1A1A1A] group-hover:underline transition-colors leading-tight">
+                                {link.label}
+                              </span>
+                            </a>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+              </div>
+
+              {activeItem.label === 'Attire & Rings' && (
+                <div className="shrink-0 w-[260px] pt-2">
+                  <h4 className="text-[#1A1A1A] text-xs font-black uppercase tracking-widest mb-5 border-b border-gray-100 pb-4">
+                    Get Fashion Inspiration
+                  </h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    {attirePhotoGrid.map((item) => (
+                      <a key={item.label} href="#" className="group flex flex-col gap-1.5">
+                        <div className="rounded-xl overflow-hidden h-[90px]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={item.image}
+                            alt={item.label}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        </div>
+                        <span className="font-bold text-xs text-[#1A1A1A] group-hover:underline leading-tight">{item.label}</span>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ─── Mobile fullscreen menu (conditional render, inline styles for reliability) ─── */}
+      {mobileOpen && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 9999,
+            display: 'flex',
+            flexDirection: 'column',
+            backgroundColor: '#fff',
+          }}
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+            <Logo className="h-8 w-auto" />
+            <button
+              style={{ padding: 8, WebkitTapHighlightColor: 'transparent' }}
+              aria-label="Close menu"
+              onClick={() => setMobileOpen(false)}
+            >
+              <X size={24} />
+            </button>
+          </div>
+
+          {/* Scrollable nav body */}
+          <div style={{ flex: 1, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
+            <div className="py-2">
+              {navItems.map((item) => {
+                const isExpanded = mobileExpanded === item.label
+                return (
+                  <div key={item.label} className="border-b border-gray-100">
+                    <button
+                      className="flex items-center justify-between w-full px-5 text-left"
+                      style={{ minHeight: 52 }}
+                      onClick={() => toggleMobileSection(item.label)}
+                      aria-expanded={isExpanded}
+                    >
+                      <span className="font-bold text-[15px] text-[#1A1A1A]">{item.label}</span>
+                      <ChevronDown
+                        size={18}
+                        className="text-gray-400"
+                        style={{
+                          transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)',
+                          transition: 'transform 0.2s',
+                        }}
+                      />
+                    </button>
+
+                    {isExpanded && (
+                      <div className="px-5 pb-4">
+                        {/* Card preview */}
+                        <a
+                          href="#"
+                          className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 mb-3"
+                          onClick={() => setMobileOpen(false)}
+                        >
+                          <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={item.card.image}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-bold text-[#1A1A1A] truncate">{item.card.title}</p>
+                            <p className="text-xs text-gray-500 line-clamp-2 leading-snug mt-0.5">{item.card.description}</p>
+                          </div>
+                          <ArrowRight size={14} className="text-gray-400 shrink-0" />
+                        </a>
+
+                        {/* Link columns */}
+                        {item.columns.map((col, idx) => (
+                          <div key={idx} className="mb-3 last:mb-0">
+                            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
+                              {col.title}
+                            </p>
+                            <div className="space-y-0.5">
+                              {col.links.map((link, lIdx) => (
+                                <a
+                                  key={lIdx}
+                                  href="#"
+                                  className="flex items-center gap-3 px-1 py-2 rounded-lg"
+                                  style={{ minHeight: 44 }}
+                                  onClick={() => setMobileOpen(false)}
+                                >
+                                  {link.Icon && (
+                                    <div className="w-8 h-8 rounded-full bg-gray-100 text-[#1A1A1A] flex items-center justify-center shrink-0">
+                                      <link.Icon size={15} />
+                                    </div>
+                                  )}
+                                  <span className="font-semibold text-sm text-[#1A1A1A] leading-tight">
+                                    {link.label}
+                                  </span>
+                                </a>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+
+            {/* Auth buttons */}
+            <div className="px-5 py-6 border-t border-gray-100 space-y-3">
+              <button className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] py-3 rounded-full font-bold text-[15px] transition-colors">
+                Sign up
+              </button>
+              <button className="w-full border border-gray-200 text-[#1A1A1A] py-3 rounded-full font-bold text-[15px] hover:bg-gray-50 transition-colors">
+                Log in
+              </button>
+            </div>
           </div>
         </div>
       )}
-
-      {/* ─── Mobile drawer (rendered via portal to escape stacking contexts) ─── */}
-      {portalMounted && createPortal(
-        <>
-          {/* Overlay */}
-          {mobileOpen && (
-            <div
-              className="lg:hidden fixed inset-0 z-[998] bg-black/40"
-              onClick={() => setMobileOpen(false)}
-            />
-          )}
-
-          {/* Drawer panel */}
-          <div
-            className={`lg:hidden fixed top-0 right-0 z-[999] h-dvh w-full max-w-[340px] bg-white shadow-2xl transition-transform duration-300 ease-out ${
-              mobileOpen ? 'translate-x-0' : 'translate-x-full'
-            }`}
-            role="dialog"
-            aria-modal={mobileOpen}
-            aria-label="Navigation menu"
-          >
-            {/* Drawer header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <Logo className="h-7 w-auto" />
-              <button
-                className="flex items-center justify-center w-10 h-10 -mr-2 rounded-full hover:bg-gray-100 transition-colors"
-                aria-label="Close menu"
-                onClick={() => setMobileOpen(false)}
-              >
-                <X size={22} />
-              </button>
-            </div>
-
-            {/* Drawer body */}
-            <div className="overflow-y-auto h-[calc(100dvh-68px)] overscroll-contain">
-              {/* Nav sections with accordion */}
-              <div className="py-2">
-                {navItems.map((item) => {
-                  const isExpanded = mobileExpanded === item.label
-                  return (
-                    <div key={item.label} className="border-b border-gray-50">
-                      <button
-                        className="flex items-center justify-between w-full px-5 py-3.5 text-left"
-                        onClick={() => toggleMobileSection(item.label)}
-                        aria-expanded={isExpanded}
-                      >
-                        <span className="font-bold text-[15px] text-[#1A1A1A]">{item.label}</span>
-                        <ChevronDown
-                          size={18}
-                          className={`text-gray-400 transition-transform duration-200 ${
-                            isExpanded ? 'rotate-180' : ''
-                          }`}
-                        />
-                      </button>
-
-                      {/* Expanded content */}
-                      <div
-                        className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                          isExpanded ? 'max-h-[600px] opacity-100' : 'max-h-0 opacity-0'
-                        }`}
-                      >
-                        <div className="px-5 pb-4">
-                          {/* Card preview */}
-                          <a
-                            href="#"
-                            className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 mb-3"
-                            onClick={() => setMobileOpen(false)}
-                          >
-                            <div className="w-14 h-14 rounded-lg overflow-hidden shrink-0">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={item.card.image}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-bold text-[#1A1A1A] truncate">{item.card.title}</p>
-                              <p className="text-xs text-gray-500 line-clamp-2 leading-snug mt-0.5">{item.card.description}</p>
-                            </div>
-                            <ArrowRight size={14} className="text-gray-400 shrink-0" />
-                          </a>
-
-                          {/* Link columns */}
-                          {item.columns.map((col, idx) => (
-                            <div key={idx} className="mb-3 last:mb-0">
-                              <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">
-                                {col.title}
-                              </p>
-                              <div className="space-y-0.5">
-                                {col.links.map((link, lIdx) => (
-                                  <a
-                                    key={lIdx}
-                                    href="#"
-                                    className="flex items-center gap-3 px-1 py-2 rounded-lg active:bg-gray-50 transition-colors"
-                                    onClick={() => setMobileOpen(false)}
-                                  >
-                                    {link.Icon && (
-                                      <div className="w-8 h-8 rounded-full bg-gray-100 text-[#1A1A1A] flex items-center justify-center shrink-0">
-                                        <link.Icon size={15} />
-                                      </div>
-                                    )}
-                                    <span className="font-semibold text-sm text-[#1A1A1A] leading-tight">
-                                      {link.label}
-                                    </span>
-                                  </a>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Auth buttons at bottom of drawer */}
-              <div className="px-5 py-6 border-t border-gray-100 space-y-3">
-                <button className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] py-3 rounded-full font-bold text-[15px] transition-colors">
-                  Sign up
-                </button>
-                <button className="w-full border border-gray-200 text-[#1A1A1A] py-3 rounded-full font-bold text-[15px] hover:bg-gray-50 transition-colors">
-                  Log in
-                </button>
-              </div>
-            </div>
-          </div>
-        </>,
-        document.body
-      )}
-    </div>
+    </>
   )
 }
