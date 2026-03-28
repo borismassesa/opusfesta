@@ -12,7 +12,9 @@ export function useMotionSafe(): boolean {
   const [safe, setSafe] = useState(false)
 
   useEffect(() => {
-    const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const prefersReduced = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+      : false
     const saveData = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection?.saveData === true
     setSafe(!prefersReduced && !saveData)
   }, [])

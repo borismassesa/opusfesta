@@ -11,25 +11,34 @@ export default function SmoothScrollProvider({ children }: { children: React.Rea
     // Only initialise Lenis when animations are safe (respects prefers-reduced-motion + Save-Data)
     if (!safe) return
 
-    const lenis = new Lenis({
-      duration: 1.2,
-      // Expo ease — matches our motion token
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      orientation: 'vertical',
-      smoothWheel: true,
-      // Disable touch handling — prevents iOS Safari momentum scroll conflict
-      touchMultiplier: 0,
-    })
+    let lenis: Lenis
+    try {
+      lenis = new Lenis({
+        duration: 1.2,
+        // Expo ease — matches our motion token
+        easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        orientation: 'vertical',
+        smoothWheel: true,
+        // Disable touch handling — prevents iOS Safari momentum scroll conflict
+        touchMultiplier: 0,
+      })
+    } catch (err) {
+      console.error('Lenis initialisation failed', err)
+      return
+    }
+
+    let destroyed = false
 
     function raf(time: number) {
+      if (destroyed) return
       lenis.raf(time)
       requestAnimationFrame(raf)
     }
 
-    const rafId = requestAnimationFrame(raf)
+    requestAnimationFrame(raf)
 
     return () => {
-      cancelAnimationFrame(rafId)
+      destroyed = true
       lenis.destroy()
     }
   }, [safe])

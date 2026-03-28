@@ -13,21 +13,18 @@ export default function Hero() {
   // Gate load animation behind client mount + fonts ready (300ms fallback)
   useEffect(() => {
     const timeout = setTimeout(() => setMounted(true), 300)
-    document.fonts.ready.then(() => {
-      clearTimeout(timeout)
-      setMounted(true)
-    })
+    document.fonts.ready
+      .then(() => { clearTimeout(timeout); setMounted(true) })
+      .catch(() => { /* font load failure — timeout fallback handles mount */ })
     return () => clearTimeout(timeout)
   }, [])
 
-  useEffect(() => {
-    videoRef.current?.play().catch((e) => console.error('Video play failed', e))
-  }, [])
-
   const togglePlay = () => {
-    if (videoRef.current) {
-      isPlaying ? videoRef.current.pause() : videoRef.current.play()
-      setIsPlaying(!isPlaying)
+    if (!videoRef.current) return
+    if (isPlaying) {
+      videoRef.current.pause()
+    } else {
+      videoRef.current.play().catch(() => { /* play blocked by browser policy */ })
     }
   }
 
@@ -81,7 +78,8 @@ export default function Hero() {
           loop
           muted
           playsInline
-          onCanPlay={(e) => { e.currentTarget.play().catch(console.error) }}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
           className="w-full h-full object-cover"
         />
         <button

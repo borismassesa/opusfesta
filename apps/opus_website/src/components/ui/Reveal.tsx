@@ -1,6 +1,6 @@
 'use client'
 
-import { motion } from 'motion/react'
+import { motion, useReducedMotion } from 'motion/react'
 import { ease, duration as dur, drift } from '@/lib/motion'
 
 type Direction = 'up' | 'left' | 'right' | 'none'
@@ -26,8 +26,13 @@ export default function Reveal({
   threshold = 0.15,
   margin = '-60px',
 }: RevealProps) {
+  const reduceMotion = useReducedMotion()
   const x = direction === 'left' ? -(distance ?? drift.md) : direction === 'right' ? (distance ?? drift.md) : 0
   const y = direction === 'up' ? (distance ?? drift.md) : 0
+
+  if (reduceMotion) {
+    return <div className={className}>{children}</div>
+  }
 
   return (
     <motion.div
