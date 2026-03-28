@@ -12,8 +12,17 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className="bg-white">
+    <html lang="en" className="bg-white" suppressHydrationWarning>
       <body className="bg-white">
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.addEventListener('error', function(e) {
+            document.title = 'JS_ERROR: ' + e.message;
+            var d = document.createElement('div');
+            d.style.cssText = 'position:fixed;top:0;left:0;right:0;background:red;color:white;padding:16px;z-index:99999;font-size:14px';
+            d.textContent = 'JS ERROR: ' + e.message + ' | ' + e.filename + ':' + e.lineno;
+            document.body.prepend(d);
+          });
+        `}} />
         <SmoothScrollProvider>{children}</SmoothScrollProvider>
       </body>
     </html>
