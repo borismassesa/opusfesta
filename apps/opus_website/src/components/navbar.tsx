@@ -238,9 +238,14 @@ const navItems: Array<{
 
 export default function Navbar() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
+  const activeItem = activeMenu ? navItems.find((i) => i.label === activeMenu) ?? null : null
 
   return (
-    <div className="relative border-b border-gray-100" onMouseLeave={() => setActiveMenu(null)}>
+    <div
+      className="relative border-b border-gray-100"
+      onMouseLeave={() => setActiveMenu(null)}
+      onKeyDown={(e) => { if (e.key === 'Escape') setActiveMenu(null) }}
+    >
       <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto relative z-50 bg-white">
         <div className="flex items-center gap-8">
           <div className="flex items-center">
@@ -251,6 +256,8 @@ export default function Navbar() {
               <button
                 key={item.label}
                 onMouseEnter={() => setActiveMenu(item.label)}
+                aria-expanded={activeMenu === item.label}
+                aria-haspopup="true"
                 className={`px-4 py-2 rounded-full transition-colors whitespace-nowrap ${
                   activeMenu === item.label
                     ? 'bg-[var(--accent)] text-[var(--on-accent)]'
@@ -269,42 +276,40 @@ export default function Navbar() {
           <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 py-2 rounded-full font-bold transition-colors whitespace-nowrap">
             Sign up
           </button>
-          <button className="lg:hidden">
+          <button className="lg:hidden" aria-label="Open menu">
             <Menu size={24} />
           </button>
         </div>
       </nav>
 
-      {activeMenu && navItems.find((i) => i.label === activeMenu) && (
+      {activeItem && (
         <div className="absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-xl z-40 overflow-hidden">
           <div className="max-w-6xl mx-auto px-6 py-8 flex gap-12">
             <div className="w-[300px] shrink-0 border border-gray-200 rounded-2xl overflow-hidden flex flex-col">
               <div className="h-40 overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={navItems.find((i) => i.label === activeMenu)?.card.image}
+                  src={activeItem.card.image}
                   alt=""
                   className="w-full h-full object-cover"
                 />
               </div>
               <div className="p-6 flex flex-col flex-1 bg-white">
                 <h3 className="text-2xl font-black tracking-tighter uppercase mb-2 text-[#1A1A1A]">
-                  {navItems.find((i) => i.label === activeMenu)?.card.title}
+                  {activeItem.card.title}
                 </h3>
                 <p className="text-gray-600 text-sm font-medium mb-6">
-                  {navItems.find((i) => i.label === activeMenu)?.card.description}
+                  {activeItem.card.description}
                 </p>
                 <a href="#" className="mt-auto flex items-center gap-2 text-[#1A1A1A] font-bold hover:underline">
-                  {navItems.find((i) => i.label === activeMenu)?.card.linkText}
+                  {activeItem.card.linkText}
                   <ArrowRight size={16} />
                 </a>
               </div>
             </div>
 
             <div className="flex-1 flex gap-16 pt-2">
-              {navItems
-                .find((i) => i.label === activeMenu)
-                ?.columns.map((col, idx) => (
+              {activeItem.columns.map((col, idx) => (
                   <div key={idx} className="flex-1">
                     <h4 className="text-gray-500 text-sm font-medium mb-6 border-b border-gray-100 pb-4">
                       {col.title}
@@ -329,7 +334,7 @@ export default function Navbar() {
                 ))}
             </div>
 
-            {activeMenu === 'Attire & Rings' && (
+            {activeItem.label === 'Attire & Rings' && (
               <div className="shrink-0 w-[260px] pt-2">
                 <h4 className="text-[#1A1A1A] text-xs font-black uppercase tracking-widest mb-5 border-b border-gray-100 pb-4">
                   Get Fashion Inspiration

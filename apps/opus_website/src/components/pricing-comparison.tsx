@@ -1,3 +1,5 @@
+'use client'
+
 import { ShieldCheck, CalendarCheck, Users, CheckCircle2, Circle } from 'lucide-react'
 
 const CHECKLIST = [
