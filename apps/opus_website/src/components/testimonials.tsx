@@ -118,6 +118,7 @@ export default function Testimonials() {
     setIndex((i) => i + 1)
   }
 
+  const carouselReady = cardWidth > 0
   const atStart = index === 0
   const atEnd = index === testimonials.length - 1
 
@@ -136,7 +137,7 @@ export default function Testimonials() {
             {/* Left arrow — green when we can go back, gray when at start */}
             <button
               onClick={prev}
-              disabled={atStart}
+              disabled={atStart || !carouselReady}
               className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                 !atStart && lastDir === 'prev'
                   ? 'bg-[var(--accent)] border-2 border-[var(--on-accent)] text-[var(--on-accent)]'
@@ -150,7 +151,7 @@ export default function Testimonials() {
             {/* Right arrow — green when we can go forward, gray when at end */}
             <button
               onClick={next}
-              disabled={atEnd}
+              disabled={atEnd || !carouselReady}
               className={`w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                 !atEnd && lastDir === 'next'
                   ? 'bg-[var(--accent)] border-2 border-[var(--on-accent)] text-[var(--on-accent)]'

@@ -1,6 +1,7 @@
 'use client'
 
-import { motion } from 'motion/react'
+import { useState, useEffect } from 'react'
+import { motion, useReducedMotion } from 'motion/react'
 import { ease, duration as dur, drift, stagger } from '@/lib/motion'
 
 interface StaggerRevealProps {
@@ -20,7 +21,13 @@ export default function StaggerReveal({
   margin = '-60px',
   delayChildren = 0,
 }: StaggerRevealProps) {
-  const isMobile = typeof window !== 'undefined' && window.innerWidth < 768
+  const reduceMotion = useReducedMotion()
+  const [isMobile, setIsMobile] = useState(false)
+
+  useEffect(() => {
+    setIsMobile(window.innerWidth < 768)
+  }, [])
+
   const staggerDelay = isMobile ? stagger.mobile : stagger.desktop
 
   const container = {
@@ -33,6 +40,16 @@ export default function StaggerReveal({
   const item = {
     hidden: { opacity: 0, y: drift.sm },
     visible: { opacity: 1, y: 0, transition: { duration: dur.sm, ease } },
+  }
+
+  if (reduceMotion) {
+    return (
+      <div className={className}>
+        {Array.isArray(children) && children.map((child, i) => (
+          <div key={i} className={itemClassName}>{child}</div>
+        ))}
+      </div>
+    )
   }
 
   return (
