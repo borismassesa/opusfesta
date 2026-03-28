@@ -179,7 +179,7 @@ function WebsiteCardStack() {
   const cycle = () => setActive((a) => (a + 1) % CARDS.length)
 
   return (
-    <div className="relative mb-8 w-72 h-[380px]">
+    <div className="relative mb-8 w-full max-w-[288px] h-[380px]">
       {CARDS.map((card, i) => {
         const pos = (i - active + CARDS.length) % CARDS.length
         const { top, scale, opacity, zIndex, shadow } = POSITIONS[pos]
@@ -275,16 +275,16 @@ function GuestListCard() {
   ]
 
   return (
-    <div className="bg-[#F2F2F0] rounded-[40px] p-6 md:p-10 flex flex-col text-left shadow-sm">
+    <div className="bg-[#F2F2F0] rounded-[24px] sm:rounded-[40px] p-5 sm:p-8 md:p-10 flex flex-col text-left shadow-sm">
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
-        <h3 className="text-2xl font-black text-[#1A1A1A]">Manage your guest list</h3>
+        <h3 className="text-xl sm:text-2xl font-black text-[#1A1A1A]">Manage your guest list</h3>
         <span className="shrink-0 bg-[var(--accent)] text-[var(--on-accent)] text-[10px] font-bold px-3 py-1.5 rounded-full ml-4 mt-1">
           {CONFIRMED_TOTAL} / {TOTAL} RSVPs
         </span>
       </div>
       <p className="text-gray-500 font-medium mb-6">
-        Invite guests, track RSVPs, send reminders, and manage plus-ones — all in one place.
+        Invite guests, track RSVPs, send reminders, and manage plus-ones. All in one place.
       </p>
 
       {/* Stat cards — click to filter */}
@@ -357,35 +357,35 @@ function GuestListCard() {
 
 export default function DoMore() {
   return (
-    <section className="py-24 px-6 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-8 mb-16">
-        <div>
-<h2 className="text-4xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-[0.85] text-[#1A1A1A]">
-            MORE THAN
+    <section className="py-14 sm:py-20 md:py-24 px-4 sm:px-6 max-w-6xl mx-auto">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 sm:gap-8 mb-10 sm:mb-14 md:mb-16">
+        <div className="text-center md:text-left">
+          <h2 className="text-[2.4rem] sm:text-5xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-[1.05] md:leading-[0.88] text-[#1A1A1A]">
+            More than
             <br />
-            JUST FINDING
+            just finding
             <br />
-            VENDORS
+            vendors
           </h2>
         </div>
-        <div className="shrink-0 flex flex-col items-start md:items-end gap-4">
-          <p className="text-gray-500 font-medium max-w-xs md:text-right leading-relaxed">
-            Less spreadsheets, less stress. Build your website, track RSVPs, and keep every detail in check — all in one place.
+        <div className="shrink-0 flex flex-col items-center md:items-end gap-4">
+          <p className="text-base sm:text-lg text-gray-500 font-medium max-w-xs text-center md:text-right leading-relaxed">
+            Less spreadsheets, less stress. Build your website, track RSVPs, and keep every detail in check. All in one place.
           </p>
-          <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-8 py-4 rounded-full font-bold transition-colors">
+          <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 py-4 rounded-full font-bold text-sm transition-colors">
             Get started free
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
-        <div className="bg-[#FFFFFF] border border-gray-100 rounded-[40px] p-6 md:p-10 flex flex-col items-center text-center shadow-sm">
-          <h3 className="text-2xl font-black mb-4">Build your free website</h3>
-          <p className="text-gray-600 mb-8 font-medium">
-            Get a stunning, personalised wedding website live in minutes — share your story, collect RSVPs, and keep guests in the loop.
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 sm:gap-8 text-left">
+        <div className="bg-[#FFFFFF] border border-gray-100 rounded-[24px] sm:rounded-[40px] p-5 sm:p-8 md:p-10 flex flex-col items-center text-center shadow-sm">
+          <h3 className="text-xl sm:text-2xl font-black mb-3 sm:mb-4">Build your free website</h3>
+          <p className="text-sm sm:text-base text-gray-600 mb-6 sm:mb-8 font-medium">
+            Get a stunning, personalised wedding website live in minutes. Share your story, collect RSVPs, and keep guests in the loop.
           </p>
           <WebsiteCardStack />
-          <button className="border-2 border-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white px-6 py-3 rounded-full font-bold transition-colors mt-10">
+          <button className="border-2 border-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white px-6 py-3 rounded-full font-bold text-sm transition-colors mt-8 sm:mt-10">
             Explore all templates
           </button>
         </div>

@@ -19,7 +19,7 @@ const FEATURES = [
   {
     icon: Users,
     title: 'Guest list & RSVPs',
-    body: 'Collect responses, track dietary needs, and manage seating — all updated in real time.',
+    body: 'Collect responses, track dietary needs, and manage seating. All updated in real time.',
   },
   {
     icon: ShieldCheck,
@@ -30,23 +30,23 @@ const FEATURES = [
 
 export default function StressFreeGreen() {
   return (
-    <section className="bg-[var(--accent)] py-24 px-6">
+    <section className="bg-[var(--accent)] py-14 sm:py-20 md:py-24 px-4 sm:px-6">
       <div className="max-w-6xl mx-auto">
 
         {/* Top: headline + product preview */}
-        <div className="flex flex-col md:flex-row items-center gap-16 mb-16">
+        <div className="flex flex-col md:flex-row items-center gap-10 sm:gap-12 md:gap-16 mb-12 sm:mb-16">
 
           {/* Left — text */}
-          <div className="flex-1">
-            <h2 className="text-4xl md:text-6xl lg:text-[80px] font-black tracking-tighter uppercase leading-[0.85] mb-6 text-[var(--on-accent)]">
+          <div className="flex-1 w-full text-center md:text-left">
+            <h2 className="text-4xl md:text-6xl lg:text-[80px] font-black tracking-tighter uppercase leading-[1.05] md:leading-[0.9] mb-6 text-[var(--on-accent)]">
               STRESS-FREE
               <br />
               PLANNING.
             </h2>
-            <p className="text-lg text-[var(--on-accent)]/60 mb-8 max-w-md font-medium leading-relaxed">
+            <p className="text-lg text-[var(--on-accent)]/60 max-w-md mx-auto md:mx-0 font-medium leading-relaxed">
               Plan your wedding without the chaos. We handle the details so you can enjoy the moment.
             </p>
-            <div>
+            <div className="hidden sm:block mt-8">
               <button className="bg-[#1A1A1A] hover:bg-[#333333] text-white px-8 py-4 rounded-full font-bold transition-colors">
                 Start planning today
               </button>
@@ -104,6 +104,7 @@ export default function StressFreeGreen() {
             </div>
           ))}
         </div>
+
 
       </div>
     </section>

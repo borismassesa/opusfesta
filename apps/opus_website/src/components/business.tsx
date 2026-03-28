@@ -85,45 +85,45 @@ export default function Business() {
   const v = VENDORS[index]
 
   return (
-    <section className="px-4 md:px-10 max-w-6xl mx-auto mb-24">
-      <div className="bg-[#1A1A1A] rounded-[40px] overflow-hidden">
+    <section className="px-4 sm:px-6 md:px-10 max-w-6xl mx-auto mb-14 sm:mb-20 md:mb-24">
+      <div className="bg-[#1A1A1A] rounded-[24px] sm:rounded-[32px] md:rounded-[40px] overflow-hidden">
         <div className="flex flex-col md:flex-row">
 
           {/* Left — text */}
-          <div className="flex-1 py-10 px-6 md:py-20 md:px-14 flex flex-col justify-between">
+          <div className="flex-1 py-10 px-6 md:py-20 md:px-14 flex flex-col justify-between text-center md:text-left">
             <div>
               <span className="text-[var(--accent)] text-xs font-bold uppercase tracking-widest">For vendors</span>
-              <h2 className="text-4xl md:text-5xl lg:text-[64px] font-black tracking-tighter uppercase leading-[0.88] mt-4 mb-6 text-white">
-                YOUR NEXT
+              <h2 className="text-[2.4rem] sm:text-5xl lg:text-[64px] font-black tracking-tighter uppercase leading-[1.05] md:leading-[0.88] mt-4 mb-5 sm:mb-6 text-white">
+                Your next
                 <br />
-                CLIENT IS
+                client is
                 <br />
-                <span className="text-[var(--accent)]">SEARCHING.</span>
+                <span className="text-[var(--accent)]">Searching.</span>
               </h2>
-              <p className="text-gray-400 font-medium leading-relaxed max-w-sm mb-10">
-                Connect with couples actively planning their wedding. Manage bookings, communicate with clients, and grow your business — all in one place.
+              <p className="text-sm sm:text-base text-gray-400 font-medium leading-relaxed max-w-sm mx-auto md:mx-0 mb-7 sm:mb-10">
+                Connect with couples actively planning their wedding. Manage bookings, communicate with clients, and grow your business. All in one place.
               </p>
 
               {/* Feature pills */}
-              <div className="flex flex-wrap gap-2 mb-10">
+              <div className="flex flex-wrap justify-center md:justify-start gap-2 mb-7 sm:mb-10">
                 {['Get discovered', 'Manage bookings', 'Get paid on time', 'Build your reputation', 'Showcase your portfolio'].map((f) => (
                   <span key={f} className="bg-white/8 text-white/70 text-xs font-semibold px-3 py-1.5 rounded-full border border-white/10">{f}</span>
                 ))}
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-3">
-              <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold transition-colors">
+            <div className="flex flex-row flex-wrap justify-center md:justify-start gap-3">
+              <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold transition-colors text-sm sm:text-base">
                 Join as a vendor
               </button>
-              <button className="text-white border border-white/20 hover:bg-white/8 px-7 py-3.5 rounded-full font-bold transition-colors">
+              <button className="text-white border border-white/20 hover:bg-white/8 px-7 py-3.5 rounded-full font-bold transition-colors text-sm sm:text-base">
                 See success stories
               </button>
             </div>
           </div>
 
           {/* Right — rotating vendor card */}
-          <div className="md:w-[480px] bg-[#111] flex items-center justify-center px-14 py-10">
+          <div className="md:w-[480px] bg-[#111] flex items-center justify-center px-6 sm:px-10 md:px-14 py-10">
             <div className="w-full max-w-[300px] flex flex-col gap-3">
 
               <AnimatePresence mode="wait">

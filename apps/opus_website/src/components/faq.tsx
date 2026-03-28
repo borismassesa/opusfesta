@@ -6,15 +6,15 @@ import Reveal from '@/components/ui/Reveal'
 const FAQS = [
   {
     q: 'Is OpusFesta free to use?',
-    a: 'Yes — completely free to start. Create your wedding website, manage your guest list, and browse vendors at no cost. No credit card required.',
+    a: 'Yes, completely free to start. Create your wedding website, manage your guest list, and browse vendors at no cost. No credit card required.',
   },
   {
     q: 'How do I find vendors in my city?',
-    a: 'Search by category and location. We have verified vendors across Tanzania — Dar es Salaam, Zanzibar, Arusha, Moshi, Mwanza, and Dodoma. Every vendor is reviewed before appearing in results.',
+    a: 'Search by category and location. We have verified vendors across Tanzania: Dar es Salaam, Zanzibar, Arusha, Moshi, Mwanza, and Dodoma. Every vendor is reviewed before appearing in results.',
   },
   {
     q: 'Can I message vendors directly?',
-    a: 'Yes. Send enquiries, discuss packages, and confirm bookings all within OpusFesta — no hunting for WhatsApp numbers or email addresses.',
+    a: 'Yes. Send enquiries, discuss packages, and confirm bookings all within OpusFesta. No hunting for WhatsApp numbers or email addresses.',
   },
   {
     q: 'How does the wedding website work?',
@@ -34,47 +34,59 @@ export default function Faq() {
   const [open, setOpen] = useState<number | null>(null)
 
   return (
-    <section className="px-6 py-24 max-w-6xl mx-auto">
-      <div className="flex flex-col md:flex-row gap-16">
+    <section className="px-4 sm:px-6 py-14 sm:py-20 md:py-24 max-w-6xl mx-auto">
+      <div className="flex flex-col md:flex-row gap-10 sm:gap-14 md:gap-16">
 
-        {/* Left — sticky */}
-        <Reveal direction="up" margin="-80px" className="md:w-72 shrink-0">
+        {/* Left */}
+        <Reveal direction="up" margin="-80px" className="md:w-72 shrink-0 text-center md:text-left">
           <div className="md:sticky md:top-24">
-            <h2 className="text-4xl md:text-5xl font-black tracking-tighter uppercase leading-[0.85] text-[#1A1A1A]">
-              EVERY
+            <span className="text-[var(--accent)] text-xs font-bold uppercase tracking-widest">Support</span>
+            <h2 className="text-[2.4rem] sm:text-5xl font-black tracking-tighter uppercase leading-[1.0] sm:leading-[0.88] mt-3 mb-5 text-[#1A1A1A]">
+              Every
               <br />
-              ANSWER
+              answer
               <br />
-              YOU NEED.
+              you need.
             </h2>
-            <div className="w-10 h-1 bg-[var(--accent)] rounded-full mt-6 mb-5" />
-            <p className="text-gray-400 font-medium text-sm leading-relaxed">
-              Can't find what you're looking for? Our team is happy to help.
+            <div className="w-10 h-1 bg-[var(--accent)] rounded-full mb-4 mx-auto md:mx-0" />
+            <p className="text-gray-400 font-medium text-sm leading-relaxed max-w-xs mx-auto md:mx-0">
+              Can&apos;t find what you&apos;re looking for? Our team is happy to help.
             </p>
-            <button className="mt-6 hidden md:inline-flex items-center gap-2 bg-[#1A1A1A] hover:bg-[#333] text-white text-sm font-bold px-5 py-3 rounded-full transition-colors">
+            <button className="mt-6 inline-flex items-center gap-2 bg-[#1A1A1A] hover:bg-[#333] text-white text-sm font-bold px-5 py-3 rounded-full transition-colors">
               Talk to us
               <span className="w-5 h-5 rounded-full bg-[var(--accent)] flex items-center justify-center text-[var(--on-accent)] text-xs leading-none">→</span>
             </button>
           </div>
         </Reveal>
 
-        {/* Right — questions: fade only, no rise — accordion does the motion work */}
-        <Reveal direction="none" margin="-80px" delay={0.1} className="flex-1 divide-y divide-gray-100">
+        {/* Right — accordion */}
+        <Reveal direction="none" margin="-80px" delay={0.1} className="flex-1 flex flex-col gap-2 sm:gap-0 sm:divide-y sm:divide-gray-100">
           {FAQS.map((faq, i) => (
-            <div key={i}>
+            <div
+              key={i}
+              className={`rounded-2xl sm:rounded-none transition-colors ${
+                open === i
+                  ? 'bg-gray-50 sm:bg-transparent'
+                  : 'bg-gray-50 sm:bg-transparent hover:bg-gray-50 sm:hover:bg-transparent'
+              }`}
+            >
               <button
                 onClick={() => setOpen(open === i ? null : i)}
-                className="w-full flex items-start justify-between py-6 text-left gap-6 group"
+                className="w-full flex items-center justify-between px-4 sm:px-0 py-4 sm:py-6 text-left gap-4 sm:gap-6 group"
               >
-                <span className={`font-bold text-base md:text-lg transition-colors ${open === i ? 'text-[#1A1A1A]' : 'text-gray-500 group-hover:text-[#1A1A1A]'}`}>
+                <span className={`font-bold text-sm sm:text-base md:text-lg transition-colors leading-snug ${open === i ? 'text-[#1A1A1A]' : 'text-gray-600 group-hover:text-[#1A1A1A]'}`}>
                   {faq.q}
                 </span>
-                <span className={`shrink-0 text-2xl font-black leading-none transition-all mt-0.5 ${open === i ? 'text-[var(--accent)] rotate-45' : 'text-gray-300 group-hover:text-[#1A1A1A]'}`}>
+                <span className={`shrink-0 w-7 h-7 sm:w-auto sm:h-auto rounded-full sm:rounded-none flex items-center justify-center text-xl sm:text-2xl font-black leading-none transition-all ${
+                  open === i
+                    ? 'bg-[var(--accent)] text-[var(--on-accent)] sm:bg-transparent sm:text-[var(--accent)] rotate-45'
+                    : 'bg-white sm:bg-transparent text-gray-400 group-hover:text-[#1A1A1A]'
+                }`}>
                   +
                 </span>
               </button>
               {open === i && (
-                <p className="pb-6 text-gray-500 font-medium leading-relaxed">
+                <p className="px-4 sm:px-0 pb-4 sm:pb-6 text-sm sm:text-base text-gray-500 font-medium leading-relaxed">
                   {faq.a}
                 </p>
               )}
