@@ -15,6 +15,12 @@ import Footer from '@/components/footer'
 export default function Home() {
   return (
     <div className="font-sans text-[#1A1A1A] bg-[#FFFFFF] selection:bg-[var(--accent)] selection:text-[var(--on-accent)]">
+      {/* Isolated test — plain HTML link, no React, no components */}
+      <div style={{ padding: 20, background: '#ff0', textAlign: 'center' }}>
+        <a href="https://google.com" style={{ fontSize: 20, color: 'blue', textDecoration: 'underline' }}>
+          CLICK ME — if this doesn&apos;t work, the issue is outside React
+        </a>
+      </div>
       <Navbar />
       <Hero />
       <Trust />
