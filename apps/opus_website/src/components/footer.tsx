@@ -104,16 +104,16 @@ export default function Footer() {
         </Reveal>
 
         {/* Watermark — parallax bounded within footer, ±30px */}
-        <div ref={watermarkRef} className="mb-8 relative left-1/2 -translate-x-1/2 w-screen flex justify-center overflow-hidden">
+        <div ref={watermarkRef} className="mb-8 overflow-x-hidden flex justify-center py-8">
           <motion.p
             style={{ y }}
-            className="text-[16vw] font-black tracking-tighter uppercase leading-none text-gray-100 whitespace-nowrap select-none"
+            className="text-[15vw] sm:text-[19vw] font-black tracking-tighter uppercase leading-none text-gray-100 whitespace-nowrap select-none"
           >
             OpusFesta
           </motion.p>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between mt-8 pt-8 border-t border-gray-100 text-xs text-gray-400">
+        <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between md:gap-0 mt-8 pt-8 border-t border-gray-100 text-xs text-gray-400">
           <div className="flex gap-6">
             <a href="#" className="hover:text-[#1A1A1A] transition-colors">Terms of Use</a>
             <a href="#" className="hover:text-[#1A1A1A] transition-colors">Privacy Policy</a>
