@@ -22,7 +22,7 @@ export default function TestimonialsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/admin/testimonials')
+    fetch('/api/studio-admin/testimonials')
       .then((r) => r.json())
       .then((d) => setTestimonials(d.testimonials || []))
       .finally(() => setLoading(false));
@@ -42,7 +42,7 @@ export default function TestimonialsPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/testimonials/new" icon={<BsPlus className="w-4 h-4" />}>New Testimonial</AdminButton>
+        <AdminButton href="/studio-admin/testimonials/new" icon={<BsPlus className="w-4 h-4" />}>New Testimonial</AdminButton>
       </div>
 
       {loading ? (
@@ -52,7 +52,7 @@ export default function TestimonialsPage() {
           data={testimonials}
           keyField="id"
           emptyMessage="No testimonials found."
-          onRowClick={(t) => router.push(`/admin/testimonials/${t.id}`)}
+          onRowClick={(t) => router.push(`/studio-admin/testimonials/${t.id}`)}
           columns={[
             { key: 'author', header: 'Author', render: (t) => <span className="font-medium text-gray-900">{t.author}</span> },
             { key: 'role', header: 'Role', render: (t) => t.role },

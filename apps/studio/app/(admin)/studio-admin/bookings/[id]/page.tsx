@@ -8,9 +8,9 @@ import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminLifecycleBadge from '@/components/admin/ui/AdminLifecycleBadge';
 import { AdminTextarea } from '@/components/admin/ui/AdminInput';
 import { ConfirmDeleteModal } from '@/components/admin/ui/AdminModal';
-import QuoteBuilder from '@/components/admin/bookings/QuoteBuilder';
-import ContractEditor from '@/components/admin/bookings/ContractEditor';
-import PaymentTracker from '@/components/admin/bookings/PaymentTracker';
+import QuoteBuilder from '@/components/studio-admin/bookings/QuoteBuilder';
+import ContractEditor from '@/components/studio-admin/bookings/ContractEditor';
+import PaymentTracker from '@/components/studio-admin/bookings/PaymentTracker';
 import BookingTimeline from '@/components/booking/BookingTimeline';
 import type { BookingWithRelations, BookingLifecycleStatus } from '@/lib/booking-types';
 import { formatTZS } from '@/lib/booking-types';
@@ -32,8 +32,8 @@ export default function BookingDetailPage() {
 
   const loadBooking = useCallback(async () => {
     const [bRes, mRes] = await Promise.all([
-      fetch(`/api/admin/bookings/${id}`).then(r => r.json()),
-      fetch(`/api/admin/bookings/${id}/messages`).then(r => r.json()).catch(() => ({ messages: [] })),
+      fetch(`/api/studio-admin/bookings/${id}`).then(r => r.json()),
+      fetch(`/api/studio-admin/bookings/${id}/messages`).then(r => r.json()).catch(() => ({ messages: [] })),
     ]);
     setBooking(bRes.booking);
     setNotes(bRes.booking?.admin_notes || '');
@@ -46,7 +46,7 @@ export default function BookingDetailPage() {
     setActionLoading(action);
     setError(null);
     try {
-      const res = await fetch(`/api/admin/bookings/${id}/${action}`, {
+      const res = await fetch(`/api/studio-admin/bookings/${id}/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: body ? JSON.stringify(body) : undefined,
@@ -65,7 +65,7 @@ export default function BookingDetailPage() {
 
   const handleSaveNotes = async () => {
     setSaving(true);
-    await fetch(`/api/admin/bookings/${id}`, {
+    await fetch(`/api/studio-admin/bookings/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ admin_notes: notes }),
@@ -75,8 +75,8 @@ export default function BookingDetailPage() {
 
   const handleDelete = async () => {
     setDeleting(true);
-    await fetch(`/api/admin/bookings/${id}`, { method: 'DELETE' });
-    router.push('/admin/bookings?deleted=1');
+    await fetch(`/api/studio-admin/bookings/${id}`, { method: 'DELETE' });
+    router.push('/studio-admin/bookings?deleted=1');
   };
 
   if (!booking) return <div className="bg-white border-3 border-brand-border h-64 animate-pulse" />;
@@ -90,7 +90,7 @@ export default function BookingDetailPage() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <AdminButton variant="ghost" onClick={() => router.push('/admin/bookings')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+        <AdminButton variant="ghost" onClick={() => router.push('/studio-admin/bookings')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
         <div className="flex gap-2">
           {ls === 'intake_submitted' && (
             <AdminButton onClick={() => handleAction('qualify')} loading={actionLoading === 'qualify'}>
@@ -211,7 +211,7 @@ export default function BookingDetailPage() {
             <BsChatSquareText className="w-8 h-8 text-brand-border mx-auto mb-3" />
             <p className="text-sm text-brand-muted mb-3">No messages yet.</p>
             <Link
-              href={`/admin/messages?booking=${id}`}
+              href={`/studio-admin/messages?booking=${id}`}
               className="inline-flex items-center gap-2 text-sm font-bold text-brand-accent hover:underline"
             >
               <BsSend className="w-3.5 h-3.5" />
@@ -244,7 +244,7 @@ export default function BookingDetailPage() {
               </p>
             )}
             <Link
-              href={`/admin/messages?booking=${id}`}
+              href={`/studio-admin/messages?booking=${id}`}
               className="inline-flex items-center gap-2 text-sm font-bold text-brand-accent hover:underline"
             >
               <BsBoxArrowUpRight className="w-3.5 h-3.5" />

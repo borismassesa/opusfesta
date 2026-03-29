@@ -21,7 +21,7 @@ export default function QueuePage() {
 
   const loadQueue = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/bookings/queue');
+      const res = await fetch('/api/studio-admin/bookings/queue');
       const data = await res.json();
       setQueue(data);
     } catch (e) {
@@ -63,7 +63,7 @@ export default function QueuePage() {
           </p>
         </div>
         <button
-          onClick={() => router.push('/admin/bookings')}
+          onClick={() => router.push('/studio-admin/bookings')}
           className="border-2 border-brand-border bg-white px-4 py-2 text-xs font-mono font-bold hover:bg-brand-bg transition-colors"
         >
           ALL BOOKINGS
@@ -76,7 +76,7 @@ export default function QueuePage() {
           {queue.intakes.map(b => (
             <QueueRow
               key={b.id}
-              onClick={() => router.push(`/admin/bookings/${b.id}`)}
+              onClick={() => router.push(`/studio-admin/bookings/${b.id}`)}
               primary={`${b.name} — ${b.event_type}`}
               secondary={b.email}
               meta={timeAgo(b.created_at)}
@@ -91,7 +91,7 @@ export default function QueuePage() {
           {queue.depositPending.map(b => (
             <QueueRow
               key={b.id}
-              onClick={() => router.push(`/admin/bookings/${b.id}`)}
+              onClick={() => router.push(`/studio-admin/bookings/${b.id}`)}
               primary={`${b.name} — ${b.event_type}`}
               secondary={formatTZS(b.deposit_amount_tzs)}
               meta={timeAgo(b.created_at)}
@@ -106,7 +106,7 @@ export default function QueuePage() {
           {queue.todayBookings.map(b => (
             <QueueRow
               key={b.id}
-              onClick={() => router.push(`/admin/bookings/${b.id}`)}
+              onClick={() => router.push(`/studio-admin/bookings/${b.id}`)}
               primary={`${b.name} — ${b.event_type}`}
               secondary={b.event_time_slot}
               meta={b.location || ''}
@@ -121,7 +121,7 @@ export default function QueuePage() {
           {queue.overdueBalances.map(b => (
             <QueueRow
               key={b.id}
-              onClick={() => router.push(`/admin/bookings/${b.id}`)}
+              onClick={() => router.push(`/studio-admin/bookings/${b.id}`)}
               primary={b.name}
               secondary={formatTZS(b.balance_due_tzs)}
               meta={`Due ${new Date(b.balance_due_date).toLocaleDateString('en-TZ', { dateStyle: 'short' })}`}
@@ -136,7 +136,7 @@ export default function QueuePage() {
           {queue.expiringQuotes.map(q => (
             <QueueRow
               key={q.id}
-              onClick={() => router.push(`/admin/bookings/${q.studio_bookings.id}`)}
+              onClick={() => router.push(`/studio-admin/bookings/${q.studio_bookings.id}`)}
               primary={`Quote: ${q.studio_bookings.name}`}
               secondary={q.studio_bookings.event_type}
               meta={`Expires ${new Date(q.valid_until).toLocaleString('en-TZ', { dateStyle: 'short', timeStyle: 'short' })}`}
@@ -145,7 +145,7 @@ export default function QueuePage() {
           {queue.expiringContracts.map(c => (
             <QueueRow
               key={c.id}
-              onClick={() => router.push(`/admin/bookings/${c.studio_bookings.id}`)}
+              onClick={() => router.push(`/studio-admin/bookings/${c.studio_bookings.id}`)}
               primary={`Contract: ${c.studio_bookings.name}`}
               secondary={c.studio_bookings.event_type}
               meta={`Deadline ${new Date(c.sign_deadline).toLocaleString('en-TZ', { dateStyle: 'short', timeStyle: 'short' })}`}

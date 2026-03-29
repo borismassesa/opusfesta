@@ -16,24 +16,24 @@ export default function EditServicePage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/admin/services/${id}`)
+    fetch(`/api/studio-admin/services/${id}`)
       .then((r) => r.json())
       .then((d) => setService(d.service));
   }, [id]);
 
   const handleSubmit = async (data: Record<string, unknown>) => {
-    await fetch(`/api/admin/services/${id}`, {
+    await fetch(`/api/studio-admin/services/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    router.push('/admin/services?saved=1');
+    router.push('/studio-admin/services?saved=1');
   };
 
   const handleDelete = async () => {
     setDeleting(true);
-    await fetch(`/api/admin/services/${id}`, { method: 'DELETE' });
-    router.push('/admin/services?deleted=1');
+    await fetch(`/api/studio-admin/services/${id}`, { method: 'DELETE' });
+    router.push('/studio-admin/services?deleted=1');
   };
 
   if (!service) return <div className="bg-white border border-gray-200 h-64 animate-pulse" />;
@@ -41,7 +41,7 @@ export default function EditServicePage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <AdminButton variant="ghost" onClick={() => router.push('/admin/services')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+        <AdminButton variant="ghost" onClick={() => router.push('/studio-admin/services')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
         <AdminButton variant="danger" size="sm" onClick={() => setShowDelete(true)} icon={<BsTrash className="w-4 h-4" />}>Delete</AdminButton>
       </div>
       <h1 className="text-xl font-bold text-gray-900">Edit Service</h1>

@@ -36,7 +36,7 @@ export default function BookingsPage() {
 
   useEffect(() => {
     setLoading(true);
-    fetch(`/api/admin/bookings?lifecycle_status=${filter}&page=${page}`)
+    fetch(`/api/studio-admin/bookings?lifecycle_status=${filter}&page=${page}`)
       .then((r) => r.json())
       .then((d) => { setBookings(d.bookings || []); setTotalPages(d.totalPages || 1); })
       .finally(() => setLoading(false));
@@ -58,13 +58,13 @@ export default function BookingsPage() {
 
       <div className="flex items-center justify-end gap-3">
         <Link
-          href="/admin/bookings/new"
+          href="/studio-admin/bookings/new"
           className="border-2 border-brand-dark bg-brand-dark text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-brand-accent hover:border-brand-accent transition-colors"
         >
           + New Booking
         </Link>
         <Link
-          href="/admin/bookings/queue"
+          href="/studio-admin/bookings/queue"
           className="border-2 border-brand-accent bg-brand-accent text-white px-4 py-2 text-xs font-mono font-bold uppercase tracking-wider hover:bg-brand-dark hover:border-brand-dark transition-colors"
         >
           Operational Queue
@@ -88,7 +88,7 @@ export default function BookingsPage() {
         <>
           <AdminTable
             data={bookings} keyField="id" emptyMessage="No bookings found."
-            onRowClick={(b) => router.push(`/admin/bookings/${b.id}`)}
+            onRowClick={(b) => router.push(`/studio-admin/bookings/${b.id}`)}
             columns={[
               { key: 'name', header: 'Client', render: (b) => <span className="font-bold text-brand-dark">{b.name as string}</span> },
               { key: 'email', header: 'Email', render: (b) => <span className="text-sm">{b.email as string}</span> },

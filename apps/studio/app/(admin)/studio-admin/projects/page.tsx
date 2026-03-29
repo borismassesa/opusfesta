@@ -23,7 +23,7 @@ export default function ProjectsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/admin/projects')
+    fetch('/api/studio-admin/projects')
       .then((r) => r.json())
       .then((d) => setProjects(d.projects || []))
       .finally(() => setLoading(false));
@@ -44,7 +44,7 @@ export default function ProjectsPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/projects/new" icon={<BsPlus className="w-4 h-4" />}>New Project</AdminButton>
+        <AdminButton href="/studio-admin/projects/new" icon={<BsPlus className="w-4 h-4" />}>New Project</AdminButton>
       </div>
 
       {loading ? (
@@ -54,7 +54,7 @@ export default function ProjectsPage() {
           data={projects}
           keyField="id"
           emptyMessage="No projects found."
-          onRowClick={(p) => router.push(`/admin/projects/${p.id}`)}
+          onRowClick={(p) => router.push(`/studio-admin/projects/${p.id}`)}
           columns={[
             { key: 'number', header: 'Number', render: (p) => <span className="font-mono text-gray-500">{p.number}</span>, className: 'w-20' },
             { key: 'title', header: 'Title', render: (p) => <span className="font-medium text-gray-900">{p.title}</span> },

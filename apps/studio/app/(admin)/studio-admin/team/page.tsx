@@ -22,7 +22,7 @@ export default function TeamPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/admin/team')
+    fetch('/api/studio-admin/team')
       .then((r) => r.json())
       .then((d) => setMembers(d.members || []))
       .finally(() => setLoading(false));
@@ -42,7 +42,7 @@ export default function TeamPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/team/new" icon={<BsPlus className="w-4 h-4" />}>New Member</AdminButton>
+        <AdminButton href="/studio-admin/team/new" icon={<BsPlus className="w-4 h-4" />}>New Member</AdminButton>
       </div>
 
       {loading ? (
@@ -52,7 +52,7 @@ export default function TeamPage() {
           data={members}
           keyField="id"
           emptyMessage="No team members found."
-          onRowClick={(m) => router.push(`/admin/team/${m.id}`)}
+          onRowClick={(m) => router.push(`/studio-admin/team/${m.id}`)}
           columns={[
             { key: 'name', header: 'Name', render: (m) => <span className="font-medium text-gray-900">{m.name}</span> },
             { key: 'role', header: 'Role', render: (m) => m.role },

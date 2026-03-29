@@ -21,7 +21,7 @@ export default function FaqsPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/admin/faqs')
+    fetch('/api/studio-admin/faqs')
       .then((r) => r.json())
       .then((d) => setFaqs(d.faqs || []))
       .finally(() => setLoading(false));
@@ -41,7 +41,7 @@ export default function FaqsPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/faqs/new" icon={<BsPlus className="w-4 h-4" />}>New FAQ</AdminButton>
+        <AdminButton href="/studio-admin/faqs/new" icon={<BsPlus className="w-4 h-4" />}>New FAQ</AdminButton>
       </div>
 
       {loading ? (
@@ -51,7 +51,7 @@ export default function FaqsPage() {
           data={faqs}
           keyField="id"
           emptyMessage="No FAQs found."
-          onRowClick={(f) => router.push(`/admin/faqs/${f.id}`)}
+          onRowClick={(f) => router.push(`/studio-admin/faqs/${f.id}`)}
           columns={[
             { key: 'question', header: 'Question', render: (f) => <span className="font-medium text-gray-900">{f.question.length > 80 ? f.question.slice(0, 80) + '...' : f.question}</span> },
             { key: 'published', header: 'Published', render: (f) => <span className={f.is_published ? 'text-green-600 font-medium' : 'text-gray-400'}>

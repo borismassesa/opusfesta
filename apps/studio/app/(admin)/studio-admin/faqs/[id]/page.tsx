@@ -16,24 +16,24 @@ export default function EditFaqPage() {
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    fetch(`/api/admin/faqs/${id}`)
+    fetch(`/api/studio-admin/faqs/${id}`)
       .then((r) => r.json())
       .then((d) => setFaq(d.faq));
   }, [id]);
 
   const handleSubmit = async (data: Record<string, unknown>) => {
-    await fetch(`/api/admin/faqs/${id}`, {
+    await fetch(`/api/studio-admin/faqs/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
-    router.push('/admin/faqs?saved=1');
+    router.push('/studio-admin/faqs?saved=1');
   };
 
   const handleDelete = async () => {
     setDeleting(true);
-    await fetch(`/api/admin/faqs/${id}`, { method: 'DELETE' });
-    router.push('/admin/faqs?deleted=1');
+    await fetch(`/api/studio-admin/faqs/${id}`, { method: 'DELETE' });
+    router.push('/studio-admin/faqs?deleted=1');
   };
 
   if (!faq) return <div className="bg-white border border-gray-200 h-64 animate-pulse" />;
@@ -41,7 +41,7 @@ export default function EditFaqPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <AdminButton variant="ghost" onClick={() => router.push('/admin/faqs')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+        <AdminButton variant="ghost" onClick={() => router.push('/studio-admin/faqs')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
         <AdminButton variant="danger" size="sm" onClick={() => setShowDelete(true)} icon={<BsTrash className="w-4 h-4" />}>Delete</AdminButton>
       </div>
       <h1 className="text-xl font-bold text-gray-900">Edit FAQ</h1>

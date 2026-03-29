@@ -45,7 +45,7 @@ export default function ArticlesPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/articles/new" icon={<BsPlus className="w-4 h-4" />}>New Article</AdminButton>
+        <AdminButton href="/studio-admin/articles/new" icon={<BsPlus className="w-4 h-4" />}>New Article</AdminButton>
       </div>
 
       {loading ? (
@@ -55,7 +55,7 @@ export default function ArticlesPage() {
           data={articles}
           keyField="id"
           emptyMessage="No articles found."
-          onRowClick={(a) => router.push(`/admin/articles/${a.id}`)}
+          onRowClick={(a) => router.push(`/studio-admin/articles/${a.id}`)}
           columns={[
             { key: 'title', header: 'Title', render: (a) => <span className="font-medium text-gray-900">{a.title}</span> },
             { key: 'category', header: 'Category', render: (a) => a.category },

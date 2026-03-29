@@ -9,7 +9,7 @@ export default function NewTeamMemberPage() {
   const router = useRouter();
 
   const handleSubmit = async (data: Record<string, unknown>) => {
-    const res = await fetch('/api/admin/team', {
+    const res = await fetch('/api/studio-admin/team', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -18,12 +18,12 @@ export default function NewTeamMemberPage() {
       const err = await res.json();
       throw new Error(err.error || 'Failed to add team member');
     }
-    router.push('/admin/team?saved=1');
+    router.push('/studio-admin/team?saved=1');
   };
 
   return (
     <div className="space-y-6">
-      <AdminButton variant="ghost" onClick={() => router.push('/admin/team')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
+      <AdminButton variant="ghost" onClick={() => router.push('/studio-admin/team')} icon={<BsArrowLeft className="w-4 h-4" />}>Back</AdminButton>
       <h1 className="text-xl font-bold text-gray-900">New Team Member</h1>
       <TeamMemberForm onSubmit={handleSubmit} />
     </div>

@@ -54,7 +54,7 @@ export default function AdminInboxChat({ bookingId, conversation, onBack }: Admi
 
   const fetchMessages = useCallback(async (markRead = false) => {
     try {
-      const url = `/api/admin/bookings/${bookingId}/messages${markRead ? '?mark_read=true' : ''}`;
+      const url = `/api/studio-admin/bookings/${bookingId}/messages${markRead ? '?mark_read=true' : ''}`;
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
@@ -116,7 +116,7 @@ export default function AdminInboxChat({ bookingId, conversation, onBack }: Admi
     setSending(true);
 
     try {
-      const res = await fetch(`/api/admin/bookings/${bookingId}/messages`, {
+      const res = await fetch(`/api/studio-admin/bookings/${bookingId}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content }),
@@ -163,7 +163,7 @@ export default function AdminInboxChat({ bookingId, conversation, onBack }: Admi
             </div>
           </div>
           <Link
-            href={`/admin/bookings/${bookingId}`}
+            href={`/studio-admin/bookings/${bookingId}`}
             className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--admin-primary)] hover:underline shrink-0"
           >
             <BsBoxArrowUpRight className="w-3 h-3" />

@@ -13,7 +13,7 @@ export default function NewBookingPage() {
 
   const handleSubmit = async (data: BookingFormData) => {
     setError(null);
-    const res = await fetch('/api/admin/bookings', {
+    const res = await fetch('/api/studio-admin/bookings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
@@ -26,14 +26,14 @@ export default function NewBookingPage() {
       return;
     }
 
-    router.push(`/admin/bookings/${result.booking.id}`);
+    router.push(`/studio-admin/bookings/${result.booking.id}`);
   };
 
   return (
     <div className="space-y-6">
       <AdminButton
         variant="ghost"
-        onClick={() => router.push('/admin/bookings')}
+        onClick={() => router.push('/studio-admin/bookings')}
         icon={<BsArrowLeft className="w-4 h-4" />}
       >
         Back to Bookings

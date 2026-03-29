@@ -23,7 +23,7 @@ export default function ServicesPage() {
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/admin/services')
+    fetch('/api/studio-admin/services')
       .then((r) => r.json())
       .then((d) => setServices(d.services || []))
       .finally(() => setLoading(false));
@@ -43,7 +43,7 @@ export default function ServicesPage() {
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/admin/services/new" icon={<BsPlus className="w-4 h-4" />}>New Service</AdminButton>
+        <AdminButton href="/studio-admin/services/new" icon={<BsPlus className="w-4 h-4" />}>New Service</AdminButton>
       </div>
 
       {loading ? (
@@ -53,7 +53,7 @@ export default function ServicesPage() {
           data={services}
           keyField="id"
           emptyMessage="No services found."
-          onRowClick={(s) => router.push(`/admin/services/${s.id}`)}
+          onRowClick={(s) => router.push(`/studio-admin/services/${s.id}`)}
           columns={[
             { key: 'sort_order', header: '#', render: (s) => <span className="font-mono text-gray-500">{s.sort_order}</span>, className: 'w-16' },
             { key: 'title', header: 'Title', render: (s) => <span className="font-medium text-gray-900">{s.title}</span> },
