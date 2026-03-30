@@ -308,11 +308,11 @@ export default function Navbar() {
 
       {/* ── Desktop mega-menu dropdown ── */}
       {activeItem && (
-        <div className="hidden lg:block absolute top-full left-0 w-full bg-[#FAFAF8] border-b-2 border-[#1A1A1A] shadow-[0_8px_0px_0px_rgba(0,0,0,0.06)] z-40">
+        <div className="hidden lg:block absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-lg z-40">
           <div className="max-w-6xl mx-auto px-6 py-8 flex gap-10">
 
             {/* Featured card */}
-            <div className="w-[260px] shrink-0 rounded-2xl overflow-hidden flex flex-col border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#1A1A1A] bg-white">
+            <div className="w-[260px] shrink-0 rounded-2xl overflow-hidden flex flex-col border border-gray-200 shadow-md bg-white">
               <div className="h-36 overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -322,7 +322,7 @@ export default function Navbar() {
                 />
               </div>
               <div className="p-5 flex flex-col flex-1">
-                <h3 className="text-lg font-black tracking-tighter uppercase mb-1.5 text-[#1A1A1A] leading-tight">
+                <h3 className="text-base font-bold mb-1.5 text-[#1A1A1A] leading-tight">
                   {activeItem.card.title}
                 </h3>
                 <p className="text-gray-500 text-xs font-medium mb-5 leading-relaxed">
@@ -342,7 +342,7 @@ export default function Navbar() {
             <div className="flex-1 flex gap-10 pt-1">
               {activeItem.columns.map((col, idx) => (
                 <div key={idx} className="flex-1 min-w-0">
-                  <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 mb-4 pb-3 border-b-2 border-[var(--accent)]">
+                  <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-4 pb-3 border-b border-gray-200">
                     {col.title}
                   </h4>
                   <ul className="space-y-0.5">
@@ -371,7 +371,7 @@ export default function Navbar() {
             {/* Attire photo grid */}
             {activeItem.label === 'Attire & Rings' && (
               <div className="shrink-0 w-[240px] pt-1">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 mb-4 pb-3 border-b-2 border-[var(--accent)]">
+                <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-4 pb-3 border-b border-gray-200">
                   Get Inspired
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
@@ -475,7 +475,7 @@ export default function Navbar() {
                 <>
                   {/* Section title */}
                   <div className="px-5 pt-3 pb-2 shrink-0">
-                    <h2 className="text-xl font-black uppercase tracking-tighter text-[#1A1A1A]">
+                    <h2 className="text-xl font-bold text-[#1A1A1A]">
                       {item.label}
                     </h2>
                   </div>
@@ -489,7 +489,7 @@ export default function Navbar() {
                         alt=""
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 px-4 py-4">
                         <p className="text-white text-xs font-medium leading-snug mb-2 opacity-90">
                           {item.card.description}
