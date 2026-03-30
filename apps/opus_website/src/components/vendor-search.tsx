@@ -8,6 +8,7 @@ const vendors = [
   {
     type: 'Venue',
     city: 'Dar es Salaam',
+    cityShort: 'Dar',
     detail1: { icon: Users, label: '150 Guests', meta: 'Capacity' },
     detail2: { icon: Calendar, label: 'December 2026', meta: 'Availability' },
     perk: 'Free site visit included',
@@ -94,8 +95,8 @@ export default function VendorSearch() {
 
       {/* Left */}
       <div className="flex-1 flex flex-col text-center lg:text-left">
-        <h2 className="text-[2.4rem] sm:text-5xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-[0.9] mb-5 sm:mb-6 text-[#1A1A1A]">
-          Find your dream team effortlessly
+        <h2 className="text-[1.85rem] min-[400px]:text-[2.15rem] sm:text-5xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-[0.9] mb-5 sm:mb-6 text-[#1A1A1A]">
+          Find Your Dream Team<br className="sm:hidden" /> Effortlessly
         </h2>
         <p className="text-base sm:text-lg md:text-xl text-gray-600 font-medium leading-relaxed">
           Save hundreds of hours on wedding research. With transparent pricing and verified reviews.
@@ -108,23 +109,23 @@ export default function VendorSearch() {
           <div className="space-y-5">
 
             {/* Vendor type + city */}
-            <div className="border border-gray-200 rounded-2xl px-5 py-4 flex justify-between items-center">
-              <div>
-                <p className="text-xs text-gray-400 font-semibold uppercase tracking-wide mb-2">I am looking for a</p>
-                <div className="h-8 overflow-hidden">
+            <div className="border border-gray-200 rounded-2xl px-3 sm:px-5 py-3 sm:py-4 flex justify-between items-center gap-3">
+              <div className="min-w-0">
+                <p className="text-[10px] sm:text-xs text-gray-400 font-semibold uppercase tracking-wide mb-1 sm:mb-2 whitespace-nowrap">I am looking for a</p>
+                <div className="h-7 sm:h-8 overflow-hidden">
                   <AnimatePresence mode="wait">
                     <motion.p
                       key={`type-${index}`}
                       {...slideUp}
                       transition={transition}
-                      className="text-2xl font-black"
+                      className="text-xl sm:text-2xl font-black"
                     >
                       {v.type}
                     </motion.p>
                   </AnimatePresence>
                 </div>
               </div>
-              <div className="flex items-center gap-2 bg-[var(--accent)] rounded-full px-4 py-2 overflow-hidden">
+              <div className="flex items-center gap-1.5 sm:gap-2 bg-[var(--accent)] rounded-full px-3 sm:px-4 py-2 shrink-0">
                 <MapPin size={14} className="text-[var(--on-accent)] shrink-0" />
                 <div className="overflow-hidden h-5">
                   <AnimatePresence mode="wait">
@@ -132,9 +133,10 @@ export default function VendorSearch() {
                       key={`city-${index}`}
                       {...slideUp}
                       transition={{ ...transition, duration: 0.3 }}
-                      className="font-bold text-sm block text-[var(--on-accent)]"
+                      className="font-bold text-xs sm:text-sm block text-[var(--on-accent)] whitespace-nowrap"
                     >
-                      {v.city}
+                      <span className="sm:hidden">{v.cityShort ?? v.city}</span>
+                      <span className="hidden sm:inline">{v.city}</span>
                     </motion.span>
                   </AnimatePresence>
                 </div>

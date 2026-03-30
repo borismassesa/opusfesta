@@ -112,11 +112,11 @@ export default function Business() {
               </div>
             </div>
 
-            <div className="flex flex-row flex-wrap justify-center md:justify-start gap-3">
-              <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold transition-colors text-sm sm:text-base">
+            <div className="flex flex-row justify-center md:justify-start gap-3">
+              <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-4 sm:px-7 py-2.5 sm:py-3.5 rounded-full font-bold transition-colors text-xs sm:text-base whitespace-nowrap">
                 Join as a vendor
               </button>
-              <button className="text-white border border-white/20 hover:bg-white/8 px-7 py-3.5 rounded-full font-bold transition-colors text-sm sm:text-base">
+              <button className="text-white border border-white/20 hover:bg-white/8 px-4 sm:px-7 py-2.5 sm:py-3.5 rounded-full font-bold transition-colors text-xs sm:text-base whitespace-nowrap">
                 See success stories
               </button>
             </div>
