@@ -371,7 +371,7 @@ export default function Navbar() {
             {/* Attire photo grid */}
             {activeItem.label === 'Attire & Rings' && (
               <div className="shrink-0 w-[240px] pt-1">
-                <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-gray-400 mb-4 pb-3 border-b-2 border-[var(--accent)]">
+                <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-4 pb-3 border-b border-gray-200">
                   Get Inspired
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
@@ -489,7 +489,7 @@ export default function Navbar() {
                         alt=""
                         className="w-full h-full object-cover"
                       />
-                      <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                      <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 px-4 py-4">
                         <p className="text-white text-xs font-medium leading-snug mb-2 opacity-90">
                           {item.card.description}
