@@ -105,6 +105,13 @@ const navItems: Array<{
           { Icon: Flower2, label: 'Florists' },
           { Icon: Utensils, label: 'Caterers' },
           { Icon: Sparkles, label: 'Hair & Makeup' },
+          { Icon: Gift, label: 'Wedding Cakes' },
+          { Icon: Shirt, label: 'Bridal Salons' },
+          { Icon: PartyPopper, label: 'MC & Officiants' },
+          { Icon: Image, label: 'Photo Booths' },
+          { Icon: ShoppingBag, label: 'Rentals' },
+          { Icon: Share2, label: 'Transportation' },
+          { Icon: Gem, label: 'Jewellers' },
         ],
       },
       {
