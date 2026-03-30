@@ -23,7 +23,7 @@ export default function Features() {
 
         {/* Attire & Rings */}
         <div className="flex flex-col md:flex-row items-center gap-10 sm:gap-14 md:gap-16">
-          <Reveal direction="left" className="order-2 md:order-none flex-1 w-full grid grid-cols-2 grid-rows-2 gap-2 sm:gap-3 h-[260px] sm:h-[340px] md:h-[440px]">
+          <Reveal direction="left" className="order-2 md:order-0 flex-1 w-full grid grid-cols-2 grid-rows-2 gap-2 sm:gap-3 h-[260px] sm:h-[340px] md:h-[440px]">
             <div className="row-span-2 rounded-xl sm:rounded-2xl overflow-hidden">
               <video
                 src="/assets/videos/couple_.mp4"
@@ -49,7 +49,7 @@ export default function Features() {
               </div>
             </div>
           </Reveal>
-          <Reveal direction="right" className="order-1 md:order-none flex-1 text-center md:text-left" delay={0.1}>
+          <Reveal direction="right" className="order-1 md:order-0 flex-1 text-center md:text-left" delay={0.1}>
             <h2 className="text-[2.2rem] sm:text-4xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-none sm:leading-[0.92] md:leading-[0.88] mb-5 sm:mb-6 text-[#1A1A1A]">
               Dress for
               <br />
@@ -76,7 +76,7 @@ export default function Features() {
 
         {/* Ideas & Advice */}
         <div className="flex flex-col md:flex-row-reverse items-center gap-10 sm:gap-14 md:gap-16">
-          <Reveal direction="right" className="order-2 md:order-none flex-1 w-full h-[260px] sm:h-[340px] md:h-[440px]">
+          <Reveal direction="right" className="order-2 md:order-0 flex-1 w-full h-[260px] sm:h-[340px] md:h-[440px]">
             <div className="grid grid-cols-2 gap-2 sm:gap-3 h-full" style={{ gridTemplateRows: '1.6fr 1fr' }}>
               <div className="col-span-2 rounded-xl sm:rounded-2xl overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -97,7 +97,7 @@ export default function Features() {
               </div>
             </div>
           </Reveal>
-          <Reveal direction="left" className="order-1 md:order-none flex-1 text-center md:text-left" delay={0.1}>
+          <Reveal direction="left" className="order-1 md:order-0 flex-1 text-center md:text-left" delay={0.1}>
             <h2 className="text-[2.2rem] sm:text-4xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-none sm:leading-[0.92] md:leading-[0.88] mb-5 sm:mb-6 text-[#1A1A1A]">
               Get inspired.
               <br />
@@ -124,7 +124,7 @@ export default function Features() {
 
         {/* Registry */}
         <div className="flex flex-col md:flex-row items-center gap-10 sm:gap-14 md:gap-16">
-          <Reveal direction="left" className="order-2 md:order-none flex-1 w-full h-[260px] sm:h-[340px] md:h-[440px]">
+          <Reveal direction="left" className="order-2 md:order-0 flex-1 w-full h-[260px] sm:h-[340px] md:h-[440px]">
             <div className="grid grid-cols-2 grid-rows-2 gap-2 sm:gap-3 h-full">
               <div className="rounded-xl sm:rounded-2xl overflow-hidden">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -156,7 +156,7 @@ export default function Features() {
               </div>
             </div>
           </Reveal>
-          <Reveal direction="right" className="order-1 md:order-none flex-1 text-center md:text-left" delay={0.1}>
+          <Reveal direction="right" className="order-1 md:order-0 flex-1 text-center md:text-left" delay={0.1}>
             <h2 className="text-[2.2rem] sm:text-4xl md:text-5xl lg:text-[52px] font-black tracking-tighter uppercase leading-none sm:leading-[0.92] md:leading-[0.88] mb-5 sm:mb-6 text-[#1A1A1A]">
               Your registry.
               <br />
