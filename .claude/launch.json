@@ -14,6 +14,13 @@
       "runtimeArgs": ["expo", "start", "--web", "--port", "8082"],
       "port": 8082,
       "cwd": "apps/mobile"
+    },
+    {
+      "name": "website",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "--port", "3007"],
+      "port": 3007,
+      "cwd": "apps/opus_website"
     }
   ]
 }

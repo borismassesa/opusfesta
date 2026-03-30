@@ -68,7 +68,7 @@ export default function StressFreeGreen() {
             <div className="rounded-2xl flex flex-col justify-end gap-2 px-5 pb-5 relative overflow-hidden">
               <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: "url('/assets/images/bridewithumbrella.jpg')" }} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
-              <p className="relative text-white text-3xl font-black tracking-tighter leading-tight">Your big day.<br />Our priority.</p>
+              <p className="relative text-white text-xl sm:text-3xl font-black tracking-tighter leading-tight">Your big day.<br />Our priority.</p>
               <p className="relative text-white text-[11px] font-semibold leading-relaxed">Everything you need. Nothing you don't.</p>
             </div>
 
