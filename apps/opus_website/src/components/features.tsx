@@ -8,7 +8,7 @@ export default function Features() {
 
       {/* Section header */}
       <Reveal direction="up" className="hidden sm:block text-center mb-14 sm:mb-20 md:mb-24">
-        <span className="text-[var(--accent)] text-xs font-bold uppercase tracking-widest">Built for every part</span>
+        <span className="text-(--accent) text-xs font-bold uppercase tracking-widest">Built for every part</span>
         <h2 className="text-[2.8rem] sm:text-6xl md:text-7xl lg:text-[96px] font-black tracking-tighter uppercase leading-[0.95] sm:leading-[0.88] md:leading-[0.85] mt-4 text-[#1A1A1A]">
           Beyond
           <br />
@@ -42,7 +42,7 @@ export default function Features() {
             <div className="rounded-xl sm:rounded-2xl overflow-hidden relative">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/assets/images/bridering.jpg" alt="Engagement ring" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+              <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
                 <p className="text-white/50 text-[8px] sm:text-[9px] font-black uppercase tracking-widest">Rings & Jewellery</p>
                 <p className="text-white text-xs sm:text-sm font-black leading-tight">The ring that<br />ties it all.</p>
@@ -50,7 +50,7 @@ export default function Features() {
             </div>
           </Reveal>
           <Reveal direction="right" className="order-1 md:order-none flex-1 text-center md:text-left" delay={0.1}>
-            <h2 className="text-[2.2rem] sm:text-4xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-[1.0] sm:leading-[0.92] md:leading-[0.88] mb-5 sm:mb-6 text-[#1A1A1A]">
+            <h2 className="text-[2.2rem] sm:text-4xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-none sm:leading-[0.92] md:leading-[0.88] mb-5 sm:mb-6 text-[#1A1A1A]">
               Dress for
               <br />
               your moment.
@@ -89,7 +89,7 @@ export default function Features() {
               <div className="rounded-xl sm:rounded-2xl overflow-hidden bg-white relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/assets/images/hand_rings.jpg" alt="Wedding details" className="w-full h-full object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
                   <p className="text-white/50 text-[8px] sm:text-[9px] font-black uppercase tracking-widest">Inspiration</p>
                   <p className="text-white text-xs sm:text-sm font-black leading-tight">Dream it.<br />Plan it. Live it.</p>
@@ -98,7 +98,7 @@ export default function Features() {
             </div>
           </Reveal>
           <Reveal direction="left" className="order-1 md:order-none flex-1 text-center md:text-left" delay={0.1}>
-            <h2 className="text-[2.2rem] sm:text-4xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-[1.0] sm:leading-[0.92] md:leading-[0.88] mb-5 sm:mb-6 text-[#1A1A1A]">
+            <h2 className="text-[2.2rem] sm:text-4xl md:text-6xl lg:text-[72px] font-black tracking-tighter uppercase leading-none sm:leading-[0.92] md:leading-[0.88] mb-5 sm:mb-6 text-[#1A1A1A]">
               Get inspired.
               <br />
               Plan better.
@@ -148,7 +148,7 @@ export default function Features() {
                   alt="Gift registry"
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
                   <p className="text-white/50 text-[8px] sm:text-[9px] font-black uppercase tracking-widest">Registry</p>
                   <p className="text-white text-xs sm:text-sm font-black leading-tight">Every wish.<br />One link.</p>
@@ -157,7 +157,7 @@ export default function Features() {
             </div>
           </Reveal>
           <Reveal direction="right" className="order-1 md:order-none flex-1 text-center md:text-left" delay={0.1}>
-            <h2 className="text-[2.2rem] sm:text-4xl md:text-5xl lg:text-[52px] font-black tracking-tighter uppercase leading-[1.0] sm:leading-[0.92] md:leading-[0.88] mb-5 sm:mb-6 text-[#1A1A1A]">
+            <h2 className="text-[2.2rem] sm:text-4xl md:text-5xl lg:text-[52px] font-black tracking-tighter uppercase leading-none sm:leading-[0.92] md:leading-[0.88] mb-5 sm:mb-6 text-[#1A1A1A]">
               Your registry.
               <br />
               Any store.
