@@ -38,7 +38,7 @@ export default function Hero() {
   return (
     <section className="px-4 sm:px-6 pt-20 sm:pt-24 md:pt-32 pb-12 sm:pb-16 md:pb-20 text-center max-w-6xl mx-auto">
 
-      <h1 className="text-[1.85rem] min-[400px]:text-[2.25rem] sm:text-5xl md:text-6xl lg:text-[72px] font-black uppercase tracking-tighter leading-[1.05] md:leading-[0.92] lg:leading-[0.9] max-w-5xl mx-auto text-[#1A1A1A]">
+      <h1 className="text-[1.6rem] sm:text-5xl md:text-6xl lg:text-[72px] font-black uppercase tracking-tighter leading-[1.05] md:leading-[0.92] lg:leading-[0.9] max-w-5xl mx-auto text-[#1A1A1A]">
         <motion.span className="block" {...anim(0.08, drift.lg)}>
           Everything You Need<br className="sm:hidden" /> To Plan Your Wedding
         </motion.span>
