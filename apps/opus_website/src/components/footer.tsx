@@ -5,7 +5,7 @@ import { MapPin, Facebook, Instagram, Youtube, Linkedin } from 'lucide-react'
 import { motion, useScroll, useTransform } from 'motion/react'
 import Reveal from '@/components/ui/Reveal'
 
-const CATEGORIES = ['Venues', 'Photographers', 'Planners', 'Caterers', 'DJs & Bands', 'Florists', 'Videographers']
+const CATEGORIES = ['Venues', 'Photographers', 'Videographers', 'Caterers', 'DJs & Bands', 'Florists', 'Wedding Planners', 'Hair & Makeup', 'Wedding Cakes', 'Bridal Salons', 'Photo Booths', 'Rentals', 'Transportation', 'Jewellers', 'MC & Officiants']
 
 const cities = [
   'Dar es Salaam',
@@ -73,11 +73,18 @@ export default function Footer() {
             <ul className="space-y-3 text-gray-500">
               <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Venues</a></li>
               <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Photographers</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Planners</a></li>
+              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Videographers</a></li>
               <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">DJs & Bands</a></li>
               <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Florists</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Videographers</a></li>
               <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Caterers</a></li>
+              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Wedding Planners</a></li>
+              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Hair & Makeup</a></li>
+              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Bridal Salons</a></li>
+              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Wedding Cakes</a></li>
+              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Transportation</a></li>
+              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Photo Booths</a></li>
+              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Jewellers</a></li>
+              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">MC & Officiants</a></li>
             </ul>
           </div>
           <div>
