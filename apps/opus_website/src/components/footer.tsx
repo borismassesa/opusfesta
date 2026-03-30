@@ -104,7 +104,7 @@ export default function Footer() {
         </Reveal>
 
         {/* Watermark — parallax bounded within footer, ±30px */}
-        <div ref={watermarkRef} className="mb-8 overflow-x-hidden flex justify-center py-8">
+        <div ref={watermarkRef} className="mb-8 py-8 -mx-6 overflow-hidden flex justify-center">
           <motion.p
             style={{ y }}
             className="text-[15vw] sm:text-[19vw] font-black tracking-tighter uppercase leading-none text-gray-100 whitespace-nowrap select-none"
