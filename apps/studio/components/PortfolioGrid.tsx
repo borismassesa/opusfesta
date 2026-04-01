@@ -668,12 +668,12 @@ export default function PortfolioGrid({ projects = [] }: PortfolioGridProps) {
                         />
 
                         <div
-                          className={`absolute inset-0 animate-pulse bg-gradient-to-br from-white/20 via-white/10 to-white/20 transition-opacity duration-300 ${
+                          className={`absolute inset-0 animate-pulse bg-white/10 transition-opacity duration-300 ${
                             isCardLoaded ? 'opacity-0 pointer-events-none' : 'opacity-100'
                           }`}
                         />
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/75 via-brand-dark/20 to-transparent" />
+                        <div className="absolute inset-0 bg-brand-dark/46" />
 
                         {item.kind === 'Video' ? (
                           <div className="absolute right-3 bottom-3 w-9 h-9 bg-brand-dark/70 backdrop-blur-sm flex items-center justify-center text-white rounded-full">

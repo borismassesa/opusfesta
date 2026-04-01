@@ -14,7 +14,7 @@ export default function HomePageShell({ children }: HomePageShellProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <main className="relative">
+    <main className="studio-shell relative">
       <GridOverlay />
       <Header onMenuToggle={() => setIsMenuOpen(true)} />
       <MenuSidebar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />

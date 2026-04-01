@@ -81,8 +81,7 @@ export default function HeroSection({ content }: HeroSectionProps) {
             />
           ) : null}
         </div>
-        <div className="absolute inset-0 bg-gradient-to-r from-brand-dark from-0% via-brand-dark/80 via-30% to-transparent pointer-events-none"></div>
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/60 via-transparent to-transparent pointer-events-none"></div>
+        <div className="absolute inset-0 bg-brand-dark/58 pointer-events-none"></div>
       </div>
 
       <div className="lg:px-12 grid grid-cols-1 lg:grid-cols-12 w-full max-w-[1920px] z-10 mr-auto ml-auto pt-16 pr-6 pb-8 pl-6 lg:pt-20 lg:pb-12 relative gap-x-8 gap-y-4 items-center">

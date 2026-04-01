@@ -11,7 +11,7 @@ export default function PageLayout({ children }: { children: React.ReactNode }) 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
-    <main className="relative">
+    <main className="studio-shell relative">
       <GridOverlay />
       <Header onMenuToggle={() => setIsMenuOpen(true)} />
       <MenuSidebar isOpen={isMenuOpen} onClose={() => setIsMenuOpen(false)} />

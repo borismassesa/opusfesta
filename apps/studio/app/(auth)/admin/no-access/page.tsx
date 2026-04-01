@@ -12,7 +12,6 @@ export default async function StudioAdminNoAccessPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-brand-bg text-brand-dark">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(214,73,42,0.14),_transparent_35%),radial-gradient(circle_at_bottom_right,_rgba(23,23,23,0.08),_transparent_38%)]" />
       <div className="relative mx-auto flex min-h-screen max-w-3xl items-center px-6 py-10">
         <section className="w-full border border-brand-dark bg-white p-8 shadow-brutal-md sm:p-10">
           <div className="inline-flex items-center gap-2 border border-brand-dark/15 bg-brand-accent/10 px-3 py-2 text-[11px] font-mono uppercase tracking-[0.25em]">
@@ -40,7 +39,7 @@ export default async function StudioAdminNoAccessPage() {
             </Link>
             <Link
               href="/"
-              className="inline-flex items-center border border-brand-dark/15 bg-[#f8f4ee] px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-brand-dark transition-colors hover:border-brand-accent hover:text-brand-accent"
+              className="inline-flex items-center border border-brand-dark/15 bg-brand-panel px-5 py-3 text-xs font-semibold uppercase tracking-[0.2em] text-brand-dark transition-colors hover:border-brand-accent hover:text-brand-accent"
             >
               Go to studio home
             </Link>

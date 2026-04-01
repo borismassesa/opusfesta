@@ -33,7 +33,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
 
   return (
     <PageLayout>
-      <article className="w-full bg-[#FDF5F3] min-h-screen pb-32">
+      <article className="w-full bg-brand-bg min-h-screen pb-32">
 
         {/* Full Screen Immersive Hero */}
         <div className="relative w-full h-[75vh] min-h-[500px] mb-16 md:mb-24 flex items-end pb-12 md:pb-24">
@@ -46,7 +46,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
               sizes="100vw"
               priority
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-[#171717]/90 via-[#171717]/40 to-transparent"></div>
+            <div className="absolute inset-0 bg-[#171717]/62"></div>
           </div>
 
           <div className="relative z-10 w-full max-w-5xl mx-auto px-6 md:px-12 pt-32">
@@ -104,8 +104,8 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
                <div className="flex items-center gap-4">
                  <span className="text-[10px] uppercase tracking-[0.2em] text-[#8A7662]">Share this</span>
                  <div className="flex gap-2">
-                    <button className="w-8 h-8 rounded-full bg-[#EBE5DE] flex items-center justify-center text-[#171717] hover:bg-[#D6492A] hover:text-white transition-colors text-xs">X</button>
-                    <button className="w-8 h-8 rounded-full bg-[#EBE5DE] flex items-center justify-center text-[#171717] hover:bg-[#D6492A] hover:text-white transition-colors text-xs">in</button>
+                    <button className="w-8 h-8 rounded-full bg-brand-panel flex items-center justify-center text-[#171717] hover:bg-[#D6492A] hover:text-white transition-colors text-xs">X</button>
+                    <button className="w-8 h-8 rounded-full bg-brand-panel flex items-center justify-center text-[#171717] hover:bg-[#D6492A] hover:text-white transition-colors text-xs">in</button>
                  </div>
                </div>
 

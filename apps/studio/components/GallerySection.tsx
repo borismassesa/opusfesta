@@ -120,9 +120,6 @@ export default function GallerySection({ projects = [], services = [] }: Gallery
         </div>
 
         <div className="relative">
-          <div className="pointer-events-none absolute -left-6 top-1/3 h-40 w-40 rounded-full bg-brand-accent/15 blur-3xl" />
-          <div className="pointer-events-none absolute -right-8 bottom-8 h-44 w-44 rounded-full bg-brand-accent/10 blur-3xl" />
-
           <div className="relative grid grid-cols-1 md:grid-cols-12 md:auto-rows-[190px] lg:auto-rows-[210px] gap-4 lg:gap-5">
             {galleryItems.map((item, index) => {
               const itemNumber = String(index + 1).padStart(2, '0');
@@ -146,7 +143,7 @@ export default function GallerySection({ projects = [], services = [] }: Gallery
                       className="object-cover transition-transform duration-700 group-hover:scale-110"
                     />
 
-                    <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/85 via-brand-dark/35 to-brand-dark/5 group-hover:from-brand-dark/92 group-hover:via-brand-dark/45 transition-colors duration-500" />
+                    <div className="absolute inset-0 bg-brand-dark/58 group-hover:bg-brand-dark/68 transition-colors duration-500" />
 
                     <div className="absolute left-4 right-4 top-4 flex items-start justify-between">
                       <span className="inline-flex items-center border border-white/30 bg-brand-dark/45 px-2.5 py-1 text-[10px] font-bold uppercase tracking-widest text-white/85 font-mono backdrop-blur-sm">

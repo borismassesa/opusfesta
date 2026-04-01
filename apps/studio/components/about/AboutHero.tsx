@@ -71,8 +71,7 @@ export default function AboutHero({ content }: AboutHeroProps) {
           >
             <source src={videoUrl} type="video/mp4" />
           </video>
-          <div className="absolute inset-0 bg-gradient-to-r from-brand-dark from-0% via-brand-dark/80 via-40% to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/80 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-brand-dark/72 pointer-events-none" />
         </div>
       ) : imageUrl ? (
         <div className="absolute inset-0 z-0">
@@ -83,8 +82,7 @@ export default function AboutHero({ content }: AboutHeroProps) {
             className="object-cover opacity-30"
             priority
           />
-          <div className="absolute inset-0 bg-gradient-to-r from-brand-dark from-0% via-brand-dark/80 via-40% to-transparent pointer-events-none" />
-          <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/80 via-transparent to-transparent pointer-events-none" />
+          <div className="absolute inset-0 bg-brand-dark/72 pointer-events-none" />
         </div>
       ) : null}
 

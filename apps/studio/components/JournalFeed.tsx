@@ -37,7 +37,7 @@ export default function JournalFeed({ articles = [] }: JournalFeedProps) {
   const standardPosts = filteredPosts.slice(1);
 
   return (
-    <div className="w-full bg-[#FDF5F3] min-h-screen pb-32">
+    <div className="w-full bg-brand-bg min-h-screen pb-32">
       {/* Hero Header */}
       <section className="pt-40 pb-16 px-6 md:px-12 lg:px-24">
         <motion.div 
@@ -101,7 +101,7 @@ export default function JournalFeed({ articles = [] }: JournalFeedProps) {
                 className="group w-full"
               >
                 <Link href={`/journal/${featuredPost.slug}`} className="block">
-                  <div className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-[#EBE5DE] overflow-hidden mb-8">
+                  <div className="relative w-full aspect-[16/9] md:aspect-[21/9] bg-brand-panel overflow-hidden mb-8">
                     <Image 
                       src={featuredPost.imageUrl} 
                       alt={featuredPost.title}

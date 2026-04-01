@@ -4,11 +4,11 @@
 
 :root {
   color-scheme: light;
-  --background: #F8F7F2;
+  --background: #F5F5F0;
   --foreground: #171717;
   --primary: #D6492A;
   --secondary: #B03A20;
-  --accent: #F1EEE8;
+  --accent: #ECEBE4;
   --muted-foreground: #8A7662;
   --primary-foreground: #FFFFFF;
   --border: #171717;
@@ -18,6 +18,59 @@
 body {
   @apply bg-brand-bg text-brand-dark antialiased overflow-x-hidden;
   font-family: var(--font-sans), 'DM Sans', sans-serif;
+}
+
+.studio-shell > section,
+.studio-shell > article,
+.studio-shell > div > section,
+.studio-shell > div > article {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 900px;
+}
+
+.studio-grid-overlay {
+  opacity: 0.03;
+  background-image: repeating-linear-gradient(
+    to right,
+    transparent 0,
+    transparent calc(25% - 1px),
+    rgba(23, 23, 23, 0.7) calc(25% - 1px),
+    rgba(23, 23, 23, 0.7) 25%
+  );
+}
+
+@media (min-width: 768px) {
+  .studio-grid-overlay {
+    background-image: repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(16.6667% - 1px),
+      rgba(23, 23, 23, 0.65) calc(16.6667% - 1px),
+      rgba(23, 23, 23, 0.65) 16.6667%
+    );
+  }
+}
+
+@media (min-width: 1024px) {
+  .studio-grid-overlay {
+    background-image: repeating-linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(8.3333% - 1px),
+      rgba(23, 23, 23, 0.6) calc(8.3333% - 1px),
+      rgba(23, 23, 23, 0.6) 8.3333%
+    );
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .studio-shell > section,
+  .studio-shell > article,
+  .studio-shell > div > section,
+  .studio-shell > div > article {
+    content-visibility: visible;
+    contain-intrinsic-size: auto;
+  }
 }
 
 *:not(.rounded-full) {

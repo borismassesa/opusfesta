@@ -17,7 +17,7 @@ export default function ArticleContent({ article }: { article: Article }) {
           sizes="100vw"
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-brand-dark/80 via-brand-dark/30 to-transparent" />
+        <div className="absolute inset-0 bg-brand-dark/55" />
         <div className="absolute bottom-0 left-0 right-0 p-8 lg:p-16">
           <div className="max-w-[900px] mx-auto">
             <div className="flex items-center gap-4 mb-4">

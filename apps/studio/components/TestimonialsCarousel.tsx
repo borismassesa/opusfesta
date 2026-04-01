@@ -32,11 +32,14 @@ export default function TestimonialsCarousel({ testimonials: dbTestimonials }: T
   }, []);
 
   useEffect(() => {
+    if (!isVisible || testimonials.length < 2) return;
+
     const interval = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % testimonials.length);
     }, 6000);
+
     return () => clearInterval(interval);
-  }, [testimonials.length]);
+  }, [isVisible, testimonials.length]);
 
   const goTo = useCallback((index: number) => {
     setCurrentIndex(index);
