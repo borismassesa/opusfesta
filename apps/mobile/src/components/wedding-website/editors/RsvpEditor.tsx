@@ -50,7 +50,7 @@ export function RsvpEditor({ content, onSave, saving }: Props) {
           onSave({
             deadline,
             max_plus_ones: parseInt(maxPlusOnes, 10) || 1,
-            meal_options: mealOptions.split(',').map((s) => s.trim()).filter(Boolean),
+            meal_options: mealOptions.split(',').map((s: string) => s.trim()).filter(Boolean),
             whatsapp_fallback: whatsappFallback,
             whatsapp_number: whatsappNumber,
             custom_message: customMessage,

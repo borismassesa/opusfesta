@@ -101,7 +101,7 @@ export default function TabLayout() {
               title: tab.title,
               ...(tab.center
                 ? {
-                    tabBarButton: (props) => (
+                    tabBarButton: ({ ref, ...props }: any) => (
                       <Pressable
                         {...props}
                         onPress={() => setMenuOpen((prev) => !prev)}
