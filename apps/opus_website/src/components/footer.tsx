@@ -74,17 +74,9 @@ export default function Footer() {
               <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Venues</a></li>
               <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Photographers</a></li>
               <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Videographers</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">DJs & Bands</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Florists</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Caterers</a></li>
               <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Wedding Planners</a></li>
+              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Caterers</a></li>
               <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Hair & Makeup</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Bridal Salons</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Wedding Cakes</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Transportation</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Photo Booths</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Jewellers</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">MC & Officiants</a></li>
             </ul>
           </div>
           <div>
@@ -114,7 +106,7 @@ export default function Footer() {
         <div ref={watermarkRef} className="mb-8 py-8 -mx-6 overflow-hidden flex justify-center">
           <motion.p
             style={{ y }}
-            className="text-[15vw] sm:text-[19vw] font-black tracking-tighter uppercase leading-none text-gray-100 whitespace-nowrap select-none"
+            className="text-[15vw] md:text-[12vw] lg:text-[10vw] xl:text-[9.5vw] font-black tracking-tighter uppercase leading-none text-gray-100 whitespace-nowrap select-none"
           >
             OpusFesta
           </motion.p>
