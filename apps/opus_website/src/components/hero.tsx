@@ -72,7 +72,7 @@ export default function Hero() {
       >
         <video
           ref={videoRef}
-          src="https://storage.googleapis.com/gtv-videos-bucket/sample/ForBiggerEscapes.mp4"
+          src="/assets/videos/couple_.mp4"
           autoPlay
           loop
           muted
