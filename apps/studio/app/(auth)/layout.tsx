@@ -1,5 +1,10 @@
-import { ClerkProvider } from '@clerk/nextjs';
+import { ClerkProvider } from "@clerk/nextjs";
+import type { ReactNode } from "react";
 
-export default function AuthLayout({ children }: { children: React.ReactNode }) {
-  return <ClerkProvider>{children}</ClerkProvider>;
+type AuthLayoutProps = {
+  children: ReactNode;
+};
+
+export default function AuthLayout({ children }: AuthLayoutProps) {
+  return <ClerkProvider>{children as any}</ClerkProvider>;
 }

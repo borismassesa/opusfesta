@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { DM_Sans, Space_Mono } from "next/font/google";
 import { ClerkProvider } from "@clerk/nextjs";
 import "./globals.css";
@@ -20,11 +21,13 @@ export const metadata: Metadata = {
   description: "Capturing life's most defining moments.",
 };
 
+type RootLayoutProps = Readonly<{
+  children: ReactNode;
+}>;
+
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: RootLayoutProps) {
   return (
     <html lang="en" className="scroll-smooth">
       <body className={`${dmSans.variable} ${spaceMono.variable} font-sans`}>
@@ -33,7 +36,7 @@ export default function RootLayout({
           signUpUrl="/portal/signup"
           afterSignOutUrl="/"
         >
-          {children}
+          {children as any}
         </ClerkProvider>
       </body>
     </html>

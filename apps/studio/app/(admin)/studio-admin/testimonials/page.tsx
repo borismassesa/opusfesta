@@ -52,7 +52,7 @@ export default function TestimonialsPage() {
           data={testimonials}
           keyField="id"
           emptyMessage="No testimonials found."
-          onRowClick={(t) => router.push(`/admin/testimonials/${t.id}`)}
+          onRowClick={(t) => router.push(`/studio-admin/testimonials/${t.id}`)}
           columns={[
             { key: 'author', header: 'Author', render: (t) => <span className="font-medium text-gray-900">{t.author}</span> },
             { key: 'role', header: 'Role', render: (t) => t.role },

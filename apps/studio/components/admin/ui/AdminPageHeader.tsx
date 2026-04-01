@@ -27,7 +27,7 @@ export default function AdminPageHeader({ title, description, tips, livePage }: 
             href={livePage.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-[var(--admin-primary)] hover:underline flex-shrink-0"
+            className="flex items-center gap-1.5 whitespace-nowrap text-xs font-bold text-[var(--admin-foreground)] hover:text-opacity-70 transition-colors flex-shrink-0"
           >
             <BsBoxArrowUpRight className="w-3 h-3" />
             {livePage.label}

@@ -27,6 +27,7 @@ export async function POST(req: NextRequest) {
     const db = getStudioSupabaseAdmin();
     const { data, error } = await db.from('studio_projects').insert({
       title, slug, category, number, description, full_description, cover_image,
+      video_url: body.video_url || null, gallery_images: body.gallery_images || [],
       stats: body.stats || [], highlights: body.highlights || [],
       is_published: body.is_published || false, sort_order: body.sort_order || 0,
       seo_title: body.seo_title || null, seo_description: body.seo_description || null,

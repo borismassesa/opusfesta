@@ -1,5 +1,7 @@
 'use client';
 
+import Link from "next/link";
+
 export default function NavigationFooter() {
   const scrollToTop = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -25,8 +27,8 @@ export default function NavigationFooter() {
         </button>
         <div className="flex-1 flex justify-center gap-4 sm:gap-8 md:gap-24 overflow-x-auto">
           <button onClick={scrollToTop} className="text-brand-accent hover:text-brand-dark transition-colors whitespace-nowrap hidden sm:block">01 Home</button>
-          <a href="/journal" className="hover:text-brand-dark transition-colors whitespace-nowrap">02 Journal</a>
-          <a href="/portfolio" className="hover:text-brand-dark transition-colors whitespace-nowrap">03 Portfolio</a>
+          <Link href="/journal" className="hover:text-brand-dark transition-colors whitespace-nowrap">02 Journal</Link>
+          <Link href="/portfolio" className="hover:text-brand-dark transition-colors whitespace-nowrap">03 Portfolio</Link>
           <a href="#services" className="hover:text-brand-dark transition-colors whitespace-nowrap">04 Services</a>
           <a href="#contact" className="hover:text-brand-dark transition-colors whitespace-nowrap">05 Contact</a>
         </div>

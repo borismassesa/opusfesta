@@ -8,7 +8,7 @@ import AdminToast from '@/components/admin/ui/AdminToast';
 import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
 import { BsPlus } from 'react-icons/bs';
 
-interface Project {
+interface PortfolioItem {
   id: string;
   number: string;
   title: string;
@@ -17,15 +17,15 @@ interface Project {
   updated_at: string;
 }
 
-export default function ProjectsPage() {
-  const [projects, setProjects] = useState<Project[]>([]);
+export default function PortfolioPage() {
+  const [items, setItems] = useState<PortfolioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
   useEffect(() => {
-    fetch('/api/admin/projects')
+    fetch('/api/admin/portfolio')
       .then((r) => r.json())
-      .then((d) => setProjects(d.projects || []))
+      .then((d) => setItems(d.projects || [])) // DB response still returns { projects } for backwards compatibility or we can change it
       .finally(() => setLoading(false));
   }, []);
 
@@ -33,28 +33,28 @@ export default function ProjectsPage() {
     <div className="space-y-4">
       <AdminToast />
       <AdminPageHeader
-        title="Projects"
-        description="Manage your portfolio projects. Each project appears on the Portfolio page, the Homepage gallery, and the Signature Work section."
+        title="Portfolio"
+        description="Manage your portfolio. Each item appears on the Portfolio page, the Homepage gallery, and the Signature Work section."
         livePage={{ label: 'View Portfolio', href: '/portfolio' }}
         tips={[
-          'Projects marked "Published" are visible on the public site. Use "Draft" to prepare content before going live.',
+          'Items marked "Published" are visible on the public site. Use "Draft" to prepare content before going live.',
           'The cover image is the main photo shown in the gallery grid — use a high-quality landscape image.',
-          'Categories help visitors filter projects on the Portfolio page (e.g. Weddings, Corporate, Portraits).',
+          'Categories help visitors filter items on the Portfolio page (e.g. Weddings, Corporate, Portraits).',
           'Sort order controls the display sequence — lower numbers appear first.',
         ]}
       />
       <div className="flex items-center justify-end">
-        <AdminButton href="/studio-admin/projects/new" icon={<BsPlus className="w-4 h-4" />}>New Project</AdminButton>
+        <AdminButton href="/studio-admin/portfolio/new" icon={<BsPlus className="w-4 h-4" />}>New Portfolio Item</AdminButton>
       </div>
 
       {loading ? (
         <div className="bg-white border border-gray-200 h-64 animate-pulse" />
       ) : (
         <AdminTable
-          data={projects}
+          data={items}
           keyField="id"
-          emptyMessage="No projects found."
-          onRowClick={(p) => router.push(`/admin/projects/${p.id}`)}
+          emptyMessage="No portfolio items found."
+          onRowClick={(p) => router.push(`/studio-admin/portfolio/${p.id}`)}
           columns={[
             { key: 'number', header: 'Number', render: (p) => <span className="font-mono text-gray-500">{p.number}</span>, className: 'w-20' },
             { key: 'title', header: 'Title', render: (p) => <span className="font-medium text-gray-900">{p.title}</span> },

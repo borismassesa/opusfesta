@@ -27,9 +27,9 @@ export default function AdminModal({ open, onClose, title, children, actions }: 
 
   return (
     <div ref={overlayRef} className="fixed inset-0 z-50 flex items-center justify-center bg-[rgba(26,26,26,0.42)] backdrop-blur-sm" onClick={(e) => { if (e.target === overlayRef.current) onClose(); }}>
-      <div className="mx-4 w-full max-w-lg border border-[var(--admin-border)] bg-[var(--admin-popover)] shadow-[var(--admin-shadow-lg)]">
+      <div className="mx-4 w-full max-w-lg border border-[var(--admin-border)] bg-[var(--admin-background)] shadow-[var(--admin-shadow-lg)]">
         <div className="flex items-center justify-between border-b border-[var(--admin-border)] px-6 py-4">
-          <h2 className="text-lg font-bold text-[var(--admin-popover-foreground)]">{title}</h2>
+          <h2 className="text-lg font-bold text-[var(--admin-foreground)]">{title}</h2>
           <button onClick={onClose} className="p-1 text-[var(--admin-muted)] transition-colors hover:text-[var(--admin-primary)]"><BsX className="w-5 h-5" /></button>
         </div>
         <div className="px-6 py-4">{children}</div>

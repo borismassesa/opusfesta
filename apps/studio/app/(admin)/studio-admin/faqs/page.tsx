@@ -51,7 +51,7 @@ export default function FaqsPage() {
           data={faqs}
           keyField="id"
           emptyMessage="No FAQs found."
-          onRowClick={(f) => router.push(`/admin/faqs/${f.id}`)}
+          onRowClick={(f) => router.push(`/studio-admin/faqs/${f.id}`)}
           columns={[
             { key: 'question', header: 'Question', render: (f) => <span className="font-medium text-gray-900">{f.question.length > 80 ? f.question.slice(0, 80) + '...' : f.question}</span> },
             { key: 'published', header: 'Published', render: (f) => <span className={f.is_published ? 'text-green-600 font-medium' : 'text-gray-400'}>

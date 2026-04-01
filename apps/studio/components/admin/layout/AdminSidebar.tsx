@@ -4,7 +4,7 @@ import { UserButton } from '@clerk/nextjs';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { BsGrid1X2, BsFolder2Open, BsFileText, BsWrench, BsCalendarCheck, BsCalendar3, BsChatSquareText, BsStar, BsQuestionCircle, BsPeople, BsImage, BsSearch, BsGear, BsHouseDoor } from 'react-icons/bs';
+import { BsGrid1X2, BsFolder2Open, BsFileText, BsWrench, BsCalendarCheck, BsCalendar3, BsChatSquareText, BsStar, BsQuestionCircle, BsPeople, BsImage, BsSearch, BsGear, BsHouseDoor, BsShare } from 'react-icons/bs';
 import type { StudioRole } from '@/lib/studio-types';
 import { hasMinimumRole } from '@/lib/admin-auth-client';
 
@@ -34,7 +34,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'Homepage', href: '/studio-admin/homepage', icon: BsHouseDoor, minRole: 'studio_admin' },
       { label: 'About Page', href: '/studio-admin/about-page', icon: BsPeople, minRole: 'studio_admin' },
-      { label: 'Projects', href: '/studio-admin/projects', icon: BsFolder2Open, minRole: 'studio_viewer' },
+      { label: 'Portfolio', href: '/studio-admin/portfolio', icon: BsFolder2Open, minRole: 'studio_viewer' },
       { label: 'Articles', href: '/studio-admin/articles', icon: BsFileText, minRole: 'studio_viewer' },
       { label: 'Services', href: '/studio-admin/services', icon: BsWrench, minRole: 'studio_viewer' },
       { label: 'Testimonials', href: '/studio-admin/testimonials', icon: BsStar, minRole: 'studio_viewer' },
@@ -54,6 +54,7 @@ const navGroups: NavGroup[] = [
     items: [
       { label: 'SEO', href: '/studio-admin/seo', icon: BsSearch, minRole: 'studio_editor' },
       { label: 'Settings', href: '/studio-admin/settings', icon: BsGear, minRole: 'studio_admin' },
+      { label: 'Social Media', href: '/studio-admin/social-media', icon: BsShare, minRole: 'studio_admin' },
     ],
   },
 ];

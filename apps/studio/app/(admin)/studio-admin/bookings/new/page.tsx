@@ -26,7 +26,7 @@ export default function NewBookingPage() {
       return;
     }
 
-    router.push(`/admin/bookings/${result.booking.id}`);
+    router.push(`/studio-admin/bookings/${result.booking.id}`);
   };
 
   return (

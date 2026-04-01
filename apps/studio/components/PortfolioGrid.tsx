@@ -80,26 +80,50 @@ export default function PortfolioGrid({ projects = [] }: PortfolioGridProps) {
           ) ||
           4_800 + index * 1_350;
 
-        return [
-          {
-            id: `${project.id}-photo`,
-            title: project.title,
-            category: project.category,
-            kind: 'Photo' as GalleryKind,
-            order: index,
-            image: project.cover_image,
-            views: formatViews(baseViews),
-          },
-          {
+        const items: GalleryItem[] = [];
+
+        // Always include the cover image as the primary photo
+        items.push({
+          id: `${project.id}-cover`,
+          title: project.title,
+          category: project.category,
+          kind: 'Photo' as GalleryKind,
+          order: index,
+          image: project.cover_image,
+          views: formatViews(baseViews),
+        });
+
+        // Add gallery images if present
+        if (Array.isArray(project.gallery_images)) {
+          project.gallery_images.forEach((img, i) => {
+            if (!img) return;
+            items.push({
+              id: `${project.id}-gallery-${i}`,
+              title: `${project.title} - Gallery ${i + 1}`,
+              category: project.category,
+              kind: 'Photo' as GalleryKind,
+              order: index,
+              image: img,
+              views: formatViews(Math.round(baseViews * 0.85) + i * 123),
+            });
+          });
+        }
+
+        // Add Video if present
+        if (project.video_url) {
+          items.push({
             id: `${project.id}-video`,
             title: `${project.title} Reel`,
             category: project.category,
             kind: 'Video' as GalleryKind,
             order: index,
-            image: project.cover_image,
-            views: formatViews(Math.round(baseViews * 1.25)),
-          },
-        ];
+            image: project.cover_image, // Use cover as poster
+            videoUrl: project.video_url,
+            views: formatViews(Math.round(baseViews * 1.35)),
+          });
+        }
+
+        return items;
       }),
     [projects]
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { BsCheckLg } from 'react-icons/bs';
 import confetti from 'canvas-confetti';
@@ -260,26 +261,26 @@ function BookPageContent() {
             A confirmation email has been sent to <strong className="text-brand-dark">{formData?.email}</strong>.
           </p>
           <div className="flex gap-4 justify-center flex-wrap">
-            <a
+            <Link
               href="/portal"
               className="border-3 border-brand-border bg-brand-dark text-white px-6 py-3 font-mono font-bold text-sm uppercase tracking-wider hover:bg-brand-accent hover:border-brand-accent transition-colors shadow-brutal"
             >
               View My Bookings
-            </a>
+            </Link>
             {viewToken && (
-              <a
+              <Link
                 href={`/book/status/${viewToken}`}
                 className="border-3 border-brand-border bg-white px-6 py-3 font-mono font-bold text-sm uppercase tracking-wider hover:bg-brand-bg transition-colors"
               >
                 Track Status
-              </a>
+              </Link>
             )}
-            <a
+            <Link
               href="/"
               className="border-3 border-brand-border bg-white px-6 py-3 font-mono font-bold text-sm uppercase tracking-wider hover:bg-brand-bg transition-colors"
             >
               Back Home
-            </a>
+            </Link>
           </div>
         </div>
       )}

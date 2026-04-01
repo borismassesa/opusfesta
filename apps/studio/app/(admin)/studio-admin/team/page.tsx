@@ -52,7 +52,7 @@ export default function TeamPage() {
           data={members}
           keyField="id"
           emptyMessage="No team members found."
-          onRowClick={(m) => router.push(`/admin/team/${m.id}`)}
+          onRowClick={(m) => router.push(`/studio-admin/team/${m.id}`)}
           columns={[
             { key: 'name', header: 'Name', render: (m) => <span className="font-medium text-gray-900">{m.name}</span> },
             { key: 'role', header: 'Role', render: (m) => m.role },

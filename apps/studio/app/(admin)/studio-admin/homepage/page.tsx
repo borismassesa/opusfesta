@@ -5,13 +5,14 @@ import { AdminInput, AdminTextarea } from '@/components/admin/ui/AdminInput';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminMediaUpload from '@/components/admin/ui/AdminMediaUpload';
 import AdminPageHeader from '@/components/admin/ui/AdminPageHeader';
-import { BsSave, BsChevronDown, BsChevronRight, BsArrowRepeat, BsPlus, BsTrash } from 'react-icons/bs';
+import { BsSave, BsChevronDown, BsChevronRight, BsArrowRepeat, BsPlus, BsTrash, BsGlobe } from 'react-icons/bs';
 
 interface PageSection {
   id: string;
   page_key: string;
   section_key: string;
   content: Record<string, unknown>;
+  draft_content: Record<string, unknown> | null;
   sort_order: number;
 }
 
@@ -272,16 +273,23 @@ export default function HomepageSectionsPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [publishing, setPublishing] = useState(false);
   const [published, setPublished] = useState(false);
+  const [hasDraft, setHasDraft] = useState<Set<string>>(new Set());
+  const [publishingSection, setPublishingSection] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/admin/page-sections?page=home')
       .then((r) => r.json())
       .then((d) => {
         const map: Record<string, Record<string, unknown>> = {};
+        const drafts = new Set<string>();
         (d.sections || []).forEach((s: PageSection) => {
-          map[s.section_key] = s.content || {};
+          map[s.section_key] = s.draft_content ?? s.content ?? {};
+          if (s.draft_content !== null && s.draft_content !== undefined) {
+            drafts.add(s.section_key);
+          }
         });
         setSections(map);
+        setHasDraft(drafts);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -332,12 +340,8 @@ export default function HomepageSectionsPage() {
         setErrors((prev) => ({ ...prev, [sectionKey]: data.error || 'Save failed' }));
         return;
       }
-      // Revalidate all pages so changes appear instantly on the frontend
-      await fetch('/api/admin/revalidate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: '/' }),
-      });
+      // Mark this section as having a pending draft
+      setHasDraft((prev) => new Set(prev).add(sectionKey));
       setSaved(sectionKey);
       setTimeout(() => setSaved((prev) => (prev === sectionKey ? null : prev)), 3000);
     } finally {
@@ -357,15 +361,36 @@ export default function HomepageSectionsPage() {
   const publishChanges = useCallback(async () => {
     setPublishing(true);
     try {
-      await fetch('/api/admin/revalidate', {
-        method: 'POST',
+      const res = await fetch('/api/admin/page-sections', {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ path: '/' }),
+        body: JSON.stringify({ page_key: 'home', publish_all: true }),
       });
+      if (!res.ok) return;
+      setHasDraft(new Set());
       setPublished(true);
       setTimeout(() => setPublished(false), 3000);
     } finally {
       setPublishing(false);
+    }
+  }, []);
+
+  const publishSection = useCallback(async (sectionKey: string) => {
+    setPublishingSection(sectionKey);
+    try {
+      const res = await fetch('/api/admin/page-sections', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ page_key: 'home', section_key: sectionKey }),
+      });
+      if (!res.ok) return;
+      setHasDraft((prev) => {
+        const next = new Set(prev);
+        next.delete(sectionKey);
+        return next;
+      });
+    } finally {
+      setPublishingSection(null);
     }
   }, []);
 
@@ -375,26 +400,33 @@ export default function HomepageSectionsPage() {
     <div className="space-y-4">
       <AdminPageHeader
         title="Homepage"
-        description="Edit the text, images, and content for each section of the public homepage. Changes are saved per-section and go live instantly."
+        description="Edit sections and save as drafts. Use Publish to push changes live on the public homepage."
         livePage={{ label: 'View Homepage', href: '/' }}
         tips={[
           'Each section (Hero, Stats, Clients, About, Process, CTA) can be edited and saved independently.',
-          'Click a section to expand it, make your changes, then click "Save" for that section.',
+          'Click a section to expand it, make your changes, then click "Save Draft" for that section.',
+          'Saved drafts do NOT appear on the public site until you click "Publish".',
+          'You can publish individual sections or use "Publish All" to push all pending drafts live.',
           'Image fields support drag-and-drop upload — no need to paste URLs manually.',
-          'The "Publish to Site" button force-refreshes all cached pages if changes don\'t appear immediately.',
         ]}
       />
       <div className="flex items-center justify-end mb-2">
         <div className="flex items-center gap-3">
+          {hasDraft.size > 0 && (
+            <span className="text-xs text-amber-600 font-medium">
+              {hasDraft.size} section{hasDraft.size > 1 ? 's' : ''} with unpublished changes
+            </span>
+          )}
           {published && <span className="text-xs text-green-600 font-medium">Published!</span>}
           <AdminButton
             onClick={publishChanges}
             loading={publishing}
+            disabled={hasDraft.size === 0}
             variant="secondary"
             size="sm"
-            icon={<BsArrowRepeat className="w-3.5 h-3.5" />}
+            icon={<BsGlobe className="w-3.5 h-3.5" />}
           >
-            Publish to Site
+            Publish All Changes
           </AdminButton>
         </div>
       </div>
@@ -417,7 +449,12 @@ export default function HomepageSectionsPage() {
                   {String(idx + 1).padStart(2, '0')}
                 </span>
                 <span className="text-sm font-semibold text-[var(--admin-foreground)]">{config.label}</span>
-                {isSaved && <span className="text-xs text-green-600 font-medium">Saved</span>}
+                {hasDraft.has(config.key) && (
+                  <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 bg-amber-50 text-amber-600 border border-amber-200">
+                    Draft
+                  </span>
+                )}
+                {isSaved && <span className="text-xs text-green-600 font-medium">Draft saved</span>}
               </div>
               {isOpen ? <BsChevronDown className="w-4 h-4 text-gray-400" /> : <BsChevronRight className="w-4 h-4 text-gray-400" />}
             </button>
@@ -606,14 +643,25 @@ export default function HomepageSectionsPage() {
                   <p className="text-xs text-[var(--admin-destructive)]">{sectionError}</p>
                 )}
 
-                <div className="flex items-center justify-end pt-2">
+                <div className="flex items-center justify-end gap-2 pt-2">
+                  {hasDraft.has(config.key) && (
+                    <AdminButton
+                      onClick={() => publishSection(config.key)}
+                      loading={publishingSection === config.key}
+                      variant="secondary"
+                      size="sm"
+                      icon={<BsGlobe className="w-3.5 h-3.5" />}
+                    >
+                      Publish
+                    </AdminButton>
+                  )}
                   <AdminButton
                     onClick={() => saveSection(config.key, idx + 1)}
                     loading={isSaving}
                     icon={<BsSave className="w-3.5 h-3.5" />}
                     size="sm"
                   >
-                    Save Section
+                    Save Draft
                   </AdminButton>
                 </div>
               </div>
