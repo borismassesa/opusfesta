@@ -10,10 +10,10 @@ export default {
     extend: {
       colors: {
         'brand-dark': '#171717',
-        'brand-panel': '#FCEAE5',
+        'brand-panel': '#F1EEE8',
         'brand-accent': '#D6492A',
         'brand-secondary': '#B03A20',
-        'brand-bg': '#FDF5F3',
+        'brand-bg': '#F8F7F2',
         'brand-border': '#171717',
         'brand-muted': '#8A7662',
       },
