@@ -53,7 +53,7 @@ interface DashboardData {
     services: CmsOverview;
     recentUpdates: Array<{
       id: string;
-      type: 'project' | 'article' | 'service';
+      type: 'portfolio' | 'article' | 'service';
       title: string;
       status: 'published' | 'draft' | 'active' | 'inactive';
       updated_at: string;
@@ -204,6 +204,7 @@ function MetricCard({
 // Page
 // ---------------------------------------------------------------------------
 export default function DashboardPage() {
+  const [period, setPeriod] = useState<string>('30d');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -213,7 +214,7 @@ export default function DashboardPage() {
     try {
       setLoading(true);
       setErrorMessage(null);
-      const response = await fetch('/api/admin/dashboard');
+      const response = await fetch(`/api/admin/dashboard?period=${period}`);
       const payload = await response.json().catch(() => null);
       if (!response.ok) {
         const message = isRecord(payload) && typeof payload.error === 'string' ? payload.error : 'Failed to load dashboard data.';
@@ -229,7 +230,7 @@ export default function DashboardPage() {
     }
   };
 
-  useEffect(() => { void loadDashboard(); }, []);
+  useEffect(() => { void loadDashboard(); }, [period]);
 
   // Loading skeleton
   if (loading) {
@@ -277,21 +278,44 @@ export default function DashboardPage() {
       {/* ================================================================ */}
       {/* SECTION 1: Header */}
       {/* ================================================================ */}
-      <section className="border border-[var(--admin-border)] bg-[var(--admin-card)] p-5 shadow-[var(--admin-shadow-sm)]">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+      <section className="bg-[var(--admin-card)] shadow-[var(--admin-shadow-sm)] border border-[var(--admin-border)]">
+        {/* Top Header - Title & Quick Actions */}
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between px-5 py-5 border-b border-[var(--admin-border)]">
           <div>
             <p className="text-[11px] font-mono uppercase tracking-[0.25em] text-[var(--admin-muted)]">Studio command center</p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--admin-card-foreground)]">Dashboard</h1>
+            <h1 className="mt-2 text-3xl font-semibold tracking-[-0.04em] text-[var(--admin-card-foreground)]">Overview</h1>
           </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--admin-muted)]">Updated {data.generatedAt}</span>
-            <Link href="/studio-admin/bookings" className="border border-[var(--admin-primary)] bg-[var(--admin-primary)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--admin-primary-foreground)] transition-colors hover:bg-[#e67900] hover:border-[#e67900]">
-              Open bookings
+          <div className="flex flex-wrap items-center gap-2">
+            <Link href="/studio-admin/bookings/queue" className="border border-green-600 bg-green-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-green-700 transition-colors hover:bg-green-100 flex items-center gap-1.5 shadow-sm">
+              <BsActivity className="w-3.5 h-3.5" /> Open Queue
             </Link>
-            <Link href="/studio-admin/messages" className="border border-[var(--admin-border)] bg-[var(--admin-card)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--admin-secondary-foreground)] transition-colors hover:border-[var(--admin-primary)] hover:text-[var(--admin-primary)]">
-              Open inbox
+            <Link href="/studio-admin/articles/new" className="border border-[var(--admin-border)] bg-[var(--admin-card)] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-[var(--admin-secondary-foreground)] transition-colors hover:border-[var(--admin-primary)] hover:text-[var(--admin-primary)] shadow-sm">
+              + New Article
             </Link>
           </div>
+        </div>
+
+        {/* Sub Header - Filters */}
+        <div className="flex flex-wrap items-center justify-between gap-4 px-5 py-3 bg-[var(--admin-secondary)]/50">
+          <div className="flex items-center gap-3">
+            <label htmlFor="period-filter" className="text-[10px] font-mono uppercase tracking-[0.15em] text-[var(--admin-muted)]">Timeframe</label>
+            <select
+              id="period-filter"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value)}
+              className="text-xs font-semibold bg-white border border-[var(--admin-border)] rounded-sm px-2 py-1 outline-none focus:border-[var(--admin-primary)] transition-colors cursor-pointer"
+            >
+              <option value="30d">Last 30 Days</option>
+              <option value="90d">Last 90 Days</option>
+              <option value="ytd">Year to Date (YTD)</option>
+              <option value="12m">Last 12 Months</option>
+              {/* Note: Disabling 'All Time' as it strains the chart grouping without year buckets */}
+            </select>
+          </div>
+          
+          <span className="text-[10px] font-mono uppercase tracking-wider text-[var(--admin-muted)]">
+            Updated today
+          </span>
         </div>
       </section>
 
@@ -331,7 +355,7 @@ export default function DashboardPage() {
           <MetricCard
             label="Active pipeline"
             value={pipeline.activeTotal}
-            hint={`${kpis.inquiries7d.value} new inquiries (7d)`}
+            hint={`${kpis.inquiries7d.value} new inquiries (selected period)`}
             icon={<BsFunnel className="h-4 w-4" />}
             href="/studio-admin/bookings"
             delta={kpis.inquiries7d.deltaPercent}
@@ -339,14 +363,14 @@ export default function DashboardPage() {
           <MetricCard
             label="Confirmed revenue"
             value={fmtCurrency(lifecycle.revenue.total_tzs)}
-            hint={lifecycle.revenue.outstanding_balance_tzs > 0 ? `${fmtCurrency(lifecycle.revenue.outstanding_balance_tzs)} outstanding` : 'No outstanding balance'}
+            hint={kpis.confirmedValue.pipelineValue > 0 ? `+ ${fmtCurrency(kpis.confirmedValue.pipelineValue)} pending in quotes` : 'No active pipeline value'}
             icon={<BsWallet2 className="h-4 w-4" />}
             href="/studio-admin/bookings"
           />
           <MetricCard
-            label="Conversion (30d)"
+            label={`Conversion`}
             value={`${kpis.conversion30d.value}%`}
-            hint={`${fmtDelta(kpis.conversion30d.deltaPercent)} vs previous 30d`}
+            hint={`${fmtDelta(kpis.conversion30d.deltaPercent)} vs previous period`}
             icon={<BsActivity className="h-4 w-4" />}
             href="/studio-admin/bookings"
             delta={kpis.conversion30d.deltaPercent}
@@ -605,7 +629,7 @@ export default function DashboardPage() {
           {/* CMS cards */}
           <div className="grid grid-cols-3 gap-2 mb-4">
             {[
-              { label: 'Projects', href: '/studio-admin/projects', data: cms.projects },
+              { label: 'Portfolio', href: '/studio-admin/portfolio', data: cms.projects },
               { label: 'Articles', href: '/studio-admin/articles', data: cms.articles },
               { label: 'Services', href: '/studio-admin/services', data: cms.services },
             ].map((item) => (
@@ -626,7 +650,7 @@ export default function DashboardPage() {
                   <Link key={item.id} href={item.href} className="flex items-center justify-between py-2 border-b border-[var(--admin-border)] last:border-b-0 hover:bg-[var(--admin-secondary)] transition-colors">
                     <div className="flex items-center gap-2 min-w-0">
                       <span className={`shrink-0 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider ${
-                        item.type === 'project' ? 'bg-violet-50 text-violet-600' :
+                        item.type === 'portfolio' ? 'bg-violet-50 text-violet-600' :
                         item.type === 'article' ? 'bg-blue-50 text-blue-600' :
                         'bg-green-50 text-green-600'
                       }`}>{item.type}</span>

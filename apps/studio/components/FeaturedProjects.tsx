@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, useCallback } from 'react';
+import Link from 'next/link';
 
 interface FeaturedProjectsProps {
   content?: {
@@ -54,6 +55,73 @@ export default function FeaturedProjects({ content }: FeaturedProjectsProps) {
 
   const defaultClients = ['Vogue', 'Tatler', 'Harper\'s Bazaar', 'The Ritz', 'Claridge\'s', 'Harrods', 'Fortnum & Mason', 'Rolls-Royce'];
   const clients = (content?.clients?.names as string[]) || defaultClients;
+  const aboutTagline = (content?.about?.tagline as string) || 'About the Studio';
+  const aboutHeadingRaw = (content?.about?.heading as string) || "We don\u2019t just document moments \u2014 we craft visual stories that live forever.";
+  const aboutDescriptionRaw =
+    (content?.about?.description as string) ||
+    'OpusStudio is a team of filmmakers, photographers, and creative directors who believe every milestone deserves a cinematic treatment. From intimate elopements to 500-guest galas, we bring the same obsessive attention to light, composition, and narrative.';
+  const aboutButtonText = (content?.about?.button_text as string) || 'Our Story';
+  const aboutButtonUrl = (content?.about?.button_url as string) || '/about';
+  const aboutHeading = (() => {
+    const normalized = aboutHeadingRaw.replace(/\s+/g, ' ').trim();
+    const lower = normalized.toLowerCase();
+
+    if (
+      lower.includes("we don't just document moments") ||
+      lower.includes("we don’t just document moments")
+    ) {
+      return 'Make it — iconic.';
+    }
+
+    if (lower.includes('in a world that never stops scrolling')) {
+      return 'Make it — iconic.';
+    }
+
+    return normalized;
+  })();
+  const aboutHeadingLines = (() => {
+    if (aboutHeading.toLowerCase().includes('make it')) {
+      return ['MAKE IT', 'ICONIC.'];
+    }
+
+    const parts = aboutHeading.split('—').map((part) => part.trim()).filter(Boolean);
+    if (parts.length < 2) return [aboutHeading];
+    return [parts[0], parts.slice(1).join(' — ')];
+  })();
+  const aboutDescription = (() => {
+    const normalized = aboutDescriptionRaw.replace(/\s+/g, ' ').trim();
+    if (!normalized) return '';
+
+    const lower = normalized.toLowerCase();
+    if (lower.includes('in a world that never stops scrolling')) {
+      return 'OpusStudio is the creative engine of the OpusFesta ecosystem, shaping raw ideas into stories with precision, taste, and cinematic discipline. We believe every project deserves more than coverage; it deserves a point of view, a clear narrative, and execution that holds up anywhere.||From films and photography to livestreams and brand consulting, we build visual worlds that feel considered from the first frame to the final delivery. Every detail is crafted to move people, sharpen perception, and leave a mark that lasts well beyond the moment itself.';
+    }
+
+    if (normalized.length <= 420) return normalized;
+
+    const sentences = normalized
+      .split(/(?<=[.!?])\s+/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    if (sentences.length === 0) return normalized;
+
+    const first = sentences[0];
+    const second = sentences[1] || '';
+    const fromSentence = sentences.find((s) => /^from\s/i.test(s));
+    const third = sentences[2] || '';
+    const picked = [first, second, fromSentence || third].filter(Boolean);
+    let concise = picked.join(' ');
+
+    if (concise.length > 430) {
+      concise = concise.slice(0, 427).replace(/\s+\S*$/, '').trimEnd() + '...';
+    }
+    return concise;
+  })();
+  const aboutDescriptionParts = aboutDescription
+    .split('||')
+    .map((part) => part.trim())
+    .filter(Boolean);
 
   return (
     <section id="about" className="relative z-10 bg-brand-bg">
@@ -119,30 +187,43 @@ export default function FeaturedProjects({ content }: FeaturedProjectsProps) {
 
       <div
         ref={setRef('intro-block')}
-        className={`max-w-[1400px] mx-auto px-6 lg:px-12 py-20 lg:py-28 transition-all duration-700 ${
+        className={`max-w-[1400px] mx-auto px-6 lg:px-12 pt-12 pb-20 lg:pt-16 lg:pb-24 transition-all duration-700 ${
           visibleItems.has('intro-block')
             ? 'opacity-100 translate-y-0'
             : 'opacity-0 translate-y-8'
         }`}
       >
-        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-10 lg:gap-16 items-end">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 lg:gap-10 pb-10 lg:pb-12">
           <div>
-            <span className="text-xs font-bold text-brand-accent tracking-widest uppercase font-mono mb-6 block">
-              {(content?.about?.tagline as string) || 'About the Studio'}
+            <span className="text-xs font-bold text-brand-accent tracking-widest uppercase font-mono mb-4 block">
+              {aboutTagline}
             </span>
-            <h2 className="text-3xl lg:text-5xl font-bold text-brand-dark tracking-tighter leading-[1.1]">
-              {(content?.about?.heading as string) || "We don\u2019t just document moments \u2014 we craft visual stories that live forever."}
+            <h2 className="text-5xl md:text-7xl lg:text-8xl font-bold tracking-tighter text-brand-dark leading-[0.9] uppercase break-words [overflow-wrap:anywhere]">
+              {aboutHeadingLines[0]}
+              {aboutHeadingLines[1] && (
+                <>
+                  <br />
+                  <span className="text-stroke">{aboutHeadingLines[1]}</span>
+                </>
+              )}
             </h2>
           </div>
-          <div>
-            <p className="text-neutral-500 text-base lg:text-lg leading-relaxed font-light mb-8">
-              {(content?.about?.description as string) || 'OpusStudio is a team of filmmakers, photographers, and creative directors who believe every milestone deserves a cinematic treatment. From intimate elopements to 500-guest galas, we bring the same obsessive attention to light, composition, and narrative.'}
-            </p>
-            <a
-              href={(content?.about?.button_url as string) || '/about'}
+
+          <div className="flex flex-col items-start gap-5 max-w-lg">
+            {aboutDescriptionParts.map((part, index) => (
+              <p
+                key={`about-description-part-${index}`}
+                className="text-neutral-500 text-base lg:text-lg leading-relaxed font-light break-words [overflow-wrap:anywhere]"
+              >
+                {part}
+              </p>
+            ))}
+
+            <Link
+              href={aboutButtonUrl}
               className="inline-flex items-center gap-3 px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
             >
-              {(content?.about?.button_text as string) || 'Our Story'}
+              {aboutButtonText}
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="14"
@@ -156,7 +237,7 @@ export default function FeaturedProjects({ content }: FeaturedProjectsProps) {
               >
                 <path d="M5 12h14m-7-7l7 7l-7 7"></path>
               </svg>
-            </a>
+            </Link>
           </div>
         </div>
       </div>

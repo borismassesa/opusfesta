@@ -180,9 +180,12 @@ function buildRevenueByService(bookings: BookingRow[]): Array<{ service: string;
 // ---------------------------------------------------------------------------
 // GET handler
 // ---------------------------------------------------------------------------
-export async function GET() {
+export async function GET(request: Request) {
   try {
     await requireStudioRole('studio_viewer');
+    const { searchParams } = new URL(request.url);
+    const periodParam = searchParams.get('period') || '30d';
+
     const db = getStudioSupabaseAdmin();
 
     // Single consolidated query set
@@ -195,7 +198,6 @@ export async function GET() {
       availabilityResult,
       eventsResult,
     ] = await Promise.all([
-      // Single booking query with all columns (lifecycle + CRM)
       db.from('studio_bookings')
         .select('id, name, email, event_type, preferred_date, location, service, status, responded_at, created_at, lifecycle_status, total_amount_tzs, deposit_amount_tzs, balance_due_tzs, event_date')
         .limit(5000),
@@ -204,7 +206,6 @@ export async function GET() {
       db.from('studio_articles').select('id, title, is_published, updated_at').limit(2000),
       db.from('studio_services').select('id, title, price, is_active, updated_at').limit(2000),
       db.from('studio_availability').select('date, is_available').eq('is_available', false).eq('time_slot', 'all-day').limit(5000),
-      // Activity feed — recent booking events
       db.from('studio_booking_events').select('id, booking_id, event_type, actor, description, created_at').order('created_at', { ascending: false }).limit(8),
     ]);
 
@@ -222,25 +223,67 @@ export async function GET() {
     const recentActivity = (eventsResult.data || []) as BookingEventRow[];
 
     // -----------------------------------------------------------------------
-    // Computed values
+    // Date ranges
     // -----------------------------------------------------------------------
     const now = new Date();
     const today = startOfDay(now);
-    const sevenDaysAgo = addDays(today, -7);
-    const fourteenDaysAgo = addDays(today, -14);
-    const thirtyDaysAgo = addDays(today, -30);
-    const sixtyDaysAgo = addDays(today, -60);
+    
+    let filterStartDate: Date | null = null;
+    let prevFilterStartDate: Date | null = null;
+    let periodDays = 30;
+
+    switch (periodParam) {
+      case 'all': filterStartDate = null; break;
+      case 'ytd': {
+        filterStartDate = new Date(today.getFullYear(), 0, 1);
+        periodDays = Math.round((today.getTime() - filterStartDate.getTime()) / (1000 * 60 * 60 * 24)) || 1;
+        prevFilterStartDate = new Date(today.getFullYear() - 1, 0, 1);
+        break;
+      }
+      case '12m':
+        filterStartDate = addDays(today, -365);
+        periodDays = 365;
+        prevFilterStartDate = addDays(today, -730);
+        break;
+      case '90d':
+        filterStartDate = addDays(today, -90);
+        periodDays = 90;
+        prevFilterStartDate = addDays(today, -180);
+        break;
+      case '30d':
+      default:
+        filterStartDate = addDays(today, -30);
+        periodDays = 30;
+        prevFilterStartDate = addDays(today, -60);
+        break;
+    }
+
     const inSevenDays = addDays(today, 7);
     const staleThreshold = addDays(today, -30);
     const overdueThreshold = addDays(now, -1);
 
-    // Status counts (legacy)
+    // Filter bookings historically
+    const filteredBookings = filterStartDate ? bookings.filter((b) => {
+      const c = asDate(b.created_at);
+      return !!c && c >= filterStartDate;
+    }) : bookings;
+
+    // Snapshot statuses count (Using ALL bookings, not filtered)
     const statusCounts: Record<StudioBookingStatus, number> = {
       new: 0, contacted: 0, quoted: 0, confirmed: 0, completed: 0, cancelled: 0,
     };
     for (const b of bookings) statusCounts[b.status] += 1;
+    const activePipelineTotal = ACTIVE_PIPELINE_STATUSES.reduce((sum, s) => sum + statusCounts[s], 0);
 
-    // Recent bookings (5)
+    // Calculate Pipeline Forecast (Estimated potential revenue from quotes sent but not confirmed)
+    let pipelineForecastValue = 0;
+    for (const b of bookings) {
+      if (['quoted', 'contacted', 'new'].includes(b.status)) {
+         pipelineForecastValue += b.total_amount_tzs || 0;
+      }
+    }
+
+    // Recent bookings
     const recentBookings = [...bookings]
       .sort((a, b) => (asDate(b.created_at)?.getTime() || 0) - (asDate(a.created_at)?.getTime() || 0))
       .slice(0, 5);
@@ -266,7 +309,7 @@ export async function GET() {
       }
     }
 
-    // Upcoming events (5) — prefer event_date over preferred_date
+    // Upcoming events
     const upcomingBookings = bookings
       .filter((b) => {
         if (b.status === 'cancelled' || b.status === 'completed') return false;
@@ -292,18 +335,23 @@ export async function GET() {
       return !!c && c < overdueThreshold;
     }).length;
 
-    // Inquiry KPIs
-    const inquiries7d = getPeriodCount(bookings, sevenDaysAgo, now);
-    const inquiriesPrev7d = getPeriodCount(bookings, fourteenDaysAgo, sevenDaysAgo);
-
-    // Conversion
-    const recent30 = bookings.filter((b) => { const c = asDate(b.created_at); return !!c && c >= thirtyDaysAgo; });
-    const prev30 = bookings.filter((b) => { const c = asDate(b.created_at); return !!c && c >= sixtyDaysAgo && c < thirtyDaysAgo; });
-    const conversionRecent = recent30.length
-      ? Math.round((recent30.filter((b) => SUCCESS_STATUSES.includes(b.status)).length / recent30.length) * 1000) / 10
+    // Inquiry KPIs dynamically using period
+    const inquiriesRecent = filteredBookings.length;
+    const inquiriesPrev = (filterStartDate && prevFilterStartDate) 
+      ? getPeriodCount(bookings, prevFilterStartDate, filterStartDate) 
       : 0;
-    const conversionPrev = prev30.length
-      ? Math.round((prev30.filter((b) => SUCCESS_STATUSES.includes(b.status)).length / prev30.length) * 1000) / 10
+
+    // Conversion purely within the period
+    const conversionRecent = filteredBookings.length
+      ? Math.round((filteredBookings.filter((b) => SUCCESS_STATUSES.includes(b.status)).length / filteredBookings.length) * 1000) / 10
+      : 0;
+    
+    // Prev conversion
+    const prevBookings = (filterStartDate && prevFilterStartDate) 
+      ? bookings.filter((b) => { const c = asDate(b.created_at); return !!c && c >= prevFilterStartDate && c < filterStartDate; })
+      : [];
+    const conversionPrev = prevBookings.length
+      ? Math.round((prevBookings.filter((b) => SUCCESS_STATUSES.includes(b.status)).length / prevBookings.length) * 1000) / 10
       : 0;
 
     // CMS
@@ -319,28 +367,25 @@ export async function GET() {
     const staleServices = services.filter((s) => { const u = asDate(s.updated_at); return !!u && u < staleThreshold; }).length;
 
     const cmsRecentUpdates: Array<{ id: string; type: string; title: string; status: string; updated_at: string; href: string }> = [
-      ...projects.map((p) => ({ id: p.id, type: 'project', title: p.title, status: p.is_published ? 'published' : 'draft', updated_at: p.updated_at, href: `/studio-admin/projects/${p.id}` })),
+      ...projects.map((p) => ({ id: p.id, type: 'portfolio', title: p.title, status: p.is_published ? 'published' : 'draft', updated_at: p.updated_at, href: `/studio-admin/portfolio/${p.id}` })),
       ...articles.map((a) => ({ id: a.id, type: 'article', title: a.title, status: a.is_published ? 'published' : 'draft', updated_at: a.updated_at, href: `/studio-admin/articles/${a.id}` })),
       ...services.map((s) => ({ id: s.id, type: 'service', title: s.title, status: s.is_active ? 'active' : 'inactive', updated_at: s.updated_at, href: `/studio-admin/services/${s.id}` })),
     ].sort((a, b) => (asDate(b.updated_at)?.getTime() || 0) - (asDate(a.updated_at)?.getTime() || 0)).slice(0, 4);
 
-    // Performance
+    // Performance (Filtered mapping)
     const topServices = Object.entries(
-      bookings.reduce<Record<string, number>>((acc, b) => { const n = b.service?.trim() || 'Unspecified'; acc[n] = (acc[n] || 0) + 1; return acc; }, {})
+      filteredBookings.reduce<Record<string, number>>((acc, b) => { const n = b.service?.trim() || 'Unspecified'; acc[n] = (acc[n] || 0) + 1; return acc; }, {})
     ).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5);
 
     const topEventTypes = Object.entries(
-      bookings.reduce<Record<string, number>>((acc, b) => { const n = b.event_type?.trim() || 'Other'; acc[n] = (acc[n] || 0) + 1; return acc; }, {})
+      filteredBookings.reduce<Record<string, number>>((acc, b) => { const n = b.event_type?.trim() || 'Other'; acc[n] = (acc[n] || 0) + 1; return acc; }, {})
     ).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 4);
 
-    // Lifecycle metrics
-    const lifecycle = buildLifecycleMetrics(bookings);
+    // Lifecycle metrics (Filtered mapping)
+    const lifecycle = buildLifecycleMetrics(filteredBookings);
 
-    // Weekly inquiry trend (past 8 weeks)
-    const weeklyInquiries = buildWeeklyInquiries(bookings, now);
-
-    // Revenue by service (top 5)
-    const revenueByService = buildRevenueByService(bookings);
+    const weeklyInquiries = buildWeeklyInquiries(filteredBookings.length ? filteredBookings : bookings, now);
+    const revenueByService = buildRevenueByService(filteredBookings);
 
     // -----------------------------------------------------------------------
     // Response
@@ -355,13 +400,13 @@ export async function GET() {
         availabilityConflicts,
       },
       kpis: {
-        inquiries7d: { value: inquiries7d, deltaPercent: getDeltaPercent(inquiries7d, inquiriesPrev7d) },
-        activePipeline: { value: ACTIVE_PIPELINE_STATUSES.reduce((sum, s) => sum + statusCounts[s], 0), totalBookings: bookings.length },
+        inquiries7d: { value: inquiriesRecent, deltaPercent: getDeltaPercent(inquiriesRecent, inquiriesPrev) },
+        activePipeline: { value: activePipelineTotal, totalBookings: bookings.length },
         conversion30d: { value: conversionRecent, deltaPercent: Math.round((conversionRecent - conversionPrev) * 10) / 10 },
-        confirmedValue: { value: lifecycle.revenue.total_tzs, currency: 'TZS', pipelineValue: 0 },
+        confirmedValue: { value: lifecycle.revenue.total_tzs, currency: 'TZS', pipelineValue: pipelineForecastValue },
         cmsHealth: { value: cmsHealthPercent, published: publishedContent, total: totalContent },
       },
-      pipeline: { statuses: statusCounts, activeTotal: ACTIVE_PIPELINE_STATUSES.reduce((sum, s) => sum + statusCounts[s], 0) },
+      pipeline: { statuses: statusCounts, activeTotal: activePipelineTotal },
       upcoming: upcomingBookings,
       recentBookings,
       cms: {

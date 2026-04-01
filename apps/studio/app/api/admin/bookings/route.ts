@@ -15,27 +15,26 @@ export async function GET(req: NextRequest) {
     const page = Math.max(1, parseInt(searchParams.get('page') || '1'));
 
     let query = db.from('studio_bookings').select('*', { count: 'exact' });
-    if (status && status !== 'all') {
+
+    if (lifecycleStatus && lifecycleStatus !== 'all') {
+      if (lifecycleStatus === 'pipeline') {
+        query = query.in('lifecycle_status', ['intake_submitted', 'qualified', 'quote_sent', 'quote_accepted', 'contract_sent', 'contract_signed', 'deposit_pending', 'reschedule_requested']);
+      } else if (lifecycleStatus === 'upcoming') {
+        query = query.in('lifecycle_status', ['confirmed', 'rescheduled']);
+      } else if (lifecycleStatus === 'completed') {
+        query = query.eq('lifecycle_status', 'completed');
+      } else if (lifecycleStatus === 'cancelled') {
+        query = query.in('lifecycle_status', ['cancelled', 'draft', 'slot_held']);
+      } else {
+        query = query.eq('lifecycle_status', lifecycleStatus);
+      }
+    } else if (status && status !== 'all') {
       query = query.eq('status', status);
     }
+
     query = query.order('created_at', { ascending: false }).range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
 
-    let { data, count, error } = await query;
-
-    // If lifecycle_status filter requested, try it — if columns don't exist yet, fall back to unfiltered
-    if (!error && lifecycleStatus && lifecycleStatus !== 'all' && !(status && status !== 'all')) {
-      const lcQuery = db.from('studio_bookings').select('*', { count: 'exact' })
-        .eq('lifecycle_status', lifecycleStatus)
-        .order('created_at', { ascending: false })
-        .range((page - 1) * PAGE_SIZE, page * PAGE_SIZE - 1);
-      const lcResult = await lcQuery;
-      if (!lcResult.error) {
-        data = lcResult.data;
-        count = lcResult.count;
-        error = lcResult.error;
-      }
-      // If lifecycle_status column doesn't exist, silently fall back to the unfiltered result
-    }
+    const { data, count, error } = await query;
 
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

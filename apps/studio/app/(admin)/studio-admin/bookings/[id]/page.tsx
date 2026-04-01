@@ -2,8 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { BsArrowLeft, BsTrash, BsSend, BsChatSquareText, BsBoxArrowUpRight } from 'react-icons/bs';
+import { BsArrowLeft, BsTrash } from 'react-icons/bs';
 import AdminButton from '@/components/admin/ui/AdminButton';
 import AdminLifecycleBadge from '@/components/admin/ui/AdminLifecycleBadge';
 import { AdminTextarea } from '@/components/admin/ui/AdminInput';
@@ -14,15 +13,11 @@ import PaymentTracker from '@/components/admin/bookings/PaymentTracker';
 import BookingTimeline from '@/components/booking/BookingTimeline';
 import type { BookingWithRelations, BookingLifecycleStatus } from '@/lib/booking-types';
 import { formatTZS } from '@/lib/booking-types';
-import type { StudioMessage } from '@/lib/studio-types';
-
-const MAX_PREVIEW_MESSAGES = 3;
 
 export default function BookingDetailPage() {
   const { id } = useParams<{ id: string }>();
   const router = useRouter();
   const [booking, setBooking] = useState<BookingWithRelations | null>(null);
-  const [messages, setMessages] = useState<StudioMessage[]>([]);
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
@@ -31,13 +26,9 @@ export default function BookingDetailPage() {
   const [error, setError] = useState<string | null>(null);
 
   const loadBooking = useCallback(async () => {
-    const [bRes, mRes] = await Promise.all([
-      fetch(`/api/admin/bookings/${id}`).then(r => r.json()),
-      fetch(`/api/admin/bookings/${id}/messages`).then(r => r.json()).catch(() => ({ messages: [] })),
-    ]);
+    const bRes = await fetch(`/api/admin/bookings/${id}`).then(r => r.json());
     setBooking(bRes.booking);
     setNotes(bRes.booking?.admin_notes || '');
-    setMessages(mRes.messages || []);
   }, [id]);
 
   useEffect(() => { loadBooking(); }, [loadBooking]);
@@ -202,56 +193,6 @@ export default function BookingDetailPage() {
       {/* Timeline */}
       <Section title="Timeline">
         <BookingTimeline events={booking.events} />
-      </Section>
-
-      {/* Messages Preview */}
-      <Section title="Messages">
-        {messages.length === 0 ? (
-          <div className="text-center py-4">
-            <BsChatSquareText className="w-8 h-8 text-brand-border mx-auto mb-3" />
-            <p className="text-sm text-brand-muted mb-3">No messages yet.</p>
-            <Link
-              href={`/admin/messages?booking=${id}`}
-              className="inline-flex items-center gap-2 text-sm font-bold text-brand-accent hover:underline"
-            >
-              <BsSend className="w-3.5 h-3.5" />
-              Start a conversation in Messages
-            </Link>
-          </div>
-        ) : (
-          <>
-            <div className="space-y-2 mb-4">
-              {messages.slice(-MAX_PREVIEW_MESSAGES).map(m => {
-                const isAdmin = (m.sender_type || m.sender) === 'admin';
-                return (
-                  <div key={m.id} className={`p-3 text-sm ${isAdmin ? 'bg-brand-accent/5 border-l-3 border-brand-accent ml-8' : 'bg-blue-50 border-l-3 border-blue-400 mr-8'}`}>
-                    <p className="text-brand-dark line-clamp-2">{m.content}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-xs text-brand-muted">
-                        {m.sender_name || (isAdmin ? 'Studio Admin' : 'Client')} · {new Date(m.created_at).toLocaleString()}
-                      </span>
-                      {!isAdmin && !m.read_at && (
-                        <span className="text-[10px] font-mono text-blue-500 font-bold">NEW</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-            {messages.length > MAX_PREVIEW_MESSAGES && (
-              <p className="text-xs text-brand-muted mb-3">
-                Showing last {MAX_PREVIEW_MESSAGES} of {messages.length} messages
-              </p>
-            )}
-            <Link
-              href={`/admin/messages?booking=${id}`}
-              className="inline-flex items-center gap-2 text-sm font-bold text-brand-accent hover:underline"
-            >
-              <BsBoxArrowUpRight className="w-3.5 h-3.5" />
-              Open full conversation in Messages
-            </Link>
-          </>
-        )}
       </Section>
 
       {/* Admin Notes */}

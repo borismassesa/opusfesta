@@ -13,7 +13,7 @@ const pageMeta: Record<string, PageMeta> = {
   '/studio-admin/bookings': { title: 'Bookings', subtitle: 'Client bookings & pipeline' },
   '/studio-admin/messages': { title: 'Messages', subtitle: 'Client inquiries & conversations' },
   '/studio-admin/homepage': { title: 'Homepage', subtitle: 'Edit homepage sections & content' },
-  '/studio-admin/projects': { title: 'Projects', subtitle: 'Portfolio & gallery items' },
+  '/studio-admin/portfolio': { title: 'Portfolio', subtitle: 'Portfolio & gallery items' },
   '/studio-admin/articles': { title: 'Articles', subtitle: 'Journal blog posts' },
   '/studio-admin/services': { title: 'Services', subtitle: 'Service packages & pricing' },
   '/studio-admin/availability': { title: 'Availability', subtitle: 'Calendar & working hours' },

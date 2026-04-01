@@ -13,22 +13,15 @@ import { formatTZS } from '@/lib/booking-types';
 import type { BookingLifecycleStatus } from '@/lib/booking-types';
 
 const lifecycleFilters: Array<{ value: string; label: string }> = [
-  { value: 'all', label: 'All' },
-  { value: 'intake_submitted', label: 'New Intakes' },
-  { value: 'qualified', label: 'Qualified' },
-  { value: 'quote_sent', label: 'Quote Sent' },
-  { value: 'quote_accepted', label: 'Quote Accepted' },
-  { value: 'contract_sent', label: 'Contract Sent' },
-  { value: 'contract_signed', label: 'Contract Signed' },
-  { value: 'deposit_pending', label: 'Deposit Pending' },
-  { value: 'confirmed', label: 'Confirmed' },
+  { value: 'pipeline', label: 'Pipeline' },
+  { value: 'upcoming', label: 'Upcoming Events' },
   { value: 'completed', label: 'Completed' },
-  { value: 'cancelled', label: 'Cancelled' },
+  { value: 'cancelled', label: 'Cancelled / Archived' },
 ];
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<Record<string, unknown>[]>([]);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState('pipeline');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
@@ -46,13 +39,12 @@ export default function BookingsPage() {
     <div className="space-y-4">
       <AdminToast />
       <AdminPageHeader
-        title="Bookings"
-        description="Track and manage all client bookings through their lifecycle — from initial inquiry to completed event. Use filters to find bookings by status."
+        title="Bookings Pipeline"
+        description="Track and manage all client bookings at a macro level. Switch tabs to see your active pipeline, upcoming confirmed events, and historical records."
         tips={[
-          'Each booking moves through stages: Intake → Qualified → Quote → Contract → Deposit → Confirmed → Completed.',
-          'Use the "Queue" view for action items that need your attention (new intakes, pending deposits, overdue follow-ups).',
-          'Click any booking to see full details, update its status, add notes, or send communications.',
-          'Cancelled bookings are kept for records but hidden from the active pipeline.',
+          'Pipeline: Follow bookings progressing through qualification, quotes, and deposits.',
+          'Upcoming Events: Locked-in bookings with active dates waiting to happen.',
+          'Queue: If you need to see urgent action items across all stages, use the Operational Queue.',
         ]}
       />
 
@@ -71,14 +63,16 @@ export default function BookingsPage() {
         </Link>
       </div>
 
-      <div className="flex gap-1.5 flex-wrap">
+      <div className="flex border-b border-gray-200 mt-2 mb-6">
         {lifecycleFilters.map((f) => (
           <button key={f.value} onClick={() => { setFilter(f.value); setPage(1); }}
-            className={`px-3 py-1.5 text-xs font-mono font-bold uppercase tracking-wider transition-colors border-2 ${
+            className={`px-6 py-3.5 text-sm font-semibold border-b-[3px] -mb-[1px] transition-all ${
               filter === f.value
-                ? 'bg-brand-dark text-white border-brand-dark'
-                : 'bg-white text-brand-muted border-brand-border hover:bg-brand-bg hover:text-brand-dark'
-            }`}>
+                ? 'border-brand-dark text-black bg-transparent'
+                : 'border-transparent text-gray-500 hover:text-gray-900 hover:border-gray-300 bg-transparent'
+            }`}
+            style={{ borderRadius: 0 }}
+          >
             {f.label}
           </button>
         ))}
@@ -88,7 +82,7 @@ export default function BookingsPage() {
         <>
           <AdminTable
             data={bookings} keyField="id" emptyMessage="No bookings found."
-            onRowClick={(b) => router.push(`/admin/bookings/${b.id}`)}
+            onRowClick={(b) => router.push(`/studio-admin/bookings/${b.id}`)}
             columns={[
               { key: 'name', header: 'Client', render: (b) => <span className="font-bold text-brand-dark">{b.name as string}</span> },
               { key: 'email', header: 'Email', render: (b) => <span className="text-sm">{b.email as string}</span> },

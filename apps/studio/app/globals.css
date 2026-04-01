@@ -93,39 +93,35 @@ html {
 /* ===== Admin Portal Styles ===== */
 .admin-shell {
   --admin-background: #ffffff;
-  --admin-foreground: #1a1a1a;
-  --admin-card: #ffffff;
-  --admin-card-foreground: #1a1a1a;
-  --admin-popover: #ffffff;
-  --admin-popover-foreground: #1a1a1a;
+  --admin-foreground: #171717;
+  --admin-card-foreground: #171717;
+  --admin-popover-foreground: #171717;
   --admin-primary: #D6492A;
   --admin-primary-foreground: #ffffff;
-  --admin-secondary: #fef2ef;
-  --admin-secondary-foreground: #6b2518;
-  --admin-muted-surface: #f7f4f3;
-  --admin-muted: #737373;
-  --admin-accent: #fde0d8;
-  --admin-accent-foreground: #993524;
+  --admin-secondary: #f4f4f5;
+  --admin-secondary-foreground: #3f3f46;
+  --admin-muted-surface: #fafafa;
+  --admin-muted: #71717a;
+  --admin-accent: #f4f4f5;
+  --admin-accent-foreground: #52525b;
   --admin-destructive: #ef4343;
   --admin-destructive-foreground: #ffffff;
   --admin-border: #e6e6e6;
   --admin-input: #e6e6e6;
   --admin-ring: rgba(214, 73, 42, 0.22);
-  --admin-sidebar: #fbfaf9;
-  --admin-sidebar-foreground: #333333;
+  --admin-sidebar: #fafafa;
+  --admin-sidebar-foreground: #171717;
   --admin-sidebar-primary: #D6492A;
   --admin-sidebar-primary-foreground: #ffffff;
-  --admin-sidebar-accent: #fde8e3;
-  --admin-sidebar-accent-foreground: #c44030;
+  --admin-sidebar-accent: #f4f4f5;
+  --admin-sidebar-accent-foreground: #171717;
   --admin-sidebar-border: #ebebeb;
   --admin-sidebar-ring: rgba(214, 73, 42, 0.24);
   --admin-shadow-sm: 0px 2px 10px 0px hsl(0 0% 0% / 0.05), 0px 1px 2px -1px hsl(0 0% 0% / 0.05);
   --admin-shadow-md: 0px 2px 10px 0px hsl(0 0% 0% / 0.05), 0px 2px 4px -1px hsl(0 0% 0% / 0.05);
   --admin-shadow-lg: 0px 2px 10px 0px hsl(0 0% 0% / 0.05), 0px 4px 6px -1px hsl(0 0% 0% / 0.05);
   --admin-radius: 0.75rem;
-  background:
-    radial-gradient(circle at top left, rgba(214, 73, 42, 0.10), transparent 28%),
-    linear-gradient(180deg, #fffbfa 0%, #fef7f5 100%);
+  background-color: var(--admin-background);
   color: var(--admin-foreground);
   letter-spacing: -0.01em;
 }
@@ -133,42 +129,49 @@ html {
 .admin-shell.dark,
 .dark .admin-shell {
   --admin-background: #121212;
-  --admin-foreground: #f2f2f2;
-  --admin-card: #1a1a1a;
-  --admin-card-foreground: #f2f2f2;
-  --admin-popover: #1a1a1a;
-  --admin-popover-foreground: #f2f2f2;
+  --admin-foreground: #fafafa;
+  --admin-card-foreground: #fafafa;
+  --admin-popover-foreground: #fafafa;
   --admin-primary: #D6492A;
-  --admin-primary-foreground: #1a1a1a;
-  --admin-secondary: #2d1f1b;
-  --admin-secondary-foreground: #f5a99a;
-  --admin-muted-surface: #262626;
-  --admin-muted: #a6a6a6;
-  --admin-accent: #4d1a12;
-  --admin-accent-foreground: #f09080;
+  --admin-primary-foreground: #fafafa;
+  --admin-secondary: #27272a;
+  --admin-secondary-foreground: #f4f4f5;
+  --admin-muted-surface: #18181b;
+  --admin-muted: #a1a1aa;
+  --admin-accent: #27272a;
+  --admin-accent-foreground: #e4e4e7;
   --admin-destructive: #7c1d1d;
   --admin-destructive-foreground: #f2f2f2;
   --admin-border: #333333;
   --admin-input: #333333;
   --admin-ring: rgba(214, 73, 42, 0.28);
-  --admin-sidebar: #171717;
-  --admin-sidebar-foreground: #e6e6e6;
+  --admin-sidebar: #18181b;
+  --admin-sidebar-foreground: #fafafa;
   --admin-sidebar-primary: #D6492A;
-  --admin-sidebar-primary-foreground: #1a1a1a;
-  --admin-sidebar-accent: #3d1510;
-  --admin-sidebar-accent-foreground: #e87060;
+  --admin-sidebar-primary-foreground: #fafafa;
+  --admin-sidebar-accent: #27272a;
+  --admin-sidebar-accent-foreground: #fafafa;
   --admin-sidebar-border: #2e2e2e;
   --admin-sidebar-ring: rgba(214, 73, 42, 0.28);
   --admin-shadow-sm: 0px 4px 15px 0px hsl(0 0% 0% / 0.30), 0px 1px 2px -1px hsl(0 0% 0% / 0.30);
   --admin-shadow-md: 0px 4px 15px 0px hsl(0 0% 0% / 0.30), 0px 2px 4px -1px hsl(0 0% 0% / 0.30);
   --admin-shadow-lg: 0px 4px 15px 0px hsl(0 0% 0% / 0.30), 0px 4px 6px -1px hsl(0 0% 0% / 0.30);
-  background:
-    radial-gradient(circle at top left, rgba(214, 73, 42, 0.16), transparent 24%),
-    linear-gradient(180deg, #191312 0%, #121212 100%);
+  background-color: var(--admin-background);
 }
 
-.admin-shell *:not(.rounded-full):not(.avatar-circle) {
+.admin-shell input,
+.admin-shell button,
+.admin-shell select,
+.admin-shell textarea,
+.admin-shell .admin-card {
   border-radius: var(--admin-radius) !important;
+}
+
+.admin-shell table,
+.admin-shell th,
+.admin-shell td,
+.admin-shell tr {
+  border-radius: 0 !important;
 }
 
 .admin-shell svg,

@@ -163,7 +163,7 @@ export default function AdminInboxChat({ bookingId, conversation, onBack }: Admi
             </div>
           </div>
           <Link
-            href={`/admin/bookings/${bookingId}`}
+            href={`/studio-admin/bookings/${bookingId}`}
             className="flex items-center gap-1.5 text-[11px] font-medium text-[var(--admin-primary)] hover:underline shrink-0"
           >
             <BsBoxArrowUpRight className="w-3 h-3" />

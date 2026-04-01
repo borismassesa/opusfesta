@@ -1,4 +1,5 @@
 import { ClerkProvider } from "@clerk/nextjs";
+import type { ReactNode } from "react";
 import { redirect } from "next/navigation";
 import AdminSidebar from "@/components/admin/layout/AdminSidebar";
 import AdminTopbar from "@/components/admin/layout/AdminTopbar";
@@ -8,11 +9,13 @@ export const metadata = {
   title: "Admin | OpusStudio",
 };
 
+type AdminLayoutProps = {
+  children: ReactNode;
+};
+
 export default async function AdminLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: AdminLayoutProps) {
   const { clerkId, role: studioRole } = await getCurrentStudioAccess();
 
   if (!clerkId) {

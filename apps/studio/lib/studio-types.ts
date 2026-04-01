@@ -15,6 +15,8 @@ export interface StudioProject {
   description: string;
   full_description: string;
   cover_image: string;
+  video_url: string | null;
+  gallery_images: string[];
   stats: { label: string; value: string }[];
   highlights: string[];
   is_published: boolean;

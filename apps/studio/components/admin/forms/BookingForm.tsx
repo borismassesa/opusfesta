@@ -227,7 +227,7 @@ export default function BookingForm({ onSubmit }: BookingFormProps) {
           Create Booking
         </AdminButton>
         <p className="text-xs text-[var(--admin-muted)]">
-          The booking will be created and you'll be redirected to the booking detail page.
+          The booking will be created and you&apos;ll be redirected to the booking detail page.
         </p>
       </div>
     </form>
