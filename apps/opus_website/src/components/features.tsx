@@ -1,6 +1,8 @@
 'use client'
 
+import Link from 'next/link'
 import Reveal from '@/components/ui/Reveal'
+import { ADVICE_IDEAS_BASE_PATH, getAdviceIdeasSectionHref } from '@/lib/advice-ideas'
 
 export default function Features() {
   return (
@@ -112,12 +114,18 @@ export default function Features() {
               ))}
             </div>
             <div className="flex flex-wrap justify-center md:justify-start gap-3">
-              <button className="bg-[#1A1A1A] hover:bg-[#333333] text-white px-6 py-3 rounded-full font-bold transition-colors text-sm sm:text-base">
+              <Link
+                href={ADVICE_IDEAS_BASE_PATH}
+                className="bg-[#1A1A1A] hover:bg-[#333333] text-white px-6 py-3 rounded-full font-bold transition-colors text-sm sm:text-base"
+              >
                 Browse Ideas
-              </button>
-              <button className="text-[#1A1A1A] px-6 py-3 rounded-full font-bold hover:bg-gray-100 transition-colors underline text-sm sm:text-base">
+              </Link>
+              <Link
+                href={getAdviceIdeasSectionHref('planning-guides')}
+                className="text-[#1A1A1A] px-6 py-3 rounded-full font-bold hover:bg-gray-100 transition-colors underline text-sm sm:text-base"
+              >
                 Read advice
-              </button>
+              </Link>
             </div>
           </Reveal>
         </div>

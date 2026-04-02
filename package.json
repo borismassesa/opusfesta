@@ -11,7 +11,7 @@
     "build": "turbo build",
     "dev": "turbo dev",
     "dev:website": "turbo dev --filter=./apps/website",
-    "dev:landing": "turbo dev --filter=./apps/opus_landing_page",
+    "dev:landing": "turbo dev --filter=./apps/opus_website",
     "dev:customersupport": "turbo dev --filter=./apps/customersupport",
     "build:website": "turbo build --filter=./apps/website",
     "lint": "turbo lint",

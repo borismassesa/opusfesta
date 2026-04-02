@@ -55,10 +55,10 @@ export default function Hero() {
       </motion.p>
 
       <motion.div
-        className="flex flex-row items-center justify-center gap-4 sm:gap-6 mt-8 sm:mt-10"
+        className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-3 sm:mt-10 sm:gap-x-6"
         {...anim(0.36, drift.sm)}
       >
-        <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px] transition-colors whitespace-nowrap">
+        <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 sm:px-7 py-3.5 rounded-full font-bold text-[15px] transition-colors whitespace-nowrap">
           Start planning
         </button>
         <button className="text-[#1A1A1A] font-bold text-[15px] underline underline-offset-4 hover:text-gray-600 transition-colors whitespace-nowrap">

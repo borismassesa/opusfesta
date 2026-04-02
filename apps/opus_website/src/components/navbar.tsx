@@ -1,8 +1,13 @@
 'use client'
 
+import Link from 'next/link'
 import { useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
+import {
+  ADVICE_IDEAS_BASE_PATH,
+  adviceIdeasNavLinks,
+} from '@/lib/advice-ideas'
 import {
   Menu,
   X,
@@ -42,7 +47,7 @@ import {
   ShoppingBag,
 } from 'lucide-react'
 
-type NavLink = { label: string; Icon?: LucideIcon; subLinks?: string[] }
+type NavLink = { label: string; href?: string; Icon?: LucideIcon; subLinks?: string[] }
 type PhotoGridItem = { label: string; image: string }
 
 const attirePhotoGrid: PhotoGridItem[] = [
@@ -52,10 +57,42 @@ const attirePhotoGrid: PhotoGridItem[] = [
   { label: 'Bridesmaid Dresses', image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=400&q=80' },
 ]
 
+const planningPhotoGrid: PhotoGridItem[] = [
+  { label: 'Checklist', image: '/assets/images/brideincar.jpg' },
+  { label: 'Budget', image: '/assets/images/hand_rings.jpg' },
+  { label: 'Guest List', image: '/assets/images/mauzo_crew.jpg' },
+  { label: 'Seating Chart', image: '/assets/images/churchcouples.jpg' },
+]
+
+const guestsPhotoGrid: PhotoGridItem[] = [
+  { label: 'Guest List', image: '/assets/images/mauzo_crew.jpg' },
+  { label: 'RSVP Tracking', image: '/assets/images/churchcouples.jpg' },
+  { label: 'Invitations', image: '/assets/images/cutesy_couple.jpg' },
+  { label: 'Seating Plan', image: '/assets/images/couples_together.jpg' },
+]
+
+const websitesPhotoGrid: PhotoGridItem[] = [
+  { label: 'Templates', image: '/assets/images/coupleswithpiano.jpg' },
+  { label: 'Photo Gallery', image: '/assets/images/beautiful_bride.jpg' },
+  { label: 'RSVPs', image: '/assets/images/authentic_couple.jpg' },
+  { label: 'Travel Info', image: '/assets/images/bride_umbrella.jpg' },
+]
+
+const vendorPhotoGrid: PhotoGridItem[] = [
+  { label: 'Venues', image: '/assets/images/churchcouples.jpg' },
+  { label: 'Photography', image: '/assets/images/beautiful_bride.jpg' },
+  { label: 'Florals', image: '/assets/images/flowers_pinky.jpg' },
+  { label: 'Beauty', image: '/assets/images/beautyinbride.jpg' },
+]
+
+const adviceIdeasHrefByLabel = new Map(adviceIdeasNavLinks.map((link) => [link.label, link.href]))
+
 const navItems: Array<{
   label: string
-  card: { image: string; title: string; description: string; linkText: string }
+  card: { image: string; title: string; description: string; linkText: string; href?: string }
   columns: Array<{ title: string; links: NavLink[] }>
+  photoGridTitle?: string
+  photoGrid?: PhotoGridItem[]
 }> = [
   {
     label: 'Planning Tools',
@@ -85,6 +122,8 @@ const navItems: Array<{
         ],
       },
     ],
+    photoGridTitle: 'Top Tools',
+    photoGrid: planningPhotoGrid,
   },
   {
     label: 'Vendors',
@@ -93,6 +132,7 @@ const navItems: Array<{
       title: 'FIND VENDORS',
       description: 'Discover and book verified wedding professionals across Tanzania.',
       linkText: 'Browse all vendors',
+      href: '/vendors',
     },
     columns: [
       {
@@ -101,17 +141,18 @@ const navItems: Array<{
           { Icon: MapPin, label: 'Venues' },
           { Icon: Camera, label: 'Photographers' },
           { Icon: Video, label: 'Videographers' },
-          { Icon: Music, label: 'DJs & Bands' },
           { Icon: Flower2, label: 'Florists' },
           { Icon: Utensils, label: 'Caterers' },
+        ],
+      },
+      {
+        title: 'Services',
+        links: [
+          { Icon: Music, label: 'DJs & Bands' },
           { Icon: Sparkles, label: 'Hair & Makeup' },
           { Icon: Gift, label: 'Wedding Cakes' },
           { Icon: Shirt, label: 'Bridal Salons' },
           { Icon: PartyPopper, label: 'MC & Officiants' },
-          { Icon: Image, label: 'Photo Booths' },
-          { Icon: ShoppingBag, label: 'Rentals' },
-          { Icon: Share2, label: 'Transportation' },
-          { Icon: Gem, label: 'Jewellers' },
         ],
       },
       {
@@ -124,9 +165,11 @@ const navItems: Array<{
         ],
       },
     ],
+    photoGridTitle: 'Popular Picks',
+    photoGrid: vendorPhotoGrid,
   },
   {
-    label: 'Guests',
+    label: 'Guests & RSVPs',
     card: {
       image: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=800&q=80',
       title: 'GUEST MANAGEMENT',
@@ -152,6 +195,8 @@ const navItems: Array<{
         ],
       },
     ],
+    photoGridTitle: 'Guest Planning',
+    photoGrid: guestsPhotoGrid,
   },
   {
     label: 'Websites',
@@ -181,6 +226,8 @@ const navItems: Array<{
         ],
       },
     ],
+    photoGridTitle: 'Website Ideas',
+    photoGrid: websitesPhotoGrid,
   },
   {
     label: 'Advice & Ideas',
@@ -189,26 +236,27 @@ const navItems: Array<{
       title: 'ADVICE & IDEAS',
       description: 'Browse real weddings, trending themes, and expert advice for every couple.',
       linkText: 'Get inspired',
+      href: ADVICE_IDEAS_BASE_PATH,
     },
     columns: [
       {
         title: 'Inspiration',
         links: [
-          { Icon: Heart, label: 'Real Weddings' },
-          { Icon: Sparkles, label: 'Themes & Styles' },
-          { Icon: Camera, label: 'Photo & Video Ideas' },
-          { Icon: MapPin, label: 'Honeymoon Ideas' },
-          { Icon: Globe, label: 'Destination Weddings' },
+          { Icon: Heart, label: 'Real Weddings', href: adviceIdeasHrefByLabel.get('Real Weddings') },
+          { Icon: Sparkles, label: 'Themes & Styles', href: adviceIdeasHrefByLabel.get('Themes & Styles') },
+          { Icon: Camera, label: 'Photo & Video Ideas', href: adviceIdeasHrefByLabel.get('Photo & Video Ideas') },
+          { Icon: MapPin, label: 'Honeymoon Ideas', href: adviceIdeasHrefByLabel.get('Honeymoon Ideas') },
+          { Icon: Globe, label: 'Destination Weddings', href: adviceIdeasHrefByLabel.get('Destination Weddings') },
         ],
       },
       {
         title: 'Advice',
         links: [
-          { Icon: CheckCircle2, label: 'Planning Guides' },
-          { Icon: MessageCircle, label: 'Etiquette & Wording' },
-          { Icon: Users, label: 'For Families & Guests' },
-          { Icon: Gift, label: 'Bridal Shower Ideas' },
-          { Icon: PartyPopper, label: 'Engagement Party Tips' },
+          { Icon: CheckCircle2, label: 'Planning Guides', href: adviceIdeasHrefByLabel.get('Planning Guides') },
+          { Icon: MessageCircle, label: 'Etiquette & Wording', href: adviceIdeasHrefByLabel.get('Etiquette & Wording') },
+          { Icon: Users, label: 'For Families & Guests', href: adviceIdeasHrefByLabel.get('For Families & Guests') },
+          { Icon: Gift, label: 'Bridal Shower Ideas', href: adviceIdeasHrefByLabel.get('Bridal Shower Ideas') },
+          { Icon: PartyPopper, label: 'Engagement Party Tips', href: adviceIdeasHrefByLabel.get('Engagement Party Tips') },
         ],
       },
     ],
@@ -242,6 +290,8 @@ const navItems: Array<{
         ],
       },
     ],
+    photoGridTitle: 'Get Inspired',
+    photoGrid: attirePhotoGrid,
   },
 ]
 
@@ -256,6 +306,8 @@ export default function Navbar() {
     setMobileExpanded(null)
   }
 
+  const getNavHref = (href?: string) => href ?? '#'
+
   return (
     <div
       className="relative border-b border-gray-100 bg-white"
@@ -268,19 +320,21 @@ export default function Navbar() {
       }}
     >
       {/* ── Top bar ── */}
-      <nav className="flex items-center justify-between px-6 py-4 max-w-6xl mx-auto relative z-50 bg-white">
+      <nav className="relative z-50 mx-auto flex max-w-[86rem] items-center justify-between bg-white px-3 py-3.5 sm:px-4 sm:py-4 lg:px-3 xl:px-2">
         {/* Left: logo + desktop nav */}
-        <div className="flex items-center gap-8">
-          <Logo className="h-10 w-auto" />
+        <div className="flex min-w-0 items-center gap-3 sm:gap-6 lg:gap-5">
+          <Link href="/" aria-label="OpusFesta home" className="shrink-0">
+            <Logo className="h-8 w-auto sm:h-10" />
+          </Link>
 
-          <div className="hidden lg:flex gap-1 font-semibold text-sm">
+          <div className="hidden lg:flex gap-1 font-semibold text-[15px]">
             {navItems.map((item) => (
               <button
                 key={item.label}
                 onMouseEnter={() => setActiveMenu(item.label)}
                 aria-expanded={activeMenu === item.label}
                 aria-haspopup="true"
-                className={`px-4 py-2 rounded-full transition-colors whitespace-nowrap ${
+                className={`px-4 py-2.5 rounded-full transition-colors whitespace-nowrap ${
                   activeMenu === item.label
                     ? 'bg-[var(--accent)] text-[var(--on-accent)]'
                     : 'text-gray-700 hover:bg-gray-100'
@@ -293,18 +347,18 @@ export default function Navbar() {
         </div>
 
         {/* Right: auth + hamburger */}
-        <div className="flex items-center gap-3 font-semibold text-sm">
+        <div className="flex shrink-0 items-center gap-2 font-semibold text-sm sm:gap-3 lg:text-[15px]">
           <a
             href="#"
-            className="hidden lg:block text-gray-700 hover:text-[#1A1A1A] transition-colors whitespace-nowrap px-4 py-2 rounded-full hover:bg-gray-100"
+            className="hidden lg:block text-gray-700 hover:text-[#1A1A1A] transition-colors whitespace-nowrap px-4 py-2.5 rounded-full hover:bg-gray-100"
           >
             Log in
           </a>
-          <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-5 py-2 rounded-full font-bold transition-colors whitespace-nowrap text-sm">
+          <button className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-2 text-xs font-bold whitespace-nowrap text-[var(--on-accent)] transition-colors hover:bg-[var(--accent-hover)] sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]">
             Sign up
           </button>
           <button
-            className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 lg:hidden sm:h-10 sm:w-10"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             onClick={() => setMobileOpen((v) => !v)}
           >
@@ -335,28 +389,28 @@ export default function Navbar() {
                 <p className="text-gray-500 text-xs font-medium mb-5 leading-relaxed">
                   {activeItem.card.description}
                 </p>
-                <a
-                  href="#"
+                <Link
+                  href={getNavHref(activeItem.card.href)}
                   className="mt-auto inline-flex items-center gap-2 text-[#1A1A1A] font-bold text-sm hover:gap-3 transition-all group"
                 >
                   {activeItem.card.linkText}
                   <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </a>
+                </Link>
               </div>
             </div>
 
             {/* Link columns */}
             <div className="flex-1 flex gap-10 pt-1">
               {activeItem.columns.map((col, idx) => (
-                <div key={idx} className="flex-1 min-w-0">
+                <div key={idx} className="flex-1 min-w-[180px]">
                   <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-4 pb-3 border-b border-gray-200">
                     {col.title}
                   </h4>
                   <ul className="space-y-0.5">
                     {col.links.map((link, lIdx) => (
                       <li key={lIdx}>
-                        <a
-                          href="#"
+                        <Link
+                          href={getNavHref(link.href)}
                           className="flex items-center gap-3 px-3 py-2 rounded-xl group hover:bg-white transition-colors"
                         >
                           {link.Icon && (
@@ -364,10 +418,10 @@ export default function Navbar() {
                               <link.Icon size={13} />
                             </div>
                           )}
-                          <span className="font-semibold text-sm text-[#1A1A1A] leading-tight group-hover:text-[#1A1A1A]">
+                          <span className="font-semibold text-sm text-[#1A1A1A] leading-tight whitespace-nowrap group-hover:text-[#1A1A1A]">
                             {link.label}
                           </span>
-                        </a>
+                        </Link>
                       </li>
                     ))}
                   </ul>
@@ -375,14 +429,14 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* Attire photo grid */}
-            {activeItem.label === 'Attire & Rings' && (
+            {/* Visual support grid */}
+            {activeItem.photoGrid && (
               <div className="shrink-0 w-[240px] pt-1">
                 <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-4 pb-3 border-b border-gray-200">
-                  Get Inspired
+                  {activeItem.photoGridTitle ?? 'Get Inspired'}
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
-                  {attirePhotoGrid.map((item) => (
+                  {activeItem.photoGrid.map((item) => (
                     <a key={item.label} href="#" className="group flex flex-col gap-1.5">
                       <div className="rounded-xl overflow-hidden h-[88px] border border-gray-200">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -423,7 +477,9 @@ export default function Navbar() {
               Back
             </button>
           ) : (
-            <Logo className="h-8 w-auto" />
+            <Link href="/" aria-label="OpusFesta home" onClick={closeMobile}>
+              <Logo className="h-8 w-auto" />
+            </Link>
           )}
           <button
             onClick={closeMobile}
@@ -501,13 +557,14 @@ export default function Navbar() {
                         <p className="text-white text-xs font-medium leading-snug mb-2 opacity-90">
                           {item.card.description}
                         </p>
-                        <a
-                          href="#"
+                        <Link
+                          href={getNavHref(item.card.href)}
+                          onClick={closeMobile}
                           className="inline-flex items-center gap-1.5 bg-white text-[#1A1A1A] text-xs font-bold px-3 py-1.5 rounded-full"
                         >
                           {item.card.linkText}
                           <ArrowRight size={11} />
-                        </a>
+                        </Link>
                       </div>
                     </div>
 
@@ -520,8 +577,9 @@ export default function Navbar() {
                         <ul className="flex flex-col gap-0.5">
                           {col.links.map((link, lIdx) => (
                             <li key={lIdx}>
-                              <a
-                                href="#"
+                              <Link
+                                href={getNavHref(link.href)}
+                                onClick={closeMobile}
                                 className="flex items-center gap-3 px-3 py-3 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 transition-colors"
                               >
                                 {link.Icon && (
@@ -531,7 +589,7 @@ export default function Navbar() {
                                 )}
                                 <span className="text-sm font-semibold text-[#1A1A1A] flex-1">{link.label}</span>
                                 <ChevronDown size={14} className="-rotate-90 text-gray-300 shrink-0" />
-                              </a>
+                              </Link>
                             </li>
                           ))}
                         </ul>

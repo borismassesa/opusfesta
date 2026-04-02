@@ -12,6 +12,22 @@
 html,
 body {
   background-color: #ffffff;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  position: relative;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
 }
 
 @keyframes marquee {

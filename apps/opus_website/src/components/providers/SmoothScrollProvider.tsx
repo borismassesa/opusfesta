@@ -8,8 +8,15 @@ export default function SmoothScrollProvider({ children }: { children: React.Rea
   const safe = useMotionSafe()
 
   useEffect(() => {
-    // Only initialise Lenis when animations are safe (respects prefers-reduced-motion + Save-Data)
+    // Keep native scrolling on touch devices. Android complaints often present as
+    // "bad rendering" when the real problem is custom scroll handling.
     if (!safe) return
+
+    const coarsePointer = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches
+      : false
+    const touchDevice = coarsePointer || navigator.maxTouchPoints > 0
+    if (touchDevice) return
 
     let lenis: Lenis
     try {
@@ -19,8 +26,6 @@ export default function SmoothScrollProvider({ children }: { children: React.Rea
         easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         orientation: 'vertical',
         smoothWheel: true,
-        // Disable touch handling — prevents iOS Safari momentum scroll conflict
-        touchMultiplier: 0,
       })
     } catch (err) {
       console.error('Lenis initialisation failed', err)

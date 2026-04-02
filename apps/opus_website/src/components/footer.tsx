@@ -1,11 +1,14 @@
 'use client'
 
+import Link from 'next/link'
 import { useState, useRef } from 'react'
 import { MapPin, Facebook, Instagram, Youtube, Linkedin } from 'lucide-react'
 import { motion, useScroll, useTransform } from 'motion/react'
 import Reveal from '@/components/ui/Reveal'
+import { adviceIdeasFooterLinks } from '@/lib/advice-ideas'
 
 const CATEGORIES = ['Venues', 'Photographers', 'Videographers', 'Caterers', 'DJs & Bands', 'Florists', 'Wedding Planners', 'Hair & Makeup', 'Wedding Cakes', 'Bridal Salons', 'Photo Booths', 'Rentals', 'Transportation', 'Jewellers', 'MC & Officiants']
+const FOOTER_VENDOR_LINKS = ['Venues', 'Photographers', 'Videographers', 'Wedding Planners', 'Caterers', 'Hair & Makeup']
 
 const cities = [
   'Dar es Salaam',
@@ -71,23 +74,28 @@ export default function Footer() {
           <div>
             <h4 className="font-bold mb-4 text-[#1A1A1A]">Find Vendors</h4>
             <ul className="space-y-3 text-gray-500">
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Venues</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Photographers</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Videographers</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Wedding Planners</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Caterers</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Hair & Makeup</a></li>
+              {FOOTER_VENDOR_LINKS.map((label) => (
+                <li key={label}>
+                  <Link
+                    href={`/vendors?category=${label.toLowerCase().replace(/\s+&\s+/g, '-').replace(/\s+/g, '-')}`}
+                    className="hover:text-[#1A1A1A] transition-colors"
+                  >
+                    {label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
           <div>
             <h4 className="font-bold mb-4 text-[#1A1A1A]">Ideas & Advice</h4>
             <ul className="space-y-3 text-gray-500">
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Real Weddings</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Dresses & Attire</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Engagement Rings</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Honeymoon Ideas</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Etiquette & Advice</a></li>
-              <li><a href="#" className="hover:text-[#1A1A1A] transition-colors">Bridal Showers</a></li>
+              {adviceIdeasFooterLinks.map((link) => (
+                <li key={link.label}>
+                  <Link href={link.href} className="hover:text-[#1A1A1A] transition-colors">
+                    {link.label}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
           <div>
@@ -106,7 +114,8 @@ export default function Footer() {
         <div ref={watermarkRef} className="mb-8 py-8 -mx-6 overflow-hidden flex justify-center">
           <motion.p
             style={{ y }}
-            className="text-[15vw] md:text-[12vw] lg:text-[10vw] xl:text-[9.5vw] font-black tracking-tighter uppercase leading-none text-gray-100 whitespace-nowrap select-none"
+            aria-hidden="true"
+            className="pointer-events-none whitespace-nowrap select-none text-center text-[14vw] md:text-[11vw] lg:text-[9vw] xl:text-[8.2vw] 2xl:text-[7.4vw] font-black tracking-tighter uppercase leading-none text-gray-100"
           >
             OpusFesta
           </motion.p>
