@@ -8,6 +8,19 @@ export type VendorCategoryId =
   | 'hair-makeup'
   | 'wedding-cakes'
   | 'transportation'
+  | 'officiant-mc'
+  | 'decor-styling'
+  | 'wedding-planners'
+  | 'invitations-stationery'
+  | 'jewellery-rings'
+  | 'bridal-wear'
+  | 'sound-lighting'
+  | 'groom-wear'
+  | 'photo-booths'
+  | 'honeymoon-travel'
+  | 'tents-marquees'
+  | 'security'
+  | 'caricature-entertainment'
 
 export type Vendor = {
   id: string
@@ -28,11 +41,13 @@ export type Vendor = {
     alt: string
     poster?: string
   }
+  gallery?: string[]
 }
 
 export type VendorCategory = {
   id: VendorCategoryId
   label: string
+  count: number
 }
 
 export type VendorCity = {
@@ -45,15 +60,28 @@ export type VendorCity = {
 export const VENDORS_BASE_PATH = '/vendors'
 
 export const vendorCategories: VendorCategory[] = [
-  { id: 'venues', label: 'Venues' },
-  { id: 'photographers', label: 'Photographers' },
-  { id: 'videographers', label: 'Videographers' },
-  { id: 'djs-bands', label: 'DJs & Bands' },
-  { id: 'florists', label: 'Florists' },
-  { id: 'caterers', label: 'Caterers' },
-  { id: 'hair-makeup', label: 'Hair & Makeup' },
-  { id: 'wedding-cakes', label: 'Wedding Cakes' },
-  { id: 'transportation', label: 'Transportation' },
+  { id: 'venues',                   label: 'Venues',                    count: 312 },
+  { id: 'photographers',            label: 'Photographers',             count: 248 },
+  { id: 'wedding-planners',         label: 'Wedding Planners',          count: 134 },
+  { id: 'officiant-mc',             label: 'MC',                        count:  97 },
+  { id: 'florists',                 label: 'Florists',                  count: 183 },
+  { id: 'caterers',                 label: 'Caterers',                  count: 209 },
+  { id: 'hair-makeup',              label: 'Hair & Makeup',             count: 176 },
+  { id: 'wedding-cakes',            label: 'Wedding Cakes',             count: 118 },
+  { id: 'transportation',           label: 'Transportation',            count:  74 },
+  { id: 'djs-bands',                label: 'DJs & Bands',               count: 142 },
+  { id: 'decor-styling',            label: 'Decor & Styling',           count: 161 },
+  { id: 'videographers',            label: 'Videographers',             count: 195 },
+  { id: 'invitations-stationery',   label: 'Invitations & Stationery',  count:  89 },
+  { id: 'jewellery-rings',          label: 'Jewellery & Rings',         count:  63 },
+  { id: 'bridal-wear',              label: 'Bridal Wear & Fashion',     count: 107 },
+  { id: 'sound-lighting',           label: 'Sound & Lighting',          count:  81 },
+  { id: 'groom-wear',               label: 'Groom Wear',                count:  58 },
+  { id: 'photo-booths',             label: 'Photo Booths',              count:  44 },
+  { id: 'honeymoon-travel',         label: 'Honeymoon & Travel',        count:  37 },
+  { id: 'tents-marquees',           label: 'Tents & Marquees',          count:  52 },
+  { id: 'security',                 label: 'Security',                  count:  29 },
+  { id: 'caricature-entertainment', label: 'Caricature & Entertainment', count:  33 },
 ]
 
 export const vendorCities: VendorCity[] = [
@@ -118,9 +146,9 @@ export const vendors: Vendor[] = [
     },
   },
   {
-    id: 'nia-photography',
-    slug: 'nia-photography',
-    name: 'Nia K. Photography',
+    id: 'opus-studio',
+    slug: 'opus-studio',
+    name: 'OpusStudio',
     excerpt:
       'Editorial documentary photography that captures atmosphere, not just moments. Based in Dar, available across East Africa.',
     category: 'Photographers',
@@ -134,7 +162,7 @@ export const vendors: Vendor[] = [
     heroMedia: {
       type: 'image',
       src: '/assets/images/brideincar.jpg',
-      alt: 'Bride portrait by Nia K. Photography',
+      alt: 'Bride portrait by OpusStudio',
     },
   },
   {
@@ -179,9 +207,9 @@ export const vendors: Vendor[] = [
     },
   },
   {
-    id: 'dar-rooftop-terrace',
-    slug: 'dar-rooftop-terrace',
-    name: 'The Dar Rooftop Terrace',
+    id: 'mlimacity-hall',
+    slug: 'mlimacity-hall',
+    name: 'Mlimacity Hall',
     excerpt:
       'A downtown rooftop with panoramic city-and-ocean views, a private bar, and a modern industrial-meets-elegant aesthetic.',
     category: 'Venues',
@@ -253,9 +281,8 @@ export const vendors: Vendor[] = [
     reviewCount: 47,
     badge: 'Top Rated',
     heroMedia: {
-      type: 'video',
-      src: '/assets/videos/happy_couples.mov',
-      poster: '/assets/images/couples_together.jpg',
+      type: 'image',
+      src: '/assets/images/couples_together.jpg',
       alt: 'Wedding film still from Frame & Feel Films',
     },
   },
