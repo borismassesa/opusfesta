@@ -1,5 +1,6 @@
 import type { Metadata } from 'next'
 import VendorsIndexPage from '@/components/vendors/VendorsIndexPage'
+import PageTransition from '@/components/ui/PageTransition'
 
 export const metadata: Metadata = {
   title: 'Find Vendors | OpusFesta',
@@ -8,5 +9,9 @@ export const metadata: Metadata = {
 }
 
 export default function VendorsPage() {
-  return <VendorsIndexPage />
+  return (
+    <PageTransition>
+      <VendorsIndexPage />
+    </PageTransition>
+  )
 }

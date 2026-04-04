@@ -48,7 +48,7 @@ import {
 } from 'lucide-react'
 
 type NavLink = { label: string; href?: string; Icon?: LucideIcon; subLinks?: string[] }
-type PhotoGridItem = { label: string; image: string }
+type PhotoGridItem = { label: string; image: string; href?: string }
 
 const attirePhotoGrid: PhotoGridItem[] = [
   { label: 'Wedding Dresses', image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&w=400&q=80' },
@@ -79,10 +79,10 @@ const websitesPhotoGrid: PhotoGridItem[] = [
 ]
 
 const vendorPhotoGrid: PhotoGridItem[] = [
-  { label: 'Venues', image: '/assets/images/churchcouples.jpg' },
-  { label: 'Photography', image: '/assets/images/beautiful_bride.jpg' },
-  { label: 'Florals', image: '/assets/images/flowers_pinky.jpg' },
-  { label: 'Beauty', image: '/assets/images/beautyinbride.jpg' },
+  { label: 'Venues',      image: '/assets/images/churchcouples.jpg',  href: '/vendors/browse?category=venues' },
+  { label: 'Photography', image: '/assets/images/beautiful_bride.jpg', href: '/vendors/browse?category=photographers' },
+  { label: 'Florals',     image: '/assets/images/flowers_pinky.jpg',   href: '/vendors/browse?category=florists' },
+  { label: 'Beauty',      image: '/assets/images/beautyinbride.jpg',   href: '/vendors/browse?category=hair-makeup' },
 ]
 
 const adviceIdeasHrefByLabel = new Map(adviceIdeasNavLinks.map((link) => [link.label, link.href]))
@@ -138,30 +138,30 @@ const navItems: Array<{
       {
         title: 'Categories',
         links: [
-          { Icon: MapPin, label: 'Venues' },
-          { Icon: Camera, label: 'Photographers' },
-          { Icon: Video, label: 'Videographers' },
-          { Icon: Flower2, label: 'Florists' },
-          { Icon: Utensils, label: 'Caterers' },
+          { Icon: MapPin,   label: 'Venues',       href: '/vendors/browse?category=venues' },
+          { Icon: Camera,   label: 'Photographers', href: '/vendors/browse?category=photographers' },
+          { Icon: Video,    label: 'Videographers', href: '/vendors/browse?category=videographers' },
+          { Icon: Flower2,  label: 'Florists',      href: '/vendors/browse?category=florists' },
+          { Icon: Utensils, label: 'Caterers',      href: '/vendors/browse?category=caterers' },
         ],
       },
       {
         title: 'Services',
         links: [
-          { Icon: Music, label: 'DJs & Bands' },
-          { Icon: Sparkles, label: 'Hair & Makeup' },
-          { Icon: Gift, label: 'Wedding Cakes' },
-          { Icon: Shirt, label: 'Bridal Salons' },
-          { Icon: PartyPopper, label: 'MC & Officiants' },
+          { Icon: Music,        label: 'DJs & Bands',     href: '/vendors/browse?category=djs-bands' },
+          { Icon: Sparkles,     label: 'Hair & Makeup',   href: '/vendors/browse?category=hair-makeup' },
+          { Icon: Gift,         label: 'Wedding Cakes',   href: '/vendors/browse?category=wedding-cakes' },
+          { Icon: Shirt,        label: 'Bridal Salons',   href: '/vendors/browse?category=bridal-wear' },
+          { Icon: PartyPopper,  label: 'MC & Officiants', href: '/vendors/browse?category=officiant-mc' },
         ],
       },
       {
         title: 'Resources',
         links: [
-          { Icon: Star, label: 'Verified Reviews' },
-          { Icon: Tag, label: 'Pricing Guide' },
-          { Icon: HelpCircle, label: 'How to Choose a Vendor' },
-          { Icon: Building2, label: 'Vendors by City' },
+          { Icon: Star,       label: 'Verified Reviews',       href: '/vendors/browse' },
+          { Icon: Tag,        label: 'Pricing Guide',          href: '/vendors/browse' },
+          { Icon: HelpCircle, label: 'How to Choose a Vendor', href: '/vendors/browse' },
+          { Icon: Building2,  label: 'Vendors by City',        href: '/vendors/browse' },
         ],
       },
     ],
@@ -396,6 +396,7 @@ export default function Navbar() {
                   {activeItem.card.linkText}
                   <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
                 </Link>
+
               </div>
             </div>
 
@@ -429,15 +430,42 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* Visual support grid */}
-            {activeItem.photoGrid && (
+            {/* Visual support grid / vendor CTA */}
+            {activeItem.label === 'Vendors' ? (
+              <div className="shrink-0 w-[240px] pt-1">
+                <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-4 pb-3 border-b border-gray-200">
+                  For Professionals
+                </h4>
+                <Link
+                  href="/vendors/join"
+                  className="group flex flex-col h-[calc(100%-40px)] min-h-[180px] rounded-2xl overflow-hidden border border-gray-200 hover:border-[#C9A0DC] transition-colors"
+                >
+                  <div className="relative flex-1 overflow-hidden">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=400&q=80"
+                      alt="Join as a vendor"
+                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/10 to-transparent" />
+                  </div>
+                  <div className="bg-white px-4 py-4 flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] font-semibold text-gray-400 mb-0.5">Wedding professional?</p>
+                      <p className="text-[13px] font-bold text-[#1A1A1A]">Join as a vendor</p>
+                    </div>
+                    <ArrowRight size={14} className="shrink-0 text-gray-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#1A1A1A]" />
+                  </div>
+                </Link>
+              </div>
+            ) : activeItem.photoGrid ? (
               <div className="shrink-0 w-[240px] pt-1">
                 <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-4 pb-3 border-b border-gray-200">
                   {activeItem.photoGridTitle ?? 'Get Inspired'}
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
                   {activeItem.photoGrid.map((item) => (
-                    <a key={item.label} href="#" className="group flex flex-col gap-1.5">
+                    <a key={item.label} href={item.href ?? '#'} className="group flex flex-col gap-1.5">
                       <div className="rounded-xl overflow-hidden h-[88px] border border-gray-200">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -453,8 +481,9 @@ export default function Navbar() {
                   ))}
                 </div>
               </div>
-            )}
+            ) : null}
           </div>
+
         </div>
       )}
 
@@ -595,6 +624,20 @@ export default function Navbar() {
                         </ul>
                       </div>
                     ))}
+
+                    {item.label === 'Vendors' && (
+                      <Link
+                        href="/vendors/join"
+                        onClick={closeMobile}
+                        className="mt-2 flex items-center justify-between px-4 py-3.5 rounded-2xl border border-[#C9A0DC] bg-[rgba(201,160,220,0.08)]"
+                      >
+                        <div>
+                          <p className="text-[11px] font-semibold text-gray-500 mb-0.5">Wedding professional?</p>
+                          <p className="text-sm font-bold text-[#1A1A1A]">Join as a vendor</p>
+                        </div>
+                        <ArrowRight size={16} className="text-[#1A1A1A] shrink-0" />
+                      </Link>
+                    )}
                   </div>
                 </>
               )

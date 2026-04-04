@@ -130,7 +130,7 @@ export const vendors: Vendor[] = [
     slug: 'zanzibar-pearl-venue',
     name: 'The Zanzibar Pearl',
     excerpt:
-      'An oceanfront venue with open-air pavilions, private beaches, and a team that handles every detail with quiet precision.',
+      'Perched on the Indian Ocean with open-air pavilions, private beach access, and unobstructed sunset views, The Zanzibar Pearl offers an all-inclusive wedding experience. Their in-house team handles everything from décor setup and catering coordination to guest transfers and overnight stays, so couples can be fully present on the day.',
     category: 'Venues',
     categoryId: 'venues',
     city: 'Zanzibar',
