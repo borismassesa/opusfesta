@@ -61,9 +61,9 @@ export default function Hero() {
         <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 sm:px-7 py-3.5 rounded-full font-bold text-[15px] transition-colors whitespace-nowrap">
           Start planning
         </button>
-        <button className="text-[#1A1A1A] font-bold text-[15px] underline underline-offset-4 hover:text-gray-600 transition-colors whitespace-nowrap">
+        <a href="/vendors" className="text-[#1A1A1A] font-bold text-[15px] underline underline-offset-4 hover:text-gray-600 transition-colors whitespace-nowrap">
           Find vendors
-        </button>
+        </a>
       </motion.div>
 
       <motion.div

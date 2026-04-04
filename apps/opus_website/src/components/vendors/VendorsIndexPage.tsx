@@ -1,7 +1,9 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 
+import VendorsBottomCta from '@/components/vendors/VendorsBottomCta'
 import Link from 'next/link'
 import type { LucideIcon } from 'lucide-react'
 import {
@@ -33,15 +35,24 @@ import {
 import {
   VENDORS_BASE_PATH,
   vendorCategories,
-  vendorCities,
   vendors,
   getFeaturedVendors,
   getVendorsByCategory,
 } from '@/lib/vendors'
+import { getVendorCardImages } from '@/lib/vendor-images'
+
+const BROWSE_PATH = '/vendors/browse'
+
+const TAB_CATEGORY_MAP: Record<string, string> = {
+  Venues: 'venues',
+  Photographers: 'photographers',
+  Catering: 'caterers',
+  MCs: 'officiant-mc',
+}
 
 const pageClass = 'mx-auto w-full max-w-[72rem] 2xl:max-w-[90rem] 3xl:max-w-[112rem] 4xl:max-w-[140rem]'
 
-const heroVendor = getFeaturedVendors()[0] ?? vendors[0]
+const _heroVendor = getFeaturedVendors()[0] ?? vendors[0]
 const ROW_SIZE = 6
 
 const guestFavourites = [...vendors]
@@ -105,79 +116,12 @@ const categoryIcons: Record<string, LucideIcon> = {
   'caricature-entertainment': Users,
 }
 
-const featurePoints = [
-  {
-    icon: ShieldCheck,
-    title: 'Find verified vendors',
-    body: 'Profiles with cleaner review signals and pricing guidance before you open the full page.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Get the style you want',
-    body: 'Browse destination-ready venues, beauty teams, and photo specialists that fit the mood.',
-  },
-  {
-    icon: Users,
-    title: 'Read useful reviews',
-    body: 'See why couples keep shortlisting the same teams for intimate weddings and big guest weekends.',
-  },
-]
-
-const faqs = [
-  'What is OpusFesta and how does vendor search work?',
-  'How do I use search filters?',
-  'Do I need to contact vendors individually?',
-  'What if I need destination-wedding help?',
-  'Need more information?',
-]
-
-function VendorMedia({
-  src,
-  alt,
-  type,
-  poster,
-}: {
-  src: string
-  alt: string
-  type: 'image' | 'video'
-  poster?: string
-}) {
-  if (type === 'video') {
-    return (
-      <video
-        src={src}
-        poster={poster}
-        autoPlay
-        muted
-        loop
-        playsInline
-        aria-hidden="true"
-        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-      />
-    )
-  }
-
-  return (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      src={src}
-      alt={alt}
-      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-    />
-  )
-}
-
 const HERO_TABS = [
   { label: 'Venues', icon: MapPin },
   { label: 'Photographers', icon: Camera },
   { label: 'Catering', icon: UtensilsCrossed },
   { label: 'MCs', icon: Users },
 ]
-
-const topVendorNames = [...vendors]
-  .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
-  .slice(0, 3)
-  .map((v) => v.name)
 
 const topVenueNames = vendors
   .filter((v) => v.categoryId === 'venues')
@@ -228,7 +172,6 @@ function HeroVideoCard() {
     video.src = HERO_VIDEOS[current].src
     video.play().catch(() => {})
 
-    // fade out → swap content → fade in
     setVisible(false)
     const t = setTimeout(() => {
       setDisplayed(current)
@@ -251,7 +194,6 @@ function HeroVideoCard() {
         className="h-full w-full object-cover"
       />
 
-      {/* Animated vendor badge */}
       <div
         style={{
           opacity: visible ? 1 : 0,
@@ -274,6 +216,16 @@ function HeroVideoCard() {
 
 function HeroSection() {
   const [activeTab, setActiveTab] = useState('Venues')
+  const [searchValue, setSearchValue] = useState('')
+  const router = useRouter()
+
+  const handleSearch = () => {
+    const params = new URLSearchParams()
+    if (searchValue.trim()) params.set('q', searchValue.trim())
+    const categoryId = TAB_CATEGORY_MAP[activeTab]
+    if (categoryId) params.set('category', categoryId)
+    router.push(`${BROWSE_PATH}?${params.toString()}`)
+  }
 
   return (
     <div className="flex flex-col items-start gap-10 lg:flex-row lg:gap-16 2xl:gap-24 3xl:gap-32">
@@ -308,10 +260,21 @@ function HeroSection() {
           <div className="absolute -inset-[2px] rounded-full bg-[length:200%_100%] animate-[shimmer_3s_ease-in-out_infinite] bg-gradient-to-r from-[#C9A0DC]/20 via-[#C9A0DC] to-[#C9A0DC]/20 opacity-50 group-focus-within/search:opacity-80 transition-opacity" />
           <input
             type="text"
-            placeholder={`What type of ${activeTab.toLowerCase()} are you interested in?`}
+            value={searchValue}
+            onChange={(e) => setSearchValue(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+            placeholder={
+              activeTab === 'Venues' ? 'Search venues — beachfront, ballroom, garden…' :
+              activeTab === 'Photographers' ? 'Search photographers — editorial, documentary…' :
+              activeTab === 'Catering' ? 'Search caterers — buffet, plated, fusion…' :
+              'Search MCs — bilingual, high-energy, formal…'
+            }
             className="relative w-full rounded-full border-0 bg-white py-4 pl-5 pr-14 text-sm text-[#1A1A1A] placeholder:text-gray-400 focus:outline-none"
           />
-          <button className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--accent)] transition-colors hover:bg-[var(--accent-hover)]">
+          <button
+            onClick={handleSearch}
+            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--accent)] transition-colors hover:bg-[var(--accent-hover)]"
+          >
             <Search size={18} className="text-[var(--on-accent)]" />
           </button>
         </div>
@@ -321,6 +284,12 @@ function HeroSection() {
           {(POPULAR_BY_TAB[activeTab]?.items ?? []).map((tag) => (
             <button
               key={tag}
+              onClick={() => {
+                const params = new URLSearchParams({ q: tag })
+                const categoryId = TAB_CATEGORY_MAP[activeTab]
+                if (categoryId) params.set('category', categoryId)
+                router.push(`${BROWSE_PATH}?${params.toString()}`)
+              }}
               className="rounded-full border border-gray-200 px-3.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
             >
               {tag}
@@ -337,7 +306,7 @@ function HeroSection() {
 }
 
 function CardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
-  const images = vendor.gallery?.length ? vendor.gallery : [vendor.heroMedia.src]
+  const images = getVendorCardImages(vendor)
   const [idx, setIdx] = useState(0)
   const dragStart = useRef<number | null>(null)
 
@@ -372,7 +341,6 @@ function CardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
       />
 
-      {/* Prev / Next arrows — only show if multiple images */}
       {images.length > 1 && (
         <>
           <button
@@ -390,7 +358,6 @@ function CardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
             <ArrowRight size={13} className="text-[#000]" />
           </button>
 
-          {/* Dot indicators */}
           <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 gap-1">
             {images.map((_, i) => (
               <button
@@ -403,7 +370,6 @@ function CardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
         </>
       )}
 
-      {/* Top-left badges */}
       <div className="absolute left-3 top-3 flex flex-wrap gap-1">
         {vendor.featured && (
           <span className="rounded-full border border-[#C9A0DC] bg-[rgba(201,160,220,0.85)] px-2.5 py-0.5 text-[10px] font-semibold text-[#000] backdrop-blur-sm">
@@ -417,7 +383,6 @@ function CardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
         )}
       </div>
 
-      {/* Top-right heart */}
       <button
         onClick={(e) => e.preventDefault()}
         aria-label="Save to favourites"
@@ -440,21 +405,25 @@ function ListingCard({ vendor }: { vendor: (typeof vendors)[number] }) {
     >
       <CardImageCarousel vendor={vendor} />
 
-      {/* Body zone — no border, clean white */}
       <div className="pt-3">
-        {/* Row 1: Name (left) · Rating + Views (right) */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1">
             <h3 className="font-display truncate text-[16px] leading-snug text-[#000]">{vendor.name}</h3>
             {vendor.badge === 'Verified' && (
-              <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" title="Verified vendor" />
+              <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified vendor" />
             )}
           </div>
           <div className="flex shrink-0 items-center gap-1 text-[11px] text-gray-400">
-            {vendor.reviewCount > 0 && (
+            {vendor.reviewCount > 0 ? (
               <>
                 <Star size={9} className="text-[#F5A623]" fill="currentColor" />
                 <span className="font-semibold text-[#000]">{vendor.rating.toFixed(1)}</span>
+                <span className="text-gray-300">·</span>
+              </>
+            ) : (
+              <>
+                <Star size={9} className="text-[#9FE870]" fill="currentColor" />
+                <span className="font-semibold text-[#9FE870]">New</span>
                 <span className="text-gray-300">·</span>
               </>
             )}
@@ -467,14 +436,15 @@ function ListingCard({ vendor }: { vendor: (typeof vendors)[number] }) {
           </div>
         </div>
 
-
-        {/* Row 2: Location */}
         <div className="mt-0.5 flex items-center gap-1 text-[11px] text-gray-400">
           <MapPin size={9} className="shrink-0" />
           <span className="truncate">{vendor.city}</span>
         </div>
 
-        {/* Row 3: Trust signals */}
+        {vendor.excerpt && (
+          <p className="mt-1.5 line-clamp-2 text-[12px] leading-snug text-gray-500">{vendor.excerpt}</p>
+        )}
+
         {(vendor.badge === 'Top Rated' || vendor.featured || vendor.reviewCount >= 30) && (
           <div className="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-gray-400">
             {(vendor.badge === 'Top Rated' || vendor.featured) && (
@@ -487,7 +457,6 @@ function ListingCard({ vendor }: { vendor: (typeof vendors)[number] }) {
           </div>
         )}
 
-        {/* Row 4: Price + CTA */}
         <div className="mt-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] text-gray-400">starting at</p>
@@ -508,58 +477,19 @@ function ListingCard({ vendor }: { vendor: (typeof vendors)[number] }) {
   )
 }
 
-function CategoryStrip() {
-  const [active, setActive] = useState<string | null>(null)
-
-  return (
-    <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-gray-100">
-      <div className={`${pageClass} px-4 sm:px-6 2xl:px-10 3xl:px-16`}>
-        <div className="flex items-center gap-1 overflow-x-auto py-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          {vendorCategories.map((category) => {
-            const Icon = categoryIcons[category.id]
-            const isActive = active === category.id
-            return (
-              <button
-                key={category.id}
-                onClick={() => setActive(isActive ? null : category.id)}
-                className="group flex shrink-0 flex-col items-center gap-1.5 px-4 py-2 relative"
-              >
-                <div className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors ${isActive ? 'bg-[#1A1A1A]' : 'bg-gray-100 group-hover:bg-gray-200'}`}>
-                  {Icon && (
-                    <Icon
-                      size={17}
-                      className={isActive ? 'text-white' : 'text-gray-500 group-hover:text-[#1A1A1A]'}
-                    />
-                  )}
-                </div>
-                <span className={`text-[11px] font-semibold whitespace-nowrap transition-colors ${isActive ? 'text-[#1A1A1A]' : 'text-gray-400 group-hover:text-[#1A1A1A]'}`}>
-                  {category.label}
-                </span>
-                {isActive && (
-                  <span className="absolute bottom-0 left-4 right-4 h-0.5 rounded-full bg-[#1A1A1A]" />
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// Maps card index → Tailwind classes that hide it below the breakpoint where a new column appears
+// Maps card index to Tailwind classes that hide it below the breakpoint where a new column appears
 const cardVisibility = [
-  '',                                    // index 0 — always visible (1 col+)
-  'hidden sm:block',                     // index 1 — visible at sm+ (2 cols)
-  'hidden lg:block',                     // index 2 — visible at lg+ (3 cols)
-  'hidden xl:block',                     // index 3 — visible at xl+ (4 cols)
-  'hidden 2xl:block',                    // index 4 — visible at 2xl+ (5 cols)
-  'hidden 3xl:block',                    // index 5 — visible at 3xl+ (6 cols)
+  '',                 // index 0 - always visible
+  'hidden sm:block',  // index 1 - sm+
+  'hidden lg:block',  // index 2 - lg+
+  'hidden xl:block',  // index 3 - xl+
+  'hidden 2xl:block', // index 4 - 2xl+
+  'hidden 3xl:block', // index 5 - 3xl+
 ]
 
 function VendorRow({ vendors: rows }: { vendors: (typeof vendors) }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 3xl:grid-cols-6">
+    <div className="grid gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {rows.map((vendor, i) => (
         <div key={vendor.id} className={cardVisibility[i] ?? 'hidden'}>
           <ListingCard vendor={vendor} />
@@ -621,16 +551,14 @@ function CategoryBrowseStrip() {
   }
 
   return (
-    <section className="py-10 sm:py-14 2xl:py-18 bg-[#F7F5F2]">
-      {/* Header */}
-      <div className={`${pageClass} mb-6 flex items-end justify-between px-4 sm:px-6 2xl:px-10 3xl:px-16`}>
+    <section className="px-4 py-10 sm:px-6 sm:py-14 2xl:px-10 2xl:py-18 3xl:px-16 bg-[#F7F5F2]">
+      <div className={`${pageClass} mb-6 flex items-end justify-between`}>
         <div>
           <h2 className="font-display text-[1.5rem] sm:text-[1.8rem] 2xl:text-[2.1rem] leading-tight text-[#1A1A1A]">
             Browse by category
           </h2>
         </div>
         <div className="flex items-center gap-3">
-          {/* Prev / Next arrows */}
           <div className="hidden items-center gap-1.5 sm:flex">
             <button
               onClick={() => scroll('left')}
@@ -654,46 +582,45 @@ function CategoryBrowseStrip() {
         </div>
       </div>
 
-      {/* Scroll strip */}
       <div className={pageClass}>
-        <div
-          ref={scrollRef}
-          onScroll={syncArrows}
-          className="flex gap-3 overflow-x-auto px-4 sm:px-6 2xl:px-10 3xl:px-16 pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory"
-        >
-          {vendorCategories.map((category) => {
-            const Icon = categoryIcons[category.id]
-            const coverVendor = vendors.find((v) => v.categoryId === category.id)
-            const coverSrc = coverVendor?.heroMedia.src ?? '/assets/images/coupleswithpiano.jpg'
+      <div
+        ref={scrollRef}
+        onScroll={syncArrows}
+        className="flex gap-3 overflow-x-auto pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory"
+      >
+        {vendorCategories.map((category) => {
+          const Icon = categoryIcons[category.id]
+          const coverVendor = vendors.find((v) => v.categoryId === category.id)
+          const coverSrc = coverVendor?.heroMedia.src ?? '/assets/images/coupleswithpiano.jpg'
 
-            return (
-              <Link
-                key={category.id}
-                href={`${VENDORS_BASE_PATH}?category=${category.id}`}
-                className="group snap-start shrink-0 w-[138px] sm:w-[158px] lg:w-[178px] xl:w-[198px] 2xl:w-[215px]"
-              >
-                <div className="relative w-full overflow-hidden rounded-2xl aspect-[3/4] bg-gray-200">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={coverSrc}
-                    alt={category.label}
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
-                  {Icon && (
-                    <div className="absolute left-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm">
-                      <Icon size={13} className="text-[#1A1A1A]" />
-                    </div>
-                  )}
-                  <div className="absolute bottom-0 left-0 right-0 p-3">
-                    <p className="text-[12px] font-bold leading-tight text-white">{category.label}</p>
-                    <p className="mt-0.5 text-[10px] text-white/60">{category.count} vendors</p>
+          return (
+            <Link
+              key={category.id}
+              href={`${BROWSE_PATH}?category=${category.id}`}
+              className="group snap-start shrink-0 w-[138px] sm:w-[158px] lg:w-[178px] xl:w-[198px] 2xl:w-[215px]"
+            >
+              <div className="relative w-full overflow-hidden rounded-2xl aspect-[3/4] bg-gray-200">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={coverSrc}
+                  alt={category.label}
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
+                {Icon && (
+                  <div className="absolute left-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm">
+                    <Icon size={13} className="text-[#1A1A1A]" />
                   </div>
+                )}
+                <div className="absolute bottom-0 left-0 right-0 p-3">
+                  <p className="text-[12px] font-bold leading-tight text-white">{category.label}</p>
+                  <p className="mt-0.5 text-[10px] text-white/60">{category.count} vendors</p>
                 </div>
-              </Link>
-            )
-          })}
-        </div>
+              </div>
+            </Link>
+          )
+        })}
+      </div>
       </div>
     </section>
   )
@@ -705,34 +632,29 @@ export default function VendorsIndexPage() {
       <section className="px-4 pb-10 pt-10 sm:px-6 sm:pb-12 sm:pt-14 2xl:px-10 2xl:pt-20 3xl:px-16 3xl:pt-24">
         <div className={pageClass}>
           <HeroSection />
-
         </div>
       </section>
 
-
       <CategoryBrowseStrip />
 
-      <section className="px-4 py-6 sm:px-6 sm:py-8" id="guest-favourites">
+      <section className="px-4 py-6 sm:px-6 sm:py-8 2xl:px-10 2xl:py-12 3xl:px-16 3xl:py-16" id="guest-favourites">
         <div className={pageClass}>
           <SectionHeader
             title="Loved by couples"
             description="Vendors couples have been booking for their special day."
-            href={VENDORS_BASE_PATH}
+            href={BROWSE_PATH}
             ctaLabel="Browse all"
           />
           <VendorRow vendors={guestFavourites} />
         </div>
       </section>
 
-
-
-
       <section className="px-4 py-6 sm:px-6 sm:py-8 2xl:px-10 2xl:py-12 3xl:px-16 3xl:py-16">
         <div className={pageClass}>
           <SectionHeader
             title="Beyond the venue"
             description="Music, florals, transport, and everything in between."
-            href={VENDORS_BASE_PATH}
+            href={BROWSE_PATH}
             ctaLabel="Explore all"
           />
           <VendorRow vendors={planningRow} />
@@ -744,7 +666,7 @@ export default function VendorsIndexPage() {
           <SectionHeader
             title="Guests keep coming back"
             description="Vendors with a history of happy couples and memorable weddings."
-            href={VENDORS_BASE_PATH}
+            href={BROWSE_PATH}
             ctaLabel="See more"
           />
           <VendorRow vendors={promotionsRow} />
@@ -756,13 +678,14 @@ export default function VendorsIndexPage() {
           <SectionHeader
             title="Discover more vendors"
             description="More talented vendors ready to make your day special."
-            href={VENDORS_BASE_PATH}
+            href={BROWSE_PATH}
             ctaLabel="Explore all"
           />
           <VendorRow vendors={newVendorsRow} />
         </div>
       </section>
 
+      <VendorsBottomCta />
     </main>
   )
 }
