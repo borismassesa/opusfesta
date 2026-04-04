@@ -51,7 +51,7 @@ export default function Footer() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4 mb-20">
             {cities.map((city) => (
               <a key={city} href="#" className="flex items-center gap-3 hover:underline text-sm font-medium text-gray-600">
-                <MapPin size={16} className="text-[var(--accent)]" />
+                <MapPin size={16} className="text-(--accent)" />
                 {activeCategory} in {city}
               </a>
             ))}

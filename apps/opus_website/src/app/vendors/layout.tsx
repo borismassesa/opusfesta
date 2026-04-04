@@ -4,7 +4,7 @@ import VendorsFooterGate from '@/components/vendors/VendorsFooterGate'
 
 export default function VendorsLayout({ children }: { children: ReactNode }) {
   return (
-    <div className="font-sans bg-[#FFFFFF] text-[#1A1A1A] selection:bg-[var(--accent)] selection:text-[var(--on-accent)]">
+    <div className="font-sans bg-[#FFFFFF] text-[#1A1A1A] selection:bg-(--accent) selection:text-(--on-accent)">
       <Navbar />
       {children}
       <VendorsFooterGate />

@@ -58,7 +58,7 @@ export default function Hero() {
         className="mt-8 flex flex-wrap items-center justify-center gap-x-4 gap-y-3 sm:mt-10 sm:gap-x-6"
         {...anim(0.36, drift.sm)}
       >
-        <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 sm:px-7 py-3.5 rounded-full font-bold text-[15px] transition-colors whitespace-nowrap">
+        <button className="bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) px-6 sm:px-7 py-3.5 rounded-full font-bold text-[15px] transition-colors whitespace-nowrap">
           Start planning
         </button>
         <a href="/vendors" className="text-[#1A1A1A] font-bold text-[15px] underline underline-offset-4 hover:text-gray-600 transition-colors whitespace-nowrap">
@@ -67,7 +67,7 @@ export default function Hero() {
       </motion.div>
 
       <motion.div
-        className="mt-10 sm:mt-14 md:mt-16 rounded-[20px] sm:rounded-[28px] md:rounded-[40px] overflow-hidden w-full mx-auto relative aspect-[4/5] sm:aspect-[4/3] md:aspect-video bg-gray-100 shadow-2xl"
+        className="mt-10 sm:mt-14 md:mt-16 rounded-[20px] sm:rounded-[28px] md:rounded-[40px] overflow-hidden w-full mx-auto relative aspect-4/5 sm:aspect-4/3 md:aspect-video bg-gray-100 shadow-2xl"
         {...anim(0.48, drift.md)}
       >
         <video

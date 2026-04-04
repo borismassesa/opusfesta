@@ -183,7 +183,7 @@ function HeroVideoCard() {
   const vendor = HERO_VIDEOS[displayed]
 
   return (
-    <div className="overflow-hidden rounded-2xl bg-[#1A1A1A] relative aspect-[4/3] shadow-2xl sm:rounded-3xl">
+    <div className="overflow-hidden rounded-2xl bg-[#1A1A1A] relative aspect-4/3 shadow-2xl sm:rounded-3xl">
       <video
         ref={videoRef}
         src={HERO_VIDEOS[0].src}
@@ -257,7 +257,7 @@ function HeroSection() {
         </div>
 
         <div className="relative mb-6 group/search">
-          <div className="absolute -inset-[2px] rounded-full bg-[length:200%_100%] animate-[shimmer_3s_ease-in-out_infinite] bg-gradient-to-r from-[#C9A0DC]/20 via-[#C9A0DC] to-[#C9A0DC]/20 opacity-50 group-focus-within/search:opacity-80 transition-opacity" />
+          <div className="absolute -inset-[2px] rounded-full bg-size-[200%_100%] animate-[shimmer_3s_ease-in-out_infinite] bg-linear-to-r from-[#C9A0DC]/20 via-[#C9A0DC] to-[#C9A0DC]/20 opacity-50 group-focus-within/search:opacity-80 transition-opacity" />
           <input
             type="text"
             value={searchValue}
@@ -273,9 +273,9 @@ function HeroSection() {
           />
           <button
             onClick={handleSearch}
-            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-[var(--accent)] transition-colors hover:bg-[var(--accent-hover)]"
+            className="absolute right-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-(--accent) transition-colors hover:bg-(--accent-hover)"
           >
-            <Search size={18} className="text-[var(--on-accent)]" />
+            <Search size={18} className="text-(--on-accent)" />
           </button>
         </div>
 
@@ -348,14 +348,14 @@ function CardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
             aria-label="Previous image"
             className="absolute left-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm opacity-0 transition-opacity group-hover/img:opacity-100 hover:bg-white"
           >
-            <ArrowRight size={13} className="rotate-180 text-[#000]" />
+            <ArrowRight size={13} className="rotate-180 text-black" />
           </button>
           <button
             onClick={next}
             aria-label="Next image"
             className="absolute right-2 top-1/2 -translate-y-1/2 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm opacity-0 transition-opacity group-hover/img:opacity-100 hover:bg-white"
           >
-            <ArrowRight size={13} className="text-[#000]" />
+            <ArrowRight size={13} className="text-black" />
           </button>
 
           <div className="absolute bottom-2.5 left-1/2 flex -translate-x-1/2 gap-1">
@@ -372,12 +372,12 @@ function CardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
 
       <div className="absolute left-3 top-3 flex flex-wrap gap-1">
         {vendor.featured && (
-          <span className="rounded-full border border-[#C9A0DC] bg-[rgba(201,160,220,0.85)] px-2.5 py-0.5 text-[10px] font-semibold text-[#000] backdrop-blur-sm">
+          <span className="rounded-full border border-[#C9A0DC] bg-[rgba(201,160,220,0.85)] px-2.5 py-0.5 text-[10px] font-semibold text-black backdrop-blur-sm">
             Featured
           </span>
         )}
         {vendor.badge && (
-          <span className="rounded-full border border-white/40 bg-white/80 px-2.5 py-0.5 text-[10px] font-semibold text-[#000] backdrop-blur-sm">
+          <span className="rounded-full border border-white/40 bg-white/80 px-2.5 py-0.5 text-[10px] font-semibold text-black backdrop-blur-sm">
             {vendor.badge}
           </span>
         )}
@@ -408,7 +408,7 @@ function ListingCard({ vendor }: { vendor: (typeof vendors)[number] }) {
       <div className="pt-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1">
-            <h3 className="font-display truncate text-[16px] leading-snug text-[#000]">{vendor.name}</h3>
+            <h3 className="font-display truncate text-[16px] leading-snug text-black">{vendor.name}</h3>
             {vendor.badge === 'Verified' && (
               <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified vendor" />
             )}
@@ -417,7 +417,7 @@ function ListingCard({ vendor }: { vendor: (typeof vendors)[number] }) {
             {vendor.reviewCount > 0 ? (
               <>
                 <Star size={9} className="text-[#F5A623]" fill="currentColor" />
-                <span className="font-semibold text-[#000]">{vendor.rating.toFixed(1)}</span>
+                <span className="font-semibold text-black">{vendor.rating.toFixed(1)}</span>
                 <span className="text-gray-300">·</span>
               </>
             ) : (
@@ -460,14 +460,14 @@ function ListingCard({ vendor }: { vendor: (typeof vendors)[number] }) {
         <div className="mt-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] text-gray-400">starting at</p>
-            <p className="font-display text-[16px] leading-none text-[#000]">{startingPrice}</p>
+            <p className="font-display text-[16px] leading-none text-black">{startingPrice}</p>
           </div>
           {isNew ? (
-            <span className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-[#000] transition-colors group-hover:bg-[rgba(201,160,220,0.15)]">
+            <span className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors group-hover:bg-[rgba(201,160,220,0.15)]">
               Get a quote
             </span>
           ) : (
-            <span className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-[#000] transition-colors group-hover:bg-[#b98dcc]">
+            <span className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors group-hover:bg-[#b98dcc]">
               Get a quote
             </span>
           )}
@@ -599,14 +599,14 @@ function CategoryBrowseStrip() {
               href={`${BROWSE_PATH}?category=${category.id}`}
               className="group snap-start shrink-0 w-[138px] sm:w-[158px] lg:w-[178px] xl:w-[198px] 2xl:w-[215px]"
             >
-              <div className="relative w-full overflow-hidden rounded-2xl aspect-[3/4] bg-gray-200">
+              <div className="relative w-full overflow-hidden rounded-2xl aspect-3/4 bg-gray-200">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={coverSrc}
                   alt={category.label}
                   className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-110"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/15 to-transparent" />
                 {Icon && (
                   <div className="absolute left-2.5 top-2.5 flex h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm backdrop-blur-sm">
                     <Icon size={13} className="text-[#1A1A1A]" />

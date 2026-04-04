@@ -320,7 +320,7 @@ export default function Navbar() {
       }}
     >
       {/* ── Top bar ── */}
-      <nav className="relative z-50 mx-auto flex max-w-[86rem] items-center justify-between bg-white px-3 py-3.5 sm:px-4 sm:py-4 lg:px-3 xl:px-2">
+      <nav className="relative z-50 mx-auto flex max-w-344 items-center justify-between bg-white px-3 py-3.5 sm:px-4 sm:py-4 lg:px-3 xl:px-2">
         {/* Left: logo + desktop nav */}
         <div className="flex min-w-0 items-center gap-3 sm:gap-6 lg:gap-5">
           <Link href="/" aria-label="OpusFesta home" className="shrink-0">
@@ -336,7 +336,7 @@ export default function Navbar() {
                 aria-haspopup="true"
                 className={`px-4 py-2.5 rounded-full transition-colors whitespace-nowrap ${
                   activeMenu === item.label
-                    ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+                    ? 'bg-(--accent) text-(--on-accent)'
                     : 'text-gray-700 hover:bg-gray-100'
                 }`}
               >
@@ -354,7 +354,7 @@ export default function Navbar() {
           >
             Log in
           </a>
-          <button className="shrink-0 rounded-full bg-[var(--accent)] px-3.5 py-2 text-xs font-bold whitespace-nowrap text-[var(--on-accent)] transition-colors hover:bg-[var(--accent-hover)] sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]">
+          <button className="shrink-0 rounded-full bg-(--accent) px-3.5 py-2 text-xs font-bold whitespace-nowrap text-(--on-accent) transition-colors hover:bg-(--accent-hover) sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]">
             Sign up
           </button>
           <button
@@ -415,7 +415,7 @@ export default function Navbar() {
                           className="flex items-center gap-3 px-3 py-2 rounded-xl group hover:bg-white transition-colors"
                         >
                           {link.Icon && (
-                            <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center group-hover:bg-[var(--accent)] group-hover:text-[var(--on-accent)] transition-colors shrink-0">
+                            <div className="w-7 h-7 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center group-hover:bg-(--accent) group-hover:text-(--on-accent) transition-colors shrink-0">
                               <link.Icon size={13} />
                             </div>
                           )}
@@ -548,7 +548,7 @@ export default function Navbar() {
               >
                 Log in
               </a>
-              <button className="w-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] py-3 rounded-full font-bold text-sm transition-colors">
+              <button className="w-full bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) py-3 rounded-full font-bold text-sm transition-colors">
                 Sign up, it&apos;s free
               </button>
             </div>
