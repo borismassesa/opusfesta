@@ -1,7 +1,6 @@
 'use client';
 
 import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
-import { useUser, useClerk } from '@clerk/nextjs';
 
 interface ClientProfile {
   id: string;
@@ -36,21 +35,10 @@ export function useClientAuth() {
 }
 
 export default function ClientAuthProvider({ children }: { children: ReactNode }) {
-  const { user, isLoaded: clerkLoaded } = useUser();
-  const { signOut } = useClerk();
   const [client, setClient] = useState<ClientProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
   const refresh = useCallback(async () => {
-    if (!clerkLoaded) return;
-
-    if (!user) {
-      setClient(null);
-      setLoading(false);
-      return;
-    }
-
-    // User is signed in via Clerk — sync/fetch their client profile
     try {
       const res = await fetch('/api/portal/profile');
       if (res.ok) {
@@ -64,7 +52,7 @@ export default function ClientAuthProvider({ children }: { children: ReactNode }
     } finally {
       setLoading(false);
     }
-  }, [clerkLoaded, user]);
+  }, []);
 
   useEffect(() => {
     refresh();
@@ -72,14 +60,15 @@ export default function ClientAuthProvider({ children }: { children: ReactNode }
 
   const logout = useCallback(async () => {
     try {
-      await signOut();
+      await fetch('/api/client-auth/session', { method: 'DELETE' });
     } finally {
       setClient(null);
+      window.location.href = '/';
     }
-  }, [signOut]);
+  }, []);
 
   return (
-    <AuthContext.Provider value={{ client, loading: !clerkLoaded || loading, logout, refresh }}>
+    <AuthContext.Provider value={{ client, loading, logout, refresh }}>
       {children}
     </AuthContext.Provider>
   );

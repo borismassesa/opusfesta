@@ -13,12 +13,10 @@ import {
   BsLock,
   BsEnvelope,
 } from 'react-icons/bs';
-import { useUser } from '@clerk/nextjs';
 import { useClientAuth } from '@/components/portal/ClientAuthProvider';
 import PortalLoader from '@/components/portal/PortalLoader';
 
 export default function PortalSettingsPage() {
-  const { user, isLoaded } = useUser();
   const { client, loading: clientLoading, refresh } = useClientAuth();
 
   const [name, setName] = useState('');
@@ -138,16 +136,13 @@ export default function PortalSettingsPage() {
     }
   }
 
-  const displayEmail = client?.email || user?.emailAddresses?.[0]?.emailAddress || '';
-
-  // Resolve display avatar: custom upload > Clerk profile image > initials
-  const clerkImageUrl = user?.imageUrl;
-  const displayAvatar = avatarUrl || clerkImageUrl || null;
+  const displayEmail = client?.email || '';
+  const displayAvatar = avatarUrl || null;
   const initials = name
     ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
     : displayEmail?.[0]?.toUpperCase() || '?';
 
-  if (!isLoaded || clientLoading) {
+  if (clientLoading) {
     return <PortalLoader message="Loading settings" />;
   }
 

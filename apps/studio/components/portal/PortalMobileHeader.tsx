@@ -2,18 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useUser } from '@clerk/nextjs';
 import { useClientAuth } from './ClientAuthProvider';
 
 export default function PortalMobileHeader() {
-  const { user, isLoaded } = useUser();
-  const { client } = useClientAuth();
+  const { client, loading } = useClientAuth();
   const pathname = usePathname();
 
   const isAuthPage =
     pathname.startsWith('/portal/login') || pathname.startsWith('/portal/signup');
 
-  // On auth pages, show a simple header with logo + home link
   if (isAuthPage) {
     return (
       <header className="lg:hidden border-b-3 border-brand-border bg-brand-dark">
@@ -32,10 +29,7 @@ export default function PortalMobileHeader() {
     );
   }
 
-  if (!isLoaded || !user) return null;
-
-  const displayName = client?.name || user?.fullName || user?.firstName || 'Client';
-  const displayAvatar = client?.avatar_url || user?.imageUrl || null;
+  if (loading || !client) return null;
 
   return (
     <header className="lg:hidden border-b-3 border-brand-border bg-brand-dark">
@@ -44,15 +38,15 @@ export default function PortalMobileHeader() {
           OpusStudio
         </Link>
         <div className="flex items-center gap-3">
-          {displayAvatar ? (
+          {client.avatar_url ? (
             <img
-              src={displayAvatar}
+              src={client.avatar_url}
               alt=""
               className="w-7 h-7 border-2 border-white/20 object-cover"
             />
           ) : null}
           <span className="text-xs font-mono text-white/70 max-w-[120px] truncate">
-            {displayName}
+            {client.name || 'Client'}
           </span>
         </div>
       </div>

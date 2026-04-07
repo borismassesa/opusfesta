@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { BsPerson, BsBoxArrowRight, BsCalendar3, BsGear, BsHouseDoor } from 'react-icons/bs';
-import { useUser, useClerk } from '@clerk/nextjs';
 import { useClientAuth } from './ClientAuthProvider';
 
 const NAV_ITEMS = [
@@ -12,14 +11,11 @@ const NAV_ITEMS = [
 ];
 
 export default function PortalHeader() {
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
-  const { client } = useClientAuth();
+  const { client, logout } = useClientAuth();
   const pathname = usePathname();
 
   const isAuthPage = pathname.startsWith('/portal/login') || pathname.startsWith('/portal/signup');
-  const isSignedIn = isLoaded && !!user;
-  const displayName = client?.name || user?.fullName || user?.firstName || 'Client';
+  const displayName = client?.name || 'Client';
 
   return (
     <header className="border-b-3 border-brand-border bg-brand-dark">
@@ -38,14 +34,14 @@ export default function PortalHeader() {
               <BsHouseDoor className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Home</span>
             </Link>
-            {isSignedIn && !isAuthPage && (
+            {client && !isAuthPage && (
               <>
                 <div className="hidden sm:flex items-center gap-2 text-white/70">
                   <BsPerson className="w-3.5 h-3.5" />
                   <span className="text-xs font-mono">{displayName}</span>
                 </div>
                 <button
-                  onClick={() => signOut({ redirectUrl: '/portal/login' })}
+                  onClick={logout}
                   className="flex items-center gap-1.5 text-white/50 hover:text-brand-accent transition-colors text-xs font-mono"
                 >
                   <BsBoxArrowRight className="w-3.5 h-3.5" />
@@ -57,7 +53,7 @@ export default function PortalHeader() {
         </div>
 
         {/* Nav tabs */}
-        {isSignedIn && !isAuthPage && (
+        {client && !isAuthPage && (
           <nav className="flex gap-1 -mb-[3px]">
             {NAV_ITEMS.map(item => {
               const isActive = pathname === item.href || (item.href !== '/portal' && pathname.startsWith(item.href));

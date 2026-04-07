@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { BsCalendar3, BsPlusLg } from 'react-icons/bs';
 import PortalLoader from '@/components/portal/PortalLoader';
-import { useUser } from '@clerk/nextjs';
 import { useClientAuth } from '@/components/portal/ClientAuthProvider';
 import BookingCard from '@/components/portal/BookingCard';
 import BookingFilters from '@/components/portal/BookingFilters';
@@ -20,7 +19,6 @@ interface Booking {
 }
 
 export default function PortalBookingsPage() {
-  const { user, isLoaded } = useUser();
   const { client, loading: clientLoading } = useClientAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,13 +51,13 @@ export default function PortalBookingsPage() {
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !user || clientLoading) return;
+    if (clientLoading) return;
     if (!client) {
       setLoading(false);
       return;
     }
     fetchBookings();
-  }, [isLoaded, user, client, clientLoading, fetchBookings]);
+  }, [client, clientLoading, fetchBookings]);
 
   const activeBookings = useMemo(
     () => bookings.filter((b) => !['completed', 'cancelled'].includes(b.lifecycle_status)),
@@ -89,7 +87,7 @@ export default function PortalBookingsPage() {
     return list;
   }, [bookings, activeBookings, pastBookings, activeTab, searchQuery]);
 
-  if (!isLoaded || clientLoading) {
+  if (clientLoading) {
     return <PortalLoader message="Loading bookings" />;
   }
 
