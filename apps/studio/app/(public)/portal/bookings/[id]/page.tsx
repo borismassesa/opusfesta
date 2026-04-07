@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { BsArrowLeft, BsCalendar3, BsClock, BsGeoAlt, BsPeople, BsCash, BsFileText, BsCheckCircle } from 'react-icons/bs';
-import { useUser } from '@clerk/nextjs';
 import { useClientAuth } from '@/components/portal/ClientAuthProvider';
 import StatusBadge from '@/components/portal/StatusBadge';
 import PortalLoader from '@/components/portal/PortalLoader';
@@ -96,7 +95,6 @@ function formatDateTime(iso: string) {
 
 export default function BookingDetailPage() {
   const params = useParams();
-  const { user, isLoaded } = useUser();
   const { client, loading: clientLoading } = useClientAuth();
   const [data, setData] = useState<BookingDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -110,9 +108,9 @@ export default function BookingDetailPage() {
         setLoading(false);
         return;
       }
-      if (res.status === 401 && retries > 0) {
-        await new Promise(r => setTimeout(r, 1000));
-        return fetchBooking(retries - 1);
+      if (res.status === 401) {
+        window.location.href = '/portal/login';
+        return;
       }
       setError('Booking not found');
       setLoading(false);
@@ -128,16 +126,16 @@ export default function BookingDetailPage() {
 
   // Wait for client profile to be ready before fetching booking
   useEffect(() => {
-    if (!isLoaded || !user || !params.id || clientLoading) return;
+    if (!params.id || clientLoading) return;
     if (!client) {
       setLoading(false);
       setError('Unable to load profile');
       return;
     }
     fetchBooking();
-  }, [isLoaded, user, params.id, client, clientLoading, fetchBooking]);
+  }, [params.id, client, clientLoading, fetchBooking]);
 
-  if (!isLoaded || clientLoading) {
+  if (clientLoading) {
     return <PortalLoader message="Loading booking" />;
   }
 

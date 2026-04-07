@@ -1,6 +1,8 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 
+const SESSION_COOKIE = 'of_client_session';
+
 const isAdminRoute = createRouteMatcher(['/admin(.*)', '/studio-admin(.*)', '/api/admin(.*)']);
 const isPortalProtectedRoute = createRouteMatcher([
   '/portal',
@@ -39,15 +41,15 @@ export default clerkMiddleware(async (auth, req) => {
     return;
   }
 
-  // Portal and booking routes redirect to client sign-in (not admin)
+  // Portal and booking routes use magic link session cookie — no Clerk required
   if (isPortalProtectedRoute(req) || isBookingRoute(req)) {
-    const { userId } = await auth();
-    if (!userId) {
+    const sessionToken = req.cookies.get(SESSION_COOKIE)?.value;
+    if (!sessionToken) {
       const signInUrl = new URL('/portal/login', req.url);
       signInUrl.searchParams.set('redirect_url', req.url);
       return NextResponse.redirect(signInUrl);
     }
-    return;
+    return NextResponse.next();
   }
 });
 

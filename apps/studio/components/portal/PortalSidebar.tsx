@@ -13,7 +13,6 @@ import {
   BsPlusLg,
   BsPerson,
 } from 'react-icons/bs';
-import { useUser, useClerk } from '@clerk/nextjs';
 import { useClientAuth } from './ClientAuthProvider';
 
 const NAV_ITEMS = [
@@ -24,15 +23,12 @@ const NAV_ITEMS = [
 ];
 
 export default function PortalSidebar() {
-  const { user, isLoaded } = useUser();
-  const { signOut } = useClerk();
-  const { client } = useClientAuth();
+  const { client, logout } = useClientAuth();
   const pathname = usePathname();
   const [unreadCount, setUnreadCount] = useState(0);
 
-  // Poll for unread message count
   useEffect(() => {
-    if (!user || !client) return;
+    if (!client) return;
     const fetchUnread = async () => {
       try {
         const res = await fetch('/api/portal/messages');
@@ -45,22 +41,19 @@ export default function PortalSidebar() {
     fetchUnread();
     const interval = setInterval(fetchUnread, 30000);
     return () => clearInterval(interval);
-  }, [user, client]);
+  }, [client]);
 
   const isAuthPage =
     pathname.startsWith('/portal/login') || pathname.startsWith('/portal/signup');
 
-  if (!isLoaded || isAuthPage) return null;
+  if (isAuthPage || !client) return null;
 
-  const isSignedIn = !!user;
-  if (!isSignedIn) return null;
-
-  const displayName = client?.name || user?.fullName || user?.firstName || 'Client';
-  const displayEmail = client?.email || user?.emailAddresses?.[0]?.emailAddress || '';
-  const displayAvatar = client?.avatar_url || user?.imageUrl || null;
+  const displayName = client.name || 'Client';
+  const displayEmail = client.email;
+  const displayAvatar = client.avatar_url || null;
 
   const initials =
-    displayName && displayName !== 'Client'
+    displayName !== 'Client'
       ? displayName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
       : displayEmail?.[0]?.toUpperCase() || '?';
 
@@ -154,7 +147,7 @@ export default function PortalSidebar() {
               Back to Home
             </Link>
             <button
-              onClick={() => signOut({ redirectUrl: '/' })}
+              onClick={logout}
               className="flex items-center gap-3 w-full px-3 py-2.5 text-xs font-mono font-bold uppercase tracking-wider text-red-500 hover:bg-red-50 transition-all"
             >
               <BsBoxArrowRight className="w-4 h-4 shrink-0" />
@@ -212,7 +205,7 @@ export default function PortalSidebar() {
           </span>
         </Link>
         <button
-          onClick={() => signOut({ redirectUrl: '/' })}
+          onClick={logout}
           className="flex flex-col items-center gap-0.5 px-1.5 sm:px-3 py-1 text-brand-muted min-w-0"
         >
           <BsPerson className="w-[18px] h-[18px] sm:w-5 sm:h-5" />

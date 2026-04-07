@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { BsCalendar3, BsPlusLg, BsArrowRight } from 'react-icons/bs';
 import PortalLoader from '@/components/portal/PortalLoader';
-import { useUser } from '@clerk/nextjs';
 import { useClientAuth } from '@/components/portal/ClientAuthProvider';
 import BookingCard from '@/components/portal/BookingCard';
 import DashboardStats from '@/components/portal/DashboardStats';
@@ -46,7 +45,6 @@ interface DashboardData {
 }
 
 export default function PortalDashboard() {
-  const { user, isLoaded } = useUser();
   const { client, loading: clientLoading } = useClientAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
@@ -70,10 +68,10 @@ export default function PortalDashboard() {
         return;
       }
 
-      // If 401, auth might not be ready yet — retry after a short delay
-      if ((bookingsRes.status === 401 || dashboardRes.status === 401) && retries > 0) {
-        await new Promise((r) => setTimeout(r, 1000));
-        return fetchData(retries - 1);
+      // Session expired — redirect to login
+      if (bookingsRes.status === 401 || dashboardRes.status === 401) {
+        window.location.href = '/portal/login';
+        return;
       }
 
       setLoading(false);
@@ -86,21 +84,21 @@ export default function PortalDashboard() {
     }
   }, []);
 
-  // Wait for BOTH Clerk user AND client profile to be ready before fetching
+  // Wait for client profile to be ready before fetching
   useEffect(() => {
-    if (!isLoaded || !user || clientLoading) return;
+    if (clientLoading) return;
     if (!client) {
       setLoading(false);
       return;
     }
     fetchData();
-  }, [isLoaded, user, client, clientLoading, fetchData]);
+  }, [client, clientLoading, fetchData]);
 
-  if (!isLoaded || clientLoading) {
+  if (clientLoading) {
     return <PortalLoader />;
   }
 
-  const displayName = client?.name || user?.fullName || user?.firstName || 'Client';
+  const displayName = client?.name || 'Client';
   const activeBookings = bookings.filter(
     (b) => !['completed', 'cancelled'].includes(b.lifecycle_status)
   );

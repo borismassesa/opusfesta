@@ -50,7 +50,7 @@ export default function VendorCard({
           />
         )}
         {vendor.badge && (
-          <span className="absolute top-3 left-3 rounded-full bg-[var(--accent)] px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-[var(--on-accent)]">
+          <span className="absolute top-3 left-3 rounded-full bg-(--accent) px-3 py-1 text-[10px] font-black uppercase tracking-[0.14em] text-(--on-accent)">
             {vendor.badge}
           </span>
         )}
@@ -89,7 +89,7 @@ export default function VendorCard({
         >
           <div className="flex items-center gap-3 min-w-0">
             <span className="flex items-center gap-1 shrink-0">
-              <Star size={12} className={dark ? 'text-[var(--accent)]' : 'text-[var(--accent)]'} fill="currentColor" />
+              <Star size={12} className={dark ? 'text-(--accent)' : 'text-(--accent)'} fill="currentColor" />
               <span className={dark ? 'text-white font-bold' : 'text-[#1A1A1A] font-bold'}>
                 {vendor.rating.toFixed(1)}
               </span>

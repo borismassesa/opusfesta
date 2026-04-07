@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { BsChatSquareText, BsChevronRight, BsCircleFill } from 'react-icons/bs';
-import { useUser } from '@clerk/nextjs';
 import { useClientAuth } from '@/components/portal/ClientAuthProvider';
 import PortalLoader from '@/components/portal/PortalLoader';
 
@@ -33,7 +32,6 @@ function timeAgo(iso: string) {
 }
 
 export default function PortalMessagesPage() {
-  const { user, isLoaded } = useUser();
   const { client, loading: clientLoading } = useClientAuth();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -47,9 +45,9 @@ export default function PortalMessagesPage() {
         setLoading(false);
         return;
       }
-      if (res.status === 401 && retries > 0) {
-        await new Promise(r => setTimeout(r, 1000));
-        return fetchConversations(retries - 1);
+      if (res.status === 401) {
+        window.location.href = '/portal/login';
+        return;
       }
       setLoading(false);
     } catch {
@@ -62,9 +60,9 @@ export default function PortalMessagesPage() {
   }, []);
 
   useEffect(() => {
-    if (!isLoaded || !user || clientLoading || !client) return;
+    if (clientLoading || !client) return;
     fetchConversations();
-  }, [isLoaded, user, clientLoading, client, fetchConversations]);
+  }, [clientLoading, client, fetchConversations]);
 
   // Poll for updates
   useEffect(() => {
@@ -73,7 +71,7 @@ export default function PortalMessagesPage() {
     return () => clearInterval(interval);
   }, [client, fetchConversations]);
 
-  if (!isLoaded || clientLoading) {
+  if (clientLoading) {
     return <PortalLoader message="Loading messages" />;
   }
 
