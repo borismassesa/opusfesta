@@ -13,7 +13,9 @@ export default function PortalLoginPage() {
   const [resendCooldown, setResendCooldown] = useState(0);
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectUrl = searchParams.get('redirect_url') || '/portal';
+  // Validate redirect_url is a same-origin relative path to prevent open redirect
+  const rawRedirect = searchParams.get('redirect_url') || '/portal';
+  const redirectUrl = rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') ? rawRedirect : '/portal';
 
   useEffect(() => {
     if (resendCooldown <= 0) return;

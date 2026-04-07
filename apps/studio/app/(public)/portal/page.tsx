@@ -68,10 +68,10 @@ export default function PortalDashboard() {
         return;
       }
 
-      // If 401, auth might not be ready yet — retry after a short delay
-      if ((bookingsRes.status === 401 || dashboardRes.status === 401) && retries > 0) {
-        await new Promise((r) => setTimeout(r, 1000));
-        return fetchData(retries - 1);
+      // Session expired — redirect to login
+      if (bookingsRes.status === 401 || dashboardRes.status === 401) {
+        window.location.href = '/portal/login';
+        return;
       }
 
       setLoading(false);
@@ -84,7 +84,7 @@ export default function PortalDashboard() {
     }
   }, []);
 
-  // Wait for BOTH Clerk user AND client profile to be ready before fetching
+  // Wait for client profile to be ready before fetching
   useEffect(() => {
     if (clientLoading) return;
     if (!client) {

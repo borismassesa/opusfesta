@@ -108,9 +108,9 @@ export default function BookingDetailPage() {
         setLoading(false);
         return;
       }
-      if (res.status === 401 && retries > 0) {
-        await new Promise(r => setTimeout(r, 1000));
-        return fetchBooking(retries - 1);
+      if (res.status === 401) {
+        window.location.href = '/portal/login';
+        return;
       }
       setError('Booking not found');
       setLoading(false);

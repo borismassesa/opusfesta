@@ -45,9 +45,9 @@ export default function PortalMessagesPage() {
         setLoading(false);
         return;
       }
-      if (res.status === 401 && retries > 0) {
-        await new Promise(r => setTimeout(r, 1000));
-        return fetchConversations(retries - 1);
+      if (res.status === 401) {
+        window.location.href = '/portal/login';
+        return;
       }
       setLoading(false);
     } catch {

@@ -40,7 +40,7 @@ export async function getPortalClient(): Promise<PortalClient | null> {
 
   if (!profile) return null;
 
-  // Auto-link any bookings that match by email but don't have client_id set
+  // Auto-link bookings that match by email and have no client_id yet
   await db
     .from('studio_bookings')
     .update({ client_id: profile.id })
