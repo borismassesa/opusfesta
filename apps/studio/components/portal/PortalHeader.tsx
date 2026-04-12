@@ -22,7 +22,7 @@ export default function PortalHeader() {
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
         {/* Top bar */}
         <div className="flex items-center justify-between h-14">
-          <Link href="/portal" className="flex items-center gap-2">
+          <Link href="/portal" className="flex items-center gap-2 no-underline transform-none hover:transform-none active:transform-none">
             <span className="font-mono font-bold text-white text-sm tracking-wider">OpusStudio</span>
           </Link>
 

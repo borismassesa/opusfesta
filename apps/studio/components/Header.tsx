@@ -77,7 +77,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
           <Link
             href="/"
-            className="absolute left-1/2 -translate-x-1/2 px-3 sm:px-5 h-10 sm:h-12 border-4 border-brand-dark bg-brand-dark text-white flex items-center justify-center font-black text-[10px] sm:text-sm uppercase tracking-widest hover:bg-brand-accent hover:border-brand-accent transition-all duration-200 whitespace-nowrap shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1"
+            className="absolute left-1/2 -translate-x-1/2 px-3 sm:px-5 h-10 sm:h-12 border-4 border-brand-dark bg-brand-dark text-white flex items-center justify-center font-black text-[10px] sm:text-sm uppercase tracking-widest whitespace-nowrap shadow-brutal-sm"
           >
             OpusStudio
           </Link>
