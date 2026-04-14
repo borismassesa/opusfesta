@@ -212,6 +212,20 @@ const MENU_GROUPS = [
     items: [{ label: "Dashboard", icon: LayoutDashboard, href: "/" }],
   },
   {
+    label: "Studio",
+    items: [
+      { label: "Studio Dashboard", icon: LayoutDashboard, href: "/studio" },
+      { label: "Bookings", icon: Calendar, href: "/studio/bookings" },
+      { label: "Availability", icon: Calendar, href: "/studio/availability" },
+      { label: "Pages", icon: FileText, href: "/studio/content/pages" },
+      { label: "Services", icon: PenTool, href: "/studio/content/services" },
+      { label: "Portfolio", icon: ImageIcon, href: "/studio/content/portfolio" },
+      { label: "Settings", icon: Settings, href: "/studio/settings" },
+      { label: "Audit", icon: Eye, href: "/studio/audit" },
+      { label: "Analytics", icon: BarChart3, href: "/studio/analytics" },
+    ],
+  },
+  {
     label: "Editor",
     items: [
       { label: "Homepage Editor", icon: FileText, href: "/content" },
