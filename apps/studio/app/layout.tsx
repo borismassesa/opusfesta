@@ -32,7 +32,7 @@ export default function RootLayout({
     <html lang="en" className="scroll-smooth">
       <body className={`${dmSans.variable} ${spaceMono.variable} font-sans`}>
         <ClerkProvider
-          signInUrl="/admin/sign-in"
+          signInUrl="/sign-in"
           afterSignOutUrl="/"
         >
           {children as any}
