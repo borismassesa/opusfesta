@@ -2,6 +2,17 @@
 @tailwind components;
 @tailwind utilities;
 
+@keyframes btn-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position:  400px 0; }
+}
+
+.clerk-btn-loading {
+  background: linear-gradient(90deg, #171717 30%, #3a3a3a 50%, #171717 70%) !important;
+  background-size: 600px 100% !important;
+  animation: btn-shimmer 1.4s infinite linear !important;
+}
+
 :root {
   color-scheme: light;
   --background: #FDF5F3;

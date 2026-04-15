@@ -1,6 +1,6 @@
 'use client';
 
-import { UserButton, useUser } from '@clerk/nextjs';
+import { useUser, useClerk } from '@clerk/nextjs';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -8,6 +8,7 @@ import {
   BsGrid1X2, BsFolder2Open, BsFileText, BsWrench, BsCalendarCheck,
   BsCalendar3, BsChatSquareText, BsStar, BsQuestionCircle, BsPeople,
   BsImage, BsSearch, BsGear, BsHouseDoor, BsShare, BsBoxArrowUpRight,
+  BsBoxArrowRight,
 } from 'react-icons/bs';
 import type { StudioRole } from '@/lib/studio-types';
 import { hasMinimumRole } from '@/lib/admin-auth-client';
@@ -66,6 +67,7 @@ const navGroups: NavGroup[] = [
 export default function AdminSidebar({ role }: { role: StudioRole }) {
   const pathname = usePathname();
   const { user } = useUser();
+  const { signOut } = useClerk();
   const [queueCount, setQueueCount] = useState(0);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [mounted, setMounted] = useState(false);
@@ -203,27 +205,26 @@ export default function AdminSidebar({ role }: { role: StudioRole }) {
 
         {/* User */}
         <div className="flex items-center gap-2.5 px-3 py-2">
-          {mounted ? (
-            <UserButton
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  avatarBox: 'h-7 w-7 shrink-0',
-                  userButtonPopoverFooter: 'hidden',
-                },
-              }}
-            />
-          ) : (
-            <div className="h-7 w-7 rounded-full bg-[var(--admin-secondary)] shrink-0" />
-          )}
+          <div className="h-7 w-7 rounded-full bg-[var(--admin-primary)]/20 flex items-center justify-center shrink-0">
+            <span className="text-[10px] font-bold text-[var(--admin-primary)]">
+              {mounted ? (user?.firstName?.[0] || user?.fullName?.[0] || 'A').toUpperCase() : 'A'}
+            </span>
+          </div>
           <div className="min-w-0 flex-1">
             <p className="text-[12px] font-semibold text-[var(--admin-foreground)] truncate leading-tight">
-              {user?.fullName || user?.firstName || 'Admin'}
+              {mounted ? (user?.fullName || user?.firstName || 'Admin') : 'Admin'}
             </p>
             <p className="text-[11px] text-[var(--admin-muted)] truncate leading-tight">
-              {user?.primaryEmailAddress?.emailAddress || ''}
+              {mounted ? (user?.primaryEmailAddress?.emailAddress || '') : ''}
             </p>
           </div>
+          <button
+            onClick={() => signOut({ redirectUrl: '/' })}
+            title="Sign out"
+            className="shrink-0 p-1.5 text-[var(--admin-muted)] hover:text-[var(--admin-foreground)] hover:bg-[var(--admin-sidebar-accent)] transition-colors"
+          >
+            <BsBoxArrowRight className="w-[14px] h-[14px]" />
+          </button>
         </div>
       </div>
     </aside>
