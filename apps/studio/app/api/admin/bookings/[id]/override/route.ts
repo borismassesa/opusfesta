@@ -5,7 +5,7 @@ import { adminOverrideTransition } from '@/lib/booking-service';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { clerkId } = await requireStudioRole('studio_admin');
+    const { userId: clerkId } = await requireStudioRole('studio_admin');
     const { id } = await params;
     const body = await req.json();
 

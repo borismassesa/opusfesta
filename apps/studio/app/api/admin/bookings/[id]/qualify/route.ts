@@ -5,7 +5,7 @@ import { qualifyBooking } from '@/lib/booking-service';
 
 export async function POST(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { clerkId } = await requireStudioRole('studio_editor');
+    const { userId: clerkId } = await requireStudioRole('studio_editor');
     const { id } = await params;
     const booking = await qualifyBooking(id, clerkId);
     revalidatePath('/', 'layout');

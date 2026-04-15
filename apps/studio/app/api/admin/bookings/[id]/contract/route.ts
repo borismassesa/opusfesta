@@ -31,7 +31,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const { clerkId } = await requireStudioRole('studio_editor');
+    const { userId: clerkId } = await requireStudioRole('studio_editor');
     const { id } = await params;
     const body = await req.json();
 
