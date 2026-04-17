@@ -989,9 +989,12 @@ function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
     pct: allReviews.length ? Math.round((allReviews.filter((r) => Math.round(r.rating) === star).length / allReviews.length) * 100) : 0,
   }))
 
-  const sorted = [...allReviews].sort((a, b) =>
-    sortBy === 'top' ? b.rating - a.rating : 0
-  )
+  const sorted = [...allReviews].sort((a, b) => {
+    if (sortBy === 'top') return b.rating - a.rating
+    const ta = new Date(a.date).getTime()
+    const tb = new Date(b.date).getTime()
+    return (isNaN(tb) ? 0 : tb) - (isNaN(ta) ? 0 : ta)
+  })
   const afterStar = filterStar ? sorted.filter((r) => Math.round(r.rating) === filterStar) : sorted
   const filtered = searchQuery.trim()
     ? afterStar.filter((r) =>
@@ -1310,9 +1313,9 @@ function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
 // ── FAQSection ────────────────────────────────────────────
 function VendorFaqSection({ vendor }: { vendor: Vendor }) {
   const faqs = vendor.faqs ?? []
-  if (!faqs.length) return null
-
   const [openIdx, setOpenIdx] = useState<number | null>(null)
+
+  if (!faqs.length) return null
 
   return (
     <section id="vendor-faq" className="scroll-mt-28 border-t border-gray-200 pt-12">

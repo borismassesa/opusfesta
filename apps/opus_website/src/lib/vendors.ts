@@ -108,10 +108,11 @@ export function generateAvailability(vendorId: string): VendorAvailability {
     // Only Saturdays and Sundays (typical wedding days)
     if (dow !== 0 && dow !== 6) continue
     const mixed = (seed * 31 + i * 17) % 100
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
     if (mixed < 18) {
-      bookedDates.push(d.toISOString().slice(0, 10))
+      bookedDates.push(ds)
     } else if (mixed < 30) {
-      limitedDates.push(d.toISOString().slice(0, 10))
+      limitedDates.push(ds)
     }
   }
 
