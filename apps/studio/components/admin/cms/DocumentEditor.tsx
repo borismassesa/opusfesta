@@ -45,6 +45,12 @@ function getFieldDefault(field: FieldDef): unknown {
       return field.default ?? '';
     case 'date':
       return field.default ?? '';
+    case 'richtext':
+      return { type: 'doc', content: [{ type: 'paragraph' }] };
+    case 'image':
+      return null;
+    case 'array':
+      return [];
   }
 }
 

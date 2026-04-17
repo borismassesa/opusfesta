@@ -23,7 +23,11 @@ export async function GET(_request: Request, { params }: RouteContext) {
       .eq('id', id)
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 404 });
+    if (error) {
+      if (error.code === 'PGRST116') return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 });
+      console.error('[inquiries] GET failed', { id, error });
+      return NextResponse.json({ error: 'Failed to fetch inquiry' }, { status: 500 });
+    }
     return NextResponse.json({ inquiry: data });
   } catch (e) {
     if (e instanceof NextResponse) return e;
@@ -36,10 +40,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     await requireStudioRole('studio_editor');
     const { id } = await params;
 
-    const body = await request.json().catch(() => null);
+    let body: unknown;
+    try { body = await request.json(); } catch {
+      return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+    }
     const parsed = UpdateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid update payload' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid update payload', issues: parsed.error.issues }, { status: 400 });
     }
 
     const updates: Record<string, unknown> = { ...parsed.data };
@@ -56,7 +63,10 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       .select()
       .single();
 
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error('[inquiries] PATCH update failed', { id, error });
+      return NextResponse.json({ error: 'Failed to update inquiry' }, { status: 500 });
+    }
     return NextResponse.json({ inquiry: data });
   } catch (e) {
     if (e instanceof NextResponse) return e;

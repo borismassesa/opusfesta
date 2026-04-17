@@ -5,14 +5,13 @@ import { getStudioSupabaseAdmin } from '@/lib/supabase-admin';
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-type ContentRow = {
+type DocRow = {
   id: string;
-  is_published?: boolean;
-  is_active?: boolean;
+  type: string;
+  draft_content: Record<string, unknown> | null;
+  published_content: Record<string, unknown> | null;
   updated_at: string;
 };
-
-type TitledContentRow = ContentRow & { title: string };
 
 type InquiryRow = {
   id: string;
@@ -53,13 +52,9 @@ function getDeltaPercent(current: number, previous: number): number {
   return Math.round(((current - previous) / previous) * 1000) / 10;
 }
 
-function overview(
-  rows: ContentRow[],
-  publishedKey: 'is_published' | 'is_active',
-  staleThreshold: Date
-): ContentOverview {
+function overviewFromDocs(rows: DocRow[], staleThreshold: Date): ContentOverview {
   const total = rows.length;
-  const published = rows.filter((r) => r[publishedKey]).length;
+  const published = rows.filter((r) => r.published_content !== null).length;
   const stale = rows.filter((r) => {
     const u = asDate(r.updated_at);
     return !!u && u < staleThreshold;
@@ -78,38 +73,38 @@ export async function GET(request: Request) {
 
     const db = getStudioSupabaseAdmin();
 
-    const [
-      projectsResult,
-      articlesResult,
-      servicesResult,
-      testimonialsResult,
-      faqsResult,
-      teamResult,
-      inquiriesResult,
-    ] = await Promise.all([
-      db.from('studio_projects').select('id, title, is_published, updated_at').limit(2000),
-      db.from('studio_articles').select('id, title, is_published, updated_at').limit(2000),
-      db.from('studio_services').select('id, title, is_active, updated_at').limit(2000),
-      db.from('studio_testimonials').select('id, updated_at, is_published, author').limit(2000),
-      db.from('studio_faqs').select('id, updated_at, is_published, question').limit(2000),
-      db.from('studio_team_members').select('id, updated_at, is_published, name').limit(2000),
-      db.from('studio_inquiries').select('id, name, email, project_type, status, created_at').order('created_at', { ascending: false }).limit(2000),
+    const [docsResult, inquiriesResult] = await Promise.all([
+      db
+        .from('studio_documents')
+        .select('id, type, draft_content, published_content, updated_at')
+        .is('deleted_at', null)
+        .limit(5000),
+      db
+        .from('studio_inquiries')
+        .select('id, name, email, project_type, status, created_at')
+        .order('created_at', { ascending: false })
+        .limit(2000),
     ]);
 
-    const queryError =
-      projectsResult.error || articlesResult.error || servicesResult.error ||
-      testimonialsResult.error || faqsResult.error || teamResult.error || inquiriesResult.error;
-    if (queryError) {
-      return NextResponse.json({ error: queryError.message }, { status: 500 });
+    if (docsResult.error) {
+      console.error('[dashboard] studio_documents query failed', docsResult.error);
+      return NextResponse.json({ error: 'Failed to load dashboard data' }, { status: 500 });
+    }
+    if (inquiriesResult.error) {
+      console.error('[dashboard] studio_inquiries query failed', inquiriesResult.error);
+      return NextResponse.json({ error: 'Failed to load dashboard data' }, { status: 500 });
     }
 
-    const projects = (projectsResult.data || []) as TitledContentRow[];
-    const articles = (articlesResult.data || []) as TitledContentRow[];
-    const services = (servicesResult.data || []) as TitledContentRow[];
-    const testimonials = (testimonialsResult.data || []) as ContentRow[];
-    const faqs = (faqsResult.data || []) as ContentRow[];
-    const team = (teamResult.data || []) as ContentRow[];
-    const inquiries = (inquiriesResult.data || []) as InquiryRow[];
+    const allDocs = (docsResult.data ?? []) as DocRow[];
+    const byType = (t: string) => allDocs.filter((d) => d.type === t);
+
+    const projects     = byType('project');
+    const articles     = byType('article');
+    const services     = byType('service');
+    const testimonials = byType('testimonial');
+    const faqs         = byType('faq');
+    const team         = byType('teamMember');
+    const inquiries    = (inquiriesResult.data ?? []) as InquiryRow[];
 
     // -----------------------------------------------------------------------
     // Date ranges
@@ -148,12 +143,12 @@ export async function GET(request: Request) {
     // CMS overview
     // -----------------------------------------------------------------------
     const cms = {
-      projects:     overview(projects, 'is_published', staleThreshold),
-      articles:     overview(articles, 'is_published', staleThreshold),
-      services:     overview(services, 'is_active', staleThreshold),
-      testimonials: overview(testimonials, 'is_published', staleThreshold),
-      faqs:         overview(faqs, 'is_published', staleThreshold),
-      team:         overview(team, 'is_published', staleThreshold),
+      projects:     overviewFromDocs(projects, staleThreshold),
+      articles:     overviewFromDocs(articles, staleThreshold),
+      services:     overviewFromDocs(services, staleThreshold),
+      testimonials: overviewFromDocs(testimonials, staleThreshold),
+      faqs:         overviewFromDocs(faqs, staleThreshold),
+      team:         overviewFromDocs(team, staleThreshold),
     };
 
     const totalContent = Object.values(cms).reduce((s, c) => s + c.total, 0);
@@ -161,11 +156,13 @@ export async function GET(request: Request) {
     const staleContent = Object.values(cms).reduce((s, c) => s + c.stale, 0);
     const cmsHealthPercent = totalContent ? Math.round((publishedContent / totalContent) * 100) : 0;
 
-    // Recent CMS updates (top 8 across all types)
+    const docTitle = (d: DocRow) =>
+      (d.draft_content?.title ?? d.published_content?.title ?? d.id) as string;
+
     const recentUpdates = [
-      ...projects.map((p) => ({ id: p.id, type: 'portfolio' as const, title: p.title, status: p.is_published ? 'published' : 'draft', updated_at: p.updated_at, href: `/studio-admin/portfolio/${p.id}` })),
-      ...articles.map((a) => ({ id: a.id, type: 'article' as const, title: a.title, status: a.is_published ? 'published' : 'draft', updated_at: a.updated_at, href: `/studio-admin/articles/${a.id}` })),
-      ...services.map((s) => ({ id: s.id, type: 'service' as const, title: s.title, status: s.is_active ? 'active' : 'inactive', updated_at: s.updated_at, href: `/studio-admin/services/${s.id}` })),
+      ...projects.map((d) => ({ id: d.id, type: 'project' as const, title: docTitle(d), status: d.published_content ? 'published' : 'draft', updated_at: d.updated_at, href: `/studio-admin/cms/project/${d.id}` })),
+      ...articles.map((d) => ({ id: d.id, type: 'article' as const, title: docTitle(d), status: d.published_content ? 'published' : 'draft', updated_at: d.updated_at, href: `/studio-admin/cms/article/${d.id}` })),
+      ...services.map((d) => ({ id: d.id, type: 'service' as const, title: docTitle(d), status: d.published_content ? 'published' : 'draft', updated_at: d.updated_at, href: `/studio-admin/cms/service/${d.id}` })),
     ]
       .sort((a, b) => (asDate(b.updated_at)?.getTime() || 0) - (asDate(a.updated_at)?.getTime() || 0))
       .slice(0, 8);
