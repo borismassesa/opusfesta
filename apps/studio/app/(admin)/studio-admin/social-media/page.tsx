@@ -151,7 +151,7 @@ export default function SocialMediaPage() {
       <div className="bg-white border border-gray-200 divide-y divide-gray-100 rounded-b-lg">
         {links.length === 0 && editingId !== 'new' && (
           <div className="p-8 text-center text-gray-500 text-sm">
-            No social media links added yet. Click "Add Link" to get started.
+            No social media links added yet. Click &quot;Add Link&quot; to get started.
           </div>
         )}
 

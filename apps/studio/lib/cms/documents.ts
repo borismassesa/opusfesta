@@ -493,20 +493,21 @@ function getLegacyAdapter(type: string): LegacyAdapter {
 
 async function resolveLegacyAssetUrl(assetId: string | undefined): Promise<string | null> {
   if (!assetId) return null;
-  try {
-    const sb = getStudioSupabaseAdmin();
-    const { data, error } = await sb
-      .from('studio_assets')
-      .select('path, bucket')
-      .eq('id', assetId)
-      .single();
+  const sb = getStudioSupabaseAdmin();
+  const { data, error } = await sb
+    .from('studio_assets')
+    .select('path, bucket')
+    .eq('id', assetId)
+    .single();
 
-    if (error || !data?.path) return null;
-    const bucket = asString(data.bucket);
-    return bucket ? getPublicUrl(data.path as string, bucket) : getPublicUrl(data.path as string);
-  } catch {
+  if (error) {
+    if (error.code === 'PGRST116') return null;
+    console.error('[documents] resolveLegacyAssetUrl failed', { assetId, error });
     return null;
   }
+  if (!data?.path) return null;
+  const bucket = asString(data.bucket);
+  return bucket ? getPublicUrl(data.path as string, bucket) : getPublicUrl(data.path as string);
 }
 
 async function resolveLegacyAssets(content: Record<string, unknown>): Promise<Record<string, string | null>> {
@@ -538,7 +539,7 @@ async function listLegacyDocuments(
     .limit(500);
 
   if (error) throw toStoreError(error);
-  return ((data ?? []) as LegacyRow[]).map((row) => adapter.toDocument(row, type));
+  return ((data ?? []) as unknown as LegacyRow[]).map((row) => adapter.toDocument(row, type));
 }
 
 async function getLegacyDocument(type: string, id: string): Promise<DocumentRow | null> {
@@ -550,7 +551,7 @@ async function getLegacyDocument(type: string, id: string): Promise<DocumentRow 
     if (extractSupabaseMeta(error).code === 'PGRST116') return null;
     throw toStoreError(error);
   }
-  return data ? adapter.toDocument(data as LegacyRow, type) : null;
+  return data ? adapter.toDocument(data as unknown as LegacyRow, type) : null;
 }
 
 async function getLegacyRow(type: string, id: string): Promise<LegacyRow | null> {
@@ -562,7 +563,7 @@ async function getLegacyRow(type: string, id: string): Promise<LegacyRow | null>
     if (extractSupabaseMeta(error).code === 'PGRST116') return null;
     throw toStoreError(error);
   }
-  return (data as LegacyRow | null) ?? null;
+  return (data as unknown as LegacyRow | null) ?? null;
 }
 
 async function createLegacyDocument(type: string, content: Record<string, unknown>): Promise<DocumentRow> {
@@ -576,7 +577,7 @@ async function createLegacyDocument(type: string, content: Record<string, unknow
     .single();
 
   if (error || !data) throw toStoreError(error);
-  return adapter.toDocument(data as LegacyRow, type);
+  return adapter.toDocument(data as unknown as LegacyRow, type);
 }
 
 async function updateLegacyDocument(
@@ -598,7 +599,7 @@ async function updateLegacyDocument(
     .single();
 
   if (error || !data) throw toStoreError(error);
-  return adapter.toDocument(data as LegacyRow, type);
+  return adapter.toDocument(data as unknown as LegacyRow, type);
 }
 
 async function patchLegacyDocument(
@@ -619,7 +620,7 @@ async function patchLegacyDocument(
     .single();
 
   if (error || !data) throw toStoreError(error);
-  return adapter.toDocument(data as LegacyRow, type);
+  return adapter.toDocument(data as unknown as LegacyRow, type);
 }
 
 function revisionsRequireDocumentStore(): never {
@@ -827,12 +828,14 @@ export async function publishDocument(
     .single();
 
   if (fetchErr || !current) {
-    if (isMissingRelationError(fetchErr, 'studio_documents')) {
+    if (fetchErr && isMissingRelationError(fetchErr, 'studio_documents')) {
+      console.error('[documents] studio_documents table not found — falling back to legacy adapters', { type, error: fetchErr });
       hasStudioDocumentsTable = false;
       return patchLegacyDocument(type, id, (row, adapter) => adapter.buildPublish(row));
     }
-    if (extractSupabaseMeta(fetchErr).code === 'PGRST116') return null;
-    throw toStoreError(fetchErr);
+    if (!current || (fetchErr && extractSupabaseMeta(fetchErr).code === 'PGRST116')) return null;
+    if (fetchErr) throw toStoreError(fetchErr);
+    return null;
   }
 
   const nowIso = new Date().toISOString();
@@ -847,7 +850,10 @@ export async function publishDocument(
     .select(DOCUMENT_SELECT)
     .single();
 
-  if (error || !data) throw toStoreError(error);
+  if (error || !data) {
+    if (error && extractSupabaseMeta(error).code === 'PGRST116') return null;
+    throw toStoreError(error);
+  }
   hasStudioDocumentsTable = true;
   return data as DocumentRow;
 }
@@ -871,12 +877,14 @@ export async function unpublishDocument(
     .single();
 
   if (fetchErr || !current) {
-    if (isMissingRelationError(fetchErr, 'studio_documents')) {
+    if (fetchErr && isMissingRelationError(fetchErr, 'studio_documents')) {
+      console.error('[documents] studio_documents table not found — falling back to legacy adapters', { type, error: fetchErr });
       hasStudioDocumentsTable = false;
       return patchLegacyDocument(type, id, (row, adapter) => adapter.buildUnpublish(row));
     }
-    if (extractSupabaseMeta(fetchErr).code === 'PGRST116') return null;
-    throw toStoreError(fetchErr);
+    if (!current || (fetchErr && extractSupabaseMeta(fetchErr).code === 'PGRST116')) return null;
+    if (fetchErr) throw toStoreError(fetchErr);
+    return null;
   }
 
   const { data, error } = await sb
@@ -890,7 +898,10 @@ export async function unpublishDocument(
     .select(DOCUMENT_SELECT)
     .single();
 
-  if (error || !data) throw toStoreError(error);
+  if (error || !data) {
+    if (error && extractSupabaseMeta(error).code === 'PGRST116') return null;
+    throw toStoreError(error);
+  }
   hasStudioDocumentsTable = true;
   return data as DocumentRow;
 }

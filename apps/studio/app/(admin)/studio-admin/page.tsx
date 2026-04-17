@@ -165,12 +165,12 @@ export default function AdminDashboardPage() {
   const { kpis, priorities, cms, inquiries } = data;
 
   const contentCards = [
-    { key: 'portfolio',    label: 'Portfolio',    icon: BsFolder2Open,    overview: cms.projects,     href: '/studio-admin/portfolio'    },
-    { key: 'articles',     label: 'Articles',     icon: BsFileText,       overview: cms.articles,     href: '/studio-admin/articles'     },
-    { key: 'services',     label: 'Services',     icon: BsWrench,         overview: cms.services,     href: '/studio-admin/services'     },
-    { key: 'testimonials', label: 'Testimonials', icon: BsStar,           overview: cms.testimonials, href: '/studio-admin/testimonials' },
-    { key: 'faqs',         label: 'FAQs',         icon: BsQuestionCircle, overview: cms.faqs,         href: '/studio-admin/faqs'         },
-    { key: 'team',         label: 'Team',         icon: BsPeople,         overview: cms.team,         href: '/studio-admin/team'         },
+    { key: 'project',      label: 'Portfolio',    icon: BsFolder2Open,    overview: cms.projects,     href: '/studio-admin/cms/project'      },
+    { key: 'article',      label: 'Articles',     icon: BsFileText,       overview: cms.articles,     href: '/studio-admin/cms/article'      },
+    { key: 'service',      label: 'Services',     icon: BsWrench,         overview: cms.services,     href: '/studio-admin/cms/service'      },
+    { key: 'testimonial',  label: 'Testimonials', icon: BsStar,           overview: cms.testimonials, href: '/studio-admin/cms/testimonial'  },
+    { key: 'faq',          label: 'FAQs',         icon: BsQuestionCircle, overview: cms.faqs,         href: '/studio-admin/cms/faq'          },
+    { key: 'teamMember',   label: 'Team',         icon: BsPeople,         overview: cms.team,         href: '/studio-admin/cms/teamMember'   },
   ];
 
   return (

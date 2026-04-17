@@ -29,7 +29,7 @@ export default function JsonRenderer({ type, content, isDraft }: JsonRendererPro
           {type}
         </p>
         <h1 className="text-2xl font-bold text-neutral-900 mb-6">
-          Preview renderer not yet implemented for "{type}"
+          Preview renderer not yet implemented for &quot;{type}&quot;
         </h1>
         <p className="text-sm text-neutral-600 mb-6">
           Add a render component at{' '}

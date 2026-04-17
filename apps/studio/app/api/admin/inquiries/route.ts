@@ -19,12 +19,21 @@ export async function GET(request: Request) {
       .order('created_at', { ascending: false })
       .limit(limit);
 
-    if (status && VALID_STATUSES.has(status)) {
+    if (status) {
+      if (!VALID_STATUSES.has(status)) {
+        return NextResponse.json(
+          { error: `Invalid status. Valid values: ${[...VALID_STATUSES].join(', ')}` },
+          { status: 400 }
+        );
+      }
       query = query.eq('status', status);
     }
 
     const { data, error } = await query;
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      console.error('[inquiries] list query failed', error);
+      return NextResponse.json({ error: 'Failed to fetch inquiries' }, { status: 500 });
+    }
 
     return NextResponse.json({ inquiries: data ?? [] });
   } catch (e) {

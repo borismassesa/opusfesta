@@ -41,11 +41,14 @@ async function resolveImageUrl(
   const ref = content[imageField] as { asset_id?: string } | null | undefined;
   if (ref?.asset_id) {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_assets')
       .select('path')
       .eq('id', ref.asset_id)
       .single();
+    if (error && error.code !== 'PGRST116') {
+      console.error('[data-access] resolveImageUrl asset lookup failed', { assetId: ref.asset_id, error });
+    }
     if (data?.path) {
       return getTransformedImageUrl(data.path, { quality: 80, ...transform });
     }
@@ -80,13 +83,14 @@ async function docToService(doc: DocRow): Promise<StudioService> {
 export const getPublishedServices = unstable_cache(
   async (): Promise<StudioService[]> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_documents')
       .select('id, published_content, published_at, created_at, updated_at')
       .eq('type', 'service')
       .is('deleted_at', null)
       .not('published_content', 'is', null)
       .limit(500);
+    if (error) { console.error('[data-access] getPublishedServices failed', error); return []; }
     const services = await Promise.all(((data ?? []) as DocRow[]).map(docToService));
     return services.sort((a, b) => a.sort_order - b.sort_order);
   },
@@ -135,13 +139,14 @@ async function docToProject(doc: DocRow): Promise<StudioProject> {
 export const getPublishedProjects = unstable_cache(
   async (): Promise<StudioProject[]> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_documents')
       .select('id, published_content, published_at, created_at, updated_at')
       .eq('type', 'project')
       .is('deleted_at', null)
       .not('published_content', 'is', null)
       .limit(500);
+    if (error) { console.error('[data-access] getPublishedProjects failed', error); return []; }
     const projects = await Promise.all(((data ?? []) as DocRow[]).map(docToProject));
     return projects.sort((a, b) => a.sort_order - b.sort_order);
   },
@@ -152,13 +157,14 @@ export const getPublishedProjects = unstable_cache(
 export const getProjectBySlug = unstable_cache(
   async (slug: string): Promise<StudioProject | null> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_documents')
       .select('id, published_content, published_at, created_at, updated_at')
       .eq('type', 'project')
       .is('deleted_at', null)
       .filter('published_content->>slug', 'eq', slug)
       .single();
+    if (error && error.code !== 'PGRST116') { console.error('[data-access] getProjectBySlug failed', { slug, error }); }
     if (!data) return null;
     return docToProject(data as DocRow);
   },
@@ -193,7 +199,7 @@ async function docToArticle(doc: DocRow): Promise<StudioArticle> {
 export const getPublishedArticles = unstable_cache(
   async (): Promise<StudioArticle[]> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_documents')
       .select('id, published_content, published_at, created_at, updated_at')
       .eq('type', 'article')
@@ -201,6 +207,7 @@ export const getPublishedArticles = unstable_cache(
       .not('published_content', 'is', null)
       .order('published_at', { ascending: false })
       .limit(500);
+    if (error) { console.error('[data-access] getPublishedArticles failed', error); return []; }
     return Promise.all(((data ?? []) as DocRow[]).map(docToArticle));
   },
   ['published-articles-v2'],
@@ -210,13 +217,14 @@ export const getPublishedArticles = unstable_cache(
 export const getArticleBySlug = unstable_cache(
   async (slug: string): Promise<StudioArticle | null> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_documents')
       .select('id, published_content, published_at, created_at, updated_at')
       .eq('type', 'article')
       .is('deleted_at', null)
       .filter('published_content->>slug', 'eq', slug)
       .single();
+    if (error && error.code !== 'PGRST116') { console.error('[data-access] getArticleBySlug failed', { slug, error }); }
     if (!data) return null;
     return docToArticle(data as DocRow);
   },
@@ -245,13 +253,14 @@ async function docToTestimonial(doc: DocRow): Promise<StudioTestimonial> {
 export const getPublishedTestimonials = unstable_cache(
   async (): Promise<StudioTestimonial[]> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_documents')
       .select('id, published_content, published_at, created_at, updated_at')
       .eq('type', 'testimonial')
       .is('deleted_at', null)
       .not('published_content', 'is', null)
       .limit(500);
+    if (error) { console.error('[data-access] getPublishedTestimonials failed', error); return []; }
     const rows = await Promise.all(((data ?? []) as DocRow[]).map(docToTestimonial));
     return rows.sort((a, b) => a.sort_order - b.sort_order);
   },
@@ -278,13 +287,14 @@ function docToFaq(doc: DocRow): StudioFaq {
 export const getPublishedFaqs = unstable_cache(
   async (): Promise<StudioFaq[]> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_documents')
       .select('id, published_content, published_at, created_at, updated_at')
       .eq('type', 'faq')
       .is('deleted_at', null)
       .not('published_content', 'is', null)
       .limit(500);
+    if (error) { console.error('[data-access] getPublishedFaqs failed', error); return []; }
     return ((data ?? []) as DocRow[]).map(docToFaq).sort((a, b) => a.sort_order - b.sort_order);
   },
   ['published-faqs-v2'],
@@ -319,13 +329,14 @@ async function docToTeamMember(doc: DocRow): Promise<StudioTeamMember> {
 export const getPublishedTeamMembers = unstable_cache(
   async (): Promise<StudioTeamMember[]> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_documents')
       .select('id, published_content, published_at, created_at, updated_at')
       .eq('type', 'teamMember')
       .is('deleted_at', null)
       .not('published_content', 'is', null)
       .limit(500);
+    if (error) { console.error('[data-access] getPublishedTeamMembers failed', error); return []; }
     const rows = await Promise.all(((data ?? []) as DocRow[]).map(docToTeamMember));
     return rows.sort((a, b) => a.sort_order - b.sort_order);
   },
@@ -339,7 +350,8 @@ export const getPublishedTeamMembers = unstable_cache(
 export const getSettings = unstable_cache(
   async (): Promise<Record<string, string>> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb.from('studio_settings').select('key, value');
+    const { data, error } = await sb.from('studio_settings').select('key, value');
+    if (error) { console.error('[data-access] getSettings failed', error); return {}; }
     const map: Record<string, string> = {};
     for (const row of data ?? []) {
       map[row.key] = typeof row.value === 'string' ? row.value : String(row.value ?? '');
@@ -353,11 +365,12 @@ export const getSettings = unstable_cache(
 export const getSeoForPage = unstable_cache(
   async (pageKey: string): Promise<StudioSeo | null> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_seo')
       .select('*')
       .eq('page_key', pageKey)
       .single();
+    if (error && error.code !== 'PGRST116') { console.error('[data-access] getSeoForPage failed', { pageKey, error }); }
     return data;
   },
   ['seo'],
@@ -378,13 +391,14 @@ export interface StudioPageSection {
 export const getPageSection = unstable_cache(
   async (pageKey: string, sectionKey: string): Promise<Record<string, unknown> | null> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_page_sections')
       .select('content')
       .eq('page_key', pageKey)
       .eq('section_key', sectionKey)
       .eq('is_published', true)
       .single();
+    if (error && error.code !== 'PGRST116') { console.error('[data-access] getPageSection failed', { pageKey, sectionKey, error }); }
     return data?.content ?? null;
   },
   ['page-section'],
@@ -394,12 +408,13 @@ export const getPageSection = unstable_cache(
 export const getPageSections = unstable_cache(
   async (pageKey: string): Promise<Record<string, Record<string, unknown>>> => {
     const sb = getStudioSupabaseAdmin();
-    const { data } = await sb
+    const { data, error } = await sb
       .from('studio_page_sections')
       .select('section_key, content')
       .eq('page_key', pageKey)
       .eq('is_published', true)
       .order('sort_order');
+    if (error) { console.error('[data-access] getPageSections failed', { pageKey, error }); return {}; }
     const map: Record<string, Record<string, unknown>> = {};
     for (const row of data ?? []) {
       map[row.section_key] = row.content;

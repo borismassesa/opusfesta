@@ -25,7 +25,12 @@ export async function GET(_request: Request, { params }: RouteContext) {
       .eq('id', id)
       .single();
 
-    if (error || !data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (error) {
+      if (error.code === 'PGRST116') return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+      console.error('[assets] GET fetch failed', { id, error });
+      return NextResponse.json({ error: 'Failed to fetch asset' }, { status: 500 });
+    }
+    if (!data) return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
     return NextResponse.json({ asset: data });
   } catch (e) {
     if (e instanceof NextResponse) return e;
@@ -40,10 +45,13 @@ export async function PATCH(request: Request, { params }: RouteContext) {
     await requireStudioRole('studio_editor');
     const { id } = await params;
 
-    const body = await request.json().catch(() => null);
+    let body: unknown;
+    try { body = await request.json(); } catch {
+      return NextResponse.json({ error: 'Request body must be valid JSON' }, { status: 400 });
+    }
     const parsed = UpdateSchema.safeParse(body);
     if (!parsed.success) {
-      return NextResponse.json({ error: 'Invalid update payload' }, { status: 400 });
+      return NextResponse.json({ error: 'Invalid update payload', issues: parsed.error.issues }, { status: 400 });
     }
 
     const sb = getStudioSupabaseAdmin();
@@ -54,7 +62,12 @@ export async function PATCH(request: Request, { params }: RouteContext) {
       .select('*')
       .single();
 
-    if (error || !data) return NextResponse.json({ error: error?.message ?? 'Not found' }, { status: 404 });
+    if (error) {
+      if (error.code === 'PGRST116') return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+      console.error('[assets] PATCH update failed', { id, error });
+      return NextResponse.json({ error: 'Failed to update asset' }, { status: 500 });
+    }
+    if (!data) return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
     return NextResponse.json({ asset: data });
   } catch (e) {
     if (e instanceof NextResponse) return e;
@@ -79,17 +92,24 @@ export async function DELETE(_request: Request, { params }: RouteContext) {
       .select('path')
       .eq('id', id)
       .single();
-    if (fetchErr || !current) return NextResponse.json({ error: 'Not found' }, { status: 404 });
+    if (fetchErr) {
+      if (fetchErr.code === 'PGRST116') return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
+      console.error('[assets] DELETE fetch failed', { id, error: fetchErr });
+      return NextResponse.json({ error: 'Failed to fetch asset' }, { status: 500 });
+    }
+    if (!current) return NextResponse.json({ error: 'Asset not found' }, { status: 404 });
 
-    // Delete storage object first. Even if the row delete fails, removing the
-    // file is the bigger win — orphan rows are cheap, orphan files cost storage.
     const { error: storageErr } = await sb.storage.from(ASSETS_BUCKET).remove([current.path]);
     if (storageErr) {
-      console.error('[assets] storage delete failed', storageErr);
+      console.error('[assets] storage delete failed — aborting row delete to avoid orphan file', { id, path: current.path, error: storageErr });
+      return NextResponse.json({ error: 'Failed to delete asset file. Please retry.' }, { status: 500 });
     }
 
     const { error: rowErr } = await sb.from('studio_assets').delete().eq('id', id);
-    if (rowErr) return NextResponse.json({ error: rowErr.message }, { status: 500 });
+    if (rowErr) {
+      console.error('[assets] row delete failed after storage delete — orphan file may exist', { id, path: current.path, error: rowErr });
+      return NextResponse.json({ error: 'Failed to delete asset record' }, { status: 500 });
+    }
 
     return NextResponse.json({ success: true });
   } catch (e) {
