@@ -1,7 +1,7 @@
 'use client';
 
+import Link from 'next/link';
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { useBookingModal } from '@/components/BookingModalProvider';
 import type { StudioFaq } from '@/lib/studio-types';
 
 interface FAQSectionProps {
@@ -12,7 +12,6 @@ export default function FAQSection({ faqs: dbFaqs }: FAQSectionProps) {
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const refs = useRef<Map<string, HTMLElement>>(new Map());
-  const { openBookingModal } = useBookingModal();
 
   const setRef = useCallback((id: string) => (el: HTMLElement | null) => {
     if (el) refs.current.set(id, el);
@@ -66,8 +65,8 @@ export default function FAQSection({ faqs: dbFaqs }: FAQSectionProps) {
             <p className="text-neutral-500 text-lg leading-relaxed font-light max-w-sm mb-8">
               Everything you need to know before booking. Still have questions? Get in touch.
             </p>
-            <button
-              onClick={() => openBookingModal()}
+            <Link
+              href="/contact"
               className="inline-flex items-center gap-3 px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-4 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
             >
               Ask Us Anything
@@ -84,7 +83,7 @@ export default function FAQSection({ faqs: dbFaqs }: FAQSectionProps) {
               >
                 <path d="M5 12h14m-7-7l7 7l-7 7"></path>
               </svg>
-            </button>
+            </Link>
           </div>
 
           <div className="border-t-4 border-brand-border">

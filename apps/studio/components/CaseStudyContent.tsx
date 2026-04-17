@@ -3,11 +3,8 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Project } from '@/lib/data';
-import { useBookingModal } from '@/components/BookingModalProvider';
 
 export default function CaseStudyContent({ project }: { project: Project }) {
-  const { openBookingModal } = useBookingModal();
-
   return (
     <article className="bg-brand-bg py-16 lg:py-20">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-12">
@@ -103,12 +100,12 @@ export default function CaseStudyContent({ project }: { project: Project }) {
             </p>
           </div>
           <div className="flex gap-3">
-            <button
-              onClick={() => openBookingModal()}
+            <Link
+              href="/contact"
               className="inline-flex items-center gap-2 px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border border-brand-dark hover:bg-brand-accent hover:border-brand-accent transition-colors"
             >
               Start Project
-            </button>
+            </Link>
             <Link
               href="/portfolio"
               className="inline-flex items-center gap-2 px-6 py-3 text-xs font-bold text-brand-dark uppercase tracking-widest border border-brand-border/40 hover:border-brand-accent hover:text-brand-accent transition-colors"

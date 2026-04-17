@@ -33,16 +33,17 @@ export default function ContactPageContent() {
     setError('');
 
     try {
-      const response = await fetch('/api/booking', {
+      const response = await fetch('/api/inquiries', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: form.name,
           email: form.email,
           phone: form.phone,
-          eventType: form.projectType,
-          service: form.projectType,
-          message: `${form.message}\n\nBudget: ${form.budgetRange || 'Not specified'}\nTimeline: ${form.timeline || 'Not specified'}`,
+          projectType: form.projectType,
+          budgetRange: form.budgetRange,
+          timeline: form.timeline,
+          message: form.message,
         }),
       });
 

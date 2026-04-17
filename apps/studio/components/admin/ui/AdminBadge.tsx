@@ -1,18 +1,26 @@
-import type { StudioBookingStatus } from '@/lib/studio-types';
+import type { ReactNode } from 'react';
 
-const statusStyles: Record<StudioBookingStatus, string> = {
-  new: 'bg-[var(--admin-secondary)] text-[var(--admin-secondary-foreground)]',
-  contacted: 'bg-[var(--admin-accent)] text-[var(--admin-accent-foreground)]',
-  quoted: 'bg-[rgba(214,73,42,0.16)] text-[var(--admin-accent-foreground)]',
-  confirmed: 'bg-[var(--admin-primary)] text-[var(--admin-primary-foreground)]',
-  completed: 'bg-[var(--admin-muted-surface)] text-[var(--admin-muted)]',
-  cancelled: 'bg-[rgba(239,67,67,0.12)] text-[var(--admin-destructive)]',
+type Variant = 'default' | 'success' | 'warning' | 'danger' | 'info';
+
+const VARIANT_STYLES: Record<Variant, string> = {
+  default: 'bg-[var(--admin-muted-surface)] text-[var(--admin-muted)]',
+  success: 'bg-[var(--admin-primary)]/15 text-[var(--admin-primary)]',
+  warning: 'bg-amber-100 text-amber-700',
+  danger:  'bg-red-100 text-red-700',
+  info:    'bg-[var(--admin-accent)] text-[var(--admin-accent-foreground)]',
 };
 
-export default function AdminBadge({ status }: { status: StudioBookingStatus }) {
+interface AdminBadgeProps {
+  children: ReactNode;
+  variant?: Variant;
+}
+
+export default function AdminBadge({ children, variant = 'default' }: AdminBadgeProps) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${statusStyles[status]}`}>
-      {status}
+    <span
+      className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide capitalize ${VARIANT_STYLES[variant]}`}
+    >
+      {children}
     </span>
   );
 }
