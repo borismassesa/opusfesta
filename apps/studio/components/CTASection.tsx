@@ -1,7 +1,7 @@
 'use client';
 
+import Link from 'next/link';
 import { useRef, useEffect, useState } from 'react';
-import { useBookingModal } from '@/components/BookingModalProvider';
 
 interface CTASectionProps {
   content?: Record<string, unknown>;
@@ -10,7 +10,6 @@ interface CTASectionProps {
 export default function CTASection({ content }: CTASectionProps) {
   const [isVisible, setIsVisible] = useState(false);
   const sectionRef = useRef<HTMLElement>(null);
-  const { openBookingModal } = useBookingModal();
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -48,11 +47,11 @@ export default function CTASection({ content }: CTASectionProps) {
             {(content?.description as string) || "Whether it\u2019s a wedding, a product launch, or a milestone celebration \u2014 we\u2019d love to hear about it."}
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <button
-              onClick={() => openBookingModal()}
+            <Link
+              href="/contact"
               className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-4 border-brand-dark shadow-brutal hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
             >
-              Book Your Date
+              Start a Project
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="16"
@@ -66,13 +65,13 @@ export default function CTASection({ content }: CTASectionProps) {
               >
                 <path d="M5 12h14m-7-7l7 7l-7 7"></path>
               </svg>
-            </button>
-            <a
+            </Link>
+            <Link
               href="/services"
               className="inline-flex items-center justify-center px-10 py-5 text-xs font-bold text-brand-dark uppercase tracking-widest border-4 border-brand-border shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:border-brand-accent hover:text-brand-accent transition-all duration-200"
             >
               View Services
-            </a>
+            </Link>
           </div>
         </div>
       </div>
