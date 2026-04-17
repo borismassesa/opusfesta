@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   try {
-    const { clerkId } = await requireStudioRole('studio_editor');
+    const { userId: clerkId } = await requireStudioRole('studio_editor');
     const body = await req.json();
 
     // Validate required fields

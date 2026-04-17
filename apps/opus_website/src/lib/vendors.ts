@@ -22,6 +22,35 @@ export type VendorCategoryId =
   | 'security'
   | 'caricature-entertainment'
 
+export type VendorAvailability = {
+  bookedDates: string[]   // ISO date strings "YYYY-MM-DD"
+  limitedDates: string[]  // ISO date strings "YYYY-MM-DD"
+  leadTimeWeeks: number
+}
+
+export type VendorMediaItem = {
+  type: 'photo' | 'video'
+  src: string
+  poster?: string
+}
+
+export type VendorReview = {
+  id: string
+  author: string
+  rating: number
+  text: string
+  date: string
+  weddingDate?: string
+  media?: VendorMediaItem[]
+}
+
+export type VendorPricingPackage = {
+  label: string
+  value: string
+  services?: string[]
+  note?: string
+}
+
 export type Vendor = {
   id: string
   slug: string
@@ -42,6 +71,56 @@ export type Vendor = {
     poster?: string
   }
   gallery?: string[]
+  availability?: VendorAvailability
+  // Extended profile fields (populated by vendors_portal)
+  about?: string
+  startingPrice?: string
+  responseTime?: string
+  locallyOwned?: boolean
+  yearsInBusiness?: number
+  languages?: string[]
+  awards?: string[]
+  capacity?: { min: number; max: number }
+  services?: string[]
+  pricingDetails?: VendorPricingPackage[]
+  detailedReviews?: VendorReview[]
+  faqs?: Array<{ question: string; answer: string }>
+  location?: { address: string; lat: number; lng: number }
+  serviceArea?: string[]
+  team?: Array<{ avatar?: string; role?: string; name?: string; bio?: string }>
+  socialLinks?: { instagram?: string; facebook?: string; website?: string }
+}
+
+/**
+ * Generates deterministic demo availability for a vendor based on their id.
+ * Used as a fallback when no real availability data is stored.
+ */
+export function generateAvailability(vendorId: string): VendorAvailability {
+  const seed = vendorId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0)
+
+  const bookedDates: string[] = []
+  const limitedDates: string[] = []
+  const now = new Date()
+
+  for (let i = 7; i < 365; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + i)
+    const dow = d.getDay()
+    // Only Saturdays and Sundays (typical wedding days)
+    if (dow !== 0 && dow !== 6) continue
+    const mixed = (seed * 31 + i * 17) % 100
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+    if (mixed < 18) {
+      bookedDates.push(ds)
+    } else if (mixed < 30) {
+      limitedDates.push(ds)
+    }
+  }
+
+  return {
+    bookedDates,
+    limitedDates,
+    leadTimeWeeks: [2, 4, 6, 8][seed % 4],
+  }
 }
 
 export type VendorCategory = {
