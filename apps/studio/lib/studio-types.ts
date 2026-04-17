@@ -1,11 +1,3 @@
-export type StudioBookingStatus =
-  | 'new'
-  | 'contacted'
-  | 'quoted'
-  | 'confirmed'
-  | 'completed'
-  | 'cancelled';
-
 export interface StudioProject {
   id: string;
   slug: string;
@@ -57,23 +49,6 @@ export interface StudioService {
   updated_at: string;
 }
 
-export interface StudioBooking {
-  id: string;
-  name: string;
-  email: string;
-  phone: string | null;
-  event_type: string;
-  preferred_date: string | null;
-  location: string | null;
-  service: string | null;
-  message: string | null;
-  status: StudioBookingStatus;
-  admin_notes: string | null;
-  responded_at: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
 export interface StudioTestimonial {
   id: string;
   quote: string;
@@ -109,16 +84,6 @@ export interface StudioTeamMember {
   updated_at: string;
 }
 
-export interface StudioAvailability {
-  id: string;
-  date: string;
-  time_slot: string;
-  is_available: boolean;
-  note: string | null;
-  booking_id: string | null;
-  created_at: string;
-}
-
 export interface StudioSeo {
   id: string;
   page_key: string;
@@ -135,15 +100,28 @@ export interface StudioSetting {
   updated_at: string;
 }
 
-export interface StudioMessage {
+export type StudioInquiryStatus =
+  | 'new'
+  | 'contacted'
+  | 'qualified'
+  | 'closed_won'
+  | 'closed_lost'
+  | 'spam';
+
+export interface StudioInquiry {
   id: string;
-  booking_id: string | null;
-  sender: string;
-  sender_type: 'admin' | 'client';
-  sender_name: string | null;
-  sender_client_id: string | null;
-  content: string;
-  read_at: string | null;
+  name: string;
+  email: string;
+  phone: string | null;
+  project_type: string | null;
+  budget_range: string | null;
+  timeline: string | null;
+  message: string | null;
+  status: StudioInquiryStatus;
+  assigned_to: string | null;
+  internal_notes: string | null;
+  contacted_at: string | null;
+  closed_at: string | null;
   created_at: string;
   updated_at: string;
 }

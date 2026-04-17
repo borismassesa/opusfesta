@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
-  BsGrid1X2, BsFolder2Open, BsFileText, BsWrench, BsCalendarCheck,
-  BsCalendar3, BsChatSquareText, BsStar, BsQuestionCircle, BsPeople,
-  BsImage, BsSearch, BsGear, BsHouseDoor, BsShare, BsBoxArrowUpRight,
-  BsBoxArrowRight,
+  BsGrid1X2, BsPeople, BsImage, BsSearch, BsGear,
+  BsHouseDoor, BsShare, BsBoxArrowUpRight, BsBoxArrowRight,
+  BsInbox,
 } from 'react-icons/bs';
 import type { StudioRole } from '@/lib/studio-types';
 import { hasMinimumRole } from '@/lib/admin-auth-client';
+import { listContentTypes } from '@/lib/cms/types';
+import { resolveIcon } from '@/lib/cms/icons';
 
 interface NavItem {
   label: string;
@@ -25,38 +26,39 @@ interface NavGroup {
   items: NavItem[];
 }
 
+// Content entries — built from the ContentType registry, one link per type
+// at /studio-admin/cms/[type]. After Phase 4, this is the primary path for
+// editing faq / project / service / team / testimonial / article content.
+const cmsItems: NavItem[] = listContentTypes().map((ct) => ({
+  label: ct.pluralLabel,
+  href: `/studio-admin/cms/${ct.type}`,
+  icon: resolveIcon(ct.icon),
+  minRole: 'studio_viewer',
+}));
+
 const navGroups: NavGroup[] = [
   {
     label: 'Overview',
     items: [
-      { label: 'Dashboard',  href: '/studio-admin',           icon: BsGrid1X2,       minRole: 'studio_viewer' },
-      { label: 'Bookings',   href: '/studio-admin/bookings',  icon: BsCalendarCheck, minRole: 'studio_viewer' },
-      { label: 'Messages',   href: '/studio-admin/messages',  icon: BsChatSquareText,minRole: 'studio_viewer' },
+      { label: 'Dashboard', href: '/studio-admin',           icon: BsGrid1X2, minRole: 'studio_viewer' },
+      { label: 'Inquiries', href: '/studio-admin/inquiries', icon: BsInbox,   minRole: 'studio_viewer' },
     ],
   },
   {
     label: 'Content',
-    items: [
-      { label: 'Homepage',     href: '/studio-admin/homepage',     icon: BsHouseDoor,    minRole: 'studio_admin'  },
-      { label: 'About Page',   href: '/studio-admin/about-page',   icon: BsPeople,       minRole: 'studio_admin'  },
-      { label: 'Portfolio',    href: '/studio-admin/portfolio',    icon: BsFolder2Open,  minRole: 'studio_viewer' },
-      { label: 'Articles',     href: '/studio-admin/articles',     icon: BsFileText,     minRole: 'studio_viewer' },
-      { label: 'Services',     href: '/studio-admin/services',     icon: BsWrench,       minRole: 'studio_viewer' },
-      { label: 'Testimonials', href: '/studio-admin/testimonials', icon: BsStar,         minRole: 'studio_viewer' },
-      { label: 'FAQs',         href: '/studio-admin/faqs',         icon: BsQuestionCircle,minRole:'studio_viewer' },
-    ],
+    items: cmsItems,
   },
   {
-    label: 'Studio',
+    label: 'Pages',
     items: [
-      { label: 'Availability', href: '/studio-admin/availability', icon: BsCalendar3, minRole: 'studio_viewer' },
-      { label: 'Team',         href: '/studio-admin/team',         icon: BsPeople,    minRole: 'studio_viewer' },
-      { label: 'Media',        href: '/studio-admin/media',        icon: BsImage,     minRole: 'studio_editor' },
+      { label: 'Homepage',   href: '/studio-admin/homepage',   icon: BsHouseDoor, minRole: 'studio_admin' },
+      { label: 'About Page', href: '/studio-admin/about-page', icon: BsPeople,    minRole: 'studio_admin' },
     ],
   },
   {
     label: 'Site',
     items: [
+      { label: 'Media',        href: '/studio-admin/media',        icon: BsImage,  minRole: 'studio_editor' },
       { label: 'SEO',          href: '/studio-admin/seo',          icon: BsSearch, minRole: 'studio_editor' },
       { label: 'Social Media', href: '/studio-admin/social-media', icon: BsShare,  minRole: 'studio_admin'  },
       { label: 'Settings',     href: '/studio-admin/settings',     icon: BsGear,   minRole: 'studio_admin'  },
@@ -68,33 +70,20 @@ export default function AdminSidebar({ role }: { role: StudioRole }) {
   const pathname = usePathname();
   const { user } = useUser();
   const { signOut } = useClerk();
-  const [queueCount, setQueueCount] = useState(0);
-  const [unreadMessages, setUnreadMessages] = useState(0);
+  const [newInquiries, setNewInquiries] = useState(0);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
   useEffect(() => {
-    fetch('/api/admin/bookings/queue')
-      .then(r => r.json())
-      .then(d => {
-        const q = d.queue;
-        if (q) setQueueCount(
-          (q.needs_qualification?.length || 0) +
-          (q.awaiting_deposit?.length || 0) +
-          (q.overdue_balances?.length || 0)
-        );
-      })
-      .catch(() => {});
-
-    const fetchUnread = () => {
-      fetch('/api/admin/messages/unread')
-        .then(r => r.json())
-        .then(d => setUnreadMessages(d.total || 0))
+    const fetchInquiries = () => {
+      fetch('/api/admin/inquiries/new-count')
+        .then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.count != null) setNewInquiries(d.count); })
         .catch(() => {});
     };
-    fetchUnread();
-    const interval = setInterval(fetchUnread, 30000);
+    fetchInquiries();
+    const interval = setInterval(fetchInquiries, 60_000);
     return () => clearInterval(interval);
   }, []);
 
@@ -151,35 +140,12 @@ export default function AdminSidebar({ role }: { role: StudioRole }) {
                         <Icon className="w-[15px] h-[15px] shrink-0" />
                         <span className="flex-1 truncate">{item.label}</span>
 
-                        {item.label === 'Bookings' && queueCount > 0 && (
+                        {item.label === 'Inquiries' && newInquiries > 0 && (
                           <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold bg-[var(--admin-destructive)] text-white">
-                            {queueCount}
-                          </span>
-                        )}
-                        {item.label === 'Messages' && unreadMessages > 0 && (
-                          <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold bg-blue-500 text-white">
-                            {unreadMessages}
+                            {newInquiries}
                           </span>
                         )}
                       </Link>
-
-                      {item.label === 'Bookings' && (
-                        <Link
-                          href="/studio-admin/bookings/queue"
-                          className={`flex items-center gap-2 pl-10 pr-3 py-1.5 text-[12px] transition-colors ${
-                            pathname.includes('/bookings/queue')
-                              ? 'text-[var(--admin-primary)] font-semibold'
-                              : 'text-[var(--admin-muted)] hover:text-[var(--admin-foreground)]'
-                          }`}
-                        >
-                          Queue
-                          {queueCount > 0 && (
-                            <span className="inline-flex h-3.5 min-w-[14px] items-center justify-center rounded-full px-1 text-[8px] font-bold bg-[var(--admin-destructive)] text-white">
-                              {queueCount}
-                            </span>
-                          )}
-                        </Link>
-                      )}
                     </li>
                   );
                 })}

@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
-import { useBookingModal } from '@/components/BookingModalProvider';
+import Link from 'next/link';
 import type { StudioService } from '@/lib/studio-types';
 
 interface ServicesSectionProps {
@@ -13,7 +13,6 @@ export default function ServicesSection({ services: dbServices }: ServicesSectio
   const [visibleItems, setVisibleItems] = useState<Set<string>>(new Set());
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const refs = useRef<Map<string, HTMLElement>>(new Map());
-  const { openBookingModal } = useBookingModal();
 
   const setRef = useCallback((id: string) => (el: HTMLElement | null) => {
     if (el) {
@@ -166,8 +165,8 @@ export default function ServicesSection({ services: dbServices }: ServicesSectio
                           <span className="text-xl font-bold text-brand-dark font-mono tracking-tight md:hidden">
                             {service.price}
                           </span>
-                          <button
-                            onClick={() => openBookingModal(service.title)}
+                          <Link
+                            href={`/contact?service=${encodeURIComponent(service.title)}`}
                             className="inline-flex items-center gap-2 px-6 py-3 bg-brand-dark text-white text-xs font-bold uppercase tracking-widest border-2 border-brand-dark shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-accent hover:border-brand-accent transition-all duration-200"
                           >
                             Enquire Now
@@ -184,7 +183,7 @@ export default function ServicesSection({ services: dbServices }: ServicesSectio
                             >
                               <path d="M5 12h14m-7-7l7 7l-7 7"></path>
                             </svg>
-                          </button>
+                          </Link>
                         </div>
                       </div>
 
