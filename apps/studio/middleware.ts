@@ -4,7 +4,9 @@ const isAdminRoute = createRouteMatcher(['/studio-admin(.*)', '/api/admin(.*)'])
 
 export default clerkMiddleware(async (auth, req) => {
   if (isAdminRoute(req)) {
-    await auth.protect()
+    await auth.protect({
+      unauthenticatedUrl: new URL('/sign-in', req.url).toString(),
+    })
     return
   }
 })
