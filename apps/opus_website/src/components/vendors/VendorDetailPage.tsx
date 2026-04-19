@@ -2041,19 +2041,6 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
     })
   }
 
-  function getGalleryAspectClass(index: number) {
-    const pattern = [
-      'aspect-[4/5]',
-      'aspect-[4/5]',
-      'aspect-[16/11]',
-      'aspect-[4/5]',
-      'aspect-[5/6]',
-      'aspect-[16/10]',
-    ]
-
-    return pattern[index % pattern.length]
-  }
-
 
   return (
     <main className="bg-white text-[#1A1A1A]">
@@ -2358,12 +2345,12 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                       >
                         {item.kind === 'video' ? (
                           <div className="group relative">
-                            <div className={`overflow-hidden ${getGalleryAspectClass(index)}`}>
+                            <div className="overflow-hidden">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img
                                 src={item.poster}
                                 alt={`${vendor.name} video preview`}
-                                className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                                className="block h-auto w-full transition duration-500 group-hover:scale-[1.02]"
                               />
                             </div>
                             <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/25 to-transparent" />
@@ -2375,12 +2362,12 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                             </div>
                           </div>
                         ) : (
-                          <div className={`overflow-hidden ${getGalleryAspectClass(index)}`}>
+                          <div className="overflow-hidden">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
                               src={item.src}
                               alt={`${vendor.name} gallery image ${index + 1}`}
-                              className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
+                              className="block h-auto w-full transition duration-500 group-hover:scale-[1.02]"
                             />
                           </div>
                         )}
@@ -2431,7 +2418,7 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                       </button>
                     )}
 
-                    <div className="relative h-full w-full max-w-6xl overflow-hidden rounded-[28px]">
+                    <div className="relative flex h-full w-full max-w-6xl items-center justify-center overflow-hidden rounded-[28px]">
                       {previewItem.kind === 'video' ? (
                         <video
                           src={previewItem.src}
@@ -2439,14 +2426,14 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                           controls
                           autoPlay
                           playsInline
-                          className="h-full w-full object-cover"
+                          className="max-h-full max-w-full object-contain"
                         />
                       ) : (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={previewItem.src}
                           alt={`${vendor.name} gallery preview ${previewIndex !== null ? previewIndex + 1 : 1}`}
-                          className="h-full w-full object-cover"
+                          className="max-h-full max-w-full object-contain"
                         />
                       )}
                     </div>
