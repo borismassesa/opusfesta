@@ -1,0 +1,31 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
+  --color-brand-purple: #5b3299;
+  --color-brand-purple-dark: #46257a;
+  --color-brand-gray: #f9fafb;
+}
+
+html, body {
+  background-color: #ffffff;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  font-family: var(--font-sans);
+}
+
+body { position: relative; }
+
+img, video, canvas, svg { max-width: 100%; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

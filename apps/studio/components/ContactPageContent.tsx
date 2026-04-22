@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useState } from 'react';
+import StudioHoursCard from '@/components/StudioHoursCard';
 
 type ContactForm = {
   name: string;
@@ -191,6 +192,8 @@ export default function ContactPageContent() {
                 </div>
               </div>
             </div>
+
+            <StudioHoursCard />
 
             <div className="border-4 border-brand-border overflow-hidden bg-white">
               <iframe

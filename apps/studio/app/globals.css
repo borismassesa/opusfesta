@@ -105,7 +105,9 @@ html {
 .admin-shell {
   --admin-background: #ffffff;
   --admin-foreground: #171717;
+  --admin-card: #ffffff;
   --admin-card-foreground: #171717;
+  --admin-popover: #ffffff;
   --admin-popover-foreground: #171717;
   --admin-primary: #D6492A;
   --admin-primary-foreground: #ffffff;
@@ -141,7 +143,9 @@ html {
 .dark .admin-shell {
   --admin-background: #121212;
   --admin-foreground: #fafafa;
+  --admin-card: #1c1c1f;
   --admin-card-foreground: #fafafa;
+  --admin-popover: #1c1c1f;
   --admin-popover-foreground: #fafafa;
   --admin-primary: #D6492A;
   --admin-primary-foreground: #fafafa;

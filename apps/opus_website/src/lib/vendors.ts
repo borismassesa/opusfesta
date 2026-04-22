@@ -202,7 +202,7 @@ export const vendorCities: VendorCity[] = [
   },
 ]
 
-export const vendors: Vendor[] = [
+const baseVendors: Vendor[] = [
   // Featured / spotlight
   {
     id: 'zanzibar-pearl-venue',
@@ -587,6 +587,10 @@ export const vendors: Vendor[] = [
     },
   },
 ]
+
+import { enrichVendor } from './vendors-seed'
+
+export const vendors: Vendor[] = baseVendors.map(enrichVendor)
 
 export function getVendorsByCategory(categoryId: VendorCategoryId) {
   return vendors.filter((v) => v.categoryId === categoryId)

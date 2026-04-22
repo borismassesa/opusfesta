@@ -61,7 +61,7 @@ export default function CategoryMarquee() {
           {marqueeItems.map((category, i) => (
             <div
               key={i}
-              className="mx-4 px-8 py-4 rounded-full shadow-sm font-bold text-lg"
+              className="mx-4 px-9 py-7 rounded-full shadow-sm font-bold text-lg"
               style={{ background: category.bg, color: category.text }}
             >
               {category.name}

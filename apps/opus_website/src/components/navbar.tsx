@@ -101,6 +101,7 @@ const navItems: Array<{
       title: 'PLANNING TOOLS',
       description: 'Everything you need to plan your wedding: checklists, budgets, guest lists and more.',
       linkText: 'Explore tools',
+      href: '/planning-tools',
     },
     columns: [
       {
@@ -175,28 +176,29 @@ const navItems: Array<{
       title: 'GUEST MANAGEMENT',
       description: 'Invite guests, track RSVPs, manage plus-ones and seating. All in one place.',
       linkText: 'Manage your guests',
+      href: '/guests',
     },
     columns: [
       {
         title: 'Features',
         links: [
-          { Icon: Users, label: 'Guest List' },
-          { Icon: CheckCircle2, label: 'RSVP Tracking' },
-          { Icon: MessageCircle, label: 'Send Invitations' },
-          { Icon: MapPin, label: 'Seating Planner' },
-          { Icon: Heart, label: 'Dietary & Plus-ones' },
+          { Icon: Users, label: 'Guest List', href: '/guests#guest-dashboard' },
+          { Icon: CheckCircle2, label: 'RSVP Tracking', href: '/guests#guest-dashboard' },
+          { Icon: MessageCircle, label: 'Send Invitations', href: '/guests' },
+          { Icon: MapPin, label: 'Seating Planner', href: '/guests#guest-dashboard' },
+          { Icon: Heart, label: 'Dietary & Plus-ones', href: '/guests' },
         ],
       },
       {
         title: 'Resources',
         links: [
-          { Icon: BookOpen, label: 'Guest List Tips' },
-          { Icon: PenLine, label: 'RSVP Wording Ideas' },
+          { Icon: BookOpen, label: 'Guest List Tips', href: '/advice-and-ideas' },
+          { Icon: PenLine, label: 'RSVP Wording Ideas', href: '/advice-and-ideas' },
         ],
       },
     ],
     photoGridTitle: 'Guest Planning',
-    photoGrid: guestsPhotoGrid,
+    photoGrid: guestsPhotoGrid.map((item) => ({ ...item, href: '/guests' })),
   },
   {
     label: 'Websites',
@@ -205,6 +207,7 @@ const navItems: Array<{
       title: 'WEDDING WEBSITES',
       description: 'Build a beautiful wedding website in minutes and share it with your guests.',
       linkText: 'Create your website',
+      href: '/websites',
     },
     columns: [
       {
@@ -268,6 +271,7 @@ const navItems: Array<{
       title: 'ATTIRE & RINGS',
       description: 'Find your perfect look from verified local boutiques across East Africa.',
       linkText: 'Explore attire',
+      href: '/attire-and-rings',
     },
     columns: [
       {

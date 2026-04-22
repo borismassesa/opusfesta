@@ -39,7 +39,13 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             OpusStudio
           </Link>
 
-          <div className="ml-auto flex items-center gap-2 sm:gap-4">
+          <div className="ml-auto flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/book"
+              className="hidden md:flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand-dark bg-white px-4 py-2 border-2 border-brand-dark hover:bg-brand-dark hover:text-white transition-colors duration-200"
+            >
+              Book
+            </Link>
             <Link
               href="/contact"
               className="hidden sm:flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-white bg-brand-accent px-4 py-2 border-2 border-brand-accent shadow-brutal-sm hover:shadow-none hover:translate-x-1 hover:translate-y-1 hover:bg-brand-dark hover:border-brand-dark transition-all duration-200"

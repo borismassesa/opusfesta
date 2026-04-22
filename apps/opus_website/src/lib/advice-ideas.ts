@@ -55,6 +55,16 @@ export type AdviceIdeasNavLink = {
 
 export const ADVICE_IDEAS_BASE_PATH = '/advice-and-ideas'
 
+// Thumbnail source for any post — falls back to the video poster image
+// for posts where the hero is an `.mov` / `.mp4`. next/image can't render
+// a video file, so cards need to reach for the poster jpg instead.
+export function heroThumb(post: { heroMedia: { type: 'image' | 'video'; src: string; poster?: string } }): string {
+  if (post.heroMedia.type === 'video' && post.heroMedia.poster) {
+    return post.heroMedia.poster
+  }
+  return post.heroMedia.src
+}
+
 export const adviceIdeasTopics: AdviceIdeasTopic[] = [
   {
     id: 'featured-stories',

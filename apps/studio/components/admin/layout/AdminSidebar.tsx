@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import {
-  BsGrid1X2, BsPeople, BsImage, BsSearch, BsGear,
-  BsHouseDoor, BsShare, BsBoxArrowUpRight, BsBoxArrowRight,
-  BsInbox,
+  BsGrid1X2, BsInbox, BsCalendar3, BsCalendar2Check, BsClock,
+  BsPersonLinesFill, BsCashCoin, BsImages,
+  BsHouseDoor, BsPeople, BsImage, BsSearch, BsGear, BsShare,
+  BsBoxArrowUpRight, BsBoxArrowRight,
 } from 'react-icons/bs';
 import type { StudioRole } from '@/lib/studio-types';
 import { hasMinimumRole } from '@/lib/admin-auth-client';
-import { listContentTypes } from '@/lib/cms/types';
+import { getContentType } from '@/lib/cms/types';
 import { resolveIcon } from '@/lib/cms/icons';
 
 interface NavItem {
@@ -19,6 +20,7 @@ interface NavItem {
   href: string;
   icon: React.ComponentType<{ className?: string }>;
   minRole: StudioRole;
+  badge?: 'newInquiries' | 'comingSoon';
 }
 
 interface NavGroup {
@@ -26,27 +28,55 @@ interface NavGroup {
   items: NavItem[];
 }
 
-// Content entries — built from the ContentType registry, one link per type
-// at /studio-admin/cms/[type]. After Phase 4, this is the primary path for
-// editing faq / project / service / team / testimonial / article content.
-const cmsItems: NavItem[] = listContentTypes().map((ct) => ({
-  label: ct.pluralLabel,
-  href: `/studio-admin/cms/${ct.type}`,
-  icon: resolveIcon(ct.icon),
-  minRole: 'studio_viewer',
-}));
+// Content types ordered by business value (not registry insertion order).
+// Portfolio leads — it is the product. Supporting content follows.
+const CONTENT_ORDER = ['project', 'service', 'article', 'testimonial', 'teamMember', 'faq'] as const;
+
+function buildContentItems(): NavItem[] {
+  return CONTENT_ORDER
+    .map((key) => {
+      const ct = getContentType(key);
+      if (!ct) return null;
+      return {
+        label: ct.pluralLabel,
+        href: `/studio-admin/cms/${ct.type}`,
+        icon: resolveIcon(ct.icon),
+        minRole: 'studio_viewer' as StudioRole,
+      };
+    })
+    .filter((x): x is NavItem => x !== null);
+}
 
 const navGroups: NavGroup[] = [
   {
-    label: 'Overview',
+    label: 'Today',
     items: [
-      { label: 'Dashboard', href: '/studio-admin',           icon: BsGrid1X2, minRole: 'studio_viewer' },
-      { label: 'Inquiries', href: '/studio-admin/inquiries', icon: BsInbox,   minRole: 'studio_viewer' },
+      { label: 'Dashboard',    href: '/studio-admin',              icon: BsGrid1X2,   minRole: 'studio_viewer' },
+      { label: 'Inbox',        href: '/studio-admin/inquiries',    icon: BsInbox,     minRole: 'studio_viewer', badge: 'newInquiries' },
+      { label: 'Calendar',     href: '/studio-admin/calendar',     icon: BsCalendar3, minRole: 'studio_viewer' },
+      { label: 'Availability', href: '/studio-admin/availability', icon: BsClock,     minRole: 'studio_admin'  },
     ],
   },
   {
-    label: 'Content',
-    items: cmsItems,
+    label: 'Clients',
+    items: [
+      { label: 'Bookings', href: '/studio-admin/bookings', icon: BsCalendar2Check,  minRole: 'studio_viewer' },
+      { label: 'Clients',  href: '/studio-admin/clients',  icon: BsPersonLinesFill, minRole: 'studio_viewer' },
+      { label: 'Payments', href: '/studio-admin/payments', icon: BsCashCoin,        minRole: 'studio_admin',  badge: 'comingSoon' },
+    ],
+  },
+  {
+    label: 'Deliverables',
+    items: [
+      { label: 'Galleries', href: '/studio-admin/galleries', icon: BsImages, minRole: 'studio_editor', badge: 'comingSoon' },
+    ],
+  },
+  {
+    label: 'Website',
+    items: [
+      ...buildContentItems(),
+      { label: 'Media', href: '/studio-admin/media', icon: BsImage, minRole: 'studio_editor' },
+    ],
   },
   {
     label: 'Pages',
@@ -56,12 +86,11 @@ const navGroups: NavGroup[] = [
     ],
   },
   {
-    label: 'Site',
+    label: 'Settings',
     items: [
-      { label: 'Media',        href: '/studio-admin/media',        icon: BsImage,  minRole: 'studio_editor' },
       { label: 'SEO',          href: '/studio-admin/seo',          icon: BsSearch, minRole: 'studio_editor' },
       { label: 'Social Media', href: '/studio-admin/social-media', icon: BsShare,  minRole: 'studio_admin'  },
-      { label: 'Settings',     href: '/studio-admin/settings',     icon: BsGear,   minRole: 'studio_admin'  },
+      { label: 'General',      href: '/studio-admin/settings',     icon: BsGear,   minRole: 'studio_admin'  },
     ],
   },
 ];
@@ -140,9 +169,14 @@ export default function AdminSidebar({ role }: { role: StudioRole }) {
                         <Icon className="w-[15px] h-[15px] shrink-0" />
                         <span className="flex-1 truncate">{item.label}</span>
 
-                        {item.label === 'Inquiries' && newInquiries > 0 && (
+                        {item.badge === 'newInquiries' && newInquiries > 0 && (
                           <span className="inline-flex h-4 min-w-[16px] items-center justify-center rounded-full px-1 text-[9px] font-bold bg-[var(--admin-destructive)] text-white">
                             {newInquiries}
+                          </span>
+                        )}
+                        {item.badge === 'comingSoon' && (
+                          <span className="text-[9px] font-mono uppercase tracking-[0.1em] text-[var(--admin-muted)] border border-[var(--admin-sidebar-border)] px-1 py-[1px]">
+                            Soon
                           </span>
                         )}
                       </Link>

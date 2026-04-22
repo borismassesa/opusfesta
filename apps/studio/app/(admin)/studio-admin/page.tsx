@@ -1,13 +1,34 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
-  BsArrowRight, BsInbox, BsExclamationCircle, BsFileText,
-  BsFolder2Open, BsWrench, BsStar, BsQuestionCircle, BsPeople,
-  BsArrowUpShort, BsArrowDownShort, BsDashLg,
+  BsArrowRight, BsInbox, BsExclamationTriangle, BsPlusLg,
+  BsFolder2Open, BsWrench, BsFileText, BsStar, BsPeople, BsQuestionCircle,
+  BsImage, BsClock, BsCalendar2Check,
 } from 'react-icons/bs';
 import AdminBadge from '@/components/admin/ui/AdminBadge';
+
+// ---------------------------------------------------------------------------
+// Today's schedule types
+// ---------------------------------------------------------------------------
+interface TodayBooking {
+  id: string;
+  client_name: string;
+  service_name: string | null;
+  start_time: string;
+  duration_minutes: number;
+  status: 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
+  location: string | null;
+}
+
+function todayIso(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 // ---------------------------------------------------------------------------
 // Types (mirror of /api/admin/dashboard response)
@@ -56,6 +77,8 @@ interface DashboardData {
     statusCounts: Record<string, number>;
     recent: RecentInquiry[];
     totalInPeriod: number;
+    daily: { date: string; count: number }[];
+    bucketDays: number;
   };
   period: string;
   generatedAt: string;
@@ -64,16 +87,6 @@ interface DashboardData {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-type Period = '7d' | '30d' | '90d' | '12m' | 'ytd';
-
-const PERIOD_LABELS: Record<Period, string> = {
-  '7d': 'Last 7 days',
-  '30d': 'Last 30 days',
-  '90d': 'Last 90 days',
-  '12m': 'Last 12 months',
-  'ytd': 'Year to date',
-};
-
 function formatRelative(iso: string): string {
   const then = new Date(iso).getTime();
   const diffMs = Date.now() - then;
@@ -88,64 +101,87 @@ function formatRelative(iso: string): string {
   return `${months}mo ago`;
 }
 
-function DeltaIndicator({ value }: { value: number }) {
-  if (value > 0) {
-    return (
-      <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-emerald-600">
-        <BsArrowUpShort className="w-3.5 h-3.5" />
-        {Math.abs(value)}%
-      </span>
-    );
-  }
-  if (value < 0) {
-    return (
-      <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-red-600">
-        <BsArrowDownShort className="w-3.5 h-3.5" />
-        {Math.abs(value)}%
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-0.5 text-[11px] font-semibold text-[var(--admin-muted)]">
-      <BsDashLg className="w-3 h-3" />
-      0%
-    </span>
-  );
-}
+// ---------------------------------------------------------------------------
+// Quick-create catalogue — the most common "I need to add X" actions.
+// Links into the existing CMS new-item flow at /studio-admin/cms/<type>/new.
+// ---------------------------------------------------------------------------
+const QUICK_CREATES: {
+  key: string;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+  href: string;
+  minRole?: 'viewer' | 'editor' | 'admin';
+}[] = [
+  { key: 'project',     label: 'Project',     icon: BsFolder2Open,    href: '/studio-admin/cms/project/new'     },
+  { key: 'service',     label: 'Service',     icon: BsWrench,         href: '/studio-admin/cms/service/new'     },
+  { key: 'article',     label: 'Article',     icon: BsFileText,       href: '/studio-admin/cms/article/new'     },
+  { key: 'testimonial', label: 'Testimonial', icon: BsStar,           href: '/studio-admin/cms/testimonial/new' },
+  { key: 'teamMember',  label: 'Team member', icon: BsPeople,         href: '/studio-admin/cms/teamMember/new'  },
+  { key: 'faq',         label: 'FAQ',         icon: BsQuestionCircle, href: '/studio-admin/cms/faq/new'         },
+  { key: 'booking',     label: 'Booking',     icon: BsCalendar2Check, href: '/studio-admin/bookings'            },
+  { key: 'media',       label: 'Upload media', icon: BsImage,         href: '/studio-admin/media'               },
+];
 
 // ---------------------------------------------------------------------------
 // Page
 // ---------------------------------------------------------------------------
 export default function AdminDashboardPage() {
-  const [period, setPeriod] = useState<Period>('30d');
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [todayBookings, setTodayBookings] = useState<TodayBooking[]>([]);
 
   useEffect(() => {
+    let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/admin/dashboard?period=${period}`)
+    fetch(`/api/admin/dashboard?period=30d`)
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       })
-      .then((payload) => setData(payload))
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : 'Failed to load'))
-      .finally(() => setLoading(false));
-  }, [period]);
+      .then((payload: DashboardData) => { if (!cancelled) setData(payload); })
+      .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load'); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
 
+  useEffect(() => {
+    // Today's schedule — best effort; if bookings table doesn't exist yet,
+    // swallow the error and leave the section empty.
+    const today = todayIso();
+    fetch(`/api/admin/bookings?date_from=${today}&date_to=${today}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.bookings) setTodayBookings(d.bookings); })
+      .catch(() => {});
+  }, []);
+
+  const draftCounts = useMemo(() => {
+    if (!data) return [];
+    const rows = [
+      { key: 'project',     label: 'Portfolio',    href: '/studio-admin/cms/project',     overview: data.cms.projects,     icon: BsFolder2Open    },
+      { key: 'service',     label: 'Services',     href: '/studio-admin/cms/service',     overview: data.cms.services,     icon: BsWrench         },
+      { key: 'article',     label: 'Articles',     href: '/studio-admin/cms/article',     overview: data.cms.articles,     icon: BsFileText       },
+      { key: 'testimonial', label: 'Testimonials', href: '/studio-admin/cms/testimonial', overview: data.cms.testimonials, icon: BsStar           },
+      { key: 'teamMember',  label: 'Team',         href: '/studio-admin/cms/teamMember',  overview: data.cms.team,         icon: BsPeople         },
+      { key: 'faq',         label: 'FAQs',         href: '/studio-admin/cms/faq',         overview: data.cms.faqs,         icon: BsQuestionCircle },
+    ];
+    return rows
+      .map((r) => ({ ...r, draftCount: Math.max(0, r.overview.total - r.overview.published) }))
+      .filter((r) => r.draftCount > 0);
+  }, [data]);
+
+  // --- Loading / error -------------------------------------------------------
   if (loading && !data) {
     return (
-      <div className="p-8">
+      <div className="max-w-[1400px] mx-auto">
         <div className="animate-pulse space-y-4">
-          <div className="h-8 w-64 bg-[var(--admin-sidebar-border)]" />
-          <div className="h-4 w-96 bg-[var(--admin-sidebar-border)]" />
-          <div className="grid grid-cols-4 gap-4 mt-8">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-28 bg-[var(--admin-sidebar-border)]" />
-            ))}
+          <div className="h-12 bg-[var(--admin-sidebar-border)]" />
+          <div className="grid grid-cols-2 gap-4 mt-6">
+            <div className="h-56 bg-[var(--admin-sidebar-border)]" />
+            <div className="h-56 bg-[var(--admin-sidebar-border)]" />
           </div>
+          <div className="h-64 bg-[var(--admin-sidebar-border)] mt-4" />
         </div>
       </div>
     );
@@ -153,8 +189,7 @@ export default function AdminDashboardPage() {
 
   if (error || !data) {
     return (
-      <div className="p-8">
-        <h1 className="text-2xl font-bold text-[var(--admin-foreground)] mb-2">Dashboard</h1>
+      <div className="max-w-[1400px] mx-auto">
         <p className="text-sm text-red-600">
           Unable to load dashboard data. {error ?? 'Unknown error.'}
         </p>
@@ -162,45 +197,19 @@ export default function AdminDashboardPage() {
     );
   }
 
-  const { kpis, priorities, cms, inquiries } = data;
-
-  const contentCards = [
-    { key: 'project',      label: 'Portfolio',    icon: BsFolder2Open,    overview: cms.projects,     href: '/studio-admin/cms/project'      },
-    { key: 'article',      label: 'Articles',     icon: BsFileText,       overview: cms.articles,     href: '/studio-admin/cms/article'      },
-    { key: 'service',      label: 'Services',     icon: BsWrench,         overview: cms.services,     href: '/studio-admin/cms/service'      },
-    { key: 'testimonial',  label: 'Testimonials', icon: BsStar,           overview: cms.testimonials, href: '/studio-admin/cms/testimonial'  },
-    { key: 'faq',          label: 'FAQs',         icon: BsQuestionCircle, overview: cms.faqs,         href: '/studio-admin/cms/faq'          },
-    { key: 'teamMember',   label: 'Team',         icon: BsPeople,         overview: cms.team,         href: '/studio-admin/cms/teamMember'   },
-  ];
+  const { priorities, cms, inquiries } = data;
+  const newInquiries = inquiries.recent.filter((i) => i.status === 'new');
 
   return (
-    <div className="p-6 lg:p-8 max-w-[1400px] mx-auto">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4 mb-6">
-        <div>
-          <h1 className="text-2xl font-bold text-[var(--admin-foreground)] tracking-tight">Dashboard</h1>
-          <p className="text-sm text-[var(--admin-muted)] mt-1">
-            Content overview and recent inquiries · updated {formatRelative(data.generatedAt)}
-          </p>
-        </div>
-        <select
-          value={period}
-          onChange={(e) => setPeriod(e.target.value as Period)}
-          className="text-[12px] font-medium px-3 py-2 bg-white border border-[var(--admin-sidebar-border)] text-[var(--admin-foreground)] focus:outline-none focus:border-[var(--admin-primary)]"
-        >
-          {Object.entries(PERIOD_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>{label}</option>
-          ))}
-        </select>
-      </div>
+    <div className="max-w-[1400px] mx-auto space-y-6">
 
-      {/* Priorities strip */}
+      {/* ── PRIORITY STRIP ─────────────────────────────────────────────── */}
       {(priorities.newInquiries > 0 || priorities.staleContent > 0) && (
-        <div className="mb-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {priorities.newInquiries > 0 && (
             <Link
               href="/studio-admin/inquiries?status=new"
-              className="flex items-center justify-between gap-3 bg-white border border-[var(--admin-sidebar-border)] hover:border-[var(--admin-primary)] transition-colors px-4 py-3"
+              className="flex items-center justify-between gap-3 bg-white border border-[var(--admin-primary)]/30 hover:border-[var(--admin-primary)] transition-colors px-4 py-3"
             >
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 bg-[var(--admin-primary)]/10 flex items-center justify-center">
@@ -208,9 +217,9 @@ export default function AdminDashboardPage() {
                 </div>
                 <div>
                   <p className="text-[13px] font-semibold text-[var(--admin-foreground)]">
-                    {priorities.newInquiries} new {priorities.newInquiries === 1 ? 'inquiry' : 'inquiries'}
+                    {priorities.newInquiries} new {priorities.newInquiries === 1 ? 'enquiry' : 'enquiries'} waiting
                   </p>
-                  <p className="text-[11px] text-[var(--admin-muted)]">Waiting for first response</p>
+                  <p className="text-[11px] text-[var(--admin-muted)]">Fast reply {'='} better conversion</p>
                 </div>
               </div>
               <BsArrowRight className="w-4 h-4 text-[var(--admin-muted)]" />
@@ -219,119 +228,138 @@ export default function AdminDashboardPage() {
           {priorities.staleContent > 0 && (
             <div className="flex items-center gap-3 bg-white border border-[var(--admin-sidebar-border)] px-4 py-3">
               <div className="w-9 h-9 bg-amber-100 flex items-center justify-center">
-                <BsExclamationCircle className="w-4 h-4 text-amber-600" />
+                <BsExclamationTriangle className="w-4 h-4 text-amber-600" />
               </div>
               <div>
                 <p className="text-[13px] font-semibold text-[var(--admin-foreground)]">
                   {priorities.staleContent} stale {priorities.staleContent === 1 ? 'item' : 'items'}
                 </p>
-                <p className="text-[11px] text-[var(--admin-muted)]">Not updated in over 30 days</p>
+                <p className="text-[11px] text-[var(--admin-muted)]">Not updated in 30+ days</p>
               </div>
             </div>
           )}
         </div>
       )}
 
-      {/* KPI cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-white border border-[var(--admin-sidebar-border)] p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--admin-muted)] mb-2">Total Content</p>
-          <p className="text-3xl font-bold text-[var(--admin-foreground)] leading-none">{kpis.totalContent.value}</p>
-          <p className="text-[11px] text-[var(--admin-muted)] mt-2">{kpis.totalContent.published} published</p>
+      {/* ── QUICK CREATE ───────────────────────────────────────────────── */}
+      <section className="bg-white border border-[var(--admin-sidebar-border)]">
+        <div className="px-5 py-3 border-b border-[var(--admin-sidebar-border)]">
+          <h2 className="text-[13px] font-semibold text-[var(--admin-foreground)]">Quick create</h2>
+          <p className="text-[11px] text-[var(--admin-muted)] mt-0.5">Start a new item without leaving the dashboard.</p>
         </div>
-        <div className="bg-white border border-[var(--admin-sidebar-border)] p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--admin-muted)] mb-2">CMS Health</p>
-          <p className="text-3xl font-bold text-[var(--admin-foreground)] leading-none">{kpis.cmsHealth.value}%</p>
-          <p className="text-[11px] text-[var(--admin-muted)] mt-2">{kpis.cmsHealth.published}/{kpis.cmsHealth.total} published</p>
-        </div>
-        <div className="bg-white border border-[var(--admin-sidebar-border)] p-5">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--admin-muted)] mb-2">Stale Content</p>
-          <p className="text-3xl font-bold text-[var(--admin-foreground)] leading-none">{kpis.staleContent.value}</p>
-          <p className="text-[11px] text-[var(--admin-muted)] mt-2">Not updated in 30+ days</p>
-        </div>
-        <div className="bg-white border border-[var(--admin-sidebar-border)] p-5">
-          <div className="flex items-start justify-between mb-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--admin-muted)]">Inquiries</p>
-            <DeltaIndicator value={kpis.inquiriesInPeriod.deltaPercent} />
-          </div>
-          <p className="text-3xl font-bold text-[var(--admin-foreground)] leading-none">{kpis.inquiriesInPeriod.value}</p>
-          <p className="text-[11px] text-[var(--admin-muted)] mt-2">{PERIOD_LABELS[period]}</p>
-        </div>
-      </div>
-
-      {/* Content overview grid */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-[var(--admin-foreground)]">Content Overview</h2>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          {contentCards.map(({ key, label, icon: Icon, overview, href }) => (
-            <Link
-              key={key}
-              href={href}
-              className="group bg-white border border-[var(--admin-sidebar-border)] hover:border-[var(--admin-primary)] transition-colors p-4"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2">
-                  <Icon className="w-3.5 h-3.5 text-[var(--admin-muted)] group-hover:text-[var(--admin-primary)] transition-colors" />
-                  <span className="text-[12px] font-semibold text-[var(--admin-foreground)]">{label}</span>
-                </div>
-                <BsArrowRight className="w-3.5 h-3.5 text-[var(--admin-muted)] opacity-0 group-hover:opacity-100 transition-opacity" />
-              </div>
-              <div className="flex items-baseline gap-1 mb-1">
-                <p className="text-2xl font-bold text-[var(--admin-foreground)] leading-none">{overview.total}</p>
-                <p className="text-[11px] text-[var(--admin-muted)]">total</p>
-              </div>
-              <p className="text-[11px] text-[var(--admin-muted)]">
-                {overview.published} published{overview.stale > 0 && ` · ${overview.stale} stale`}
-              </p>
-            </Link>
+        <ul className="flex flex-wrap gap-2 p-4">
+          {QUICK_CREATES.map(({ key, label, href, icon: Icon }) => (
+            <li key={key}>
+              <Link
+                href={href}
+                className="group inline-flex items-center gap-2 bg-white border border-[var(--admin-sidebar-border)] hover:border-[var(--admin-primary)] hover:text-[var(--admin-primary)] transition-colors px-3 py-2 text-[12px] font-medium text-[var(--admin-foreground)]"
+              >
+                <BsPlusLg className="w-3 h-3 text-[var(--admin-muted)] group-hover:text-[var(--admin-primary)] transition-colors" />
+                <Icon className="w-3.5 h-3.5" />
+                <span>{label}</span>
+              </Link>
+            </li>
           ))}
-        </div>
-      </div>
+        </ul>
+      </section>
 
-      {/* Recent updates + recent inquiries */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white border border-[var(--admin-sidebar-border)]">
-          <div className="px-5 py-3 border-b border-[var(--admin-sidebar-border)] flex items-center justify-between">
-            <h3 className="text-[13px] font-semibold text-[var(--admin-foreground)]">Recent content updates</h3>
+      {/* ── TODAY'S SCHEDULE ─────────────────────────────────────────── */}
+      <section className="bg-white border border-[var(--admin-sidebar-border)]">
+        <div className="px-5 py-3 border-b border-[var(--admin-sidebar-border)] flex items-center justify-between">
+          <div>
+            <h2 className="text-[13px] font-semibold text-[var(--admin-foreground)]">Today&apos;s schedule</h2>
+            <p className="text-[11px] text-[var(--admin-muted)] mt-0.5">
+              {todayBookings.length > 0
+                ? `${todayBookings.length} ${todayBookings.length === 1 ? 'session' : 'sessions'} on the calendar`
+                : 'Nothing booked for today.'}
+            </p>
           </div>
+          <Link
+            href="/studio-admin/bookings"
+            className="text-[11px] font-medium text-[var(--admin-primary)] hover:underline"
+          >
+            All bookings →
+          </Link>
+        </div>
+        {todayBookings.length === 0 ? (
+          <div className="px-5 py-8 text-center">
+            <BsCalendar2Check className="w-6 h-6 text-[var(--admin-muted)] mx-auto mb-2" />
+            <p className="text-[12px] text-[var(--admin-muted)]">
+              A clear day. Use Quick create → Booking to schedule a session.
+            </p>
+          </div>
+        ) : (
           <ul className="divide-y divide-[var(--admin-sidebar-border)]">
-            {cms.recentUpdates.length === 0 && (
-              <li className="px-5 py-6 text-[12px] text-[var(--admin-muted)]">No updates yet.</li>
-            )}
-            {cms.recentUpdates.map((item) => (
-              <li key={item.id}>
-                <Link href={item.href} className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--admin-sidebar-accent)] transition-colors">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-[12px] font-semibold text-[var(--admin-foreground)] truncate">{item.title}</p>
-                    <p className="text-[11px] text-[var(--admin-muted)] mt-0.5">
-                      {item.type} · {formatRelative(item.updated_at)}
+            {todayBookings.map((b) => (
+              <li key={b.id}>
+                <Link
+                  href="/studio-admin/bookings"
+                  className="grid grid-cols-[80px_1fr_auto] items-center gap-4 px-5 py-3 hover:bg-[var(--admin-sidebar-accent)] transition-colors"
+                >
+                  <span className="text-[13px] font-semibold tabular-nums text-[var(--admin-foreground)]">
+                    {b.start_time.slice(0, 5)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-[12px] font-semibold text-[var(--admin-foreground)] truncate">
+                      {b.client_name}
+                      {b.service_name && (
+                        <span className="ml-2 font-normal text-[var(--admin-muted)]">
+                          · {b.service_name}
+                        </span>
+                      )}
+                    </p>
+                    <p className="text-[11px] text-[var(--admin-muted)] truncate">
+                      {b.duration_minutes} min{b.location ? ` · ${b.location}` : ''}
                     </p>
                   </div>
-                  <AdminBadge variant={item.status === 'published' || item.status === 'active' ? 'success' : 'default'}>
-                    {item.status}
+                  <AdminBadge variant={b.status === 'confirmed' ? 'success' : 'warning'}>
+                    {b.status.replace('_', ' ')}
                   </AdminBadge>
                 </Link>
               </li>
             ))}
           </ul>
-        </div>
+        )}
+      </section>
 
-        <div className="bg-white border border-[var(--admin-sidebar-border)]">
+      {/* ── INBOX + DRAFTS (two columns) ──────────────────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+
+        {/* New enquiries */}
+        <section className="bg-white border border-[var(--admin-sidebar-border)] flex flex-col">
           <div className="px-5 py-3 border-b border-[var(--admin-sidebar-border)] flex items-center justify-between">
-            <h3 className="text-[13px] font-semibold text-[var(--admin-foreground)]">Recent inquiries</h3>
-            <Link href="/studio-admin/inquiries" className="text-[11px] font-medium text-[var(--admin-primary)] hover:underline">
-              View all
+            <div>
+              <h2 className="text-[13px] font-semibold text-[var(--admin-foreground)]">New enquiries</h2>
+              <p className="text-[11px] text-[var(--admin-muted)] mt-0.5">
+                {newInquiries.length > 0
+                  ? `${newInquiries.length} waiting for first reply`
+                  : 'Nothing waiting — you\u2019re on top of it.'}
+              </p>
+            </div>
+            <Link
+              href="/studio-admin/inquiries"
+              className="text-[11px] font-medium text-[var(--admin-primary)] hover:underline"
+            >
+              Go to Inbox →
             </Link>
           </div>
-          <ul className="divide-y divide-[var(--admin-sidebar-border)]">
-            {inquiries.recent.length === 0 && (
-              <li className="px-5 py-6 text-[12px] text-[var(--admin-muted)]">No inquiries yet.</li>
+          <ul className="divide-y divide-[var(--admin-sidebar-border)] flex-1">
+            {newInquiries.length === 0 && inquiries.recent.length === 0 && (
+              <li className="px-5 py-8 text-[12px] text-[var(--admin-muted)] text-center">
+                No enquiries yet.
+              </li>
             )}
-            {inquiries.recent.map((i) => (
-              <li key={i.id} className="px-5 py-3">
-                <div className="flex items-center gap-3">
+            {newInquiries.length === 0 && inquiries.recent.length > 0 && (
+              <li className="px-5 py-8 text-[12px] text-[var(--admin-muted)] text-center">
+                All caught up. Showing recent enquiries below.
+              </li>
+            )}
+            {(newInquiries.length > 0 ? newInquiries : inquiries.recent).slice(0, 5).map((i) => (
+              <li key={i.id}>
+                <Link
+                  href={`/studio-admin/inquiries/${i.id}`}
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--admin-sidebar-accent)] transition-colors"
+                >
                   <div className="flex-1 min-w-0">
                     <p className="text-[12px] font-semibold text-[var(--admin-foreground)] truncate">{i.name}</p>
                     <p className="text-[11px] text-[var(--admin-muted)] truncate mt-0.5">
@@ -342,12 +370,82 @@ export default function AdminDashboardPage() {
                     <AdminBadge variant={i.status === 'new' ? 'warning' : 'default'}>{i.status}</AdminBadge>
                     <span className="text-[10px] text-[var(--admin-muted)]">{formatRelative(i.created_at)}</span>
                   </div>
-                </div>
+                </Link>
               </li>
             ))}
           </ul>
-        </div>
+        </section>
+
+        {/* Drafts to finish */}
+        <section className="bg-white border border-[var(--admin-sidebar-border)] flex flex-col">
+          <div className="px-5 py-3 border-b border-[var(--admin-sidebar-border)]">
+            <h2 className="text-[13px] font-semibold text-[var(--admin-foreground)]">Drafts to finish</h2>
+            <p className="text-[11px] text-[var(--admin-muted)] mt-0.5">
+              {draftCounts.length > 0
+                ? `Unpublished items waiting to go live`
+                : 'Nothing unpublished — everything is live.'}
+            </p>
+          </div>
+          <ul className="divide-y divide-[var(--admin-sidebar-border)] flex-1">
+            {draftCounts.length === 0 && (
+              <li className="px-5 py-8 text-[12px] text-[var(--admin-muted)] text-center">
+                Use Quick create above to draft something new.
+              </li>
+            )}
+            {draftCounts.map(({ key, label, href, draftCount, icon: Icon }) => (
+              <li key={key}>
+                <Link
+                  href={`${href}?status=draft`}
+                  className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--admin-sidebar-accent)] transition-colors"
+                >
+                  <Icon className="w-4 h-4 text-[var(--admin-muted)]" />
+                  <span className="text-[12px] font-semibold text-[var(--admin-foreground)] flex-1">{label}</span>
+                  <span className="text-[11px] text-[var(--admin-muted)] tabular-nums">
+                    {draftCount} draft{draftCount === 1 ? '' : 's'}
+                  </span>
+                  <BsArrowRight className="w-3.5 h-3.5 text-[var(--admin-muted)]" />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
       </div>
+
+      {/* ── RECENT ACTIVITY ───────────────────────────────────────────── */}
+      <section className="bg-white border border-[var(--admin-sidebar-border)]">
+        <div className="px-5 py-3 border-b border-[var(--admin-sidebar-border)] flex items-center justify-between">
+          <div>
+            <h2 className="text-[13px] font-semibold text-[var(--admin-foreground)]">Recent activity</h2>
+            <p className="text-[11px] text-[var(--admin-muted)] mt-0.5">Latest content edits across the site.</p>
+          </div>
+          <BsClock className="w-3.5 h-3.5 text-[var(--admin-muted)]" />
+        </div>
+        <ul className="divide-y divide-[var(--admin-sidebar-border)]">
+          {cms.recentUpdates.length === 0 && (
+            <li className="px-5 py-8 text-[12px] text-[var(--admin-muted)] text-center">
+              No edits yet. Publish your first project to get started.
+            </li>
+          )}
+          {cms.recentUpdates.map((item) => (
+            <li key={item.id}>
+              <Link
+                href={item.href}
+                className="flex items-center gap-3 px-5 py-3 hover:bg-[var(--admin-sidebar-accent)] transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <p className="text-[12px] font-semibold text-[var(--admin-foreground)] truncate">{item.title}</p>
+                  <p className="text-[11px] text-[var(--admin-muted)] mt-0.5">
+                    {item.type} · {formatRelative(item.updated_at)}
+                  </p>
+                </div>
+                <AdminBadge variant={item.status === 'published' || item.status === 'active' ? 'success' : 'default'}>
+                  {item.status}
+                </AdminBadge>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      </section>
     </div>
   );
 }

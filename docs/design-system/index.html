@@ -1,0 +1,1239 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>OpusFesta — Design System</title>
+<meta name="description" content="OpusFesta design system v2026.04 — foundations, components, patterns, and voice. Canonical source: apps/opus_website landing page." />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet" />
+<script src="https://cdn.tailwindcss.com?plugins=typography"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        fontFamily: {
+          sans: ['Inter','ui-sans-serif','system-ui','-apple-system','Segoe UI','Roboto','sans-serif'],
+          mono: ['"JetBrains Mono"','ui-monospace','SFMono-Regular','Menlo','monospace'],
+        },
+      },
+    },
+  };
+</script>
+<style>
+  :root {
+    --accent: #C9A0DC;
+    --accent-hover: #b97fd0;
+    --on-accent: #1A1A1A;
+    --ink: #1A1A1A;
+  }
+  html { scroll-behavior: smooth; }
+  body { font-family: 'Inter', ui-sans-serif, system-ui, sans-serif; color: var(--ink); background: #FFFFFF; }
+  .display { text-transform: uppercase; font-weight: 900; letter-spacing: -0.025em; line-height: 0.88; }
+  .kicker  { text-transform: uppercase; font-weight: 700; letter-spacing: 0.12em; font-size: 11px; }
+  .micro   { text-transform: uppercase; font-weight: 900; letter-spacing: 0.14em; font-size: 10px; }
+  .pill    { border-radius: 9999px; font-weight: 700; white-space: nowrap; }
+  .chip    { background: #F3F4F6; color: #4B5563; font-weight: 700; font-size: 12px; border-radius: 9999px; padding: 6px 12px; }
+  .swatch  { border: 1px solid rgba(0,0,0,0.06); }
+  .mono    { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  pre, code { font-family: 'JetBrains Mono', ui-monospace, monospace; }
+  .rule    { border-top: 1px solid #E5E7EB; }
+  .sticky-nav {
+    position: sticky; top: 0; z-index: 30;
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: saturate(180%) blur(14px);
+    -webkit-backdrop-filter: saturate(180%) blur(14px);
+    border-bottom: 1px solid rgba(0,0,0,0.06);
+  }
+  .anchor { scroll-margin-top: 84px; }
+  @keyframes marquee { from { transform: translateX(0);} to { transform: translateX(-33.3333%);} }
+  .animate-marquee { animation: marquee 40s linear infinite; }
+  @media (prefers-reduced-motion: reduce) { .animate-marquee { animation: none; } }
+  details > summary { list-style: none; cursor: pointer; }
+  details > summary::-webkit-details-marker { display: none; }
+  /* Print: hide nav, collapse dark backgrounds for paper */
+  @media print {
+    .sticky-nav, .no-print { display: none !important; }
+    body { background: #fff; }
+  }
+</style>
+</head>
+<body class="text-[#1A1A1A] bg-white selection:bg-[var(--accent)] selection:text-[var(--on-accent)]">
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- COVER                                                   -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section class="px-6 pt-20 pb-24 max-w-6xl mx-auto">
+  <p class="kicker text-[var(--accent)] mb-6">Design System · v2026.04</p>
+  <h1 class="display text-[1.9rem] sm:text-5xl md:text-6xl lg:text-[96px] leading-[0.9] md:leading-[0.85] max-w-5xl">
+    The OpusFesta<br/>design system.
+  </h1>
+  <p class="mt-10 text-lg md:text-xl text-gray-600 max-w-2xl font-medium leading-relaxed">
+    One source of truth for every screen we ship — colour, type, spacing, motion, components, and voice. Canonical reference pulled from the live marketing site.
+  </p>
+  <div class="mt-10 flex flex-wrap gap-3 items-center">
+    <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-5 py-2.5 text-sm">Warm modern · Bold display · Soft cards</span>
+    <span class="pill border border-gray-200 px-5 py-2.5 text-sm text-gray-700 bg-white">For designers & engineers</span>
+    <span class="pill border border-gray-200 px-5 py-2.5 text-sm text-gray-700 bg-white">Tailwind-native</span>
+  </div>
+  <div class="mt-14 grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
+    <div class="rounded-2xl border border-gray-100 shadow-sm p-5">
+      <p class="micro text-gray-400 mb-2">Canonical source</p>
+      <p class="font-bold leading-snug">apps/opus_website</p>
+      <p class="text-gray-500 text-xs mt-1">landing page · marketing</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 shadow-sm p-5">
+      <p class="micro text-gray-400 mb-2">Typeface</p>
+      <p class="font-bold leading-snug">Inter</p>
+      <p class="text-gray-500 text-xs mt-1">400–900 · Fontshare/Google</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 shadow-sm p-5">
+      <p class="micro text-gray-400 mb-2">Grid</p>
+      <p class="font-bold leading-snug">1152 max · 4px base</p>
+      <p class="text-gray-500 text-xs mt-1">mobile-first, 3-breakpoint</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 shadow-sm p-5">
+      <p class="micro text-gray-400 mb-2">Owner</p>
+      <p class="font-bold leading-snug">OpusFesta</p>
+      <p class="text-gray-500 text-xs mt-1">Design × Engineering</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- STICKY NAV                                              -->
+<!-- ─────────────────────────────────────────────────────── -->
+<nav class="sticky-nav no-print">
+  <div class="max-w-6xl mx-auto px-6 py-3 flex items-center gap-2 overflow-x-auto text-sm font-semibold">
+    <a href="#identity"    class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Identity</a>
+    <a href="#color"       class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Colour</a>
+    <a href="#type"        class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Type</a>
+    <a href="#spacing"     class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Space</a>
+    <a href="#radius"      class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Radius</a>
+    <a href="#elevation"   class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Elevation</a>
+    <a href="#motion"      class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Motion</a>
+    <a href="#iconography" class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Icons</a>
+    <a href="#buttons"     class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Buttons</a>
+    <a href="#pills"       class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Pills</a>
+    <a href="#cards"       class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Cards</a>
+    <a href="#forms"       class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Forms</a>
+    <a href="#patterns"    class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Patterns</a>
+    <a href="#voice"       class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Voice</a>
+    <a href="#dodont"      class="px-3 py-1.5 rounded-full hover:bg-gray-100 whitespace-nowrap">Do / Don't</a>
+    <a href="#tokens"      class="px-3 py-1.5 rounded-full bg-[var(--accent)] text-[var(--on-accent)] whitespace-nowrap ml-auto">Tokens →</a>
+  </div>
+</nav>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 1 · IDENTITY                                            -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="identity" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">01 — Identity</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Warm, confident,<br/>unmistakably ours.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    The brand balances an editorial display voice with a soft, rounded, approachable UI. Big ideas live in UPPERCASE; the product itself feels warm, light and considered.
+  </p>
+
+  <div class="mt-12 grid md:grid-cols-3 gap-4">
+    <div class="rounded-3xl border border-gray-100 shadow-sm p-8 flex flex-col justify-between min-h-[180px]">
+      <p class="kicker text-gray-400">Voice</p>
+      <p class="mt-6 text-2xl font-black leading-tight">Plain-spoken, second person, optimistic.</p>
+    </div>
+    <div class="rounded-3xl bg-[var(--accent)] p-8 flex flex-col justify-between min-h-[180px]">
+      <p class="kicker text-[var(--on-accent)]/60">Feel</p>
+      <p class="mt-6 text-2xl font-black text-[var(--on-accent)] leading-tight">Soft surfaces, bold type, generous air.</p>
+    </div>
+    <div class="rounded-3xl bg-[#1A1A1A] text-white p-8 flex flex-col justify-between min-h-[180px]">
+      <p class="kicker text-[var(--accent)]">Rhythm</p>
+      <p class="mt-6 text-2xl font-black leading-tight">Spacious sections. Short lines. One hero per view.</p>
+    </div>
+  </div>
+
+  <!-- Logo -->
+  <div class="mt-14 rounded-3xl border border-gray-100 shadow-sm p-10 flex flex-col md:flex-row items-center gap-10">
+    <!-- Simplified logo preview -->
+    <div class="flex items-baseline gap-1">
+      <span class="display text-[64px] leading-none">Opus</span>
+      <span class="display text-[64px] leading-none text-[var(--accent)]">Festa</span>
+    </div>
+    <div class="text-sm text-gray-600 max-w-md leading-relaxed">
+      <p class="kicker text-gray-400 mb-2">Wordmark</p>
+      <p><b>Opus</b> in ink, <b>Festa</b> in accent. Uppercase, font-black, tracking-tighter. Minimum height 24px digital / 8mm print. Clear-space = cap height on all sides.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 2 · COLOUR                                              -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="color" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">02 — Colour</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Ink, lavender,<br/>and a lot of white.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    Two brand colours do the heavy lifting. Lavender is the signature — reserve it for moments worth earning the eye.
+  </p>
+
+  <!-- Brand -->
+  <h3 class="mt-14 text-xl font-black">Brand</h3>
+  <div class="mt-5 grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div>
+      <div class="swatch rounded-2xl h-32 bg-[#1A1A1A]"></div>
+      <p class="mt-3 font-bold">Ink</p>
+      <p class="mono text-xs text-gray-500">#1A1A1A</p>
+      <p class="text-xs text-gray-500 mt-1">Text, CTA bg, dark surfaces</p>
+    </div>
+    <div>
+      <div class="swatch rounded-2xl h-32 bg-[var(--accent)]"></div>
+      <p class="mt-3 font-bold">Accent — Lavender</p>
+      <p class="mono text-xs text-gray-500">#C9A0DC</p>
+      <p class="text-xs text-gray-500 mt-1">CTAs, pills, badges, hovers</p>
+    </div>
+    <div>
+      <div class="swatch rounded-2xl h-32 bg-[#b97fd0]"></div>
+      <p class="mt-3 font-bold">Accent hover</p>
+      <p class="mono text-xs text-gray-500">#b97fd0</p>
+      <p class="text-xs text-gray-500 mt-1">Pressed / hover state</p>
+    </div>
+    <div>
+      <div class="swatch rounded-2xl h-32 bg-white"></div>
+      <p class="mt-3 font-bold">Surface</p>
+      <p class="mono text-xs text-gray-500">#FFFFFF</p>
+      <p class="text-xs text-gray-500 mt-1">Page background</p>
+    </div>
+  </div>
+
+  <!-- Neutrals -->
+  <h3 class="mt-14 text-xl font-black">Neutrals</h3>
+  <div class="mt-5 grid grid-cols-5 md:grid-cols-10 gap-2">
+    <div><div class="swatch rounded-lg h-16 bg-[#F9FAFB]"></div><p class="mono text-[10px] mt-2 text-gray-500">50</p></div>
+    <div><div class="swatch rounded-lg h-16 bg-[#F3F4F6]"></div><p class="mono text-[10px] mt-2 text-gray-500">100</p></div>
+    <div><div class="swatch rounded-lg h-16 bg-[#E5E7EB]"></div><p class="mono text-[10px] mt-2 text-gray-500">200</p></div>
+    <div><div class="swatch rounded-lg h-16 bg-[#D1D5DB]"></div><p class="mono text-[10px] mt-2 text-gray-500">300</p></div>
+    <div><div class="swatch rounded-lg h-16 bg-[#9CA3AF]"></div><p class="mono text-[10px] mt-2 text-gray-500">400</p></div>
+    <div><div class="swatch rounded-lg h-16 bg-[#6B7280]"></div><p class="mono text-[10px] mt-2 text-gray-500">500</p></div>
+    <div><div class="swatch rounded-lg h-16 bg-[#4B5563]"></div><p class="mono text-[10px] mt-2 text-gray-500">600</p></div>
+    <div><div class="swatch rounded-lg h-16 bg-[#374151]"></div><p class="mono text-[10px] mt-2 text-gray-500">700</p></div>
+    <div><div class="swatch rounded-lg h-16 bg-[#1F2937]"></div><p class="mono text-[10px] mt-2 text-gray-500">800</p></div>
+    <div><div class="swatch rounded-lg h-16 bg-[#111827]"></div><p class="mono text-[10px] mt-2 text-gray-500">900</p></div>
+  </div>
+  <p class="mt-4 text-sm text-gray-600 max-w-2xl">Use <span class="chip">gray-400</span> for eyebrow labels, <span class="chip">gray-500</span> for body on dark, <span class="chip">gray-600</span> for body on white. Avoid 700–900 — ink (#1A1A1A) covers dark needs.</p>
+
+  <!-- Contrast -->
+  <h3 class="mt-14 text-xl font-black">Contrast pairings</h3>
+  <div class="mt-5 grid md:grid-cols-3 gap-4">
+    <div class="rounded-2xl bg-white border border-gray-100 p-6">
+      <p class="text-2xl font-black">Ink on white</p>
+      <p class="text-sm text-gray-500 mt-2">AAA for all sizes · primary text pairing</p>
+    </div>
+    <div class="rounded-2xl bg-[#1A1A1A] text-white p-6">
+      <p class="text-2xl font-black">White on ink</p>
+      <p class="text-sm text-white/60 mt-2">AAA · reverse surfaces</p>
+    </div>
+    <div class="rounded-2xl bg-[var(--accent)] text-[var(--on-accent)] p-6">
+      <p class="text-2xl font-black">Ink on lavender</p>
+      <p class="text-sm text-[var(--on-accent)]/70 mt-2">AA large / AA normal — ONLY pairing with lavender</p>
+    </div>
+  </div>
+  <p class="mt-4 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-2xl p-4 max-w-2xl">
+    <b>Warning —</b> white text on lavender fails WCAG AA. Ink on lavender is the only approved pairing.
+  </p>
+
+  <!-- Status -->
+  <h3 class="mt-14 text-xl font-black">Status</h3>
+  <div class="mt-5 flex flex-wrap gap-3 text-xs font-bold">
+    <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1.5">Confirmed</span>
+    <span class="pill bg-orange-100 text-orange-500 px-3 py-1.5">Pending</span>
+    <span class="pill bg-red-100 text-red-500 px-3 py-1.5">Declined</span>
+    <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1.5">Verified</span>
+    <span class="pill bg-white border border-gray-200 text-gray-400 px-3 py-1.5">Draft</span>
+  </div>
+
+  <!-- Category palette -->
+  <h3 class="mt-14 text-xl font-black">Category palette</h3>
+  <p class="mt-2 text-sm text-gray-600 max-w-2xl">Reserved for the vendor-category marquee and any category taxonomy surface. Treat as a closed set — do not introduce new category hues outside this list.</p>
+  <div class="mt-6 flex flex-wrap gap-2">
+    <span class="pill px-4 py-2 text-sm" style="background:#1A1A1A;color:#FFE500">Venues</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#C9A0DC;color:#1A1A1A">Photography</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#5C00F2;color:#FFFFFF">Videography</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#FF3D00;color:#FFFFFF">Catering</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#00701A;color:#FFE500">Florists</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#FFE500;color:#1A1A1A">DJs</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#E8003D;color:#FFFFFF">Live Bands</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#7B00D4;color:#FFFFFF">Hair &amp; Makeup</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#0057FF;color:#FFFFFF">Wedding Planners</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#FF6B00;color:#1A1A1A">Rentals</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#FF85A1;color:#1A1A1A">Wedding Cakes</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#F5E6FF;color:#1A1A1A">Bridal Salons</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#003566;color:#FFFFFF">Officiants</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#2D6A4F;color:#FFFFFF">Transportation</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#F77F00;color:#1A1A1A">Photo Booths</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#6A0572;color:#FFFFFF">Bar Services</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#D62828;color:#FFFFFF">Invitations</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#023E8A;color:#FFFFFF">Décor</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#B5838D;color:#FFFFFF">Jewellers</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#264653;color:#FFFFFF">MC</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#606C38;color:#FFFFFF">Soloists &amp; Ensembles</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#9B2226;color:#FFFFFF">Dance Lessons</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#E9C46A;color:#1A1A1A">Favours &amp; Gifts</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#A8DADC;color:#1A1A1A">Beauty Services</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#457B9D;color:#FFFFFF">Honeymoon</span>
+    <span class="pill px-4 py-2 text-sm" style="background:#1D3557;color:#FFFFFF">Hotel Blocks</span>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 3 · TYPOGRAPHY                                          -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="type" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">03 — Typography</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Type that<br/>speaks loudly.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    Inter, from 400 to 900. One family, many jobs. Display sizes are always uppercase, tracking-tighter, and leading between 0.85 and 0.92. Body copy is medium weight, relaxed leading.
+  </p>
+
+  <!-- Family -->
+  <div class="mt-12 grid md:grid-cols-2 gap-4">
+    <div class="rounded-3xl border border-gray-100 shadow-sm p-8">
+      <p class="kicker text-gray-400">Primary</p>
+      <p class="mt-4 text-5xl font-black">Inter</p>
+      <p class="mt-3 text-sm text-gray-500">400 · 500 · 600 · 700 · 900</p>
+      <p class="mt-6 text-base leading-relaxed">Everything you need to plan your wedding, all in one place.</p>
+    </div>
+    <div class="rounded-3xl border border-gray-100 shadow-sm p-8">
+      <p class="kicker text-gray-400">Mono</p>
+      <p class="mt-4 text-5xl font-bold mono">JetBrains Mono</p>
+      <p class="mt-3 text-sm text-gray-500">500 · 700</p>
+      <p class="mt-6 text-sm mono">TZS 35,000,000 · +255 712 345 678 · sarahandjames.opusfesta.com</p>
+    </div>
+  </div>
+
+  <!-- Scale -->
+  <h3 class="mt-14 text-xl font-black">Scale</h3>
+  <div class="mt-6 space-y-6">
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">display-xl · 96</span>
+      <p class="display text-[72px] md:text-[96px] leading-[0.85]">Hero.</p>
+    </div>
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">display · 80</span>
+      <p class="display text-[60px] md:text-[80px] leading-[0.88]">Section headline.</p>
+    </div>
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">display-sm · 72</span>
+      <p class="display text-[54px] md:text-[72px] leading-[0.9]">Default H2.</p>
+    </div>
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">h1 · 52</span>
+      <p class="display text-[40px] md:text-[52px] leading-[0.88]">Long-form title.</p>
+    </div>
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">h2 · 32</span>
+      <p class="text-[32px] font-black uppercase tracking-tight">Feature block</p>
+    </div>
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">h3 · 24</span>
+      <p class="text-2xl font-black">Card title</p>
+    </div>
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">h4 · 20</span>
+      <p class="text-xl font-bold">Subsection</p>
+    </div>
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">lead · 18</span>
+      <p class="text-lg font-medium text-gray-600 leading-relaxed max-w-xl">Save hundreds of hours on wedding research. With transparent pricing and verified reviews.</p>
+    </div>
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">body · 15</span>
+      <p class="text-[15px] font-medium max-w-xl">Body copy sits at 15px, weight 500, and leading 1.625. Paragraphs rarely exceed 60 characters per line.</p>
+    </div>
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">caption · 12</span>
+      <p class="text-xs font-bold">Pills &amp; badges — 12px · bold.</p>
+    </div>
+    <div class="flex items-baseline gap-6 border-b border-gray-100 pb-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">kicker · 11</span>
+      <p class="kicker text-[var(--accent)]">Eyebrow · Overline · Tagline</p>
+    </div>
+    <div class="flex items-baseline gap-6">
+      <span class="mono text-xs text-gray-400 shrink-0 w-28">micro · 10</span>
+      <p class="micro text-gray-400">Stat labels · Column headers</p>
+    </div>
+  </div>
+
+  <!-- Display rules -->
+  <h3 class="mt-14 text-xl font-black">Display rules</h3>
+  <div class="mt-5 grid md:grid-cols-3 gap-4">
+    <div class="rounded-2xl border border-gray-100 p-6">
+      <p class="kicker text-[var(--accent)]">Case</p>
+      <p class="mt-3 font-bold">Always UPPERCASE</p>
+      <p class="mt-2 text-sm text-gray-500">for H1/H2/H3 display. Sentence case in body.</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-6">
+      <p class="kicker text-[var(--accent)]">Weight</p>
+      <p class="mt-3 font-bold">font-black (900)</p>
+      <p class="mt-2 text-sm text-gray-500">for all display. Never lighter on hero type.</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-6">
+      <p class="kicker text-[var(--accent)]">Tracking</p>
+      <p class="mt-3 font-bold">tracking-tighter (-0.025em)</p>
+      <p class="mt-2 text-sm text-gray-500">on display. widest (0.12em) on kickers only.</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-6">
+      <p class="kicker text-[var(--accent)]">Leading</p>
+      <p class="mt-3 font-bold">0.85–0.92</p>
+      <p class="mt-2 text-sm text-gray-500">on display. 1.625 on paragraphs.</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-6">
+      <p class="kicker text-[var(--accent)]">Line breaks</p>
+      <p class="mt-3 font-bold">Hand-break with &lt;br&gt;</p>
+      <p class="mt-2 text-sm text-gray-500">to shape the rag. Two-to-three lines per block.</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-6">
+      <p class="kicker text-[var(--accent)]">Emphasis</p>
+      <p class="mt-3 font-bold">Colour, not italic</p>
+      <p class="mt-2 text-sm text-gray-500">Emphasise a word with <span class="text-[var(--accent)] font-black">lavender</span>.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 4 · SPACING                                             -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="spacing" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">04 — Spacing</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">4-pixel grid.<br/>Generous air.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    Every value is a multiple of 4. Sections breathe — don't compress vertical rhythm to fit more content on a screen.
+  </p>
+
+  <h3 class="mt-12 text-xl font-black">Section padding</h3>
+  <div class="mt-5 grid md:grid-cols-3 gap-4">
+    <div class="rounded-2xl border border-gray-100 p-6">
+      <p class="kicker text-gray-400">Mobile</p>
+      <p class="mt-3 font-bold">py-14 px-4</p>
+      <p class="mono text-xs text-gray-500 mt-1">56px / 16px</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-6">
+      <p class="kicker text-gray-400">Tablet</p>
+      <p class="mt-3 font-bold">sm:py-20 sm:px-6</p>
+      <p class="mono text-xs text-gray-500 mt-1">80px / 24px</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-6">
+      <p class="kicker text-gray-400">Desktop</p>
+      <p class="mt-3 font-bold">md:py-24 md:px-6</p>
+      <p class="mono text-xs text-gray-500 mt-1">96px / 24px</p>
+    </div>
+  </div>
+
+  <h3 class="mt-12 text-xl font-black">Containers</h3>
+  <div class="mt-5 space-y-3">
+    <div class="rounded-xl bg-gray-100 px-4 py-3 flex items-center justify-between"><span class="font-bold text-sm">max-w-6xl</span><span class="mono text-xs text-gray-500">1152px · primary container</span></div>
+    <div class="rounded-xl bg-gray-100 px-4 py-3 flex items-center justify-between"><span class="font-bold text-sm">max-w-3xl</span><span class="mono text-xs text-gray-500">768px · long-form copy</span></div>
+    <div class="rounded-xl bg-gray-100 px-4 py-3 flex items-center justify-between"><span class="font-bold text-sm">max-w-xl</span><span class="mono text-xs text-gray-500">640px · prose paragraphs</span></div>
+  </div>
+
+  <h3 class="mt-12 text-xl font-black">Scale (ruler)</h3>
+  <div class="mt-5 space-y-2">
+    <div class="flex items-center gap-4 text-xs"><span class="mono w-12 text-gray-500">1</span><div class="bg-[var(--accent)]" style="width:4px;height:12px"></div><span class="text-gray-400">4px</span></div>
+    <div class="flex items-center gap-4 text-xs"><span class="mono w-12 text-gray-500">2</span><div class="bg-[var(--accent)]" style="width:8px;height:12px"></div><span class="text-gray-400">8px</span></div>
+    <div class="flex items-center gap-4 text-xs"><span class="mono w-12 text-gray-500">3</span><div class="bg-[var(--accent)]" style="width:12px;height:12px"></div><span class="text-gray-400">12px</span></div>
+    <div class="flex items-center gap-4 text-xs"><span class="mono w-12 text-gray-500">4</span><div class="bg-[var(--accent)]" style="width:16px;height:12px"></div><span class="text-gray-400">16px</span></div>
+    <div class="flex items-center gap-4 text-xs"><span class="mono w-12 text-gray-500">6</span><div class="bg-[var(--accent)]" style="width:24px;height:12px"></div><span class="text-gray-400">24px</span></div>
+    <div class="flex items-center gap-4 text-xs"><span class="mono w-12 text-gray-500">8</span><div class="bg-[var(--accent)]" style="width:32px;height:12px"></div><span class="text-gray-400">32px</span></div>
+    <div class="flex items-center gap-4 text-xs"><span class="mono w-12 text-gray-500">12</span><div class="bg-[var(--accent)]" style="width:48px;height:12px"></div><span class="text-gray-400">48px</span></div>
+    <div class="flex items-center gap-4 text-xs"><span class="mono w-12 text-gray-500">16</span><div class="bg-[var(--accent)]" style="width:64px;height:12px"></div><span class="text-gray-400">64px · standard section gap</span></div>
+    <div class="flex items-center gap-4 text-xs"><span class="mono w-12 text-gray-500">24</span><div class="bg-[var(--accent)]" style="width:96px;height:12px"></div><span class="text-gray-400">96px · desktop section padding</span></div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 5 · RADIUS                                              -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="radius" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">05 — Radius</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Soft corners,<br/>always.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    Buttons and pills are fully rounded. Cards nest from <span class="chip">rounded-2xl</span> outward. Hero frames go up to 40px. Nothing in the product is square — sharp corners belong to the logo.
+  </p>
+  <div class="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div><div class="h-24 rounded-lg bg-[var(--accent)]"></div><p class="mt-3 font-bold">rounded-lg · 8</p><p class="text-xs text-gray-500">Thumbnails</p></div>
+    <div><div class="h-24 rounded-xl bg-[var(--accent)]"></div><p class="mt-3 font-bold">rounded-xl · 12</p><p class="text-xs text-gray-500">Icon tiles</p></div>
+    <div><div class="h-24 rounded-2xl bg-[var(--accent)]"></div><p class="mt-3 font-bold">rounded-2xl · 16</p><p class="text-xs text-gray-500">Inputs, small cards</p></div>
+    <div><div class="h-24 rounded-3xl bg-[var(--accent)]"></div><p class="mt-3 font-bold">rounded-3xl · 24</p><p class="text-xs text-gray-500">Feature cards</p></div>
+    <div><div class="h-24 rounded-[32px] bg-[var(--accent)]"></div><p class="mt-3 font-bold">rounded-[32px]</p><p class="text-xs text-gray-500">Primary cards</p></div>
+    <div><div class="h-24 rounded-[40px] bg-[var(--accent)]"></div><p class="mt-3 font-bold">rounded-[40px]</p><p class="text-xs text-gray-500">Hero frames</p></div>
+    <div><div class="h-24 rounded-full bg-[var(--accent)]"></div><p class="mt-3 font-bold">rounded-full</p><p class="text-xs text-gray-500">Buttons, pills, avatars</p></div>
+    <div><div class="h-24 rounded-none bg-[var(--accent)]"></div><p class="mt-3 font-bold text-gray-400 line-through">rounded-none</p><p class="text-xs text-gray-500">Forbidden in product</p></div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 6 · ELEVATION                                           -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="elevation" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">06 — Elevation</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Shadows are<br/>soft, deep, warm.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    Long, low-opacity shadows. Never hard offsets, never 1px borders pretending to be shadows. Use <span class="chip">shadow-sm</span> on everything that sits above the page. Reserve <span class="chip">shadow-lg</span> for the hero product.
+  </p>
+  <div class="mt-10 grid grid-cols-2 md:grid-cols-3 gap-6">
+    <div class="p-4"><div class="h-28 rounded-2xl bg-white shadow-sm"></div><p class="mt-4 font-bold">shadow-sm</p><p class="text-xs text-gray-500 mono mt-1">0 2 8 rgba(0,0,0,0.06)</p></div>
+    <div class="p-4"><div class="h-28 rounded-2xl bg-white shadow-md"></div><p class="mt-4 font-bold">shadow-md</p><p class="text-xs text-gray-500 mono mt-1">0 8 24 rgba(0,0,0,0.08)</p></div>
+    <div class="p-4"><div class="h-28 rounded-2xl bg-white shadow-lg"></div><p class="mt-4 font-bold">shadow-lg</p><p class="text-xs text-gray-500 mono mt-1">0 20 60 rgba(0,0,0,0.08)</p></div>
+    <div class="p-4"><div class="h-28 rounded-2xl bg-white shadow-xl"></div><p class="mt-4 font-bold">shadow-xl</p><p class="text-xs text-gray-500 mono mt-1">0 20 60 rgba(0,0,0,0.15)</p></div>
+    <div class="p-4"><div class="h-28 rounded-2xl bg-white shadow-2xl"></div><p class="mt-4 font-bold">shadow-2xl</p><p class="text-xs text-gray-500 mono mt-1">0 25 50 -12 rgba(0,0,0,0.25)</p></div>
+    <div class="p-4"><div class="h-28 rounded-2xl bg-white border border-gray-100"></div><p class="mt-4 font-bold">border only</p><p class="text-xs text-gray-500">static, no elevation</p></div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 7 · MOTION                                              -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="motion" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">07 — Motion</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Confident,<br/>never theatrical.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    Short, decisive, damped. One easing curve for 90% of motion. Content fades and rises — never rises without fading.
+  </p>
+
+  <div class="mt-12 grid md:grid-cols-2 gap-4">
+    <div class="rounded-3xl border border-gray-100 p-8">
+      <p class="kicker text-gray-400">Primary easing</p>
+      <p class="mono mt-3 text-xl font-bold">cubic-bezier(0.22, 1, 0.36, 1)</p>
+      <p class="mt-3 text-sm text-gray-500">Swift out — pairs with every fade/rise.</p>
+    </div>
+    <div class="rounded-3xl bg-[var(--accent)] p-8">
+      <p class="kicker text-[var(--on-accent)]/60">Reveal recipe</p>
+      <p class="mt-3 font-black text-2xl text-[var(--on-accent)] leading-tight">Fade from 0, rise 32px.<br/>Duration 650ms.</p>
+    </div>
+  </div>
+
+  <h3 class="mt-14 text-xl font-black">Durations</h3>
+  <div class="mt-5 grid md:grid-cols-4 gap-4">
+    <div class="rounded-2xl border border-gray-100 p-5"><p class="kicker text-gray-400">xs</p><p class="text-2xl font-black mt-2">350ms</p><p class="text-xs text-gray-500 mt-1">Micro / hover</p></div>
+    <div class="rounded-2xl border border-gray-100 p-5"><p class="kicker text-gray-400">sm</p><p class="text-2xl font-black mt-2">500ms</p><p class="text-xs text-gray-500 mt-1">Short reveals</p></div>
+    <div class="rounded-2xl border border-gray-100 p-5"><p class="kicker text-gray-400">md</p><p class="text-2xl font-black mt-2">650ms</p><p class="text-xs text-gray-500 mt-1">Section reveal default</p></div>
+    <div class="rounded-2xl border border-gray-100 p-5"><p class="kicker text-gray-400">lg</p><p class="text-2xl font-black mt-2">900ms</p><p class="text-xs text-gray-500 mt-1">Hero load stagger</p></div>
+  </div>
+
+  <h3 class="mt-14 text-xl font-black">Principles</h3>
+  <ol class="mt-5 space-y-3 text-base text-gray-700 max-w-2xl">
+    <li class="flex gap-3"><span class="mono text-xs text-[var(--accent)] font-bold">01</span><span>Fade and rise together. Never rise without fading.</span></li>
+    <li class="flex gap-3"><span class="mono text-xs text-[var(--accent)] font-bold">02</span><span>Stagger children with 70ms on desktop, 40ms on mobile.</span></li>
+    <li class="flex gap-3"><span class="mono text-xs text-[var(--accent)] font-bold">03</span><span>Carousels: spring · stiffness 260 · damping 28.</span></li>
+    <li class="flex gap-3"><span class="mono text-xs text-[var(--accent)] font-bold">04</span><span>Card stacks: spring · stiffness 320 · damping 32.</span></li>
+    <li class="flex gap-3"><span class="mono text-xs text-[var(--accent)] font-bold">05</span><span>Respect <code>prefers-reduced-motion</code> — collapse to instant fade.</span></li>
+    <li class="flex gap-3"><span class="mono text-xs text-[var(--accent)] font-bold">06</span><span>Trigger on viewport once — never loop a reveal.</span></li>
+  </ol>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 8 · ICONOGRAPHY                                         -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="iconography" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">08 — Iconography</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Lucide.<br/>Nothing else.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    One icon library — <span class="chip">lucide-react</span>. Stroke 2 default, 2.5 for directional glyphs (arrows/chevrons) on bold surfaces. Never mix two icon families on one screen.
+  </p>
+  <div class="mt-10 grid grid-cols-2 md:grid-cols-4 gap-4">
+    <div class="rounded-2xl border border-gray-100 p-5 flex items-center gap-4">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div><p class="font-bold text-sm">12px</p><p class="text-xs text-gray-500">inline in pill</p></div>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-5 flex items-center gap-4">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div><p class="font-bold text-sm">14px</p><p class="text-xs text-gray-500">inside row</p></div>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-5 flex items-center gap-4">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div><p class="font-bold text-sm">16px</p><p class="text-xs text-gray-500">default</p></div>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-5 flex items-center gap-4">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div><p class="font-bold text-sm">20px</p><p class="text-xs text-gray-500">navbar, buttons</p></div>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-5 flex items-center gap-4">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      <div><p class="font-bold text-sm">28px</p><p class="text-xs text-gray-500">section headers</p></div>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-5 flex items-center gap-4">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg>
+      <div><p class="font-bold text-sm">36px · stroke 2.5</p><p class="text-xs text-gray-500">hero directional</p></div>
+    </div>
+  </div>
+  <h3 class="mt-14 text-xl font-black">Icon containers</h3>
+  <div class="mt-5 flex flex-wrap gap-5 items-end">
+    <div class="text-center">
+      <div class="w-7 h-7 rounded-lg bg-gray-100 text-gray-500 flex items-center justify-center">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      </div>
+      <p class="mt-2 text-xs font-bold">Mega-menu</p>
+      <p class="text-[10px] text-gray-500">28×28 · gray-100</p>
+    </div>
+    <div class="text-center">
+      <div class="w-8 h-8 rounded-lg bg-white shadow-sm flex items-center justify-center">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/></svg>
+      </div>
+      <p class="mt-2 text-xs font-bold">Mobile row</p>
+      <p class="text-[10px] text-gray-500">32×32 · shadow-sm</p>
+    </div>
+    <div class="text-center">
+      <div class="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      </div>
+      <p class="mt-2 text-xs font-bold">Trust block</p>
+      <p class="text-[10px] text-gray-500">48×48 · outline</p>
+    </div>
+    <div class="text-center">
+      <div class="w-14 h-14 rounded-full bg-[var(--accent)] text-[var(--on-accent)] flex items-center justify-center">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg>
+      </div>
+      <p class="mt-2 text-xs font-bold">Carousel ctl</p>
+      <p class="text-[10px] text-gray-500">56×56 · accent</p>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 9 · BUTTONS                                             -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="buttons" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">09 — Buttons</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Every button<br/>is a pill.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    Fully rounded, bold label, no icon unless the action needs one. Three levels — accent (primary), ink (secondary high-emphasis), outline (tertiary). Underlined text link for low-emphasis navigation.
+  </p>
+
+  <!-- Variants -->
+  <h3 class="mt-12 text-xl font-black">Variants</h3>
+  <div class="mt-6 grid md:grid-cols-2 gap-10">
+    <div>
+      <p class="kicker text-gray-400 mb-4">Primary — accent</p>
+      <div class="flex flex-wrap items-center gap-3">
+        <button class="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]">Start planning</button>
+        <button class="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-5 py-2.5 rounded-full font-bold text-sm">Sign up</button>
+        <button class="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-10 py-5 rounded-full font-bold text-lg">Start planning for free</button>
+      </div>
+    </div>
+    <div>
+      <p class="kicker text-gray-400 mb-4">Secondary — ink</p>
+      <div class="flex flex-wrap items-center gap-3">
+        <button class="bg-[#1A1A1A] hover:bg-[#333] text-white px-7 py-3.5 rounded-full font-bold text-[15px]">Find vendors</button>
+        <button class="bg-[#1A1A1A] hover:bg-[#333] text-white px-5 py-3 rounded-full font-bold text-sm flex items-center gap-2">
+          Talk to us
+          <span class="w-5 h-5 rounded-full bg-[var(--accent)] flex items-center justify-center text-[var(--on-accent)] text-xs leading-none">→</span>
+        </button>
+      </div>
+    </div>
+    <div>
+      <p class="kicker text-gray-400 mb-4">Tertiary — outline</p>
+      <div class="flex flex-wrap items-center gap-3">
+        <button class="border-2 border-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white px-6 py-3 rounded-full font-bold text-sm">Explore templates</button>
+        <button class="border border-gray-200 hover:bg-gray-50 px-6 py-3 rounded-full font-bold text-sm text-[#1A1A1A]">Log in</button>
+        <button class="border border-white/20 hover:bg-white/10 px-6 py-3 rounded-full font-bold text-sm bg-[#1A1A1A] text-white">See success stories</button>
+      </div>
+    </div>
+    <div>
+      <p class="kicker text-gray-400 mb-4">Text — underlined link</p>
+      <div class="flex flex-wrap items-center gap-4">
+        <a class="text-[#1A1A1A] font-bold text-[15px] underline underline-offset-4 hover:text-gray-600">Find vendors</a>
+        <a class="text-[#1A1A1A] font-bold text-sm underline underline-offset-4 hover:text-gray-600">Browse rings</a>
+        <a class="text-[#1A1A1A] font-bold text-sm flex items-center gap-2 hover:gap-3 transition-all">
+          Get inspired
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Sizes -->
+  <h3 class="mt-14 text-xl font-black">Sizes</h3>
+  <div class="mt-6 grid md:grid-cols-4 gap-4">
+    <div class="rounded-2xl border border-gray-100 p-6 text-center space-y-3">
+      <button class="bg-[var(--accent)] text-[var(--on-accent)] px-3.5 py-2 rounded-full font-bold text-xs">Sign up</button>
+      <p class="mono text-xs text-gray-500">xs — 12/8</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-6 text-center space-y-3">
+      <button class="bg-[var(--accent)] text-[var(--on-accent)] px-5 py-2.5 rounded-full font-bold text-sm">Sign up</button>
+      <p class="mono text-xs text-gray-500">sm — 14/10</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-6 text-center space-y-3">
+      <button class="bg-[var(--accent)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]">Start planning</button>
+      <p class="mono text-xs text-gray-500">md — 15/14 · default</p>
+    </div>
+    <div class="rounded-2xl border border-gray-100 p-6 text-center space-y-3">
+      <button class="bg-[var(--accent)] text-[var(--on-accent)] px-10 py-5 rounded-full font-bold text-lg">Start planning for free</button>
+      <p class="mono text-xs text-gray-500">lg — 18/20 · hero CTA</p>
+    </div>
+  </div>
+
+  <!-- States -->
+  <h3 class="mt-14 text-xl font-black">States</h3>
+  <div class="mt-6 flex flex-wrap gap-3">
+    <button class="bg-[var(--accent)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]">Default</button>
+    <button class="bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]">Hover</button>
+    <button class="bg-[var(--accent)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px] outline outline-4 outline-[var(--accent)]/30">Focus</button>
+    <button class="bg-gray-100 text-gray-300 px-7 py-3.5 rounded-full font-bold text-[15px] cursor-not-allowed">Disabled</button>
+    <button class="bg-[#1A1A1A] text-white px-7 py-3.5 rounded-full font-bold text-[15px] flex items-center gap-2">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>
+      Loading
+    </button>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 10 · PILLS & BADGES                                     -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="pills" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">10 — Pills &amp; badges</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Small units,<br/>loud signal.</h2>
+
+  <div class="mt-12 grid md:grid-cols-2 gap-10">
+    <div>
+      <p class="kicker text-gray-400 mb-4">Badge · brand signal</p>
+      <div class="flex flex-wrap gap-3">
+        <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1.5 text-xs">Included</span>
+        <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1.5 text-xs">Verified</span>
+        <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1.5 text-xs">TZS</span>
+        <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1.5 text-xs">70 / 100 RSVPs</span>
+      </div>
+    </div>
+    <div>
+      <p class="kicker text-gray-400 mb-4">Feature chip</p>
+      <div class="flex flex-wrap gap-2">
+        <span class="chip">Wedding dresses</span>
+        <span class="chip">Real weddings</span>
+        <span class="chip">Any store</span>
+        <span class="chip">Cash funds</span>
+        <span class="chip">Thank-you tracker</span>
+      </div>
+    </div>
+    <div>
+      <p class="kicker text-gray-400 mb-4">Status — RSVP</p>
+      <div class="flex flex-wrap gap-3">
+        <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1.5 text-xs">Confirmed</span>
+        <span class="pill bg-orange-100 text-orange-500 px-3 py-1.5 text-xs">Pending</span>
+        <span class="pill bg-red-100 text-red-500 px-3 py-1.5 text-xs">Declined</span>
+      </div>
+    </div>
+    <div>
+      <p class="kicker text-gray-400 mb-4">On dark</p>
+      <div class="p-4 bg-[#1A1A1A] rounded-2xl flex flex-wrap gap-3">
+        <span class="pill bg-white/8 text-white/70 px-3 py-1.5 text-xs border border-white/10">Get discovered</span>
+        <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-2.5 py-1 text-[10px]">Verified</span>
+        <span class="pill bg-white/8 text-white/40 px-2 py-1 text-[10px] border border-white/10">Photography</span>
+      </div>
+    </div>
+  </div>
+
+  <h3 class="mt-14 text-xl font-black">Dot indicators</h3>
+  <p class="text-sm text-gray-600 max-w-2xl mt-2">Carousels use pill dots — active state stretches horizontally.</p>
+  <div class="mt-4 flex items-center gap-1.5">
+    <span class="h-1.5 w-5 rounded-full bg-[#1A1A1A]"></span>
+    <span class="h-1.5 w-1.5 rounded-full bg-gray-200"></span>
+    <span class="h-1.5 w-1.5 rounded-full bg-gray-200"></span>
+    <span class="h-1.5 w-1.5 rounded-full bg-gray-200"></span>
+    <span class="h-1.5 w-1.5 rounded-full bg-gray-200"></span>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 11 · CARDS                                              -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="cards" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">11 — Cards</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Soft, layered,<br/>never flat.</h2>
+
+  <!-- Base -->
+  <h3 class="mt-12 text-xl font-black">Base · feature</h3>
+  <div class="mt-5 grid md:grid-cols-3 gap-4">
+    <div class="rounded-3xl bg-white border border-gray-100 shadow-sm p-8">
+      <div class="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center mb-6">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <h4 class="font-bold text-lg mb-3">Trusted by millions</h4>
+      <p class="text-gray-600 text-[15px] font-medium leading-relaxed">We help plan over 2 million weddings worldwide every year.</p>
+    </div>
+    <div class="rounded-3xl bg-white border border-gray-100 shadow-sm p-8">
+      <div class="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center mb-6">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"/><path d="M5 21V10l7-4 7 4v11"/></svg>
+      </div>
+      <h4 class="font-bold text-lg mb-3">Verified vendors</h4>
+      <p class="text-gray-600 text-[15px] font-medium leading-relaxed">Every vendor is reviewed and vetted. No surprises, no unreliable listings.</p>
+    </div>
+    <div class="rounded-3xl bg-[var(--accent)] p-8">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="mb-4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+      <h4 class="font-black text-lg uppercase tracking-tight mb-2">Smart checklists</h4>
+      <p class="text-[var(--on-accent)]/70 text-sm font-medium leading-relaxed">Personalised to-dos built around your exact wedding date.</p>
+    </div>
+  </div>
+
+  <!-- Stat card -->
+  <h3 class="mt-14 text-xl font-black">Stat card</h3>
+  <div class="mt-5 grid grid-cols-4 gap-2 max-w-md">
+    <button class="rounded-2xl p-3 text-center bg-[#1A1A1A] shadow-sm">
+      <p class="text-xl font-black text-white">100</p>
+      <p class="text-[9px] mt-1 uppercase tracking-widest text-white/60">Invited</p>
+    </button>
+    <button class="rounded-2xl p-3 text-center bg-white shadow-sm">
+      <p class="text-xl font-black text-[#1A1A1A]">70</p>
+      <p class="text-[9px] mt-1 uppercase tracking-widest text-gray-400">Confirmed</p>
+    </button>
+    <button class="rounded-2xl p-3 text-center bg-white shadow-sm">
+      <p class="text-xl font-black text-[#1A1A1A]">25</p>
+      <p class="text-[9px] mt-1 uppercase tracking-widest text-gray-400">Pending</p>
+    </button>
+    <button class="rounded-2xl p-3 text-center bg-white shadow-sm">
+      <p class="text-xl font-black text-[#1A1A1A]">5</p>
+      <p class="text-[9px] mt-1 uppercase tracking-widest text-gray-400">Declined</p>
+    </button>
+  </div>
+  <p class="mt-3 text-sm text-gray-600">Active filter = ink bg · white text. Resting = white bg · shadow-sm.</p>
+
+  <!-- Row item -->
+  <h3 class="mt-14 text-xl font-black">Row item (list)</h3>
+  <div class="mt-5 max-w-md space-y-2">
+    <div class="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
+      <div class="w-8 h-8 rounded-full bg-gray-200 shrink-0"></div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-bold truncate">Sarah Mwangi</p>
+        <p class="text-[9px] text-gray-400">Click to update status</p>
+      </div>
+      <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-2.5 py-1 text-[9px]">Confirmed</span>
+    </div>
+    <div class="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
+      <div class="w-8 h-8 rounded-full bg-gray-200 shrink-0"></div>
+      <div class="flex-1 min-w-0">
+        <p class="text-xs font-bold truncate">Omar Al-Rashid</p>
+        <p class="text-[9px] text-gray-400">Click to update status</p>
+      </div>
+      <span class="pill bg-orange-100 text-orange-500 px-2.5 py-1 text-[9px]">Pending</span>
+    </div>
+  </div>
+
+  <!-- Dark card -->
+  <h3 class="mt-14 text-xl font-black">Dark card (vendor / product)</h3>
+  <div class="mt-5 max-w-xs">
+    <div class="bg-[#1E1E1E] rounded-3xl border border-white/8 overflow-hidden">
+      <div class="h-24 bg-gradient-to-br from-gray-700 to-gray-900 relative">
+        <span class="absolute top-3 right-3 pill bg-[var(--accent)] text-[var(--on-accent)] px-2.5 py-1 text-[9px] font-black">Verified</span>
+      </div>
+      <div class="-mt-7 mx-5 w-14 h-14 rounded-2xl bg-gray-400 border-2 border-[#1E1E1E]"></div>
+      <div class="px-5 pt-3 pb-5">
+        <p class="text-sm font-black text-white">Osei Photography</p>
+        <p class="text-[10px] text-white/40 mt-0.5">Zanzibar</p>
+        <div class="flex items-center gap-1 mt-4">
+          <span class="text-[#F5A623]">★★★★★</span>
+          <span class="text-[10px] text-white/40 ml-1">4.9 · 84 reviews</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 12 · FORMS & INPUTS                                     -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="forms" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">12 — Forms &amp; inputs</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Clear rows,<br/>visible fields.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    Inputs live inside visible <span class="chip">border-gray-200 rounded-2xl</span> containers. Labels are 10–12px uppercase kickers above the value. Bigger containers stack multiple fields with <span class="chip">divide-y divide-gray-100</span>.
+  </p>
+  <div class="mt-10 max-w-md rounded-3xl shadow-[0_20px_60px_rgba(0,0,0,0.08)] border border-gray-100 bg-white p-7 space-y-5">
+    <label class="block border border-gray-200 rounded-2xl px-5 py-4">
+      <p class="micro text-gray-400 mb-2">I am looking for a</p>
+      <input class="w-full text-2xl font-black focus:outline-none" value="Venue" />
+    </label>
+    <div class="border border-gray-200 rounded-2xl divide-y divide-gray-100 text-sm font-medium overflow-hidden">
+      <div class="flex justify-between items-center px-5 py-3.5">
+        <div class="flex items-center gap-2.5">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+          <span>150 Guests</span>
+        </div>
+        <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1 text-xs">Capacity</span>
+      </div>
+      <div class="flex justify-between items-center px-5 py-3.5">
+        <div class="flex items-center gap-2.5">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></svg>
+          <span>December 2026</span>
+        </div>
+        <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1 text-xs">Availability</span>
+      </div>
+      <div class="flex justify-between items-center px-5 py-3.5">
+        <div class="flex items-center gap-2.5">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-gray-400" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>Verified &amp; background checked</span>
+        </div>
+        <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1 text-xs">Verified</span>
+      </div>
+    </div>
+    <button class="w-full bg-[#1A1A1A] hover:bg-[#333] text-white font-bold py-4 rounded-full">Find Venues</button>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 13 · PATTERNS                                           -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="patterns" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">13 — Patterns</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">How sections<br/>come together.</h2>
+
+  <!-- Hero -->
+  <h3 class="mt-12 text-xl font-black">Hero · centred</h3>
+  <div class="mt-5 rounded-[32px] border border-gray-100 shadow-sm p-8 md:p-14 text-center">
+    <h1 class="display text-[2rem] sm:text-5xl md:text-6xl lg:text-[72px] leading-[0.9]">
+      Everything You Need<br/>To Plan Your Wedding<br/>All In One Place.
+    </h1>
+    <p class="mt-8 text-lg text-gray-600 max-w-2xl mx-auto font-medium leading-relaxed">
+      Make your wedding planning effortless. Discover venues, connect with vendors, and manage your registry.
+    </p>
+    <div class="mt-8 flex flex-wrap items-center justify-center gap-4">
+      <button class="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]">Start planning</button>
+      <a class="text-[#1A1A1A] font-bold text-[15px] underline underline-offset-4 hover:text-gray-600">Find vendors</a>
+    </div>
+  </div>
+
+  <!-- Section with eyebrow -->
+  <h3 class="mt-14 text-xl font-black">Section · eyebrow + headline + lead</h3>
+  <div class="mt-5 rounded-[32px] bg-[#1A1A1A] text-white p-10 md:p-16">
+    <span class="kicker text-[var(--accent)]">For vendors</span>
+    <h2 class="display mt-4 text-4xl md:text-6xl lg:text-[64px] leading-[0.9]">
+      Your next<br/>client is<br/><span class="text-[var(--accent)]">Searching.</span>
+    </h2>
+    <p class="mt-6 text-gray-400 font-medium leading-relaxed max-w-sm">
+      Connect with couples actively planning their wedding. Manage bookings, communicate with clients, and grow your business.
+    </p>
+    <div class="mt-8 flex flex-wrap gap-2">
+      <span class="pill bg-white/8 text-white/70 text-xs border border-white/10 px-3 py-1.5">Get discovered</span>
+      <span class="pill bg-white/8 text-white/70 text-xs border border-white/10 px-3 py-1.5">Manage bookings</span>
+      <span class="pill bg-white/8 text-white/70 text-xs border border-white/10 px-3 py-1.5">Get paid on time</span>
+    </div>
+    <div class="mt-8 flex flex-wrap gap-3">
+      <button class="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold">Join as a vendor</button>
+      <button class="text-white border border-white/20 hover:bg-white/8 px-7 py-3.5 rounded-full font-bold">See success stories</button>
+    </div>
+  </div>
+
+  <!-- CTA full bleed -->
+  <h3 class="mt-14 text-xl font-black">Full-bleed CTA</h3>
+  <div class="mt-5 rounded-[32px] overflow-hidden relative min-h-[400px] flex items-center justify-center text-center p-10"
+       style="background-image:linear-gradient(135deg,rgba(0,0,0,0.55),rgba(0,0,0,0.3)),url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1600&q=80');background-size:cover;background-position:center">
+    <div class="text-white max-w-3xl">
+      <span class="kicker text-[var(--accent)]">Free to start. Always.</span>
+      <h2 class="display mt-5 text-4xl md:text-6xl lg:text-[72px] leading-[0.9]">Your perfect<br/>day starts<br/><span class="text-[var(--accent)]">right here.</span></h2>
+      <p class="mt-6 text-white/90 max-w-md mx-auto font-medium leading-relaxed">Join thousands of couples across East Africa planning their dream wedding, stress-free.</p>
+      <button class="mt-8 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-10 py-5 rounded-full font-bold text-lg">Start planning for free</button>
+      <p class="mt-4 text-white/70 text-xs font-medium">No credit card required · Set up in minutes</p>
+    </div>
+  </div>
+
+  <!-- FAQ -->
+  <h3 class="mt-14 text-xl font-black">FAQ pattern</h3>
+  <div class="mt-5 grid md:grid-cols-3 gap-10 md:gap-16">
+    <div>
+      <span class="kicker text-[var(--accent)]">Support</span>
+      <h2 class="display mt-3 text-3xl md:text-5xl leading-[0.9]">Every<br/>answer<br/>you need.</h2>
+      <div class="w-10 h-1 bg-[var(--accent)] rounded-full mt-4"></div>
+      <p class="mt-4 text-gray-400 font-medium text-sm leading-relaxed max-w-xs">Can't find what you're looking for? Our team is happy to help.</p>
+    </div>
+    <div class="md:col-span-2 sm:divide-y sm:divide-gray-100">
+      <details class="sm:py-6 py-4 group" open>
+        <summary class="flex items-center justify-between gap-6">
+          <span class="font-bold text-base md:text-lg text-[#1A1A1A]">Is OpusFesta free to use?</span>
+          <span class="text-2xl text-[var(--accent)] font-black group-open:rotate-45 transition-transform">+</span>
+        </summary>
+        <p class="mt-4 text-base text-gray-500 font-medium leading-relaxed">Yes, completely free to start. Create your wedding website, manage your guest list, and browse vendors at no cost. No credit card required.</p>
+      </details>
+      <details class="sm:py-6 py-4 group">
+        <summary class="flex items-center justify-between gap-6">
+          <span class="font-bold text-base md:text-lg text-gray-600 group-hover:text-[#1A1A1A] transition-colors">How do I find vendors in my city?</span>
+          <span class="text-2xl text-gray-400 group-hover:text-[#1A1A1A] font-black group-open:rotate-45 transition-transform">+</span>
+        </summary>
+        <p class="mt-4 text-base text-gray-500 font-medium leading-relaxed">Search by category and location. We have verified vendors across Tanzania.</p>
+      </details>
+      <details class="sm:py-6 py-4 group">
+        <summary class="flex items-center justify-between gap-6">
+          <span class="font-bold text-base md:text-lg text-gray-600 group-hover:text-[#1A1A1A] transition-colors">Can I message vendors directly?</span>
+          <span class="text-2xl text-gray-400 group-hover:text-[#1A1A1A] font-black group-open:rotate-45 transition-transform">+</span>
+        </summary>
+      </details>
+    </div>
+  </div>
+
+  <!-- Testimonial -->
+  <h3 class="mt-14 text-xl font-black">Testimonial card</h3>
+  <div class="mt-5 grid md:grid-cols-2 gap-4">
+    <div class="rounded-[32px] bg-[#1A1A1A] text-white p-8">
+      <div class="text-[#F5A623] mb-6">★★★★★</div>
+      <p class="text-xl font-semibold leading-snug mb-6">"OpusFesta made planning our wedding a breeze! The checklist kept us sane and the website builder was so fun to use."</p>
+      <div class="flex items-center gap-4 pt-6 border-t border-white/10">
+        <div class="w-11 h-11 rounded-full bg-gray-600"></div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold truncate">Sarah &amp; James</p>
+          <p class="text-xs text-white/40 mt-0.5">Dar es Salaam</p>
+        </div>
+        <span class="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1.5 text-xs">Couple</span>
+      </div>
+    </div>
+    <div class="rounded-[32px] bg-[var(--accent)] p-8">
+      <div class="text-[#F5A623] mb-6">★★★★★</div>
+      <p class="text-xl font-semibold leading-snug mb-6 text-[var(--on-accent)]">"Finding couples was never this easy. OpusFesta brought us consistent bookings and our profile gets seen by the right people."</p>
+      <div class="flex items-center gap-4 pt-6 border-t border-[var(--on-accent)]/15">
+        <div class="w-11 h-11 rounded-full bg-gray-800"></div>
+        <div class="flex-1 min-w-0">
+          <p class="text-sm font-bold truncate text-[var(--on-accent)]">Osei Photography</p>
+          <p class="text-xs text-[var(--on-accent)]/50 mt-0.5">Zanzibar</p>
+        </div>
+        <span class="pill bg-[var(--on-accent)] text-[var(--accent)] px-3 py-1.5 text-xs">Vendor</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category marquee -->
+  <h3 class="mt-14 text-xl font-black">Category marquee</h3>
+  <div class="mt-5 rounded-3xl border-y border-gray-100 py-8 overflow-hidden relative">
+    <div class="absolute left-0 top-0 bottom-0 w-32 bg-[var(--accent)] z-10 flex items-center justify-center"
+         style="clip-path:polygon(0 0, 82% 0, 100% 50%, 82% 100%, 0 100%);">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="text-[var(--on-accent)] ml-[-8px]" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 5l7 7-7 7"/></svg>
+    </div>
+    <div class="flex animate-marquee whitespace-nowrap pl-32 items-center">
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#1A1A1A;color:#FFE500">Venues</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#C9A0DC;color:#1A1A1A">Photography</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#5C00F2;color:#FFFFFF">Videography</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#FF3D00;color:#FFFFFF">Catering</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#00701A;color:#FFE500">Florists</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#FFE500;color:#1A1A1A">DJs</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#E8003D;color:#FFFFFF">Live Bands</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#7B00D4;color:#FFFFFF">Hair &amp; Makeup</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#0057FF;color:#FFFFFF">Wedding Planners</div>
+      <!-- repeat -->
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#1A1A1A;color:#FFE500">Venues</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#C9A0DC;color:#1A1A1A">Photography</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#5C00F2;color:#FFFFFF">Videography</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#FF3D00;color:#FFFFFF">Catering</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#00701A;color:#FFE500">Florists</div>
+      <div class="mx-3 px-6 py-3 pill text-base" style="background:#FFE500;color:#1A1A1A">DJs</div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 14 · VOICE                                              -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="voice" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">14 — Voice &amp; content</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Warm, direct,<br/>occasionally playful.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    Write the way the best wedding planner in Dar es Salaam would speak — confident, practical, never showing off. Second person. Short sentences. Contractions are fine.
+  </p>
+
+  <div class="mt-12 grid md:grid-cols-2 gap-4">
+    <div class="rounded-3xl border border-gray-100 shadow-sm p-8">
+      <p class="kicker text-[var(--accent)] mb-4">Headline anatomy</p>
+      <ol class="text-sm space-y-3 text-gray-700">
+        <li><b>1.</b> Eyebrow (optional) — "For vendors", "Free to start. Always."</li>
+        <li><b>2.</b> 2–3 line UPPERCASE display with <code>&lt;br&gt;</code> for rag.</li>
+        <li><b>3.</b> Optional lavender emphasis word.</li>
+        <li><b>4.</b> 15–25 word lead paragraph below.</li>
+        <li><b>5.</b> 1 primary CTA + 1 text link.</li>
+      </ol>
+    </div>
+    <div class="rounded-3xl border border-gray-100 shadow-sm p-8">
+      <p class="kicker text-[var(--accent)] mb-4">CTA vocabulary</p>
+      <div class="flex flex-wrap gap-2">
+        <span class="chip">Start planning</span>
+        <span class="chip">Find vendors</span>
+        <span class="chip">Get started free</span>
+        <span class="chip">Join as a vendor</span>
+        <span class="chip">Browse ideas</span>
+        <span class="chip">Explore tools</span>
+        <span class="chip">See examples</span>
+        <span class="chip">Talk to us</span>
+      </div>
+      <p class="mt-4 text-xs text-gray-500">Always 2–4 words. Imperative verb first. Never "Click here."</p>
+    </div>
+    <div class="rounded-3xl border border-gray-100 shadow-sm p-8">
+      <p class="kicker text-[var(--accent)] mb-4">Reassurance lines</p>
+      <ul class="text-sm space-y-2 text-gray-700">
+        <li>"All in one place."</li>
+        <li>"No credit card required · Set up in minutes"</li>
+        <li>"Every vendor is reviewed and vetted. No surprises."</li>
+        <li>"Messaging verified vendors is free, safe and secure."</li>
+      </ul>
+    </div>
+    <div class="rounded-3xl border border-gray-100 shadow-sm p-8">
+      <p class="kicker text-[var(--accent)] mb-4">Locale cues</p>
+      <ul class="text-sm space-y-2 text-gray-700">
+        <li>Currency: <code>TZS 35,000,000</code> — thousand separators, always.</li>
+        <li>Phone: <code>+255 712 345 678</code> — spaced in 3/3/3.</li>
+        <li>Cities: Dar es Salaam, Zanzibar, Arusha, Moshi, Mwanza, Dodoma.</li>
+        <li>Dates: <code>December 14, 2025</code> — spelled month, no abbreviations.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 15 · DO & DON'T                                         -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="dodont" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">15 — Do &amp; Don't</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Fast reference.</h2>
+
+  <div class="mt-12 grid md:grid-cols-2 gap-6">
+    <!-- DOs -->
+    <div class="space-y-4">
+      <div class="rounded-2xl border border-green-200 bg-green-50 p-5">
+        <p class="text-green-700 text-xs font-black uppercase tracking-widest">Do</p>
+        <p class="mt-2 font-bold">Use rounded-full for every button, pill and badge.</p>
+      </div>
+      <div class="rounded-2xl border border-green-200 bg-green-50 p-5">
+        <p class="text-green-700 text-xs font-black uppercase tracking-widest">Do</p>
+        <p class="mt-2 font-bold">Pair lavender with ink text only.</p>
+      </div>
+      <div class="rounded-2xl border border-green-200 bg-green-50 p-5">
+        <p class="text-green-700 text-xs font-black uppercase tracking-widest">Do</p>
+        <p class="mt-2 font-bold">Set display type UPPERCASE, font-black, tracking-tighter.</p>
+      </div>
+      <div class="rounded-2xl border border-green-200 bg-green-50 p-5">
+        <p class="text-green-700 text-xs font-black uppercase tracking-widest">Do</p>
+        <p class="mt-2 font-bold">Use <code>shadow-sm</code> on resting cards, <code>shadow-lg</code> on the hero product.</p>
+      </div>
+      <div class="rounded-2xl border border-green-200 bg-green-50 p-5">
+        <p class="text-green-700 text-xs font-black uppercase tracking-widest">Do</p>
+        <p class="mt-2 font-bold">Fade + rise together on every reveal. 650ms / ease out-expo.</p>
+      </div>
+      <div class="rounded-2xl border border-green-200 bg-green-50 p-5">
+        <p class="text-green-700 text-xs font-black uppercase tracking-widest">Do</p>
+        <p class="mt-2 font-bold">Use lucide-react icons only. 2px stroke default.</p>
+      </div>
+    </div>
+    <!-- DON'Ts -->
+    <div class="space-y-4">
+      <div class="rounded-2xl border border-red-200 bg-red-50 p-5">
+        <p class="text-red-600 text-xs font-black uppercase tracking-widest">Don't</p>
+        <p class="mt-2 font-bold">Put white text on lavender — fails WCAG contrast.</p>
+      </div>
+      <div class="rounded-2xl border border-red-200 bg-red-50 p-5">
+        <p class="text-red-600 text-xs font-black uppercase tracking-widest">Don't</p>
+        <p class="mt-2 font-bold">Use <code>border-3</code>, hard-offset shadows, or square corners in product. That was the old brutalist theme.</p>
+      </div>
+      <div class="rounded-2xl border border-red-200 bg-red-50 p-5">
+        <p class="text-red-600 text-xs font-black uppercase tracking-widest">Don't</p>
+        <p class="mt-2 font-bold">Introduce new category colours. The palette is closed at 26.</p>
+      </div>
+      <div class="rounded-2xl border border-red-200 bg-red-50 p-5">
+        <p class="text-red-600 text-xs font-black uppercase tracking-widest">Don't</p>
+        <p class="mt-2 font-bold">Use italics for emphasis — use lavender or weight instead.</p>
+      </div>
+      <div class="rounded-2xl border border-red-200 bg-red-50 p-5">
+        <p class="text-red-600 text-xs font-black uppercase tracking-widest">Don't</p>
+        <p class="mt-2 font-bold">Drop the kicker/eyebrow onto display headlines — it belongs above.</p>
+      </div>
+      <div class="rounded-2xl border border-red-200 bg-red-50 p-5">
+        <p class="text-red-600 text-xs font-black uppercase tracking-widest">Don't</p>
+        <p class="mt-2 font-bold">Mix icon families. No Feather, no Heroicons, no Material.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- 16 · TOKENS                                             -->
+<!-- ─────────────────────────────────────────────────────── -->
+<section id="tokens" class="anchor px-6 py-20 max-w-6xl mx-auto rule">
+  <p class="kicker text-[var(--accent)] mb-4">16 — Tokens</p>
+  <h2 class="display text-4xl md:text-6xl lg:text-[72px]">Design tokens<br/>for Figma &amp; code.</h2>
+  <p class="mt-8 text-lg text-gray-600 max-w-2xl font-medium leading-relaxed">
+    <a href="./tokens.json" class="text-[#1A1A1A] font-bold underline underline-offset-4">tokens.json</a> sits next to this file — a single source importable into Figma Variables (via Tokens Studio) or read directly at build time for code.
+  </p>
+
+  <h3 class="mt-12 text-xl font-black">CSS variables</h3>
+  <pre class="mt-4 rounded-2xl bg-[#0f0f0f] text-white p-6 text-sm overflow-x-auto">:root {
+  --accent:        #C9A0DC;
+  --accent-hover:  #b97fd0;
+  --on-accent:     #1A1A1A;
+  --ink:           #1A1A1A;
+  --surface:       #FFFFFF;
+  --surface-soft:  #F2F2F0;
+}</pre>
+
+  <h3 class="mt-12 text-xl font-black">Tailwind utility cheat-sheet</h3>
+  <div class="mt-4 grid md:grid-cols-2 gap-3 text-sm">
+    <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
+      <p class="micro text-gray-400 mb-2">Primary CTA</p>
+      <code class="mono block">bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]</code>
+    </div>
+    <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
+      <p class="micro text-gray-400 mb-2">Display headline</p>
+      <code class="mono block">text-[72px] font-black uppercase tracking-tighter leading-[0.9] text-[#1A1A1A]</code>
+    </div>
+    <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
+      <p class="micro text-gray-400 mb-2">Card base</p>
+      <code class="mono block">bg-white border border-gray-100 shadow-sm rounded-3xl p-8</code>
+    </div>
+    <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
+      <p class="micro text-gray-400 mb-2">Badge</p>
+      <code class="mono block">bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1.5 rounded-full text-xs font-bold</code>
+    </div>
+    <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
+      <p class="micro text-gray-400 mb-2">Eyebrow / kicker</p>
+      <code class="mono block">text-[var(--accent)] text-xs font-bold uppercase tracking-widest</code>
+    </div>
+    <div class="rounded-xl bg-gray-50 border border-gray-100 p-4">
+      <p class="micro text-gray-400 mb-2">Section container</p>
+      <code class="mono block">px-4 sm:px-6 py-14 sm:py-20 md:py-24 max-w-6xl mx-auto</code>
+    </div>
+  </div>
+</section>
+
+<!-- ─────────────────────────────────────────────────────── -->
+<!-- FOOTER                                                  -->
+<!-- ─────────────────────────────────────────────────────── -->
+<footer class="bg-[#1A1A1A] text-white px-6 py-16 mt-20">
+  <div class="max-w-6xl mx-auto">
+    <div class="flex items-baseline gap-1 mb-8">
+      <span class="display text-4xl leading-none">Opus</span>
+      <span class="display text-4xl leading-none text-[var(--accent)]">Festa</span>
+    </div>
+    <div class="grid md:grid-cols-4 gap-8 text-sm">
+      <div>
+        <h4 class="font-bold mb-4">Reference</h4>
+        <ul class="space-y-2 text-gray-400">
+          <li><a href="./tokens.json" class="hover:text-white">tokens.json</a></li>
+          <li><span class="mono text-xs">apps/opus_website</span></li>
+          <li><span class="mono text-xs">apps/opus_website/src/components</span></li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="font-bold mb-4">Ownership</h4>
+        <ul class="space-y-2 text-gray-400">
+          <li>Design lead · OpusFesta</li>
+          <li>Engineering · Platform team</li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="font-bold mb-4">Versioning</h4>
+        <ul class="space-y-2 text-gray-400">
+          <li>v2026.04 — current</li>
+          <li>Canonical: live marketing site</li>
+        </ul>
+      </div>
+      <div>
+        <h4 class="font-bold mb-4">For the design team</h4>
+        <ul class="space-y-2 text-gray-400">
+          <li>Import tokens.json via Tokens Studio (Figma).</li>
+          <li>Use Inter from Google Fonts.</li>
+          <li>Lucide icons via lucide.dev.</li>
+        </ul>
+      </div>
+    </div>
+    <p class="mt-14 text-xs text-gray-500">© 2026 OpusFesta · Design System v2026.04 · Canonical source: <span class="mono">apps/opus_website</span></p>
+  </div>
+</footer>
+
+</body>
+</html>

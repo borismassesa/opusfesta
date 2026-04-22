@@ -179,6 +179,24 @@ export async function GET(request: Request) {
       return !!c && c >= prevFilterStartDate && c < filterStartDate;
     });
 
+    // Daily buckets for the trend chart — bucket size adapts for long ranges
+    const periodDays = Math.max(
+      1,
+      Math.round((today.getTime() - filterStartDate.getTime()) / (24 * 60 * 60 * 1000)),
+    );
+    const bucketDays = periodDays > 120 ? 7 : 1;
+    const bucketCount = Math.ceil(periodDays / bucketDays);
+    const inquiriesDaily: { date: string; count: number }[] = [];
+    for (let i = 0; i < bucketCount; i++) {
+      const bucketStart = addDays(filterStartDate, i * bucketDays);
+      const bucketEnd = addDays(bucketStart, bucketDays);
+      const count = inquiries.filter((q) => {
+        const c = asDate(q.created_at);
+        return !!c && c >= bucketStart && c < bucketEnd;
+      }).length;
+      inquiriesDaily.push({ date: toIsoDay(bucketStart), count });
+    }
+
     const inquiryStatusCounts: Record<string, number> = {
       new: 0, contacted: 0, qualified: 0, closed_won: 0, closed_lost: 0, spam: 0,
     };
@@ -211,6 +229,8 @@ export async function GET(request: Request) {
         statusCounts: inquiryStatusCounts,
         recent: recentInquiries,
         totalInPeriod: inquiriesInPeriod.length,
+        daily: inquiriesDaily,
+        bucketDays,
       },
       period: periodParam,
       generatedAt: toIsoDay(now),

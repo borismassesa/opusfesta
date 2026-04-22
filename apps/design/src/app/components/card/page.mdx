@@ -1,0 +1,85 @@
+<Kicker>Components · Card</Kicker>
+
+# Card
+
+Soft, layered, never flat. Cards nest from `rounded-2xl` outward. Resting state: white bg, `border-gray-100`, `shadow-sm`. Lift to `shadow-md` on hover.
+
+## Base · feature
+
+<Showcase>
+  <div className="grid md:grid-cols-3 gap-4 w-full">
+    <div className="rounded-3xl bg-white border border-gray-100 shadow-sm p-8">
+      <div className="w-12 h-12 rounded-full border border-gray-200 flex items-center justify-center mb-6">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+      </div>
+      <h4 className="font-bold text-lg mb-3 text-ink">Trusted by millions</h4>
+      <p className="text-gray-600 text-[15px] font-medium leading-relaxed">We help plan over 2 million weddings worldwide every year.</p>
+    </div>
+    <div className="rounded-3xl bg-[var(--accent)] p-8">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mb-4"><path d="M9 11l3 3L22 4"/></svg>
+      <h4 className="font-black text-lg uppercase tracking-tight mb-2 text-[var(--on-accent)]">Smart checklists</h4>
+      <p className="text-[var(--on-accent)]/70 text-sm font-medium leading-relaxed">Personalised to-dos built around your exact wedding date.</p>
+    </div>
+    <div className="rounded-3xl bg-[#1A1A1A] text-white p-8">
+      <p className="kicker text-[var(--accent)]">For vendors</p>
+      <p className="mt-4 font-black text-xl leading-tight">Your next client is searching.</p>
+    </div>
+  </div>
+</Showcase>
+
+<CodeBlock label="Base card">{`rounded-3xl bg-white border border-gray-100 shadow-sm p-8`}</CodeBlock>
+
+## Stat card
+
+<Showcase>
+  <div className="grid grid-cols-4 gap-2 w-full max-w-md">
+    <button className="rounded-2xl p-3 text-center bg-[#1A1A1A] shadow-sm">
+      <p className="text-xl font-black text-white">100</p>
+      <p className="text-[9px] mt-1 uppercase tracking-widest text-white/60">Invited</p>
+    </button>
+    <button className="rounded-2xl p-3 text-center bg-white shadow-sm">
+      <p className="text-xl font-black text-ink">70</p>
+      <p className="text-[9px] mt-1 uppercase tracking-widest text-gray-400">Confirmed</p>
+    </button>
+    <button className="rounded-2xl p-3 text-center bg-white shadow-sm">
+      <p className="text-xl font-black text-ink">25</p>
+      <p className="text-[9px] mt-1 uppercase tracking-widest text-gray-400">Pending</p>
+    </button>
+    <button className="rounded-2xl p-3 text-center bg-white shadow-sm">
+      <p className="text-xl font-black text-ink">5</p>
+      <p className="text-[9px] mt-1 uppercase tracking-widest text-gray-400">Declined</p>
+    </button>
+  </div>
+</Showcase>
+
+Active filter = ink bg, white text. Resting = white bg, shadow-sm.
+
+## Row item
+
+<Showcase>
+  <div className="w-full max-w-md space-y-2">
+    <div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
+      <div className="w-8 h-8 rounded-full bg-gray-200 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold truncate text-ink">Sarah Mwangi</p>
+        <p className="text-[9px] text-gray-400">Click to update status</p>
+      </div>
+      <span className="pill bg-[var(--accent)] text-[var(--on-accent)] px-2.5 py-1 text-[9px]">Confirmed</span>
+    </div>
+    <div className="bg-white rounded-2xl px-4 py-3 flex items-center gap-3 shadow-sm">
+      <div className="w-8 h-8 rounded-full bg-gray-200 shrink-0" />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold truncate text-ink">Omar Al-Rashid</p>
+        <p className="text-[9px] text-gray-400">Click to update status</p>
+      </div>
+      <span className="pill bg-orange-100 text-orange-500 px-2.5 py-1 text-[9px]">Pending</span>
+    </div>
+  </div>
+</Showcase>
+
+<DosAndDonts>
+  <Do>Use shadow-sm on resting cards. Lift to shadow-md on hover.</Do>
+  <Dont>Stack borders and shadows both doing the same job — pick one or layer intentionally.</Dont>
+  <Do>Nest from rounded-2xl outward. Inner elements should never have larger radius than the outer card.</Do>
+  <Dont>Use rounded-lg on a card that sits inside a rounded-3xl container.</Dont>
+</DosAndDonts>

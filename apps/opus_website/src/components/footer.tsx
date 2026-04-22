@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useState, useRef } from 'react'
-import { MapPin } from 'lucide-react'
+import { MapPin, Check } from 'lucide-react'
 import { motion, useScroll, useTransform } from 'motion/react'
 import Reveal from '@/components/ui/Reveal'
 import { adviceIdeasFooterLinks } from '@/lib/advice-ideas'
@@ -21,7 +21,15 @@ const cities = [
   'Morogoro',
 ]
 
-export default function Footer() {
+export default function Footer({
+  showVendorMessagingSection = true,
+  showVendorDiscoverySection = true,
+  showIdeasAdviceColumn = true,
+}: {
+  showVendorMessagingSection?: boolean
+  showVendorDiscoverySection?: boolean
+  showIdeasAdviceColumn?: boolean
+}) {
   const [activeCategory, setActiveCategory] = useState('Venues')
   const watermarkRef = useRef(null)
   const { scrollYProgress } = useScroll({ target: watermarkRef, offset: ['start end', 'end start'] })
@@ -29,37 +37,67 @@ export default function Footer() {
   const y = useTransform(scrollYProgress, [0, 1], [30, -30])
 
   return (
-    <footer className="bg-[#FFFFFF] pt-24 pb-12 px-6 border-t border-gray-200">
-      <div className="max-w-6xl mx-auto">
+    <footer className="bg-[#FFFFFF] pb-12 px-6 border-t border-gray-200">
 
-        {/* Vendor city finder */}
-        <Reveal direction="up" margin="-40px">
-          <h2 className="text-3xl font-black tracking-tighter mb-8 text-[#1A1A1A]">Find vendors across Tanzania</h2>
-
-          <div className="flex gap-3 mb-10 overflow-x-auto pb-2 hide-scrollbar">
-            {CATEGORIES.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                className={`px-5 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-[#1A1A1A] text-white' : 'bg-white text-[#1A1A1A] border border-gray-200 hover:bg-gray-50'}`}
-              >
-                {cat}
-              </button>
-            ))}
+      {/* Why use OpusFesta section */}
+      {showVendorMessagingSection && (
+        <div className="bg-(--accent)/20 -mx-6 px-6 py-20 mb-16">
+          <div className="max-w-6xl mx-auto px-6">
+            <h2 className="text-2xl font-black tracking-tight text-[#1A1A1A] mb-6">
+              Why use OpusFesta to message vendors?
+            </h2>
+            <ul className="space-y-4">
+              {[
+                'Messaging our verified vendors on OpusFesta is free, safe and secure.',
+                'Conveniently track vendor messages and planning details all in one place.',
+                'Our mobile apps make it easy to stay in touch with vendors while you\'re on-the-go.',
+                'For personalized pricing and package details, sending the vendor a message is the fastest way to get info.',
+              ].map((point) => (
+                <li key={point} className="flex items-start gap-3 text-sm text-[#1A1A1A]">
+                  <Check size={16} className="mt-0.5 shrink-0 text-[#1A1A1A]" strokeWidth={3} />
+                  {point}
+                </li>
+              ))}
+            </ul>
           </div>
+        </div>
+      )}
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4 mb-20">
-            {cities.map((city) => (
-              <a key={city} href="#" className="flex items-center gap-3 hover:underline text-sm font-medium text-gray-600">
-                <MapPin size={16} className="text-(--accent)" />
-                {activeCategory} in {city}
-              </a>
-            ))}
-          </div>
-        </Reveal>
+      <div className="max-w-6xl mx-auto pt-16">
+
+        {showVendorDiscoverySection && (
+          <Reveal direction="up" margin="-40px">
+            <h2 className="text-3xl font-black tracking-tighter mb-8 text-[#1A1A1A]">Find vendors across Tanzania</h2>
+
+            <div className="flex gap-3 mb-10 overflow-x-auto pb-2 hide-scrollbar">
+              {CATEGORIES.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setActiveCategory(cat)}
+                  className={`px-5 py-2 rounded-full font-bold text-sm whitespace-nowrap transition-colors ${activeCategory === cat ? 'bg-[#1A1A1A] text-white' : 'bg-white text-[#1A1A1A] border border-gray-200 hover:bg-gray-50'}`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4 mb-20">
+              {cities.map((city) => (
+                <a key={city} href="#" className="flex items-center gap-3 hover:underline text-sm font-medium text-gray-600">
+                  <MapPin size={16} className="text-(--accent)" />
+                  {activeCategory} in {city}
+                </a>
+              ))}
+            </div>
+          </Reveal>
+        )}
 
         {/* Links grid */}
-        <Reveal direction="none" margin="-40px" className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16 text-sm">
+        <Reveal
+          direction="none"
+          margin="-40px"
+          className={`grid grid-cols-2 gap-8 mb-16 text-sm ${showIdeasAdviceColumn ? 'md:grid-cols-4' : 'md:grid-cols-3'}`}
+        >
           <div>
             <h4 className="font-bold mb-4 text-[#1A1A1A]">Planning Tools</h4>
             <ul className="space-y-3 text-gray-500">
@@ -86,18 +124,20 @@ export default function Footer() {
               ))}
             </ul>
           </div>
-          <div>
-            <h4 className="font-bold mb-4 text-[#1A1A1A]">Ideas & Advice</h4>
-            <ul className="space-y-3 text-gray-500">
-              {adviceIdeasFooterLinks.map((link) => (
-                <li key={link.label}>
-                  <Link href={link.href} className="hover:text-[#1A1A1A] transition-colors">
-                    {link.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {showIdeasAdviceColumn && (
+            <div>
+              <h4 className="font-bold mb-4 text-[#1A1A1A]">Ideas & Advice</h4>
+              <ul className="space-y-3 text-gray-500">
+                {adviceIdeasFooterLinks.map((link) => (
+                  <li key={link.label}>
+                    <Link href={link.href} className="hover:text-[#1A1A1A] transition-colors">
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
           <div>
             <h4 className="font-bold mb-4 text-[#1A1A1A]">Company</h4>
             <ul className="space-y-3 text-gray-500">

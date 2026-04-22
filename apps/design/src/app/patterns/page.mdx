@@ -1,0 +1,109 @@
+<Kicker>Content · Patterns</Kicker>
+
+# Patterns
+
+How sections come together on a page. Patterns are **compositions** — reusable recipes that stack primitives into a shape the whole product uses.
+
+## Hero · centred
+
+<Showcase>
+  <div className="w-full text-center">
+    <h1 className="display text-3xl md:text-5xl leading-[0.9]">
+      Everything You Need<br/>To Plan Your Wedding<br/>All In One Place.
+    </h1>
+    <p className="mt-6 text-base text-gray-600 max-w-xl mx-auto font-medium leading-relaxed">
+      Make your wedding planning effortless. Discover venues, connect with vendors, and manage your registry.
+    </p>
+    <div className="mt-6 flex flex-wrap items-center justify-center gap-4">
+      <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]">Start planning</button>
+      <a className="text-ink font-bold text-[15px] underline underline-offset-4 hover:text-gray-600 cursor-pointer">Find vendors</a>
+    </div>
+  </div>
+</Showcase>
+
+**Anatomy** — 2-3 line UPPERCASE display headline, 15–25 word lead paragraph, one primary CTA plus one text link.
+
+## Section · eyebrow + headline + lead (dark)
+
+<Showcase dark>
+  <div className="w-full">
+    <span className="kicker text-[var(--accent)]">For vendors</span>
+    <h2 className="display mt-4 text-3xl md:text-5xl leading-[0.9] text-white">
+      Your next<br/>client is<br/><span className="text-[var(--accent)]">Searching.</span>
+    </h2>
+    <p className="mt-6 text-gray-400 font-medium leading-relaxed max-w-sm">
+      Connect with couples actively planning their wedding.
+    </p>
+  </div>
+</Showcase>
+
+## Full-bleed CTA
+
+<Showcase padded={false}>
+  <div className="w-full min-h-[320px] flex items-center justify-center text-center p-10"
+       style={{ backgroundImage: "linear-gradient(135deg,rgba(0,0,0,0.55),rgba(0,0,0,0.3)),url('https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=1600&q=80')", backgroundSize: 'cover', backgroundPosition: 'center' }}>
+    <div className="text-white max-w-2xl">
+      <span className="kicker text-[var(--accent)]">Free to start. Always.</span>
+      <h2 className="display mt-4 text-3xl md:text-5xl leading-[0.9]">Your perfect<br/>day starts<br/><span className="text-[var(--accent)]">right here.</span></h2>
+      <button className="mt-6 bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-8 py-4 rounded-full font-bold">Start planning for free</button>
+    </div>
+  </div>
+</Showcase>
+
+## FAQ — sticky side + accordion
+
+<Showcase>
+  <div className="grid md:grid-cols-3 gap-10 w-full">
+    <div>
+      <span className="kicker text-[var(--accent)]">Support</span>
+      <h2 className="display mt-3 text-2xl md:text-3xl leading-[0.9]">Every<br/>answer<br/>you need.</h2>
+      <div className="w-10 h-1 bg-[var(--accent)] rounded-full mt-4" />
+    </div>
+    <div className="md:col-span-2 divide-y divide-gray-100">
+      <details className="py-4 group" open>
+        <summary className="flex items-center justify-between gap-6 cursor-pointer list-none">
+          <span className="font-bold text-base text-ink">Is OpusFesta free to use?</span>
+          <span className="text-2xl text-[var(--accent)] font-black group-open:rotate-45 transition-transform">+</span>
+        </summary>
+        <p className="mt-4 text-sm text-gray-500 font-medium leading-relaxed">Yes, completely free to start. No credit card required.</p>
+      </details>
+      <details className="py-4 group">
+        <summary className="flex items-center justify-between gap-6 cursor-pointer list-none">
+          <span className="font-bold text-base text-gray-600 group-hover:text-ink transition-colors">How do I find vendors in my city?</span>
+          <span className="text-2xl text-gray-400 group-hover:text-ink font-black group-open:rotate-45 transition-transform">+</span>
+        </summary>
+      </details>
+    </div>
+  </div>
+</Showcase>
+
+## Testimonial
+
+<Showcase>
+  <div className="grid md:grid-cols-2 gap-4 w-full">
+    <div className="rounded-[32px] bg-[#1A1A1A] text-white p-8">
+      <div className="text-[#F5A623] mb-6">★★★★★</div>
+      <p className="text-lg font-semibold leading-snug mb-6">&ldquo;OpusFesta made planning our wedding a breeze!&rdquo;</p>
+      <div className="flex items-center gap-4 pt-6 border-t border-white/10">
+        <div className="w-10 h-10 rounded-full bg-gray-600" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold truncate">Sarah &amp; James</p>
+          <p className="text-xs text-white/40 mt-0.5">Dar es Salaam</p>
+        </div>
+        <span className="pill bg-[var(--accent)] text-[var(--on-accent)] px-3 py-1.5 text-xs">Couple</span>
+      </div>
+    </div>
+    <div className="rounded-[32px] bg-[var(--accent)] p-8">
+      <div className="text-[#F5A623] mb-6">★★★★★</div>
+      <p className="text-lg font-semibold leading-snug mb-6 text-[var(--on-accent)]">&ldquo;Finding couples was never this easy.&rdquo;</p>
+      <div className="flex items-center gap-4 pt-6 border-t border-[var(--on-accent)]/15">
+        <div className="w-10 h-10 rounded-full bg-gray-800" />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold truncate text-[var(--on-accent)]">Osei Photography</p>
+          <p className="text-xs text-[var(--on-accent)]/50 mt-0.5">Zanzibar</p>
+        </div>
+        <span className="pill bg-[var(--on-accent)] text-[var(--accent)] px-3 py-1.5 text-xs">Vendor</span>
+      </div>
+    </div>
+  </div>
+</Showcase>

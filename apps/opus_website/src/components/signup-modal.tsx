@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
-import { SignUp } from '@clerk/nextjs'
 import {
   X,
   ChevronLeft,
   Check,
+  Eye,
+  EyeOff,
   Bell,
   Gem,
   ClipboardList,
@@ -337,7 +338,7 @@ function Step1({
           onChange={(e) => onLocationChange(e.target.value)}
           disabled={undecided}
           placeholder="City or nearby area"
-          className="w-full rounded-xl border border-gray-200 px-4 py-4 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
         />
         <CustomCheckbox
           id="location-undecided"
@@ -386,7 +387,7 @@ function Step2({
           disabled={undecided}
           placeholder="e.g. 150"
           min="1"
-          className="w-full rounded-xl border border-gray-200 px-4 py-4 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+          className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
         />
         <CustomCheckbox
           id="guests-undecided"
@@ -605,7 +606,7 @@ function Step6({
               onChange={(e) => onFirstNameChange(e.target.value)}
               placeholder="Ada"
               autoComplete="given-name"
-              className="w-full rounded-xl border border-gray-200 px-4 py-4 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -616,7 +617,7 @@ function Step6({
               onChange={(e) => onLastNameChange(e.target.value)}
               placeholder="Mwamba"
               autoComplete="family-name"
-              className="w-full rounded-xl border border-gray-200 px-4 py-4 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all"
             />
           </div>
         </div>
@@ -629,7 +630,7 @@ function Step6({
               value={partnerFirstName}
               onChange={(e) => onPartnerFirstNameChange(e.target.value)}
               placeholder="James"
-              className="w-full rounded-xl border border-gray-200 px-4 py-4 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all"
             />
           </div>
           <div className="flex flex-col gap-1.5">
@@ -639,7 +640,7 @@ function Step6({
               value={partnerLastName}
               onChange={(e) => onPartnerLastNameChange(e.target.value)}
               placeholder="Okonkwo"
-              className="w-full rounded-xl border border-gray-200 px-4 py-4 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all"
             />
           </div>
         </div>
@@ -655,7 +656,7 @@ function Step6({
               value={weddingDate}
               onChange={(e) => onWeddingDateChange(e.target.value)}
               disabled={weddingDateUndecided}
-              className="flex-1 rounded-xl border border-gray-200 px-4 py-4 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
+              className="flex-1 rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all disabled:bg-gray-50 disabled:text-gray-400 disabled:cursor-not-allowed"
             />
             <CustomCheckbox
               id="wedding-date-undecided"
@@ -675,37 +676,86 @@ function Step6({
   )
 }
 
-function Step7({ onComplete }: { onComplete: () => void }) {
+function Step7({
+  email,
+  onEmailChange,
+  password,
+  onPasswordChange,
+  showPassword,
+  onShowPasswordToggle,
+}: {
+  email: string
+  onEmailChange: (v: string) => void
+  password: string
+  onPasswordChange: (v: string) => void
+  showPassword: boolean
+  onShowPasswordToggle: () => void
+}) {
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h2 className="text-2xl font-bold text-[#1A1A1A] leading-tight mb-1">
+        <h2 className="text-2xl font-bold text-[#1A1A1A] leading-tight mb-2">
           Now, create your login.
         </h2>
-        <p className="text-sm text-gray-500">Sign up with Google, Apple, or your email.</p>
       </div>
 
-      <SignUp
-        routing="hash"
-        appearance={{
-          elements: {
-            rootBox: 'w-full',
-            card: 'shadow-none p-0 bg-transparent',
-            headerTitle: 'hidden',
-            headerSubtitle: 'hidden',
-            socialButtonsBlockButton: 'rounded-xl border border-gray-200 font-semibold text-[#1A1A1A] hover:bg-gray-50',
-            dividerLine: 'bg-gray-200',
-            dividerText: 'text-gray-400 text-xs',
-            formFieldInput: 'rounded-xl border-gray-200 focus:border-[#1A1A1A] text-sm py-4',
-            formButtonPrimary: 'rounded-full bg-[#1A1A1A] hover:bg-black/80 text-sm font-bold',
-            footerActionLink: 'text-[#1A1A1A] font-semibold',
-            identityPreviewText: 'text-sm text-gray-600',
-            formResendCodeLink: 'text-[#1A1A1A]',
-          },
-        }}
-        fallbackRedirectUrl="/"
-        signInUrl="#"
-      />
+      <div className="flex flex-col gap-3.5">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-semibold text-gray-600">Email address</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => onEmailChange(e.target.value)}
+            placeholder="you@email.com"
+            autoComplete="email"
+            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all"
+          />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-baseline gap-2">
+            <label className="text-xs font-semibold text-gray-600">Password</label>
+            <span className="text-xs text-gray-400">(8 or more characters)</span>
+          </div>
+          <div className="relative">
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => onPasswordChange(e.target.value)}
+              placeholder="At least 8 characters"
+              autoComplete="new-password"
+              className="w-full rounded-xl border border-gray-200 px-4 py-3 pr-12 text-sm text-[#1A1A1A] placeholder-gray-400 focus:outline-none focus:border-[#1A1A1A] transition-all"
+            />
+            <button
+              type="button"
+              onClick={onShowPasswordToggle}
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#1A1A1A] transition-colors"
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <p className="text-sm text-gray-500 text-center">
+        Already have an OpusFesta account?{' '}
+        <a href="#" className="font-semibold text-[#1A1A1A] hover:underline">
+          Log in
+        </a>
+      </p>
+
+      <p className="text-xs text-gray-400 text-center leading-relaxed">
+        By creating your OpusFesta account you agree to our{' '}
+        <a href="#" className="underline hover:text-gray-600">
+          Terms of use
+        </a>{' '}
+        and{' '}
+        <a href="#" className="underline hover:text-gray-600">
+          Privacy policy
+        </a>
+        .
+      </p>
     </div>
   )
 }
@@ -902,6 +952,9 @@ export default function SignupModal({ onClose }: { onClose: () => void }) {
   const [weddingDateUndecided, setWeddingDateUndecided] = useState(false)
 
   // Step 7
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
   // Step 8
   const [referralSources, setReferralSources] = useState<Set<string>>(new Set())
@@ -943,7 +996,7 @@ export default function SignupModal({ onClose }: { onClose: () => void }) {
           partnerLastName.trim() !== '' &&
           (weddingDate !== '' || weddingDateUndecided)
         )
-      case 7: return false // Clerk handles its own submit
+      case 7: return email.trim() !== '' && password.length >= 8
       case 8: return true
       case 9: return true
       default: return false
@@ -1015,42 +1068,44 @@ export default function SignupModal({ onClose }: { onClose: () => void }) {
     /* Overlay */
     <div
       data-lenis-prevent
-      className="fixed inset-0 z-200 flex"
+      className="fixed inset-0 z-200 flex items-center justify-center p-4 backdrop-blur-md bg-black/60"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose()
+      }}
     >
-      {/* Modal — full screen */}
+      {/* Modal */}
       <div
-        className="relative flex w-full h-full bg-white overflow-hidden"
+        className={`relative flex w-full max-h-[92vh] rounded-3xl bg-white overflow-hidden shadow-2xl ${
+          isFullWidth ? 'max-w-2xl' : 'max-w-4xl'
+        }`}
         role="dialog"
         aria-modal="true"
         aria-label="Sign up for OpusFesta"
       >
         {/* ── Left panel (hidden on mobile, not shown for step 9) ── */}
         {!isFullWidth && (
-          <div className="hidden md:block md:w-[40%] shrink-0 relative h-full">
+          <div className="hidden md:block md:w-[40%] shrink-0 relative">
             {isSpecialLeft ? (
-              /* Step 7: celebration panel */
-              <div className="absolute inset-0 bg-[#E8D5F5] flex flex-col items-center justify-center gap-8 px-10 overflow-hidden">
-                {/* Interlocked rings SVG */}
-                <div className="relative z-10">
-                  <svg width="96" height="56" viewBox="0 0 96 56" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <circle cx="31" cy="28" r="26" stroke="#1A1A1A" strokeWidth="2.5" fill="none" />
-                    <circle cx="65" cy="28" r="26" stroke="#1A1A1A" strokeWidth="2.5" fill="none" />
-                    <path d="M48 7.2 C54 13 57 20 57 28 C57 36 54 43 48 48.8 C42 43 39 36 39 28 C39 20 42 13 48 7.2Z" fill="#1A1A1A" fillOpacity="0.1" />
-                  </svg>
-                </div>
-
-                {/* Text */}
-                <div className="relative z-10 text-center space-y-2">
-                  <p className="text-black/50 text-sm tracking-wide">We're so excited for you,</p>
-                  <p className="text-black text-2xl font-black tracking-tight leading-tight">
+              /* Step 7: dark navy panel */
+              <div className="absolute inset-0 bg-[#1e2d3d] flex flex-col items-center justify-center gap-6 px-8">
+                {/* Linked hearts SVG */}
+                <svg
+                  width="80"
+                  height="48"
+                  viewBox="0 0 80 48"
+                  fill="none"
+                  xmlns="http://www.w3.org/2000/svg"
+                  aria-hidden="true"
+                >
+                  <circle cx="26" cy="24" r="22" stroke="#5de0e6" strokeWidth="3" fill="none" />
+                  <circle cx="54" cy="24" r="22" stroke="#5de0e6" strokeWidth="3" fill="none" />
+                </svg>
+                <div className="text-center">
+                  <p className="text-white/80 text-sm mb-1">We're so excited for you,</p>
+                  <p className="text-[#5de0e6] text-lg font-bold">
                     {firstName || 'You'} &amp; {partnerFirstName || 'Your partner'}
                   </p>
                 </div>
-
-                {/* Bottom tagline */}
-                <p className="relative z-10 text-black/40 text-xs text-center tracking-widest uppercase">
-                  Your day. Your way.
-                </p>
               </div>
             ) : (
               /* Normal image panel */
@@ -1066,9 +1121,9 @@ export default function SignupModal({ onClose }: { onClose: () => void }) {
         )}
 
         {/* ── Right form panel ── */}
-        <div className={`flex flex-col bg-white overflow-y-auto ${isFullWidth ? 'w-full' : 'w-full md:w-[60%]'}`} data-lenis-prevent>
+        <div className={`flex flex-col bg-white overflow-y-auto ${isFullWidth ? 'w-full' : 'w-full md:w-[60%]'}`}>
           {/* Header row */}
-          <div className="shrink-0 flex items-start justify-between px-6 pt-14 pb-8 gap-3 max-w-2xl mx-auto w-full">
+          <div className="shrink-0 flex items-start justify-between px-6 pt-6 pb-4 gap-3">
             {/* Back button */}
             <div className="w-16 shrink-0">
               {step > 0 && (
@@ -1103,7 +1158,7 @@ export default function SignupModal({ onClose }: { onClose: () => void }) {
           </div>
 
           {/* Step content */}
-          <div className="px-8 pt-2 pb-4 max-w-2xl mx-auto w-full">
+          <div className="flex-1 px-8 py-4">
             {step === 0 && (
               <Step0 selected={planningStage} onSelect={setPlanningStage} />
             )}
@@ -1156,7 +1211,14 @@ export default function SignupModal({ onClose }: { onClose: () => void }) {
               />
             )}
             {step === 7 && (
-              <Step7 onComplete={() => setStep(8)} />
+              <Step7
+                email={email}
+                onEmailChange={setEmail}
+                password={password}
+                onPasswordChange={setPassword}
+                showPassword={showPassword}
+                onShowPasswordToggle={() => setShowPassword((v) => !v)}
+              />
             )}
             {step === 8 && (
               <Step8
@@ -1174,19 +1236,17 @@ export default function SignupModal({ onClose }: { onClose: () => void }) {
             )}
           </div>
 
-          {/* Bottom CTA — hidden on step 7, Clerk owns that submit */}
-          {step !== 7 && (
-          <div className="shrink-0 px-8 pt-8 pb-8 max-w-2xl mx-auto w-full flex justify-center">
+          {/* Bottom CTA */}
+          <div className="shrink-0 px-8 py-6">
             <button
               type="button"
               onClick={isLastStep ? handleSubmit : handleNext}
               disabled={!isNextEnabled()}
-              className="w-full max-w-sm rounded-full bg-[#1A1A1A] py-4 text-sm font-bold text-white hover:bg-black/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full rounded-full bg-[#1A1A1A] py-4 text-sm font-bold text-white hover:bg-black/80 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {getButtonLabel()}
             </button>
           </div>
-          )}
         </div>
       </div>
     </div>

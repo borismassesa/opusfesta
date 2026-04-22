@@ -1,0 +1,29 @@
+{
+  "name": "@opusfesta/opus-info",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "next dev --port 3007",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "tsc --noEmit",
+    "clean": "rm -rf .next"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.103.0",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.38.0",
+    "next": "16.1.1",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.14",
+    "@types/node": "^22.14.0",
+    "eslint": "^9.0.0",
+    "eslint-config-next": "16.1.1",
+    "tailwindcss": "^4.1.14",
+    "typescript": "~5.8.2"
+  }
+}

@@ -1,0 +1,79 @@
+<Kicker>Components · Button</Kicker>
+
+# Button
+
+Every button is a pill. Fully rounded, bold label, no icon unless the action needs one. Three levels: **accent** (primary), **ink** (secondary high-emphasis), **outline** (tertiary). Use an underlined text link for low-emphasis navigation.
+
+## Variants
+
+<Showcase label="Primary — accent">
+  <button className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]">
+    Start planning
+  </button>
+</Showcase>
+
+<CodeBlock label="Tailwind">{`bg-[var(--accent)] hover:bg-[var(--accent-hover)]
+text-[var(--on-accent)]
+px-7 py-3.5 rounded-full font-bold text-[15px]`}</CodeBlock>
+
+<Showcase label="Secondary — ink">
+  <button className="bg-[#1A1A1A] hover:bg-[#333] text-white px-7 py-3.5 rounded-full font-bold text-[15px]">
+    Find vendors
+  </button>
+</Showcase>
+
+<Showcase label="Tertiary — outline">
+  <button className="border-2 border-[#1A1A1A] hover:bg-[#1A1A1A] hover:text-white px-6 py-3 rounded-full font-bold text-sm">
+    Explore templates
+  </button>
+</Showcase>
+
+<Showcase label="Text link">
+  <a className="text-[#1A1A1A] font-bold text-[15px] underline underline-offset-4 hover:text-gray-600 cursor-pointer">
+    Find vendors
+  </a>
+</Showcase>
+
+## Sizes
+
+<Showcase label="xs · sm · md · lg">
+  <div className="flex flex-wrap items-center gap-3">
+    <button className="bg-[var(--accent)] text-[var(--on-accent)] px-3.5 py-2 rounded-full font-bold text-xs">
+      Sign up
+    </button>
+    <button className="bg-[var(--accent)] text-[var(--on-accent)] px-5 py-2.5 rounded-full font-bold text-sm">
+      Sign up
+    </button>
+    <button className="bg-[var(--accent)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]">
+      Start planning
+    </button>
+    <button className="bg-[var(--accent)] text-[var(--on-accent)] px-10 py-5 rounded-full font-bold text-lg">
+      Start planning for free
+    </button>
+  </div>
+</Showcase>
+
+## States
+
+<Showcase>
+  <div className="flex flex-wrap gap-3">
+    <button className="bg-[var(--accent)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]">Default</button>
+    <button className="bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px]">Hover</button>
+    <button className="bg-[var(--accent)] text-[var(--on-accent)] px-7 py-3.5 rounded-full font-bold text-[15px] outline outline-4 outline-[var(--accent)]/30">Focus</button>
+    <button className="bg-gray-100 text-gray-300 px-7 py-3.5 rounded-full font-bold text-[15px] cursor-not-allowed">Disabled</button>
+  </div>
+</Showcase>
+
+## Accessibility
+
+- Minimum tap target 44×44px on mobile (`md` size and up satisfies this).
+- Never rely on colour alone — pair with label copy.
+- Focus ring: `outline outline-4 outline-[var(--accent)]/30` — visible on all backgrounds.
+- Disabled state must never look like default state.
+
+<DosAndDonts>
+  <Do>Label with 2–4 words, imperative verb first: "Start planning", "Join as a vendor".</Do>
+  <Dont>Use "Click here" or "Submit". Always describe the action.</Dont>
+  <Do>Place accent and ink buttons side-by-side with accent leading.</Do>
+  <Dont>Put two accent buttons in the same view — lavender is for one moment per view.</Dont>
+</DosAndDonts>
