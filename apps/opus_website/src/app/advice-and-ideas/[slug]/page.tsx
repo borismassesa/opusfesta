@@ -1,19 +1,22 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import {
-  ArrowLeft,
-  ArrowRight,
-  CalendarDays,
-  Clock3,
-  PlayCircle,
-} from 'lucide-react'
-import Byline from '@/components/advice-ideas/Byline'
+import { ArrowRight, Clock } from 'lucide-react'
+import ReadingProgress from '@/components/advice-ideas/ReadingProgress'
+import ArticleToc from '@/components/advice-ideas/ArticleToc'
+import SearchForm from '@/components/advice-ideas/SearchForm'
+import ShareRow from '@/components/advice-ideas/ShareRow'
+import ArticleShareRail from '@/components/advice-ideas/ArticleShareRail'
+import AuthorCard from '@/components/advice-ideas/AuthorCard'
+import CommentsSection from '@/components/advice-ideas/CommentsSection'
 import {
   ADVICE_IDEAS_BASE_PATH,
   adviceIdeasPosts,
   getAdviceIdeasPost,
+  getAdviceIdeasSectionHref,
+  getAuthor,
   heroThumb,
   type AdviceIdeasBlock,
   type AdviceIdeasBodySection,
@@ -21,7 +24,7 @@ import {
 } from '@/lib/advice-ideas'
 
 export function generateStaticParams() {
-  return adviceIdeasPosts.map((post) => ({ slug: post.slug }))
+  return adviceIdeasPosts.map((p) => ({ slug: p.slug }))
 }
 
 export async function generateMetadata({
@@ -31,329 +34,361 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { slug } = await params
   const post = getAdviceIdeasPost(slug)
-
-  if (!post) {
-    return { title: 'Story Not Found | OpusFesta' }
-  }
-
+  if (!post) return { title: 'Story not found | OpusFesta' }
   return {
     title: `${post.title} | OpusFesta`,
     description: post.description,
+    openGraph: {
+      title: post.title,
+      description: post.description,
+      images: [{ url: heroThumb(post), alt: post.heroMedia.alt }],
+      type: 'article',
+    },
   }
 }
 
-export default async function AdviceIdeasArticlePage({
+export default async function AdviceIdeasDetailPage({
   params,
 }: {
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
   const post = getAdviceIdeasPost(slug)
+  if (!post) notFound()
 
-  if (!post) {
-    notFound()
-  }
+  const related = adviceIdeasPosts
+    .filter((p) => p.sectionId === post.sectionId && p.id !== post.id)
+    .slice(0, 3)
+  const fallbackRelated =
+    related.length < 3
+      ? adviceIdeasPosts
+          .filter((p) => p.id !== post.id && !related.some((r) => r.id === p.id))
+          .slice(0, 3 - related.length)
+      : []
+  const continueReading = [...related, ...fallbackRelated]
 
-  const relatedPosts = getRelatedPosts(post)
+  const tocItems = post.body.map((s) => ({ id: s.id, label: s.heading }))
+
+  const author = getAuthor(post.author)
 
   return (
-    <main className="bg-[#FFFCF8] text-[#1A1A1A]">
-      <section className="border-b border-slate-200 bg-[linear-gradient(180deg,#fffdf9_0%,#f8f1e8_100%)]">
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:py-10 lg:px-6 lg:py-12">
-          <Link
-            href={ADVICE_IDEAS_BASE_PATH}
-            className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 transition-colors hover:text-[var(--accent-hover)]"
-          >
-            <ArrowLeft size={16} />
-            Back to ideas & advice
-          </Link>
+    <article className="bg-white text-[#1A1A1A]">
+      <ReadingProgress />
+      <ArticleToc items={tocItems} />
+      <ArticleShareRail title={post.title} slug={post.slug} />
 
-          <div className="mt-8 grid gap-10 lg:grid-cols-[minmax(0,1.2fr)_340px] lg:items-end lg:gap-12">
-            <div className="max-w-4xl">
-              <p className="mb-4 text-xs font-bold uppercase tracking-[0.24em] text-[var(--accent-hover)]">
-                {post.category}
-              </p>
-              <h1 className="max-w-4xl text-4xl font-black leading-[0.98] tracking-tight text-[#1A1A1A] sm:text-5xl md:text-6xl xl:text-[4.5rem]">
-                {post.title}
-              </h1>
-              <p className="mt-6 max-w-3xl text-lg leading-relaxed text-slate-600 md:text-xl">
-                {post.excerpt}
-              </p>
-
-              <div className="mt-7">
-                <Byline post={post} withRole withReadTime />
-              </div>
-            </div>
-
-            <aside className="rounded-[1.75rem] border border-[#E9DFD2] bg-[#FFF8F0] p-6 shadow-[0_20px_50px_rgba(74,54,30,0.08)]">
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--accent-hover)]">
-                Story Snapshot
-              </p>
-              <div className="mt-5 space-y-4">
-                <MetaRow
-                  icon={<CalendarDays size={16} />}
-                  label="Published"
-                  value={post.date}
-                />
-                <MetaRow
-                  icon={<Clock3 size={16} />}
-                  label="Read time"
-                  value={post.readTime}
-                />
-                <MetaRow
-                  icon={<span className="block h-2.5 w-2.5 rounded-full bg-[var(--accent-hover)]" />}
-                  label="Section"
-                  value={post.category}
-                />
-              </div>
-
-              <div className="mt-6 rounded-2xl bg-white/80 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                  In this article
-                </p>
-                <ul className="mt-4 space-y-3">
-                  {post.body.map((section, index) => (
-                    <li key={section.id}>
-                      <a
-                        href={`#${section.id}`}
-                        className="group flex items-start gap-3 text-sm leading-relaxed text-slate-700 transition-colors hover:text-[#1A1A1A]"
-                      >
-                        <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-slate-300 text-[11px] font-bold text-slate-500 transition-colors group-hover:border-[var(--accent-hover)] group-hover:text-[var(--accent-hover)]">
-                          {index + 1}
-                        </span>
-                        <span>{section.heading}</span>
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </aside>
-          </div>
-        </div>
-
-        <div className="mx-auto max-w-7xl px-4 pb-10 sm:pb-12 lg:px-6 lg:pb-16">
-          <div className="relative overflow-hidden rounded-[2rem] bg-slate-100 shadow-[0_30px_80px_rgba(15,23,42,0.15)]">
-            <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0)_40%,rgba(0,0,0,0.18)_100%)]" />
-            <div className="relative aspect-[16/10] sm:aspect-[16/9]">
-              <Image
-                src={heroThumb(post)}
-                alt={post.heroMedia.alt}
-                fill
-                priority
-                sizes="(min-width: 1280px) 1200px, 100vw"
-                className="object-cover object-center"
-              />
-              {post.heroMedia.type === 'video' && (
-                <div className="absolute bottom-5 left-5 rounded-full bg-black/60 p-2.5 text-white backdrop-blur-sm">
-                  <PlayCircle size={24} />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <article className="mx-auto max-w-7xl px-4 py-14 sm:py-16 lg:px-6 lg:py-20">
-        <div className="grid gap-14 lg:grid-cols-[minmax(0,1fr)_300px] lg:gap-16">
-          <div className="space-y-16">
-            {post.body.map((section) => (
-              <ArticleSection key={section.id} section={section} />
-            ))}
-          </div>
-
-          <aside className="hidden lg:block">
-            <div className="sticky top-24 rounded-[1.75rem] border border-slate-200 bg-white p-6 shadow-[0_10px_35px_rgba(15,23,42,0.06)]">
-              <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--accent-hover)]">
-                Editorial Note
-              </p>
-              <p className="mt-4 text-[15px] leading-7 text-slate-600">
-                The strongest wedding stories here are practical first and aspirational second. Read this piece for decisions you can actually use, not just details that photograph well.
-              </p>
-
-              <div className="mt-6 border-t border-slate-200 pt-6">
-                <p className="text-xs font-bold uppercase tracking-[0.18em] text-slate-500">
-                  Next move
-                </p>
-                <Link
-                  href={ADVICE_IDEAS_BASE_PATH}
-                  className="mt-3 inline-flex items-center gap-2 text-sm font-semibold text-[#1A1A1A] transition-colors hover:text-[var(--accent-hover)]"
-                >
-                  Browse more stories
-                  <ArrowRight size={15} />
-                </Link>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </article>
-
-      {relatedPosts.length > 0 && (
-        <section className="border-t border-slate-200 bg-[#FAF7F2] px-4 py-16 sm:py-20 lg:px-6">
-          <div className="mx-auto max-w-7xl">
-            <header className="mb-8 flex flex-col gap-4 border-b border-slate-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-[0.22em] text-[var(--accent-hover)]">
-                  Continue Reading
-                </p>
-                <h2 className="mt-2 text-3xl font-black tracking-tight text-[#1A1A1A]">
-                  More stories worth opening
-                </h2>
-              </div>
+      {/* Top row — breadcrumb + search, aligned with article column */}
+      <div className="mx-auto flex max-w-4xl flex-col gap-3 pl-3 pr-4 pt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-4">
+        <nav aria-label="Breadcrumb" className="min-w-0">
+          <ol className="flex flex-wrap items-center gap-x-2 text-[14px] text-gray-700">
+            <li>
               <Link
                 href={ADVICE_IDEAS_BASE_PATH}
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#1A1A1A] underline-offset-4 transition-colors hover:text-[var(--accent-hover)] hover:underline"
+                className="underline-offset-4 transition-colors hover:text-[var(--accent-hover)] hover:underline"
+              >
+                Ideas &amp; Advice
+              </Link>
+            </li>
+            <li className="text-gray-300" aria-hidden>/</li>
+            <li className="min-w-0 truncate">
+              <Link
+                href={getAdviceIdeasSectionHref(post.sectionId)}
+                className="underline-offset-4 transition-colors hover:text-[var(--accent-hover)] hover:underline"
+              >
+                {post.category}
+              </Link>
+            </li>
+          </ol>
+        </nav>
+        <div className="shrink-0">
+          <Suspense fallback={null}>
+            <SearchForm action={ADVICE_IDEAS_BASE_PATH} iconOnly />
+          </Suspense>
+        </div>
+      </div>
+
+      {/* Article header */}
+      <header className="mx-auto max-w-4xl pl-3 pr-4 pt-6 pb-8 sm:px-4 sm:pt-8">
+        <Link
+          href={getAdviceIdeasSectionHref(post.sectionId)}
+          className="inline-block text-[13px] font-semibold text-[var(--accent-hover)] transition-colors hover:text-[#1A1A1A]"
+        >
+          {post.category}
+        </Link>
+        <h1 className="mt-3 text-[28px] font-bold leading-[1.15] tracking-[-0.015em] text-[#1A1A1A] sm:text-[34px] md:text-[40px]">
+          {post.title}
+        </h1>
+        <p className="mt-4 text-[17px] leading-relaxed text-gray-600 sm:text-[18px]">
+          {post.excerpt}
+        </p>
+
+        <div className="mt-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-gray-500">
+          <span className="font-semibold text-[#1A1A1A]">{post.author}</span>
+          <span className="text-gray-300" aria-hidden>·</span>
+          <span>{post.authorRole}</span>
+          <span className="text-gray-300" aria-hidden>·</span>
+          <time>{post.date}</time>
+          <span className="text-gray-300" aria-hidden>·</span>
+          <span className="inline-flex items-center gap-1">
+            <Clock size={12} className="text-gray-400" aria-hidden />
+            {post.readTime}
+          </span>
+        </div>
+
+        {/* Share — small horizontal version for mobile/tablet only */}
+        <div className="mt-5 lg:hidden">
+          <ShareRow title={post.title} slug={post.slug} />
+        </div>
+      </header>
+
+      {/* Hero media */}
+      <figure className="mx-auto max-w-4xl pl-3 pr-4 sm:px-4">
+        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-gray-100">
+          {post.heroMedia.type === 'video' ? (
+            <video
+              src={post.heroMedia.src}
+              poster={post.heroMedia.poster}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <Image
+              src={post.heroMedia.src}
+              alt={post.heroMedia.alt}
+              fill
+              priority
+              sizes="(min-width: 768px) 768px, 100vw"
+              className="object-cover"
+            />
+          )}
+        </div>
+      </figure>
+
+      {/* Body */}
+      <div className="mx-auto max-w-4xl pl-3 pr-4 pt-12 pb-16 sm:px-4">
+        <div id="article-rail-start" aria-hidden className="h-px w-full" />
+        <div id="article-body">
+          {post.body.map((section, i) => (
+            <ArticleSection key={section.id} section={section} index={i} />
+          ))}
+        </div>
+        <div id="article-rail-end" aria-hidden className="h-px w-full" />
+
+        {/* Foot of article — author + discussion (outside the share/TOC trigger) */}
+        <div className="mt-14 border-t border-gray-200 pt-10">
+          <AuthorCard author={author} />
+        </div>
+
+        <CommentsSection slug={post.slug} seed={post.seedComments} />
+      </div>
+
+      {/* Continue reading */}
+      {continueReading.length > 0 && (
+        <section className="border-t border-gray-200 bg-[#FAF7F2]">
+          <div className="mx-auto max-w-4xl pl-3 pr-4 py-14 sm:px-4 sm:py-16">
+            <div className="mb-8 flex items-end justify-between gap-4">
+              <h2 className="text-xl font-bold tracking-tight text-[#1A1A1A] sm:text-2xl">
+                More from {post.category}
+              </h2>
+              <Link
+                href={ADVICE_IDEAS_BASE_PATH}
+                className="hidden items-center gap-1.5 text-[13px] font-semibold text-[#1A1A1A] underline-offset-4 transition-colors hover:text-[var(--accent-hover)] hover:underline md:inline-flex"
               >
                 Back to the hub
                 <ArrowRight size={14} />
               </Link>
-            </header>
-
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-3">
-              {relatedPosts.map((relatedPost) => (
-                <RelatedPostCard key={relatedPost.id} post={relatedPost} />
+            </div>
+            <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
+              {continueReading.map((p) => (
+                <RelatedCard key={p.id} post={p} />
               ))}
             </div>
           </div>
         </section>
       )}
-    </main>
+    </article>
   )
 }
 
-function getRelatedPosts(post: AdviceIdeasPost) {
-  const sameSection = adviceIdeasPosts.filter(
-    (candidate) => candidate.sectionId === post.sectionId && candidate.id !== post.id,
-  )
-  const fallback = adviceIdeasPosts.filter(
-    (candidate) =>
-      candidate.sectionId !== post.sectionId && candidate.id !== post.id,
-  )
-
-  return [...sameSection, ...fallback].slice(0, 3)
-}
-
-function MetaRow({
-  icon,
-  label,
-  value,
+// ─── Section ─────────────────────────────────────────────────────────────
+function ArticleSection({
+  section,
+  index,
 }: {
-  icon: React.ReactNode
-  label: string
-  value: string
+  section: AdviceIdeasBodySection
+  index: number
 }) {
   return (
-    <div className="flex items-start gap-3">
-      <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm">
-        {icon}
-      </div>
-      <div>
-        <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-500">
-          {label}
-        </p>
-        <p className="mt-1 text-sm font-medium leading-relaxed text-[#1A1A1A]">
-          {value}
-        </p>
-      </div>
-    </div>
-  )
-}
-
-function ArticleSection({ section }: { section: AdviceIdeasBodySection }) {
-  return (
-    <section id={section.id} className="scroll-mt-24">
+    <section id={section.id} className={index > 0 ? 'mt-12' : ''}>
       {section.label && (
-        <p className="mb-3 text-xs font-bold uppercase tracking-[0.22em] text-[var(--accent-hover)]">
+        <p className="mb-2 text-[13px] font-semibold text-[var(--accent-hover)]">
           {section.label}
         </p>
       )}
-      <h2 className="max-w-4xl text-3xl font-black leading-[1.02] tracking-tight text-[#1A1A1A] md:text-[2.7rem]">
+      <h2 className="mb-5 text-[22px] font-bold leading-[1.25] tracking-[-0.005em] text-[#1A1A1A] sm:text-[26px]">
         {section.heading}
       </h2>
-      <div className="mt-7 space-y-7">
-        {section.blocks.map((block, index) => (
-          <ArticleBlock key={`${section.id}-${index}`} block={block} />
+      <div className="space-y-5">
+        {section.blocks.map((block, i) => (
+          <BlockRenderer key={i} block={block} />
         ))}
       </div>
     </section>
   )
 }
 
-function ArticleBlock({ block }: { block: AdviceIdeasBlock }) {
-  if (block.type === 'paragraph') {
-    return (
-      <p className="max-w-3xl text-[18px] leading-8 text-slate-700 md:text-[19px]">
-        {block.text}
-      </p>
-    )
-  }
-
-  if (block.type === 'list') {
-    const ListTag = block.ordered ? 'ol' : 'ul'
-    return (
-      <ListTag
-        className={`max-w-3xl space-y-3 pl-6 text-[18px] leading-8 text-slate-700 marker:text-[var(--accent-hover)] md:text-[19px] ${block.ordered ? 'list-decimal' : 'list-disc'}`}
-      >
-        {block.items.map((item) => (
-          <li key={item}>{item}</li>
-        ))}
-      </ListTag>
-    )
-  }
-
-  if (block.type === 'quote') {
-    return (
-      <figure className="max-w-3xl rounded-[1.75rem] border border-slate-200 bg-[#FAF7F2] p-7 shadow-[0_10px_30px_rgba(15,23,42,0.05)]">
-        <blockquote className="text-2xl font-medium leading-relaxed tracking-tight text-[#1A1A1A]">
-          &ldquo;{block.quote}&rdquo;
+// ─── Block renderer ──────────────────────────────────────────────────────
+function BlockRenderer({ block }: { block: AdviceIdeasBlock }) {
+  switch (block.type) {
+    case 'paragraph':
+      return (
+        <p className="text-[16px] leading-[1.7] text-gray-700 sm:text-[17px]">
+          {block.text}
+        </p>
+      )
+    case 'list': {
+      const Tag = block.ordered ? 'ol' : 'ul'
+      return (
+        <Tag
+          className={`space-y-2.5 text-[16px] leading-[1.65] text-gray-700 sm:text-[17px] ${
+            block.ordered ? 'list-decimal pl-6' : ''
+          }`}
+        >
+          {block.items.map((item, i) => (
+            <li
+              key={i}
+              className={
+                block.ordered
+                  ? 'pl-1 marker:font-semibold marker:text-[var(--accent-hover)]'
+                  : 'relative pl-5 before:absolute before:left-0 before:top-[0.7em] before:h-[6px] before:w-[6px] before:rounded-full before:bg-[var(--accent)]'
+              }
+            >
+              {item}
+            </li>
+          ))}
+        </Tag>
+      )
+    }
+    case 'quote':
+      return (
+        <blockquote className="my-2 border-l-2 border-[var(--accent)] pl-5">
+          <p className="text-[18px] italic leading-[1.5] text-[#1A1A1A] sm:text-[19px]">
+            “{block.quote}”
+          </p>
+          {block.attribution && (
+            <footer className="mt-2 text-[13px] text-gray-500">
+              — {block.attribution}
+            </footer>
+          )}
         </blockquote>
-        {block.attribution && (
-          <figcaption className="mt-5 text-sm font-medium text-slate-500">
-            {block.attribution}
-          </figcaption>
-        )}
-      </figure>
-    )
+      )
+    case 'tip':
+      return (
+        <aside className="my-2 rounded-lg bg-[#FAF7F2] p-5">
+          <p className="mb-1 text-[13px] font-semibold text-[var(--accent-hover)]">
+            {block.title}
+          </p>
+          <p className="text-[15px] leading-[1.6] text-[#1A1A1A] sm:text-[16px]">
+            {block.text}
+          </p>
+        </aside>
+      )
+    case 'subheading':
+      return (
+        <h3 className="mt-6 mb-1 text-[18px] font-bold leading-[1.3] text-[#1A1A1A] sm:text-[19px]">
+          {block.text}
+        </h3>
+      )
+    case 'image':
+      return (
+        <figure className="my-4 -mx-4 sm:mx-0">
+          <div className="relative aspect-[16/10] w-full overflow-hidden bg-gray-100 sm:rounded-xl">
+            <Image
+              src={block.src}
+              alt={block.alt}
+              fill
+              sizes="(min-width: 768px) 768px, 100vw"
+              className="object-cover"
+            />
+          </div>
+          {block.caption && (
+            <figcaption className="mt-2 px-4 text-[13px] italic leading-relaxed text-gray-500 sm:px-0">
+              {block.caption}
+            </figcaption>
+          )}
+        </figure>
+      )
+    case 'video':
+      return (
+        <figure className="my-4 -mx-4 sm:mx-0">
+          <div className="relative aspect-[16/10] w-full overflow-hidden bg-gray-100 sm:rounded-xl">
+            <video
+              src={block.src}
+              poster={block.poster}
+              controls
+              playsInline
+              preload="metadata"
+              className="h-full w-full object-cover"
+              aria-label={block.alt}
+            />
+          </div>
+          {block.caption && (
+            <figcaption className="mt-2 px-4 text-[13px] italic leading-relaxed text-gray-500 sm:px-0">
+              {block.caption}
+            </figcaption>
+          )}
+        </figure>
+      )
+    case 'gallery':
+      return (
+        <div className="my-4 grid grid-cols-2 gap-2 sm:gap-3">
+          {block.items.map((item, i) => (
+            <div
+              key={i}
+              className="relative aspect-square overflow-hidden rounded-lg bg-gray-100"
+            >
+              <Image
+                src={item.src}
+                alt={item.alt}
+                fill
+                sizes="(min-width: 768px) 380px, 50vw"
+                className="object-cover"
+              />
+            </div>
+          ))}
+        </div>
+      )
   }
-
-  return (
-    <div className="max-w-3xl rounded-[1.5rem] border border-[var(--accent)]/25 bg-[var(--accent)]/10 p-6 md:p-7">
-      <p className="text-xs font-bold uppercase tracking-[0.18em] text-[var(--accent-hover)]">
-        {block.title}
-      </p>
-      <p className="mt-4 text-[18px] leading-8 text-slate-700 md:text-[19px]">
-        {block.text}
-      </p>
-    </div>
-  )
 }
 
-function RelatedPostCard({ post }: { post: AdviceIdeasPost }) {
+// ─── Related card ────────────────────────────────────────────────────────
+function RelatedCard({ post }: { post: AdviceIdeasPost }) {
   return (
     <Link
       href={`${ADVICE_IDEAS_BASE_PATH}/${post.slug}`}
-      className="group flex h-full flex-col rounded-[1.6rem] border border-slate-200 bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)] transition-shadow hover:shadow-[0_14px_40px_rgba(15,23,42,0.08)]"
+      className="group flex h-full flex-col"
     >
-      <div className="relative mb-4 aspect-[4/3] overflow-hidden rounded-[1.2rem] bg-slate-100">
+      <div className="relative mb-4 aspect-[4/3] w-full overflow-hidden rounded-lg bg-gray-100">
         <Image
           src={heroThumb(post)}
           alt={post.heroMedia.alt}
           fill
-          sizes="(min-width: 768px) 30vw, 100vw"
-          className="object-cover object-center transition-transform duration-500 group-hover:scale-[1.03]"
+          sizes="(min-width: 1024px) 30vw, (min-width: 640px) 45vw, 90vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
         />
       </div>
-      <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-[var(--accent-hover)]">
+      <p className="mb-1.5 text-[12px] font-semibold text-[var(--accent-hover)]">
         {post.category}
       </p>
-      <h3 className="mb-3 text-[18px] font-bold leading-[1.2] text-[#1A1A1A] transition-all group-hover:underline underline-offset-2 decoration-2">
+      <h3 className="mb-1.5 text-[16px] font-bold leading-[1.3] text-[#1A1A1A] transition-all group-hover:underline underline-offset-2 decoration-2">
         {post.title}
       </h3>
-      <p className="mb-4 text-[15px] leading-7 text-slate-600">
+      <p className="line-clamp-2 text-[13px] leading-relaxed text-gray-600">
         {post.excerpt}
       </p>
-      <div className="mt-auto">
-        <Byline post={post} compact />
-      </div>
     </Link>
   )
 }

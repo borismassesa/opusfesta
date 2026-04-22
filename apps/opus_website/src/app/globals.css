@@ -14,7 +14,9 @@ body {
   background-color: #ffffff;
   width: 100%;
   max-width: 100%;
-  overflow-x: hidden;
+  /* `clip` (vs `hidden`) prevents body from becoming a sticky containing block,
+     so `position: sticky` on descendants works against the actual viewport. */
+  overflow-x: clip;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
 }

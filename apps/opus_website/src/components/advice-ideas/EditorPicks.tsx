@@ -104,13 +104,13 @@ function HeroPick({ post, className = '' }: { post: AdviceIdeasPost; className?:
         {post.excerpt}
       </p>
 
-      <Byline post={post} withRole withReadTime />
-
-      {/* Explicit CTA under the feature */}
-      <span className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--accent-hover)] transition-transform group-hover:translate-x-1">
-        Read story
-        <ArrowRight size={14} />
-      </span>
+      <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-2">
+        <Byline post={post} withRole withReadTime />
+        <span className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[var(--accent-hover)] transition-transform group-hover:translate-x-1">
+          Read story
+          <ArrowRight size={14} />
+        </span>
+      </div>
     </Link>
   )
 }

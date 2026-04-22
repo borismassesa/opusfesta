@@ -1,4 +1,5 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { PlayCircle, ArrowRight, SearchX } from 'lucide-react'
@@ -110,7 +111,9 @@ export default async function AdviceAndIdeasPage({
             </ul>
           </nav>
           <div className="shrink-0">
-            <SearchForm />
+            <Suspense fallback={null}>
+              <SearchForm />
+            </Suspense>
           </div>
         </div>
       </div>
