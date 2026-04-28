@@ -1,9 +1,10 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import VendorDetailPage from '@/components/vendors/VendorDetailPage'
-import { getVendor, vendors } from '@/lib/vendors'
+import { loadVendorsFromSupabase } from '@/lib/cms/vendors'
 
-export function generateStaticParams() {
+export async function generateStaticParams() {
+  const vendors = await loadVendorsFromSupabase()
   return vendors.map((vendor) => ({ slug: vendor.slug }))
 }
 
@@ -13,7 +14,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const vendor = getVendor(slug)
+  const vendors = await loadVendorsFromSupabase()
+  const vendor = vendors.find((v) => v.slug === slug)
 
   if (!vendor) {
     return { title: 'Vendor Not Found | OpusFesta' }
@@ -31,7 +33,8 @@ export default async function VendorSlugPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const vendor = getVendor(slug)
+  const vendors = await loadVendorsFromSupabase()
+  const vendor = vendors.find((v) => v.slug === slug)
 
   if (!vendor) {
     notFound()

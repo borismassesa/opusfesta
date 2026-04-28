@@ -34,12 +34,13 @@ import {
 } from 'lucide-react'
 import {
   VENDORS_BASE_PATH,
-  vendorCategories,
-  vendors,
-  getFeaturedVendors,
-  getVendorsByCategory,
+  vendorCategories as seedVendorCategories,
+  vendors as seedVendors,
+  type Vendor,
+  type VendorCategoryId,
 } from '@/lib/vendors'
 import { getVendorCardImages } from '@/lib/vendor-images'
+import { useMemo } from 'react'
 
 const BROWSE_PATH = '/vendors/browse'
 
@@ -52,44 +53,63 @@ const TAB_CATEGORY_MAP: Record<string, string> = {
 
 const pageClass = 'mx-auto w-full max-w-[72rem] 2xl:max-w-[90rem] 3xl:max-w-[112rem] 4xl:max-w-[140rem]'
 
-const _heroVendor = getFeaturedVendors()[0] ?? vendors[0]
 const ROW_SIZE = 6
 
-const guestFavourites = [...vendors]
-  .sort((a, b) => {
-    if (b.rating !== a.rating) return b.rating - a.rating
-    return b.reviewCount - a.reviewCount
-  })
-  .slice(0, ROW_SIZE)
+function deriveGuestFavourites(vendors: Vendor[]): Vendor[] {
+  return [...vendors]
+    .sort((a, b) => {
+      if (b.rating !== a.rating) return b.rating - a.rating
+      return b.reviewCount - a.reviewCount
+    })
+    .slice(0, ROW_SIZE)
+}
 
-const planningRow = (() => {
+function derivePlanningRow(vendors: Vendor[]): Vendor[] {
+  const byCat = (id: VendorCategoryId) => vendors.filter((v) => v.categoryId === id)
   const picks = [
-    ...getVendorsByCategory('videographers').slice(0, 2),
-    ...getVendorsByCategory('djs-bands').slice(0, 2),
-    ...getVendorsByCategory('florists').slice(0, 1),
-    ...getVendorsByCategory('transportation').slice(0, 1),
+    ...byCat('videographers').slice(0, 2),
+    ...byCat('djs-bands').slice(0, 2),
+    ...byCat('florists').slice(0, 1),
+    ...byCat('transportation').slice(0, 1),
   ]
   if (picks.length >= ROW_SIZE) return picks.slice(0, ROW_SIZE)
   const ids = new Set(picks.map((v) => v.id))
   const fallbacks = vendors.filter((v) => !ids.has(v.id))
   return [...picks, ...fallbacks].slice(0, ROW_SIZE)
-})()
+}
 
-const promotionsRow = (() => {
+function derivePromotionsRow(vendors: Vendor[]): Vendor[] {
   const badged = vendors.filter((v) => v.badge)
   if (badged.length >= ROW_SIZE) return badged.slice(0, ROW_SIZE)
   const ids = new Set(badged.map((v) => v.id))
   const fallbacks = vendors.filter((v) => !ids.has(v.id))
   return [...badged, ...fallbacks].slice(0, ROW_SIZE)
-})()
+}
 
-const newVendorsRow = (() => {
+function deriveNewVendorsRow(vendors: Vendor[]): Vendor[] {
   const newOnes = vendors.filter((v) => v.badge === 'New')
   if (newOnes.length >= ROW_SIZE) return newOnes.slice(0, ROW_SIZE)
   const ids = new Set(newOnes.map((v) => v.id))
   const fallbacks = [...vendors].reverse().filter((v) => !ids.has(v.id))
   return [...newOnes, ...fallbacks].slice(0, ROW_SIZE)
-})()
+}
+
+function topNamesByCategory(vendors: Vendor[], categoryId: VendorCategoryId, n = 3): string[] {
+  return vendors
+    .filter((v) => v.categoryId === categoryId)
+    .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
+    .slice(0, n)
+    .map((v) => v.name)
+}
+
+function derivePopularByTab(vendors: Vendor[]): Record<string, { label: string; items: string[] }> {
+  return {
+    Venues: { label: 'Popular:', items: topNamesByCategory(vendors, 'venues') },
+    Photographers: { label: 'Popular:', items: topNamesByCategory(vendors, 'photographers') },
+    Catering: { label: 'Popular:', items: topNamesByCategory(vendors, 'caterers') },
+    MCs: { label: 'Popular:', items: ['DJ Mwanga', 'MC Livanga', 'Bongo MC'] },
+  }
+}
 
 const categoryIcons: Record<string, LucideIcon> = {
   venues: MapPin,
@@ -122,31 +142,6 @@ const HERO_TABS = [
   { label: 'Catering', icon: UtensilsCrossed },
   { label: 'MCs', icon: Users },
 ]
-
-const topVenueNames = vendors
-  .filter((v) => v.categoryId === 'venues')
-  .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
-  .slice(0, 3)
-  .map((v) => v.name)
-
-const topPhotographerNames = vendors
-  .filter((v) => v.categoryId === 'photographers')
-  .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
-  .slice(0, 3)
-  .map((v) => v.name)
-
-const topCatererNames = vendors
-  .filter((v) => v.categoryId === 'caterers')
-  .sort((a, b) => b.rating - a.rating || b.reviewCount - a.reviewCount)
-  .slice(0, 3)
-  .map((v) => v.name)
-
-const POPULAR_BY_TAB: Record<string, { label: string; items: string[] }> = {
-  Venues: { label: 'Popular:', items: topVenueNames },
-  Photographers: { label: 'Popular:', items: topPhotographerNames },
-  Catering: { label: 'Popular:', items: topCatererNames },
-  MCs: { label: 'Popular:', items: ['DJ Mwanga', 'MC Livanga', 'Bongo MC'] },
-}
 
 const HERO_VIDEOS = [
   { src: '/assets/vendors_hero_ads/dribble.mp4',   name: 'The Zanzibar Pearl',  avatar: '/assets/images/coupleswithpiano.jpg' },
@@ -214,7 +209,7 @@ function HeroVideoCard() {
   )
 }
 
-function HeroSection() {
+function HeroSection({ popularByTab }: { popularByTab: Record<string, { label: string; items: string[] }> }) {
   const [activeTab, setActiveTab] = useState('Venues')
   const [searchValue, setSearchValue] = useState('')
   const router = useRouter()
@@ -280,8 +275,8 @@ function HeroSection() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-bold text-[#1A1A1A]">{POPULAR_BY_TAB[activeTab]?.label ?? 'Popular:'}</span>
-          {(POPULAR_BY_TAB[activeTab]?.items ?? []).map((tag) => (
+          <span className="text-sm font-bold text-[#1A1A1A]">{popularByTab[activeTab]?.label ?? 'Popular:'}</span>
+          {(popularByTab[activeTab]?.items ?? []).map((tag) => (
             <button
               key={tag}
               onClick={() => {
@@ -305,7 +300,7 @@ function HeroSection() {
   )
 }
 
-function CardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
+function CardImageCarousel({ vendor }: { vendor: Vendor }) {
   const images = getVendorCardImages(vendor)
   const [idx, setIdx] = useState(0)
   const dragStart = useRef<number | null>(null)
@@ -394,7 +389,7 @@ function CardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
   )
 }
 
-function ListingCard({ vendor }: { vendor: (typeof vendors)[number] }) {
+function ListingCard({ vendor }: { vendor: Vendor }) {
   const isNew = vendor.badge === 'New'
   const startingPrice = vendor.priceRange.split('–')[0].trim()
 
@@ -487,7 +482,7 @@ const cardVisibility = [
   'hidden 3xl:block', // index 5 - 3xl+
 ]
 
-function VendorRow({ vendors: rows }: { vendors: (typeof vendors) }) {
+function VendorRow({ vendors: rows }: { vendors: Vendor[] }) {
   return (
     <div className="grid gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {rows.map((vendor, i) => (
@@ -533,7 +528,13 @@ function SectionHeader({
   )
 }
 
-function CategoryBrowseStrip() {
+function CategoryBrowseStrip({
+  vendors,
+  categories,
+}: {
+  vendors: Vendor[]
+  categories: typeof seedVendorCategories
+}) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [canScrollLeft, setCanScrollLeft] = useState(false)
   const [canScrollRight, setCanScrollRight] = useState(true)
@@ -588,7 +589,7 @@ function CategoryBrowseStrip() {
         onScroll={syncArrows}
         className="flex gap-3 overflow-x-auto pb-3 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden snap-x snap-mandatory"
       >
-        {vendorCategories.map((category) => {
+        {categories.map((category) => {
           const Icon = categoryIcons[category.id]
           const coverVendor = vendors.find((v) => v.categoryId === category.id)
           const coverSrc = coverVendor?.heroMedia.src ?? '/assets/images/coupleswithpiano.jpg'
@@ -626,16 +627,35 @@ function CategoryBrowseStrip() {
   )
 }
 
-export default function VendorsIndexPage() {
+export default function VendorsIndexPage({
+  vendors: vendorsProp,
+  categories: categoriesProp,
+}: {
+  vendors?: Vendor[]
+  categories?: typeof seedVendorCategories
+} = {}) {
+  const vendors = vendorsProp ?? seedVendors
+  const categories = categoriesProp ?? seedVendorCategories
+
+  const { guestFavourites, planningRow, promotionsRow, newVendorsRow, popularByTab } = useMemo(() => {
+    return {
+      guestFavourites: deriveGuestFavourites(vendors),
+      planningRow: derivePlanningRow(vendors),
+      promotionsRow: derivePromotionsRow(vendors),
+      newVendorsRow: deriveNewVendorsRow(vendors),
+      popularByTab: derivePopularByTab(vendors),
+    }
+  }, [vendors])
+
   return (
     <main className="bg-white text-[#1A1A1A]">
       <section className="px-4 pb-10 pt-10 sm:px-6 sm:pb-12 sm:pt-14 2xl:px-10 2xl:pt-20 3xl:px-16 3xl:pt-24">
         <div className={pageClass}>
-          <HeroSection />
+          <HeroSection popularByTab={popularByTab} />
         </div>
       </section>
 
-      <CategoryBrowseStrip />
+      <CategoryBrowseStrip vendors={vendors} categories={categories} />
 
       <section className="px-4 py-6 sm:px-6 sm:py-8 2xl:px-10 2xl:py-12 3xl:px-16 3xl:py-16" id="guest-favourites">
         <div className={pageClass}>

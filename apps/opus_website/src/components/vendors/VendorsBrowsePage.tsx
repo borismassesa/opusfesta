@@ -39,12 +39,12 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import {
-  vendors,
-  vendorCategories,
+  vendors as seedVendors,
+  vendorCategories as seedVendorCategories,
   vendorCities,
   VENDORS_BASE_PATH,
 } from '@/lib/vendors'
-import type { VendorCategoryId } from '@/lib/vendors'
+import type { Vendor, VendorCategoryId } from '@/lib/vendors'
 import { getVendorCardImages } from '@/lib/vendor-images'
 import { BROWSE_FOOTER_VISIBILITY_EVENT } from './VendorsFooterGate'
 
@@ -160,6 +160,7 @@ function FilterBar({
   minRating, onMinRatingChange,
   onClearAll, totalActive,
   viewMode, onViewChange,
+  vendorCategories,
   children,
 }: {
   selectedCategories: VendorCategoryId[]
@@ -172,6 +173,7 @@ function FilterBar({
   totalActive: number
   viewMode: ViewMode
   onViewChange: (v: ViewMode) => void
+  vendorCategories: typeof seedVendorCategories
   children?: React.ReactNode
 }) {
   const [panelOpen, setPanelOpen] = useState(false)
@@ -411,7 +413,7 @@ function FilterBar({
 
 // ── List card (horizontal) ─────────────────────────────────────────────────────
 function BrowseCard({ vendor, hovered, onHover }: {
-  vendor: (typeof vendors)[number]
+  vendor: Vendor
   hovered?: boolean
   onHover?: (id: string | null) => void
 }) {
@@ -532,7 +534,7 @@ function BrowseCard({ vendor, hovered, onHover }: {
 }
 
 // ── Grid card ──────────────────────────────────────────────────────────────────
-function GridCardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
+function GridCardImageCarousel({ vendor }: { vendor: Vendor }) {
   const images = getVendorCardImages(vendor)
   const [idx, setIdx] = useState(0)
   const dragStart = useRef<number | null>(null)
@@ -587,7 +589,7 @@ function GridCardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] })
   )
 }
 
-function GridCard({ vendor }: { vendor: (typeof vendors)[number] }) {
+function GridCard({ vendor }: { vendor: Vendor }) {
   const isNew = vendor.badge === 'New'
   const startingPrice = vendor.priceRange.split('–')[0].trim()
 
@@ -664,7 +666,7 @@ function GridCard({ vendor }: { vendor: (typeof vendors)[number] }) {
 
 // ── Map list card ─────────────────────────────────────────────────────────────
 function MapListCard({ vendor, onHover, onClick }: {
-  vendor: (typeof vendors)[number]
+  vendor: Vendor
   onHover: (id: string | null) => void; onClick: (id: string) => void
 }) {
   const isNew = vendor.badge === 'New'
@@ -790,7 +792,15 @@ function MapListCard({ vendor, onHover, onClick }: {
 // ── SEO banner ─────────────────────────────────────────────────────────────────
 
 // ── Main page ──────────────────────────────────────────────────────────────────
-export default function VendorsBrowsePage() {
+export default function VendorsBrowsePage({
+  vendors: vendorsProp,
+  categories: categoriesProp,
+}: {
+  vendors?: Vendor[]
+  categories?: typeof seedVendorCategories
+} = {}) {
+  const vendors = vendorsProp ?? seedVendors
+  const vendorCategories = categoriesProp ?? seedVendorCategories
   const searchParams = useSearchParams()
   const initialCategory = searchParams.get('category') as VendorCategoryId | null
   const initialQuery    = searchParams.get('q') ?? ''
@@ -977,7 +987,8 @@ const pageTitle = activeCategory ? `${activeCategory.label} in Tanzania` : 'Wedd
               selectedCities={selectedCities}         onCityToggle={handleCityToggle}
               minRating={minRating}                   onMinRatingChange={setMinRating}
               onClearAll={handleClearAll}             totalActive={totalActive}
-viewMode={viewMode}                     onViewChange={setViewMode}
+              viewMode={viewMode}                     onViewChange={setViewMode}
+              vendorCategories={vendorCategories}
             >
               <div className="relative group/search">
                 <div className="absolute -inset-[2px] rounded-full bg-size-[200%_100%] animate-[shimmer_3s_ease-in-out_infinite] bg-linear-to-r from-[#C9A0DC]/20 via-[#C9A0DC] to-[#C9A0DC]/20 opacity-50 group-focus-within/search:opacity-80 transition-opacity" />
