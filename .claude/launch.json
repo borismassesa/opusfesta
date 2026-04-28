@@ -21,6 +21,21 @@
       "runtimeArgs": ["next", "dev", "--port", "3007"],
       "port": 3007,
       "cwd": "apps/opus_website"
+    },
+    {
+      "name": "opus_admin",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "--port", "3010"],
+      "port": 3010,
+      "cwd": "apps/opus_admin"
+    },
+    {
+      "name": "vendors_portal",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev"],
+      "port": 3003,
+      "autoPort": true,
+      "cwd": "apps/vendors_portal"
     }
   ]
 }
