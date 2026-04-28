@@ -3,6 +3,10 @@ export type AdviceIdeasBlock =
   | { type: 'list'; items: string[]; ordered?: boolean }
   | { type: 'quote'; quote: string; attribution?: string }
   | { type: 'tip'; title: string; text: string }
+  | { type: 'image'; src: string; alt: string; caption?: string }
+  | { type: 'video'; src: string; poster?: string; alt: string; caption?: string }
+  | { type: 'gallery'; items: { src: string; alt: string }[] }
+  | { type: 'subheading'; text: string }
 
 export type AdviceIdeasBodySection = {
   id: string
@@ -19,6 +23,14 @@ export type AdviceIdeasSectionId =
   | 'etiquette-wording'
   | 'bridal-shower-ideas'
   | 'honeymoon-ideas'
+
+export type AdviceIdeasSeedComment = {
+  id: string
+  name: string
+  body: string
+  date: string
+  likes: number
+}
 
 export type AdviceIdeasPost = {
   id: string
@@ -40,6 +52,7 @@ export type AdviceIdeasPost = {
     poster?: string
   }
   body: AdviceIdeasBodySection[]
+  seedComments?: AdviceIdeasSeedComment[]
 }
 
 export type AdviceIdeasTopic = {
@@ -53,7 +66,80 @@ export type AdviceIdeasNavLink = {
   href: string
 }
 
+export type AdviceIdeasAuthor = {
+  name: string
+  role: string
+  bio: string
+  initials: string
+}
+
+export const adviceIdeasAuthors: Record<string, AdviceIdeasAuthor> = {
+  'Talia M.': {
+    name: 'Talia M.',
+    role: 'Celebrations Editor',
+    initials: 'TM',
+    bio: 'Talia covers bridal showers, engagement parties, and the smaller-format celebrations that set the tone for the wedding weekend. She is interested in hosting that respects guests as much as it impresses them.',
+  },
+  'Nia K.': {
+    name: 'Nia K.',
+    role: 'Editorial Director',
+    initials: 'NK',
+    bio: 'Nia leads OpusFesta editorial, with a background in real-wedding storytelling and visual direction. She believes the strongest weddings are designed around how the day should feel, not how much it can fit in.',
+  },
+  'Amani L.': {
+    name: 'Amani L.',
+    role: 'Planning Editor',
+    initials: 'AL',
+    bio: 'Amani writes practical planning pieces grounded in years of working alongside vendors and venues across East Africa. Her guides focus on calm logistics and clear decision-making.',
+  },
+  'Maya B.': {
+    name: 'Maya B.',
+    role: 'Style Writer',
+    initials: 'MB',
+    bio: 'Maya covers bridal style, palette, and atmosphere. She writes about wedding aesthetics through the lens of contrast, proportion, and personality — not trends.',
+  },
+  'Jordan E.': {
+    name: 'Jordan E.',
+    role: 'Etiquette Contributor',
+    initials: 'JE',
+    bio: 'Jordan writes about wedding etiquette, family dynamics, and guest communication. Their work focuses on language that holds boundaries without escalating tension.',
+  },
+  'Lulu S.': {
+    name: 'Lulu S.',
+    role: 'Travel Editor',
+    initials: 'LS',
+    bio: 'Lulu covers honeymoons, mini-moons, and destination weddings, with a soft spot for trips that prioritise rest as much as adventure.',
+  },
+}
+
+export function getAuthor(name: string): AdviceIdeasAuthor {
+  return (
+    adviceIdeasAuthors[name] ?? {
+      name,
+      role: '',
+      initials: name
+        .split(' ')
+        .map((p) => p[0])
+        .filter(Boolean)
+        .slice(0, 2)
+        .join('')
+        .toUpperCase(),
+      bio: '',
+    }
+  )
+}
+
 export const ADVICE_IDEAS_BASE_PATH = '/advice-and-ideas'
+
+// Thumbnail source for any post — falls back to the video poster image
+// for posts where the hero is an `.mov` / `.mp4`. next/image can't render
+// a video file, so cards need to reach for the poster jpg instead.
+export function heroThumb(post: { heroMedia: { type: 'image' | 'video'; src: string; poster?: string } }): string {
+  if (post.heroMedia.type === 'video' && post.heroMedia.poster) {
+    return post.heroMedia.poster
+  }
+  return post.heroMedia.src
+}
 
 export const adviceIdeasTopics: AdviceIdeasTopic[] = [
   {
@@ -391,7 +477,7 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
     category: 'Bridal Shower Ideas',
     sectionId: 'bridal-shower-ideas',
     date: 'March 8, 2026',
-    readTime: '5 min read',
+    readTime: '11 min read',
     author: 'Talia M.',
     authorRole: 'Celebrations Editor',
     heroMedia: {
@@ -399,6 +485,29 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
       src: '/assets/images/mauzo_crew.jpg',
       alt: 'Friends gathered at a stylish celebration',
     },
+    seedComments: [
+      {
+        id: 'seed-1',
+        name: 'Anisa M.',
+        body: 'The bit about two zones changed how I am thinking about my sister\'s shower next month. We were going to do one long table and now I am rethinking everything.',
+        date: '2 days ago',
+        likes: 8,
+      },
+      {
+        id: 'seed-2',
+        name: 'Lulu K.',
+        body: 'A four-hour shower is genuinely the move. We tried six and the energy completely flattened around hour four. Will not make that mistake again.',
+        date: '5 days ago',
+        likes: 12,
+      },
+      {
+        id: 'seed-3',
+        name: 'Joyce W.',
+        body: 'Loved the part about modular decor. Saved this one to send to my planner.',
+        date: '1 week ago',
+        likes: 4,
+      },
+    ],
     body: [
       {
         id: 'set-the-tone',
@@ -407,30 +516,194 @@ export const adviceIdeasPosts: AdviceIdeasPost[] = [
         blocks: [
           {
             type: 'paragraph',
-            text: 'A shower feels modern when it behaves like a strong small event, not a template. Food, music, seating, and lighting should all support the same energy level.',
+            text: 'A shower feels modern when it behaves like a strong small event, not a template. The fastest way to make every other decision easier is to pick one tone early and let it govern food, music, seating, and lighting. When those four things agree on the same temperature, the room feels intentional even before guests arrive.',
+          },
+          {
+            type: 'paragraph',
+            text: 'A useful test: imagine the photograph you want from the middle of the afternoon. If it is people leaning in to laugh on a low couch, you are hosting loungey. If it is hands raised mid-game with bright colour everywhere, you are hosting playful. If it is a long table with structured florals and tailored outfits, you are hosting polished. Pick one. Let the rest follow.',
           },
           {
             type: 'list',
             items: [
-              'Build the plan around one strong shared activity.',
-              'Keep decor modular so the room still feels breathable.',
+              'Build the plan around one strong shared activity rather than a packed schedule.',
+              'Keep decor modular so the room still feels breathable and easy to photograph.',
               'Use food and drinks to create rhythm rather than just volume.',
+              'Cap the guest count at the number that fits the largest seating zone comfortably.',
+            ],
+          },
+          {
+            type: 'tip',
+            title: 'Useful framing',
+            text: 'A shower that knows its tone usually feels half an hour shorter than its actual runtime. A shower without a tone usually feels twice as long.',
+          },
+        ],
+      },
+      {
+        id: 'design-the-space',
+        label: 'The Room',
+        heading: 'Design the room around two strong zones, not one busy table',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Most modern showers work better when the room reads as two distinct zones: a soft anchor (low couches, throws, side tables, tray of drinks) and an upright anchor (a high table, cocktail bar, or styled snack station). Guests rotate between them naturally, and the room never empties out at one end.',
+          },
+          {
+            type: 'image',
+            src: '/assets/images/flowers_pinky.jpg',
+            alt: 'Soft pink floral arrangement on a styled side table',
+            caption:
+              'A short, dense floral works harder than a long centerpiece — it leaves room for plates, glasses, and elbows.',
+          },
+          {
+            type: 'paragraph',
+            text: 'Once the two zones exist, light them differently. Warm, low lamps for the soft zone. Crisper overhead or directional light for the upright zone. The contrast does most of the styling work for you and gives the room a built-in second act when daylight starts to drop.',
+          },
+          {
+            type: 'list',
+            items: [
+              'Pick one fabric texture (linen, raw silk, brushed cotton) and repeat it across napkins, throws, and table runners.',
+              'Limit florals to two shapes: one short and dense, one tall and architectural.',
+              'Keep the colour story to three tones plus white, and skip metallic accents unless they are intentional.',
             ],
           },
         ],
       },
       {
-        id: 'skip-the-obvious',
-        label: 'What To Cut',
-        heading: 'You do not need ten games to create momentum',
+        id: 'food-and-drink',
+        label: 'Food & Drink',
+        heading: 'Build the menu to be photographed and grazed at, not served',
         blocks: [
           {
             type: 'paragraph',
-            text: 'The best showers usually have one clever interactive moment and then enough space for conversation. People remember ease more than they remember packed schedules.',
+            text: 'Plated meals slow a shower down. The strongest format is a continuous graze — small dishes that arrive and refresh in waves, paired with two or three signature drinks that guests can pour themselves. Nobody waits for a course to start. Nobody is stuck in line for ten minutes.',
+          },
+          {
+            type: 'paragraph',
+            text: 'Pick your dishes by colour and shape, not just flavour. A platter that photographs well is doing double duty. And keep at least one item warm at any moment — even at a graze, the warm bite is what tells your nose this is a real event and not just snacks.',
+          },
+          {
+            type: 'tip',
+            title: 'Drink rule',
+            text: 'Two signature cocktails (one bright, one mellow), one zero-proof option that feels intentional, sparkling water in a beautiful pitcher. That is enough. A full open bar at a bridal shower almost always slows the room down.',
+          },
+          {
+            type: 'image',
+            src: '/assets/images/coupleswithpiano.jpg',
+            alt: 'Couple in a styled celebration setting with soft natural light',
+            caption:
+              'Natural light is the cheapest upgrade you can give the food table. Position it within two metres of a window if you can.',
+          },
+        ],
+      },
+      {
+        id: 'one-shared-moment',
+        label: 'The Activity',
+        heading: 'Choose one shared moment that people will actually talk about later',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'You do not need ten games to create momentum. You need one well-designed moment that gets every guest involved for fifteen to twenty minutes, and then quietly returns the room to conversation. The best ones are slightly creative, slightly nostalgic, and easy to opt into without performing.',
+          },
+          {
+            type: 'list',
+            ordered: true,
+            items: [
+              'A guided memory wall: each guest writes one short memory on a card and pins it to a board. Read three at random near the end of the shower.',
+              'A pour-and-pair tasting: small flights of two drinks (or chocolates, or olive oils) with a one-line pairing prompt on each card. People talk to whoever is closest.',
+              'A scent or fragrance station: three to four samples laid out, guests vote on which one most matches the bride. Easy to host, surprisingly memorable.',
+              'A short collaborative playlist: each guest adds one song before the music switches over. Then play it through dinner.',
+            ],
+          },
+          {
+            type: 'video',
+            src: '/assets/videos/happy_couples.mov',
+            poster: '/assets/images/beautiful_bride.jpg',
+            alt: 'Friends celebrating together in soft, natural light',
+            caption:
+              'The strongest activities create their own footage. You barely have to direct people.',
+          },
+          {
+            type: 'paragraph',
+            text: 'After the activity ends, leave forty-five minutes of completely unstructured time. That is when the real conversations happen. If you cram another moment in immediately, you flatten the one you just designed.',
+          },
+        ],
+      },
+      {
+        id: 'guest-experience',
+        label: 'Guest Experience',
+        heading: 'The small details that make guests feel hosted, not just invited',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'Hosting is mostly small relief. A coat rack right at the door so nobody is holding a jacket awkwardly. A tray of welcome drinks within three steps of the entrance. A clear sign for the bathroom on the way to the kitchen. None of these will make the photographs, but every one of them will be felt.',
+          },
+          {
+            type: 'list',
+            items: [
+              'Greet every guest within sixty seconds of arrival, even if it is only a wave from across the room.',
+              'Have a designated friend (not the bride, not the host) on light rotation watching for empty glasses.',
+              'Keep one quiet corner intentionally undecorated so guests can step out of the energy without leaving.',
+              'Park a small basket of practical things (hair ties, blotting tissues, a phone charger, a sewing kit) in the bathroom.',
+            ],
           },
           {
             type: 'quote',
             quote: 'A room that lets guests settle is almost always more stylish than one that performs every minute.',
+          },
+        ],
+      },
+      {
+        id: 'pacing-the-afternoon',
+        label: 'Pacing',
+        heading: 'A four-hour shower is almost always better than a six-hour one',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'The most common mistake is overrunning the schedule by two hours and assuming the energy will hold. It will not. The room peaks somewhere between hour two and hour three, and after that you are negotiating with a slowly emptying floor. Plan a true end time, signal it gently, and let the close feel chosen rather than abandoned.',
+          },
+          {
+            type: 'subheading',
+            text: 'A simple four-hour template',
+          },
+          {
+            type: 'list',
+            ordered: true,
+            items: [
+              'Hour 1 — arrivals, welcome drinks, soft music, low light. No pressure.',
+              'Hour 2 — graze opens, music lifts a notch, the bride circulates instead of being seated.',
+              'Hour 3 — the shared activity, then a short toast. This is the photographable middle.',
+              'Hour 4 — open conversation, dessert and coffee, music drops back to soft. Doors close warmly on time.',
+            ],
+          },
+          {
+            type: 'tip',
+            title: 'Closing detail',
+            text: 'Hand each guest one small item on the way out — a printed song from the playlist, a single chocolate, a folded note from the bride. People remember the last thirty seconds of an event more than the first thirty.',
+          },
+        ],
+      },
+      {
+        id: 'what-to-cut',
+        label: 'What To Cut',
+        heading: 'The things that almost never improve a modern shower',
+        blocks: [
+          {
+            type: 'paragraph',
+            text: 'A few categories of decisions still get carried over from older shower templates and almost never make the celebration stronger. Cutting them frees budget and energy for the things that do.',
+          },
+          {
+            type: 'list',
+            items: [
+              'Multiple themed games stacked back to back — pick one shared moment and protect it.',
+              'Oversized balloon installations that block sightlines across the room.',
+              'A formal seating chart for a four-hour graze — let people drift.',
+              'Long opening speeches before guests have a drink in hand.',
+              'Favours that nobody actually takes home — a single thoughtful item beats a goody bag.',
+            ],
+          },
+          {
+            type: 'paragraph',
+            text: 'The best showers usually look slightly underplanned compared to what you imagined and feel exactly right in the room. Trust the editing. The bride will remember the temperature of the afternoon, not the count of activities you fit into it.',
           },
         ],
       },
