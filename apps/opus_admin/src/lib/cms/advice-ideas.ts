@@ -263,7 +263,30 @@ export type AdviceIdeasPostRow = {
   updated_at: string
 }
 
-export const EMPTY_POST_DRAFT = (): Omit<AdviceIdeasPostRow, 'id' | 'created_at' | 'updated_at'> => ({
+export type PostDraft = {
+  id?: string
+  slug: string
+  title: string
+  description: string
+  excerpt: string
+  category: string
+  section_id: AdviceIdeasSectionId
+  author_name: string
+  author_role: string
+  author_avatar_url: string
+  read_time: number
+  featured: boolean
+  published: boolean
+  published_at: string
+  hero_media_type: 'image' | 'video'
+  hero_media_src: string
+  hero_media_alt: string
+  hero_media_poster: string
+  body: AdviceIdeasBodySection[]
+  seed_comments: AdviceIdeasSeedComment[]
+}
+
+export const EMPTY_POST_DRAFT = (): PostDraft => ({
   slug: '',
   title: '',
   description: '',

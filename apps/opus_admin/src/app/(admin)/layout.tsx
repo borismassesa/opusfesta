@@ -2,6 +2,8 @@ import type { ReactNode } from 'react'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 
+export const dynamic = 'force-dynamic'
+
 export default function AdminLayout({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen bg-[#FDFDFD] font-sans antialiased text-gray-900">
