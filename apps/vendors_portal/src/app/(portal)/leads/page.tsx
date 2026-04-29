@@ -1,6 +1,7 @@
 import type { InquiryRow } from '@/lib/mock-data'
 import { recentInquiries } from '@/lib/mock-data'
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
+import { getCurrentVendor } from '@/lib/vendor'
 import LeadsClient, { type LeadsSource } from './LeadsClient'
 
 const PLACEHOLDER_AVATAR =
@@ -71,34 +72,19 @@ async function loadInquiries(): Promise<{
   inquiries: InquiryRow[]
   source: LeadsSource
 }> {
-  if (
-    !process.env.NEXT_PUBLIC_SUPABASE_URL ||
-    !process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-  ) {
+  const state = await getCurrentVendor()
+  if (state.kind === 'no-env') {
     return { inquiries: recentInquiries, source: { kind: 'no-env' } }
   }
-
-  const supabase = await createClerkSupabaseServerClient()
-
-  const memberships = await supabase
-    .from('vendor_memberships')
-    .select('vendor_id')
-    .eq('status', 'active')
-    .limit(1)
-
-  if (memberships.error) {
-    throw new Error(
-      `[leads] vendor_memberships query failed: ${memberships.error.code} ${memberships.error.message}`,
-    )
-  }
-
-  if (!memberships.data || memberships.data.length === 0) {
+  if (state.kind === 'no-membership') {
     return { inquiries: [], source: { kind: 'no-membership' } }
   }
 
+  const supabase = await createClerkSupabaseServerClient()
   const inquiries = await supabase
     .from('inquiries')
     .select('id, name, event_date, budget, location, status')
+    .eq('vendor_id', state.vendor.id)
     .order('created_at', { ascending: false })
     .limit(50)
     .returns<InquiryRowFromDb[]>()

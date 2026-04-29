@@ -1,144 +1,204 @@
-'use client'
-
-import dynamic from 'next/dynamic'
-import { StatCard } from '@/components/StatCard'
-import { ProfileCompletion } from '@/components/ProfileCompletion'
-import { RecentInquiries } from '@/components/RecentInquiries'
-import { ConversionFunnel } from '@/components/ConversionFunnel'
-import { UpcomingBookings, getUpcomingStats } from '@/components/UpcomingBookings'
-import { formatTZS } from '@/lib/bookings'
+import type { CompletionSection, InquiryRow, LeadStat } from '@/lib/mock-data'
 import {
-  completion,
-  leadStats,
-  performanceStats,
-  profileViews,
-  recentInquiries,
-  bookingsRevenue,
-  leadSources,
-  conversionFunnel,
+  completion as mockCompletion,
+  leadStats as mockLeadStats,
+  recentInquiries as mockRecentInquiries,
 } from '@/lib/mock-data'
+import { createClerkSupabaseServerClient } from '@/lib/supabase'
+import { getCurrentVendor, type CurrentVendor } from '@/lib/vendor'
+import DashboardClient, { type DashboardSource } from './DashboardClient'
 
-// Recharts components mount the DOM on first paint and read element widths;
-// loading them client-side avoids SSR hydration warnings on the dashboard.
-const LeadsChart = dynamic(
-  () => import('@/components/LeadsChart').then((m) => m.LeadsChart),
-  { ssr: false },
-)
-const BookingsChart = dynamic(
-  () => import('@/components/BookingsChart').then((m) => m.BookingsChart),
-  { ssr: false },
-)
-const LeadSourceChart = dynamic(
-  () => import('@/components/LeadSourceChart').then((m) => m.LeadSourceChart),
-  { ssr: false },
-)
+const PLACEHOLDER_AVATAR =
+  'https://images.unsplash.com/photo-1519085360753-af0119f7cbe7?w=120&h=120&fit=crop'
 
-function SectionHeader({
-  label,
-  hint,
-}: {
-  label: string
-  hint?: string
-}) {
-  return (
-    <div className="lg:col-span-12 flex items-baseline gap-3 mt-2 first:mt-0">
-      <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-500">
-        {label}
-      </h2>
-      {hint ? <span className="text-xs text-gray-400">{hint}</span> : null}
-      <span className="flex-1 h-px bg-gray-100" aria-hidden />
-    </div>
-  )
+type DbInquiryStatus =
+  | 'pending'
+  | 'responded'
+  | 'accepted'
+  | 'declined'
+  | 'closed'
+
+const STATUS_TO_UI: Record<DbInquiryStatus, InquiryRow['status']> = {
+  pending: 'new',
+  responded: 'replied',
+  accepted: 'booked',
+  declined: 'declined',
+  closed: 'closed',
 }
 
-export default function DashboardPage() {
-  const upcomingStats = getUpcomingStats()
-  return (
-    <div className="p-8 pb-12">
-      <div className="max-w-[1400px] mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 auto-rows-min">
-          {/* Top: at-a-glance */}
-          <div className="lg:col-span-12 flex items-start">
-            <ProfileCompletion sections={completion} />
-          </div>
+type InquiryRowFromDb = {
+  id: string
+  name: string | null
+  event_date: string | null
+  budget: string | null
+  location: string | null
+  status: DbInquiryStatus | null
+  created_at: string
+  responded_at: string | null
+}
 
-          {/* Up next */}
-          <SectionHeader label="Up next" hint="Upcoming events and reservations" />
-          <div className="lg:col-span-4">
-            <StatCard
-              title="This week"
-              value={String(upcomingStats.thisWeek)}
-              trend=""
-              sub="events scheduled"
-            />
-          </div>
-          <div className="lg:col-span-4">
-            <StatCard
-              title="This month"
-              value={String(upcomingStats.thisMonth)}
-              trend=""
-              sub="upcoming bookings"
-            />
-          </div>
-          <div className="lg:col-span-4">
-            <StatCard
-              title="Confirmed value"
-              value={formatTZS(upcomingStats.confirmedValue, { compact: true })}
-              trend=""
-              sub="across all confirmed events"
-            />
-          </div>
-          <div className="lg:col-span-12 flex">
-            <UpcomingBookings />
-          </div>
+function formatEventDate(date: string | null): string {
+  if (!date) return 'Date TBC'
+  const parsed = new Date(date)
+  if (Number.isNaN(parsed.getTime())) return 'Date TBC'
+  return parsed.toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
 
-          {/* Leads */}
-          <SectionHeader label="Leads" hint="Inquiries, conversion, sources" />
-          {leadStats.map((s) => (
-            <div key={s.label} className="lg:col-span-3">
-              <StatCard
-                title={s.label}
-                value={s.value}
-                trend={s.trend}
-                isPositive={s.isPositive}
-                sub={s.sub}
-              />
-            </div>
-          ))}
-          <div className="lg:col-span-8 flex min-h-[300px]">
-            <ConversionFunnel stages={conversionFunnel} />
-          </div>
-          <div className="lg:col-span-4 flex min-h-[300px]">
-            <LeadSourceChart data={leadSources} />
-          </div>
-          <div className="lg:col-span-12 flex">
-            <RecentInquiries rows={recentInquiries} />
-          </div>
+function mapStatus(status: DbInquiryStatus | null): InquiryRow['status'] {
+  if (!status) return 'new'
+  return STATUS_TO_UI[status] ?? 'new'
+}
 
-          {/* Performance */}
-          <SectionHeader label="Performance" hint="How your storefront is doing" />
-          {performanceStats.map((s) => (
-            <div key={s.label} className="lg:col-span-4">
-              <StatCard
-                title={s.label}
-                value={s.value}
-                trend={s.trend}
-                isPositive={s.isPositive}
-                sub={s.sub}
-              />
-            </div>
-          ))}
-          <div className="lg:col-span-12 flex min-h-[340px]">
-            <LeadsChart data={profileViews} />
-          </div>
+function mapInquiryRow(row: InquiryRowFromDb): InquiryRow {
+  return {
+    id: row.id,
+    couple: row.name ?? 'Anonymous lead',
+    date: formatEventDate(row.event_date),
+    budget: row.budget ?? '—',
+    location: row.location ?? '—',
+    status: mapStatus(row.status),
+    avatarUrl: PLACEHOLDER_AVATAR,
+  }
+}
 
-          {/* Insights */}
-          <SectionHeader label="Insights" hint="Bookings and revenue trends" />
-          <div className="lg:col-span-12 flex min-h-[380px]">
-            <BookingsChart data={bookingsRevenue} />
-          </div>
-        </div>
-      </div>
-    </div>
+function startOfWeek(now: Date): Date {
+  const d = new Date(now)
+  const day = d.getDay()
+  const diff = (day + 6) % 7 // Monday = 0
+  d.setDate(d.getDate() - diff)
+  d.setHours(0, 0, 0, 0)
+  return d
+}
+
+function startOfMonth(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), 1)
+}
+
+function computeLeadStats(rows: InquiryRowFromDb[]): LeadStat[] {
+  const now = new Date()
+  const weekStart = startOfWeek(now)
+  const monthStart = startOfMonth(now)
+
+  const newThisWeek = rows.filter(
+    (r) => r.status === 'pending' && new Date(r.created_at) >= weekStart,
+  ).length
+
+  const bookedThisMonth = rows.filter(
+    (r) => r.status === 'accepted' && new Date(r.created_at) >= monthStart,
+  ).length
+
+  const totalThisMonth = rows.filter(
+    (r) => new Date(r.created_at) >= monthStart,
+  ).length
+
+  const conversionRate =
+    totalThisMonth === 0
+      ? '—'
+      : `${Math.round((bookedThisMonth / totalThisMonth) * 100 * 10) / 10}%`
+
+  // Average response time across responded leads in the last 30 days.
+  const thirtyDaysAgo = new Date(now)
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const responded = rows.filter(
+    (r) =>
+      r.responded_at &&
+      new Date(r.created_at) >= thirtyDaysAgo &&
+      new Date(r.responded_at) >= new Date(r.created_at),
   )
+  let avgResponse = '—'
+  if (responded.length > 0) {
+    const totalMs = responded.reduce(
+      (sum, r) =>
+        sum + (new Date(r.responded_at!).getTime() - new Date(r.created_at).getTime()),
+      0,
+    )
+    const avgMin = totalMs / responded.length / 60000
+    avgResponse =
+      avgMin >= 60
+        ? `${Math.floor(avgMin / 60)}h ${Math.round(avgMin % 60)}m`
+        : `${Math.round(avgMin)}m`
+  }
+
+  return [
+    { label: 'New inquiries', value: String(newThisWeek), trend: '', sub: 'This week', isPositive: true },
+    { label: 'Conversion rate', value: conversionRate, trend: '', sub: 'This month', isPositive: true },
+    { label: 'Avg response time', value: avgResponse, trend: '', sub: 'Last 30 days', isPositive: true },
+    { label: 'Booked leads', value: String(bookedThisMonth), trend: '', sub: 'This month', isPositive: true },
+  ]
+}
+
+function deriveCompletion(vendor: CurrentVendor): CompletionSection[] {
+  // Phase 1: derive only what we can from current vendor row. Other sections
+  // (services, packages, FAQ, team, availability, reviews) come in later phases.
+  return [
+    { id: 'name', label: 'Business name', done: !!vendor.businessName },
+    { id: 'category', label: 'Category', done: !!vendor.category },
+    { id: 'bio', label: 'Bio', done: !!vendor.bio && vendor.bio.length > 0 },
+    { id: 'logo', label: 'Logo', done: !!vendor.logo },
+    { id: 'cover', label: 'Cover image', done: !!vendor.coverImage },
+  ]
+}
+
+async function loadDashboard(): Promise<{
+  source: DashboardSource
+  completion: CompletionSection[]
+  leadStats: LeadStat[]
+  recentInquiries: InquiryRow[]
+}> {
+  const state = await getCurrentVendor()
+
+  if (state.kind === 'no-env') {
+    return {
+      source: { kind: 'no-env' },
+      completion: mockCompletion,
+      leadStats: mockLeadStats,
+      recentInquiries: mockRecentInquiries,
+    }
+  }
+
+  if (state.kind === 'no-membership') {
+    return {
+      source: { kind: 'no-membership' },
+      completion: [],
+      leadStats: [],
+      recentInquiries: [],
+    }
+  }
+
+  const supabase = await createClerkSupabaseServerClient()
+  // TODO (Phase 2/6): move stats aggregation server-side via an RPC. Today
+  // computeLeadStats runs on the same row set we render in RecentInquiries,
+  // so a busy vendor with >500 leads in the lookback windows will silently
+  // undercount. The 500 cap covers ~30 leads/day for 30 days.
+  const inquiries = await supabase
+    .from('inquiries')
+    .select('id, name, event_date, budget, location, status, created_at, responded_at')
+    .eq('vendor_id', state.vendor.id)
+    .order('created_at', { ascending: false })
+    .limit(500)
+    .returns<InquiryRowFromDb[]>()
+
+  if (inquiries.error) {
+    throw new Error(
+      `[dashboard] inquiries query failed: ${inquiries.error.code} ${inquiries.error.message}`,
+    )
+  }
+
+  const rows = inquiries.data ?? []
+  return {
+    source: { kind: 'live', vendorName: state.vendor.businessName },
+    completion: deriveCompletion(state.vendor),
+    leadStats: computeLeadStats(rows),
+    recentInquiries: rows.slice(0, 6).map(mapInquiryRow),
+  }
+}
+
+export default async function DashboardPage() {
+  const props = await loadDashboard()
+  return <DashboardClient {...props} />
 }
