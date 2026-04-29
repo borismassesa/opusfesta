@@ -8,12 +8,16 @@ const STATUS_STYLES: Record<InquiryRow['status'], string> = {
   new: 'bg-[#F0DFF6] text-[#7E5896]',
   replied: 'bg-amber-50 text-amber-700',
   booked: 'bg-emerald-50 text-emerald-600',
+  declined: 'bg-gray-100 text-gray-500',
+  closed: 'bg-gray-100 text-gray-500',
 }
 
 const STATUS_LABEL: Record<InquiryRow['status'], string> = {
   new: 'New',
   replied: 'Replied',
   booked: 'Booked',
+  declined: 'Declined',
+  closed: 'Closed',
 }
 
 export function RecentInquiries({ rows }: { rows: InquiryRow[] }) {

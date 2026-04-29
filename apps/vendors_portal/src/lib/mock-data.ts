@@ -25,7 +25,7 @@ export type InquiryRow = {
   date: string
   budget: string
   location: string
-  status: 'new' | 'replied' | 'booked'
+  status: 'new' | 'replied' | 'booked' | 'declined' | 'closed'
   avatarUrl: string
 }
 
