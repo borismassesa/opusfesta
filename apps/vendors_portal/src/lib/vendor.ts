@@ -101,6 +101,18 @@ export async function getCurrentVendor(): Promise<CurrentVendorState> {
     .returns<MembershipRow[]>()
 
   if (error) {
+    // PGRST205 = table missing from PostgREST schema cache. Two common causes
+    // in dev: (a) migrations haven't been applied to the connected Supabase
+    // project, (b) cache hasn't reloaded after a recent migration. Either way
+    // the portal can't render real data — fall back to the empty `no-env`
+    // state so the dashboard boots, and surface a clear console warning so
+    // the underlying problem is fixable.
+    if (error.code === 'PGRST205') {
+      console.warn(
+        `[vendor] ${error.code} — table 'public.vendor_memberships' not in schema cache. Run pending migrations on your Supabase project, or NOTIFY pgrst, 'reload schema'. Falling back to no-env state.`,
+      )
+      return { kind: 'no-env' }
+    }
     throw new Error(
       `[vendor] vendor_memberships query failed: ${error.code} ${error.message}`,
     )
