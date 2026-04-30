@@ -16,11 +16,21 @@ export function createSupabaseAdminClient(): SupabaseClient {
   })
 }
 
+
 /**
  * Server-side Clerk-authenticated client (subject to RLS).
  * The Clerk JWT 'supabase' template carries the user's sub claim, which
  * RLS policies resolve to public.users.id via requesting_user_id().
  * Vendor scope is then enforced through vendor_memberships joins.
+ *
+ * **Keyless / dev fallback:** If the Clerk app has no 'supabase' JWT template
+ * configured (e.g. running in keyless dev mode), `getToken` throws a 404. We
+ * log a warning and fall back to an unauthenticated client so the portal
+ * boots — RLS will return zero rows, and `getCurrentVendor` resolves to
+ * `no-membership`, which the dashboard already handles gracefully.
+ *
+ * Production deployments **must** configure the JWT template — otherwise no
+ * vendor will ever see their data.
  */
 export async function createClerkSupabaseServerClient(): Promise<SupabaseClient> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -31,7 +41,18 @@ export async function createClerkSupabaseServerClient(): Promise<SupabaseClient>
     )
   }
   const { getToken } = await auth()
-  const token = await getToken({ template: 'supabase' })
+  let token: string | null = null
+  try {
+    token = await getToken({ template: 'supabase' })
+  } catch (err) {
+    const isMissingTemplate =
+      err && typeof err === 'object' && 'status' in err && (err as { status: number }).status === 404
+    if (!isMissingTemplate) throw err
+    // Keyless dev fallback — see jsdoc above.
+    console.warn(
+      "[supabase] Clerk JWT template 'supabase' not found (404). Falling back to unauthenticated client. Configure the template at https://dashboard.clerk.com/last-active?path=jwt-templates to enable RLS-backed reads.",
+    )
+  }
   return createClient(url, key, {
     auth: { persistSession: false, autoRefreshToken: false },
     global: { headers: token ? { Authorization: `Bearer ${token}` } : {} },

@@ -13,8 +13,8 @@ export const dynamic = 'force-dynamic'
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <ClerkProvider>
-      <html lang="en">
-        <body>{children}</body>
+      <html lang="en" className="bg-white">
+        <body className="bg-white">{children}</body>
       </html>
     </ClerkProvider>
   )

@@ -28,7 +28,7 @@ import Logo from './ui/Logo'
 type NavItem = { icon: LucideIcon; label: string; href: string; badge?: string }
 
 const topItems: NavItem[] = [
-  { icon: LayoutDashboard, label: 'Dashboard', href: '/' },
+  { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
   { icon: Inbox, label: 'Leads', href: '/leads', badge: '12' },
 ]
 
@@ -55,7 +55,7 @@ const bottomNavItems: NavItem[] = [
 const COLLAPSED_KEY = 'opusfesta:vendors-sidebar-collapsed'
 
 function isItemActive(pathname: string, href: string) {
-  if (href === '/') return pathname === '/'
+  if (href === '/dashboard') return pathname === '/dashboard'
   return pathname === href || pathname.startsWith(href + '/')
 }
 
