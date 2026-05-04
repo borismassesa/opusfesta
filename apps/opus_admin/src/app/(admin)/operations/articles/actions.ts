@@ -98,7 +98,7 @@ export async function createAdvicePost(input: PostUpsertInput): Promise<{ id: st
 }
 
 export async function updateAdvicePost(id: string, input: PostUpsertInput): Promise<void> {
-  await requireAdminRole(ARTICLE_WRITE_ROLES)
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
   const supabase = createSupabaseAdminClient()
   const slug = (input.slug || slugify(input.title)).trim()
   if (!slug) throw new Error('Slug is required')
@@ -150,7 +150,7 @@ export async function deleteAdvicePost(id: string): Promise<void> {
 }
 
 export async function togglePostPublished(id: string, published: boolean): Promise<void> {
-  await requireAdminRole(ARTICLE_WRITE_ROLES)
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
   const supabase = createSupabaseAdminClient()
   const { data: row, error } = await supabase
     .from('advice_ideas_posts')
