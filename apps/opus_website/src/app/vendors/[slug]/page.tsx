@@ -1,10 +1,19 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import VendorDetailPage from '@/components/vendors/VendorDetailPage'
-import { getVendor, vendors } from '@/lib/vendors'
+import { getVendor } from '@/lib/vendors'
+import { getVendorFromDb } from '@/lib/vendors-db'
 
-export function generateStaticParams() {
-  return vendors.map((vendor) => ({ slug: vendor.slug }))
+// Read the vendor from Supabase on every request so storefront edits made in
+// the vendors_portal show up immediately. Falls back to the hardcoded seed
+// list (apps/opus_website/src/lib/vendors.ts) for slugs not yet in the DB —
+// keeps the legacy demo vendors live during the migration.
+export const dynamic = 'force-dynamic'
+
+async function loadVendor(slug: string) {
+  const fromDb = await getVendorFromDb(slug)
+  if (fromDb) return fromDb
+  return getVendor(slug)
 }
 
 export async function generateMetadata({
@@ -13,7 +22,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const vendor = getVendor(slug)
+  const vendor = await loadVendor(slug)
 
   if (!vendor) {
     return { title: 'Vendor Not Found | OpusFesta' }
@@ -31,7 +40,7 @@ export default async function VendorSlugPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const vendor = getVendor(slug)
+  const vendor = await loadVendor(slug)
 
   if (!vendor) {
     notFound()

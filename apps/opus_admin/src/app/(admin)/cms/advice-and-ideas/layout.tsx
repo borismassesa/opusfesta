@@ -6,13 +6,11 @@ import { usePathname } from 'next/navigation'
 import {
   ExternalLink,
   Heading1,
-  Newspaper,
   Save,
   Send,
   Sparkles,
   Tags,
   Trash2,
-  UserCircle2,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -47,20 +45,6 @@ const sections: Section[] = [
     icon: Heading1,
     href: '/cms/advice-and-ideas/section-headers',
     description: 'Titles, subtitles, and "View all" labels for Editor\u2019s Picks, Loved by Couples, Our Favorites, Latest Stories, and Search results.',
-  },
-  {
-    key: 'posts',
-    label: 'Articles',
-    icon: Newspaper,
-    href: '/cms/advice-and-ideas/posts',
-    description: 'Create, edit, publish, and delete advice & ideas articles.',
-  },
-  {
-    key: 'authors',
-    label: 'Authors',
-    icon: UserCircle2,
-    href: '/cms/advice-and-ideas/authors',
-    description: 'Edit author bios and avatars used by the Author Card at the bottom of every article.',
   },
 ]
 
@@ -109,18 +93,9 @@ function AdviceIdeasCmsShell({ children }: { children: ReactNode }) {
         <aside className="w-[240px] shrink-0 border-r border-gray-100 self-stretch">
           <div className="sticky top-6 px-3 py-1 space-y-5">
             <SectionGroup label="Page">
-              {sections
-                .filter((s) => s.key !== 'posts')
-                .map((s) => (
-                  <SectionLink key={s.key} section={s} pathname={pathname} />
-                ))}
-            </SectionGroup>
-            <SectionGroup label="Content">
-              {sections
-                .filter((s) => s.key === 'posts' || s.key === 'authors')
-                .map((s) => (
-                  <SectionLink key={s.key} section={s} pathname={pathname} />
-                ))}
+              {sections.map((s) => (
+                <SectionLink key={s.key} section={s} pathname={pathname} />
+              ))}
             </SectionGroup>
           </div>
         </aside>
@@ -165,15 +140,12 @@ function ActionButtons() {
   const { hasDraft, pending, message, onSaveDraft, onPublish, onDiscard } = bound
   return (
     <>
-      <span
-        className={cn(
-          'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full mr-1',
-          hasDraft ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
-        )}
-      >
-        <span className={cn('w-1.5 h-1.5 rounded-full', hasDraft ? 'bg-amber-500' : 'bg-emerald-500')} />
-        {hasDraft ? 'Unpublished draft' : 'All changes published'}
-      </span>
+      {hasDraft && (
+        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full mr-1 bg-amber-50 text-amber-700">
+          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+          Unpublished draft
+        </span>
+      )}
       {message && <span className="text-xs text-gray-500 mr-1">{message}</span>}
       {hasDraft && (
         <button

@@ -47,8 +47,14 @@ async function loadPortfolio(): Promise<{
   if (state.kind === 'no-env') {
     return { items: [], source: { kind: 'no-env' } }
   }
-  if (state.kind === 'no-membership') {
-    return { items: [], source: { kind: 'no-membership' } }
+  if (state.kind === 'no-application') {
+    return { items: [], source: { kind: 'no-application' } }
+  }
+  if (state.kind === 'pending-approval') {
+    return { items: [], source: { kind: 'pending-approval' } }
+  }
+  if (state.kind === 'suspended') {
+    return { items: [], source: { kind: 'suspended' } }
   }
 
   const supabase = await createClerkSupabaseServerClient()

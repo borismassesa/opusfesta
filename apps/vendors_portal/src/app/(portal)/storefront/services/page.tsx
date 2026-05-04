@@ -28,9 +28,29 @@ async function loadServices(): Promise<{
       category: null,
     }
   }
-  if (state.kind === 'no-membership') {
+  if (state.kind === 'no-application') {
     return {
-      source: { kind: 'no-membership' },
+      source: { kind: 'no-application' },
+      presets: getServicesForCategory(null),
+      initialPresetIds: [],
+      initialCustomServices: [],
+      canEdit: false,
+      category: null,
+    }
+  }
+  if (state.kind === 'pending-approval') {
+    return {
+      source: { kind: 'pending-approval' },
+      presets: getServicesForCategory(null),
+      initialPresetIds: [],
+      initialCustomServices: [],
+      canEdit: false,
+      category: null,
+    }
+  }
+  if (state.kind === 'suspended') {
+    return {
+      source: { kind: 'suspended' },
       presets: getServicesForCategory(null),
       initialPresetIds: [],
       initialCustomServices: [],

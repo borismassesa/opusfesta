@@ -29,6 +29,7 @@ import {
   ListTree,
   MapPin,
   MessageSquare,
+  Newspaper,
   PanelLeftClose,
   PanelLeftOpen,
   Plane,
@@ -88,6 +89,14 @@ const sections: NavSection[] = [
     ],
   },
   {
+    id: "vendors-portal-cms",
+    label: "Vendors Portal CMS",
+    icon: Store,
+    items: [
+      { icon: Home, label: "Landing page", href: "/cms/vendors-portal" },
+    ],
+  },
+  {
     id: "operations",
     label: "Operations",
     icon: Briefcase,
@@ -97,6 +106,7 @@ const sections: NavSection[] = [
       { icon: Building2, label: "Vendor Accounts", href: "/operations/vendors" },
       { icon: Star, label: "Reviews & Moderation", href: "/operations/reviews" },
       { icon: Calendar, label: "Calendar", href: "/operations/calendar" },
+      { icon: Newspaper, label: "Articles", href: "/operations/articles" },
     ],
   },
   {

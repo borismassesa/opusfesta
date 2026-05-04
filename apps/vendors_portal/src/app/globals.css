@@ -1,1 +1,86 @@
 @import "tailwindcss";
+
+:root {
+  --accent: #C9A0DC;
+  --accent-hover: #b97fd0;
+  --on-accent: #1A1A1A;
+}
+
+/* Tailwind utility for on-accent text */
+.text-on-accent { color: var(--on-accent); }
+
+html,
+body {
+  background-color: #ffffff;
+  width: 100%;
+  max-width: 100%;
+  /* `clip` (vs `hidden`) prevents body from becoming a sticky containing block,
+     so `position: sticky` on descendants works against the actual viewport. */
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  position: relative;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-33.333%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Accessibility: disable all motion for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Hide Clerk's bottom-of-card "Secured by Clerk · Development mode" footer
+   on the SignIn / SignUp / UserProfile components. Clerk's own CSS has
+   higher specificity than Tailwind classes passed through `appearance`, so a
+   targeted rule is the reliable lever.
+   Note: removing the "Secured by Clerk" badge in production requires a Clerk
+   paid plan per their TOS. The "Development mode" half disappears
+   automatically once NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY is set to a real key
+   (i.e. once we exit keyless mode). */
+.cl-footer {
+  display: none !important;
+}
+
+/* Hide Clerk's floating "Configure your application" keyless-dev widget.
+   The widget lives inside the `#clerk-components` container with no stable
+   class of its own; we identify it by the labelled button it always contains
+   and hide its wrapper via :has(). Once a real NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+   is configured (production or properly-keyed dev), Clerk skips rendering
+   the banner entirely and this rule becomes a no-op. */
+#clerk-components > div:has([aria-label*="Configure your application"]) {
+  display: none !important;
+}

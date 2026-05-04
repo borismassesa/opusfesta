@@ -1,101 +1,74 @@
 'use client'
 
-import Link from "next/link";
-import { Bell, ChevronRight, HelpCircle } from "lucide-react";
+import { Bell, HelpCircle, Search, X } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
-import { usePathname } from "next/navigation";
+import { usePageHeading } from "./PageHeading";
+import { usePageSearch } from "./PageSearch";
 
-const SEGMENT_LABELS: Record<string, string> = {
-  cms: 'Website CMS',
-  homepage: 'Homepage',
-  hero: 'Hero',
-  vendors: 'Vendors',
-  'planning-tools': 'Planning Tools',
-  'advice-and-ideas': 'Advice & Ideas',
-  'attire-and-rings': 'Attire & Rings',
-  guests: 'Guests',
-  'wedding-websites': 'Wedding Websites',
-  pages: 'Pages',
-  media: 'Media Library',
-  forms: 'Forms',
-  taxonomy: 'Categories & Tags',
-  navigation: 'Navigation',
-  operations: 'Operations',
-  bookings: 'Bookings',
-  clients: 'Clients',
-  reviews: 'Reviews & Moderation',
-  calendar: 'Calendar',
-  finance: 'Finance',
-  invoices: 'Invoices',
-  payments: 'Payments',
-  payouts: 'Vendor Payouts',
-  refunds: 'Refunds',
-  tax: 'Tax & VAT',
-  mpesa: 'M-Pesa Reconciliation',
-  workforce: 'Workforce',
-  employees: 'Employees',
-  schedule: 'Schedule',
-  payroll: 'Payroll',
-  leave: 'Leave & Attendance',
-  roles: 'Roles & Permissions',
-  recruitment: 'Recruitment',
-  insights: 'Insights',
-  analytics: 'Analytics',
-  activity: 'Activity Log',
-  audit: 'Audit Log',
-  inbox: 'Inbox',
-  notifications: 'Notifications',
-  integrations: 'Integrations',
-  help: 'Help Center',
-  feedback: 'Feedback',
-  settings: 'Settings',
-}
-
-function humanize(seg: string): string {
-  return seg.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-type Crumb = { label: string; href: string }
-
-function buildCrumbs(pathname: string): Crumb[] {
-  if (pathname === '/') return [{ label: 'Dashboard', href: '/' }]
-  const segs = pathname.split('/').filter(Boolean)
-  return segs.map((seg, i) => ({
-    label: SEGMENT_LABELS[seg] ?? humanize(seg),
-    href: '/' + segs.slice(0, i + 1).join('/'),
-  }))
-}
+// Two empty placeholders sit in the header for pages that need to inject
+// their own page-specific content. The vendor review page, for example,
+// portals its status pill into `#page-header-badge` and its action buttons
+// (Approve / Request corrections / Suspend) into `#page-header-actions`.
+// IDs are stable so portals attach reliably across HMR cycles.
+const BADGE_SLOT_ID = 'page-header-badge'
+const ACTIONS_SLOT_ID = 'page-header-actions'
 
 export function Header() {
-  const pathname = usePathname()
-  const crumbs = buildCrumbs(pathname)
+  // Heading and search are both driven by each page via context — the page
+  // is the only thing that knows what it's actually showing and what a
+  // search query should match against.
+  const heading = usePageHeading()
+  const search = usePageSearch()
 
   return (
-    <header className="flex items-center justify-between py-6 px-8 bg-gray-50/50 relative z-10 w-full shrink-0">
-      <nav aria-label="Breadcrumb" className="min-w-0">
-        <ol className="flex items-center gap-1.5 text-sm text-gray-500 truncate">
-          {crumbs.map((c, i) => {
-            const isLast = i === crumbs.length - 1
-            return (
-              <li key={c.href} className="flex items-center gap-1.5 min-w-0">
-                {i > 0 && <ChevronRight className="w-3.5 h-3.5 text-gray-300 shrink-0" aria-hidden />}
-                {isLast ? (
-                  <span className="font-semibold text-gray-900 truncate">{c.label}</span>
-                ) : (
-                  <Link
-                    href={c.href}
-                    className="hover:text-gray-900 transition-colors truncate"
-                  >
-                    {c.label}
-                  </Link>
-                )}
-              </li>
-            )
-          })}
-        </ol>
-      </nav>
+    <header className="flex items-center justify-between gap-6 pt-4 pb-3 px-8 bg-gray-50/50 relative z-10 w-full shrink-0">
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
+          {heading?.title && (
+            <h1 className="text-xl font-semibold text-gray-900 tracking-tight truncate">
+              {heading.title}
+            </h1>
+          )}
+          {/* Page-specific badge slot (e.g. vendor onboarding status pill). */}
+          <div id={BADGE_SLOT_ID} className="contents" />
+        </div>
+        {heading?.subtitle && (
+          <p className="mt-0.5 text-sm text-gray-500 truncate">
+            {heading.subtitle}
+          </p>
+        )}
+      </div>
 
-      <div className="flex items-center gap-4 shrink-0">
+      <div className="flex items-center gap-3 shrink-0">
+        {/* Page-specific action buttons slot — sits before the global icons
+            so the page's primary CTA stays the leftmost interactive element
+            in the right rail. */}
+        <div id={ACTIONS_SLOT_ID} className="flex items-center gap-2" />
+
+        {search && (
+          <div className="relative w-72">
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="search"
+              value={search.value}
+              onChange={(e) => search.onChange(e.target.value)}
+              placeholder={search.placeholder}
+              aria-label={search.ariaLabel}
+              className="w-full h-9 pl-9 pr-9 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5B2D8E]/30 focus:border-[#5B2D8E]/40 transition-all"
+            />
+            {search.value && (
+              <button
+                type="button"
+                onClick={() => (search.onClear ? search.onClear() : search.onChange(''))}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 rounded text-gray-400 hover:text-gray-700 inline-flex items-center justify-center"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+        )}
+
         <button className="text-gray-400 hover:text-gray-600 transition-colors">
           <HelpCircle className="w-5 h-5" />
         </button>

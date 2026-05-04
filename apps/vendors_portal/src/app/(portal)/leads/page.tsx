@@ -76,8 +76,14 @@ async function loadInquiries(): Promise<{
   if (state.kind === 'no-env') {
     return { inquiries: recentInquiries, source: { kind: 'no-env' } }
   }
-  if (state.kind === 'no-membership') {
-    return { inquiries: [], source: { kind: 'no-membership' } }
+  if (state.kind === 'no-application') {
+    return { inquiries: [], source: { kind: 'no-application' } }
+  }
+  if (state.kind === 'pending-approval') {
+    return { inquiries: [], source: { kind: 'pending-approval' } }
+  }
+  if (state.kind === 'suspended') {
+    return { inquiries: [], source: { kind: 'suspended' } }
   }
 
   const supabase = await createClerkSupabaseServerClient()

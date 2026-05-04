@@ -60,8 +60,14 @@ async function loadReviews(): Promise<{
   if (state.kind === 'no-env') {
     return { initialReviews: sampleReviews, source: { kind: 'no-env' } }
   }
-  if (state.kind === 'no-membership') {
-    return { initialReviews: [], source: { kind: 'no-membership' } }
+  if (state.kind === 'no-application') {
+    return { initialReviews: [], source: { kind: 'no-application' } }
+  }
+  if (state.kind === 'pending-approval') {
+    return { initialReviews: [], source: { kind: 'pending-approval' } }
+  }
+  if (state.kind === 'suspended') {
+    return { initialReviews: [], source: { kind: 'suspended' } }
   }
 
   const supabase = await createClerkSupabaseServerClient()

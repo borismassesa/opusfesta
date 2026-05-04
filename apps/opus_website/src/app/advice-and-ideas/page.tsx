@@ -9,12 +9,14 @@ import SearchForm from '@/components/advice-ideas/SearchForm'
 import Byline from '@/components/advice-ideas/Byline'
 import {
   ADVICE_IDEAS_BASE_PATH,
-  adviceIdeasPosts,
   adviceIdeasTopics,
   heroThumb,
   type AdviceIdeasPost,
   type AdviceIdeasTopic,
 } from '@/lib/advice-ideas'
+import { loadPublishedAdviceIdeasPosts } from '@/lib/advice-ideas-db'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Ideas & Advice | OpusFesta',
@@ -27,11 +29,11 @@ function postHref(post: AdviceIdeasPost): string {
   return `${ADVICE_IDEAS_BASE_PATH}/${post.slug}`
 }
 
-function topicHref(topic: AdviceIdeasTopic): string {
+function topicHref(topic: AdviceIdeasTopic, posts: AdviceIdeasPost[]): string {
   if (topic.id === 'featured-stories') {
     return `${ADVICE_IDEAS_BASE_PATH}#editor-picks`
   }
-  const first = adviceIdeasPosts.find((post) => post.sectionId === topic.id)
+  const first = posts.find((post) => post.sectionId === topic.id)
   return first ? postHref(first) : ADVICE_IDEAS_BASE_PATH
 }
 
@@ -43,8 +45,8 @@ const FALLBACK_IMAGE = '/assets/images/coupleswithpiano.jpg'
 // Lightweight map from topic id → a cover image so the topic cards feel
 // editorial rather than abstract. Pulled from posts in that section when
 // available, otherwise falls back.
-function topicImage(topic: AdviceIdeasTopic): string {
-  const first = adviceIdeasPosts.find((p) => p.sectionId === topic.id)
+function topicImage(topic: AdviceIdeasTopic, posts: AdviceIdeasPost[]): string {
+  const first = posts.find((p) => p.sectionId === topic.id)
   return first ? heroThumb(first) : FALLBACK_IMAGE
 }
 
@@ -66,21 +68,64 @@ export default async function AdviceAndIdeasPage({
   searchParams: Promise<{ q?: string }>
 }) {
   const { q } = await searchParams
+  const posts = await loadPublishedAdviceIdeasPosts()
   const query = q?.trim() ?? ''
   const searchMode = query.length > 0
+
+  if (posts.length === 0) {
+    return (
+      <main>
+        <div className="sticky top-0 z-30 bg-black text-white">
+          <div className="mx-auto max-w-7xl px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-8">
+            <nav aria-label="Browse topics" className="min-w-0 md:flex-1">
+              <ul className="hide-scrollbar flex gap-6 overflow-x-auto pr-6 text-sm md:pr-4">
+                {adviceIdeasTopics.map((t) => (
+                  <li key={t.id} className="shrink-0">
+                    <Link
+                      href={topicHref(t, posts)}
+                      className="whitespace-nowrap font-medium text-white/80 transition-colors hover:text-[var(--accent)]"
+                    >
+                      {t.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            <div className="shrink-0">
+              <Suspense fallback={null}>
+                <SearchForm />
+              </Suspense>
+            </div>
+          </div>
+        </div>
+        <AdviceHero />
+        <div className="mx-auto max-w-7xl px-4 py-16 md:py-20">
+          <section className="rounded-lg border border-slate-200 bg-white p-8 text-center">
+            <h2 className="text-xl font-bold text-slate-900">
+              No published stories yet
+            </h2>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-relaxed text-slate-600">
+              Published articles from the admin panel will appear here for readers.
+            </p>
+          </section>
+        </div>
+      </main>
+    )
+  }
+
   const searchResults = searchMode
-    ? adviceIdeasPosts.filter((p) => matchesQuery(p, query))
+    ? posts.filter((p) => matchesQuery(p, query))
     : []
 
-  const featured = adviceIdeasPosts.filter((p) => p.featured)
-  const remaining = adviceIdeasPosts.filter((p) => !p.featured)
+  const featured = posts.filter((p) => p.featured)
+  const remaining = posts.filter((p) => !p.featured)
 
   const editorPicks =
     featured.length >= 5
       ? featured.slice(0, 5)
       : [...featured, ...remaining.slice(0, 5 - featured.length)]
 
-  const trending = featured[0] ?? adviceIdeasPosts[0]
+  const trending = featured[0] ?? posts[0]
 
   const lovedByCouples = remaining.slice(0, 4)
 
@@ -89,7 +134,7 @@ export default async function AdviceAndIdeasPage({
     .filter((post) => post.id !== favoritesFeatured?.id)
     .slice(0, 3)
 
-  const latest = [...adviceIdeasPosts].reverse().slice(0, 12)
+  const latest = [...posts].reverse().slice(0, 12)
 
   return (
     <main>
@@ -101,7 +146,7 @@ export default async function AdviceAndIdeasPage({
               {adviceIdeasTopics.map((t) => (
                 <li key={t.id} className="shrink-0">
                   <Link
-                    href={topicHref(t)}
+                    href={topicHref(t, posts)}
                     className="whitespace-nowrap font-medium text-white/80 transition-colors hover:text-[var(--accent)]"
                   >
                     {t.label}
@@ -138,7 +183,7 @@ export default async function AdviceAndIdeasPage({
           <ul className="grid grid-cols-1 gap-x-8 gap-y-7 sm:grid-cols-2 xl:grid-cols-4">
             {adviceIdeasTopics.map((t) => (
               <li key={t.id}>
-                <TopicCard topic={t} />
+                <TopicCard topic={t} posts={posts} />
               </li>
             ))}
           </ul>
@@ -448,15 +493,21 @@ function ArticleCard({ post }: { post: AdviceIdeasPost }) {
 }
 
 // ─── Topic card ─────────────────────────────────────────────────────────
-function TopicCard({ topic }: { topic: AdviceIdeasTopic }) {
+function TopicCard({
+  topic,
+  posts,
+}: {
+  topic: AdviceIdeasTopic
+  posts: AdviceIdeasPost[]
+}) {
   return (
     <Link
-      href={topicHref(topic)}
+      href={topicHref(topic, posts)}
       className="group flex items-center gap-4"
     >
       <div className="relative aspect-[1.45/1] w-[9.75rem] shrink-0 overflow-hidden rounded-xl bg-slate-100 sm:w-[10.5rem]">
         <Image
-          src={topicImage(topic)}
+          src={topicImage(topic, posts)}
           alt={topic.label}
           fill
           sizes="(min-width: 1280px) 168px, (min-width: 640px) 42vw, 156px"

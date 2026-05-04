@@ -89,6 +89,15 @@ export type Vendor = {
   serviceArea?: string[]
   team?: Array<{ avatar?: string; role?: string; name?: string; bio?: string }>
   socialLinks?: { instagram?: string; facebook?: string; website?: string }
+  // Vendor self-described style and personality, captured during onboarding
+  // (e.g. style = "Modern", personality = "Warm"). Surfaced as facts in the
+  // About section when set; otherwise hidden.
+  style?: string
+  personality?: string
+  // Operating hours, captured in onboarding + editable in /storefront/about.
+  // Shape mirrors the onboarding draft: { mon:{open,from,to}, tue:..., sun:... }.
+  hours?: Record<string, { open: boolean; from: string; to: string }>
+  parallelBookingCapacity?: number
 }
 
 /**
