@@ -75,7 +75,11 @@ export async function saveBadge(input: SaveBadgeInput): Promise<SaveBadgeResult>
       error:
         state.kind === 'no-env'
           ? 'Configuration error — please contact support.'
-          : 'You are not a member of any vendor team.',
+          : state.kind === 'pending-approval'
+            ? 'Your vendor application is awaiting OpusFesta verification.'
+            : state.kind === 'suspended'
+              ? 'Your vendor account is suspended. Contact OpusFesta support.'
+              : "You haven't started a vendor application yet.",
     }
   }
 

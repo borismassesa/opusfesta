@@ -26,7 +26,7 @@ export default async function PricingComparison() {
             <div className="hidden sm:block mt-8">
               <a
                 href={content.cta_href}
-                className="inline-block bg-[#1A1A1A] hover:bg-[#333333] text-white px-8 py-4 rounded-full font-bold transition-colors"
+                className="inline-block bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-8 py-4 rounded-full font-bold transition-colors"
               >
                 {content.cta_label}
               </a>

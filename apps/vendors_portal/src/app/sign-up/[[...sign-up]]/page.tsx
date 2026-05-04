@@ -4,6 +4,7 @@ export default function SignUpPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#FDFDFD] px-4">
       <SignUp
+        forceRedirectUrl="/onboard"
         fallbackRedirectUrl="/onboard"
         appearance={{
           elements: {

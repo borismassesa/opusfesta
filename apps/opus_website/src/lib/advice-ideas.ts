@@ -71,6 +71,7 @@ export type AdviceIdeasAuthor = {
   role: string
   bio: string
   initials: string
+  avatarUrl?: string
 }
 
 export const adviceIdeasAuthors: Record<string, AdviceIdeasAuthor> = {

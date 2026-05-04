@@ -4,6 +4,7 @@ export default function SignInPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#FDFDFD] px-4">
       <SignIn
+        forceRedirectUrl="/dashboard"
         fallbackRedirectUrl="/dashboard"
         appearance={{
           elements: {

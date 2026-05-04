@@ -27,7 +27,7 @@ export function createSupabaseAdminClient(): SupabaseClient {
  * configured (e.g. running in keyless dev mode), `getToken` throws a 404. We
  * log a warning and fall back to an unauthenticated client so the portal
  * boots — RLS will return zero rows, and `getCurrentVendor` resolves to
- * `no-membership`, which the dashboard already handles gracefully.
+ * `no-application`, which the portal layout redirects to /pending.
  *
  * Production deployments **must** configure the JWT template — otherwise no
  * vendor will ever see their data.

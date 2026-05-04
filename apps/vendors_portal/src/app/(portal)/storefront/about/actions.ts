@@ -42,17 +42,18 @@ function validate(profile: DbProfile): string | null {
 }
 
 /**
- * Persist the wireable subset of the About page (business identity, bio,
- * address, contact, socials) to the vendors row. Other fields on the page
- * (firstName/lastName/languages/style/personality/markets/hours/etc.) are
- * Phase 5 schema work and remain on useOnboardingDraft for now.
+ * Stage the About-section subset of the vendor's storefront into
+ * `vendors.draft_content.about`. Live columns are NOT touched until the vendor
+ * hits **Publish** (see apps/vendors_portal/src/app/(portal)/storefront/actions.ts).
  *
- * Read-before-write preserves any unknown keys in the JSONB columns
- * (location, contact_info, social_links) so admin or future-schema fields
- * aren't silently wiped.
+ * The draft content matches the shape of the live-columns patch so publish can
+ * apply it directly. Read-before-write preserves any unknown keys in the
+ * existing draft (or live JSONB columns when no draft exists) — so other
+ * storefront sections' draft work isn't clobbered, and admin/future-schema
+ * fields outside this editor's surface aren't silently wiped.
  *
- * RLS via migration 056 limits write access to owner/manager. Staff role
- * calls return code 42501 → friendly permission message.
+ * RLS (migration 056) limits write access to owner/manager. Staff role
+ * → code 42501 → friendly permission message.
  */
 export async function saveProfile(input: DbProfile): Promise<SaveProfileResult> {
   const state = await getCurrentVendor()
@@ -63,7 +64,11 @@ export async function saveProfile(input: DbProfile): Promise<SaveProfileResult> 
       error:
         state.kind === 'no-env'
           ? 'Configuration error — please contact support.'
-          : 'You are not a member of any vendor team.',
+          : state.kind === 'pending-approval'
+            ? 'Your vendor application is awaiting OpusFesta verification.'
+            : state.kind === 'suspended'
+              ? 'Your vendor account is suspended. Contact OpusFesta support.'
+              : "You haven't started a vendor application yet.",
     }
   }
 
@@ -79,9 +84,9 @@ export async function saveProfile(input: DbProfile): Promise<SaveProfileResult> 
   const supabase = await createClerkSupabaseServerClient()
   const current = await supabase
     .from('vendors')
-    .select('business_name, years_in_business, bio, location, contact_info, social_links')
+    .select('business_name, years_in_business, bio, location, contact_info, social_links, draft_content')
     .eq('id', state.vendor.id)
-    .single<VendorRowFromDb>()
+    .single<VendorRowFromDb & { draft_content: Record<string, unknown> | null }>()
 
   if (current.error) {
     console.error('[storefront/about] read-before-write failed:', current.error)
@@ -109,33 +114,38 @@ export async function saveProfile(input: DbProfile): Promise<SaveProfileResult> 
     }
   }
 
-  const patch = profileToUpdatePatch(input, current.data)
+  // Build the same patch shape we'd apply on publish, then stash it under the
+  // 'about' key inside draft_content so other sections' drafts (packages,
+  // services, team, etc.) survive.
+  const aboutPatch = profileToUpdatePatch(input, current.data)
+  const existingDraft = current.data.draft_content ?? {}
+  const nextDraft = { ...existingDraft, about: aboutPatch }
 
   const { error } = await supabase
     .from('vendors')
-    .update(patch)
+    .update({ draft_content: nextDraft })
     .eq('id', state.vendor.id)
 
   if (error) {
-    console.error('[storefront/about] save failed:', error)
+    console.error('[storefront/about] save draft failed:', error)
     if (error.code === '42501' || /permission denied/i.test(error.message)) {
       return {
         ok: false,
         reason: 'permission',
-        error: 'You need owner or manager role to edit your profile.',
+        error: 'You need owner or manager role to edit your storefront.',
       }
     }
     if (error.code === '23514') {
       return {
         ok: false,
         reason: 'unknown',
-        error: 'Profile failed validation. Check field shapes.',
+        error: 'Draft failed validation. Check field shapes.',
       }
     }
     return {
       ok: false,
       reason: 'unknown',
-      error: 'Could not save profile. Please try again.',
+      error: 'Could not save draft. Please try again.',
     }
   }
 

@@ -3,6 +3,7 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
+import { StorefrontPublishBar } from './StorefrontPublishBar'
 
 export default function ListingLayout({ children }: { children: ReactNode }) {
   const { draft, hydrated } = useOnboardingDraft()
@@ -35,5 +36,10 @@ export default function ListingLayout({ children }: { children: ReactNode }) {
     )
   }
 
-  return <>{children}</>
+  return (
+    <>
+      <StorefrontPublishBar />
+      {children}
+    </>
+  )
 }

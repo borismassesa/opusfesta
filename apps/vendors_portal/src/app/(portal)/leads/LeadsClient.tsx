@@ -10,7 +10,9 @@ const TABS = ['Prospects', 'Inquiries', 'Conversations'] as const
 
 export type LeadsSource =
   | { kind: 'live' }
-  | { kind: 'no-membership' }
+  | { kind: 'no-application' }
+  | { kind: 'pending-approval' }
+  | { kind: 'suspended' }
   | { kind: 'no-env' }
 
 type LeadsClientProps = {
@@ -20,10 +22,14 @@ type LeadsClientProps = {
 
 const BANNER_BY_SOURCE: Record<LeadsSource['kind'], string | null> = {
   live: null,
-  'no-membership':
-    'You are not yet a member of any vendor team. Ask your team owner to invite you to access leads.',
+  'no-application':
+    "You haven't started a vendor application yet. Apply to do business on OpusFesta to receive leads.",
+  'pending-approval':
+    'Your vendor application is awaiting OpusFesta verification. Leads unlock once your account is approved.',
+  suspended:
+    'Your vendor account is suspended. Contact OpusFesta support if you believe this is a mistake.',
   'no-env':
-    'DEV: Supabase env vars missing — showing seed data. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local.',
+    'DEV: Vendor backend not connected — showing seed data. Check Supabase env vars and that migrations are applied to your Supabase project.',
 }
 
 export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
@@ -86,9 +92,13 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
               <ul className="flex-1 overflow-y-auto">
                 {inquiries.length === 0 ? (
                   <li className="px-5 py-10 text-center text-sm text-gray-400">
-                    {source.kind === 'no-membership'
-                      ? 'No vendor team yet.'
-                      : 'No inquiries yet.'}
+                    {source.kind === 'no-application'
+                      ? 'No vendor application yet.'
+                      : source.kind === 'pending-approval'
+                        ? 'Awaiting verification.'
+                        : source.kind === 'suspended'
+                          ? 'Account suspended.'
+                          : 'No inquiries yet.'}
                   </li>
                 ) : (
                   inquiries.map((row) => (

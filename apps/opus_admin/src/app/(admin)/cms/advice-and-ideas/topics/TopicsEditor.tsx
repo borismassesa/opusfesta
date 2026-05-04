@@ -12,7 +12,7 @@ import { useEditorActions } from '../EditorActionsContext'
 import { Card, Field, inputCls } from '../_ui'
 import { resolveMediaUrl } from '../_media'
 import { discardAdvicePageDraft, publishAdvicePage, saveAdvicePageDraft } from '../page-actions'
-import { uploadAdviceMedia } from '../posts/actions'
+import { uploadAdviceMedia } from '@/app/(admin)/operations/articles/actions'
 
 type Props = { initial: AdviceTopicsContent; hasDraft: boolean }
 

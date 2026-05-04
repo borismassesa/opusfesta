@@ -73,7 +73,7 @@ function FeatureBlockSection({ block }: { block: FeatureBlock }) {
         <div className="flex flex-wrap justify-center md:justify-start gap-3">
           <Link
             href={block.primary_cta_href}
-            className="bg-[#1A1A1A] hover:bg-[#333333] text-white px-6 py-3 rounded-full font-bold transition-colors text-sm sm:text-base"
+            className="bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 py-3 rounded-full font-bold transition-colors text-sm sm:text-base"
           >
             {block.primary_cta_label}
           </Link>

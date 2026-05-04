@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AlertTriangle,
@@ -11,11 +11,13 @@ import {
   ExternalLink,
   FileText,
   MapPin,
+  Save,
   ShieldCheck,
   Trash2,
   UploadCloud,
   XCircle,
 } from 'lucide-react'
+import { saveRecognition } from '../sections/actions'
 import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import {
   useOnboardingDraft,
@@ -126,6 +128,31 @@ export default function RecognitionPage() {
   const certificates = draft.awardCertificates
   const verifiedCount = certificates.filter((c) => c.status === 'verified').length
   const pendingCount = certificates.filter((c) => c.status === 'pending').length
+
+  const [saving, startSaving] = useTransition()
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveOk, setSaveOk] = useState(false)
+  const onSave = () => {
+    setSaveError(null)
+    setSaveOk(false)
+    startSaving(async () => {
+      const res = await saveRecognition({
+        awards: draft.awards ?? '',
+        responseTimeHours: draft.responseTimeHours ?? '',
+        locallyOwned: !!draft.locallyOwned,
+        languages: Array.isArray(draft.languages) ? draft.languages : [],
+        // Strip session-only File / blob refs from certificates before persisting
+        // so the JSONB stays clean. The shared `certificates` state already
+        // holds plain serialisable objects.
+        awardCertificates: certificates.map((c) => ({ ...c })),
+      })
+      if (!res.ok) {
+        setSaveError(res.error)
+        return
+      }
+      setSaveOk(true)
+    })
+  }
 
   const handleFile = (file: File | null) => {
     setPendingFile(file)
@@ -318,23 +345,38 @@ export default function RecognitionPage() {
         </div>
       </div>
 
-      {/* Sticky bottom bar — Next */}
+      {/* Sticky bottom bar — Save + Next */}
       <div className="sticky bottom-0 border-t border-gray-100 bg-white/95 backdrop-blur z-30">
-        <div className="px-6 lg:px-10 py-3 flex items-center justify-between gap-4">
-          <p className="text-xs text-gray-500">
+        <div className="px-6 lg:px-10 py-3 flex items-center justify-between gap-4 flex-wrap">
+          <div className="text-xs text-gray-500">
             <span className="font-semibold text-gray-900 tabular-nums">{verifiedCount}</span>{' '}
             verified ·{' '}
             <span className="font-semibold text-gray-900 tabular-nums">{pendingCount}</span>{' '}
             pending review
-          </p>
-          <button
-            type="button"
-            onClick={onNext}
-            className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
-          >
-            Next
-            <ArrowRight className="w-4 h-4" />
-          </button>
+            {saveError && <span className="ml-3 text-rose-700">{saveError}</span>}
+            {saveOk && !saveError && (
+              <span className="ml-3 text-emerald-700">Saved.</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
+            >
+              Next
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

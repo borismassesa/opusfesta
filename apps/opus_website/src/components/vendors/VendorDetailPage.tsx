@@ -80,6 +80,10 @@ function ratingLabel(rating: number): { text: string; color: string } {
 }
 
 function VendorHeader({ vendor, onSave, saved }: { vendor: Vendor; onSave: () => void; saved: boolean }) {
+  // A new vendor with zero reviews must not advertise a rating. Showing
+  // "0.0 / 0 reviews" is misleading; we hide the row entirely until the
+  // vendor has earned at least one review.
+  const hasReviews = vendor.reviewCount > 0
   return (
     <div>
       <div className="flex justify-between items-start mb-4">
@@ -87,25 +91,33 @@ function VendorHeader({ vendor, onSave, saved }: { vendor: Vendor; onSave: () =>
           <h1 className="text-4xl font-bold mb-2">{vendor.name}</h1>
           <p className="text-sm font-bold uppercase tracking-[0.16em] text-gray-400 mb-3">{vendor.category}</p>
           <div className="flex flex-col gap-1.5 text-sm">
-            <div className="flex items-center gap-1">
-              <div className="flex text-amber-400">
-                {[1, 2, 3, 4, 5].map((i) => (
-                  <Star
-                    key={i}
-                    className="w-4 h-4"
-                    fill={i <= Math.round(vendor.rating) ? 'currentColor' : 'none'}
-                  />
-                ))}
+            {hasReviews ? (
+              <div className="flex items-center gap-1">
+                <div className="flex text-amber-400">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star
+                      key={i}
+                      className="w-4 h-4"
+                      fill={i <= Math.round(vendor.rating) ? 'currentColor' : 'none'}
+                    />
+                  ))}
+                </div>
+                <span className="font-bold ml-1">{vendor.rating.toFixed(1)}</span>
+                <span className={`ml-1.5 text-xs font-bold ${ratingLabel(vendor.rating).color}`}>{ratingLabel(vendor.rating).text}</span>
+                <span className="text-gray-500 mx-1">·</span>
+                <a href="#vendor-reviews" className="underline font-medium">
+                  {vendor.reviewCount} {vendor.reviewCount === 1 ? 'review' : 'reviews'}
+                </a>
               </div>
-              <span className="font-bold ml-1">{vendor.rating.toFixed(1)}</span>
-              <span className={`ml-1.5 text-xs font-bold ${ratingLabel(vendor.rating).color}`}>{ratingLabel(vendor.rating).text}</span>
-              <span className="text-gray-500 mx-1">·</span>
-              <a href="#vendor-reviews" className="underline font-medium">{vendor.reviewCount} reviews</a>
-            </div>
-            <div className="flex items-center gap-1 text-gray-600">
-              <MapPin className="w-4 h-4" />
-              <span>{vendor.city}</span>
-            </div>
+            ) : (
+              <div className="text-xs text-gray-500 italic">No reviews yet</div>
+            )}
+            {vendor.city && (
+              <div className="flex items-center gap-1 text-gray-600">
+                <MapPin className="w-4 h-4" />
+                <span>{vendor.city}</span>
+              </div>
+            )}
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -212,15 +224,29 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
       <div className="flex flex-col md:flex-row gap-8">
         {/* Vendor profile card */}
         <div className="w-full md:w-[200px] shrink-0 flex flex-col items-center text-center gap-3">
-          {/* Circular avatar */}
-          <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-white shadow-md shrink-0">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={vendor.team?.[0]?.avatar ?? vendor.heroMedia.src}
-              alt={vendor.name}
-              className="h-full w-full object-cover"
-            />
-          </div>
+          {/* Circular avatar — show only a real uploaded image (team avatar
+              or hero). Fall back to initials when neither exists rather than
+              borrowing media from elsewhere. */}
+          {(() => {
+            const avatarSrc =
+              (vendor.team?.[0]?.avatar && vendor.team[0].avatar.trim() !== '')
+                ? vendor.team[0].avatar
+                : vendor.heroMedia.src && vendor.heroMedia.src.trim() !== ''
+                  ? vendor.heroMedia.src
+                  : null
+            return (
+              <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-white shadow-md shrink-0 bg-gray-100 flex items-center justify-center">
+                {avatarSrc ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={avatarSrc} alt={vendor.name} className="h-full w-full object-cover" />
+                ) : (
+                  <span className="text-3xl font-semibold text-gray-500">
+                    {(vendor.name || '?').slice(0, 2).toUpperCase()}
+                  </span>
+                )}
+              </div>
+            )
+          })()}
           {/* Name + role */}
           <div>
             <p className="font-bold text-[#1A1A1A] leading-snug">{vendor.name}</p>
@@ -228,45 +254,44 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
               {vendor.team?.[0]?.role ?? vendor.category}
             </p>
           </div>
-          {/* Social icons */}
-          <div className="flex items-center gap-3">
-            {/* Instagram */}
-            <a href={vendor.socialLinks?.instagram ?? '#'} aria-label="Instagram" className="transition-opacity hover:opacity-75">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <defs>
-                  <radialGradient id="ig-grad-profile" cx="30%" cy="107%" r="150%">
-                    <stop offset="0%" stopColor="#fdf497"/>
-                    <stop offset="5%" stopColor="#fdf497"/>
-                    <stop offset="45%" stopColor="#fd5949"/>
-                    <stop offset="60%" stopColor="#d6249f"/>
-                    <stop offset="90%" stopColor="#285AEB"/>
-                  </radialGradient>
-                </defs>
-                <rect x="2" y="2" width="20" height="20" rx="5.5" ry="5.5" fill="url(#ig-grad-profile)"/>
-                <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="1.8" fill="none"/>
-                <circle cx="17.5" cy="6.5" r="1.2" fill="white"/>
-              </svg>
-            </a>
-            {/* Facebook */}
-            <a href={vendor.socialLinks?.facebook ?? '#'} aria-label="Facebook" className="transition-opacity hover:opacity-75">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" aria-hidden="true">
-                <rect width="24" height="24" rx="5" fill="#1877F2"/>
-                <path d="M15.12 13H13v7h-2.88v-7H8.5v-2.5h1.62v-1.5c0-2.2 1.3-3.5 3.28-3.5.94 0 1.93.17 1.93.17V8H14.1c-1.07 0-1.4.67-1.4 1.35V10.5h2.38L14.77 13h-.01z" fill="white"/>
-              </svg>
-            </a>
-            {/* TikTok */}
-            <a href="#" aria-label="TikTok" className="transition-opacity hover:opacity-75">
-              <svg className="w-6 h-6" viewBox="0 0 24 24" aria-hidden="true">
-                <rect width="24" height="24" rx="5" fill="#010101"/>
-                <path d="M17.3 8.1a4.1 4.1 0 0 1-2.5-1.3 4.1 4.1 0 0 1-.9-2.8h-2.3v9.4a2 2 0 0 1-2 1.8 2 2 0 0 1-2-2 2 2 0 0 1 2-2c.2 0 .4 0 .6.1V9a4.3 4.3 0 0 0-.6 0 4.35 4.35 0 0 0-4.35 4.35 4.35 4.35 0 0 0 4.35 4.35 4.35 4.35 0 0 0 4.35-4.35V9.6a6.4 6.4 0 0 0 3.6 1.1V8.4a4.12 4.12 0 0 1-.86-.3z" fill="white"/>
-                <path d="M14.8 6.8a4.1 4.1 0 0 0 .9 2.8 4.1 4.1 0 0 0 .77.53 4.12 4.12 0 0 1-.77-.53 4.1 4.1 0 0 1-.9-2.8z" fill="#69C9D0"/>
-              </svg>
-            </a>
-            {/* Website */}
-            <a href={vendor.socialLinks?.website ?? '#'} aria-label="Website" className="transition-opacity hover:opacity-75">
-              <Globe className="w-6 h-6 text-gray-400" />
-            </a>
-          </div>
+          {/* Social icons — render only the ones the vendor actually
+              provided. Empty links would dead-end on '#' and falsely imply
+              the vendor has a profile on every network. */}
+          {(vendor.socialLinks?.instagram || vendor.socialLinks?.facebook || vendor.socialLinks?.website) && (
+            <div className="flex items-center gap-3">
+              {vendor.socialLinks?.instagram && (
+                <a href={vendor.socialLinks.instagram} aria-label="Instagram" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-75">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <defs>
+                      <radialGradient id="ig-grad-profile" cx="30%" cy="107%" r="150%">
+                        <stop offset="0%" stopColor="#fdf497"/>
+                        <stop offset="5%" stopColor="#fdf497"/>
+                        <stop offset="45%" stopColor="#fd5949"/>
+                        <stop offset="60%" stopColor="#d6249f"/>
+                        <stop offset="90%" stopColor="#285AEB"/>
+                      </radialGradient>
+                    </defs>
+                    <rect x="2" y="2" width="20" height="20" rx="5.5" ry="5.5" fill="url(#ig-grad-profile)"/>
+                    <circle cx="12" cy="12" r="4.5" stroke="white" strokeWidth="1.8" fill="none"/>
+                    <circle cx="17.5" cy="6.5" r="1.2" fill="white"/>
+                  </svg>
+                </a>
+              )}
+              {vendor.socialLinks?.facebook && (
+                <a href={vendor.socialLinks.facebook} aria-label="Facebook" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-75">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect width="24" height="24" rx="5" fill="#1877F2"/>
+                    <path d="M15.12 13H13v7h-2.88v-7H8.5v-2.5h1.62v-1.5c0-2.2 1.3-3.5 3.28-3.5.94 0 1.93.17 1.93.17V8H14.1c-1.07 0-1.4.67-1.4 1.35V10.5h2.38L14.77 13h-.01z" fill="white"/>
+                  </svg>
+                </a>
+              )}
+              {vendor.socialLinks?.website && (
+                <a href={vendor.socialLinks.website} aria-label="Website" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-75">
+                  <Globe className="w-6 h-6 text-gray-400" />
+                </a>
+              )}
+            </div>
+          )}
           {/* CTA */}
           <button className="w-full py-2.5 rounded-full bg-[#1A1A1A] text-white font-semibold text-sm hover:bg-[#333] transition-colors">
             Message Vendor
@@ -329,6 +354,18 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
               <div className="flex items-center gap-2">
                 <UserCheck size={13} className="shrink-0 text-gray-400" />
                 <span>{vendor.capacity.min}–{vendor.capacity.max} guests</span>
+              </div>
+            )}
+            {vendor.style && (
+              <div className="flex items-center gap-2">
+                <Sparkles size={13} className="shrink-0 text-gray-400" />
+                <span>{vendor.style} style</span>
+              </div>
+            )}
+            {vendor.personality && (
+              <div className="flex items-center gap-2">
+                <Heart size={13} className="shrink-0 text-gray-400" />
+                <span>{vendor.personality} energy</span>
               </div>
             )}
           </div>
@@ -671,6 +708,37 @@ function WriteReviewModal({ vendor, onClose }: { vendor: Vendor; onClose: () => 
   const [weddingDate, setWeddingDate] = useState('')
   const [photos, setPhotos] = useState<File[]>([])
   const [submitted, setSubmitted] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  const handleSubmit = async () => {
+    setSubmitError(null)
+    setSubmitting(true)
+    try {
+      const { submitVendorReview } = await import(
+        '@/app/vendors/[slug]/review-actions'
+      )
+      const res = await submitVendorReview({
+        vendorSlug: vendor.slug,
+        authorName: `${firstName.trim()} ${lastName.trim()}`.trim(),
+        authorEmail: email.trim(),
+        rating,
+        body: reviewText.trim(),
+        weddingDate: weddingDate || null,
+      })
+      if (!res.ok) {
+        setSubmitError(res.error)
+        return
+      }
+      setSubmitted(true)
+    } catch (err) {
+      setSubmitError(
+        err instanceof Error ? err.message : 'Could not submit your review.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
+  }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -912,7 +980,9 @@ function WriteReviewModal({ vendor, onClose }: { vendor: Vendor; onClose: () => 
               </div>
               <div className="space-y-2">
                 <h2 className="text-2xl font-black text-[#1A1A1A]">Thank you!</h2>
-                <p className="text-sm text-gray-500 max-w-xs mx-auto leading-relaxed">Your review has been submitted. It helps other couples make confident decisions when choosing their vendors.</p>
+                <p className="text-sm text-gray-500 max-w-xs mx-auto leading-relaxed">
+                  Your review is in our moderation queue. Once our team verifies it, it&rsquo;ll appear publicly on this profile.
+                </p>
               </div>
               <button
                 onClick={onClose}
@@ -946,12 +1016,20 @@ function WriteReviewModal({ vendor, onClose }: { vendor: Vendor; onClose: () => 
                   Continue
                 </button>
               ) : (
-                <button
-                  onClick={() => setSubmitted(true)}
-                  className="rounded-full bg-[#1A1A1A] px-8 py-3 text-sm font-bold text-white hover:bg-black/80 transition-colors shadow-sm hover:shadow-md"
-                >
-                  Submit review
-                </button>
+                <div className="flex flex-col items-end gap-1.5">
+                  <button
+                    onClick={handleSubmit}
+                    disabled={submitting}
+                    className="rounded-full bg-[#1A1A1A] px-8 py-3 text-sm font-bold text-white hover:bg-black/80 transition-colors shadow-sm hover:shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  >
+                    {submitting ? 'Submitting…' : 'Submit review'}
+                  </button>
+                  {submitError && (
+                    <p className="text-xs text-rose-700 max-w-xs text-right">
+                      {submitError}
+                    </p>
+                  )}
+                </div>
               )}
             </div>
           </div>
@@ -974,11 +1052,39 @@ function ReviewText({ text }: { text: string }) {
 
 function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
   const allReviews = vendor.detailedReviews ?? []
+  // Hooks must be called unconditionally — keep them before the early
+  // return below.
   const [sortBy, setSortBy] = useState<'top' | 'recent'>('top')
   const [filterStar, setFilterStar] = useState<number | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
   const [visible, setVisible] = useState(PAGE_SIZE)
   const [showReviewModal, setShowReviewModal] = useState(false)
+
+  // No reviews yet — render an empty state instead of pretending the vendor
+  // has a 0.0/5 rating across 0 reviews. The "Write a review" button stays so
+  // future couples can still leave the first review.
+  if (allReviews.length === 0 && vendor.reviewCount === 0) {
+    return (
+      <section id="vendor-reviews" className="scroll-mt-28 border-t border-gray-200 pt-12">
+        <h2 className="text-2xl font-bold mb-6">Reviews</h2>
+        <div className="rounded-2xl border border-dashed border-gray-200 p-10 text-center">
+          <p className="text-sm font-semibold text-gray-700">No reviews yet</p>
+          <p className="text-xs text-gray-500 mt-1">
+            Be the first couple to share your experience with {vendor.name}.
+          </p>
+          <button
+            onClick={() => setShowReviewModal(true)}
+            className="mt-4 rounded-full bg-(--accent) px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-(--accent-hover) transition-colors"
+          >
+            Write a review
+          </button>
+        </div>
+        {showReviewModal && (
+          <WriteReviewModal vendor={vendor} onClose={() => setShowReviewModal(false)} />
+        )}
+      </section>
+    )
+  }
 
   const avg = allReviews.length
     ? allReviews.reduce((s, r) => s + r.rating, 0) / allReviews.length
@@ -1561,11 +1667,60 @@ function MiniCalendar({
   )
 }
 
+// Vendor's weekly operating hours. Driven by `vendor.hours`; hidden when
+// the vendor hasn't supplied them. Days are listed Mon–Sun with closed
+// days clearly marked.
+function VendorHoursSection({ vendor }: { vendor: Vendor }) {
+  if (!vendor.hours) return null
+  const days: Array<{ key: keyof NonNullable<Vendor['hours']>; label: string }> = [
+    { key: 'mon', label: 'Monday' },
+    { key: 'tue', label: 'Tuesday' },
+    { key: 'wed', label: 'Wednesday' },
+    { key: 'thu', label: 'Thursday' },
+    { key: 'fri', label: 'Friday' },
+    { key: 'sat', label: 'Saturday' },
+    { key: 'sun', label: 'Sunday' },
+  ]
+  const entries = days
+    .map((d) => ({ ...d, value: vendor.hours?.[d.key] }))
+    .filter((d) => d.value)
+  if (entries.length === 0) return null
+  return (
+    <section id="vendor-hours" className="scroll-mt-28 border-t border-gray-200 pt-12">
+      <div className="mb-6">
+        <h2 className="text-2xl font-bold">Hours of operation</h2>
+        <p className="mt-1 text-sm text-gray-500">
+          When {vendor.name} is available for consultations and events.
+        </p>
+      </div>
+      <ul className="rounded-2xl border border-gray-200 overflow-hidden divide-y divide-gray-100 bg-white">
+        {entries.map(({ key, label, value }) => (
+          <li key={key} className="flex items-center justify-between px-4 py-3 text-sm">
+            <span className="text-gray-700 font-medium">{label}</span>
+            <span className="font-mono tabular-nums text-gray-900">
+              {value!.open
+                ? `${value!.from || '—'} – ${value!.to || '—'}`
+                : <span className="text-gray-400 italic">Closed</span>}
+            </span>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
 function VendorAvailabilitySection({ vendor }: { vendor: Vendor }) {
-  const avail = vendor.availability ?? generateAvailability(vendor.id)
+  // Hooks must run unconditionally — keep them above the early return below.
   const [monthOffset, setMonthOffset]   = useState(0)
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [statusMsg, setStatusMsg]       = useState<{ text: string; warn: boolean } | null>(null)
+
+  // Hide the calendar entirely when the vendor hasn't posted real
+  // availability. The legacy `generateAvailability` synthesises booked /
+  // limited dates from the vendor id, which is not honest data — couples
+  // would book against a fictional calendar.
+  if (!vendor.availability) return null
+  const avail = vendor.availability
 
   const now = new Date()
   const bookedSet = new Set(avail?.bookedDates ?? [])
@@ -1808,6 +1963,12 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
   const leftColumnRef = useRef<HTMLDivElement>(null)
   const tabsRailRef = useRef<HTMLDivElement>(null)
   const tabsHeightRef = useRef(0)
+  // Mirror sidebarStopped / tabsStopped into refs so the layout effect can
+  // read the latest value (and apply hysteresis) without re-registering the
+  // ResizeObserver. Reading state from React closure inside the effect would
+  // capture a stale value.
+  const sidebarStoppedRef = useRef(false)
+  const tabsStoppedRef = useRef(false)
   const sidebarColumnRef = useRef<HTMLDivElement>(null)
   const sidebarCardRef = useRef<HTMLDivElement>(null)
   const reviewsSentinelRef = useRef<HTMLDivElement>(null)
@@ -1904,10 +2065,23 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
         && prev.height === nextSidebarFrame.height
       ) ? prev : nextSidebarFrame)
 
+      // Hysteresis: when the sidebar / tabs cross their "stop" threshold, the
+      // resulting layout change can shift the measured boundary back across
+      // the threshold on the very next frame, producing an infinite render
+      // loop ("Maximum update depth"). We add a small dead-band so the state
+      // only flips once the measurement is clearly past the boundary,
+      // breaking the oscillation cycle.
+      const HYSTERESIS_PX = 24
       if (reviewsSentinel && nextIsDesktop) {
         const sentinelTop = reviewsSentinel.getBoundingClientRect().top
-        const nextSidebarStopped = nextTabsSticky && sentinelTop <= 24 + sidebarCard.offsetHeight
-        setSidebarStopped((prev) => (prev === nextSidebarStopped ? prev : nextSidebarStopped))
+        const stopBoundary = 24 + sidebarCard.offsetHeight
+        const nextSidebarStopped = sidebarStoppedRef.current
+          ? nextTabsSticky && sentinelTop <= stopBoundary + HYSTERESIS_PX
+          : nextTabsSticky && sentinelTop <= stopBoundary - HYSTERESIS_PX
+        if (nextSidebarStopped !== sidebarStoppedRef.current) {
+          sidebarStoppedRef.current = nextSidebarStopped
+          setSidebarStopped(nextSidebarStopped)
+        }
       }
 
       // Cache tabs height while the rail is mounted so the value survives when tabs unmount
@@ -1916,8 +2090,14 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
       const locationEl = document.getElementById('vendor-location')
       if (locationEl && nextIsDesktop) {
         const locationTop = locationEl.getBoundingClientRect().top
-        const nextTabsStopped = nextTabsSticky && locationTop <= tabsHeightRef.current
-        setTabsStopped((prev) => (prev === nextTabsStopped ? prev : nextTabsStopped))
+        const tabsStopBoundary = tabsHeightRef.current
+        const nextTabsStopped = tabsStoppedRef.current
+          ? nextTabsSticky && locationTop <= tabsStopBoundary + HYSTERESIS_PX
+          : nextTabsSticky && locationTop <= tabsStopBoundary - HYSTERESIS_PX
+        if (nextTabsStopped !== tabsStoppedRef.current) {
+          tabsStoppedRef.current = nextTabsStopped
+          setTabsStopped(nextTabsStopped)
+        }
       }
     }
 
@@ -1944,7 +2124,17 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
       resizeObserver.disconnect()
     }
   }, [])
-  const images = vendor.gallery?.length ? vendor.gallery : [vendor.heroMedia.src]
+  // Gallery sources, filtered to only real image URLs. A fresh vendor that
+  // hasn't uploaded any media has no gallery and an empty hero src — we treat
+  // that as zero images and let the render layer show a "no media uploaded"
+  // placeholder instead of an <img src=""> (which Next.js warns about).
+  const images: string[] = (() => {
+    const fromGallery = (vendor.gallery ?? []).filter((s): s is string => typeof s === 'string' && s.trim() !== '')
+    if (fromGallery.length > 0) return fromGallery
+    if (vendor.heroMedia.src && vendor.heroMedia.src.trim() !== '') return [vendor.heroMedia.src]
+    return []
+  })()
+  const hasMedia = images.length > 0 || vendor.heroMedia.type === 'video'
   const videos = vendor.heroMedia.type === 'video'
     ? [{ src: vendor.heroMedia.src, poster: vendor.heroMedia.poster ?? images[0] }]
     : []
@@ -2089,7 +2279,21 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
       {/* ─── Bento gallery ───────────────────────────────────── */}
       <div ref={galleryRef} className="px-4 pt-4 sm:px-6 sm:pt-5 lg:px-8">
         <div className="mx-auto max-w-7xl">
-          {/* Mobile: single image. Desktop: flat 3-col × 2-row grid, left spans both rows */}
+          {!hasMedia ? (
+            // Empty state: vendor hasn't uploaded any media yet. Show a
+            // neutral placeholder with their name + initials instead of a
+            // synthesised stock photo.
+            <div className="h-[240px] sm:h-[420px] md:h-[480px] rounded-lg bg-gray-100 flex flex-col items-center justify-center border border-dashed border-gray-300">
+              <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center text-2xl font-semibold text-gray-500 mb-3 border border-gray-200">
+                {(vendor.name || '?').slice(0, 2).toUpperCase()}
+              </div>
+              <p className="text-sm font-semibold text-gray-700">{vendor.name}</p>
+              <p className="text-xs text-gray-500 mt-1">
+                This vendor hasn&rsquo;t uploaded photos yet.
+              </p>
+            </div>
+          ) : (
+          /* Mobile: single image. Desktop: flat 3-col × 2-row grid, left spans both rows */
           <div className="h-[240px] overflow-hidden rounded-lg sm:h-[420px] md:h-[480px]
                           grid grid-cols-1
                           sm:grid-cols-[2fr_0.95fr_0.95fr] lg:grid-cols-[2.4fr_0.8fr_0.8fr] sm:grid-rows-2 sm:gap-1.5">
@@ -2167,6 +2371,7 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 
@@ -2202,6 +2407,7 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
               <VendorAboutSection vendor={vendor} />
               <VendorServicesSection vendor={vendor} />
               <VendorPricingSection vendor={vendor} />
+              <VendorHoursSection vendor={vendor} />
               <VendorAvailabilitySection vendor={vendor} />
               <VendorTeamSection vendor={vendor} />
               <VendorFaqSection vendor={vendor} />

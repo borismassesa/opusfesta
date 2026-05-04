@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { getActiveMarketplaceVendors } from '@/lib/vendors-db'
 import type { Vendor } from '@/lib/vendors'
 import { vendors as seedVendors, vendorCategories } from '@/lib/vendors'
 
@@ -81,9 +82,19 @@ function rowToVendor(row: VendorRow): Vendor {
 }
 
 /**
- * Load all published vendors from Supabase, falling back to the static seed if
- * Supabase is unavailable or returns nothing. Returned list is pre-enriched at
- * the CMS layer — no need for the `enrichVendor` procedural generator.
+ * Load all browsable vendors for the public listing/search.
+ *
+ * Two sources are merged because the platform has historically maintained
+ * a curated CMS table (`website_vendors`) populated with hand-tuned demo
+ * content, and now also has a self-serve onboarding flow that writes to the
+ * marketplace `vendors` table. A vendor approved through admin review lives
+ * only in `vendors` — without this merge, browsing by name/category would
+ * miss them entirely.
+ *
+ * Precedence: `website_vendors` content wins where a slug exists in both,
+ * because the CMS row carries hand-tuned hero media, gallery, ratings, etc.
+ * Newly approved marketplace vendors (no CMS row yet) are appended at the
+ * end with whatever data the storefront editor has populated.
  */
 export async function loadVendorsFromSupabase(): Promise<Vendor[]> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -91,15 +102,32 @@ export async function loadVendorsFromSupabase(): Promise<Vendor[]> {
   }
   try {
     const supabase = createSupabaseServerClient()
-    const { data, error } = await supabase
-      .from('website_vendors')
-      .select('*')
-      .eq('published', true)
-      .order('featured', { ascending: false })
-      .order('rating', { ascending: false, nullsFirst: false })
-      .order('name', { ascending: true })
-    if (error || !data || data.length === 0) return seedVendors
-    return (data as VendorRow[]).map(rowToVendor)
+    const [websiteRes, marketplaceVendors] = await Promise.all([
+      supabase
+        .from('website_vendors')
+        .select('*')
+        .eq('published', true)
+        .order('featured', { ascending: false })
+        .order('rating', { ascending: false, nullsFirst: false })
+        .order('name', { ascending: true }),
+      getActiveMarketplaceVendors(),
+    ])
+
+    const websiteVendors =
+      websiteRes.error || !websiteRes.data
+        ? []
+        : (websiteRes.data as VendorRow[]).map(rowToVendor)
+
+    if (websiteVendors.length === 0 && marketplaceVendors.length === 0) {
+      return seedVendors
+    }
+
+    const slugsCovered = new Set(websiteVendors.map((v) => v.slug))
+    const marketplaceOnly = marketplaceVendors.filter(
+      (v) => !slugsCovered.has(v.slug),
+    )
+
+    return [...websiteVendors, ...marketplaceOnly]
   } catch {
     return seedVendors
   }

@@ -3,10 +3,17 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowRight, Check, Pencil, Star } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowRight,
+  Check,
+  Clock,
+  Pencil,
+  Star,
+} from 'lucide-react'
 import { OnboardShell } from '@/components/onboard/OnboardShell'
-import { PrimaryButton } from '@/components/onboard/PrimaryButton'
 import { Confetti } from '@/components/onboard/Confetti'
+import Logo from '@/components/ui/Logo'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { SERVICE_MARKETS, TZ_REGIONS } from '@/lib/onboarding/regions'
@@ -16,6 +23,7 @@ import { PERSONALITY_OPTIONS } from '@/lib/onboarding/personality'
 import { LANGUAGES } from '@/lib/onboarding/languages'
 import { CANCELLATION_OPTIONS, RESCHEDULE_OPTIONS } from '@/lib/onboarding/policies'
 import { LIPA_NAMBA_NETWORKS, PAYOUT_OPTIONS } from '@/lib/onboarding/payouts'
+import { submitApplication } from '@/lib/onboarding/submit'
 
 function formatTZS(raw: string) {
   if (!raw) return ''
@@ -30,6 +38,7 @@ export default function ReviewPage() {
   const category = findCategory(draft.categoryId)
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!hydrated) return
@@ -75,13 +84,18 @@ export default function ReviewPage() {
 
   const onSubmit = async () => {
     setSubmitting(true)
-    await new Promise((r) => setTimeout(r, 600))
-    update({ submittedAt: new Date().toISOString() })
+    setSubmitError(null)
+    const result = await submitApplication(draft)
     setSubmitting(false)
+    if (!result.ok) {
+      setSubmitError(result.error)
+      return
+    }
+    update({ submittedAt: new Date().toISOString() })
     setSubmitted(true)
   }
 
-  const onFinish = () => router.push('/storefront')
+  const onContinueToVerify = () => router.push('/verify')
 
   const startingPrice =
     draft.startingPrice ||
@@ -100,30 +114,54 @@ export default function ReviewPage() {
   const popularIndex = draft.packages.length === 3 ? 1 : -1
 
   if (submitted) {
+    // Pure celebration moment — single CTA forward. We deliberately don't
+    // re-list "what's next" or "what we have on file" here; both surfaces
+    // already exist on /verify (action) and /pending (status) and the vendor
+    // sees them seconds later. Showing the same lists twice in a row is
+    // exactly what the cleanup PR is removing.
     return (
-      <OnboardShell step="review" profileLabel={category?.profileLabel ?? 'Vendor'} showBack={false}>
+      <div className="min-h-screen bg-gradient-to-b from-[#FBF7FC] via-[#FDFDFD] to-[#FDFDFD] flex flex-col">
         <Confetti active={submitted} />
-        <div className="max-w-xl mx-auto py-12 text-center">
-          <div
-            className="flex items-end justify-center gap-3 leading-none"
-            aria-hidden
-          >
-            <span className="text-3xl translate-y-1 rotate-[-8deg]">💍</span>
-            <span className="text-5xl">🎉</span>
-            <span className="text-3xl translate-y-1 rotate-[8deg]">🥂</span>
+        <header className="px-6 sm:px-10 py-5 border-b border-gray-100/80 bg-white/70 backdrop-blur">
+          <Link href="/" aria-label="OpusFesta home" className="inline-block">
+            <Logo className="h-7 w-auto" />
+          </Link>
+        </header>
+
+        <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-16">
+          <div className="max-w-xl w-full text-center">
+            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-200">
+              <Check className="w-3 h-3" strokeWidth={3} />
+              Application complete
+            </span>
+            <h1 className="mt-5 text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]">
+              You&rsquo;re in. Let&rsquo;s verify your business.
+            </h1>
+            <p className="mt-4 text-base text-gray-600 leading-relaxed max-w-md mx-auto">
+              Your application is submitted. A couple more documents and our
+              team can approve your storefront — usually 2–3 business days.
+            </p>
+            <button
+              type="button"
+              onClick={onContinueToVerify}
+              className="group mt-8 inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px"
+            >
+              Continue to verification
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            </button>
+            <p className="mt-3 text-xs text-gray-500">
+              Or{' '}
+              <Link
+                href="/pending"
+                className="font-semibold text-gray-700 hover:text-gray-900 underline underline-offset-2"
+              >
+                save and continue later
+              </Link>{' '}
+              — we&rsquo;ll email you a reminder.
+            </p>
           </div>
-          <h1 className="text-3xl font-semibold tracking-tight mt-6 text-gray-900">
-            You’re in! Storefront submitted.
-          </h1>
-          <p className="mt-3 text-gray-600 max-w-md mx-auto">
-            Your storefront is now in review. We’ll email you once it’s live on OpusFesta — usually
-            within one business day.
-          </p>
-          <PrimaryButton onClick={onFinish} className="mt-8">
-            Go to my storefront
-          </PrimaryButton>
-        </div>
-      </OnboardShell>
+        </main>
+      </div>
     )
   }
 
@@ -301,24 +339,46 @@ export default function ReviewPage() {
 
       {/* Sticky submit footer */}
       <div className="sticky bottom-0 -mx-6 lg:-mx-12 mt-16 bg-white/95 backdrop-blur border-t border-gray-200 px-6 lg:px-12 py-4">
-        <div className="max-w-3xl mx-auto flex items-center justify-between gap-4 flex-wrap">
-          <p className="text-sm text-gray-600">
-            <span className="text-gray-900 font-semibold">Ready when you are.</span> We’ll review
-            and email you within one business day.
-          </p>
-          <button
-            type="button"
-            onClick={onSubmit}
-            disabled={submitting}
-            className="inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold px-6 py-3 rounded-full transition-colors"
-          >
-            {submitting ? 'Submitting…' : (
-              <>
-                Submit for review
-                <ArrowRight className="w-4 h-4" />
-              </>
-            )}
-          </button>
+        <div className="max-w-3xl mx-auto">
+          {submitError ? (
+            <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+              <p className="text-xs text-rose-800 leading-relaxed">
+                {submitError}
+              </p>
+            </div>
+          ) : null}
+          <div className="flex items-center gap-6">
+            <p className="flex-1 min-w-0 text-sm text-gray-600 leading-relaxed">
+              <span className="text-gray-900 font-semibold">
+                Ready when you are.
+              </span>{' '}
+              <span className="hidden sm:inline">
+                Once you submit, we&rsquo;ll ask for a couple of documents to
+                verify your business.
+              </span>
+            </p>
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={submitting}
+              className={
+                'group shrink-0 inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px disabled:shadow-none disabled:hover:translate-y-0'
+              }
+            >
+              {submitting ? (
+                <>
+                  <Clock className="w-4 h-4 animate-pulse" />
+                  Submitting…
+                </>
+              ) : (
+                <>
+                  Submit application
+                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
     </OnboardShell>
@@ -424,3 +484,4 @@ function PackageRow({
     </div>
   )
 }
+

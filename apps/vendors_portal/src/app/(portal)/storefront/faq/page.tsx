@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { useState, useTransition } from 'react'
+import { Plus, Save, Trash2 } from 'lucide-react'
 import { FieldLabel, TextArea, TextInput } from '@/components/onboard/FormField'
 import { useOnboardingDraft, type FAQItem } from '@/lib/onboarding/draft'
+import { saveFaqs } from '../sections/actions'
 
 const SUGGESTED_QUESTIONS = [
   'How early should we book you?',
@@ -49,6 +50,26 @@ export default function ListingFAQPage() {
   const availableSuggestions = SUGGESTED_QUESTIONS.filter(
     (q) => !usedSuggestions.has(q),
   )
+
+  const [saving, startSaving] = useTransition()
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveOk, setSaveOk] = useState(false)
+  const completeFaqs = faqs.filter((f) => f.question.trim() && f.answer.trim()).length
+
+  const onSave = () => {
+    setSaveError(null)
+    setSaveOk(false)
+    startSaving(async () => {
+      const res = await saveFaqs(
+        faqs.map((f) => ({ id: f.id, question: f.question, answer: f.answer })),
+      )
+      if (!res.ok) {
+        setSaveError(res.error)
+        return
+      }
+      setSaveOk(true)
+    })
+  }
 
   return (
     <div className="px-6 lg:px-10 pt-4 lg:pt-5 pb-32">
@@ -129,6 +150,29 @@ export default function ListingFAQPage() {
             </div>
           )}
         </section>
+      </div>
+
+      {/* Persist to DB so admin + public profile pick up the answers. */}
+      <div className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white/95 backdrop-blur z-30">
+        <div className="mx-auto max-w-4xl px-6 lg:px-10 py-3 flex items-center justify-between gap-4 flex-wrap">
+          <div className="text-xs text-gray-500">
+            <span className="font-semibold text-gray-900 tabular-nums">{completeFaqs}</span>{' '}
+            complete · {faqs.length} total
+            {saveError && <span className="ml-3 text-rose-700">{saveError}</span>}
+            {saveOk && !saveError && (
+              <span className="ml-3 text-emerald-700">Saved.</span>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={saving}
+            className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 disabled:opacity-50 transition-colors"
+          >
+            <Save className="w-3.5 h-3.5" />
+            {saving ? 'Saving…' : 'Save FAQs'}
+          </button>
+        </div>
       </div>
     </div>
   )

@@ -1,23 +1,25 @@
-'use client'
-
 import type { ReactNode } from 'react'
-import { usePathname } from 'next/navigation'
-import { Sidebar } from '@/components/Sidebar'
-import { Header } from '@/components/Header'
-import { StorefrontSidebar } from '@/components/storefront/StorefrontSidebar'
+import { redirect } from 'next/navigation'
+import { getCurrentVendor } from '@/lib/vendor'
+import PortalShell from './PortalShell'
 
-export default function PortalLayout({ children }: { children: ReactNode }) {
-  const pathname = usePathname()
-  const isStorefront = pathname.startsWith('/storefront')
+export default async function PortalLayout({
+  children,
+}: {
+  children: ReactNode
+}) {
+  const state = await getCurrentVendor()
 
-  return (
-    <div className="flex h-screen bg-[#FDFDFD] font-sans antialiased text-gray-900">
-      <Sidebar />
-      {isStorefront ? <StorefrontSidebar /> : null}
-      <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
-      </div>
-    </div>
-  )
+  // Gate the portal shell behind admin approval. Only `live` vendors reach the
+  // dashboard; everyone else funnels through /pending which shows exactly which
+  // verification gate they're at.
+  if (
+    state.kind === 'no-application' ||
+    state.kind === 'pending-approval' ||
+    state.kind === 'suspended'
+  ) {
+    redirect('/pending')
+  }
+
+  return <PortalShell>{children}</PortalShell>
 }

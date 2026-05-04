@@ -161,9 +161,27 @@ async function loadDashboard(): Promise<{
     }
   }
 
-  if (state.kind === 'no-membership') {
+  if (state.kind === 'no-application') {
     return {
-      source: { kind: 'no-membership' },
+      source: { kind: 'no-application' },
+      completion: [],
+      leadStats: [],
+      recentInquiries: [],
+    }
+  }
+
+  if (state.kind === 'pending-approval') {
+    return {
+      source: { kind: 'pending-approval', vendorName: state.vendorName },
+      completion: [],
+      leadStats: [],
+      recentInquiries: [],
+    }
+  }
+
+  if (state.kind === 'suspended') {
+    return {
+      source: { kind: 'suspended' },
       completion: [],
       leadStats: [],
       recentInquiries: [],

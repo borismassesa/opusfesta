@@ -51,15 +51,21 @@ function SectionHeader({
 
 export type DashboardSource =
   | { kind: 'live'; vendorName: string }
-  | { kind: 'no-membership' }
+  | { kind: 'no-application' }
+  | { kind: 'pending-approval'; vendorName: string }
+  | { kind: 'suspended' }
   | { kind: 'no-env' }
 
 const BANNER_BY_SOURCE: Record<DashboardSource['kind'], string | null> = {
   live: null,
-  'no-membership':
-    'You are not yet a member of any vendor team. Ask your team owner to invite you to access the dashboard.',
+  'no-application':
+    "You haven't started a vendor application yet. Apply to do business on OpusFesta to access the dashboard.",
+  'pending-approval':
+    'Your vendor application is awaiting OpusFesta verification. The dashboard unlocks once your account is approved.',
+  suspended:
+    'Your vendor account is suspended. Contact OpusFesta support if you believe this is a mistake.',
   'no-env':
-    'DEV: Supabase env vars missing — showing seed data. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local.',
+    'DEV: Vendor backend not connected — showing seed data. Check Supabase env vars and that migrations are applied to your Supabase project.',
 }
 
 type DashboardClientProps = {
@@ -79,6 +85,40 @@ export default function DashboardClient({
   const banner = BANNER_BY_SOURCE[source.kind]
   const greeting =
     source.kind === 'live' ? `Welcome back, ${source.vendorName}` : null
+
+  // Locked-out states: anything that isn't a live, approved vendor. The
+  // (portal) layout already redirects these to /pending — this empty-state
+  // render is defense-in-depth in case the layout gate is ever removed.
+  if (
+    source.kind === 'no-application' ||
+    source.kind === 'pending-approval' ||
+    source.kind === 'suspended'
+  ) {
+    return (
+      <div className="p-8 pb-12">
+        <div className="max-w-[1400px] mx-auto">
+          {banner && (
+            <div className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-2 text-xs font-semibold text-amber-800">
+              {banner}
+            </div>
+          )}
+          <div className="mt-8 rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-16 text-center">
+            <p className="text-sm font-semibold text-gray-700">
+              {source.kind === 'pending-approval'
+                ? 'Your dashboard will appear here once OpusFesta approves your vendor profile.'
+                : source.kind === 'suspended'
+                  ? 'Your vendor account is suspended.'
+                  : "Your dashboard will appear here once you've applied and been approved."}
+            </p>
+            <p className="mt-1 text-xs text-gray-500 max-w-md mx-auto leading-relaxed">
+              You&rsquo;ll see leads, upcoming events, and storefront performance once
+              your account is active.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="p-8 pb-12">

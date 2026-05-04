@@ -309,7 +309,7 @@ function DashboardView() {
             <p className="text-2xl sm:text-3xl font-black text-[#1A1A1A] tracking-tight">{s.value}</p>
             <div className="mt-3 flex items-center gap-2">
               <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-full bg-emerald-50 text-emerald-600">
-                {s.positive ? <ArrowUpRight size={10} /> : <ArrowDownRight size={10} />}
+                <ArrowUpRight size={10} />
                 {s.trend}
               </span>
               <span className="text-[10px] text-gray-400">{s.sub}</span>

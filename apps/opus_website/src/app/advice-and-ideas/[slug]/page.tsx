@@ -13,18 +13,23 @@ import AuthorCard from '@/components/advice-ideas/AuthorCard'
 import CommentsSection from '@/components/advice-ideas/CommentsSection'
 import {
   ADVICE_IDEAS_BASE_PATH,
-  adviceIdeasPosts,
-  getAdviceIdeasPost,
   getAdviceIdeasSectionHref,
-  getAuthor,
   heroThumb,
   type AdviceIdeasBlock,
   type AdviceIdeasBodySection,
   type AdviceIdeasPost,
 } from '@/lib/advice-ideas'
+import {
+  getAuthorFromMap,
+  loadAdviceIdeasAuthors,
+  loadPublishedAdviceIdeasPosts,
+} from '@/lib/advice-ideas-db'
 
-export function generateStaticParams() {
-  return adviceIdeasPosts.map((p) => ({ slug: p.slug }))
+export const dynamic = 'force-dynamic'
+
+export async function generateStaticParams() {
+  const posts = await loadPublishedAdviceIdeasPosts()
+  return posts.map((p) => ({ slug: p.slug }))
 }
 
 export async function generateMetadata({
@@ -33,7 +38,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>
 }): Promise<Metadata> {
   const { slug } = await params
-  const post = getAdviceIdeasPost(slug)
+  const posts = await loadPublishedAdviceIdeasPosts()
+  const post = posts.find((p) => p.slug === slug)
   if (!post) return { title: 'Story not found | OpusFesta' }
   return {
     title: `${post.title} | OpusFesta`,
@@ -53,15 +59,16 @@ export default async function AdviceIdeasDetailPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const post = getAdviceIdeasPost(slug)
+  const posts = await loadPublishedAdviceIdeasPosts()
+  const post = posts.find((p) => p.slug === slug)
   if (!post) notFound()
 
-  const related = adviceIdeasPosts
+  const related = posts
     .filter((p) => p.sectionId === post.sectionId && p.id !== post.id)
     .slice(0, 4)
   const fallbackRelated =
     related.length < 4
-      ? adviceIdeasPosts
+      ? posts
           .filter((p) => p.id !== post.id && !related.some((r) => r.id === p.id))
           .slice(0, 4 - related.length)
       : []
@@ -69,7 +76,8 @@ export default async function AdviceIdeasDetailPage({
 
   const tocItems = post.body.map((s) => ({ id: s.id, label: s.heading }))
 
-  const author = getAuthor(post.author)
+  const authors = await loadAdviceIdeasAuthors()
+  const author = getAuthorFromMap(authors, post.author)
 
   return (
     <article className="bg-white text-[#1A1A1A]">

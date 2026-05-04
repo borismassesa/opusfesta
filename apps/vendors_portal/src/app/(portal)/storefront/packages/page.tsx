@@ -15,8 +15,14 @@ async function loadPackages(): Promise<{
   if (state.kind === 'no-env') {
     return { source: { kind: 'no-env' }, initialPackages: [], canEdit: false }
   }
-  if (state.kind === 'no-membership') {
-    return { source: { kind: 'no-membership' }, initialPackages: [], canEdit: false }
+  if (state.kind === 'no-application') {
+    return { source: { kind: 'no-application' }, initialPackages: [], canEdit: false }
+  }
+  if (state.kind === 'pending-approval') {
+    return { source: { kind: 'pending-approval' }, initialPackages: [], canEdit: false }
+  }
+  if (state.kind === 'suspended') {
+    return { source: { kind: 'suspended' }, initialPackages: [], canEdit: false }
   }
 
   const supabase = await createClerkSupabaseServerClient()

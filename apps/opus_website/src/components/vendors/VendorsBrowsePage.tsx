@@ -39,12 +39,12 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import {
-  vendors,
+  vendors as seedVendors,
   vendorCategories,
   vendorCities,
   VENDORS_BASE_PATH,
 } from '@/lib/vendors'
-import type { VendorCategoryId } from '@/lib/vendors'
+import type { Vendor, VendorCategoryId } from '@/lib/vendors'
 import { getVendorCardImages } from '@/lib/vendor-images'
 import { BROWSE_FOOTER_VISIBILITY_EVENT } from './VendorsFooterGate'
 
@@ -411,7 +411,7 @@ function FilterBar({
 
 // ── List card (horizontal) ─────────────────────────────────────────────────────
 function BrowseCard({ vendor, hovered, onHover }: {
-  vendor: (typeof vendors)[number]
+  vendor: Vendor
   hovered?: boolean
   onHover?: (id: string | null) => void
 }) {
@@ -532,7 +532,7 @@ function BrowseCard({ vendor, hovered, onHover }: {
 }
 
 // ── Grid card ──────────────────────────────────────────────────────────────────
-function GridCardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] }) {
+function GridCardImageCarousel({ vendor }: { vendor: Vendor }) {
   const images = getVendorCardImages(vendor)
   const [idx, setIdx] = useState(0)
   const dragStart = useRef<number | null>(null)
@@ -587,7 +587,7 @@ function GridCardImageCarousel({ vendor }: { vendor: (typeof vendors)[number] })
   )
 }
 
-function GridCard({ vendor }: { vendor: (typeof vendors)[number] }) {
+function GridCard({ vendor }: { vendor: Vendor }) {
   const isNew = vendor.badge === 'New'
   const startingPrice = vendor.priceRange.split('–')[0].trim()
 
@@ -664,7 +664,7 @@ function GridCard({ vendor }: { vendor: (typeof vendors)[number] }) {
 
 // ── Map list card ─────────────────────────────────────────────────────────────
 function MapListCard({ vendor, onHover, onClick }: {
-  vendor: (typeof vendors)[number]
+  vendor: Vendor
   onHover: (id: string | null) => void; onClick: (id: string) => void
 }) {
   const isNew = vendor.badge === 'New'
@@ -790,7 +790,15 @@ function MapListCard({ vendor, onHover, onClick }: {
 // ── SEO banner ─────────────────────────────────────────────────────────────────
 
 // ── Main page ──────────────────────────────────────────────────────────────────
-export default function VendorsBrowsePage() {
+export default function VendorsBrowsePage({
+  initialVendors,
+}: {
+  // Server pages pass the live vendor list (Supabase + marketplace + seed
+  // merge from `loadVendorsFromSupabase`). Falls back to the static seed
+  // module when rendered without props (e.g. from an old caller).
+  initialVendors?: Vendor[]
+} = {}) {
+  const allVendors: Vendor[] = initialVendors ?? seedVendors
   const searchParams = useSearchParams()
   const initialCategory = searchParams.get('category') as VendorCategoryId | null
   const initialQuery    = searchParams.get('q') ?? ''
@@ -906,7 +914,7 @@ export default function VendorsBrowsePage() {
   const totalActive = selectedCategories.length + selectedCities.length + (minRating !== null ? 1 : 0) + (query.trim() ? 1 : 0)
 
   const filteredVendors = useMemo(() => {
-    let r = [...vendors]
+    let r = [...allVendors]
     if (query.trim()) {
       const q = query.toLowerCase()
       r = r.filter((v) => v.name.toLowerCase().includes(q) || v.category.toLowerCase().includes(q) ||
@@ -925,7 +933,7 @@ export default function VendorsBrowsePage() {
       default:           r.sort((a, b) => { if (a.featured !== b.featured) return a.featured ? -1 : 1; return b.rating - a.rating })
     }
     return r
-  }, [query, selectedCategories, selectedCities, minRating, sortBy])
+  }, [allVendors, query, selectedCategories, selectedCities, minRating, sortBy])
 
   useEffect(() => {
     syncMapListEndState()

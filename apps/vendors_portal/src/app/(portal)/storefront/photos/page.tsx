@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   ArrowDown,
@@ -9,8 +9,10 @@ import {
   Camera,
   ChevronsUpDown,
   Image as ImageIcon,
+  Loader2,
   Pencil,
   Plus,
+  Save,
   Trash2,
   UploadCloud,
   Video as VideoIcon,
@@ -20,6 +22,7 @@ import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { cn } from '@/lib/utils'
+import { savePhotos, uploadStorefrontPhoto } from '../sections/actions'
 
 type Photo = {
   id: string
@@ -103,8 +106,11 @@ export default function PhotosPage() {
   const videoInputRef = useRef<HTMLInputElement>(null)
 
   const [covers, setCovers] = useState<CoverSlot[]>(EMPTY_COVERS)
-  const [photos, setPhotos] = useState<Photo[]>(SAMPLE_PHOTOS)
-  const [videos, setVideos] = useState<VideoReel[]>(SAMPLE_VIDEOS)
+  // Vendors start with a clean grid — we previously seeded SAMPLE_PHOTOS so
+  // the editor wasn't visually empty in the mock, but real vendors should
+  // never see fake stock photography.
+  const [photos, setPhotos] = useState<Photo[]>([])
+  const [videos, setVideos] = useState<VideoReel[]>([])
   const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null)
   const [editingVideoId, setEditingVideoId] = useState<string | null>(null)
   const [videoUrl, setVideoUrl] = useState('')
@@ -162,30 +168,74 @@ export default function PhotosPage() {
     return <div className="p-8" aria-hidden />
   }
 
-  const addPhotoFiles = (files: FileList | File[]) => {
+  // Track in-flight uploads so the user gets a visible loading state and
+  // can't double-pick the same slot.
+  const [uploadingCovers, setUploadingCovers] = useState<Set<number>>(new Set())
+  const [portfolioUploads, setPortfolioUploads] = useState(0)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+
+  const uploadFile = async (
+    file: File,
+    kind: 'cover' | 'gallery',
+  ): Promise<string | null> => {
+    // Server actions accept FormData when there's a File. The action itself
+    // validates MIME + size, but we mirror those checks client-side so the
+    // common error paths surface immediately without a round-trip.
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Only image files are allowed.')
+      return null
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadError(`That file is over 10 MB.`)
+      return null
+    }
+    const fd = new FormData()
+    fd.append('file', file)
+    fd.append('kind', kind)
+    const res = await uploadStorefrontPhoto(fd)
+    if (!res.ok) {
+      setUploadError(res.error)
+      return null
+    }
+    return res.url
+  }
+
+  const addPhotoFiles = async (files: FileList | File[]) => {
+    setUploadError(null)
     const list = Array.from(files).filter((f) => f.type.startsWith('image/'))
     if (list.length === 0) return
-    const next: Photo[] = list.map((file) => {
-      const url = URL.createObjectURL(file)
-      objectUrlsRef.current.push(url)
-      return {
-        id: newId(),
-        url,
-        caption: file.name.replace(/\.[^.]+$/, ''),
+    setPortfolioUploads((n) => n + list.length)
+    for (const file of list) {
+      const url = await uploadFile(file, 'gallery')
+      if (url) {
+        setPhotos((prev) => [
+          ...prev,
+          {
+            id: newId(),
+            url,
+            caption: file.name.replace(/\.[^.]+$/, ''),
+          },
+        ])
       }
-    })
-    setPhotos((prev) => [...prev, ...next])
+      setPortfolioUploads((n) => n - 1)
+    }
   }
 
   // Cover slot operations — uploads target a specific index, replacing whatever
-  // was there. The previous slot's blob URL is revoked to avoid leaks.
-  const setCoverFromFile = (idx: number, file: File) => {
+  // was there. We upload the file to the storage bucket immediately so the
+  // URL we hold is a real CDN URL that survives reload + admin review.
+  const setCoverFromFile = async (idx: number, file: File) => {
     if (!file.type.startsWith('image/')) return
+    setUploadError(null)
+    setUploadingCovers((s) => new Set(s).add(idx))
+    const url = await uploadFile(file, 'cover')
+    setUploadingCovers((s) => {
+      const next = new Set(s)
+      next.delete(idx)
+      return next
+    })
+    if (!url) return
     setCovers((prev) => {
-      const before = prev[idx]
-      if (before) URL.revokeObjectURL(before.url)
-      const url = URL.createObjectURL(file)
-      objectUrlsRef.current.push(url)
       const next = prev.slice()
       next[idx] = { id: newId(), url }
       return next
@@ -309,6 +359,32 @@ export default function PhotosPage() {
 
   const onNext = () => {
     if (nextHref) router.push(nextHref)
+  }
+
+  // Persist cover + portfolio URLs to the DB. Cover photo is the first
+  // populated cover slot; the rest of the cover slots are appended to
+  // gallery_urls so admins + couples see every uploaded image.
+  const [saving, startSaving] = useTransition()
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveOk, setSaveOk] = useState(false)
+  const onSave = () => {
+    setSaveError(null)
+    setSaveOk(false)
+    startSaving(async () => {
+      const coverUrls = covers.filter((c): c is { id: string; url: string } => !!c).map((c) => c.url)
+      const portfolioUrls = photos.map((p) => p.url)
+      const res = await savePhotos({
+        coverImage: coverUrls[0] ?? null,
+        // Slots 2-4 of the cover carousel + every portfolio photo all land
+        // in `gallery_urls` on the public profile. Dedupe just in case.
+        galleryUrls: Array.from(new Set([...coverUrls.slice(1), ...portfolioUrls])),
+      })
+      if (!res.ok) {
+        setSaveError(res.error)
+        return
+      }
+      setSaveOk(true)
+    })
   }
 
   return (
@@ -573,23 +649,46 @@ export default function PhotosPage() {
         </div>
       </div>
 
-      {/* Sticky bottom bar — Next button */}
+      {/* Sticky bottom bar — Save + Next */}
       <div className="sticky bottom-0 border-t border-gray-100 bg-white/95 backdrop-blur z-30">
-        <div className="px-6 lg:px-10 py-3 flex items-center justify-between gap-4">
-          <p className="text-xs text-gray-500">
+        <div className="px-6 lg:px-10 py-3 flex items-center justify-between gap-4 flex-wrap">
+          <div className="text-xs text-gray-500">
             <span className="font-semibold text-gray-900 tabular-nums">{photos.length}</span>{' '}
             photo{photos.length === 1 ? '' : 's'} ·{' '}
             <span className="font-semibold text-gray-900 tabular-nums">{videos.length}</span>{' '}
             video{videos.length === 1 ? '' : 's'}
-          </p>
-          <button
-            type="button"
-            onClick={onNext}
-            className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
-          >
-            Next
-            <ArrowRight className="w-4 h-4" />
-          </button>
+            {portfolioUploads > 0 && (
+              <span className="ml-3 inline-flex items-center gap-1 text-amber-700">
+                <Loader2 className="w-3 h-3 animate-spin" /> Uploading {portfolioUploads}…
+              </span>
+            )}
+            {uploadError && (
+              <span className="ml-3 text-rose-700">{uploadError}</span>
+            )}
+            {saveError && <span className="ml-3 text-rose-700">{saveError}</span>}
+            {saveOk && !saveError && (
+              <span className="ml-3 text-emerald-700">Saved.</span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving || portfolioUploads > 0 || uploadingCovers.size > 0}
+              className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {saving ? 'Saving…' : 'Save photos'}
+            </button>
+            <button
+              type="button"
+              onClick={onNext}
+              className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
+            >
+              Next
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

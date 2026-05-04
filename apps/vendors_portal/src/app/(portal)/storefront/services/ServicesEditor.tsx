@@ -11,15 +11,21 @@ const MAX_CUSTOM_LABEL = 60
 
 export type ServicesSource =
   | { kind: 'live' }
-  | { kind: 'no-membership' }
+  | { kind: 'no-application' }
+  | { kind: 'pending-approval' }
+  | { kind: 'suspended' }
   | { kind: 'no-env' }
 
 const BANNER_BY_SOURCE: Record<ServicesSource['kind'], string | null> = {
   live: null,
-  'no-membership':
-    'You are not yet a member of any vendor team. Ask your team owner to invite you.',
+  'no-application':
+    "You haven't started a vendor application yet. Apply to do business on OpusFesta to edit your services.",
+  'pending-approval':
+    'Your vendor application is awaiting OpusFesta verification. Editing unlocks once your account is approved.',
+  suspended:
+    'Your vendor account is suspended. Contact OpusFesta support if you believe this is a mistake.',
   'no-env':
-    'DEV: Supabase env vars missing — Save is disabled. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY in .env.local.',
+    'DEV: Vendor backend not connected — Save is disabled. Check Supabase env vars and that migrations are applied to your Supabase project.',
 }
 
 type ServicesEditorProps = {
