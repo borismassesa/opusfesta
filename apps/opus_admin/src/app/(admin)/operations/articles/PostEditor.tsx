@@ -10,15 +10,18 @@ import {
   ArrowUp,
   ChevronDown,
   ChevronRight,
+  CheckCircle2,
   Clock,
   ExternalLink,
   Eye,
   EyeOff,
+  MessageSquare,
   Plus,
   Save,
   Send,
   Trash2,
   Upload,
+  XCircle,
 } from 'lucide-react'
 import {
   ADVICE_BLOCK_TYPES,
@@ -35,11 +38,31 @@ import { resolveMediaUrl } from '@/app/(admin)/cms/advice-and-ideas/_media'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot } from '@/components/HeaderPortals'
 import { createAdvicePost, updateAdvicePost, uploadAdviceMedia, type PostUpsertInput } from './actions'
+import {
+  approveAdviceSubmission,
+  rejectAdviceSubmission,
+  requestAdviceSubmissionCorrections,
+  saveContributorSubmission,
+  submitContributorSubmission,
+  updateAdviceSubmissionAsAdmin,
+  uploadContributorMedia,
+} from '@/lib/advice-submission-actions'
+import {
+  statusLabel,
+  statusTone,
+  type AdviceSubmissionStatus,
+} from '@/lib/advice-submissions'
 
 type Props = {
   mode: 'create' | 'edit'
   id?: string
   initial: PostUpsertInput
+  workflow?: 'post' | 'contributor-submission' | 'admin-submission'
+  submissionStatus?: AdviceSubmissionStatus
+  correctionNotes?: string | null
+  adminNotes?: string | null
+  backHref?: string
+  backLabel?: string
 }
 
 const CATEGORY_OPTIONS = [
@@ -125,8 +148,22 @@ function autosaveKey(mode: 'create' | 'edit', id: string | undefined): string {
   return `${AUTOSAVE_PREFIX}${mode === 'edit' ? (id ?? 'unknown') : 'new'}`
 }
 
-export default function PostEditor({ mode, id, initial }: Props) {
+export default function PostEditor({
+  mode,
+  id,
+  initial,
+  workflow = 'post',
+  submissionStatus,
+  correctionNotes,
+  adminNotes,
+  backHref,
+  backLabel,
+}: Props) {
   const router = useRouter()
+  const isContributorSubmission = workflow === 'contributor-submission'
+  const isAdminSubmission = workflow === 'admin-submission'
+  const isSubmission = workflow !== 'post'
+  const showSeedComments = !isContributorSubmission
 
   // Start from the server `initial` on both server and client so SSR and
   // hydration match. Local-storage recovery happens post-mount in a
@@ -247,10 +284,19 @@ export default function PostEditor({ mode, id, initial }: Props) {
   const publishErrors = useMemo(() => validateForPublish(draft), [draft])
   const canPublish = publishErrors.length === 0
   const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL ?? ''
-  const previewUrl = draft.slug ? `${websiteUrl}/advice-and-ideas/${draft.slug}` : null
+  const previewUrl =
+    workflow === 'post' && draft.slug
+      ? `${websiteUrl}/advice-and-ideas/${draft.slug}`
+      : null
 
   const headingTitle =
-    mode === 'create' ? 'New article' : draft.title.trim() || 'Untitled article'
+    isContributorSubmission
+      ? draft.title.trim() || 'Article submission'
+      : isAdminSubmission
+        ? draft.title.trim() || 'Review submission'
+        : mode === 'create'
+          ? 'New article'
+          : draft.title.trim() || 'Untitled article'
   const headingSubtitle = draft.slug
     ? `/advice-and-ideas/${draft.slug}`
     : mode === 'create'
@@ -264,8 +310,11 @@ export default function PostEditor({ mode, id, initial }: Props) {
     const fd = new FormData()
     fd.append('file', file)
     fd.append('slug', draft.slug || 'new')
+    if (id) fd.append('submissionId', id)
     startTransition(async () => {
-      const { url, type } = await uploadAdviceMedia(fd)
+      const { url, type } = isContributorSubmission
+        ? await uploadContributorMedia(fd)
+        : await uploadAdviceMedia(fd)
       setDraft((d) => ({ ...d, hero_media_src: url, hero_media_type: type }))
       setMessage('Hero media uploaded.')
     })
@@ -279,8 +328,11 @@ export default function PostEditor({ mode, id, initial }: Props) {
     const fd = new FormData()
     fd.append('file', file)
     fd.append('slug', draft.slug || 'new')
+    if (id) fd.append('submissionId', id)
     startTransition(async () => {
-      const { url } = await uploadAdviceMedia(fd)
+      const { url } = isContributorSubmission
+        ? await uploadContributorMedia(fd)
+        : await uploadAdviceMedia(fd)
       setDraft((d) => ({ ...d, author_avatar_url: url }))
       setMessage('Avatar uploaded.')
     })
@@ -300,6 +352,22 @@ export default function PostEditor({ mode, id, initial }: Props) {
   const persist = useCallback(
     async (payload: PostUpsertInput): Promise<{ id: string } | null> => {
       try {
+        if (workflow === 'contributor-submission') {
+          if (!id) throw new Error('Missing submission id.')
+          await saveContributorSubmission(id, payload)
+          setSavedSnapshot(payload)
+          setLastSavedAt(Date.now())
+          router.refresh()
+          return { id }
+        }
+        if (workflow === 'admin-submission') {
+          if (!id) throw new Error('Missing submission id.')
+          await updateAdviceSubmissionAsAdmin(id, payload)
+          setSavedSnapshot(payload)
+          setLastSavedAt(Date.now())
+          router.refresh()
+          return { id }
+        }
         if (mode === 'create') {
           const { id: newId } = await createAdvicePost(payload)
           setSavedSnapshot(payload)
@@ -322,7 +390,7 @@ export default function PostEditor({ mode, id, initial }: Props) {
         return null
       }
     },
-    [id, mode, router]
+    [id, mode, router, workflow]
   )
 
   // "Save draft" — persists the current editor state without publishing. If
@@ -337,10 +405,22 @@ export default function PostEditor({ mode, id, initial }: Props) {
   const handlePublish = () => {
     if (publishErrors.length > 0) {
       setShowPublishErrors(true)
-      setMessage('Fix the issues below before publishing.')
+      setMessage(
+        isContributorSubmission
+          ? 'Fix the issues below before submitting.'
+          : 'Fix the issues below before publishing.'
+      )
       return
     }
     startTransition(async () => {
+      if (isContributorSubmission) {
+        if (!id) return
+        await submitContributorSubmission(id, draft)
+        setSavedSnapshot(draft)
+        setMessage('Submitted for review.')
+        router.push('/contribute/articles')
+        return
+      }
       const payload = { ...draft, published: true }
       setDraft(payload)
       const result = await persist(payload)
@@ -356,6 +436,42 @@ export default function PostEditor({ mode, id, initial }: Props) {
       const result = await persist(payload)
       if (result) setMessage('Unpublished — the article is now a draft.')
     })
+
+  const handleRequestCorrections = () =>
+    startTransition(async () => {
+      if (!id) return
+      const notes = window.prompt('What should the author correct?')
+      if (notes == null) return
+      await persist(draft)
+      await requestAdviceSubmissionCorrections(id, notes)
+      setMessage('Corrections requested.')
+      router.refresh()
+    })
+
+  const handleRejectSubmission = () =>
+    startTransition(async () => {
+      if (!id) return
+      const notes = window.prompt('Optional rejection note for the record:')
+      if (notes == null) return
+      await rejectAdviceSubmission(id, notes)
+      setMessage('Submission rejected.')
+      router.refresh()
+    })
+
+  const handleApproveSubmission = (publish: boolean) => {
+    if (publishErrors.length > 0) {
+      setShowPublishErrors(true)
+      setMessage('Fix the issues below before approval.')
+      return
+    }
+    startTransition(async () => {
+      if (!id) return
+      await persist(draft)
+      const result = await approveAdviceSubmission(id, publish)
+      setMessage(publish ? 'Published from submission.' : 'Approved as article draft.')
+      router.push(`/operations/articles/${result.postId}`)
+    })
+  }
 
   const handleRevert = () => {
     if (!dirty) return
@@ -394,94 +510,165 @@ export default function PostEditor({ mode, id, initial }: Props) {
       return { ...d, body: next }
     })
 
-  return (
-    <div className="px-8 pt-8 pb-12">
-      <HeaderActionsSlot>
-        <span
-          className={cn(
-            'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full',
-            dirty
-              ? 'bg-amber-50 text-amber-700'
+  const actionControls = (
+    <>
+      <span
+        className={cn(
+          'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full',
+          dirty
+            ? 'bg-amber-50 text-amber-700'
+            : isSubmission && submissionStatus
+              ? statusTone(submissionStatus)
               : draft.published
                 ? 'bg-emerald-50 text-emerald-700'
                 : 'bg-gray-100 text-gray-600'
+        )}
+      >
+        <span
+          className={cn(
+            'w-1.5 h-1.5 rounded-full',
+            dirty
+              ? 'bg-amber-500'
+              : isSubmission && submissionStatus === 'published'
+                ? 'bg-[#7E5896]'
+                : isSubmission && submissionStatus === 'submitted'
+                  ? 'bg-amber-500'
+                  : draft.published
+                    ? 'bg-emerald-500'
+                    : 'bg-gray-400'
           )}
-        >
-          <span
-            className={cn(
-              'w-1.5 h-1.5 rounded-full',
-              dirty ? 'bg-amber-500' : draft.published ? 'bg-emerald-500' : 'bg-gray-400'
-            )}
-          />
-          {dirty
-            ? 'Unsaved changes'
+        />
+        {dirty
+          ? 'Unsaved changes'
+          : isSubmission && submissionStatus
+            ? statusLabel(submissionStatus)
             : draft.published
               ? 'Published'
               : 'Draft'}
+      </span>
+
+      {message ? (
+        <span className="max-w-[24ch] truncate text-xs text-gray-500" title={message}>
+          {message}
         </span>
+      ) : lastSavedAt ? (
+        <span className="whitespace-nowrap text-xs text-gray-500" suppressHydrationWarning>
+          Saved {formatRelativeTime(lastSavedAt, nowTick)}
+        </span>
+      ) : null}
 
-        {message ? (
-          <span className="text-xs text-gray-500 max-w-[24ch] truncate" title={message}>
-            {message}
-          </span>
-        ) : lastSavedAt ? (
-          <span className="text-xs text-gray-500 whitespace-nowrap" suppressHydrationWarning>
-            Saved {formatRelativeTime(lastSavedAt, nowTick)}
-          </span>
-        ) : null}
-
-        {dirty && mode === 'edit' && (
-          <button
-            type="button"
-            onClick={handleRevert}
-            disabled={pending}
-            className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            <Trash2 className="w-4 h-4" />
-            Discard
-          </button>
-        )}
-
+      {dirty && mode === 'edit' && (
         <button
           type="button"
-          disabled={pending || (!dirty && mode === 'edit')}
-          onClick={handleSaveDraft}
-          className="flex items-center gap-1.5 text-sm font-medium text-gray-700 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          onClick={handleRevert}
+          disabled={pending}
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50"
         >
-          <Save className="w-4 h-4" />
-          {draft.published ? 'Save' : 'Save draft'}
+          <Trash2 className="h-4 w-4" />
+          Discard
         </button>
+      )}
 
-        {draft.published ? (
+      <button
+        type="button"
+        disabled={pending || (!dirty && mode === 'edit')}
+        onClick={handleSaveDraft}
+        className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+      >
+        <Save className="h-4 w-4" />
+        {isAdminSubmission ? 'Save edits' : draft.published ? 'Save' : 'Save draft'}
+      </button>
+
+      {isContributorSubmission ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handlePublish}
+          className="flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b97fd0] disabled:opacity-50"
+        >
+          <Send className="h-4 w-4" />
+          Submit for review
+        </button>
+      ) : isAdminSubmission ? (
+        <>
           <button
             type="button"
             disabled={pending}
-            onClick={handleUnpublish}
-            className="flex items-center gap-1.5 text-sm font-medium text-gray-700 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+            onClick={handleRequestCorrections}
+            className="flex items-center gap-1.5 rounded-lg border border-amber-200 px-3 py-2 text-sm font-medium text-amber-800 transition-colors hover:bg-amber-50 disabled:opacity-50"
           >
-            <EyeOff className="w-4 h-4" />
-            Unpublish
+            <MessageSquare className="h-4 w-4" />
+            Request corrections
           </button>
-        ) : (
           <button
             type="button"
             disabled={pending}
-            onClick={handlePublish}
-            className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#C9A0DC] hover:bg-[#b97fd0] px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+            onClick={handleRejectSubmission}
+            className="flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 transition-colors hover:bg-rose-50 disabled:opacity-50"
           >
-            <Send className="w-4 h-4" />
+            <XCircle className="h-4 w-4" />
+            Reject
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => handleApproveSubmission(false)}
+            className="flex items-center gap-1.5 rounded-lg border border-emerald-200 px-3 py-2 text-sm font-medium text-emerald-700 transition-colors hover:bg-emerald-50 disabled:opacity-50"
+          >
+            <CheckCircle2 className="h-4 w-4" />
+            Approve draft
+          </button>
+          <button
+            type="button"
+            disabled={pending}
+            onClick={() => handleApproveSubmission(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b97fd0] disabled:opacity-50"
+          >
+            <Send className="h-4 w-4" />
             Publish
           </button>
-        )}
-      </HeaderActionsSlot>
+        </>
+      ) : draft.published ? (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handleUnpublish}
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+        >
+          <EyeOff className="h-4 w-4" />
+          Unpublish
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={handlePublish}
+          className="flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#b97fd0] disabled:opacity-50"
+        >
+          <Send className="h-4 w-4" />
+          Publish
+        </button>
+      )}
+    </>
+  )
+
+  return (
+    <div className="px-8 pt-8 pb-12">
+      {!isContributorSubmission && <HeaderActionsSlot>{actionControls}</HeaderActionsSlot>}
 
       <div className="max-w-[1200px] mx-auto space-y-6">
+        {isContributorSubmission && (
+          <div className="sticky top-0 z-20 -mx-4 flex flex-wrap items-center justify-end gap-2 border-b border-gray-100 bg-[#FDFDFD]/95 px-4 py-3 backdrop-blur">
+            {actionControls}
+          </div>
+        )}
+
         <div className="flex items-center justify-between gap-4">
           <Link
-            href="/operations/articles"
+            href={backHref ?? '/operations/articles'}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap"
           >
-            <ArrowLeft className="w-4 h-4" /> All articles
+            <ArrowLeft className="w-4 h-4" /> {backLabel ?? 'All articles'}
           </Link>
 
           {previewUrl && (
@@ -497,13 +684,27 @@ export default function PostEditor({ mode, id, initial }: Props) {
           )}
         </div>
 
+        {correctionNotes && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">Correction request</p>
+            <p className="mt-1 leading-relaxed">{correctionNotes}</p>
+          </div>
+        )}
+
+        {adminNotes && isAdminSubmission && (
+          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+            <p className="font-semibold text-gray-900">Admin notes</p>
+            <p className="mt-1 leading-relaxed">{adminNotes}</p>
+          </div>
+        )}
+
       {/* Publish readiness panel — only shown once the author has tried to publish */}
       {showPublishErrors && publishErrors.length > 0 && (
         <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 flex items-start gap-3">
           <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
           <div className="min-w-0">
             <p className="text-sm font-semibold text-amber-800">
-              A few things to fix before publishing
+              A few things to fix before {isContributorSubmission ? 'submitting' : 'publishing'}
             </p>
             <ul className="mt-1 list-disc pl-4 text-sm text-amber-700 space-y-0.5">
               {publishErrors.map((e) => (
@@ -698,30 +899,40 @@ export default function PostEditor({ mode, id, initial }: Props) {
             />
           </div>
         </Field>
-        <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
-          <Field label="Published date">
-            <input
-              type="date"
-              value={toDateInput(draft.published_at)}
-              onChange={(e) => set('published_at', fromDateInput(e.target.value))}
-              className={inputCls}
-            />
-          </Field>
-          <label className="flex items-center gap-2 text-sm text-gray-700 pb-2 whitespace-nowrap">
-            <input
-              type="checkbox"
-              checked={draft.featured}
-              onChange={(e) => set('featured', e.target.checked)}
-              className="rounded border-gray-300"
-            />
-            Feature on the homepage
-          </label>
-        </div>
-        <p className="text-xs text-gray-500">
-          Publish status is controlled from the action bar above — use{' '}
-          <span className="font-semibold text-gray-700">Publish</span> /{' '}
-          <span className="font-semibold text-gray-700">Unpublish</span>.
-        </p>
+        {!isContributorSubmission && (
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
+              <Field label="Published date">
+                <input
+                  type="date"
+                  value={toDateInput(draft.published_at)}
+                  onChange={(e) => set('published_at', fromDateInput(e.target.value))}
+                  className={inputCls}
+                />
+              </Field>
+              <label className="flex items-center gap-2 text-sm text-gray-700 pb-2 whitespace-nowrap">
+                <input
+                  type="checkbox"
+                  checked={draft.featured}
+                  onChange={(e) => set('featured', e.target.checked)}
+                  className="rounded border-gray-300"
+                />
+                Feature on the homepage
+              </label>
+            </div>
+            <p className="text-xs text-gray-500">
+              {isAdminSubmission
+                ? 'Approval and publishing are controlled from the review action bar above.'
+                : 'Publish status is controlled from the action bar above — use '}
+              {!isAdminSubmission && (
+                <>
+                  <span className="font-semibold text-gray-700">Publish</span> /{' '}
+                  <span className="font-semibold text-gray-700">Unpublish</span>.
+                </>
+              )}
+            </p>
+          </>
+        )}
       </Card>
 
       {/* Hero media */}
@@ -827,6 +1038,8 @@ export default function PostEditor({ mode, id, initial }: Props) {
               onPatch={(patch) => updateSection(section.id, patch)}
               onRemove={() => removeSection(section.id)}
               onMove={(dir) => moveSection(section.id, dir)}
+              uploadWorkflow={workflow}
+              submissionId={id}
             />
           ))}
           {draft.body.length === 0 && (
@@ -837,60 +1050,61 @@ export default function PostEditor({ mode, id, initial }: Props) {
         </div>
       </Card>
 
-      {/* Seed comments */}
-      <Card
-        title={`Seed comments (${draft.seed_comments.length})`}
-        action={
-          <button
-            type="button"
-            onClick={() =>
-              set('seed_comments', [
-                ...draft.seed_comments,
-                { id: `c-${Date.now()}`, name: '', body: '', date: new Date().toISOString().slice(0, 10), likes: 0 },
-              ])
-            }
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#7E5896] hover:text-[#5c3f72] px-2.5 py-1.5 rounded-md border border-[#E7D5EE] hover:bg-[#F8F0FB] transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add comment
-          </button>
-        }
-      >
-        <p className="text-xs text-gray-500 -mt-2 mb-2">
-          Seed-populate the article&apos;s comment thread (shown beneath the Author Card).
-        </p>
-        <div className="space-y-3">
-          {draft.seed_comments.map((c, i) => (
-            <SeedCommentRow
-              key={c.id}
-              index={i}
-              total={draft.seed_comments.length}
-              comment={c}
-              onChange={(patch) =>
-                set(
-                  'seed_comments',
-                  draft.seed_comments.map((cc, idx) => (idx === i ? { ...cc, ...patch } : cc))
-                )
+      {showSeedComments && (
+        <Card
+          title={`Seed comments (${draft.seed_comments.length})`}
+          action={
+            <button
+              type="button"
+              onClick={() =>
+                set('seed_comments', [
+                  ...draft.seed_comments,
+                  { id: `c-${Date.now()}`, name: '', body: '', date: new Date().toISOString().slice(0, 10), likes: 0 },
+                ])
               }
-              onRemove={() =>
-                set('seed_comments', draft.seed_comments.filter((_, idx) => idx !== i))
-              }
-              onMove={(dir) => {
-                const t = i + dir
-                if (t < 0 || t >= draft.seed_comments.length) return
-                const next = [...draft.seed_comments]
-                ;[next[i], next[t]] = [next[t], next[i]]
-                set('seed_comments', next)
-              }}
-            />
-          ))}
-          {draft.seed_comments.length === 0 && (
-            <div className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-6 text-center">
-              No seed comments yet — add one above.
-            </div>
-          )}
-        </div>
-      </Card>
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#7E5896] hover:text-[#5c3f72] px-2.5 py-1.5 rounded-md border border-[#E7D5EE] hover:bg-[#F8F0FB] transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              Add comment
+            </button>
+          }
+        >
+          <p className="text-xs text-gray-500 -mt-2 mb-2">
+            Seed-populate the article&apos;s comment thread (shown beneath the Author Card).
+          </p>
+          <div className="space-y-3">
+            {draft.seed_comments.map((c, i) => (
+              <SeedCommentRow
+                key={c.id}
+                index={i}
+                total={draft.seed_comments.length}
+                comment={c}
+                onChange={(patch) =>
+                  set(
+                    'seed_comments',
+                    draft.seed_comments.map((cc, idx) => (idx === i ? { ...cc, ...patch } : cc))
+                  )
+                }
+                onRemove={() =>
+                  set('seed_comments', draft.seed_comments.filter((_, idx) => idx !== i))
+                }
+                onMove={(dir) => {
+                  const t = i + dir
+                  if (t < 0 || t >= draft.seed_comments.length) return
+                  const next = [...draft.seed_comments]
+                  ;[next[i], next[t]] = [next[t], next[i]]
+                  set('seed_comments', next)
+                }}
+              />
+            ))}
+            {draft.seed_comments.length === 0 && (
+              <div className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-6 text-center">
+                No seed comments yet — add one above.
+              </div>
+            )}
+          </div>
+        </Card>
+      )}
       </div>
     </div>
   )
@@ -981,6 +1195,8 @@ function BodySectionRow({
   onPatch,
   onRemove,
   onMove,
+  uploadWorkflow,
+  submissionId,
 }: {
   index: number
   total: number
@@ -988,6 +1204,8 @@ function BodySectionRow({
   onPatch: (patch: Partial<AdviceIdeasBodySection>) => void
   onRemove: () => void
   onMove: (dir: -1 | 1) => void
+  uploadWorkflow: Props['workflow']
+  submissionId?: string
 }) {
   const [open, setOpen] = useState(index === 0)
 
@@ -1078,6 +1296,8 @@ function BodySectionRow({
                   onChange={(patch) => updateBlock(bi, patch)}
                   onRemove={() => removeBlock(bi)}
                   onMove={(dir) => moveBlock(bi, dir)}
+                  uploadWorkflow={uploadWorkflow}
+                  submissionId={submissionId}
                 />
               ))}
               {section.blocks.length === 0 && (
@@ -1110,6 +1330,8 @@ function BlockRow({
   onChange,
   onRemove,
   onMove,
+  uploadWorkflow,
+  submissionId,
 }: {
   index: number
   total: number
@@ -1117,6 +1339,8 @@ function BlockRow({
   onChange: (patch: Partial<AdviceIdeasBlock>) => void
   onRemove: () => void
   onMove: (dir: -1 | 1) => void
+  uploadWorkflow: Props['workflow']
+  submissionId?: string
 }) {
   return (
     <div className="border border-gray-200 rounded-lg p-3 bg-white">
@@ -1199,9 +1423,25 @@ function BlockRow({
         </div>
       )}
 
-      {block.type === 'image' && <MediaBlockFields block={block} onChange={onChange} kind="image" />}
+      {block.type === 'image' && (
+        <MediaBlockFields
+          block={block}
+          onChange={onChange}
+          kind="image"
+          uploadWorkflow={uploadWorkflow}
+          submissionId={submissionId}
+        />
+      )}
 
-      {block.type === 'video' && <MediaBlockFields block={block} onChange={onChange} kind="video" />}
+      {block.type === 'video' && (
+        <MediaBlockFields
+          block={block}
+          onChange={onChange}
+          kind="video"
+          uploadWorkflow={uploadWorkflow}
+          submissionId={submissionId}
+        />
+      )}
 
       {block.type === 'gallery' && <GalleryBlockFields block={block} onChange={onChange} />}
     </div>
@@ -1212,10 +1452,14 @@ function MediaBlockFields({
   block,
   onChange,
   kind,
+  uploadWorkflow,
+  submissionId,
 }: {
   block: Extract<AdviceIdeasBlock, { type: 'image' | 'video' }>
   onChange: (patch: Partial<AdviceIdeasBlock>) => void
   kind: 'image' | 'video'
+  uploadWorkflow: Props['workflow']
+  submissionId?: string
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
@@ -1226,9 +1470,12 @@ function MediaBlockFields({
     const fd = new FormData()
     fd.append('file', file)
     fd.append('slug', 'body')
+    if (submissionId) fd.append('submissionId', submissionId)
     try {
       setUploading(true)
-      const { url } = await uploadAdviceMedia(fd)
+      const { url } = uploadWorkflow === 'contributor-submission'
+        ? await uploadContributorMedia(fd)
+        : await uploadAdviceMedia(fd)
       onChange({ src: url } as Partial<AdviceIdeasBlock>)
     } finally {
       setUploading(false)
