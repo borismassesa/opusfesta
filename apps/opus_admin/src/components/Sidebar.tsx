@@ -107,6 +107,7 @@ const sections: NavSection[] = [
       { icon: Star, label: "Reviews & Moderation", href: "/operations/reviews" },
       { icon: Calendar, label: "Calendar", href: "/operations/calendar" },
       { icon: Newspaper, label: "Articles", href: "/operations/articles" },
+      { icon: FileText, label: "Article Submissions", href: "/operations/articles/submissions" },
     ],
   },
   {

@@ -18,22 +18,25 @@ export default async function AuthorsListPage() {
   if (error) throw error
 
   const authors = (data ?? []) as AdviceIdeasAuthorRow[]
-  const { data: accessRows } = await supabase
-    .from('admin_whitelist')
-    .select('email, full_name, is_active, last_login')
-    .eq('role', 'author')
-    .eq('is_active', true)
-    .order('email', { ascending: true })
+  const { data: accessRows, error: accessError } = await supabase
+    .from('advice_article_invitations')
+    .select('id, email, full_name, article_title, status, expires_at, accepted_submission_id')
+    .order('created_at', { ascending: false })
+    .limit(8)
+  if (accessError) throw accessError
 
   return (
     <div className="px-8 pt-8 pb-12">
       <div className="max-w-[1200px] mx-auto space-y-8">
         <AuthorAccessForm
           authors={(accessRows ?? []) as Array<{
+            id: string
             email: string
             full_name: string | null
-            is_active: boolean | null
-            last_login: string | null
+            article_title: string | null
+            status: string
+            expires_at: string
+            accepted_submission_id: string | null
           }>}
         />
 
