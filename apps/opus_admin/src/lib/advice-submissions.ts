@@ -50,7 +50,7 @@ export type AdviceArticleSubmissionRow = {
   read_time: number
   featured: boolean
   published: boolean
-  published_at: string
+  published_at: string | null
   hero_media_type: 'image' | 'video'
   hero_media_src: string
   hero_media_alt: string
@@ -80,7 +80,8 @@ export function submissionToDraft(row: AdviceArticleSubmissionRow): AdviceSubmis
     read_time: row.read_time,
     featured: row.featured,
     published: row.published,
-    published_at: row.published_at,
+    // Empty string = "not yet published"; the editor's date input renders blank.
+    published_at: row.published_at ?? '',
     hero_media_type: row.hero_media_type,
     hero_media_src: row.hero_media_src,
     hero_media_alt: row.hero_media_alt,

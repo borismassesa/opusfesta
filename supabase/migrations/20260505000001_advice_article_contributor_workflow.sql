@@ -28,7 +28,7 @@ CREATE INDEX IF NOT EXISTS idx_advice_article_invitations_expires_at
 
 CREATE TABLE IF NOT EXISTS advice_article_submissions (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
-  invitation_id uuid REFERENCES advice_article_invitations(id) ON DELETE SET NULL,
+  invitation_id uuid UNIQUE REFERENCES advice_article_invitations(id) ON DELETE SET NULL,
   author_email text NOT NULL,
   author_clerk_id text,
   status text NOT NULL DEFAULT 'draft'
@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS advice_article_submissions (
   read_time integer NOT NULL DEFAULT 5,
   featured boolean NOT NULL DEFAULT false,
   published boolean NOT NULL DEFAULT false,
-  published_at timestamptz NOT NULL DEFAULT now(),
+  published_at timestamptz,
   hero_media_type text NOT NULL DEFAULT 'image'
     CHECK (hero_media_type IN ('image', 'video')),
   hero_media_src text NOT NULL DEFAULT '',

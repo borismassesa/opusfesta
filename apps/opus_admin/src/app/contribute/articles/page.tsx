@@ -5,10 +5,20 @@ import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
   statusLabel,
   statusTone,
-  type AdviceArticleSubmissionRow,
+  type AdviceSubmissionStatus,
 } from '@/lib/advice-submissions'
 
 export const dynamic = 'force-dynamic'
+
+type ContributorListRow = {
+  id: string
+  title: string
+  slug: string
+  status: AdviceSubmissionStatus
+  updated_at: string
+}
+
+const COLS = 'id, title, slug, status, updated_at'
 
 export default async function ContributorArticlesPage() {
   const user = await currentUser()
@@ -19,14 +29,37 @@ export default async function ContributorArticlesPage() {
   ).trim().toLowerCase()
 
   const supabase = createSupabaseAdminClient()
-  const { data, error } = await supabase
-    .from('advice_article_submissions')
-    .select('*')
-    .or(`author_clerk_id.eq.${user?.id ?? '__none__'},author_email.ilike.${email || '__none__'}`)
-    .order('updated_at', { ascending: false })
+  // Query the two ownership predicates separately so user-controlled email
+  // can't escape into the PostgREST .or() DSL. Merge in JS.
+  const [byClerk, byEmail] = await Promise.all([
+    user?.id
+      ? supabase
+          .from('advice_article_submissions')
+          .select(COLS)
+          .eq('author_clerk_id', user.id)
+          .order('updated_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null } as const),
+    email
+      ? supabase
+          .from('advice_article_submissions')
+          .select(COLS)
+          .ilike('author_email', email)
+          .order('updated_at', { ascending: false })
+      : Promise.resolve({ data: [], error: null } as const),
+  ])
 
-  if (error) throw error
-  const submissions = (data ?? []) as AdviceArticleSubmissionRow[]
+  if (byClerk.error) throw byClerk.error
+  if (byEmail.error) throw byEmail.error
+
+  const seen = new Set<string>()
+  const submissions: ContributorListRow[] = [
+    ...((byClerk.data ?? []) as ContributorListRow[]),
+    ...((byEmail.data ?? []) as ContributorListRow[]),
+  ].filter((row) => {
+    if (seen.has(row.id)) return false
+    seen.add(row.id)
+    return true
+  }).sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
 
   return (
     <div className="mx-auto max-w-[1000px] px-6 py-10">

@@ -312,11 +312,15 @@ export default function PostEditor({
     fd.append('slug', draft.slug || 'new')
     if (id) fd.append('submissionId', id)
     startTransition(async () => {
-      const { url, type } = isContributorSubmission
-        ? await uploadContributorMedia(fd)
-        : await uploadAdviceMedia(fd)
-      setDraft((d) => ({ ...d, hero_media_src: url, hero_media_type: type }))
-      setMessage('Hero media uploaded.')
+      try {
+        const { url, type } = isContributorSubmission
+          ? await uploadContributorMedia(fd)
+          : await uploadAdviceMedia(fd)
+        setDraft((d) => ({ ...d, hero_media_src: url, hero_media_type: type }))
+        setMessage('Hero media uploaded.')
+      } catch (err) {
+        setMessage(err instanceof Error ? err.message : 'Hero media upload failed.')
+      }
     })
   }
 
@@ -330,11 +334,15 @@ export default function PostEditor({
     fd.append('slug', draft.slug || 'new')
     if (id) fd.append('submissionId', id)
     startTransition(async () => {
-      const { url } = isContributorSubmission
-        ? await uploadContributorMedia(fd)
-        : await uploadAdviceMedia(fd)
-      setDraft((d) => ({ ...d, author_avatar_url: url }))
-      setMessage('Avatar uploaded.')
+      try {
+        const { url } = isContributorSubmission
+          ? await uploadContributorMedia(fd)
+          : await uploadAdviceMedia(fd)
+        setDraft((d) => ({ ...d, author_avatar_url: url }))
+        setMessage('Avatar uploaded.')
+      } catch (err) {
+        setMessage(err instanceof Error ? err.message : 'Avatar upload failed.')
+      }
     })
   }
   const onAvatarFileInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -415,10 +423,14 @@ export default function PostEditor({
     startTransition(async () => {
       if (isContributorSubmission) {
         if (!id) return
-        await submitContributorSubmission(id, draft)
-        setSavedSnapshot(draft)
-        setMessage('Submitted for review.')
-        router.push('/contribute/articles')
+        try {
+          await submitContributorSubmission(id, draft)
+          setSavedSnapshot(draft)
+          setMessage('Submitted for review.')
+          router.push('/contribute/articles')
+        } catch (err) {
+          setMessage(err instanceof Error ? err.message : 'Submission failed.')
+        }
         return
       }
       const payload = { ...draft, published: true }
@@ -442,10 +454,15 @@ export default function PostEditor({
       if (!id) return
       const notes = window.prompt('What should the author correct?')
       if (notes == null) return
-      await persist(draft)
-      await requestAdviceSubmissionCorrections(id, notes)
-      setMessage('Corrections requested.')
-      router.refresh()
+      const saved = await persist(draft)
+      if (!saved) return
+      try {
+        await requestAdviceSubmissionCorrections(id, notes)
+        setMessage('Corrections requested.')
+        router.refresh()
+      } catch (err) {
+        setMessage(err instanceof Error ? err.message : 'Could not request corrections.')
+      }
     })
 
   const handleRejectSubmission = () =>
@@ -453,9 +470,13 @@ export default function PostEditor({
       if (!id) return
       const notes = window.prompt('Optional rejection note for the record:')
       if (notes == null) return
-      await rejectAdviceSubmission(id, notes)
-      setMessage('Submission rejected.')
-      router.refresh()
+      try {
+        await rejectAdviceSubmission(id, notes)
+        setMessage('Submission rejected.')
+        router.refresh()
+      } catch (err) {
+        setMessage(err instanceof Error ? err.message : 'Could not reject submission.')
+      }
     })
 
   const handleApproveSubmission = (publish: boolean) => {
@@ -466,10 +487,22 @@ export default function PostEditor({
     }
     startTransition(async () => {
       if (!id) return
-      await persist(draft)
-      const result = await approveAdviceSubmission(id, publish)
-      setMessage(publish ? 'Published from submission.' : 'Approved as article draft.')
-      router.push(`/operations/articles/${result.postId}`)
+      const saved = await persist(draft)
+      if (!saved) return
+      try {
+        const result = await approveAdviceSubmission(id, publish)
+        if (result.revalidationFailures?.length) {
+          setMessage(
+            (publish ? 'Published from submission' : 'Approved as article draft') +
+              ` — but website cache refresh failed: ${result.revalidationFailures.join('; ')}.`
+          )
+        } else {
+          setMessage(publish ? 'Published from submission.' : 'Approved as article draft.')
+        }
+        router.push(`/operations/articles/${result.postId}`)
+      } catch (err) {
+        setMessage(err instanceof Error ? err.message : 'Approval failed.')
+      }
     })
   }
 
@@ -1463,6 +1496,7 @@ function MediaBlockFields({
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   const onUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -1471,12 +1505,15 @@ function MediaBlockFields({
     fd.append('file', file)
     fd.append('slug', 'body')
     if (submissionId) fd.append('submissionId', submissionId)
+    setUploadError(null)
     try {
       setUploading(true)
       const { url } = uploadWorkflow === 'contributor-submission'
         ? await uploadContributorMedia(fd)
         : await uploadAdviceMedia(fd)
       onChange({ src: url } as Partial<AdviceIdeasBlock>)
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed.')
     } finally {
       setUploading(false)
       if (fileRef.current) fileRef.current.value = ''
@@ -1503,6 +1540,9 @@ function MediaBlockFields({
         </button>
         <input ref={fileRef} type="file" accept={`${kind}/*`} hidden onChange={onUpload} />
       </div>
+      {uploadError && (
+        <p className="text-xs text-red-600">{uploadError}</p>
+      )}
       <input
         type="text"
         value={block.alt}

@@ -4,22 +4,33 @@ import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
   statusLabel,
   statusTone,
-  type AdviceArticleSubmissionRow,
+  type AdviceSubmissionStatus,
 } from '@/lib/advice-submissions'
 import SetArticlesHeading from '../SetArticlesHeading'
 
 export const dynamic = 'force-dynamic'
 
+type SubmissionListRow = {
+  id: string
+  title: string
+  slug: string
+  author_name: string | null
+  author_email: string
+  status: AdviceSubmissionStatus
+  updated_at: string
+  submitted_at: string | null
+}
+
 export default async function ArticleSubmissionsPage() {
   const supabase = createSupabaseAdminClient()
   const { data, error } = await supabase
     .from('advice_article_submissions')
-    .select('*')
+    .select('id, title, slug, author_name, author_email, status, updated_at, submitted_at')
     .order('submitted_at', { ascending: false, nullsFirst: false })
     .order('updated_at', { ascending: false })
 
   if (error) throw error
-  const submissions = (data ?? []) as AdviceArticleSubmissionRow[]
+  const submissions = (data ?? []) as SubmissionListRow[]
   const pendingCount = submissions.filter((s) => s.status === 'submitted').length
 
   return (

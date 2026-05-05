@@ -62,6 +62,18 @@ async function getIdentity(): Promise<Identity> {
   return { clerkId: userId, email, name }
 }
 
+// Cap and allowlist for contributor uploads — mirrors the public website-media bucket policy.
+const CONTRIBUTOR_UPLOAD_MAX_BYTES = 25 * 1024 * 1024
+const CONTRIBUTOR_UPLOAD_ALLOWED_MIME = new Set([
+  'image/png',
+  'image/jpeg',
+  'image/webp',
+  'image/gif',
+  'video/mp4',
+  'video/webm',
+])
+const CONTRIBUTOR_UPLOAD_ALLOWED_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm'])
+
 function draftPayload(input: AdviceSubmissionDraft): Record<string, unknown> {
   return {
     slug: (input.slug || slugify(input.title)).trim(),
@@ -76,7 +88,7 @@ function draftPayload(input: AdviceSubmissionDraft): Record<string, unknown> {
     read_time: Math.max(1, Math.round(input.read_time || 1)),
     featured: !!input.featured,
     published: !!input.published,
-    published_at: input.published_at || new Date().toISOString(),
+    published_at: input.published_at || null,
     hero_media_type: input.hero_media_type,
     hero_media_src: input.hero_media_src,
     hero_media_alt: input.hero_media_alt,
@@ -90,28 +102,36 @@ function postPayload(input: AdviceSubmissionDraft, publish: boolean): Record<str
   return {
     ...draftPayload(input),
     published: publish,
+    // For posts the column is NOT NULL — use input timestamp if provided, else now().
     published_at: input.published_at || new Date().toISOString(),
   }
 }
 
-async function revalidateWebsite(slug?: string): Promise<void> {
+async function revalidateWebsite(slug?: string): Promise<{ ok: boolean; failures: string[] }> {
   const url = process.env.NEXT_PUBLIC_WEBSITE_URL
   const secret = process.env.WEBSITE_REVALIDATE_SECRET
-  if (!url || !secret) return
+  if (!url || !secret) return { ok: true, failures: [] }
   const paths = ['/advice-and-ideas']
   if (slug) paths.push(`/advice-and-ideas/${slug}`)
-  try {
-    await Promise.all(
-      paths.map((path) =>
-        fetch(`${url}/api/revalidate?path=${encodeURIComponent(path)}`, {
+  const failures: string[] = []
+  await Promise.all(
+    paths.map(async (path) => {
+      try {
+        const res = await fetch(`${url}/api/revalidate?path=${encodeURIComponent(path)}`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${secret}` },
         })
-      )
-    )
-  } catch {
-    // Best effort.
-  }
+        if (!res.ok) {
+          failures.push(`${path} -> HTTP ${res.status}`)
+          console.error('[advice.revalidate] non-ok response', { path, status: res.status })
+        }
+      } catch (err) {
+        failures.push(`${path} -> ${err instanceof Error ? err.message : 'fetch error'}`)
+        console.error('[advice.revalidate] threw', { path, err })
+      }
+    })
+  )
+  return { ok: failures.length === 0, failures }
 }
 
 async function getOrigin(): Promise<string> {
@@ -121,7 +141,14 @@ async function getOrigin(): Promise<string> {
   const host = h.get('host')
   const proto = h.get('x-forwarded-proto') || 'http'
   if (host) return `${proto}://${host}`
-  return process.env.NEXT_PUBLIC_ADMIN_URL || 'http://localhost:3010'
+  const fallback = process.env.NEXT_PUBLIC_ADMIN_URL
+  if (fallback) return fallback
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'Could not resolve admin origin: missing host header and NEXT_PUBLIC_ADMIN_URL.'
+    )
+  }
+  return 'http://localhost:3010'
 }
 
 export async function createContributorInvitation(
@@ -210,6 +237,10 @@ export async function acceptContributorInvitation(token: string): Promise<{ id: 
     return { id: invite.accepted_submission_id }
   }
 
+  if (invite.status !== 'pending') {
+    throw new Error('This invite is no longer accepting drafts.')
+  }
+
   const title = invite.article_title ?? ''
   const { data: submission, error: insertError } = await supabase
     .from('advice_article_submissions')
@@ -226,7 +257,23 @@ export async function acceptContributorInvitation(token: string): Promise<{ id: 
     .select('id')
     .single<{ id: string }>()
 
-  if (insertError) throw insertError
+  if (insertError) {
+    // 23505 is the Postgres unique-violation code — fires when a concurrent
+    // request beat us to the UNIQUE(invitation_id) constraint on submissions.
+    // Re-read the invite and return the now-existing submission id.
+    if ((insertError as { code?: string }).code === '23505') {
+      const { data: existing } = await supabase
+        .from('advice_article_submissions')
+        .select('id')
+        .eq('invitation_id', invite.id)
+        .maybeSingle<{ id: string }>()
+      if (existing) {
+        revalidatePath('/contribute/articles')
+        return { id: existing.id }
+      }
+    }
+    throw insertError
+  }
 
   const { error: updateError } = await supabase
     .from('advice_article_invitations')
@@ -238,7 +285,14 @@ export async function acceptContributorInvitation(token: string): Promise<{ id: 
     })
     .eq('id', invite.id)
 
-  if (updateError) throw updateError
+  if (updateError) {
+    console.error('[advice.accept] submission inserted but invite update failed', {
+      invitationId: invite.id,
+      submissionId: submission.id,
+      err: updateError,
+    })
+    throw updateError
+  }
 
   revalidatePath('/contribute/articles')
   revalidatePath('/operations/articles/submissions')
@@ -322,10 +376,24 @@ export async function uploadContributorMedia(
   if (!file) throw new Error('No file provided.')
   if (!submissionId) throw new Error('Missing submission.')
 
+  if (file.size > CONTRIBUTOR_UPLOAD_MAX_BYTES) {
+    throw new Error('File is too large. The contributor upload limit is 25 MB.')
+  }
+  if (!CONTRIBUTOR_UPLOAD_ALLOWED_MIME.has(file.type)) {
+    throw new Error(
+      'Unsupported file type. Allowed: PNG, JPEG, WebP, GIF, MP4, WebM.'
+    )
+  }
+  const rawExt = (file.name.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const ext = CONTRIBUTOR_UPLOAD_ALLOWED_EXT.has(rawExt)
+    ? rawExt
+    : file.type.startsWith('video')
+      ? 'mp4'
+      : 'png'
+
   await loadOwnedSubmission(submissionId, true)
 
   const supabase = createSupabaseAdminClient()
-  const ext = file.name.split('.').pop() ?? 'bin'
   const path = `advice-and-ideas/submissions/${submissionId}/${Date.now()}-${randomUUID()}.${ext}`
 
   const { error } = await supabase.storage
@@ -403,7 +471,7 @@ export async function rejectAdviceSubmission(
 export async function approveAdviceSubmission(
   id: string,
   publish: boolean
-): Promise<{ postId: string }> {
+): Promise<{ postId: string; revalidationFailures?: string[] }> {
   await requireAdminRole(ARTICLE_MANAGE_ROLES)
   const identity = await getIdentity()
   const supabase = createSupabaseAdminClient()
@@ -415,6 +483,31 @@ export async function approveAdviceSubmission(
 
   if (loadError) throw loadError
   if (!submission) throw new Error('Submission not found.')
+
+  // Slug uniqueness is enforced at the DB layer on advice_ideas_posts. Pre-check
+  // so the admin gets a friendly error instead of a raw Postgres unique violation
+  // when a contributor's auto-slugified title collides with a published article.
+  const slug = (submission.slug || slugify(submission.title)).trim()
+  if (!slug) throw new Error('Slug is required before approval.')
+  if (!submission.source_post_id) {
+    const { data: collision } = await supabase
+      .from('advice_ideas_posts')
+      .select('id')
+      .eq('slug', slug)
+      .maybeSingle<{ id: string }>()
+    if (collision) {
+      throw new Error(
+        `Slug "${slug}" is already used by another article. Edit the slug on this submission before approving.`
+      )
+    }
+  }
+
+  // First publish: stamp published_at to now. Subsequent re-publishes preserve
+  // the original publication date so SEO and feed ordering stay stable.
+  const isFirstPublish = publish && !submission.source_post_id
+  const publishedAt = isFirstPublish
+    ? new Date().toISOString()
+    : submission.published_at ?? new Date().toISOString()
 
   const draft = {
     slug: submission.slug,
@@ -429,7 +522,7 @@ export async function approveAdviceSubmission(
     read_time: submission.read_time,
     featured: submission.featured,
     published: publish,
-    published_at: submission.published_at,
+    published_at: publishedAt,
     hero_media_type: submission.hero_media_type,
     hero_media_src: submission.hero_media_src,
     hero_media_alt: submission.hero_media_alt,
@@ -437,9 +530,6 @@ export async function approveAdviceSubmission(
     body: submission.body,
     seed_comments: submission.seed_comments,
   } satisfies AdviceSubmissionDraft
-
-  const slug = (draft.slug || slugify(draft.title)).trim()
-  if (!slug) throw new Error('Slug is required before approval.')
 
   let postId = submission.source_post_id
   if (postId) {
@@ -464,18 +554,30 @@ export async function approveAdviceSubmission(
       source_post_id: postId,
       status: publish ? 'published' : 'approved',
       published: publish,
+      published_at: publishedAt,
       reviewed_at: new Date().toISOString(),
       reviewed_by_clerk_id: identity.clerkId,
       correction_notes: null,
     })
     .eq('id', id)
-  if (updateError) throw updateError
+  if (updateError) {
+    // The post is already created/updated — log the orphan so it can be reconciled.
+    console.error('[advice.approve] post written but submission update failed', {
+      submissionId: id,
+      postId,
+      err: updateError,
+    })
+    throw updateError
+  }
 
   revalidatePath('/operations/articles')
   revalidatePath('/operations/articles/submissions')
   revalidatePath(`/operations/articles/submissions/${id}`)
-  await revalidateWebsite(slug)
-  return { postId }
+  const revalidation = await revalidateWebsite(slug)
+  return {
+    postId,
+    revalidationFailures: revalidation.ok ? undefined : revalidation.failures,
+  }
 }
 
 export async function deleteAdviceSubmission(id: string): Promise<void> {

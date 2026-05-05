@@ -18,11 +18,12 @@ export default async function AuthorsListPage() {
   if (error) throw error
 
   const authors = (data ?? []) as AdviceIdeasAuthorRow[]
-  const { data: accessRows } = await supabase
+  const { data: accessRows, error: accessError } = await supabase
     .from('advice_article_invitations')
     .select('id, email, full_name, article_title, status, expires_at, accepted_submission_id')
     .order('created_at', { ascending: false })
     .limit(8)
+  if (accessError) throw accessError
 
   return (
     <div className="px-8 pt-8 pb-12">
