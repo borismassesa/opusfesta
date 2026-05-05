@@ -3,6 +3,10 @@ import { Plus } from 'lucide-react'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import type { AdviceIdeasAuthorRow } from '@/lib/cms/advice-ideas'
 import { resolveMediaUrl } from '@/app/(admin)/cms/advice-and-ideas/_media'
+import {
+  ADVICE_SUBMISSION_MISSING_TABLE_HINT,
+  isMissingAdviceSubmissionTable,
+} from '@/lib/advice-submissions'
 import AuthorAccessForm from './AuthorAccessForm'
 import AuthorsRowActions from './AuthorsRowActions'
 
@@ -23,11 +27,26 @@ export default async function AuthorsListPage() {
     .select('id, email, full_name, article_title, status, expires_at, accepted_submission_id')
     .order('created_at', { ascending: false })
     .limit(8)
-  if (accessError) throw accessError
+  if (accessError) {
+    if (isMissingAdviceSubmissionTable(accessError)) {
+      console.warn(`[authors] ${accessError.code} — ${ADVICE_SUBMISSION_MISSING_TABLE_HINT}`)
+    } else {
+      throw accessError
+    }
+  }
+  const tableMissing = !!accessError && isMissingAdviceSubmissionTable(accessError)
 
   return (
     <div className="px-8 pt-8 pb-12">
       <div className="max-w-[1200px] mx-auto space-y-8">
+        {tableMissing && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">Contributor workflow migration not applied yet</p>
+            <p className="mt-1">
+              Apply <code className="rounded bg-amber-100 px-1">supabase/migrations/20260505000001_advice_article_contributor_workflow.sql</code> on the connected Supabase project before creating contributor invites.
+            </p>
+          </div>
+        )}
         <AuthorAccessForm
           authors={(accessRows ?? []) as Array<{
             id: string

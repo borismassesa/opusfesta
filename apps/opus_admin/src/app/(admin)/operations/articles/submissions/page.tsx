@@ -2,6 +2,8 @@ import Link from 'next/link'
 import { FileText } from 'lucide-react'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
+  ADVICE_SUBMISSION_MISSING_TABLE_HINT,
+  isMissingAdviceSubmissionTable,
   statusLabel,
   statusTone,
   type AdviceSubmissionStatus,
@@ -29,7 +31,15 @@ export default async function ArticleSubmissionsPage() {
     .order('submitted_at', { ascending: false, nullsFirst: false })
     .order('updated_at', { ascending: false })
 
-  if (error) throw error
+  let tableMissing = false
+  if (error) {
+    if (isMissingAdviceSubmissionTable(error)) {
+      console.warn(`[submissions] ${error.code} — ${ADVICE_SUBMISSION_MISSING_TABLE_HINT}`)
+      tableMissing = true
+    } else {
+      throw error
+    }
+  }
   const submissions = (data ?? []) as SubmissionListRow[]
   const pendingCount = submissions.filter((s) => s.status === 'submitted').length
 
@@ -40,6 +50,14 @@ export default async function ArticleSubmissionsPage() {
         subtitle={`${pendingCount} awaiting review · ${submissions.length} total`}
       />
       <div className="mx-auto max-w-[1200px] space-y-6">
+        {tableMissing && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">Contributor workflow migration not applied yet</p>
+            <p className="mt-1">
+              Apply <code className="rounded bg-amber-100 px-1">supabase/migrations/20260505000001_advice_article_contributor_workflow.sql</code> to enable contributor submissions.
+            </p>
+          </div>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="max-w-2xl text-sm leading-relaxed text-gray-500">
             Contributor drafts are staged here. Approving copies the submission

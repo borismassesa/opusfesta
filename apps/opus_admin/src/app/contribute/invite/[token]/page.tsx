@@ -2,6 +2,10 @@ import Link from 'next/link'
 import { auth } from '@clerk/nextjs/server'
 import { AlertCircle, Mail } from 'lucide-react'
 import { getInvitationPreview } from '@/lib/advice-submission-actions'
+import {
+  ADVICE_SUBMISSION_MISSING_TABLE_HINT,
+  isMissingAdviceSubmissionTable,
+} from '@/lib/advice-submissions'
 import AcceptInviteButton from './AcceptInviteButton'
 
 export const dynamic = 'force-dynamic'
@@ -12,14 +16,36 @@ export default async function ContributorInvitePage({
   params: Promise<{ token: string }>
 }) {
   const { token } = await params
-  const invite = await getInvitationPreview(token)
+  let invite: Awaited<ReturnType<typeof getInvitationPreview>>
+  let tableMissing = false
+  try {
+    invite = await getInvitationPreview(token)
+  } catch (err) {
+    if (isMissingAdviceSubmissionTable(err as { code?: string })) {
+      console.warn(
+        `[contribute-invite] ${(err as { code?: string }).code} — ${ADVICE_SUBMISSION_MISSING_TABLE_HINT}`
+      )
+      tableMissing = true
+      invite = null
+    } else {
+      throw err
+    }
+  }
   const { userId } = await auth()
-  const expired = invite ? new Date(invite.expires_at).getTime() < Date.now() : false
+  // Treat unparseable expires_at as expired so a malformed row never falls
+  // through to the happy-path "Accept" CTA.
+  const expiresAtMs = invite ? new Date(invite.expires_at).getTime() : NaN
+  const expired = invite ? !Number.isFinite(expiresAtMs) || expiresAtMs < Date.now() : false
 
   return (
     <div className="mx-auto max-w-[880px] px-6 py-16">
       <div className="rounded-2xl border border-gray-100 bg-white p-8 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-        {!invite ? (
+        {tableMissing ? (
+          <InviteState
+            title="Contributor workflow not set up"
+            body="The site administrator hasn't applied the contributor workflow migration yet. Please ask them to apply 20260505000001_advice_article_contributor_workflow.sql, then refresh this link."
+          />
+        ) : !invite ? (
           <InviteState
             title="Invite not found"
             body="This contributor link is invalid. Ask the OpusFesta team for a fresh invite."
