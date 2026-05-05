@@ -3,6 +3,8 @@ import { currentUser } from '@clerk/nextjs/server'
 import { FileText } from 'lucide-react'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
+  ADVICE_SUBMISSION_MISSING_TABLE_HINT,
+  isMissingAdviceSubmissionTable,
   statusLabel,
   statusTone,
   type AdviceSubmissionStatus,
@@ -48,8 +50,16 @@ export default async function ContributorArticlesPage() {
       : Promise.resolve({ data: [], error: null } as const),
   ])
 
-  if (byClerk.error) throw byClerk.error
-  if (byEmail.error) throw byEmail.error
+  let tableMissing = false
+  for (const result of [byClerk, byEmail]) {
+    if (!result.error) continue
+    if (isMissingAdviceSubmissionTable(result.error)) {
+      console.warn(`[contribute] ${result.error.code} — ${ADVICE_SUBMISSION_MISSING_TABLE_HINT}`)
+      tableMissing = true
+      continue
+    }
+    throw result.error
+  }
 
   const seen = new Set<string>()
   const submissions: ContributorListRow[] = [
@@ -71,6 +81,14 @@ export default async function ContributorArticlesPage() {
           Draft your assigned Ideas &amp; Advice article here. Once submitted,
           the editorial team can approve it, reject it, or send notes back.
         </p>
+        {tableMissing && (
+          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+            <p className="font-semibold">Contributor workflow not set up yet</p>
+            <p className="mt-1">
+              The site administrator needs to apply the contributor workflow migration. Please ask them to apply <code className="rounded bg-amber-100 px-1">supabase/migrations/20260505000001_advice_article_contributor_workflow.sql</code>.
+            </p>
+          </div>
+        )}
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">

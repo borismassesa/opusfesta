@@ -4,6 +4,8 @@ import { currentUser } from '@clerk/nextjs/server'
 import { ArrowLeft, Lock } from 'lucide-react'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
+  ADVICE_SUBMISSION_MISSING_TABLE_HINT,
+  isMissingAdviceSubmissionTable,
   statusLabel,
   statusTone,
   submissionToDraft,
@@ -33,7 +35,13 @@ export default async function ContributorArticlePage({
     .eq('id', id)
     .maybeSingle<AdviceArticleSubmissionRow>()
 
-  if (error) throw error
+  if (error) {
+    if (isMissingAdviceSubmissionTable(error)) {
+      console.warn(`[contribute-article] ${error.code} — ${ADVICE_SUBMISSION_MISSING_TABLE_HINT}`)
+      notFound()
+    }
+    throw error
+  }
   if (!data) notFound()
   if (data.author_clerk_id !== user?.id && data.author_email.toLowerCase() !== email) {
     notFound()

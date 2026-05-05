@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
+  ADVICE_SUBMISSION_MISSING_TABLE_HINT,
+  isMissingAdviceSubmissionTable,
   submissionToDraft,
   type AdviceArticleSubmissionRow,
 } from '@/lib/advice-submissions'
@@ -21,7 +23,13 @@ export default async function ArticleSubmissionReviewPage({
     .eq('id', id)
     .maybeSingle<AdviceArticleSubmissionRow>()
 
-  if (error) throw error
+  if (error) {
+    if (isMissingAdviceSubmissionTable(error)) {
+      console.warn(`[submission-review] ${error.code} — ${ADVICE_SUBMISSION_MISSING_TABLE_HINT}`)
+      notFound()
+    }
+    throw error
+  }
   if (!data) notFound()
 
   return (

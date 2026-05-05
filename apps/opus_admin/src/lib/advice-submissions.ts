@@ -5,6 +5,19 @@ import {
   type PostDraft,
 } from '@/lib/cms/advice-ideas'
 
+// PostgREST returns PGRST205 when a referenced table is missing from the
+// schema cache — usually because the contributor workflow migration hasn't
+// been applied yet, or the cache is stale. Routes that read these tables
+// degrade to an empty state and log a hint instead of crashing the page.
+export const ADVICE_SUBMISSION_MISSING_TABLE_HINT =
+  "advice_article_invitations / advice_article_submissions not in schema cache. Apply migration 20260505000001_advice_article_contributor_workflow.sql or run NOTIFY pgrst, 'reload schema'. Falling back to empty state."
+
+export function isMissingAdviceSubmissionTable(
+  error: { code?: string | null } | null | undefined
+): boolean {
+  return error?.code === 'PGRST205'
+}
+
 export const SUBMISSION_STATUSES = [
   'draft',
   'submitted',
