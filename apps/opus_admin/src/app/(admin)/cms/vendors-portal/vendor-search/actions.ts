@@ -1,25 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { revalidateVendorsPortal } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import type { VendorSearchContent } from '@/lib/cms/vendor-search'
 
 const PAGE_KEY = 'vendors_home'
 const SECTION_KEY = 'vendor-search'
-
-async function revalidateVendorsPortal(): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL
-  const secret = process.env.VENDORS_PORTAL_REVALIDATE_SECRET
-  if (!url || !secret) return
-  try {
-    await fetch(`${url}/api/revalidate?path=/`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${secret}` },
-    })
-  } catch {
-    // Best-effort; website will pick up changes on next ISR cycle.
-  }
-}
 
 export async function saveVendorSearchDraft(draft: VendorSearchContent): Promise<void> {
   const supabase = createSupabaseAdminClient()

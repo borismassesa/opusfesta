@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { revalidateWebsite as revalidateWebsitePaths } from '@/lib/revalidate'
 import { requireAdminRole, type AdminAccessRole } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
@@ -19,23 +20,9 @@ const ARTICLE_WRITE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 const ARTICLE_MANAGE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 
 async function revalidateWebsite(slug?: string): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_WEBSITE_URL
-  const secret = process.env.WEBSITE_REVALIDATE_SECRET
-  if (!url || !secret) return
   const paths = ['/advice-and-ideas']
   if (slug) paths.push(`/advice-and-ideas/${slug}`)
-  try {
-    await Promise.all(
-      paths.map((p) =>
-        fetch(`${url}/api/revalidate?path=${encodeURIComponent(p)}`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${secret}` },
-        })
-      )
-    )
-  } catch {
-    // Best effort.
-  }
+  await revalidateWebsitePaths(...paths)
 }
 
 export type PostUpsertInput = {

@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { revalidateWebsite as revalidateWebsitePaths } from '@/lib/revalidate'
 import { requireAdminRole, type AdminAccessRole } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import type { AdviceIdeasAuthorRow } from '@/lib/cms/advice-ideas'
@@ -12,15 +13,7 @@ const AUTHOR_MANAGE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 const AUTHOR_EDIT_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 
 async function revalidateWebsite(): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_WEBSITE_URL
-  const secret = process.env.WEBSITE_REVALIDATE_SECRET
-  if (!url || !secret) return
-  try {
-    await fetch(`${url}/api/revalidate?path=/advice-and-ideas`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${secret}` },
-    })
-  } catch {}
+  await revalidateWebsitePaths('/advice-and-ideas')
 }
 
 export type AuthorUpsertInput = Omit<AdviceIdeasAuthorRow, 'id' | 'created_at' | 'updated_at'> & {
