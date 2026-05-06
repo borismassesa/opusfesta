@@ -39,7 +39,14 @@ export default async function ArticleSubmissionsPage() {
     .order('updated_at', { ascending: false })
 
   if (error) throw error
-  const rows = (data ?? []) as AdviceArticleSubmissionRow[]
+  // Hide orphaned "published" submissions: when the linked post in
+  // advice_ideas_posts is deleted, the FK is ON DELETE SET NULL — so a row
+  // with status='published' and source_post_id=null means the article no
+  // longer exists. Keeping it in the queue would falsely advertise a live
+  // article and bloat the editor's "Published" filter.
+  const rows = ((data ?? []) as AdviceArticleSubmissionRow[]).filter(
+    (r) => !(r.status === 'published' && r.source_post_id === null)
+  )
 
   const entries: SubmissionListEntry[] = rows.map((r) => ({
     id: r.id,

@@ -268,6 +268,84 @@ export async function regenerateContributorInvitation(
   }
 }
 
+// Generates a fresh invite link without sending email. Used by the admin
+// "Copy link" action. Rotates token_hash for the same reason as
+// regenerateContributorInvitation — the previous link stops working.
+export async function regenerateContributorInvitationLink(
+  id: string,
+  expiresInDays = 14
+): Promise<{ id: string; link: string; expiresAt: string; email: string }> {
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
+
+  const days = Math.min(90, Math.max(1, Math.round(expiresInDays)))
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+  const token = randomBytes(32).toString('base64url')
+
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('advice_article_invitations')
+    .update({
+      token_hash: hashContributorInviteToken(token),
+      status: 'pending',
+      expires_at: expiresAt,
+    })
+    .eq('id', id)
+    .select('id, email, expires_at')
+    .single<{ id: string; email: string; expires_at: string }>()
+
+  if (error) throw error
+
+  const origin = await getOrigin()
+  const link = `${origin}/contribute/invite/${token}`
+
+  revalidatePath('/operations/authors')
+  return { id: data.id, link, expiresAt: data.expires_at, email: data.email }
+}
+
+// Soft-cancel: marks the invite revoked (status='revoked') so the link no
+// longer works but the audit row sticks around. We do NOT hard delete —
+// future "who invited X" queries depend on the row.
+export async function revokeContributorInvitation(id: string): Promise<void> {
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
+  const supabase = createSupabaseAdminClient()
+  const { error } = await supabase
+    .from('advice_article_invitations')
+    .update({ status: 'revoked' })
+    .eq('id', id)
+  if (error) throw error
+  revalidatePath('/operations/authors')
+}
+
+export type ContributorInvitationUpdate = {
+  fullName?: string | null
+  articleTitle?: string | null
+}
+
+export async function updateContributorInvitation(
+  id: string,
+  update: ContributorInvitationUpdate
+): Promise<void> {
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
+  const payload: Record<string, unknown> = {}
+  if (update.fullName !== undefined) {
+    const v = update.fullName?.trim() ?? ''
+    payload.full_name = v || null
+  }
+  if (update.articleTitle !== undefined) {
+    const v = update.articleTitle?.trim() ?? ''
+    payload.article_title = v || null
+  }
+  if (Object.keys(payload).length === 0) return
+
+  const supabase = createSupabaseAdminClient()
+  const { error } = await supabase
+    .from('advice_article_invitations')
+    .update(payload)
+    .eq('id', id)
+  if (error) throw error
+  revalidatePath('/operations/authors')
+}
+
 export async function getInvitationPreview(
   token: string
 ): Promise<Pick<

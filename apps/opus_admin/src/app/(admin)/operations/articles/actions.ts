@@ -137,6 +137,10 @@ export async function deleteAdvicePost(id: string): Promise<void> {
   if (error) throw error
 
   revalidatePath('/operations/articles')
+  // Submissions list filters out orphan "published" rows whose source_post_id
+  // got SET NULL by the FK on delete — refresh it so the editor sees the row
+  // disappear immediately.
+  revalidatePath('/operations/articles/submissions')
   await revalidateWebsite(row?.slug)
 }
 
