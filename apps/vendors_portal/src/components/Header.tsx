@@ -26,23 +26,51 @@ const SEGMENT_LABELS: Record<string, string> = {
 
 type PageHeading = { title: string; subtitle: string }
 
-const PAGE_HEADINGS: Record<string, PageHeading> = {
-  '/': {
-    title: 'Welcome back, OpusFesta Photography.',
-    subtitle: "Here's what's happening with your storefront today.",
-  },
-  '/leads': {
-    title: 'Leads',
-    subtitle: 'Inquiries from interested couples. Reply within 24 hours to boost your match rate.',
-  },
-  '/reviews': {
-    title: 'Reviews',
-    subtitle: 'Auto-collected from couples after every event. Reply, pin, or request a review.',
-  },
+function buildPageHeadings(vendorName: string): Record<string, PageHeading> {
+  return {
+    '/': {
+      title: `Welcome back, ${vendorName}.`,
+      subtitle: "Here's what's happening with your storefront today.",
+    },
+    '/dashboard': {
+      title: `Welcome back, ${vendorName}`,
+      subtitle: "Here's what's happening with your storefront today.",
+    },
+    '/leads': {
+      title: 'Leads',
+      subtitle: 'Inquiries from interested couples. Reply within 24 hours to boost your match rate.',
+    },
+    '/reviews': {
+      title: 'Reviews',
+      subtitle: 'Auto-collected from couples after every event. Reply, pin, or request a review.',
+    },
+  }
 }
 
 function humanize(seg: string): string {
   return seg.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+function vendorInitials(name: string): string {
+  const trimmed = name.trim()
+  if (!trimmed) return '··'
+
+  const wordParts = trimmed.split(/\s+/).filter(Boolean)
+  const first = wordParts[0]
+  const last = wordParts[wordParts.length - 1]
+  if (first && last && wordParts.length >= 2) {
+    return (first.charAt(0) + last.charAt(0)).toUpperCase()
+  }
+
+  // Single token: split on CamelCase, fall back to first two chars.
+  const camel = trimmed.match(/[A-Z][a-z0-9]*|[a-z0-9]+/g) ?? []
+  const camelFirst = camel[0]
+  const camelLast = camel[camel.length - 1]
+  if (camelFirst && camelLast && camel.length >= 2) {
+    return (camelFirst.charAt(0) + camelLast.charAt(0)).toUpperCase()
+  }
+
+  return trimmed.slice(0, 2).toUpperCase()
 }
 
 type Crumb = { label: string; href: string }
@@ -95,12 +123,13 @@ function useBookingsHeading(pathname: string): PageHeading | null {
   }
 }
 
-export function Header() {
+export function Header({ vendorName }: { vendorName: string }) {
   const pathname = usePathname()
   const crumbs = buildCrumbs(pathname)
   const storefrontHeading = useStorefrontHeading(pathname)
   const bookingsHeading = useBookingsHeading(pathname)
-  const heading = PAGE_HEADINGS[pathname] ?? storefrontHeading ?? bookingsHeading
+  const headings = buildPageHeadings(vendorName)
+  const heading = headings[pathname] ?? storefrontHeading ?? bookingsHeading
   const isStorefront = pathname.startsWith('/storefront')
 
   return (
@@ -167,8 +196,12 @@ export function Header() {
           <span className="absolute top-0 right-0.5 w-2 h-2 bg-red-500 border-2 border-gray-50 rounded-full" />
         </button>
 
-        <div className="w-10 h-10 rounded-full ring-2 ring-white shadow-sm bg-[#F0DFF6] text-[#7E5896] font-bold flex items-center justify-center text-sm">
-          OP
+        <div
+          className="w-10 h-10 rounded-full ring-2 ring-white shadow-sm bg-[#F0DFF6] text-[#7E5896] font-bold flex items-center justify-center text-sm"
+          aria-label={vendorName}
+          title={vendorName}
+        >
+          {vendorInitials(vendorName)}
         </div>
       </div>
     </header>

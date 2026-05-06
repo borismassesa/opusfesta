@@ -114,7 +114,7 @@ export default function ReviewPage() {
   const popularIndex = draft.packages.length === 3 ? 1 : -1
 
   if (submitted) {
-    // Pure celebration moment — single CTA forward. We deliberately don't
+    // Pure celebration moment. Single CTA forward. We deliberately don't
     // re-list "what's next" or "what we have on file" here; both surfaces
     // already exist on /verify (action) and /pending (status) and the vendor
     // sees them seconds later. Showing the same lists twice in a row is
@@ -139,7 +139,7 @@ export default function ReviewPage() {
             </h1>
             <p className="mt-4 text-base text-gray-600 leading-relaxed max-w-md mx-auto">
               Your application is submitted. A couple more documents and our
-              team can approve your storefront — usually 2–3 business days.
+              team can approve your storefront. Usually 2–3 business days.
             </p>
             <button
               type="button"
@@ -156,8 +156,7 @@ export default function ReviewPage() {
                 className="font-semibold text-gray-700 hover:text-gray-900 underline underline-offset-2"
               >
                 save and continue later
-              </Link>{' '}
-              — we&rsquo;ll email you a reminder.
+              </Link>. We&rsquo;ll email you a reminder.
             </p>
           </div>
         </main>
@@ -184,29 +183,29 @@ export default function ReviewPage() {
       {/* Sections */}
       <div className="border-t border-gray-200">
         <Section title="Profile" editHref="/onboard/profile/name">
-          <Row label="Business name">{draft.businessName || '—'}</Row>
-          <Row label="Category">{category?.profileLabel ?? '—'}</Row>
-          <Row label="Owner">{fullName || '—'}</Row>
+          <Row label="Business name">{draft.businessName || 'Not set'}</Row>
+          <Row label="Category">{category?.profileLabel ?? 'Not set'}</Row>
+          <Row label="Owner">{fullName || 'Not set'}</Row>
           <Row label="Location">
-            {[draft.city, regionLabel].filter(Boolean).join(', ') || '—'}
+            {[draft.city, regionLabel].filter(Boolean).join(', ') || 'Not set'}
           </Row>
           <Row label="Service area">
-            {allMarkets.length > 0 ? allMarkets.join(', ') : '—'}
+            {allMarkets.length > 0 ? allMarkets.join(', ') : 'Not set'}
           </Row>
-          <Row label="Phone">{draft.phone ? `+255 ${draft.phone}` : '—'}</Row>
-          <Row label="WhatsApp">{draft.whatsapp ? `+255 ${draft.whatsapp}` : '—'}</Row>
-          <Row label="Email">{draft.email || '—'}</Row>
+          <Row label="Phone">{draft.phone ? `+255 ${draft.phone}` : 'Not set'}</Row>
+          <Row label="WhatsApp">{draft.whatsapp ? `+255 ${draft.whatsapp}` : 'Not set'}</Row>
+          <Row label="Email">{draft.email || 'Not set'}</Row>
         </Section>
 
         <Section title="Online presence" editHref="/onboard/profile/socials">
           <Row label="Instagram">
-            {draft.socials.instagram ? `@${draft.socials.instagram}` : '—'}
+            {draft.socials.instagram ? `@${draft.socials.instagram}` : 'Not set'}
           </Row>
           <Row label="TikTok">
-            {draft.socials.tiktok ? `@${draft.socials.tiktok}` : '—'}
+            {draft.socials.tiktok ? `@${draft.socials.tiktok}` : 'Not set'}
           </Row>
-          <Row label="Facebook">{draft.socials.facebook || '—'}</Row>
-          <Row label="Website">{draft.socials.website || '—'}</Row>
+          <Row label="Facebook">{draft.socials.facebook || 'Not set'}</Row>
+          <Row label="Website">{draft.socials.website || 'Not set'}</Row>
         </Section>
 
         <Section title="About" editHref="/onboard/details/about">
@@ -214,31 +213,31 @@ export default function ReviewPage() {
             {draft.bio.trim() ? (
               <span className="block whitespace-pre-line">{draft.bio}</span>
             ) : (
-              '—'
+              'Not set'
             )}
           </Row>
-          <Row label="Years in business">{draft.yearsInBusiness || '—'}</Row>
+          <Row label="Years in business">{draft.yearsInBusiness || 'Not set'}</Row>
           <Row label="Languages">
-            {languageLabels.length > 0 ? languageLabels.join(', ') : '—'}
+            {languageLabels.length > 0 ? languageLabels.join(', ') : 'Not set'}
           </Row>
           <Row label="Awards & recognition" valign="top">
             {draft.awards.trim() ? (
               <span className="block whitespace-pre-line">{draft.awards}</span>
             ) : (
-              '—'
+              'Not set'
             )}
           </Row>
           <Row label="Response time">
             {draft.responseTimeHours
               ? `Replies within ${draft.responseTimeHours}`
-              : '—'}
+              : 'Not set'}
           </Row>
           <Row label="Locally owned">{draft.locallyOwned ? 'Yes' : 'No'}</Row>
         </Section>
 
         <Section title="Style & personality" editHref="/onboard/details/style">
-          <Row label="Style">{styleLabel ?? '—'}</Row>
-          <Row label="Personality">{personalityLabel ?? '—'}</Row>
+          <Row label="Style">{styleLabel ?? 'Not set'}</Row>
+          <Row label="Personality">{personalityLabel ?? 'Not set'}</Row>
         </Section>
 
         <Section title="Special services" editHref="/onboard/details/services">
@@ -302,21 +301,21 @@ export default function ReviewPage() {
 
         <Section title="Booking policies" editHref="/onboard/pricing/policies">
           <Row label="Deposit">
-            {draft.depositPercent ? `${draft.depositPercent}% to confirm` : '—'}
+            {draft.depositPercent ? `${draft.depositPercent}% to confirm` : 'Not set'}
           </Row>
           <Row label="Cancellation">
-            {cancellationLabel ?? '—'}
+            {cancellationLabel ?? 'Not set'}
           </Row>
-          <Row label="Reschedule">{rescheduleLabel ?? '—'}</Row>
+          <Row label="Reschedule">{rescheduleLabel ?? 'Not set'}</Row>
         </Section>
 
         <Section title="Payout" editHref="/onboard/pricing/payout">
-          <Row label="Method">{payoutLabel ?? '—'}</Row>
+          <Row label="Method">{payoutLabel ?? 'Not set'}</Row>
           {isBankPayout ? (
-            <Row label="Bank">{draft.payoutBankName || '—'}</Row>
+            <Row label="Bank">{draft.payoutBankName || 'Not set'}</Row>
           ) : null}
           {isLipaNambaPayout ? (
-            <Row label="Network">{lipaNetworkLabel ?? '—'}</Row>
+            <Row label="Network">{lipaNetworkLabel ?? 'Not set'}</Row>
           ) : null}
           <Row
             label={
@@ -331,9 +330,9 @@ export default function ReviewPage() {
               ? isBankPayout || isLipaNambaPayout
                 ? draft.payoutNumber
                 : `+255 ${draft.payoutNumber}`
-              : '—'}
+              : 'Not set'}
           </Row>
-          <Row label="Account holder">{draft.payoutAccountName || '—'}</Row>
+          <Row label="Account holder">{draft.payoutAccountName || 'Not set'}</Row>
         </Section>
       </div>
 
@@ -466,7 +465,7 @@ function PackageRow({
         <h3 className="text-sm font-semibold text-gray-900">{name}</h3>
       </div>
       <p className="text-lg font-semibold text-gray-900 tabular-nums tracking-tight">
-        {price ? `TSh ${price}` : '—'}
+        {price ? `TSh ${price}` : 'Not set'}
       </p>
       {description ? (
         <p className="text-xs text-gray-500 mt-1">{description}</p>

@@ -3,24 +3,12 @@ import { currentUser } from '@clerk/nextjs/server'
 import { FileText } from 'lucide-react'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
-  ADVICE_SUBMISSION_MISSING_TABLE_HINT,
-  isMissingAdviceSubmissionTable,
   statusLabel,
   statusTone,
-  type AdviceSubmissionStatus,
+  type AdviceArticleSubmissionRow,
 } from '@/lib/advice-submissions'
 
 export const dynamic = 'force-dynamic'
-
-type ContributorListRow = {
-  id: string
-  title: string
-  slug: string
-  status: AdviceSubmissionStatus
-  updated_at: string
-}
-
-const COLS = 'id, title, slug, status, updated_at'
 
 export default async function ContributorArticlesPage() {
   const user = await currentUser()
@@ -31,45 +19,14 @@ export default async function ContributorArticlesPage() {
   ).trim().toLowerCase()
 
   const supabase = createSupabaseAdminClient()
-  // Query the two ownership predicates separately so user-controlled email
-  // can't escape into the PostgREST .or() DSL. Merge in JS.
-  const [byClerk, byEmail] = await Promise.all([
-    user?.id
-      ? supabase
-          .from('advice_article_submissions')
-          .select(COLS)
-          .eq('author_clerk_id', user.id)
-          .order('updated_at', { ascending: false })
-      : Promise.resolve({ data: [], error: null } as const),
-    email
-      ? supabase
-          .from('advice_article_submissions')
-          .select(COLS)
-          .ilike('author_email', email)
-          .order('updated_at', { ascending: false })
-      : Promise.resolve({ data: [], error: null } as const),
-  ])
+  const { data, error } = await supabase
+    .from('advice_article_submissions')
+    .select('*')
+    .or(`author_clerk_id.eq.${user?.id ?? '__none__'},author_email.ilike.${email || '__none__'}`)
+    .order('updated_at', { ascending: false })
 
-  let tableMissing = false
-  for (const result of [byClerk, byEmail]) {
-    if (!result.error) continue
-    if (isMissingAdviceSubmissionTable(result.error)) {
-      console.warn(`[contribute] ${result.error.code} — ${ADVICE_SUBMISSION_MISSING_TABLE_HINT}`)
-      tableMissing = true
-      continue
-    }
-    throw result.error
-  }
-
-  const seen = new Set<string>()
-  const submissions: ContributorListRow[] = [
-    ...((byClerk.data ?? []) as ContributorListRow[]),
-    ...((byEmail.data ?? []) as ContributorListRow[]),
-  ].filter((row) => {
-    if (seen.has(row.id)) return false
-    seen.add(row.id)
-    return true
-  }).sort((a, b) => (a.updated_at < b.updated_at ? 1 : -1))
+  if (error) throw error
+  const submissions = (data ?? []) as AdviceArticleSubmissionRow[]
 
   return (
     <div className="mx-auto max-w-[1000px] px-6 py-10">
@@ -81,14 +38,6 @@ export default async function ContributorArticlesPage() {
           Draft your assigned Ideas &amp; Advice article here. Once submitted,
           the editorial team can approve it, reject it, or send notes back.
         </p>
-        {tableMissing && (
-          <div className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-            <p className="font-semibold">Contributor workflow not set up yet</p>
-            <p className="mt-1">
-              The site administrator needs to apply the contributor workflow migration. Please ask them to apply <code className="rounded bg-amber-100 px-1">supabase/migrations/20260505000001_advice_article_contributor_workflow.sql</code>.
-            </p>
-          </div>
-        )}
       </div>
 
       <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">

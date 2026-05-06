@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation'
+import { currentUser } from '@clerk/nextjs/server'
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import {
@@ -6,7 +7,10 @@ import {
   VENDOR_AGREEMENT_PDF_URL,
   VENDOR_AGREEMENT_VERSION,
 } from '@/lib/onboarding/vendor-agreement'
-import VerifyClient, { type VerifyDocSlot } from './VerifyClient'
+import VerifyClient, {
+  type AgreementBusinessDefaults,
+  type VerifyDocSlot,
+} from './VerifyClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -21,6 +25,32 @@ type VendorDocRow = {
 type VendorAgreementRow = {
   agreement_version: string
   signed_at: string
+}
+
+type VendorBusinessRow = {
+  business_name: string | null
+  category: string | null
+  location: {
+    street?: string | null
+    street2?: string | null
+    city?: string | null
+    region?: string | null
+    postalCode?: string | null
+  } | null
+  contact_info: {
+    phone?: string | null
+    email?: string | null
+    whatsapp?: string | null
+  } | null
+}
+
+function buildBusinessAddress(
+  loc: VendorBusinessRow['location'],
+): string {
+  if (!loc) return ''
+  return [loc.street, loc.street2, loc.city, loc.region, loc.postalCode]
+    .filter((p): p is string => Boolean(p && p.trim()))
+    .join(', ')
 }
 
 export default async function VerifyPage() {
@@ -44,12 +74,14 @@ export default async function VerifyPage() {
   }
 
   const supabase = await createClerkSupabaseServerClient()
+  const clerkUser = await currentUser()
 
   // The "Already on file" panel was removed — the timeline's Application step
   // is enough confirmation, and the bottom panel was bloating the page. So we
-  // no longer fetch profile or payout details here; just the docs and the
-  // current-version agreement signature.
-  const [docsRes, agreementRes] = await Promise.all([
+  // no longer fetch profile or payout details here; just the docs, the current
+  // agreement signature, and the vendor's business identifiers (used to
+  // pre-fill the page-3 block on the Mkataba sign form).
+  const [docsRes, agreementRes, vendorRes] = await Promise.all([
     supabase
       .from('vendor_verification_documents')
       .select(
@@ -71,6 +103,11 @@ export default async function VerifyPage() {
       .order('signed_at', { ascending: false })
       .limit(1)
       .maybeSingle<VendorAgreementRow>(),
+    supabase
+      .from('vendors')
+      .select('business_name, category, location, contact_info')
+      .eq('id', state.vendorId)
+      .maybeSingle<VendorBusinessRow>(),
   ])
 
   if (docsRes.error) {
@@ -127,6 +164,32 @@ export default async function VerifyPage() {
     },
   ]
 
+  // Pre-fill the page-3 identification block on the Mkataba sign form with
+  // whatever the vendor already entered during onboarding. The vendor can
+  // edit any field before signing — TIN is intentionally blank because it's
+  // not captured during onboarding (only the certificate file is uploaded).
+  const v = vendorRes.data
+  const contactPersonFromClerk =
+    [clerkUser?.firstName, clerkUser?.lastName]
+      .filter((p): p is string => Boolean(p && p.trim()))
+      .join(' ')
+      .trim() || ''
+  const businessDefaults: AgreementBusinessDefaults = {
+    businessName: v?.business_name?.trim() ?? '',
+    tin: '',
+    businessAddress: buildBusinessAddress(v?.location ?? null),
+    contactPerson: contactPersonFromClerk,
+    email:
+      v?.contact_info?.email?.trim() ||
+      clerkUser?.emailAddresses?.[0]?.emailAddress ||
+      '',
+    phone:
+      v?.contact_info?.whatsapp?.trim() ||
+      v?.contact_info?.phone?.trim() ||
+      '',
+    serviceType: v?.category ?? '',
+  }
+
   return (
     <VerifyClient
       status={state.status}
@@ -134,6 +197,7 @@ export default async function VerifyPage() {
       agreementBody={getVendorAgreement()}
       agreementPdfUrl={VENDOR_AGREEMENT_PDF_URL}
       agreementVersion={VENDOR_AGREEMENT_VERSION}
+      agreementBusinessDefaults={businessDefaults}
       agreement={
         agreementRes.data
           ? {

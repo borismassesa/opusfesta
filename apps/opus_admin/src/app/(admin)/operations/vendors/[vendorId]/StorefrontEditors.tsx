@@ -378,14 +378,9 @@ const PERSONALITY_OPTIONS = [
   'warm',
 ]
 const LANGUAGE_OPTIONS = [
-  { id: 'sw', label: 'Swahili' },
   { id: 'en', label: 'English' },
-  { id: 'ar', label: 'Arabic' },
+  { id: 'sw', label: 'Swahili' },
   { id: 'fr', label: 'French' },
-  { id: 'pt', label: 'Portuguese' },
-  { id: 'maa', label: 'Maa (Maasai)' },
-  { id: 'suk', label: 'Sukuma' },
-  { id: 'gj', label: 'Gujarati' },
 ]
 
 export function AdminStylePersonalityEditor({

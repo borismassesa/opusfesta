@@ -20,7 +20,9 @@ export function isMissingAdviceSubmissionTable(
 
 export const SUBMISSION_STATUSES = [
   'draft',
+  'pending',
   'submitted',
+  'revisions',
   'changes_requested',
   'approved',
   'rejected',
@@ -108,8 +110,12 @@ export function statusLabel(status: AdviceSubmissionStatus): string {
   switch (status) {
     case 'draft':
       return 'Draft'
+    case 'pending':
+      return 'Pending'
     case 'submitted':
       return 'Submitted'
+    case 'revisions':
+      return 'Revisions'
     case 'changes_requested':
       return 'Changes requested'
     case 'approved':
@@ -125,8 +131,12 @@ export function statusTone(status: AdviceSubmissionStatus): string {
   switch (status) {
     case 'draft':
       return 'bg-gray-100 text-gray-700'
+    case 'pending':
+      return 'bg-amber-50 text-amber-800'
     case 'submitted':
       return 'bg-amber-50 text-amber-800'
+    case 'revisions':
+      return 'bg-rose-50 text-rose-700'
     case 'changes_requested':
       return 'bg-rose-50 text-rose-700'
     case 'approved':

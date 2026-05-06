@@ -60,7 +60,7 @@ export default function VowsPage() {
               </p>
               <p>
                 Couples can see which vendors have signed the vows, and we may remove vendors who
-                don’t uphold them. Signing is a one-time pledge — you won’t see this screen again.
+                don’t uphold them. Signing is a one-time pledge. You won’t see this screen again.
               </p>
             </WhyWeAsk>
           </div>

@@ -50,7 +50,7 @@ export default function PricingPage() {
   }
 
   // Loads the category-specific starter templates. From the header (where
-  // packages already exist) we ask the vendor to confirm — typed prices are lost.
+  // packages already exist) we ask the vendor to confirm. Typed prices are lost.
   const requestUseSuggested = () => {
     if (packages.length > 0) {
       setConfirm('use-suggested')
@@ -118,10 +118,10 @@ export default function PricingPage() {
     >
       <OnboardHeading
         title="Let’s talk pricing"
-        description="Tanzanian couples shop by package. Add the tiers you offer — Bronze / Silver / Gold, hours of coverage, or whatever fits how you sell."
+        description="Tanzanian couples shop by package. Add the tiers you offer. Bronze / Silver / Gold, hours of coverage, or whatever fits how you sell."
       />
 
-      {/* Starting price + custom quotes — global storefront settings */}
+      {/* Starting price + custom quotes. Global storefront settings */}
       <div className="bg-white rounded-2xl border border-gray-200 shadow-[0_1px_2px_-1px_rgba(0,0,0,0.06),0_2px_8px_-3px_rgba(0,0,0,0.08)] p-6 lg:p-7 max-w-3xl">
         <div className="grid sm:grid-cols-2 gap-6">
           <div>
@@ -189,7 +189,7 @@ export default function PricingPage() {
         {packages.length === 0 ? (
           <div className="bg-white rounded-2xl border border-dashed border-gray-300 p-8 text-center">
             <p className="text-sm text-gray-600">
-              No packages yet. Pick a starting point — you can switch later.
+              No packages yet. Pick a starting point. You can switch later.
             </p>
             <div className="mt-4 flex items-center justify-center gap-3 flex-wrap">
               <PrimaryButton onClick={requestUseSuggested}>
@@ -239,7 +239,7 @@ export default function PricingPage() {
         </PrimaryButton>
         <WhyWeAsk title="Why we ask about pricing">
           <p>
-            Tanzanian couples typically shop by package — Bronze / Silver / Gold or by hours of
+            Tanzanian couples typically shop by package. Bronze / Silver / Gold or by hours of
             coverage. Sharing your tiers helps couples self-qualify before reaching out, so the
             inquiries you get are more likely to convert.
           </p>

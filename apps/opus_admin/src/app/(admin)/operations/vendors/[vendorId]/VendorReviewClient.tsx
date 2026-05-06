@@ -7,7 +7,6 @@ import {
   AlertCircle,
   ArrowLeft,
   Banknote,
-  Building2,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -23,6 +22,7 @@ import {
   ThumbsUp,
   Trash2,
   XCircle,
+  type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSetPageHeading } from '@/components/PageHeading'
@@ -37,7 +37,6 @@ import {
   requestCorrections,
   saveVendorPayoutMethod,
   suspendVendor,
-  updateVendorEditableFields,
   type VendorPayoutMethodType,
   type VendorPayoutStatus,
 } from '../actions'
@@ -111,13 +110,6 @@ export type VendorReviewProps = {
     suspendedAt: string | null
     suspensionReason: string | null
     updatedAt: string
-    // Admin-fillable structured fields (GAP 2). When the onboarding flow
-    // doesn't collect these yet, the admin can enter them here.
-    capacityMin: number | null
-    capacityMax: number | null
-    lat: number | null
-    lng: number | null
-    galleryUrls: string[]
     // Live editable storefront columns — used to hydrate the per-section
     // admin editor cards. Each editor reads its slice and emits a patch via
     // updateStorefrontSection on save.
@@ -295,9 +287,16 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           {isApproved ? (
             <button
               type="button"
-              onClick={() =>
-                runAction('Suspend', () => suspendVendor(vendor.id))
-              }
+              onClick={() => {
+                const reason = window.prompt(
+                  'Reason for suspension (optional — included in the notification email to the vendor):',
+                  ''
+                )
+                if (reason === null) return
+                runAction('Suspend', () =>
+                  suspendVendor(vendor.id, reason || undefined)
+                )
+              }}
               disabled={pending}
               className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50 transition-colors"
             >
@@ -320,11 +319,16 @@ export default function VendorReviewClient(props: VendorReviewProps) {
             <>
               <button
                 type="button"
-                onClick={() =>
-                  runAction('Request corrections', () =>
-                    requestCorrections(vendor.id)
+                onClick={() => {
+                  const note = window.prompt(
+                    'What does the vendor need to fix? (optional — included in the email to the vendor):',
+                    ''
                   )
-                }
+                  if (note === null) return
+                  runAction('Request corrections', () =>
+                    requestCorrections(vendor.id, note || undefined)
+                  )
+                }}
                 disabled={pending}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50 transition-colors"
               >
@@ -451,8 +455,6 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                   ) ?? '',
               }}
             />
-
-            <AdminFillableFields vendor={vendor} />
 
             <AdminStylePersonalityEditor
               vendorId={vendor.id}
@@ -1225,170 +1227,6 @@ function formatTzPhone(raw: string | null): string | null {
   return `+255 ${digits}`
 }
 
-// ---------------------------------------------------------------------------
-// Admin-fillable fields (GAP 2): capacity, map coords, gallery URLs
-// ---------------------------------------------------------------------------
-//
-// These appear on the public profile when set, but the onboarding flow
-// doesn't collect them yet. Admin can fill them in from this card. Each
-// section is independent; saving sends all four fields together so the
-// server can validate ranges (max ≥ min, lat/lng bounds).
-
-function AdminFillableFields({
-  vendor,
-}: {
-  vendor: VendorReviewProps['vendor']
-}) {
-  const router = useRouter()
-  const [pending, startTransition] = useTransition()
-  const [error, setError] = useState<string | null>(null)
-  const [saved, setSaved] = useState(false)
-
-  const [capacityMin, setCapacityMin] = useState(
-    vendor.capacityMin == null ? '' : String(vendor.capacityMin)
-  )
-  const [capacityMax, setCapacityMax] = useState(
-    vendor.capacityMax == null ? '' : String(vendor.capacityMax)
-  )
-  const [lat, setLat] = useState(vendor.lat == null ? '' : String(vendor.lat))
-  const [lng, setLng] = useState(vendor.lng == null ? '' : String(vendor.lng))
-  const [galleryText, setGalleryText] = useState(vendor.galleryUrls.join('\n'))
-
-  const dirty =
-    String(vendor.capacityMin ?? '') !== capacityMin.trim() ||
-    String(vendor.capacityMax ?? '') !== capacityMax.trim() ||
-    String(vendor.lat ?? '') !== lat.trim() ||
-    String(vendor.lng ?? '') !== lng.trim() ||
-    vendor.galleryUrls.join('\n') !== galleryText
-
-  const onSave = () => {
-    setError(null)
-    setSaved(false)
-    startTransition(async () => {
-      const parseNum = (raw: string) => {
-        const trimmed = raw.trim()
-        if (!trimmed) return null
-        const n = Number(trimmed)
-        return Number.isFinite(n) ? n : null
-      }
-      const res = await updateVendorEditableFields(vendor.id, {
-        capacityMin: parseNum(capacityMin),
-        capacityMax: parseNum(capacityMax),
-        lat: parseNum(lat),
-        lng: parseNum(lng),
-        galleryUrls: galleryText
-          .split(/\r?\n/)
-          .map((u) => u.trim())
-          .filter((u) => u.length > 0),
-      })
-      if (!res.ok) {
-        setError(res.error)
-        return
-      }
-      setSaved(true)
-      router.refresh()
-    })
-  }
-
-  return (
-    <article className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-6">
-      <header className="flex items-start gap-3 mb-4">
-        <div className="w-10 h-10 rounded-full bg-white border border-gray-200 text-gray-500 flex items-center justify-center shrink-0">
-          <Building2 className="w-5 h-5" strokeWidth={1.75} />
-        </div>
-        <div>
-          <h2 className="text-base font-semibold text-gray-900">
-            Venue capacity, map & gallery
-          </h2>
-          <p className="text-xs text-gray-500 mt-0.5">
-            Capacity, coordinates, and image URLs used by the public storefront.
-          </p>
-        </div>
-      </header>
-
-      <div className="flex flex-col gap-4">
-        <Field label="Capacity min (guests)">
-          <input
-            type="number"
-            min={0}
-            inputMode="numeric"
-            value={capacityMin}
-            onChange={(e) => setCapacityMin(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7E5896]/30 focus:border-[#7E5896]/40"
-            placeholder="e.g. 60"
-          />
-        </Field>
-        <Field label="Capacity max (guests)">
-          <input
-            type="number"
-            min={0}
-            inputMode="numeric"
-            value={capacityMax}
-            onChange={(e) => setCapacityMax(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7E5896]/30 focus:border-[#7E5896]/40"
-            placeholder="e.g. 200"
-          />
-        </Field>
-        <Field label="Latitude">
-          <input
-            type="text"
-            inputMode="decimal"
-            value={lat}
-            onChange={(e) => setLat(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#7E5896]/30 focus:border-[#7E5896]/40"
-            placeholder="-6.792354"
-          />
-        </Field>
-        <Field label="Longitude">
-          <input
-            type="text"
-            inputMode="decimal"
-            value={lng}
-            onChange={(e) => setLng(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#7E5896]/30 focus:border-[#7E5896]/40"
-            placeholder="39.208328"
-          />
-        </Field>
-      </div>
-
-      <div className="mt-4">
-        <label className="block text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1">
-          Gallery URLs (one per line, https only)
-        </label>
-        <textarea
-          rows={3}
-          value={galleryText}
-          onChange={(e) => setGalleryText(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#7E5896]/30 focus:border-[#7E5896]/40"
-          placeholder="https://cdn.example.com/photo-1.jpg&#10;https://cdn.example.com/photo-2.jpg"
-        />
-      </div>
-
-      {error && (
-        <div className="mt-3 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2 text-xs text-rose-800">
-          {error}
-        </div>
-      )}
-      {saved && !error && (
-        <div className="mt-3 rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 text-xs text-emerald-800">
-          Saved.
-        </div>
-      )}
-
-      <div className="mt-4 flex justify-end">
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={pending || !dirty}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-gray-900 hover:bg-black text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-        >
-          {pending ? 'Saving…' : 'Save'}
-        </button>
-      </div>
-    </article>
-  )
-}
-
 function Field({
   label,
   children,
@@ -1412,7 +1250,7 @@ function SidePanel({
   children,
 }: {
   title: string
-  icon: typeof Building2
+  icon: LucideIcon
   children: React.ReactNode
 }) {
   return (

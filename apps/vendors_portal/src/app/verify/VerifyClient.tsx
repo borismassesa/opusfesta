@@ -43,6 +43,21 @@ export type VerifyDocSlot = {
     | null
 }
 
+/**
+ * Defaults used to pre-fill the page-3 identification block on the Mkataba
+ * sign form. Pulled from the vendor's onboarding answers so the vendor only
+ * has to type fields we don't already have on file (TIN, primarily).
+ */
+export type AgreementBusinessDefaults = {
+  businessName: string
+  tin: string
+  businessAddress: string
+  contactPerson: string
+  email: string
+  phone: string
+  serviceType: string
+}
+
 type Props = {
   status: 'verification_pending' | 'needs_corrections'
   slots: VerifyDocSlot[]
@@ -59,6 +74,9 @@ type Props = {
   agreementPdfUrl: string
   /** Stable version identifier persisted with each signature. */
   agreementVersion: string
+  /** Pre-filled values for the page-3 identification block on the Mkataba
+   *  sign form (business name, TIN, address, contact, etc.). */
+  agreementBusinessDefaults: AgreementBusinessDefaults
 }
 
 type StepMode = 'done' | 'active' | 'locked'
@@ -79,6 +97,7 @@ export default function VerifyClient({
   agreementBody,
   agreementPdfUrl,
   agreementVersion,
+  agreementBusinessDefaults,
 }: Props) {
   const isCorrection = status === 'needs_corrections'
 
@@ -207,6 +226,7 @@ export default function VerifyClient({
           <AgreementSignActions
             agreementPdfUrl={agreementPdfUrl}
             agreementVersion={agreementVersion}
+            businessDefaults={agreementBusinessDefaults}
           />
         ) : undefined,
     },
@@ -592,9 +612,11 @@ function DocumentUploadActions({
 function AgreementSignActions({
   agreementPdfUrl,
   agreementVersion,
+  businessDefaults,
 }: {
   agreementPdfUrl: string
   agreementVersion: string
+  businessDefaults: AgreementBusinessDefaults
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -607,6 +629,23 @@ function AgreementSignActions({
   // record per the agreement; the drawn glyph is supplementary visual proof).
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null)
 
+  // Page-3 identification block of the Mkataba. Pre-filled from onboarding
+  // answers so the vendor only has to type the genuinely new fields (TIN
+  // primarily). All fields are required to match the printed form.
+  const [businessName, setBusinessName] = useState(
+    businessDefaults.businessName,
+  )
+  const [tin, setTin] = useState(businessDefaults.tin)
+  const [businessAddress, setBusinessAddress] = useState(
+    businessDefaults.businessAddress,
+  )
+  const [contactPerson, setContactPerson] = useState(
+    businessDefaults.contactPerson,
+  )
+  const [email, setEmail] = useState(businessDefaults.email)
+  const [phone, setPhone] = useState(businessDefaults.phone)
+  const [serviceType, setServiceType] = useState(businessDefaults.serviceType)
+
   const onSubmit = () => {
     setError(null)
     if (!acknowledged) {
@@ -617,9 +656,31 @@ function AgreementSignActions({
       setError('Type your full legal name to sign.')
       return
     }
+    const fields: [string, string, string][] = [
+      ['Jina la Biashara', 'business name', businessName],
+      ['TIN', 'TIN', tin],
+      ['Anwani ya Biashara', 'business address', businessAddress],
+      ['Mtu wa mawasiliano', 'contact person', contactPerson],
+      ['Barua Pepe', 'email', email],
+      ['WhatsApp/Simu', 'phone', phone],
+      ['Aina ya Huduma', 'service type', serviceType],
+    ]
+    for (const [sw, en, value] of fields) {
+      if (!value.trim()) {
+        setError(`Fill in ${sw} (${en}) before signing.`)
+        return
+      }
+    }
     const formData = new FormData()
     formData.append('signedName', name.trim())
     formData.append('acknowledged', 'true')
+    formData.append('businessName', businessName.trim())
+    formData.append('tin', tin.trim())
+    formData.append('businessAddress', businessAddress.trim())
+    formData.append('contactPerson', contactPerson.trim())
+    formData.append('email', email.trim())
+    formData.append('phone', phone.trim())
+    formData.append('serviceType', serviceType.trim())
     if (signatureDataUrl) {
       formData.append('signatureImage', signatureDataUrl)
     }
@@ -694,6 +755,87 @@ function AgreementSignActions({
           </span>
         </label>
 
+        {/* Page-3 identification block of the Mkataba. The labels are in
+            Swahili to mirror the printed form; sub-labels in English give a
+            quick reading aid. Pre-filled from the vendor's onboarding answers
+            where we already have the data. Sits before the signature inputs
+            so the form flows the same way page 3 of the printed agreement
+            does — declare the business, then sign for it. */}
+        <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
+          <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-gray-700">
+            Taarifa za Biashara{' '}
+            <span className="text-gray-400 font-semibold normal-case tracking-normal">
+              (page 3 of the Mkataba)
+            </span>
+          </h4>
+          <p className="mt-1 text-[11px] text-gray-500 leading-relaxed">
+            Confirm the details that appear on page 3 of the agreement. Edit
+            anything that&rsquo;s out of date.
+          </p>
+
+          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <AgreementField
+              label="Jina la Biashara"
+              hint="Business name"
+              value={businessName}
+              onChange={setBusinessName}
+              autoComplete="organization"
+              disabled={pending}
+            />
+            <AgreementField
+              label="TIN"
+              hint="Tax Identification Number"
+              value={tin}
+              onChange={setTin}
+              placeholder="123-456-789"
+              inputMode="numeric"
+              disabled={pending}
+            />
+            <AgreementField
+              label="Anwani ya Biashara"
+              hint="Business address"
+              value={businessAddress}
+              onChange={setBusinessAddress}
+              autoComplete="street-address"
+              className="sm:col-span-2"
+              disabled={pending}
+            />
+            <AgreementField
+              label="Mtu wa Mawasiliano"
+              hint="Contact person"
+              value={contactPerson}
+              onChange={setContactPerson}
+              autoComplete="name"
+              disabled={pending}
+            />
+            <AgreementField
+              label="Barua Pepe"
+              hint="Email"
+              value={email}
+              onChange={setEmail}
+              type="email"
+              autoComplete="email"
+              disabled={pending}
+            />
+            <AgreementField
+              label="WhatsApp / Simu"
+              hint="WhatsApp / phone"
+              value={phone}
+              onChange={setPhone}
+              type="tel"
+              autoComplete="tel"
+              disabled={pending}
+            />
+            <AgreementField
+              label="Aina ya Huduma"
+              hint="Type of service"
+              value={serviceType}
+              onChange={setServiceType}
+              disabled={pending}
+            />
+          </div>
+        </div>
+
         <div>
           <label className="block text-xs font-semibold text-gray-700 mb-1">
             Type your full legal name to sign
@@ -753,6 +895,55 @@ function AgreementSignActions({
         </button>
       </div>
     </div>
+  )
+}
+
+/**
+ * Small labelled input used inside the Mkataba page-3 block. Keeps the
+ * Swahili label primary and shows the English hint as a muted sub-label so
+ * the form matches the printed agreement while staying readable for
+ * non-Swahili speakers on the team.
+ */
+function AgreementField({
+  label,
+  hint,
+  value,
+  onChange,
+  type = 'text',
+  placeholder,
+  autoComplete,
+  inputMode,
+  disabled,
+  className,
+}: {
+  label: string
+  hint: string
+  value: string
+  onChange: (v: string) => void
+  type?: 'text' | 'email' | 'tel'
+  placeholder?: string
+  autoComplete?: string
+  inputMode?: 'text' | 'numeric' | 'tel' | 'email'
+  disabled?: boolean
+  className?: string
+}) {
+  return (
+    <label className={cn('block', className)}>
+      <span className="block text-[11px] font-semibold text-gray-700">
+        {label}{' '}
+        <span className="font-normal text-gray-400">· {hint}</span>
+      </span>
+      <input
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        autoComplete={autoComplete}
+        inputMode={inputMode}
+        disabled={disabled}
+        className="mt-1 w-full px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7E5896] focus:border-transparent disabled:bg-gray-100 disabled:text-gray-500"
+      />
+    </label>
   )
 }
 

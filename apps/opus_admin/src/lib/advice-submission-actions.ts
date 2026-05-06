@@ -3,7 +3,7 @@
 import { createHash, randomBytes, randomUUID } from 'crypto'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { auth, currentUser } from '@clerk/nextjs/server'
+import { auth, clerkClient, currentUser } from '@clerk/nextjs/server'
 import { requireAdminRole, type AdminAccessRole } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { slugify, type AdviceIdeasPostRow } from '@/lib/cms/advice-ideas'
@@ -12,6 +12,8 @@ import {
   type AdviceArticleSubmissionRow,
   type AdviceSubmissionDraft,
 } from '@/lib/advice-submissions'
+import { isEmailConfigured, sendEmail } from '@/lib/email'
+import { buildContributorInviteEmail } from '@/lib/contributor-invite-email'
 
 const ARTICLE_MANAGE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 
@@ -28,10 +30,16 @@ export type ContributorInvitationInput = {
   expiresInDays?: number
 }
 
+export type ContributorInvitationDelivery =
+  | { sent: true; via: 'resend' }
+  | { sent: false; reason: 'not_configured' | 'send_failed'; error?: string }
+
 export type ContributorInvitationResult = {
   id: string
   link: string
   expiresAt: string
+  recipient: { email: string; fullName: string | null; articleTitle: string | null }
+  delivery: ContributorInvitationDelivery
 }
 
 function hashToken(token: string): string {
@@ -62,18 +70,6 @@ async function getIdentity(): Promise<Identity> {
   return { clerkId: userId, email, name }
 }
 
-// Cap and allowlist for contributor uploads — mirrors the public website-media bucket policy.
-const CONTRIBUTOR_UPLOAD_MAX_BYTES = 25 * 1024 * 1024
-const CONTRIBUTOR_UPLOAD_ALLOWED_MIME = new Set([
-  'image/png',
-  'image/jpeg',
-  'image/webp',
-  'image/gif',
-  'video/mp4',
-  'video/webm',
-])
-const CONTRIBUTOR_UPLOAD_ALLOWED_EXT = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'mp4', 'webm'])
-
 function draftPayload(input: AdviceSubmissionDraft): Record<string, unknown> {
   return {
     slug: (input.slug || slugify(input.title)).trim(),
@@ -88,7 +84,7 @@ function draftPayload(input: AdviceSubmissionDraft): Record<string, unknown> {
     read_time: Math.max(1, Math.round(input.read_time || 1)),
     featured: !!input.featured,
     published: !!input.published,
-    published_at: input.published_at || null,
+    published_at: input.published_at || new Date().toISOString(),
     hero_media_type: input.hero_media_type,
     hero_media_src: input.hero_media_src,
     hero_media_alt: input.hero_media_alt,
@@ -102,53 +98,72 @@ function postPayload(input: AdviceSubmissionDraft, publish: boolean): Record<str
   return {
     ...draftPayload(input),
     published: publish,
-    // For posts the column is NOT NULL — use input timestamp if provided, else now().
     published_at: input.published_at || new Date().toISOString(),
   }
 }
 
-async function revalidateWebsite(slug?: string): Promise<{ ok: boolean; failures: string[] }> {
+async function revalidateWebsite(slug?: string): Promise<void> {
   const url = process.env.NEXT_PUBLIC_WEBSITE_URL
   const secret = process.env.WEBSITE_REVALIDATE_SECRET
-  if (!url || !secret) return { ok: true, failures: [] }
+  if (!url || !secret) return
   const paths = ['/advice-and-ideas']
   if (slug) paths.push(`/advice-and-ideas/${slug}`)
-  const failures: string[] = []
-  await Promise.all(
-    paths.map(async (path) => {
-      try {
-        const res = await fetch(`${url}/api/revalidate?path=${encodeURIComponent(path)}`, {
+  try {
+    await Promise.all(
+      paths.map((path) =>
+        fetch(`${url}/api/revalidate?path=${encodeURIComponent(path)}`, {
           method: 'POST',
           headers: { Authorization: `Bearer ${secret}` },
         })
-        if (!res.ok) {
-          failures.push(`${path} -> HTTP ${res.status}`)
-          console.error('[advice.revalidate] non-ok response', { path, status: res.status })
-        }
-      } catch (err) {
-        failures.push(`${path} -> ${err instanceof Error ? err.message : 'fetch error'}`)
-        console.error('[advice.revalidate] threw', { path, err })
-      }
-    })
-  )
-  return { ok: failures.length === 0, failures }
+      )
+    )
+  } catch {
+    // Best effort.
+  }
 }
 
 async function getOrigin(): Promise<string> {
+  // Prefer the explicitly-configured URL so invite emails always carry a
+  // reachable link (localhost is unreachable to external recipients). Fall
+  // back to the request origin/host for in-app self-references when no env
+  // override is set.
+  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim() || process.env.NEXT_PUBLIC_ADMIN_URL?.trim()
+  if (configured) return configured.replace(/\/$/, '')
+
   const h = await headers()
   const origin = h.get('origin')
   if (origin) return origin
   const host = h.get('host')
   const proto = h.get('x-forwarded-proto') || 'http'
   if (host) return `${proto}://${host}`
-  const fallback = process.env.NEXT_PUBLIC_ADMIN_URL
-  if (fallback) return fallback
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      'Could not resolve admin origin: missing host header and NEXT_PUBLIC_ADMIN_URL.'
-    )
-  }
   return 'http://localhost:3010'
+}
+
+async function dispatchInviteEmail(args: {
+  email: string
+  fullName: string | null
+  articleTitle: string | null
+  link: string
+  expiresAt: string
+}): Promise<ContributorInvitationDelivery> {
+  if (!isEmailConfigured()) {
+    return { sent: false, reason: 'not_configured' }
+  }
+  const template = buildContributorInviteEmail({
+    recipientEmail: args.email,
+    recipientName: args.fullName,
+    articleTitle: args.articleTitle,
+    inviteLink: args.link,
+    expiresAt: args.expiresAt,
+  })
+  const result = await sendEmail({
+    to: args.email,
+    subject: template.subject,
+    html: template.html,
+    text: template.text,
+  })
+  if (result.sent) return { sent: true, via: 'resend' }
+  return { sent: false, reason: result.reason, error: result.error }
 }
 
 export async function createContributorInvitation(
@@ -159,6 +174,8 @@ export async function createContributorInvitation(
   const email = normalizeEmail(input.email)
   if (!email || !email.includes('@')) throw new Error('A valid email is required.')
 
+  const fullName = input.fullName?.trim() || null
+  const articleTitle = input.articleTitle?.trim() || null
   const days = Math.min(90, Math.max(1, Math.round(input.expiresInDays ?? 14)))
   const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
   const token = randomBytes(32).toString('base64url')
@@ -169,8 +186,8 @@ export async function createContributorInvitation(
     .from('advice_article_invitations')
     .insert({
       email,
-      full_name: input.fullName?.trim() || null,
-      article_title: input.articleTitle?.trim() || null,
+      full_name: fullName,
+      article_title: articleTitle,
       token_hash: hashToken(token),
       status: 'pending',
       expires_at: expiresAt,
@@ -182,11 +199,79 @@ export async function createContributorInvitation(
   if (error) throw error
 
   const origin = await getOrigin()
+  const link = `${origin}/contribute/invite/${token}`
+  const delivery = await dispatchInviteEmail({
+    email,
+    fullName,
+    articleTitle,
+    link,
+    expiresAt: data.expires_at,
+  })
+
   revalidatePath('/operations/authors')
   return {
     id: data.id,
-    link: `${origin}/contribute/invite/${token}`,
+    link,
     expiresAt: data.expires_at,
+    recipient: { email, fullName, articleTitle },
+    delivery,
+  }
+}
+
+// Rotates the invite token so a fresh link can be re-sent if the previous one
+// was lost or expired. The old link stops working the moment we update
+// token_hash, which is what we want — the email is the only durable record.
+export async function regenerateContributorInvitation(
+  id: string,
+  expiresInDays = 14
+): Promise<ContributorInvitationResult> {
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
+
+  const days = Math.min(90, Math.max(1, Math.round(expiresInDays)))
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+  const token = randomBytes(32).toString('base64url')
+
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('advice_article_invitations')
+    .update({
+      token_hash: hashToken(token),
+      status: 'pending',
+      expires_at: expiresAt,
+    })
+    .eq('id', id)
+    .select('id, email, full_name, article_title, expires_at')
+    .single<{
+      id: string
+      email: string
+      full_name: string | null
+      article_title: string | null
+      expires_at: string
+    }>()
+
+  if (error) throw error
+
+  const origin = await getOrigin()
+  const link = `${origin}/contribute/invite/${token}`
+  const delivery = await dispatchInviteEmail({
+    email: data.email,
+    fullName: data.full_name,
+    articleTitle: data.article_title,
+    link,
+    expiresAt: data.expires_at,
+  })
+
+  revalidatePath('/operations/authors')
+  return {
+    id: data.id,
+    link,
+    expiresAt: data.expires_at,
+    recipient: {
+      email: data.email,
+      fullName: data.full_name,
+      articleTitle: data.article_title,
+    },
+    delivery,
   }
 }
 
@@ -234,11 +319,10 @@ export async function acceptContributorInvitation(token: string): Promise<{ id: 
   }
 
   if (invite.accepted_submission_id) {
+    // Heal any contributor whose original accept predates the role-promotion
+    // step — without this they hit "Contributor access required" forever.
+    await promoteToContributorRole(identity.clerkId)
     return { id: invite.accepted_submission_id }
-  }
-
-  if (invite.status !== 'pending') {
-    throw new Error('This invite is no longer accepting drafts.')
   }
 
   const title = invite.article_title ?? ''
@@ -257,23 +341,7 @@ export async function acceptContributorInvitation(token: string): Promise<{ id: 
     .select('id')
     .single<{ id: string }>()
 
-  if (insertError) {
-    // 23505 is the Postgres unique-violation code — fires when a concurrent
-    // request beat us to the UNIQUE(invitation_id) constraint on submissions.
-    // Re-read the invite and return the now-existing submission id.
-    if ((insertError as { code?: string }).code === '23505') {
-      const { data: existing } = await supabase
-        .from('advice_article_submissions')
-        .select('id')
-        .eq('invitation_id', invite.id)
-        .maybeSingle<{ id: string }>()
-      if (existing) {
-        revalidatePath('/contribute/articles')
-        return { id: existing.id }
-      }
-    }
-    throw insertError
-  }
+  if (insertError) throw insertError
 
   const { error: updateError } = await supabase
     .from('advice_article_invitations')
@@ -285,18 +353,39 @@ export async function acceptContributorInvitation(token: string): Promise<{ id: 
     })
     .eq('id', invite.id)
 
-  if (updateError) {
-    console.error('[advice.accept] submission inserted but invite update failed', {
-      invitationId: invite.id,
-      submissionId: submission.id,
-      err: updateError,
-    })
-    throw updateError
-  }
+  if (updateError) throw updateError
 
+  await promoteToContributorRole(identity.clerkId)
+
+  revalidatePath('/contribute')
   revalidatePath('/contribute/articles')
   revalidatePath('/operations/articles/submissions')
   return { id: submission.id }
+}
+
+// Promote the accepting user to the `contributor` role in Clerk metadata so
+// `requireContributorIdentity()` will recognise them on the next request. Skip
+// if they already hold an admin-tier role (owner/admin/editor/viewer) so we
+// don't downgrade staff who are accepting an invite for testing.
+const ADMIN_TIER_ROLES = new Set(['owner', 'admin', 'editor', 'viewer'])
+
+async function promoteToContributorRole(clerkId: string): Promise<void> {
+  try {
+    const client = await clerkClient()
+    const user = await client.users.getUser(clerkId)
+    const currentRole =
+      typeof user.publicMetadata?.role === 'string'
+        ? user.publicMetadata.role.trim().toLowerCase()
+        : ''
+    if (ADMIN_TIER_ROLES.has(currentRole)) return
+    if (currentRole === 'contributor' || currentRole === 'author') return
+    await client.users.updateUserMetadata(clerkId, {
+      publicMetadata: { ...user.publicMetadata, role: 'contributor' },
+    })
+  } catch {
+    // Promotion is best-effort. If Clerk is unreachable the DB invite is still
+    // accepted; the user will retry and the role gets set on the next attempt.
+  }
 }
 
 async function loadOwnedSubmission(
@@ -376,24 +465,10 @@ export async function uploadContributorMedia(
   if (!file) throw new Error('No file provided.')
   if (!submissionId) throw new Error('Missing submission.')
 
-  if (file.size > CONTRIBUTOR_UPLOAD_MAX_BYTES) {
-    throw new Error('File is too large. The contributor upload limit is 25 MB.')
-  }
-  if (!CONTRIBUTOR_UPLOAD_ALLOWED_MIME.has(file.type)) {
-    throw new Error(
-      'Unsupported file type. Allowed: PNG, JPEG, WebP, GIF, MP4, WebM.'
-    )
-  }
-  const rawExt = (file.name.split('.').pop() ?? '').toLowerCase().replace(/[^a-z0-9]/g, '')
-  const ext = CONTRIBUTOR_UPLOAD_ALLOWED_EXT.has(rawExt)
-    ? rawExt
-    : file.type.startsWith('video')
-      ? 'mp4'
-      : 'png'
-
   await loadOwnedSubmission(submissionId, true)
 
   const supabase = createSupabaseAdminClient()
+  const ext = file.name.split('.').pop() ?? 'bin'
   const path = `advice-and-ideas/submissions/${submissionId}/${Date.now()}-${randomUUID()}.${ext}`
 
   const { error } = await supabase.storage
@@ -484,31 +559,6 @@ export async function approveAdviceSubmission(
   if (loadError) throw loadError
   if (!submission) throw new Error('Submission not found.')
 
-  // Slug uniqueness is enforced at the DB layer on advice_ideas_posts. Pre-check
-  // so the admin gets a friendly error instead of a raw Postgres unique violation
-  // when a contributor's auto-slugified title collides with a published article.
-  const slug = (submission.slug || slugify(submission.title)).trim()
-  if (!slug) throw new Error('Slug is required before approval.')
-  if (!submission.source_post_id) {
-    const { data: collision } = await supabase
-      .from('advice_ideas_posts')
-      .select('id')
-      .eq('slug', slug)
-      .maybeSingle<{ id: string }>()
-    if (collision) {
-      throw new Error(
-        `Slug "${slug}" is already used by another article. Edit the slug on this submission before approving.`
-      )
-    }
-  }
-
-  // First publish: stamp published_at to now. Subsequent re-publishes preserve
-  // the original publication date so SEO and feed ordering stay stable.
-  const isFirstPublish = publish && !submission.source_post_id
-  const publishedAt = isFirstPublish
-    ? new Date().toISOString()
-    : submission.published_at ?? new Date().toISOString()
-
   const draft = {
     slug: submission.slug,
     title: submission.title,
@@ -522,7 +572,7 @@ export async function approveAdviceSubmission(
     read_time: submission.read_time,
     featured: submission.featured,
     published: publish,
-    published_at: publishedAt,
+    published_at: submission.published_at ?? '',
     hero_media_type: submission.hero_media_type,
     hero_media_src: submission.hero_media_src,
     hero_media_alt: submission.hero_media_alt,
@@ -530,6 +580,9 @@ export async function approveAdviceSubmission(
     body: submission.body,
     seed_comments: submission.seed_comments,
   } satisfies AdviceSubmissionDraft
+
+  const slug = (draft.slug || slugify(draft.title)).trim()
+  if (!slug) throw new Error('Slug is required before approval.')
 
   let postId = submission.source_post_id
   if (postId) {
@@ -554,30 +607,18 @@ export async function approveAdviceSubmission(
       source_post_id: postId,
       status: publish ? 'published' : 'approved',
       published: publish,
-      published_at: publishedAt,
       reviewed_at: new Date().toISOString(),
       reviewed_by_clerk_id: identity.clerkId,
       correction_notes: null,
     })
     .eq('id', id)
-  if (updateError) {
-    // The post is already created/updated — log the orphan so it can be reconciled.
-    console.error('[advice.approve] post written but submission update failed', {
-      submissionId: id,
-      postId,
-      err: updateError,
-    })
-    throw updateError
-  }
+  if (updateError) throw updateError
 
   revalidatePath('/operations/articles')
   revalidatePath('/operations/articles/submissions')
   revalidatePath(`/operations/articles/submissions/${id}`)
-  const revalidation = await revalidateWebsite(slug)
-  return {
-    postId,
-    revalidationFailures: revalidation.ok ? undefined : revalidation.failures,
-  }
+  await revalidateWebsite(slug)
+  return { postId }
 }
 
 export async function deleteAdviceSubmission(id: string): Promise<void> {

@@ -55,7 +55,16 @@ import {
 import { cn } from "../lib/utils";
 import Logo from "./ui/Logo";
 
-type NavItem = { icon: LucideIcon; label: string; href: string; badge?: string };
+type NavItem = {
+  icon: LucideIcon;
+  label: string;
+  href: string;
+  badge?: string;
+  // Extra path prefixes that should also count as "active". Used when one
+  // sidebar entry covers a group of routes that don't share a URL prefix
+  // (e.g. Articles owns /operations/articles and /operations/authors).
+  activePaths?: string[];
+};
 type NavSection = {
   id: string;
   label: string;
@@ -106,8 +115,12 @@ const sections: NavSection[] = [
       { icon: Building2, label: "Vendor Accounts", href: "/operations/vendors" },
       { icon: Star, label: "Reviews & Moderation", href: "/operations/reviews" },
       { icon: Calendar, label: "Calendar", href: "/operations/calendar" },
-      { icon: Newspaper, label: "Articles", href: "/operations/articles" },
-      { icon: FileText, label: "Article Submissions", href: "/operations/articles/submissions" },
+      {
+        icon: Newspaper,
+        label: "Articles",
+        href: "/operations/articles",
+        activePaths: ["/operations/authors", "/operations/articles/submissions"],
+      },
     ],
   },
   {
@@ -157,13 +170,16 @@ const bottomNavItems: NavItem[] = [
 
 const COLLAPSED_KEY = 'opusfesta:sidebar-collapsed'
 
-function isItemActive(pathname: string, href: string) {
-  if (href === '/') return pathname === '/'
-  return pathname === href || pathname.startsWith(href + '/')
+function isItemActive(pathname: string, item: NavItem) {
+  if (item.href === '/') return pathname === '/'
+  if (pathname === item.href || pathname.startsWith(item.href + '/')) return true
+  return (item.activePaths ?? []).some(
+    (p) => pathname === p || pathname.startsWith(p + '/')
+  )
 }
 
 function isSectionActive(pathname: string, section: NavSection) {
-  return section.items.some((i) => isItemActive(pathname, i.href))
+  return section.items.some((i) => isItemActive(pathname, i))
 }
 
 export function Sidebar() {
@@ -247,7 +263,7 @@ export function Sidebar() {
         <nav className={cn(collapsed ? 'space-y-1' : 'space-y-1 mb-2')}>
           {topItems.map((item) => {
             const Icon = item.icon;
-            const isActive = isItemActive(pathname, item.href);
+            const isActive = isItemActive(pathname, item);
             return (
               <Link
                 key={item.label}
@@ -342,7 +358,7 @@ export function Sidebar() {
                 <nav className="mt-1 mb-2 space-y-0.5 pl-2 border-l border-gray-100 ml-5">
                   {section.items.map((item) => {
                     const Icon = item.icon;
-                    const itemActive = isItemActive(pathname, item.href);
+                    const itemActive = isItemActive(pathname, item);
                     return (
                       <Link
                         key={item.label}

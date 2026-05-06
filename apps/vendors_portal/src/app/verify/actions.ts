@@ -316,6 +316,19 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
   const acknowledged = formData.get('acknowledged') === 'true'
   const signatureImage = String(formData.get('signatureImage') ?? '').trim()
 
+  // Page-3 identification block of the Mkataba. Captured at signing time so
+  // the audit trail records the exact details the vendor declared on the
+  // agreement form, independent of any later edits to the vendors row.
+  const businessDetails = {
+    businessName: String(formData.get('businessName') ?? '').trim(),
+    tin: String(formData.get('tin') ?? '').trim(),
+    businessAddress: String(formData.get('businessAddress') ?? '').trim(),
+    contactPerson: String(formData.get('contactPerson') ?? '').trim(),
+    email: String(formData.get('email') ?? '').trim(),
+    phone: String(formData.get('phone') ?? '').trim(),
+    serviceType: String(formData.get('serviceType') ?? '').trim(),
+  }
+
   if (!acknowledged) {
     return {
       ok: false,
@@ -328,6 +341,23 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
       ok: false,
       reason: 'invalid',
       error: 'Type your full legal name to sign.',
+    }
+  }
+  for (const [key, swahili] of [
+    ['businessName', 'Jina la Biashara'],
+    ['tin', 'TIN'],
+    ['businessAddress', 'Anwani ya Biashara'],
+    ['contactPerson', 'Mtu wa Mawasiliano'],
+    ['email', 'Barua Pepe'],
+    ['phone', 'WhatsApp/Simu'],
+    ['serviceType', 'Aina ya Huduma'],
+  ] as const) {
+    if (!businessDetails[key]) {
+      return {
+        ok: false,
+        reason: 'invalid',
+        error: `Fill in ${swahili} before signing.`,
+      }
     }
   }
 
@@ -433,7 +463,7 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
     .update(`${VENDOR_AGREEMENT_VERSION}\n${getVendorAgreement()}`)
     .digest('hex')
 
-  const insert = await admin.from('vendor_agreements').insert({
+  const insertPayload: Record<string, unknown> = {
     vendor_id: vendorId,
     agreement_version: VENDOR_AGREEMENT_VERSION,
     agreement_text_hash: agreementHash,
@@ -441,7 +471,22 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
     signed_full_name: typedName,
     signed_ip: ip,
     signed_user_agent: userAgent,
-  })
+    signed_business_details: businessDetails,
+  }
+
+  let insert = await admin.from('vendor_agreements').insert(insertPayload)
+
+  // PGRST204 ("column not in schema cache") fires when the
+  // signed_business_details column hasn't been migrated yet (or PostgREST's
+  // schema cache is stale). Retry without the extra column so signing isn't
+  // blocked, and log a warning the operator can act on.
+  if (insert.error && insert.error.code === 'PGRST204') {
+    console.warn(
+      `[verify] vendor_agreements.signed_business_details not in schema cache — apply migration 20260504000003 or run NOTIFY pgrst, 'reload schema'. Falling back without business details snapshot.`,
+    )
+    delete insertPayload.signed_business_details
+    insert = await admin.from('vendor_agreements').insert(insertPayload)
+  }
 
   if (insert.error) {
     // 23505 = unique constraint violation. The vendor already signed this

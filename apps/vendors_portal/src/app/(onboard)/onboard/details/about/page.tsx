@@ -51,7 +51,7 @@ export default function AboutPage() {
     >
       <OnboardHeading
         title="Tell couples about your work"
-        description="This is the first thing couples will read on your storefront. Be specific about what makes your work yours — couples decide quickly."
+        description="This is the first thing couples will read on your storefront. Be specific about what makes your work yours. Couples decide quickly."
       />
 
       <div className="space-y-8 max-w-3xl">
@@ -65,7 +65,7 @@ export default function AboutPage() {
             hint={
               bioLength < MIN_BIO
                 ? `${MIN_BIO - bioLength} more character${MIN_BIO - bioLength === 1 ? '' : 's'} to go (min ${MIN_BIO}).`
-                : `${bioLength} characters — looking good.`
+                : `${bioLength} characters. Looking good.`
             }
           />
         </div>

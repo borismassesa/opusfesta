@@ -1,15 +1,17 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ExternalLink, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react'
 import { deleteAdvicePost, togglePostPublished } from './actions'
+import ConfirmDialog from '../_shared/ConfirmDialog'
 
 type Props = { id: string; slug: string; published: boolean }
 
 export default function PostsTableActions({ id, slug, published }: Props) {
   const [pending, startTransition] = useTransition()
+  const [confirmOpen, setConfirmOpen] = useState(false)
   const router = useRouter()
   const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL ?? ''
 
@@ -18,41 +20,74 @@ export default function PostsTableActions({ id, slug, published }: Props) {
       await togglePostPublished(id, !published)
       router.refresh()
     })
-  const onDelete = () => {
-    if (!confirm('Delete this article? This cannot be undone.')) return
+
+  const onConfirmDelete = () => {
     startTransition(async () => {
       await deleteAdvicePost(id)
+      setConfirmOpen(false)
       router.refresh()
     })
   }
 
   return (
-    <div className="flex items-center justify-end gap-1">
-      <IconButton title={published ? 'Unpublish' : 'Publish'} onClick={onTogglePublished} disabled={pending}>
-        {published ? <EyeOff className="w-4 h-4 text-gray-500" /> : <Eye className="w-4 h-4 text-gray-500" />}
-      </IconButton>
-      {websiteUrl && (
-        <a
-          href={`${websiteUrl}/advice-and-ideas/${slug}`}
-          target="_blank"
-          rel="noopener noreferrer"
-          title="Open on live site"
-          className="text-gray-500 hover:text-gray-900 p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+    <>
+      <div className="flex items-center justify-end gap-1">
+        <IconButton
+          title={published ? 'Unpublish' : 'Publish'}
+          onClick={onTogglePublished}
+          disabled={pending}
         >
-          <ExternalLink className="w-4 h-4" />
-        </a>
-      )}
-      <Link
-        href={`/operations/articles/${id}`}
-        title="Edit"
-        className="text-gray-500 hover:text-gray-900 p-1.5 rounded-md hover:bg-gray-100 transition-colors"
-      >
-        <Pencil className="w-4 h-4" />
-      </Link>
-      <IconButton title="Delete" onClick={onDelete} disabled={pending} danger>
-        <Trash2 className="w-4 h-4" />
-      </IconButton>
-    </div>
+          {published ? (
+            <EyeOff className="h-4 w-4 text-gray-500" />
+          ) : (
+            <Eye className="h-4 w-4 text-gray-500" />
+          )}
+        </IconButton>
+        {websiteUrl && (
+          <a
+            href={`${websiteUrl}/advice-and-ideas/${slug}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Open on live site"
+            className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </a>
+        )}
+        <Link
+          href={`/operations/articles/${id}`}
+          title="Edit"
+          className="rounded-md p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+        >
+          <Pencil className="h-4 w-4" />
+        </Link>
+        <IconButton
+          title="Delete"
+          onClick={() => setConfirmOpen(true)}
+          disabled={pending}
+          danger
+        >
+          <Trash2 className="h-4 w-4" />
+        </IconButton>
+      </div>
+
+      <ConfirmDialog
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onConfirm={onConfirmDelete}
+        title="Delete this article?"
+        body={
+          <span>
+            This will remove <span className="font-mono text-[12px] text-gray-800">/{slug}</span> and any
+            references to it. This action can&rsquo;t be undone.
+          </span>
+        }
+        confirmLabel="Delete article"
+        cancelLabel="Keep it"
+        variant="danger"
+        pending={pending}
+      />
+    </>
   )
 }
 
@@ -75,10 +110,10 @@ function IconButton({
       title={title}
       onClick={onClick}
       disabled={disabled}
-      className={`p-1.5 rounded-md transition-colors disabled:opacity-40 ${
+      className={`rounded-md p-1.5 transition-colors disabled:opacity-40 ${
         danger
-          ? 'text-gray-500 hover:text-red-600 hover:bg-red-50'
-          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+          ? 'text-gray-500 hover:bg-red-50 hover:text-red-600'
+          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
       }`}
     >
       {children}

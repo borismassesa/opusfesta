@@ -48,7 +48,7 @@ export default function PoliciesPage() {
     >
       <OnboardHeading
         title="Booking policies"
-        description="These show up at checkout so couples know exactly what they’re agreeing to. You can change them anytime — existing bookings keep the policy that was active when they confirmed."
+        description="These show up at checkout so couples know exactly what they’re agreeing to. You can change them anytime. Existing bookings keep the policy that was active when they confirmed."
       />
 
       <div className="space-y-12 max-w-3xl">
@@ -165,7 +165,7 @@ export default function PoliciesPage() {
           <p>
             Couples want to know the rules before they pay a deposit. Vendors with clear, fair
             policies convert significantly better, and OpusFesta uses your policies to handle
-            cancellations and refunds automatically — so you don’t have to argue.
+            cancellations and refunds automatically. So you don’t have to argue.
           </p>
           <p>
             Pick the level that matches your real cancellation costs. You can always update these

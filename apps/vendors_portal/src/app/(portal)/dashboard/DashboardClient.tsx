@@ -5,19 +5,10 @@ import { StatCard } from '@/components/StatCard'
 import { ProfileCompletion } from '@/components/ProfileCompletion'
 import { RecentInquiries } from '@/components/RecentInquiries'
 import { ConversionFunnel } from '@/components/ConversionFunnel'
-import { UpcomingBookings, getUpcomingStats } from '@/components/UpcomingBookings'
+import { UpcomingBookings } from '@/components/UpcomingBookings'
 import { formatTZS } from '@/lib/bookings'
-import type { CompletionSection, InquiryRow, LeadStat } from '@/lib/mock-data'
-import {
-  performanceStats,
-  profileViews,
-  bookingsRevenue,
-  leadSources,
-  conversionFunnel,
-} from '@/lib/mock-data'
+import type { DashboardData } from '@/lib/dashboard'
 
-// Recharts components mount the DOM on first paint and read element widths;
-// loading them client-side avoids SSR hydration warnings on the dashboard.
 const LeadsChart = dynamic(
   () => import('@/components/LeadsChart').then((m) => m.LeadsChart),
   { ssr: false },
@@ -31,13 +22,7 @@ const LeadSourceChart = dynamic(
   { ssr: false },
 )
 
-function SectionHeader({
-  label,
-  hint,
-}: {
-  label: string
-  hint?: string
-}) {
+function SectionHeader({ label, hint }: { label: string; hint?: string }) {
   return (
     <div className="lg:col-span-12 flex items-baseline gap-3 mt-2 first:mt-0">
       <h2 className="text-[11px] font-bold uppercase tracking-[0.16em] text-gray-500">
@@ -45,6 +30,17 @@ function SectionHeader({
       </h2>
       {hint ? <span className="text-xs text-gray-400">{hint}</span> : null}
       <span className="flex-1 h-px bg-gray-100" aria-hidden />
+    </div>
+  )
+}
+
+function EmptyChartCard({ title, hint }: { title: string; hint: string }) {
+  return (
+    <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] w-full h-full flex flex-col">
+      <h3 className="text-[15px] font-medium text-gray-900">{title}</h3>
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-sm text-gray-500 text-center max-w-xs">{hint}</p>
+      </div>
     </div>
   )
 }
@@ -68,27 +64,15 @@ const BANNER_BY_SOURCE: Record<DashboardSource['kind'], string | null> = {
     'DEV: Vendor backend not connected — showing seed data. Check Supabase env vars and that migrations are applied to your Supabase project.',
 }
 
-type DashboardClientProps = {
-  source: DashboardSource
-  completion: CompletionSection[]
-  leadStats: LeadStat[]
-  recentInquiries: InquiryRow[]
-}
-
 export default function DashboardClient({
   source,
-  completion,
-  leadStats,
-  recentInquiries,
-}: DashboardClientProps) {
-  const upcomingStats = getUpcomingStats()
+  data,
+}: {
+  source: DashboardSource
+  data: DashboardData
+}) {
   const banner = BANNER_BY_SOURCE[source.kind]
-  const greeting =
-    source.kind === 'live' ? `Welcome back, ${source.vendorName}` : null
 
-  // Locked-out states: anything that isn't a live, approved vendor. The
-  // (portal) layout already redirects these to /pending — this empty-state
-  // render is defense-in-depth in case the layout gate is ever removed.
   if (
     source.kind === 'no-application' ||
     source.kind === 'pending-approval' ||
@@ -120,6 +104,14 @@ export default function DashboardClient({
     )
   }
 
+  const { upcoming, leadStats, recentInquiries, completion, funnel, leadSources, performanceStats, profileViews, bookingsRevenue } = data
+  const hasFunnel = funnel.length > 0 && funnel[0].value > 0
+  const hasSources = leadSources.length > 0
+  const hasViews = profileViews.month.some((p) => p.value > 0)
+  const hasBookingsRevenue = bookingsRevenue.some(
+    (p) => p.bookings > 0 || p.revenue > 0,
+  )
+
   return (
     <div className="p-8 pb-12">
       <div className="max-w-[1400px] mx-auto">
@@ -128,23 +120,16 @@ export default function DashboardClient({
             {banner}
           </div>
         )}
-        {greeting && (
-          <h1 className="mb-6 text-2xl font-semibold text-gray-900">
-            {greeting}
-          </h1>
-        )}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 auto-rows-min">
-          {/* Top: at-a-glance */}
           <div className="lg:col-span-12 flex items-start">
             <ProfileCompletion sections={completion} />
           </div>
 
-          {/* Up next */}
           <SectionHeader label="Up next" hint="Upcoming events and reservations" />
           <div className="lg:col-span-4">
             <StatCard
               title="This week"
-              value={String(upcomingStats.thisWeek)}
+              value={String(upcoming.thisWeek)}
               trend=""
               sub="events scheduled"
             />
@@ -152,7 +137,7 @@ export default function DashboardClient({
           <div className="lg:col-span-4">
             <StatCard
               title="This month"
-              value={String(upcomingStats.thisMonth)}
+              value={String(upcoming.thisMonth)}
               trend=""
               sub="upcoming bookings"
             />
@@ -160,16 +145,19 @@ export default function DashboardClient({
           <div className="lg:col-span-4">
             <StatCard
               title="Confirmed value"
-              value={formatTZS(upcomingStats.confirmedValue, { compact: true })}
+              value={
+                upcoming.confirmedValue > 0
+                  ? formatTZS(upcoming.confirmedValue, { compact: true })
+                  : '—'
+              }
               trend=""
               sub="across all confirmed events"
             />
           </div>
           <div className="lg:col-span-12 flex">
-            <UpcomingBookings />
+            <UpcomingBookings items={upcoming.items} />
           </div>
 
-          {/* Leads */}
           <SectionHeader label="Leads" hint="Inquiries, conversion, sources" />
           {leadStats.map((s) => (
             <div key={s.label} className="lg:col-span-3">
@@ -183,16 +171,29 @@ export default function DashboardClient({
             </div>
           ))}
           <div className="lg:col-span-8 flex min-h-[300px]">
-            <ConversionFunnel stages={conversionFunnel} />
+            {hasFunnel ? (
+              <ConversionFunnel stages={funnel} />
+            ) : (
+              <EmptyChartCard
+                title="Conversion funnel"
+                hint="No inquiries in the last 90 days yet. Your funnel will appear once couples start reaching out."
+              />
+            )}
           </div>
           <div className="lg:col-span-4 flex min-h-[300px]">
-            <LeadSourceChart data={leadSources} />
+            {hasSources ? (
+              <LeadSourceChart data={leadSources} />
+            ) : (
+              <EmptyChartCard
+                title="Where leads come from"
+                hint="Once couples discover your storefront, you'll see the breakdown here."
+              />
+            )}
           </div>
           <div className="lg:col-span-12 flex">
             <RecentInquiries rows={recentInquiries} />
           </div>
 
-          {/* Performance */}
           <SectionHeader label="Performance" hint="How your storefront is doing" />
           {performanceStats.map((s) => (
             <div key={s.label} className="lg:col-span-4">
@@ -206,13 +207,26 @@ export default function DashboardClient({
             </div>
           ))}
           <div className="lg:col-span-12 flex min-h-[340px]">
-            <LeadsChart data={profileViews} />
+            {hasViews ? (
+              <LeadsChart data={profileViews} />
+            ) : (
+              <EmptyChartCard
+                title="Profile views"
+                hint="Your storefront hasn't been viewed yet. Track activity will show here as visits roll in."
+              />
+            )}
           </div>
 
-          {/* Insights */}
           <SectionHeader label="Insights" hint="Bookings and revenue trends" />
           <div className="lg:col-span-12 flex min-h-[380px]">
-            <BookingsChart data={bookingsRevenue} />
+            {hasBookingsRevenue ? (
+              <BookingsChart data={bookingsRevenue} />
+            ) : (
+              <EmptyChartCard
+                title="Bookings & revenue"
+                hint="No confirmed bookings yet. This trend chart unlocks once you accept and invoice your first event."
+              />
+            )}
           </div>
         </div>
       </div>

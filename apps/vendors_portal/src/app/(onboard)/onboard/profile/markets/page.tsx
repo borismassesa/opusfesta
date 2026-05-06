@@ -103,7 +103,7 @@ export default function MarketsPage() {
             in Zanzibar, Arusha, or anywhere you’ve selected will see you in their search results.
           </p>
           <p>
-            Pick only the markets where you’ll travel for your <strong>standard fee</strong> — you
+            Pick only the markets where you’ll travel for your <strong>standard fee</strong>. You
             can add per-trip travel charges later. You can update this anytime from your dashboard.
           </p>
         </WhyWeAsk>

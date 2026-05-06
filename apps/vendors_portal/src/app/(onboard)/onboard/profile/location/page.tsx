@@ -49,7 +49,7 @@ export default function LocationPage() {
               autoComplete="address-line1"
             />
             <TextInput
-              placeholder="Apartment, suite, plot — optional"
+              placeholder="Apartment, suite, plot (optional)"
               value={draft.street2}
               onChange={(e) => update({ street2: e.target.value })}
               autoComplete="address-line2"
@@ -116,7 +116,7 @@ export default function LocationPage() {
             storefront to couples planning weddings nearby.
           </p>
           <p>
-            Your full street address stays private — only your <strong>city and region</strong>{' '}
+            Your full street address stays private. Only your <strong>city and region</strong>{' '}
             appear on your public storefront. Your phone number is shared only after a couple sends
             you an inquiry.
           </p>
