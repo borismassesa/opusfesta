@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import { Filter, MapPin, Mail, Search, Wallet, Users, MessageSquare, Check, X, Send } from 'lucide-react'
 import type { InquiryRow } from '@/lib/mock-data'
@@ -15,9 +15,19 @@ export type LeadsSource =
   | { kind: 'suspended' }
   | { kind: 'no-env' }
 
+type ThreadMessage = {
+  id: string
+  sender_type: 'client' | 'vendor'
+  sender_name: string
+  content: string
+  created_at: string
+  read_at: string | null
+}
+
 type LeadsClientProps = {
   inquiries: InquiryRow[]
   source: LeadsSource
+  vendorName: string
 }
 
 const BANNER_BY_SOURCE: Record<LeadsSource['kind'], string | null> = {
@@ -48,7 +58,7 @@ const STATUS_STYLE: Record<InquiryRow['status'], string> = {
   closed: 'bg-gray-100 text-gray-500',
 }
 
-export default function LeadsClient({ inquiries: initialInquiries, source }: LeadsClientProps) {
+export default function LeadsClient({ inquiries: initialInquiries, source, vendorName }: LeadsClientProps) {
   const [active, setActive] = useState<(typeof TABS)[number]>('Inquiries')
   const [inquiries, setInquiries] = useState(initialInquiries)
   const [selected, setSelected] = useState(initialInquiries[0]?.id ?? null)
@@ -56,10 +66,23 @@ export default function LeadsClient({ inquiries: initialInquiries, source }: Lea
   const [replyOpen, setReplyOpen] = useState(false)
   const [sending, setSending] = useState(false)
   const [actionLoading, setActionLoading] = useState(false)
+  const [thread, setThread] = useState<ThreadMessage[]>([])
+  const [threadLoading, setThreadLoading] = useState(false)
 
   const selectedRow = inquiries.find((r) => r.id === selected) ?? null
   const banner = BANNER_BY_SOURCE[source.kind]
   const isSampleData = source.kind === 'no-env'
+
+  // Load message thread whenever the selected inquiry changes
+  useEffect(() => {
+    if (!selected || isSampleData) { setThread([]); return }
+    setThreadLoading(true)
+    fetch(`/api/inquiries/${selected}/messages`)
+      .then((r) => r.ok ? r.json() : Promise.reject(r))
+      .then((json) => setThread(json.messages ?? []))
+      .catch(() => setThread([]))
+      .finally(() => setThreadLoading(false))
+  }, [selected, isSampleData])
 
   function updateLocalStatus(id: string, status: InquiryRow['status']) {
     setInquiries((rows) => rows.map((r) => (r.id === id ? { ...r, status } : r)))
@@ -78,7 +101,14 @@ export default function LeadsClient({ inquiries: initialInquiries, source }: Lea
     if (!selectedRow || !replyText.trim()) return
     setSending(true)
     try {
-      await patchInquiry(selectedRow.id, { vendor_response: replyText.trim() })
+      const res = await fetch(`/api/inquiries/${selectedRow.id}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: replyText.trim() }),
+      })
+      if (!res.ok) throw new Error('Failed to send')
+      const json = await res.json()
+      setThread((prev) => [...prev, json.message])
       updateLocalStatus(selectedRow.id, 'replied')
       setReplyText('')
       setReplyOpen(false)
@@ -270,50 +300,70 @@ export default function LeadsClient({ inquiries: initialInquiries, source }: Lea
                     )}
                   </div>
 
-                  {selectedRow.message && (
-                    <div className="mt-6 rounded-xl border border-gray-100 p-5 bg-white">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-                        Message from couple
-                      </p>
-                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                        {selectedRow.message}
-                      </p>
+                  {/* Message thread */}
+                  <div className="mt-6 rounded-xl border border-gray-100 overflow-hidden">
+                    <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Conversation</p>
+                      {threadLoading && (
+                        <span className="text-[10px] text-gray-400 animate-pulse">Loading…</span>
+                      )}
                     </div>
-                  )}
+                    <div className="p-4 space-y-4 max-h-64 overflow-y-auto bg-white">
+                      {thread.length === 0 && !threadLoading ? (
+                        <p className="text-xs text-gray-400 text-center py-4">
+                          No messages yet. Use &ldquo;Reply&rdquo; to start the conversation.
+                        </p>
+                      ) : (
+                        thread.map((msg) => {
+                          const isVendor = msg.sender_type === 'vendor'
+                          return (
+                            <div key={msg.id} className={`flex gap-2.5 ${isVendor ? 'flex-row-reverse' : ''}`}>
+                              <div className={`w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold ${isVendor ? 'bg-[#C9A0DC] text-[#1A1A1A]' : 'bg-gray-200 text-gray-600'}`}>
+                                {msg.sender_name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className={`flex flex-col gap-1 max-w-[80%] ${isVendor ? 'items-end' : 'items-start'}`}>
+                                <span className="text-[10px] text-gray-400 font-semibold">{msg.sender_name}</span>
+                                <div className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${isVendor ? 'bg-[#F0DFF6] text-[#1A1A1A] rounded-tr-sm' : 'bg-gray-100 text-gray-800 rounded-tl-sm'}`}>
+                                  {msg.content}
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })
+                      )}
+                    </div>
 
-                  {/* Reply composer */}
-                  {replyOpen && !isSampleData && (
-                    <div className="mt-6 rounded-xl border border-[#C9A0DC]/40 bg-[#FCF7FF] p-5">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-[#7E5896] mb-3">
-                        Your reply
-                      </p>
-                      <textarea
-                        value={replyText}
-                        onChange={(e) => setReplyText(e.target.value)}
-                        placeholder="Write a personalised reply to this couple…"
-                        rows={5}
-                        className="w-full resize-none rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:border-[#C9A0DC] transition-colors"
-                      />
-                      <div className="mt-3 flex justify-end gap-2">
-                        <button
-                          type="button"
-                          onClick={() => { setReplyOpen(false); setReplyText('') }}
-                          className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
-                        >
-                          Cancel
-                        </button>
-                        <button
-                          type="button"
-                          disabled={sending || !replyText.trim()}
-                          onClick={handleReply}
-                          className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                        >
-                          <Send className="w-3.5 h-3.5" />
-                          {sending ? 'Sending…' : 'Send reply'}
-                        </button>
+                    {/* Reply composer */}
+                    {replyOpen && !isSampleData ? (
+                      <div className="border-t border-gray-100 p-4 bg-[#FCF7FF]">
+                        <textarea
+                          value={replyText}
+                          onChange={(e) => setReplyText(e.target.value)}
+                          placeholder="Write a personalised reply…"
+                          rows={4}
+                          className="w-full resize-none rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:border-[#C9A0DC] transition-colors"
+                        />
+                        <div className="mt-3 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() => { setReplyOpen(false); setReplyText('') }}
+                            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            disabled={sending || !replyText.trim()}
+                            onClick={handleReply}
+                            className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                          >
+                            <Send className="w-3.5 h-3.5" />
+                            {sending ? 'Sending…' : 'Send reply'}
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    ) : null}
+                  </div>
 
                   {/* Status actions */}
                   {!isSampleData && selectedRow.status !== 'booked' && selectedRow.status !== 'closed' && (

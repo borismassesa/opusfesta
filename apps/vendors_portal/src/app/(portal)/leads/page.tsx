@@ -79,19 +79,20 @@ function mapRow(row: InquiryRowFromDb): InquiryRow {
 async function loadInquiries(): Promise<{
   inquiries: InquiryRow[]
   source: LeadsSource
+  vendorName: string
 }> {
   const state = await getCurrentVendor()
   if (state.kind === 'no-env') {
-    return { inquiries: recentInquiries, source: { kind: 'no-env' } }
+    return { inquiries: recentInquiries, source: { kind: 'no-env' }, vendorName: 'Your Business' }
   }
   if (state.kind === 'no-application') {
-    return { inquiries: [], source: { kind: 'no-application' } }
+    return { inquiries: [], source: { kind: 'no-application' }, vendorName: '' }
   }
   if (state.kind === 'pending-approval') {
-    return { inquiries: [], source: { kind: 'pending-approval' } }
+    return { inquiries: [], source: { kind: 'pending-approval' }, vendorName: state.vendorName }
   }
   if (state.kind === 'suspended') {
-    return { inquiries: [], source: { kind: 'suspended' } }
+    return { inquiries: [], source: { kind: 'suspended' }, vendorName: state.vendorName }
   }
 
   const supabase = await createClerkSupabaseServerClient()
@@ -112,10 +113,11 @@ async function loadInquiries(): Promise<{
   return {
     inquiries: (inquiries.data ?? []).map(mapRow),
     source: { kind: 'live' },
+    vendorName: state.vendor.businessName,
   }
 }
 
 export default async function LeadsPage() {
-  const { inquiries, source } = await loadInquiries()
-  return <LeadsClient inquiries={inquiries} source={source} />
+  const { inquiries, source, vendorName } = await loadInquiries()
+  return <LeadsClient inquiries={inquiries} source={source} vendorName={vendorName} />
 }
