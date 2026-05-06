@@ -1855,6 +1855,7 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
   })
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
+  const [inquiryId, setInquiryId] = useState<string | null>(null)
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
@@ -1878,6 +1879,11 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
         setErrorMsg(json.error ?? 'Something went wrong. Please try again.')
         setStatus('error')
       } else {
+        setInquiryId(json.id ?? null)
+        // Store email so /my/inquiries can auto-populate the search
+        if (form.email) {
+          try { sessionStorage.setItem('of_inquiry_email', form.email.trim().toLowerCase()) } catch { /* ignore */ }
+        }
         setStatus('success')
       }
     } catch {
@@ -1918,18 +1924,27 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
       </div>
 
       {status === 'success' ? (
-        <div className="rounded-xl bg-green-50 border border-green-200 px-5 py-6 text-center space-y-2">
+        <div className="rounded-xl bg-green-50 border border-green-200 px-5 py-6 space-y-3">
           <p className="text-lg font-bold text-green-800">Request sent!</p>
           <p className="text-sm text-green-700">
-            {vendor.name} will get back to you soon. Check your inbox for a confirmation.
+            {vendor.name} will get back to you soon.
           </p>
+          {inquiryId && form.email && (
+            <a
+              href={`/my/inquiries/${inquiryId}?email=${encodeURIComponent(form.email.trim().toLowerCase())}`}
+              className="flex items-center justify-center gap-1.5 w-full rounded-full border border-green-400 bg-white text-green-800 text-sm font-semibold py-2.5 hover:bg-green-100 transition-colors"
+            >
+              Track your request
+            </a>
+          )}
           <button
             type="button"
             onClick={() => {
               setStatus('idle')
+              setInquiryId(null)
               setForm({ firstName: '', lastName: '', email: '', weddingDate: '', flexibleDate: false, guests: '', phone: '', location: '', interestedPackage: '', message: '' })
             }}
-            className="mt-2 text-xs underline text-green-700 hover:text-green-900"
+            className="block w-full text-center text-xs underline text-green-700 hover:text-green-900"
           >
             Send another request
           </button>
