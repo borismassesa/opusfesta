@@ -1,18 +1,24 @@
 'use server'
 
-import { createHash, randomBytes, randomUUID } from 'crypto'
+import { randomBytes, randomUUID } from 'crypto'
 import { headers } from 'next/headers'
 import { revalidatePath } from 'next/cache'
-import { auth, clerkClient, currentUser } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { requireAdminRole, type AdminAccessRole } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { slugify, type AdviceIdeasPostRow } from '@/lib/cms/advice-ideas'
+import {
+  acceptContributorInvitationByToken,
+  acceptLatestPendingInvitationForIdentity,
+  hashContributorInviteToken,
+  normalizeContributorEmail,
+} from '@/lib/contribute/invitations'
 import {
   type AdviceArticleInvitationRow,
   type AdviceArticleSubmissionRow,
   type AdviceSubmissionDraft,
 } from '@/lib/advice-submissions'
-import { isEmailConfigured, sendEmail } from '@/lib/email'
+import { getResendConfigError, isEmailConfigured, sendEmail } from '@/lib/email'
 import { buildContributorInviteEmail } from '@/lib/contributor-invite-email'
 
 const ARTICLE_MANAGE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
@@ -42,12 +48,8 @@ export type ContributorInvitationResult = {
   delivery: ContributorInvitationDelivery
 }
 
-function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex')
-}
-
 function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase()
+  return normalizeContributorEmail(email)
 }
 
 async function getIdentity(): Promise<Identity> {
@@ -147,7 +149,11 @@ async function dispatchInviteEmail(args: {
   expiresAt: string
 }): Promise<ContributorInvitationDelivery> {
   if (!isEmailConfigured()) {
-    return { sent: false, reason: 'not_configured' }
+    return {
+      sent: false,
+      reason: 'not_configured',
+      error: getResendConfigError()?.message,
+    }
   }
   const template = buildContributorInviteEmail({
     recipientEmail: args.email,
@@ -188,7 +194,7 @@ export async function createContributorInvitation(
       email,
       full_name: fullName,
       article_title: articleTitle,
-      token_hash: hashToken(token),
+      token_hash: hashContributorInviteToken(token),
       status: 'pending',
       expires_at: expiresAt,
       created_by_clerk_id: identity.clerkId,
@@ -235,7 +241,7 @@ export async function regenerateContributorInvitation(
   const { data, error } = await supabase
     .from('advice_article_invitations')
     .update({
-      token_hash: hashToken(token),
+      token_hash: hashContributorInviteToken(token),
       status: 'pending',
       expires_at: expiresAt,
     })
@@ -285,7 +291,7 @@ export async function getInvitationPreview(
   const { data, error } = await supabase
     .from('advice_article_invitations')
     .select('id, email, full_name, article_title, status, expires_at, accepted_submission_id')
-    .eq('token_hash', hashToken(token))
+    .eq('token_hash', hashContributorInviteToken(token))
     .maybeSingle()
 
   if (error) throw error
@@ -294,98 +300,12 @@ export async function getInvitationPreview(
 
 export async function acceptContributorInvitation(token: string): Promise<{ id: string }> {
   const identity = await getIdentity()
-  const supabase = createSupabaseAdminClient()
-  const { data: invite, error } = await supabase
-    .from('advice_article_invitations')
-    .select('*')
-    .eq('token_hash', hashToken(token))
-    .maybeSingle<AdviceArticleInvitationRow>()
-
-  if (error) throw error
-  if (!invite) throw new Error('This contributor invitation is invalid.')
-
-  const inviteEmail = normalizeEmail(invite.email)
-  if (inviteEmail !== identity.email) {
-    throw new Error(`This invite is for ${invite.email}. Sign in with that email to accept it.`)
-  }
-
-  if (invite.status === 'revoked') throw new Error('This invite has been revoked.')
-  if (new Date(invite.expires_at).getTime() < Date.now()) {
-    await supabase
-      .from('advice_article_invitations')
-      .update({ status: 'expired' })
-      .eq('id', invite.id)
-    throw new Error('This invite has expired.')
-  }
-
-  if (invite.accepted_submission_id) {
-    // Heal any contributor whose original accept predates the role-promotion
-    // step — without this they hit "Contributor access required" forever.
-    await promoteToContributorRole(identity.clerkId)
-    return { id: invite.accepted_submission_id }
-  }
-
-  const title = invite.article_title ?? ''
-  const { data: submission, error: insertError } = await supabase
-    .from('advice_article_submissions')
-    .insert({
-      invitation_id: invite.id,
-      author_email: identity.email,
-      author_clerk_id: identity.clerkId,
-      status: 'draft',
-      title,
-      slug: title ? slugify(title) : '',
-      author_name: invite.full_name || identity.name || identity.email.split('@')[0],
-      published: false,
-    })
-    .select('id')
-    .single<{ id: string }>()
-
-  if (insertError) throw insertError
-
-  const { error: updateError } = await supabase
-    .from('advice_article_invitations')
-    .update({
-      status: 'accepted',
-      accepted_clerk_id: identity.clerkId,
-      accepted_submission_id: submission.id,
-      accepted_at: new Date().toISOString(),
-    })
-    .eq('id', invite.id)
-
-  if (updateError) throw updateError
-
-  await promoteToContributorRole(identity.clerkId)
-
-  revalidatePath('/contribute')
-  revalidatePath('/contribute/articles')
-  revalidatePath('/operations/articles/submissions')
-  return { id: submission.id }
+  return acceptContributorInvitationByToken(token, identity)
 }
 
-// Promote the accepting user to the `contributor` role in Clerk metadata so
-// `requireContributorIdentity()` will recognise them on the next request. Skip
-// if they already hold an admin-tier role (owner/admin/editor/viewer) so we
-// don't downgrade staff who are accepting an invite for testing.
-const ADMIN_TIER_ROLES = new Set(['owner', 'admin', 'editor', 'viewer'])
-
-async function promoteToContributorRole(clerkId: string): Promise<void> {
-  try {
-    const client = await clerkClient()
-    const user = await client.users.getUser(clerkId)
-    const currentRole =
-      typeof user.publicMetadata?.role === 'string'
-        ? user.publicMetadata.role.trim().toLowerCase()
-        : ''
-    if (ADMIN_TIER_ROLES.has(currentRole)) return
-    if (currentRole === 'contributor' || currentRole === 'author') return
-    await client.users.updateUserMetadata(clerkId, {
-      publicMetadata: { ...user.publicMetadata, role: 'contributor' },
-    })
-  } catch {
-    // Promotion is best-effort. If Clerk is unreachable the DB invite is still
-    // accepted; the user will retry and the role gets set on the next attempt.
-  }
+export async function acceptPendingContributorInvitationForCurrentUser(): Promise<{ id: string } | null> {
+  const identity = await getIdentity()
+  return acceptLatestPendingInvitationForIdentity(identity)
 }
 
 async function loadOwnedSubmission(

@@ -306,7 +306,7 @@ function deliveryBanner(delivery: ContributorInvitationDelivery): {
   if (delivery.reason === 'not_configured') {
     return {
       tone: 'info',
-      text: 'Resend is not configured (RESEND_API_KEY missing). Use Mail client to send manually.',
+      text: `Resend is not configured${delivery.error ? `: ${delivery.error}` : ''}. Use Mail client to send manually.`,
     }
   }
   return {

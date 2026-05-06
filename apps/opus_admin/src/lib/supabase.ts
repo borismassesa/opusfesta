@@ -1,6 +1,21 @@
 import { auth } from '@clerk/nextjs/server'
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
+export class SupabaseAdminConfigError extends Error {
+  constructor() {
+    super('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+    this.name = 'SupabaseAdminConfigError'
+  }
+}
+
+export function hasSupabaseAdminConfig(): boolean {
+  return Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY)
+}
+
+export function isSupabaseAdminConfigError(error: unknown): error is SupabaseAdminConfigError {
+  return error instanceof SupabaseAdminConfigError
+}
+
 /**
  * Server-side admin client (bypasses RLS via service role).
  * Use for trusted admin writes — never expose to the browser.
@@ -9,7 +24,7 @@ export function createSupabaseAdminClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) {
-    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY')
+    throw new SupabaseAdminConfigError()
   }
   return createClient(url, key, {
     auth: { autoRefreshToken: false, persistSession: false },
