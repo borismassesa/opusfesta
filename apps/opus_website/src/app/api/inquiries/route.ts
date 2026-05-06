@@ -44,6 +44,9 @@ export async function POST(request: Request) {
     weddingDate,
     flexibleDate,
     guests,
+    location,
+    budget,
+    interestedPackage,
     message,
   } = body as Record<string, unknown>
 
@@ -61,7 +64,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'A valid email address is required' }, { status: 400 })
   }
   if (!weddingDate || typeof weddingDate !== 'string' || !weddingDate.trim()) {
-    return NextResponse.json({ error: 'Wedding date is required' }, { status: 400 })
+    // Date is only required when the client didn't mark it as flexible
+    if (!flexibleDate) {
+      return NextResponse.json({ error: 'Wedding date is required' }, { status: 400 })
+    }
   }
   if (!guests || typeof guests !== 'string' || !guests.trim()) {
     return NextResponse.json({ error: 'Guest count is required' }, { status: 400 })
@@ -78,6 +84,9 @@ export async function POST(request: Request) {
   const guestCount = parseInt(guests as string, 10)
 
   const noteLines: string[] = []
+  if (interestedPackage && typeof interestedPackage === 'string' && interestedPackage.trim()) {
+    noteLines.push(`Interested package: ${interestedPackage.trim()}`)
+  }
   if (message && typeof message === 'string' && message.trim()) {
     noteLines.push(message.trim())
   }
@@ -107,6 +116,8 @@ export async function POST(request: Request) {
       event_type: 'wedding',
       event_date: parsedDate,
       guest_count: isNaN(guestCount) ? null : guestCount,
+      location: nullIfBlank(location as string | undefined),
+      budget: nullIfBlank(budget as string | undefined),
       message: noteLines.join('\n\n'),
       status: 'pending',
     })

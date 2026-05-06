@@ -1845,10 +1845,13 @@ function VendorAvailabilitySection({ vendor }: { vendor: Vendor }) {
 }
 
 // ── Sidebar ───────────────────────────────────────────────
+const TODAY = new Date().toISOString().split('T')[0]
+
 function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; compact?: boolean }) {
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '',
-    weddingDate: '', flexibleDate: false, guests: '', phone: '', message: '',
+    weddingDate: '', flexibleDate: false, guests: '', phone: '',
+    location: '', interestedPackage: '', message: '',
   })
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -1865,6 +1868,9 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
           vendorId: vendor.id,
           vendorName: vendor.name,
           ...form,
+          budget: form.interestedPackage
+            ? vendor.pricingDetails?.find((p) => p.label === form.interestedPackage)?.value ?? ''
+            : '',
         }),
       })
       const json = await res.json()
@@ -1921,7 +1927,7 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
             type="button"
             onClick={() => {
               setStatus('idle')
-              setForm({ firstName: '', lastName: '', email: '', weddingDate: '', flexibleDate: false, guests: '', phone: '', message: '' })
+              setForm({ firstName: '', lastName: '', email: '', weddingDate: '', flexibleDate: false, guests: '', phone: '', location: '', interestedPackage: '', message: '' })
             }}
             className="mt-2 text-xs underline text-green-700 hover:text-green-900"
           >
@@ -1930,6 +1936,36 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
         </div>
       ) : (
       <form className={stackCls} onSubmit={handleSubmit}>
+
+        {/* Package selector */}
+        {vendor.pricingDetails && vendor.pricingDetails.length > 0 && (
+          <div>
+            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">
+              Interested in a package? <span className="font-normal text-gray-400">(optional)</span>
+            </p>
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              {vendor.pricingDetails.map((pkg) => (
+                <button
+                  key={pkg.label}
+                  type="button"
+                  onClick={() => setForm((f) => ({
+                    ...f,
+                    interestedPackage: f.interestedPackage === pkg.label ? '' : pkg.label,
+                  }))}
+                  className={`flex flex-col rounded-lg border p-3 text-left transition-colors ${
+                    form.interestedPackage === pkg.label
+                      ? 'border-(--accent) bg-(--accent)/10'
+                      : 'border-gray-200 bg-white hover:border-gray-300'
+                  }`}
+                >
+                  <span className="truncate text-sm font-semibold text-[#1A1A1A]">{pkg.label}</span>
+                  <span className="mt-0.5 text-xs text-gray-500">{pkg.value}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input type="text" placeholder="First name*" required value={form.firstName}
             onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
@@ -1938,22 +1974,41 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
             onChange={(e) => setForm((f) => ({ ...f, lastName: e.target.value }))}
             className={inputCls} />
         </div>
-        <input type="tel" placeholder="Phone number" value={form.phone}
-          onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-          className={inputCls} />
         <input type="email" placeholder="Email*" required value={form.email}
           onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
           className={inputCls} />
-        <input type="text" placeholder="Wedding date*" required value={form.weddingDate}
-          onChange={(e) => setForm((f) => ({ ...f, weddingDate: e.target.value }))}
+        <input type="tel" placeholder="Phone number" value={form.phone}
+          onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
           className={inputCls} />
 
-        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
-          <input type="checkbox" checked={form.flexibleDate}
-            onChange={(e) => setForm((f) => ({ ...f, flexibleDate: e.target.checked }))}
-            className="w-4 h-4 rounded border-gray-300 accent-(--accent)" />
-          My wedding date is flexible
-        </label>
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">
+              Wedding date*
+            </label>
+            <input
+              type="date"
+              required={!form.flexibleDate}
+              min={TODAY}
+              value={form.weddingDate}
+              onChange={(e) => setForm((f) => ({ ...f, weddingDate: e.target.value }))}
+              className={inputCls}
+            />
+          </div>
+          <div className="flex flex-col justify-end">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" checked={form.flexibleDate}
+                onChange={(e) => setForm((f) => ({ ...f, flexibleDate: e.target.checked }))}
+                className="h-4 w-4 rounded border-gray-300 accent-(--accent)" />
+              My date is flexible
+            </label>
+          </div>
+        </div>
+
+        <input type="text" placeholder="Wedding location (city or venue)"
+          value={form.location}
+          onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+          className={inputCls} />
 
         <div className="relative">
           <select required value={form.guests}
@@ -1962,14 +2017,17 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
               compact ? 'p-2.5' : 'p-3'
             }`}>
             <option value="" disabled>Number of guests*</option>
-            <option value="50">50-100</option>
-            <option value="100">100-200</option>
-            <option value="200">200+</option>
+            <option value="under-50">Under 50</option>
+            <option value="50-100">50–100</option>
+            <option value="100-150">100–150</option>
+            <option value="150-200">150–200</option>
+            <option value="200-300">200–300</option>
+            <option value="300+">300+</option>
           </select>
           <ChevronDown className={`pointer-events-none absolute right-3 text-gray-400 ${compact ? 'top-3 w-4 h-4' : 'top-3.5 w-5 h-5'}`} />
         </div>
 
-        <textarea placeholder="Introduce yourself and share your wedding details..."
+        <textarea placeholder="Tell us about your wedding — theme, vibe, any special requests…"
           value={form.message}
           onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
           className={textareaCls}
