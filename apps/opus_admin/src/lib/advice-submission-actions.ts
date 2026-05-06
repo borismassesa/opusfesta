@@ -268,6 +268,101 @@ export async function regenerateContributorInvitation(
   }
 }
 
+// Rotates token_hash so the previously-shared link is invalidated — invite
+// tokens are bearer credentials, so issuing a "fresh link" must immediately
+// retire the old one. Status guard prevents silently reviving a revoked or
+// already-accepted invite from a stale UI.
+export async function regenerateContributorInvitationLink(
+  id: string,
+  expiresInDays = 14
+): Promise<{ id: string; link: string; expiresAt: string; email: string }> {
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
+
+  const days = Math.min(90, Math.max(1, Math.round(expiresInDays)))
+  const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+  const token = randomBytes(32).toString('base64url')
+
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('advice_article_invitations')
+    .update({
+      token_hash: hashContributorInviteToken(token),
+      expires_at: expiresAt,
+    })
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('id, email, expires_at')
+    .maybeSingle<{ id: string; email: string; expires_at: string }>()
+
+  if (error) throw error
+  if (!data) {
+    throw new Error('Invite is no longer pending. Reload the page to see its current state.')
+  }
+
+  const origin = await getOrigin()
+  const link = `${origin}/contribute/invite/${token}`
+
+  revalidatePath('/operations/authors')
+  return { id: data.id, link, expiresAt: data.expires_at, email: data.email }
+}
+
+// Soft-cancel: marks a *pending* invite revoked so the link stops working but
+// the audit row sticks around. Status guard prevents revoking an invite that
+// was accepted in another tab — that would leave the row inconsistent
+// (revoked status with accepted_clerk_id + accepted_submission_id populated).
+export async function revokeContributorInvitation(id: string): Promise<void> {
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('advice_article_invitations')
+    .update({ status: 'revoked' })
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle()
+  if (error) throw error
+  if (!data) {
+    throw new Error('Invite is no longer pending — it may have been accepted or already revoked.')
+  }
+  revalidatePath('/operations/authors')
+}
+
+export type ContributorInvitationUpdate = {
+  fullName?: string | null
+  articleTitle?: string | null
+}
+
+export async function updateContributorInvitation(
+  id: string,
+  update: ContributorInvitationUpdate
+): Promise<void> {
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
+  const payload: Record<string, unknown> = {}
+  if (update.fullName !== undefined) {
+    const v = update.fullName?.trim() ?? ''
+    payload.full_name = v || null
+  }
+  if (update.articleTitle !== undefined) {
+    const v = update.articleTitle?.trim() ?? ''
+    payload.article_title = v || null
+  }
+  if (Object.keys(payload).length === 0) return
+
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('advice_article_invitations')
+    .update(payload)
+    .eq('id', id)
+    .eq('status', 'pending')
+    .select('id')
+    .maybeSingle()
+  if (error) throw error
+  if (!data) {
+    throw new Error('Invite is no longer pending — its details cannot be edited.')
+  }
+  revalidatePath('/operations/authors')
+}
+
 export async function getInvitationPreview(
   token: string
 ): Promise<Pick<

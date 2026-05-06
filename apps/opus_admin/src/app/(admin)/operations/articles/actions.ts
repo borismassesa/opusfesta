@@ -137,6 +137,9 @@ export async function deleteAdvicePost(id: string): Promise<void> {
   if (error) throw error
 
   revalidatePath('/operations/articles')
+  // Submissions page filters orphan published rows; refresh so the deleted
+  // post disappears from the queue.
+  revalidatePath('/operations/articles/submissions')
   await revalidateWebsite(row?.slug)
 }
 
