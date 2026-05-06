@@ -6,7 +6,8 @@ import { revalidatePath } from 'next/cache'
 // in admin runtime logs instead of silently no-op'ing while the operator sees
 // "Publish succeeded".
 const ALLOWED_EXACT = new Set(['/', '/vendors', '/advice-and-ideas'])
-// Article slug paths — slugify() in opus_admin produces [a-z0-9-] up to 80 chars.
+// Article slug paths — must mirror slugify() in
+// apps/opus_admin/src/lib/cms/advice-ideas.ts. Keep in sync if that changes.
 const ARTICLE_SLUG = /^\/advice-and-ideas\/[a-z0-9](?:[a-z0-9-]{0,79})$/
 
 function isAllowed(path: string): boolean {
@@ -28,7 +29,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unknown_path', path }, { status: 400 })
   }
 
-  console.log(`[revalidate] ${path}`)
-  revalidatePath(path)
+  try {
+    revalidatePath(path)
+  } catch (err) {
+    console.error(`[revalidate] revalidatePath(${path}) threw:`, err)
+    return NextResponse.json({ error: 'revalidation_failed', path }, { status: 500 })
+  }
+  console.log(`[revalidate] invalidated ${path}`)
   return NextResponse.json({ revalidated: true, path })
 }

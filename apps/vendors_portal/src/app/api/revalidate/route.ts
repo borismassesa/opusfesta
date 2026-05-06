@@ -36,7 +36,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unknown_path', path }, { status: 400 })
   }
 
-  console.log(`[revalidate] ${path}`)
-  revalidatePath(path)
+  try {
+    revalidatePath(path)
+  } catch (err) {
+    console.error(`[revalidate] revalidatePath(${path}) threw:`, err)
+    return NextResponse.json({ error: 'revalidation_failed', path }, { status: 500 })
+  }
+  console.log(`[revalidate] invalidated ${path}`)
   return NextResponse.json({ revalidated: true, path })
 }
