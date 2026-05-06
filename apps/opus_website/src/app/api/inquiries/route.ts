@@ -48,6 +48,7 @@ export async function POST(request: Request) {
     budget,
     interestedPackage,
     message,
+    emailNotifications,
   } = body as Record<string, unknown>
 
   // Required field validation
@@ -119,6 +120,7 @@ export async function POST(request: Request) {
       location: nullIfBlank(location as string | undefined),
       budget: nullIfBlank(budget as string | undefined),
       message: noteLines.join('\n\n'),
+      email_notifications_opt_in: emailNotifications === true,
       status: 'pending',
     })
     .select('id')

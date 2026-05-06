@@ -1852,6 +1852,7 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
     firstName: '', lastName: '', email: '',
     weddingDate: '', flexibleDate: false, guests: '', phone: '',
     location: '', interestedPackage: '', message: '',
+    emailNotifications: true,
   })
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
   const [errorMsg, setErrorMsg] = useState('')
@@ -1869,6 +1870,7 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
           vendorId: vendor.id,
           vendorName: vendor.name,
           ...form,
+          emailNotifications: form.emailNotifications,
           budget: form.interestedPackage
             ? vendor.pricingDetails?.find((p) => p.label === form.interestedPackage)?.value ?? ''
             : '',
@@ -1910,7 +1912,15 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
       {/* Header */}
       {/* Header */}
       <div className="mb-6 rounded-2xl bg-gray-50 px-5 py-4">
-        <h2 className={`${headingCls} font-bold text-[#1A1A1A]`}>Start the Conversation</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className={`${headingCls} font-bold text-[#1A1A1A]`}>Start the Conversation</h2>
+          <a
+            href={form.email ? `/my/inquiries?email=${encodeURIComponent(form.email.trim().toLowerCase())}` : '/my/inquiries'}
+            className="shrink-0 rounded-full border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            Track inquiries
+          </a>
+        </div>
         {vendor.startingPrice && (
           <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
             <p className="text-[11px] font-black uppercase tracking-[0.16em] text-gray-400">Starting Price</p>
@@ -1942,7 +1952,7 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
             onClick={() => {
               setStatus('idle')
               setInquiryId(null)
-              setForm({ firstName: '', lastName: '', email: '', weddingDate: '', flexibleDate: false, guests: '', phone: '', location: '', interestedPackage: '', message: '' })
+              setForm({ firstName: '', lastName: '', email: '', weddingDate: '', flexibleDate: false, guests: '', phone: '', location: '', interestedPackage: '', message: '', emailNotifications: true })
             }}
             className="block w-full text-center text-xs underline text-green-700 hover:text-green-900"
           >
@@ -2047,6 +2057,18 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
           onChange={(e) => setForm((f) => ({ ...f, message: e.target.value }))}
           className={textareaCls}
         />
+
+        <label className="flex items-start gap-2.5 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2.5 text-sm text-gray-700">
+          <input
+            type="checkbox"
+            checked={form.emailNotifications}
+            onChange={(e) => setForm((f) => ({ ...f, emailNotifications: e.target.checked }))}
+            className="mt-0.5 h-4 w-4 rounded border-gray-300 accent-(--accent)"
+          />
+          <span>
+            Email me when this vendor replies or when my inquiry status changes.
+          </span>
+        </label>
 
         <div className="text-xs text-gray-500 space-y-1">
           <p className="font-semibold underline cursor-pointer">Why use OpusFesta to message vendors?</p>
