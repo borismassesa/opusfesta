@@ -1,6 +1,15 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 
+// Paths the admin's CMS publish flows actually invalidate. Anything outside
+// this set is rejected with 400 so a typo surfaces in admin runtime logs
+// instead of silently no-op'ing while the operator sees "Publish succeeded".
+const ALLOWED_EXACT = new Set(['/'])
+
+function isAllowed(path: string): boolean {
+  return ALLOWED_EXACT.has(path)
+}
+
 export async function POST(request: Request) {
   const auth = request.headers.get('authorization')
   const secret = process.env.VENDORS_PORTAL_REVALIDATE_SECRET
@@ -21,6 +30,18 @@ export async function POST(request: Request) {
 
   const url = new URL(request.url)
   const path = url.searchParams.get('path') ?? '/'
-  revalidatePath(path)
+
+  if (!isAllowed(path)) {
+    console.warn(`[revalidate] rejected unknown path: ${path}`)
+    return NextResponse.json({ error: 'unknown_path', path }, { status: 400 })
+  }
+
+  try {
+    revalidatePath(path)
+  } catch (err) {
+    console.error(`[revalidate] revalidatePath(${path}) threw:`, err)
+    return NextResponse.json({ error: 'revalidation_failed', path }, { status: 500 })
+  }
+  console.log(`[revalidate] invalidated ${path}`)
   return NextResponse.json({ revalidated: true, path })
 }
