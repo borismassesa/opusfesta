@@ -88,6 +88,7 @@ export async function PATCH(
     .from('inquiries')
     .update(update)
     .eq('id', id)
+    .eq('vendor_id', vendorId)
 
   if (error) {
     console.error('[inquiries] update failed', error)
