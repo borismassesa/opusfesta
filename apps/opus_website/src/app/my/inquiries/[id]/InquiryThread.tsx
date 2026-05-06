@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar, MapPin, Users, Send, CheckCircle2 } from 'lucide-react'
 import type { InquiryDetail, InquiryMessage } from './page'
 
@@ -26,23 +27,23 @@ const STATUS_STYLE: Record<InquiryStatus, string> = {
 function formatDate(iso: string | null, opts?: Intl.DateTimeFormatOptions) {
   if (!iso) return 'Date TBC'
   const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
+  if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleDateString('en-GB', opts ?? { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 function formatTime(iso: string) {
   const d = new Date(iso)
-  if (isNaN(d.getTime())) return ''
+  if (Number.isNaN(d.getTime())) return ''
   return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
-function MessageBubble({ msg }: { msg: InquiryMessage }) {
+function MessageBubble({ msg }: Readonly<{ msg: InquiryMessage }>) {
   const isClient = msg.sender_type === 'client'
   return (
     <div className={`flex gap-3 ${isClient ? 'flex-row-reverse' : ''}`}>
       {/* Avatar */}
       <div
-        className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-[11px] font-bold ${
+        className={`w-8 h-8 rounded-full shrink-0 flex items-center justify-center text-[11px] font-bold ${
           isClient ? 'bg-(--accent) text-[#1A1A1A]' : 'bg-gray-900 text-white'
         }`}
       >
@@ -73,18 +74,24 @@ type Props = {
   email: string
 }
 
-export default function InquiryThread({ inquiry, messages: initialMessages, email }: Props) {
+export default function InquiryThread({ inquiry, messages: initialMessages, email }: Readonly<Props>) {
+  const router = useRouter()
   const [messages, setMessages] = useState<InquiryMessage[]>(initialMessages)
   const [draft, setDraft] = useState('')
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
+  const [inquiryStatus, setInquiryStatus] = useState<InquiryStatus>((inquiry.status ?? 'pending') as InquiryStatus)
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  const [editDraft, setEditDraft] = useState('')
+  const [messageActionLoading, setMessageActionLoading] = useState(false)
+  const [inquiryActionLoading, setInquiryActionLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const status = (inquiry.status ?? 'pending') as InquiryStatus
+  const status = inquiryStatus
   const vendorLabel = inquiry.vendor_name ?? inquiry.vendor_slug ?? 'Vendor'
 
   // Build the full thread: initial inquiry message + subsequent messages
@@ -118,8 +125,7 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
     ...(legacyReply ? [legacyReply] : []),
   ].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
 
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault()
+  async function sendMessage() {
     if (!draft.trim() || sending) return
 
     setSending(true)
@@ -131,16 +137,108 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
         body: JSON.stringify({ email, content: draft.trim() }),
       })
       const json = await res.json()
-      if (!res.ok) {
-        setSendError(json.error ?? 'Failed to send. Please try again.')
-      } else {
+      if (res.ok) {
         setMessages((prev) => [...prev, json.message])
         setDraft('')
+      } else {
+        setSendError(json.error ?? 'Failed to send. Please try again.')
       }
     } catch {
       setSendError('Network error. Please check your connection.')
     } finally {
       setSending(false)
+    }
+  }
+
+  async function handleUpdateMessage(messageId: string) {
+    if (!editDraft.trim() || messageActionLoading) return
+    setMessageActionLoading(true)
+    try {
+      const res = await fetch(`/api/my/inquiries/${inquiry.id}/messages/${messageId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, content: editDraft.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setSendError(json.error ?? 'Failed to update message.')
+        return
+      }
+      setMessages((prev) => prev.map((m) => (m.id === messageId ? json.message : m)))
+      setEditingMessageId(null)
+      setEditDraft('')
+      setSendError('')
+    } catch {
+      setSendError('Network error while updating message.')
+    } finally {
+      setMessageActionLoading(false)
+    }
+  }
+
+  async function handleDeleteMessage(messageId: string) {
+    if (messageActionLoading) return
+    setMessageActionLoading(true)
+    try {
+      const res = await fetch(`/api/my/inquiries/${inquiry.id}/messages/${messageId}?email=${encodeURIComponent(email)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        setSendError('Failed to delete message.')
+        return
+      }
+      setMessages((prev) => prev.filter((m) => m.id !== messageId))
+      if (editingMessageId === messageId) {
+        setEditingMessageId(null)
+        setEditDraft('')
+      }
+      setSendError('')
+    } catch {
+      setSendError('Network error while deleting message.')
+    } finally {
+      setMessageActionLoading(false)
+    }
+  }
+
+  async function handleCloseInquiry() {
+    if (inquiryActionLoading || status === 'closed') return
+    setInquiryActionLoading(true)
+    try {
+      const res = await fetch(`/api/my/inquiries/${inquiry.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, status: 'closed' }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setSendError(json.error ?? 'Failed to close request.')
+        return
+      }
+      setInquiryStatus('closed')
+      setSendError('')
+    } catch {
+      setSendError('Network error while closing request.')
+    } finally {
+      setInquiryActionLoading(false)
+    }
+  }
+
+  async function handleDeleteInquiry() {
+    if (inquiryActionLoading) return
+    setInquiryActionLoading(true)
+    try {
+      const res = await fetch(`/api/my/inquiries/${inquiry.id}?email=${encodeURIComponent(email)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) {
+        setSendError('Failed to delete request.')
+        return
+      }
+      router.push(`/my/inquiries?email=${encodeURIComponent(email)}`)
+      router.refresh()
+    } catch {
+      setSendError('Network error while deleting request.')
+    } finally {
+      setInquiryActionLoading(false)
     }
   }
 
@@ -164,9 +262,29 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
             <h1 className="text-xl font-bold text-[#1A1A1A]">{vendorLabel}</h1>
             <p className="text-sm text-gray-500 mt-0.5">Quote request</p>
           </div>
-          <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_STYLE[status]}`}>
-            {STATUS_LABEL[status]}
-          </span>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <span className={`rounded-full px-3 py-1 text-xs font-bold ${STATUS_STYLE[status]}`}>
+              {STATUS_LABEL[status]}
+            </span>
+            {status !== 'closed' && (
+              <button
+                type="button"
+                disabled={inquiryActionLoading}
+                onClick={handleCloseInquiry}
+                className="rounded-full border border-gray-200 px-3 py-1 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Close request
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={inquiryActionLoading}
+              onClick={handleDeleteInquiry}
+              className="rounded-full border border-red-200 px-3 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 disabled:opacity-50"
+            >
+              Delete
+            </button>
+          </div>
         </div>
 
         {/* Event details */}
@@ -204,11 +322,69 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       {/* Message thread */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
         {/* Thread body */}
-        <div className="p-5 space-y-5 min-h-[240px]">
+        <div className="p-5 space-y-5 min-h-60">
           {thread.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">No messages yet.</p>
           ) : (
-            thread.map((msg) => <MessageBubble key={msg.id} msg={msg} />)
+            thread.map((msg) => {
+              const isOwn = msg.sender_type === 'client' && msg.id !== 'initial'
+              const isEditing = editingMessageId === msg.id
+              return (
+                <div key={msg.id} className="space-y-1.5">
+                  <MessageBubble msg={msg} />
+                  {isOwn && (
+                    <div className="flex justify-end gap-2 text-[11px] text-gray-400 pr-11">
+                      {isEditing ? (
+                        <div className="w-full max-w-md rounded-xl border border-(--accent)/40 bg-[#FCF7FF] p-2.5 space-y-2">
+                          <textarea
+                            value={editDraft}
+                            onChange={(e) => setEditDraft(e.target.value)}
+                            rows={3}
+                            className="w-full resize-none rounded-lg border border-gray-200 bg-white p-2 text-sm text-gray-800 focus:outline-none focus:border-(--accent)"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => { setEditingMessageId(null); setEditDraft('') }}
+                              className="text-xs text-gray-500 hover:text-gray-700"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              disabled={messageActionLoading || !editDraft.trim()}
+                              onClick={() => handleUpdateMessage(msg.id)}
+                              className="rounded-md bg-[#1A1A1A] px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50"
+                            >
+                              Save
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => { setEditingMessageId(msg.id); setEditDraft(msg.content) }}
+                            className="hover:text-gray-600 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <span>•</span>
+                          <button
+                            type="button"
+                            disabled={messageActionLoading}
+                            onClick={() => handleDeleteMessage(msg.id)}
+                            className="hover:text-red-500 transition-colors disabled:opacity-50"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )
+            })
           )}
           <div ref={bottomRef} />
         </div>
@@ -216,7 +392,13 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
         {/* Compose area */}
         {canSendMore ? (
           <div className="border-t border-gray-100 p-4">
-            <form onSubmit={handleSend} className="flex gap-2 items-end">
+            <form
+              onSubmit={(e) => {
+                e.preventDefault()
+                void sendMessage()
+              }}
+              className="flex gap-2 items-end"
+            >
               <textarea
                 value={draft}
                 onChange={(e) => setDraft(e.target.value)}
@@ -225,7 +407,10 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
                 disabled={sending}
                 className="flex-1 resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-(--accent) transition-colors disabled:opacity-60"
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) handleSend(e as unknown as React.FormEvent)
+                  if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                    e.preventDefault()
+                    void sendMessage()
+                  }
                 }}
               />
               <button

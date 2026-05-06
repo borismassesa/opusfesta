@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useSearchParams } from 'next/navigation'
 import { MessageCircle, Calendar, MapPin, ChevronRight, Search } from 'lucide-react'
 
 type InquiryStatus = 'pending' | 'responded' | 'accepted' | 'declined' | 'closed'
@@ -33,7 +34,7 @@ const STATUS_STYLE: Record<InquiryStatus, string> = {
   closed: 'bg-gray-100 text-gray-500',
 }
 
-function StatusBadge({ status }: { status: InquiryStatus | null }) {
+function StatusBadge({ status }: Readonly<{ status: InquiryStatus | null }>) {
   const s = status ?? 'pending'
   return (
     <span className={`rounded-full px-2.5 py-0.5 text-[11px] font-bold ${STATUS_STYLE[s]}`}>
@@ -44,11 +45,12 @@ function StatusBadge({ status }: { status: InquiryStatus | null }) {
 
 function formatDate(iso: string) {
   const d = new Date(iso)
-  if (isNaN(d.getTime())) return iso
+  if (Number.isNaN(d.getTime())) return iso
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 export default function MyInquiriesPage() {
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [submittedEmail, setSubmittedEmail] = useState('')
   const [inquiries, setInquiries] = useState<InquirySummary[] | null>(null)
@@ -57,11 +59,16 @@ export default function MyInquiriesPage() {
 
   // Auto-populate email from sessionStorage if previously searched
   useEffect(() => {
+    const fromUrl = searchParams.get('email')?.trim().toLowerCase() ?? ''
     const stored = sessionStorage.getItem('of_inquiry_email')
+    if (fromUrl) {
+      setEmail(fromUrl)
+      return
+    }
     if (stored) setEmail(stored)
-  }, [])
+  }, [searchParams])
 
-  async function handleSearch(e: React.FormEvent) {
+  async function handleSearch(e: React.SyntheticEvent) {
     e.preventDefault()
     const trimmed = email.trim().toLowerCase()
     if (!trimmed) return
@@ -71,12 +78,12 @@ export default function MyInquiriesPage() {
     try {
       const res = await fetch(`/api/my/inquiries?email=${encodeURIComponent(trimmed)}`)
       const json = await res.json()
-      if (!res.ok) {
-        setError(json.error ?? 'Something went wrong. Please try again.')
-      } else {
+      if (res.ok) {
         sessionStorage.setItem('of_inquiry_email', trimmed)
         setSubmittedEmail(trimmed)
         setInquiries(json.inquiries)
+      } else {
+        setError(json.error ?? 'Something went wrong. Please try again.')
       }
     } catch {
       setError('Network error. Please check your connection and try again.')

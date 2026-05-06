@@ -5,6 +5,44 @@ function isValidEmail(e: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 }
 
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+  const email = request.nextUrl.searchParams.get('email')?.trim().toLowerCase() ?? ''
+
+  if (!isValidEmail(email)) {
+    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
+  }
+
+  const supabase = createSupabaseServerClient()
+
+  const { data: inquiry, error: inquiryErr } = await supabase
+    .from('inquiries')
+    .select('id')
+    .eq('id', id)
+    .eq('email', email)
+    .maybeSingle()
+
+  if (inquiryErr || !inquiry) {
+    return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
+  }
+
+  const { data: messages, error } = await supabase
+    .from('inquiry_messages')
+    .select('id, sender_type, sender_name, content, created_at, read_at')
+    .eq('inquiry_id', id)
+    .order('created_at', { ascending: true })
+
+  if (error) {
+    console.error('[my/inquiries/messages] list failed', error)
+    return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 })
+  }
+
+  return NextResponse.json({ messages: messages ?? [] })
+}
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },

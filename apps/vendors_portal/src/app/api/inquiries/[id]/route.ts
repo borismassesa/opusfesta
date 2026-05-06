@@ -5,6 +5,36 @@ import { getCurrentVendor } from '@/lib/vendor'
 const ALLOWED_STATUSES = ['responded', 'accepted', 'declined', 'closed'] as const
 type AllowedStatus = (typeof ALLOWED_STATUSES)[number]
 
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+
+  const state = await getCurrentVendor()
+  if (state.kind !== 'live') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('inquiries')
+    .select('id, name, email, phone, event_date, guest_count, budget, location, message, status, created_at, updated_at')
+    .eq('id', id)
+    .eq('vendor_id', state.vendor.id)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[inquiries] get failed', error)
+    return NextResponse.json({ error: 'Failed to fetch inquiry' }, { status: 500 })
+  }
+  if (!data) {
+    return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
+  }
+
+  return NextResponse.json({ inquiry: data })
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -65,4 +95,30 @@ export async function PATCH(
   }
 
   return NextResponse.json({ success: true })
+}
+
+export async function DELETE(
+  _request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params
+
+  const state = await getCurrentVendor()
+  if (state.kind !== 'live') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const supabase = createSupabaseAdminClient()
+  const { error } = await supabase
+    .from('inquiries')
+    .delete()
+    .eq('id', id)
+    .eq('vendor_id', state.vendor.id)
+
+  if (error) {
+    console.error('[inquiries] delete failed', error)
+    return NextResponse.json({ error: 'Delete failed. Please try again.' }, { status: 500 })
+  }
+
+  return new NextResponse(null, { status: 204 })
 }
