@@ -35,12 +35,13 @@ export function getFallbackHeroImage(vendorId: string): string {
 }
 
 export function getVendorCardImages(vendor: (typeof vendors)[number]) {
-  if (vendor.gallery?.length) return vendor.gallery
+  if (vendor.gallery?.length) return vendor.gallery.filter(Boolean)
 
-  const pool = FALLBACK_GALLERY_IMAGES.filter((image) => image !== vendor.heroMedia.src)
+  const heroSrc = vendor.heroMedia.src || getFallbackHeroImage(vendor.id)
+  const pool = FALLBACK_GALLERY_IMAGES.filter((image) => image !== heroSrc)
   const start = hashString(vendor.id) % pool.length
   const next = pool[start]
   const afterNext = pool[(start + 1) % pool.length]
 
-  return [vendor.heroMedia.src, next, afterNext]
+  return [heroSrc, next, afterNext]
 }

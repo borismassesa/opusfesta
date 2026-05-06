@@ -45,7 +45,7 @@ import {
   VENDORS_BASE_PATH,
 } from '@/lib/vendors'
 import type { Vendor, VendorCategoryId } from '@/lib/vendors'
-import { getVendorCardImages } from '@/lib/vendor-images'
+import { getFallbackHeroImage, getVendorCardImages } from '@/lib/vendor-images'
 import { BROWSE_FOOTER_VISIBILITY_EVENT } from './VendorsFooterGate'
 
 const VendorsMap = dynamic(() => import('./VendorsMap'), {
@@ -480,7 +480,7 @@ function BrowseCard({ vendor, hovered, onHover }: {
         {/* 1. Name + verified — identity first */}
         <h3 className="flex items-center gap-2 text-[17px] font-bold leading-snug text-[#1A1A1A] sm:text-[18px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={vendor.heroMedia.src} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+          <img src={vendor.heroMedia.src || getFallbackHeroImage(vendor.id)} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
           <span className="truncate">{vendor.name}</span>
           {vendor.badge === 'Verified' && (
             <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified" />
@@ -600,7 +600,7 @@ function GridCard({ vendor }: { vendor: Vendor }) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={vendor.heroMedia.src} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+            <img src={vendor.heroMedia.src || getFallbackHeroImage(vendor.id)} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
             <h3 className="font-display truncate text-[16px] leading-snug text-black">{vendor.name}</h3>
             {vendor.badge === 'Verified' && (
               <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified vendor" />
@@ -732,7 +732,7 @@ function MapListCard({ vendor, onHover, onClick }: {
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={vendor.heroMedia.src} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+            <img src={vendor.heroMedia.src || getFallbackHeroImage(vendor.id)} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
             <h3 className="font-display truncate text-[16px] leading-snug text-black">{vendor.name}</h3>
             {vendor.badge === 'Verified' && (
               <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified vendor" />
