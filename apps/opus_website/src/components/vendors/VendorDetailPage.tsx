@@ -1850,6 +1850,35 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
     firstName: '', lastName: '', email: '',
     weddingDate: '', flexibleDate: false, guests: '', phone: '', message: '',
   })
+  const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
+  const [errorMsg, setErrorMsg] = useState('')
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    setStatus('submitting')
+    setErrorMsg('')
+    try {
+      const res = await fetch('/api/inquiries', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          vendorId: vendor.id,
+          vendorName: vendor.name,
+          ...form,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setErrorMsg(json.error ?? 'Something went wrong. Please try again.')
+        setStatus('error')
+      } else {
+        setStatus('success')
+      }
+    } catch {
+      setErrorMsg('Network error. Please check your connection and try again.')
+      setStatus('error')
+    }
+  }
   const inputCls = `w-full rounded border border-gray-300 text-sm focus:outline-none focus:border-(--accent) ${
     compact ? 'p-2.5' : 'p-3'
   }`
@@ -1882,7 +1911,25 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
         )}
       </div>
 
-      <form className={stackCls} onSubmit={(e) => e.preventDefault()}>
+      {status === 'success' ? (
+        <div className="rounded-xl bg-green-50 border border-green-200 px-5 py-6 text-center space-y-2">
+          <p className="text-lg font-bold text-green-800">Request sent!</p>
+          <p className="text-sm text-green-700">
+            {vendor.name} will get back to you soon. Check your inbox for a confirmation.
+          </p>
+          <button
+            type="button"
+            onClick={() => {
+              setStatus('idle')
+              setForm({ firstName: '', lastName: '', email: '', weddingDate: '', flexibleDate: false, guests: '', phone: '', message: '' })
+            }}
+            className="mt-2 text-xs underline text-green-700 hover:text-green-900"
+          >
+            Send another request
+          </button>
+        </div>
+      ) : (
+      <form className={stackCls} onSubmit={handleSubmit}>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input type="text" placeholder="First name*" required value={form.firstName}
             onChange={(e) => setForm((f) => ({ ...f, firstName: e.target.value }))}
@@ -1937,13 +1984,18 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
           </p>
         </div>
 
-        <button type="submit"
-          className={`w-full rounded-full bg-(--accent) font-semibold text-[#1A1A1A] transition-colors hover:bg-(--accent-hover) ${
+        {status === 'error' && errorMsg && (
+          <p className="text-sm text-red-600 rounded-lg bg-red-50 border border-red-200 px-3 py-2">{errorMsg}</p>
+        )}
+
+        <button type="submit" disabled={status === 'submitting'}
+          className={`w-full rounded-full bg-(--accent) font-semibold text-[#1A1A1A] transition-colors hover:bg-(--accent-hover) disabled:opacity-60 disabled:cursor-not-allowed ${
             compact ? 'py-2.5' : 'py-3'
           }`}>
-          Request quote
+          {status === 'submitting' ? 'Sending…' : 'Request quote'}
         </button>
       </form>
+      )}
     </div>
   )
 }
