@@ -45,7 +45,7 @@ import {
   VENDORS_BASE_PATH,
 } from '@/lib/vendors'
 import type { Vendor, VendorCategoryId } from '@/lib/vendors'
-import { getVendorCardImages } from '@/lib/vendor-images'
+import { getFallbackHeroImage, getVendorCardImages } from '@/lib/vendor-images'
 import { BROWSE_FOOTER_VISIBILITY_EVENT } from './VendorsFooterGate'
 
 const VendorsMap = dynamic(() => import('./VendorsMap'), {
@@ -480,7 +480,7 @@ function BrowseCard({ vendor, hovered, onHover }: {
         {/* 1. Name + verified — identity first */}
         <h3 className="flex items-center gap-2 text-[17px] font-bold leading-snug text-[#1A1A1A] sm:text-[18px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={vendor.heroMedia.src} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+          <img src={vendor.heroMedia.src || getFallbackHeroImage(vendor.id)} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
           <span className="truncate">{vendor.name}</span>
           {vendor.badge === 'Verified' && (
             <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified" />
@@ -522,9 +522,13 @@ function BrowseCard({ vendor, hovered, onHover }: {
             <p className="text-[10px] text-gray-400">Starting at</p>
             <p className="text-[15px] font-bold text-[#1A1A1A]">{startPrice}</p>
           </div>
-          <span className="shrink-0 rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-bold text-[#1A1A1A] transition-colors group-hover:bg-[#b98dcc]">
+          <Link
+            href={`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`}
+            onClick={(e) => e.stopPropagation()}
+            className="shrink-0 rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-bold text-[#1A1A1A] transition-colors hover:bg-[#b98dcc]"
+          >
             Get a quote
-          </span>
+          </Link>
         </div>
       </div>
     </Link>
@@ -600,7 +604,7 @@ function GridCard({ vendor }: { vendor: Vendor }) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={vendor.heroMedia.src} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+            <img src={vendor.heroMedia.src || getFallbackHeroImage(vendor.id)} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
             <h3 className="font-display truncate text-[16px] leading-snug text-black">{vendor.name}</h3>
             {vendor.badge === 'Verified' && (
               <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified vendor" />
@@ -652,9 +656,9 @@ function GridCard({ vendor }: { vendor: Vendor }) {
             <p className="font-display text-[16px] leading-none text-black">{startingPrice}</p>
           </div>
           {isNew ? (
-            <span className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors group-hover:bg-[rgba(201,160,220,0.15)]">Get a quote</span>
+            <Link href={`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`} onClick={(e) => e.stopPropagation()} className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[rgba(201,160,220,0.15)]">Get a quote</Link>
           ) : (
-            <span className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors group-hover:bg-[#b98dcc]">Get a quote</span>
+            <Link href={`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`} onClick={(e) => e.stopPropagation()} className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[#b98dcc]">Get a quote</Link>
           )}
         </div>
       </div>
@@ -732,7 +736,7 @@ function MapListCard({ vendor, onHover, onClick }: {
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={vendor.heroMedia.src} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+            <img src={vendor.heroMedia.src || getFallbackHeroImage(vendor.id)} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
             <h3 className="font-display truncate text-[16px] leading-snug text-black">{vendor.name}</h3>
             {vendor.badge === 'Verified' && (
               <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified vendor" />
@@ -777,9 +781,9 @@ function MapListCard({ vendor, onHover, onClick }: {
             <p className="font-display text-[16px] leading-none text-black">{startingPrice}</p>
           </div>
           {isNew ? (
-            <span className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors group-hover:bg-[rgba(201,160,220,0.15)]">Get a quote</span>
+            <Link href={`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`} onClick={(e) => e.stopPropagation()} className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[rgba(201,160,220,0.15)]">Get a quote</Link>
           ) : (
-            <span className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors group-hover:bg-[#b98dcc]">Get a quote</span>
+            <Link href={`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`} onClick={(e) => e.stopPropagation()} className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[#b98dcc]">Get a quote</Link>
           )}
         </div>
       </div>
