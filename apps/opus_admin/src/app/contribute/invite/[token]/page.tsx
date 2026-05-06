@@ -1,6 +1,9 @@
 import Link from 'next/link'
+import { redirect } from 'next/navigation'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getInvitationPreview } from '@/lib/advice-submission-actions'
+import { acceptContributorInvitationByToken } from '@/lib/contribute/invitations'
+import { isSupabaseAdminConfigError } from '@/lib/supabase'
 import AcceptInviteButton from './AcceptInviteButton'
 import SwitchAccountButton from './SwitchAccountButton'
 
@@ -29,6 +32,9 @@ export default async function ContributorInvitePage({
   try {
     invite = await getInvitationPreview(token)
   } catch (lookupError) {
+    if (isSupabaseAdminConfigError(lookupError)) {
+      return <ContributorSetupRequired />
+    }
     console.error('[invite page] getInvitationPreview failed', lookupError)
   }
 
@@ -60,6 +66,8 @@ export default async function ContributorInvitePage({
   )
   const inviteEmail = normalizeEmail(invite?.email)
   const emailMatches = !!userId && !!inviteEmail && currentEmail === inviteEmail
+  let autoAcceptError: string | null = null
+  let autoAcceptedDraftId: string | null = null
 
   if (!invite) {
     return (
@@ -105,6 +113,28 @@ export default async function ContributorInvitePage({
     )
   }
 
+  if (emailMatches && userId) {
+    try {
+      const accepted = await acceptContributorInvitationByToken(token, {
+        clerkId: userId,
+        email: currentEmail,
+        name:
+          user?.fullName ||
+          [user?.firstName, user?.lastName].filter(Boolean).join(' ') ||
+          null,
+      })
+      autoAcceptedDraftId = accepted.id
+    } catch (error) {
+      if (isSupabaseAdminConfigError(error)) {
+        return <ContributorSetupRequired />
+      }
+      autoAcceptError = error instanceof Error ? error.message : 'Could not accept invite.'
+      console.error('[invite page] auto-accept failed', error)
+    }
+  }
+
+  if (autoAcceptedDraftId) redirect(`/contribute/drafts/${autoAcceptedDraftId}`)
+
   const name = firstName(invite.full_name)
   const articleTitle = invite.article_title?.trim()
 
@@ -146,6 +176,10 @@ export default async function ContributorInvitePage({
         </span>
       </div>
 
+      {autoAcceptError && (
+        <p className="mt-4 font-sans text-sm text-rose-700">{autoAcceptError}</p>
+      )}
+
       {userId && !emailMatches && (
         <AccountMismatchPanel
           token={token}
@@ -153,6 +187,21 @@ export default async function ContributorInvitePage({
           inviteEmail={invite.email}
         />
       )}
+    </Letter>
+  )
+}
+
+function ContributorSetupRequired() {
+  return (
+    <Letter>
+      <p>Supabase is not configured for the admin app.</p>
+      <p className="font-sans text-sm leading-6 text-gray-500">
+        Contributor invites and drafts are stored in Supabase. Add{' '}
+        <span className="font-mono text-gray-800">NEXT_PUBLIC_SUPABASE_URL</span> and{' '}
+        <span className="font-mono text-gray-800">SUPABASE_SERVICE_ROLE_KEY</span> to{' '}
+        <span className="font-mono text-gray-800">apps/opus_admin/.env.local</span>, then restart
+        the dev server.
+      </p>
     </Letter>
   )
 }

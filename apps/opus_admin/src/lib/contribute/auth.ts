@@ -1,5 +1,6 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { getAdminAccessRole } from '@/lib/admin-auth'
+import { hasContributorGrant } from '@/lib/contribute/invitations'
 
 type ContributorIdentity = {
   clerkId: string
@@ -57,7 +58,11 @@ export async function getContributorIdentity(): Promise<ContributorIdentity | nu
 export async function requireContributorIdentity(): Promise<ContributorIdentity> {
   const identity = await getContributorIdentity()
   if (!identity) throw new Error('Sign in first.')
-  if (!identity.isAdmin && !allowedContributorRole(identity.role)) {
+  const hasContributorAccess =
+    identity.isAdmin ||
+    allowedContributorRole(identity.role) ||
+    (await hasContributorGrant(identity))
+  if (!hasContributorAccess) {
     throw new Error('Contributor access required.')
   }
   return identity

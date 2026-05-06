@@ -5,6 +5,25 @@
 
 import { Resend } from 'resend'
 
+export class ResendConfigError extends Error {
+  constructor() {
+    super('Missing RESEND_API_KEY')
+    this.name = 'ResendConfigError'
+  }
+}
+
+export function hasResendConfig(): boolean {
+  return Boolean(process.env.RESEND_API_KEY)
+}
+
+export function getResendConfigError(): ResendConfigError | null {
+  return hasResendConfig() ? null : new ResendConfigError()
+}
+
+export function isResendConfigError(error: unknown): error is ResendConfigError {
+  return error instanceof ResendConfigError
+}
+
 const resend = process.env.RESEND_API_KEY
   ? new Resend(process.env.RESEND_API_KEY)
   : null
@@ -23,7 +42,7 @@ export type EmailResult =
   | { sent: false; reason: 'not_configured' | 'send_failed'; error?: string }
 
 export function isEmailConfigured(): boolean {
-  return !!process.env.RESEND_API_KEY
+  return hasResendConfig()
 }
 
 function defaultFromAddress(): string {
@@ -32,7 +51,7 @@ function defaultFromAddress(): string {
 
 export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
   if (!resend) {
-    return { sent: false, reason: 'not_configured' }
+    return { sent: false, reason: 'not_configured', error: new ResendConfigError().message }
   }
   try {
     const result = await resend.emails.send({

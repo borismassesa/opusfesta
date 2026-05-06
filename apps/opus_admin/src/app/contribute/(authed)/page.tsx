@@ -1,5 +1,7 @@
+import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { requireContributorIdentity } from '@/lib/contribute/auth'
+import { acceptLatestPendingInvitationForIdentity } from '@/lib/contribute/invitations'
 import { displayStatus, type ContributorDraft } from '@/lib/contribute/types'
 import { rowToContributorDraft } from '@/lib/contribute/drafts'
 import DraftsList from './_components/DraftsList'
@@ -24,6 +26,10 @@ export default async function ContributePage({
 
   if (error) throw error
   const drafts = (data ?? []).map(rowToContributorDraft)
+  if (drafts.length === 0) {
+    const accepted = await acceptLatestPendingInvitationForIdentity(identity)
+    if (accepted) redirect(`/contribute/drafts/${accepted.id}`)
+  }
 
   const working = drafts.filter((draft) =>
     ['draft', 'revisions'].includes(displayStatus(draft.status))
