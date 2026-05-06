@@ -34,6 +34,9 @@ type Props = {
   cancelLabel?: string
   variant?: Variant
   pending?: boolean
+  // Inline error shown above the action buttons. Use this when the confirm
+  // action can fail and you want the dialog to stay open on failure.
+  error?: string | null
   // Override the default icon if you want something more specific. Pass
   // `null` to suppress the icon entirely.
   icon?: ReactNode | null
@@ -61,6 +64,7 @@ export default function ConfirmDialog({
   cancelLabel = 'Cancel',
   variant = 'default',
   pending = false,
+  error,
   icon,
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement>(null)
@@ -144,6 +148,15 @@ export default function ConfirmDialog({
             <X className="h-4 w-4" />
           </button>
         </div>
+
+        {error && (
+          <p
+            role="alert"
+            className="mb-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm text-rose-800"
+          >
+            {error}
+          </p>
+        )}
 
         <div className="mt-2 flex items-center justify-end gap-2">
           <button

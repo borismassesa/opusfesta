@@ -67,17 +67,22 @@ function buildMailto(invite: Props['entry'], link: string): string {
 
 type MenuCoords = { top: number; right: number; placement: 'down' | 'up' }
 
-const MENU_HEIGHT = 152 // approx — 3 items * ~44px + borders
+// Used only by the up-vs-down flip in useLayoutEffect — exact pixel
+// accuracy isn't needed. Update if menu items change.
+const MENU_HEIGHT = 152 // 3 items * ~44px + borders
 const MENU_WIDTH = 208 // matches w-52
+
+type Notice = { tone: 'info' | 'error'; text: string }
 
 export default function PendingInviteRow({ entry }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [message, setMessage] = useState<string | null>(null)
+  const [notice, setNotice] = useState<Notice | null>(null)
   const [menuOpen, setMenuOpen] = useState(false)
   const [coords, setCoords] = useState<MenuCoords | null>(null)
   const [editOpen, setEditOpen] = useState(false)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [revokeError, setRevokeError] = useState<string | null>(null)
   const [revoking, startRevokeTransition] = useTransition()
   const triggerRef = useRef<HTMLButtonElement>(null)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -103,8 +108,6 @@ export default function PendingInviteRow({ entry }: Props) {
     })
   }, [menuOpen])
 
-  // Close kebab on outside click / Escape — checks both trigger and the
-  // portal'd menu so clicks inside either don't close it.
   useEffect(() => {
     if (!menuOpen) return
     const onClick = (e: MouseEvent) => {
@@ -130,35 +133,55 @@ export default function PendingInviteRow({ entry }: Props) {
   }, [menuOpen])
 
   function resend() {
-    setMessage(null)
+    setNotice(null)
     startTransition(async () => {
       try {
         const result = await regenerateContributorInvitation(entry.id)
         if (result.delivery.sent) {
-          setMessage('Email sent.')
+          setNotice({ tone: 'info', text: 'Email sent.' })
         } else if (typeof window !== 'undefined') {
           window.location.href = buildMailto(entry, result.link)
         }
       } catch (err) {
-        setMessage(err instanceof Error ? err.message : 'Could not re-send invite.')
+        setNotice({
+          tone: 'error',
+          text: err instanceof Error ? err.message : 'Could not re-send invite.',
+        })
       }
     })
   }
 
   function copyLink() {
     setMenuOpen(false)
-    setMessage(null)
+    setNotice(null)
     startTransition(async () => {
       try {
         const result = await regenerateContributorInvitationLink(entry.id)
-        if (typeof navigator !== 'undefined' && navigator.clipboard) {
-          await navigator.clipboard.writeText(result.link)
-          setMessage('Fresh link copied — previous link no longer works.')
-        } else {
-          setMessage(`Link: ${result.link}`)
+        // Token rotated server-side regardless of clipboard outcome — be
+        // explicit that the previous link is dead either way.
+        const canCopy =
+          typeof navigator !== 'undefined' && Boolean(navigator.clipboard?.writeText)
+        if (canCopy) {
+          try {
+            await navigator.clipboard.writeText(result.link)
+            setNotice({
+              tone: 'info',
+              text: 'Fresh link copied. Previous link no longer works.',
+            })
+            return
+          } catch {
+            // fall through to manual-copy notice
+          }
         }
+        setNotice({
+          tone: 'error',
+          text: `Could not copy automatically. Previous link no longer works. New link: ${result.link}`,
+        })
       } catch (err) {
-        setMessage(err instanceof Error ? err.message : 'Could not generate link.')
+        setNotice({
+          tone: 'error',
+          text: err instanceof Error ? err.message : 'Could not generate link.',
+        })
       }
     })
   }
@@ -170,18 +193,21 @@ export default function PendingInviteRow({ entry }: Props) {
 
   function openCancel() {
     setMenuOpen(false)
+    setRevokeError(null)
     setConfirmOpen(true)
   }
 
   function confirmRevoke() {
+    setRevokeError(null)
     startRevokeTransition(async () => {
       try {
         await revokeContributorInvitation(entry.id)
         setConfirmOpen(false)
         router.refresh()
       } catch (err) {
-        setMessage(err instanceof Error ? err.message : 'Could not cancel invite.')
-        setConfirmOpen(false)
+        // Keep the dialog open so the user sees the failure inline rather
+        // than wondering whether the row really got cancelled.
+        setRevokeError(err instanceof Error ? err.message : 'Could not cancel invite.')
       }
     })
   }
@@ -293,8 +319,15 @@ export default function PendingInviteRow({ entry }: Props) {
           document.body
         )}
 
-      {message && (
-        <p className="col-span-full text-right text-xs text-gray-500">{message}</p>
+      {notice && (
+        <p
+          className={cn(
+            'col-span-full text-right text-xs',
+            notice.tone === 'error' ? 'text-rose-700' : 'text-gray-500'
+          )}
+        >
+          {notice.text}
+        </p>
       )}
 
       <EditInviteDialog
@@ -313,7 +346,10 @@ export default function PendingInviteRow({ entry }: Props) {
 
       <ConfirmDialog
         open={confirmOpen}
-        onCancel={() => setConfirmOpen(false)}
+        onCancel={() => {
+          setConfirmOpen(false)
+          setRevokeError(null)
+        }}
         onConfirm={confirmRevoke}
         title={`Cancel invite to ${entry.email}?`}
         body="The invite link stops working immediately. The audit row stays so you can see who was invited and when. Re-invite by sending a new one."
@@ -321,6 +357,7 @@ export default function PendingInviteRow({ entry }: Props) {
         cancelLabel="Keep invite"
         variant="danger"
         pending={revoking}
+        error={revokeError}
       />
     </div>
   )
