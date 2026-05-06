@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase'
 import InquiryThread from './InquiryThread'
 
 type InquiryStatus = 'pending' | 'responded' | 'accepted' | 'declined' | 'closed'
+type ProposalStatus = 'sent' | 'countered' | 'accepted'
 
 export type InquiryDetail = {
   id: string
@@ -19,6 +20,18 @@ export type InquiryDetail = {
   message: string | null
   vendor_response: string | null
   responded_at: string | null
+  proposal_status: ProposalStatus | null
+  proposal_event_date: string | null
+  proposal_venue: string | null
+  proposal_guest_count: number | null
+  proposal_package: string | null
+  proposal_invoice_amount: number | null
+  proposal_invoice_details: string | null
+  proposal_sent_at: string | null
+  proposal_counter_amount: number | null
+  proposal_counter_message: string | null
+  proposal_countered_at: string | null
+  proposal_accepted_at: string | null
 }
 
 export type InquiryMessage = {
@@ -35,7 +48,7 @@ interface Props {
   searchParams: Promise<{ email?: string }>
 }
 
-export default async function InquiryDetailPage({ params, searchParams }: Props) {
+export default async function InquiryDetailPage({ params, searchParams }: Readonly<Props>) {
   const { id } = await params
   const { email } = await searchParams
 
@@ -49,7 +62,7 @@ export default async function InquiryDetailPage({ params, searchParams }: Props)
   const { data: inquiry, error: inquiryErr } = await supabase
     .from('inquiries')
     .select(
-      'id, vendor_name, vendor_slug, name, email, status, created_at, event_date, location, guest_count, budget, message, vendor_response, responded_at',
+      'id, vendor_name, vendor_slug, name, email, status, created_at, event_date, location, guest_count, budget, message, vendor_response, responded_at, proposal_status, proposal_event_date, proposal_venue, proposal_guest_count, proposal_package, proposal_invoice_amount, proposal_invoice_details, proposal_sent_at, proposal_counter_amount, proposal_counter_message, proposal_countered_at, proposal_accepted_at',
     )
     .eq('id', id)
     .eq('email', normalizedEmail)

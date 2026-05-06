@@ -19,7 +19,7 @@ export async function GET(
   const supabase = createSupabaseAdminClient()
   const { data, error } = await supabase
     .from('inquiries')
-    .select('id, name, email, phone, event_date, guest_count, budget, location, message, status, created_at, updated_at')
+    .select('id, name, email, phone, event_date, guest_count, budget, location, message, status, created_at, updated_at, proposal_status, proposal_event_date, proposal_venue, proposal_guest_count, proposal_package, proposal_invoice_amount, proposal_invoice_details, proposal_sent_at, proposal_counter_amount, proposal_counter_message, proposal_countered_at, proposal_accepted_at')
     .eq('id', id)
     .eq('vendor_id', state.vendor.id)
     .maybeSingle()

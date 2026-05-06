@@ -28,7 +28,7 @@ export async function GET(
   const { data: inquiry, error: inquiryErr } = await supabase
     .from('inquiries')
     .select(
-      'id, vendor_name, vendor_slug, name, email, status, created_at, event_date, location, guest_count, budget, message, vendor_response, responded_at',
+      'id, vendor_name, vendor_slug, name, email, status, created_at, event_date, location, guest_count, budget, message, vendor_response, responded_at, proposal_status, proposal_event_date, proposal_venue, proposal_guest_count, proposal_package, proposal_invoice_amount, proposal_invoice_details, proposal_sent_at, proposal_counter_amount, proposal_counter_message, proposal_countered_at, proposal_accepted_at',
     )
     .eq('id', id)
     .eq('email', email)

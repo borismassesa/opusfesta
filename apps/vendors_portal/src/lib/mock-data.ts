@@ -23,6 +23,7 @@ export type InquiryRow = {
   id: string
   couple: string
   date: string
+  eventDateIso?: string
   budget: string
   location: string
   status: 'new' | 'replied' | 'booked' | 'declined' | 'closed'

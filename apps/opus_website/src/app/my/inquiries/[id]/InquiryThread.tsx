@@ -7,6 +7,22 @@ import { ArrowLeft, Calendar, MapPin, Users, Send, CheckCircle2 } from 'lucide-r
 import type { InquiryDetail, InquiryMessage } from './page'
 
 type InquiryStatus = 'pending' | 'responded' | 'accepted' | 'declined' | 'closed'
+type ProposalStatus = 'sent' | 'countered' | 'accepted'
+
+type InquiryProposal = {
+  status: ProposalStatus
+  eventDate: string | null
+  venue: string | null
+  guestCount: number | null
+  packageName: string | null
+  invoiceAmount: number | null
+  invoiceDetails: string | null
+  sentAt: string | null
+  counterAmount: number | null
+  counterMessage: string | null
+  counteredAt: string | null
+  acceptedAt: string | null
+}
 
 const STATUS_LABEL: Record<InquiryStatus, string> = {
   pending: 'Pending reply',
@@ -35,6 +51,29 @@ function formatTime(iso: string) {
   const d = new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+}
+
+function formatMoney(value: number | null) {
+  if (!value || value <= 0) return 'TBC'
+  return `TZS ${value.toLocaleString('en-GB')}`
+}
+
+function extractProposal(inquiry: InquiryDetail): InquiryProposal | null {
+  if (!inquiry.proposal_status) return null
+  return {
+    status: inquiry.proposal_status,
+    eventDate: inquiry.proposal_event_date,
+    venue: inquiry.proposal_venue,
+    guestCount: inquiry.proposal_guest_count,
+    packageName: inquiry.proposal_package,
+    invoiceAmount: inquiry.proposal_invoice_amount,
+    invoiceDetails: inquiry.proposal_invoice_details,
+    sentAt: inquiry.proposal_sent_at,
+    counterAmount: inquiry.proposal_counter_amount,
+    counterMessage: inquiry.proposal_counter_message,
+    counteredAt: inquiry.proposal_countered_at,
+    acceptedAt: inquiry.proposal_accepted_at,
+  }
 }
 
 function sameInquiryMessages(a: InquiryMessage[], b: InquiryMessage[]): boolean {
@@ -82,6 +121,151 @@ function MessageBubble({ msg }: Readonly<{ msg: InquiryMessage }>) {
   )
 }
 
+function ProposalCard({
+  proposal,
+  actionLoading,
+  counterOpen,
+  counterAmount,
+  counterMessage,
+  onCounterOpen,
+  onCounterAmountChange,
+  onCounterMessageChange,
+  onCounterCancel,
+  onAccept,
+  onCounterSubmit,
+}: Readonly<{
+  proposal: InquiryProposal
+  actionLoading: boolean
+  counterOpen: boolean
+  counterAmount: string
+  counterMessage: string
+  onCounterOpen: () => void
+  onCounterAmountChange: (value: string) => void
+  onCounterMessageChange: (value: string) => void
+  onCounterCancel: () => void
+  onAccept: () => void
+  onCounterSubmit: () => void
+}>) {
+  let statusClass = 'bg-blue-50 text-blue-700'
+  if (proposal.status === 'accepted') {
+    statusClass = 'bg-green-50 text-green-700'
+  } else if (proposal.status === 'countered') {
+    statusClass = 'bg-amber-50 text-amber-700'
+  }
+  return (
+    <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 mb-4 space-y-4">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-xs font-bold uppercase tracking-wider text-gray-400">Proposal</p>
+          <p className="text-sm font-semibold text-[#1A1A1A] mt-1">
+            {proposal.status === 'sent' && 'Review the vendor proposal'}
+            {proposal.status === 'countered' && 'Counter sent to vendor'}
+            {proposal.status === 'accepted' && 'Proposal agreed'}
+          </p>
+        </div>
+        <span className={`rounded-full px-3 py-1 text-xs font-bold ${statusClass}`}>
+          {proposal.status}
+        </span>
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 text-sm text-gray-700">
+        <div><strong>Date:</strong> {formatDate(proposal.eventDate)}</div>
+        <div><strong>Venue:</strong> {proposal.venue ?? 'TBC'}</div>
+        <div><strong>Guests:</strong> {proposal.guestCount ? `${proposal.guestCount} guests` : 'TBC'}</div>
+        <div><strong>Package:</strong> {proposal.packageName ?? 'TBC'}</div>
+        <div><strong>Invoice:</strong> {formatMoney(proposal.invoiceAmount)}</div>
+      </div>
+
+      {proposal.invoiceDetails && (
+        <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-sm text-gray-700 whitespace-pre-wrap">
+          {proposal.invoiceDetails}
+        </div>
+      )}
+
+      {proposal.status === 'countered' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 space-y-2">
+          <p><strong>Your counter amount:</strong> {formatMoney(proposal.counterAmount)}</p>
+          {proposal.counterMessage && <p className="whitespace-pre-wrap">{proposal.counterMessage}</p>}
+          <p className="text-xs text-amber-700">Waiting for vendor approval.</p>
+        </div>
+      )}
+
+      {proposal.status === 'sent' && (
+        <div className="space-y-3">
+          {counterOpen ? (
+            <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 space-y-3">
+              <div>
+                <label htmlFor="counter-amount" className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">
+                  Counter amount (TZS)
+                </label>
+                <input
+                  id="counter-amount"
+                  type="text"
+                  inputMode="numeric"
+                  value={counterAmount}
+                  onChange={(e) => onCounterAmountChange(e.target.value.replaceAll(/\D/g, ''))}
+                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-(--accent)"
+                  placeholder="Leave as proposed amount or enter your counter"
+                />
+              </div>
+              <div>
+                <label htmlFor="counter-message" className="block text-xs font-bold uppercase tracking-wider text-gray-400 mb-1">
+                  Counter note
+                </label>
+                <textarea
+                  id="counter-message"
+                  rows={3}
+                  value={counterMessage}
+                  onChange={(e) => onCounterMessageChange(e.target.value)}
+                  className="w-full resize-none rounded-xl border border-gray-200 px-4 py-3 text-sm focus:outline-none focus:border-(--accent)"
+                  placeholder="Tell the vendor what you'd like adjusted"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  disabled={actionLoading}
+                  onClick={onCounterCancel}
+                  className="rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={actionLoading || (!counterAmount.trim() && !counterMessage.trim())}
+                  onClick={onCounterSubmit}
+                  className="rounded-full bg-[#1A1A1A] px-4 py-2 text-sm font-semibold text-white hover:bg-black/85 disabled:opacity-50"
+                >
+                  Send counter
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap justify-end gap-2">
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={onCounterOpen}
+                className="rounded-full border border-gray-200 px-4 py-2 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Counter
+              </button>
+              <button
+                type="button"
+                disabled={actionLoading}
+                onClick={onAccept}
+                className="rounded-full bg-[#1A1A1A] px-4 py-2 text-sm font-semibold text-white hover:bg-black/85 disabled:opacity-50"
+              >
+                Accept proposal
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 type Props = {
   inquiry: InquiryDetail
   messages: InquiryMessage[]
@@ -96,6 +280,12 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
   const [sendError, setSendError] = useState('')
   const [inquiryStatus, setInquiryStatus] = useState<InquiryStatus>((inquiry.status ?? 'pending') as InquiryStatus)
   const [inquiryActionLoading, setInquiryActionLoading] = useState(false)
+  const [proposal, setProposal] = useState<InquiryProposal | null>(extractProposal(inquiry))
+  const [counterOpen, setCounterOpen] = useState(false)
+  const [counterAmount, setCounterAmount] = useState(
+    inquiry.proposal_invoice_amount ? String(inquiry.proposal_invoice_amount) : '',
+  )
+  const [counterMessage, setCounterMessage] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -107,15 +297,26 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
 
     const refreshMessages = async () => {
       try {
-        const response = await fetch(
-          `/api/my/inquiries/${inquiry.id}/messages?email=${encodeURIComponent(email)}`,
-          { cache: 'no-store' },
-        )
-        if (!response.ok) return
-        const json = await response.json()
+        const [messagesResponse, inquiryResponse] = await Promise.all([
+          fetch(
+            `/api/my/inquiries/${inquiry.id}/messages?email=${encodeURIComponent(email)}`,
+            { cache: 'no-store' },
+          ),
+          fetch(
+            `/api/my/inquiries/${inquiry.id}?email=${encodeURIComponent(email)}`,
+            { cache: 'no-store' },
+          ),
+        ])
+        if (!messagesResponse.ok || !inquiryResponse.ok) return
+        const [json, inquiryJson] = await Promise.all([messagesResponse.json(), inquiryResponse.json()])
         if (cancelled) return
         const nextMessages = (json.messages ?? []) as InquiryMessage[]
         setMessages((prev) => (sameInquiryMessages(prev, nextMessages) ? prev : nextMessages))
+        const nextInquiry = inquiryJson.inquiry as InquiryDetail | undefined
+        if (nextInquiry) {
+          setInquiryStatus((nextInquiry.status ?? 'pending') as InquiryStatus)
+          setProposal(extractProposal(nextInquiry))
+        }
       } catch {
         // Keep current messages and retry on next watcher tick.
       }
@@ -244,6 +445,66 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
     }
   }
 
+  async function handleAcceptProposal() {
+    if (proposal?.status !== 'sent' || inquiryActionLoading) return
+    setInquiryActionLoading(true)
+    try {
+      const res = await fetch(`/api/my/inquiries/${inquiry.id}/proposal`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, action: 'accept' }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setSendError(json.error ?? 'Failed to accept proposal.')
+        return
+      }
+      setInquiryStatus('accepted')
+      setProposal((prev) => prev ? { ...prev, status: 'accepted', acceptedAt: new Date().toISOString() } : prev)
+      setCounterOpen(false)
+      setSendError('')
+    } catch {
+      setSendError('Network error while accepting proposal.')
+    } finally {
+      setInquiryActionLoading(false)
+    }
+  }
+
+  async function handleCounterProposal() {
+    if (proposal?.status !== 'sent' || inquiryActionLoading) return
+    setInquiryActionLoading(true)
+    try {
+      const res = await fetch(`/api/my/inquiries/${inquiry.id}/proposal`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email,
+          action: 'counter',
+          counterAmount,
+          counterMessage,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) {
+        setSendError(json.error ?? 'Failed to send counter.')
+        return
+      }
+      setProposal((prev) => prev ? {
+        ...prev,
+        status: 'countered',
+        counterAmount: counterAmount.trim() ? Number(counterAmount) : prev.invoiceAmount,
+        counterMessage: counterMessage.trim() || null,
+        counteredAt: new Date().toISOString(),
+      } : prev)
+      setCounterOpen(false)
+      setSendError('')
+    } catch {
+      setSendError('Network error while sending counter.')
+    } finally {
+      setInquiryActionLoading(false)
+    }
+  }
+
   const canSendMore = status !== 'declined' && status !== 'closed'
 
   return (
@@ -320,6 +581,29 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
           </div>
         )}
       </div>
+
+      {proposal && (
+        <ProposalCard
+          proposal={proposal}
+          actionLoading={inquiryActionLoading}
+          counterOpen={counterOpen}
+          counterAmount={counterAmount}
+          counterMessage={counterMessage}
+          onCounterOpen={() => {
+            setCounterOpen(true)
+            setCounterAmount(proposal.invoiceAmount ? String(proposal.invoiceAmount) : '')
+          }}
+          onCounterAmountChange={setCounterAmount}
+          onCounterMessageChange={setCounterMessage}
+          onCounterCancel={() => {
+            setCounterOpen(false)
+            setCounterMessage('')
+            setCounterAmount(proposal.invoiceAmount ? String(proposal.invoiceAmount) : '')
+          }}
+          onAccept={handleAcceptProposal}
+          onCounterSubmit={handleCounterProposal}
+        />
+      )}
 
       {/* Message thread */}
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">

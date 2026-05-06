@@ -1,6 +1,7 @@
 import type { InquiryRow } from '@/lib/mock-data'
 import { recentInquiries } from '@/lib/mock-data'
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
+import type { VendorPricingPackage } from '@/lib/vendors'
 import { getCurrentVendor } from '@/lib/vendor'
 import LeadsClient, { type LeadsSource } from './LeadsClient'
 
@@ -35,6 +36,14 @@ type InquiryRowFromDb = {
   status: DbInquiryStatus | null
 }
 
+type VendorPricingRow = {
+  pricing_details: VendorPricingPackage[] | null
+}
+
+type VendorPackagesRow = {
+  packages: unknown
+}
+
 function formatEventDate(date: string | null): string {
   if (!date) return 'Date TBC'
   const parsed = new Date(date)
@@ -65,6 +74,7 @@ function mapRow(row: InquiryRowFromDb): InquiryRow {
     id: row.id,
     couple: row.name ?? 'Anonymous lead',
     date: formatEventDate(row.event_date),
+    eventDateIso: row.event_date ?? undefined,
     budget: row.budget ?? '—',
     location: row.location ?? '—',
     status: mapStatus(row.status),
@@ -80,19 +90,30 @@ async function loadInquiries(): Promise<{
   inquiries: InquiryRow[]
   source: LeadsSource
   vendorName: string
+  packages: VendorPricingPackage[]
 }> {
   const state = await getCurrentVendor()
   if (state.kind === 'no-env') {
-    return { inquiries: recentInquiries, source: { kind: 'no-env' }, vendorName: 'Your Business' }
+    return {
+      inquiries: recentInquiries,
+      source: { kind: 'no-env' },
+      vendorName: 'Your Business',
+      packages: [],
+    }
   }
   if (state.kind === 'no-application') {
-    return { inquiries: [], source: { kind: 'no-application' }, vendorName: '' }
+    return { inquiries: [], source: { kind: 'no-application' }, vendorName: '', packages: [] }
   }
   if (state.kind === 'pending-approval') {
-    return { inquiries: [], source: { kind: 'pending-approval' }, vendorName: state.vendorName }
+    return {
+      inquiries: [],
+      source: { kind: 'pending-approval' },
+      vendorName: state.vendorName,
+      packages: [],
+    }
   }
   if (state.kind === 'suspended') {
-    return { inquiries: [], source: { kind: 'suspended' }, vendorName: state.vendorName }
+    return { inquiries: [], source: { kind: 'suspended' }, vendorName: state.vendorName, packages: [] }
   }
 
   const supabase = await createClerkSupabaseServerClient()
@@ -110,14 +131,56 @@ async function loadInquiries(): Promise<{
     )
   }
 
+  const [websiteVendorRow, storefrontRow] = await Promise.all([
+    supabase
+      .from('website_vendors')
+      .select('pricing_details')
+      .eq('id', state.vendor.id)
+      .maybeSingle<VendorPricingRow>(),
+    supabase
+      .from('vendors')
+      .select('packages')
+      .eq('id', state.vendor.id)
+      .maybeSingle<VendorPackagesRow>(),
+  ])
+
+  const pricingDetails: VendorPricingPackage[] =
+    websiteVendorRow.data?.pricing_details ?? []
+
+  const storefrontPackages: VendorPricingPackage[] = Array.isArray(
+    storefrontRow.data?.packages,
+  )
+    ? (storefrontRow.data.packages as Array<Record<string, unknown>>)
+        .filter(
+          (e): e is Record<string, unknown> =>
+            Boolean(e) && typeof e === 'object' && typeof e.name === 'string' && e.name !== '',
+        )
+        .map((e) => ({
+          label: e.name as string,
+          value: typeof e.price === 'string' ? e.price : '',
+        }))
+    : []
+
+  // Storefront packages are the canonical source; pricing_details fills any gaps.
+  const seen = new Set<string>()
+  const packages: VendorPricingPackage[] = []
+  for (const pkg of [...storefrontPackages, ...pricingDetails]) {
+    const key = pkg.label.trim().toLowerCase()
+    if (key && !seen.has(key)) {
+      seen.add(key)
+      packages.push(pkg)
+    }
+  }
+
   return {
     inquiries: (inquiries.data ?? []).map(mapRow),
     source: { kind: 'live' },
     vendorName: state.vendor.businessName,
+    packages,
   }
 }
 
 export default async function LeadsPage() {
-  const { inquiries, source, vendorName } = await loadInquiries()
-  return <LeadsClient inquiries={inquiries} source={source} vendorName={vendorName} />
+  const { inquiries, source, vendorName, packages } = await loadInquiries()
+  return <LeadsClient inquiries={inquiries} source={source} vendorName={vendorName} packages={packages} />
 }

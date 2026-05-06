@@ -4,7 +4,9 @@ import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { Filter, MapPin, Mail, Search, Wallet, Users, MessageSquare, Check, X, Send, Archive, Receipt, ChevronDown, ChevronUp } from 'lucide-react'
 import type { InquiryRow } from '@/lib/mock-data'
+import { TZ_REGIONS } from '@/lib/onboarding/regions'
 import { cn } from '@/lib/utils'
+import type { VendorPricingPackage } from '@/lib/vendors'
 
 const TABS = ['Prospects', 'Inquiries', 'Conversations'] as const
 
@@ -24,6 +26,25 @@ type ThreadMessage = {
   read_at: string | null
 }
 
+type PersistedProposalStatus = 'sent' | 'countered' | 'accepted'
+
+type InquiryDetail = {
+  id: string
+  status: 'pending' | 'responded' | 'accepted' | 'declined' | 'closed' | null
+  proposal_status: PersistedProposalStatus | null
+  proposal_event_date: string | null
+  proposal_venue: string | null
+  proposal_guest_count: number | null
+  proposal_package: string | null
+  proposal_invoice_amount: number | null
+  proposal_invoice_details: string | null
+  proposal_sent_at: string | null
+  proposal_counter_amount: number | null
+  proposal_counter_message: string | null
+  proposal_countered_at: string | null
+  proposal_accepted_at: string | null
+}
+
 function sameThread(a: ThreadMessage[], b: ThreadMessage[]): boolean {
   if (a.length !== b.length) return false
   return a.every((message, index) => {
@@ -41,7 +62,20 @@ type LeadsClientProps = {
   inquiries: InquiryRow[]
   source: LeadsSource
   vendorName: string
+  packages: VendorPricingPackage[]
 }
+
+const VENUE_SUGGESTIONS = [
+  'Mlimani City Hall, Dar es Salaam',
+  'Johari Rotana, Dar es Salaam',
+  'Hyatt Regency, Dar es Salaam',
+  'Sea Cliff Hotel, Dar es Salaam',
+  'White Sands Resort, Dar es Salaam',
+  'Gran Meliá, Arusha',
+  'Mount Meru Hotel, Arusha',
+  'Malaika Beach Resort, Mwanza',
+  'Best Western Dodoma City Hotel, Dodoma',
+]
 
 function matchesTab(active: (typeof TABS)[number], status: InquiryRow['status']) {
   if (active === 'Prospects') return status === 'new'
@@ -78,19 +112,29 @@ async function patchInquiryRequest(id: string, payload: Record<string, unknown>)
 
 /* ── Sub-components for action panels ── */
 
-type QuotePanelProps = {
+type ProposalDraft = {
+  eventDate: string
+  venue: string
+  guestCount: string
+  packageName: string
+  invoiceAmount: string
+  invoiceDetails: string
+}
+
+type ProposalPanelProps = {
   open: boolean
-  onToggle: () => void
-  amount: string
-  note: string
   sending: boolean
-  onAmountChange: (v: string) => void
-  onNoteChange: (v: string) => void
+  draft: ProposalDraft
+  preview: string
+  packages: VendorPricingPackage[]
+  venueSuggestions: string[]
+  onToggle: () => void
+  onDraftChange: (next: ProposalDraft) => void
   onCancel: () => void
   onSend: () => void
 }
 
-function QuotePanel({ open, onToggle, amount, note, sending, onAmountChange, onNoteChange, onCancel, onSend }: Readonly<QuotePanelProps>) {
+function ProposalPanel({ open, sending, draft, preview, packages, venueSuggestions, onToggle, onDraftChange, onCancel, onSend }: Readonly<ProposalPanelProps>) {
   return (
     <div className="rounded-xl border border-gray-100 overflow-hidden">
       <button
@@ -100,37 +144,111 @@ function QuotePanel({ open, onToggle, amount, note, sending, onAmountChange, onN
       >
         <span className="flex items-center gap-1.5">
           <Receipt className="w-3.5 h-3.5 text-gray-500" />
-          Send quote
+          Send proposal (recap + quote)
         </span>
         {open ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
       </button>
       {open && (
         <div className="p-4 space-y-3 bg-white border-t border-gray-100">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label htmlFor="proposal-event-date" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Event date</label>
+              <input
+                id="proposal-event-date"
+                type="date"
+                value={draft.eventDate}
+                onChange={(e) => onDraftChange({ ...draft, eventDate: e.target.value })}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
+              />
+            </div>
+            <div>
+              <label htmlFor="proposal-venue" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Venue</label>
+              <input
+                id="proposal-venue"
+                type="text"
+                list="proposal-venue-suggestions"
+                value={draft.venue}
+                onChange={(e) => onDraftChange({ ...draft, venue: e.target.value })}
+                placeholder="e.g. Mlimani City Hall"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
+              />
+              <datalist id="proposal-venue-suggestions">
+                {venueSuggestions.map((suggestion) => (
+                  <option key={suggestion} value={suggestion} />
+                ))}
+              </datalist>
+            </div>
+            <div>
+              <label htmlFor="proposal-guests" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Guests</label>
+              <input
+                id="proposal-guests"
+                type="text"
+                inputMode="numeric"
+                value={draft.guestCount}
+                onChange={(e) => onDraftChange({ ...draft, guestCount: e.target.value.replaceAll(/\D/g, '') })}
+                placeholder="e.g. 150"
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
+              />
+            </div>
+            <div>
+              <label htmlFor="proposal-package" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Package</label>
+              <select
+                id="proposal-package"
+                value={draft.packageName}
+                onChange={(e) => {
+                  const nextPackage = e.target.value
+                  const matched = packages.find((pkg) => pkg.label === nextPackage)
+                  onDraftChange({
+                    ...draft,
+                    packageName: nextPackage,
+                    invoiceAmount: matched ? extractDigitsFromPrice(matched.value) : draft.invoiceAmount,
+                  })
+                }}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
+              >
+                <option value="">Select a package</option>
+                {packages.map((pkg) => (
+                  <option key={pkg.label} value={pkg.label}>
+                    {pkg.label}{pkg.value ? ` · ${pkg.value}` : ''}
+                  </option>
+                ))}
+                {draft.packageName && !packages.some((pkg) => pkg.label === draft.packageName) ? (
+                  <option value={draft.packageName}>{draft.packageName}</option>
+                ) : null}
+              </select>
+            </div>
+          </div>
           <div>
-            <label htmlFor="quote-amount" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Price (TZS)</label>
+            <label htmlFor="proposal-amount" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Invoice amount (TZS)</label>
             <input
-              id="quote-amount"
+              id="proposal-amount"
               type="text"
               inputMode="numeric"
-              value={amount}
-              onChange={(e) => onAmountChange(e.target.value.replaceAll(/\D/g, ''))}
+              value={draft.invoiceAmount}
+              onChange={(e) => onDraftChange({ ...draft, invoiceAmount: e.target.value.replaceAll(/\D/g, '') })}
               placeholder="e.g. 2500000"
               className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
             />
-            {amount && Number(amount) > 0 && (
-              <p className="text-xs text-gray-400 mt-1">TZS {Number(amount).toLocaleString('en-GB')}</p>
+            {draft.invoiceAmount && Number(draft.invoiceAmount) > 0 && (
+              <p className="text-xs text-gray-400 mt-1">TZS {Number(draft.invoiceAmount).toLocaleString('en-GB')}</p>
             )}
           </div>
           <div>
-            <label htmlFor="quote-note" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Note <span className="font-normal text-gray-400">(optional)</span></label>
+            <label htmlFor="proposal-details" className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Invoice details <span className="font-normal text-gray-400">(optional)</span></label>
             <textarea
-              id="quote-note"
-              value={note}
-              onChange={(e) => onNoteChange(e.target.value)}
+              id="proposal-details"
+              value={draft.invoiceDetails}
+              onChange={(e) => onDraftChange({ ...draft, invoiceDetails: e.target.value })}
               placeholder="What's included, timeline, any conditions…"
               rows={3}
               className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC] transition-colors"
             />
+          </div>
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-1">Preview</p>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700 whitespace-pre-wrap">
+              {preview}
+            </div>
           </div>
           <div className="flex justify-end gap-2">
             <button type="button" onClick={onCancel} className="px-3 py-1.5 text-sm text-gray-500 hover:text-gray-700 transition-colors">
@@ -138,12 +256,12 @@ function QuotePanel({ open, onToggle, amount, note, sending, onAmountChange, onN
             </button>
             <button
               type="button"
-              disabled={sending || !amount || Number(amount) <= 0}
+              disabled={sending || !draft.invoiceAmount || Number(draft.invoiceAmount) <= 0}
               onClick={onSend}
               className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 transition-colors"
             >
               <Send className="w-3.5 h-3.5" />
-              {sending ? 'Sending…' : 'Send quote'}
+              {sending ? 'Sending…' : 'Send proposal'}
             </button>
           </div>
         </div>
@@ -225,6 +343,173 @@ function mapUiStatusToDbStatus(status: InquiryRow['status']) {
   return status
 }
 
+function extractDigitsFromPrice(value: string): string {
+  const trimmed = value.trim()
+  if (!trimmed) return ''
+  const millionMatch = /([\d.]+)\s*M/i.exec(trimmed)
+  if (millionMatch?.[1]) {
+    return String(Math.round(Number.parseFloat(millionMatch[1]) * 1_000_000))
+  }
+  const numeric = trimmed.replaceAll(/[^\d]/g, '')
+  return numeric
+}
+
+function formatProposalDate(value: string): string {
+  if (!value) return 'Date TBC'
+  const parsed = new Date(`${value}T00:00:00`)
+  if (Number.isNaN(parsed.getTime())) return value
+  return parsed.toLocaleDateString('en-GB', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function formatProposalMoney(value: number | null): string {
+  if (!value || value <= 0) return 'TBC'
+  return `TZS ${value.toLocaleString('en-GB')}`
+}
+
+function mapDbStatusToUiStatus(status: InquiryDetail['status']): InquiryRow['status'] {
+  if (status === 'accepted') return 'booked'
+  if (status === 'responded') return 'replied'
+  if (status === 'declined') return 'declined'
+  if (status === 'closed') return 'closed'
+  return 'new'
+}
+
+function extractInterestedPackage(message: string | undefined): string {
+  if (!message) return ''
+  const match = /Interested package:\s*(.+)/i.exec(message)
+  return match?.[1]?.trim() ?? ''
+}
+
+function buildDefaultProposalDraft(row: InquiryRow, inquiryDetail?: InquiryDetail | null): ProposalDraft {
+  const invoiceAmount = inquiryDetail?.proposal_status && inquiryDetail.proposal_invoice_amount
+    ? String(inquiryDetail.proposal_invoice_amount)
+    : ''
+  let guestCount = ''
+  if (typeof inquiryDetail?.proposal_guest_count === 'number') {
+    guestCount = String(inquiryDetail.proposal_guest_count)
+  } else if (typeof row.guestCount === 'number') {
+    guestCount = String(row.guestCount)
+  }
+  return {
+    eventDate: inquiryDetail?.proposal_event_date ?? row.eventDateIso ?? '',
+    venue: inquiryDetail?.proposal_venue ?? (row.location && row.location !== '—' ? row.location : ''),
+    guestCount,
+    packageName: inquiryDetail?.proposal_package ?? extractInterestedPackage(row.message),
+    invoiceAmount,
+    invoiceDetails: inquiryDetail?.proposal_invoice_details ?? '',
+  }
+}
+
+function buildProposalMessage(row: InquiryRow, draft: ProposalDraft): string {
+  const parsed = Number(draft.invoiceAmount.replaceAll(/\D/g, ''))
+  const formattedAmount = parsed > 0 ? `TZS ${parsed.toLocaleString('en-GB')}` : 'TBC'
+  const guestText = draft.guestCount.trim() ? `${draft.guestCount.trim()}+` : 'TBC'
+  const lines = [
+    'Proposal summary',
+    `- Client: ${row.couple}`,
+    `- Event date: ${draft.eventDate.trim() ? formatProposalDate(draft.eventDate.trim()) : 'Date TBC'}`,
+    `- Venue: ${draft.venue.trim() || 'TBC'}`,
+    `- Guests: ${guestText}`,
+    `- Package: ${draft.packageName.trim() || 'TBC'}`,
+    `- Invoice: ${formattedAmount}`,
+  ]
+
+  if (row.budget && row.budget !== '—') {
+    lines.push(`- Client budget: ${row.budget}`)
+  }
+  if (row.email) {
+    lines.push(`- Email: ${row.email}`)
+  }
+  if (row.phone) {
+    lines.push(`- Phone: ${row.phone}`)
+  }
+  if (draft.invoiceDetails.trim()) {
+    lines.push('', 'Invoice details:', draft.invoiceDetails.trim())
+  }
+  if (row.message?.trim()) {
+    lines.push('', 'Original client note:', row.message.trim())
+  }
+
+  return lines.join('\n')
+}
+
+function ProposalStateCard({
+  inquiryDetail,
+  onAcceptCounter,
+  acceptingCounter,
+}: Readonly<{
+  inquiryDetail: InquiryDetail
+  onAcceptCounter: () => void
+  acceptingCounter: boolean
+}>) {
+  if (!inquiryDetail.proposal_status) return null
+  let statusClass = 'bg-blue-100 text-blue-700'
+  if (inquiryDetail.proposal_status === 'accepted') {
+    statusClass = 'bg-green-100 text-green-700'
+  } else if (inquiryDetail.proposal_status === 'countered') {
+    statusClass = 'bg-amber-100 text-amber-700'
+  }
+
+  return (
+    <div className="mt-6 rounded-2xl border border-gray-100 bg-gray-50/70 p-4 space-y-3">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">Proposal</p>
+          <p className="text-sm font-semibold text-gray-900 mt-1">
+            {inquiryDetail.proposal_status === 'sent' && 'Waiting for client response'}
+            {inquiryDetail.proposal_status === 'countered' && 'Client sent a counter'}
+            {inquiryDetail.proposal_status === 'accepted' && 'Proposal accepted'}
+          </p>
+        </div>
+        <span className={cn('rounded-full px-2.5 py-1 text-[11px] font-bold', statusClass)}>
+          {inquiryDetail.proposal_status}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700">
+        <div><strong>Date:</strong> {formatProposalDate(inquiryDetail.proposal_event_date ?? '')}</div>
+        <div><strong>Venue:</strong> {inquiryDetail.proposal_venue ?? 'TBC'}</div>
+        <div><strong>Guests:</strong> {inquiryDetail.proposal_guest_count ? `${inquiryDetail.proposal_guest_count}+` : 'TBC'}</div>
+        <div><strong>Package:</strong> {inquiryDetail.proposal_package ?? 'TBC'}</div>
+        <div><strong>Invoice:</strong> {formatProposalMoney(inquiryDetail.proposal_invoice_amount)}</div>
+      </div>
+
+      {inquiryDetail.proposal_invoice_details && (
+        <div className="rounded-xl bg-white border border-gray-200 p-3 text-sm text-gray-700 whitespace-pre-wrap">
+          {inquiryDetail.proposal_invoice_details}
+        </div>
+      )}
+
+      {inquiryDetail.proposal_status === 'countered' && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+          <p className="text-sm font-semibold text-amber-800">Counter from client</p>
+          <p className="text-sm text-amber-900">
+            <strong>Counter amount:</strong> {formatProposalMoney(inquiryDetail.proposal_counter_amount)}
+          </p>
+          {inquiryDetail.proposal_counter_message && (
+            <p className="text-sm text-amber-900 whitespace-pre-wrap">{inquiryDetail.proposal_counter_message}</p>
+          )}
+          <div className="flex justify-end">
+            <button
+              type="button"
+              disabled={acceptingCounter}
+              onClick={onAcceptCounter}
+              className="rounded-xl bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+            >
+              {acceptingCounter ? 'Accepting…' : 'Accept counter'}
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 type MessageBubbleProps = {
   msg: ThreadMessage
 }
@@ -302,7 +587,7 @@ function ContactSidebar({ selectedRow }: Readonly<{ selectedRow: InquiryRow | nu
 function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
   const [active, setActive] = useState<(typeof TABS)[number]>('Inquiries')
   const [inquiries, setInquiries] = useState(initialInquiries)
-  const [selected, setSelected] = useState(initialInquiries[0]?.id ?? null)
+  const [selected, setSelected] = useState<string | null>(initialInquiries[0]?.id ?? null)
   const [searchQuery, setSearchQuery] = useState('')
   const [replyText, setReplyText] = useState('')
   const [replyOpen, setReplyOpen] = useState(false)
@@ -310,10 +595,18 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
   const [actionLoading, setActionLoading] = useState(false)
   const [thread, setThread] = useState<ThreadMessage[]>([])
   const [threadLoading, setThreadLoading] = useState(false)
-  const [quoteOpen, setQuoteOpen] = useState(false)
-  const [quoteAmount, setQuoteAmount] = useState('')
-  const [quoteNote, setQuoteNote] = useState('')
-  const [quoteSending, setQuoteSending] = useState(false)
+  const [selectedInquiryDetail, setSelectedInquiryDetail] = useState<InquiryDetail | null>(null)
+  const [proposalOpen, setProposalOpen] = useState(false)
+  const [proposalSending, setProposalSending] = useState(false)
+  const [proposalActionLoading, setProposalActionLoading] = useState(false)
+  const [proposalDraft, setProposalDraft] = useState<ProposalDraft>({
+    eventDate: '',
+    venue: '',
+    guestCount: '',
+    packageName: '',
+    invoiceAmount: '',
+    invoiceDetails: '',
+  })
   const [declineOpen, setDeclineOpen] = useState(false)
   const [declineReason, setDeclineReason] = useState('')
 
@@ -332,20 +625,33 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     ?? inquiries.find((r) => r.id === selected)
     ?? null
 
+  function syncInquiryDetail(nextInquiry: InquiryDetail) {
+    setSelectedInquiryDetail(nextInquiry)
+    updateLocalStatus(nextInquiry.id, mapDbStatusToUiStatus(nextInquiry.status))
+  }
+
   useEffect(() => {
-    if (!selected || isSampleData) { setThread([]); return }
+    if (!selected || isSampleData) { setThread([]); setSelectedInquiryDetail(null); return }
     setThreadLoading(true)
-    setQuoteOpen(false)
-    setQuoteAmount('')
-    setQuoteNote('')
+    setProposalOpen(false)
     setDeclineOpen(false)
     setDeclineReason('')
-    fetch(`/api/inquiries/${selected}/messages`)
-      .then((r) => r.ok ? r.json() : Promise.reject(new Error('fetch failed')))
-      .then((json) => setThread(json.messages ?? []))
+    Promise.all([
+      fetch(`/api/inquiries/${selected}/messages`).then((r) => r.ok ? r.json() : Promise.reject(new Error('messages failed'))),
+      fetch(`/api/inquiries/${selected}`).then((r) => r.ok ? r.json() : Promise.reject(new Error('inquiry failed'))),
+    ])
+      .then(([messagesJson, inquiryJson]) => {
+        setThread(messagesJson.messages ?? [])
+        if (inquiryJson.inquiry) syncInquiryDetail(inquiryJson.inquiry as InquiryDetail)
+      })
       .catch(() => setThread([]))
       .finally(() => setThreadLoading(false))
   }, [selected, isSampleData])
+
+  useEffect(() => {
+    if (!selectedRow) return
+    setProposalDraft(buildDefaultProposalDraft(selectedRow, selectedInquiryDetail))
+  }, [selectedRow?.id, selectedInquiryDetail?.proposal_sent_at])
 
   useEffect(() => {
     if (!selected || isSampleData) return
@@ -354,12 +660,16 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
 
     const refreshThread = async () => {
       try {
-        const response = await fetch(`/api/inquiries/${selected}/messages`, { cache: 'no-store' })
-        if (!response.ok) return
-        const json = await response.json()
+        const [messagesResponse, inquiryResponse] = await Promise.all([
+          fetch(`/api/inquiries/${selected}/messages`, { cache: 'no-store' }),
+          fetch(`/api/inquiries/${selected}`, { cache: 'no-store' }),
+        ])
+        if (!messagesResponse.ok || !inquiryResponse.ok) return
+        const [json, inquiryJson] = await Promise.all([messagesResponse.json(), inquiryResponse.json()])
         if (cancelled) return
         const nextThread = (json.messages ?? []) as ThreadMessage[]
         setThread((prev) => (sameThread(prev, nextThread) ? prev : nextThread))
+        if (inquiryJson.inquiry) syncInquiryDetail(inquiryJson.inquiry as InquiryDetail)
       } catch {
         // Keep current thread and retry on the next watcher tick.
       }
@@ -431,32 +741,79 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     } catch { /* keep open */ } finally { setActionLoading(false) }
   }
 
-  async function handleSendQuote() {
-    if (!selectedRow || !quoteAmount.trim() || isSampleData) return
-    const parsed = Number(quoteAmount.replaceAll(/\D/g, ''))
+  async function handleSendProposal() {
+    if (!selectedRow || !proposalDraft.invoiceAmount.trim() || isSampleData) return
+    const parsed = Number(proposalDraft.invoiceAmount.replaceAll(/\D/g, ''))
     if (!parsed || parsed <= 0) return
-    const formatted = `TZS ${parsed.toLocaleString('en-GB')}`
-    const messageContent = quoteNote.trim()
-      ? `Quote: ${formatted}\n\n${quoteNote.trim()}`
-      : `Quote: ${formatted}`
-    setQuoteSending(true)
+    setProposalSending(true)
     try {
-      const res = await fetch(`/api/inquiries/${selectedRow.id}/messages`, {
-        method: 'POST',
+      const res = await fetch(`/api/inquiries/${selectedRow.id}/proposal`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: messageContent }),
+        body: JSON.stringify({
+          action: 'send',
+          eventDate: proposalDraft.eventDate,
+          venue: proposalDraft.venue,
+          guestCount: proposalDraft.guestCount,
+          packageName: proposalDraft.packageName,
+          invoiceAmount: proposalDraft.invoiceAmount,
+          invoiceDetails: proposalDraft.invoiceDetails,
+        }),
       })
       if (!res.ok) throw new Error('send failed')
-      const json = await res.json()
-      setThread((prev) => [...prev, json.message])
       if (selectedRow.status === 'new') {
         await patchInquiryRequest(selectedRow.id, { status: 'responded' })
         updateLocalStatus(selectedRow.id, 'replied')
       }
-      setQuoteOpen(false)
-      setQuoteAmount('')
-      setQuoteNote('')
-    } catch { /* keep open */ } finally { setQuoteSending(false) }
+      syncInquiryDetail({
+        id: selectedRow.id,
+        status: 'responded',
+        proposal_status: 'sent',
+        proposal_event_date: proposalDraft.eventDate || null,
+        proposal_venue: proposalDraft.venue || null,
+        proposal_guest_count: proposalDraft.guestCount ? Number(proposalDraft.guestCount) : null,
+        proposal_package: proposalDraft.packageName || null,
+        proposal_invoice_amount: parsed,
+        proposal_invoice_details: proposalDraft.invoiceDetails || null,
+        proposal_sent_at: new Date().toISOString(),
+        proposal_counter_amount: null,
+        proposal_counter_message: null,
+        proposal_countered_at: null,
+        proposal_accepted_at: null,
+      })
+      setProposalOpen(false)
+    } catch {
+      // Keep panel open so the vendor can retry.
+    } finally {
+      setProposalSending(false)
+    }
+  }
+
+  async function handleAcceptCounter() {
+    if (!selectedRow || selectedInquiryDetail?.proposal_status !== 'countered' || isSampleData) {
+      return
+    }
+    setProposalActionLoading(true)
+    try {
+      const res = await fetch(`/api/inquiries/${selectedRow.id}/proposal`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'accept-counter' }),
+      })
+      if (!res.ok) throw new Error('accept failed')
+      syncInquiryDetail({
+        ...selectedInquiryDetail,
+        status: 'accepted',
+        proposal_status: 'accepted',
+        proposal_invoice_amount: selectedInquiryDetail.proposal_counter_amount ?? selectedInquiryDetail.proposal_invoice_amount,
+        proposal_accepted_at: new Date().toISOString(),
+      })
+      updateLocalStatus(selectedRow.id, 'booked')
+    } catch {
+      // Silent for now.
+    } finally {
+      setProposalActionLoading(false)
+    }
   }
 
   async function handleStatusChange(status: InquiryRow['status']) {
@@ -479,10 +836,11 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     actionLoading,
     thread,
     threadLoading,
-    quoteOpen, setQuoteOpen,
-    quoteAmount, setQuoteAmount,
-    quoteNote, setQuoteNote,
-    quoteSending,
+    selectedInquiryDetail,
+    proposalOpen, setProposalOpen,
+    proposalSending,
+    proposalActionLoading,
+    proposalDraft, setProposalDraft,
     declineOpen, setDeclineOpen,
     declineReason, setDeclineReason,
     visibleInquiries,
@@ -490,22 +848,33 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     handleReply,
     handleClose,
     handleDecline,
-    handleSendQuote,
+    handleSendProposal,
+    handleAcceptCounter,
     handleStatusChange,
   }
 }
 
-export default function LeadsClient({ inquiries: initialInquiries, source, vendorName }: Readonly<LeadsClientProps>) {
+export default function LeadsClient({ inquiries: initialInquiries, source, vendorName, packages }: Readonly<LeadsClientProps>) {
   const isSampleData = source.kind === 'no-env'
   const banner = BANNER_BY_SOURCE[source.kind]
+  const venueSuggestions = useMemo(() => {
+    const suggestions = new Set<string>([...VENUE_SUGGESTIONS, ...TZ_REGIONS.map((region) => region.name)])
+    initialInquiries.forEach((inquiry) => {
+      if (inquiry.location && inquiry.location !== '—') {
+        suggestions.add(inquiry.location)
+      }
+    })
+    return Array.from(suggestions)
+  }, [initialInquiries])
   const {
     active, setActive, selected, setSelected, searchQuery, setSearchQuery,
     replyText, setReplyText, replyOpen, setReplyOpen, sending, actionLoading,
-    thread, threadLoading, quoteOpen, setQuoteOpen, quoteAmount, setQuoteAmount,
-    quoteNote, setQuoteNote, quoteSending, declineOpen, setDeclineOpen,
+    thread, threadLoading, selectedInquiryDetail, proposalOpen, setProposalOpen, proposalSending,
+    proposalActionLoading,
+    proposalDraft, setProposalDraft, declineOpen, setDeclineOpen,
     declineReason, setDeclineReason, visibleInquiries, selectedRow,
     handleReply, handleClose,
-    handleDecline, handleSendQuote, handleStatusChange,
+    handleDecline, handleSendProposal, handleAcceptCounter, handleStatusChange,
   } = useLeadsState(initialInquiries, isSampleData)
 
   return (
@@ -667,6 +1036,14 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                     )}
                   </div>
 
+                  {selectedInquiryDetail && (
+                    <ProposalStateCard
+                      inquiryDetail={selectedInquiryDetail}
+                      onAcceptCounter={handleAcceptCounter}
+                      acceptingCounter={proposalActionLoading}
+                    />
+                  )}
+
                   {/* Message thread */}
                   <div className="mt-6 rounded-xl border border-gray-100 overflow-hidden">
                     <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 flex items-center justify-between">
@@ -726,18 +1103,21 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                   {!isSampleData && selectedRow.status !== 'booked' && selectedRow.status !== 'closed' && (
                     <div className="mt-auto pt-6 space-y-3">
 
-                      {/* Send quote panel */}
                       {selectedRow.status !== 'declined' && (
-                        <QuotePanel
-                          open={quoteOpen}
-                          onToggle={() => { setQuoteOpen((o) => !o); setDeclineOpen(false) }}
-                          amount={quoteAmount}
-                          note={quoteNote}
-                          sending={quoteSending}
-                          onAmountChange={setQuoteAmount}
-                          onNoteChange={setQuoteNote}
-                          onCancel={() => { setQuoteOpen(false); setQuoteAmount(''); setQuoteNote('') }}
-                          onSend={handleSendQuote}
+                        <ProposalPanel
+                          open={proposalOpen}
+                          sending={proposalSending}
+                          draft={proposalDraft}
+                          preview={buildProposalMessage(selectedRow, proposalDraft)}
+                          packages={packages}
+                          venueSuggestions={venueSuggestions}
+                          onToggle={() => { setProposalOpen((o) => !o); setDeclineOpen(false) }}
+                          onDraftChange={setProposalDraft}
+                          onCancel={() => {
+                            setProposalOpen(false)
+                            setProposalDraft(buildDefaultProposalDraft(selectedRow))
+                          }}
+                          onSend={handleSendProposal}
                         />
                       )}
 
@@ -756,7 +1136,7 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                           <button
                             type="button"
                             disabled={actionLoading}
-                            onClick={() => { setDeclineOpen((o) => !o); setQuoteOpen(false) }}
+                            onClick={() => { setDeclineOpen((o) => !o); setProposalOpen(false) }}
                             className={cn(
                               'flex items-center gap-1.5 px-4 py-2 rounded-xl border text-sm font-semibold transition-colors',
                               declineOpen
