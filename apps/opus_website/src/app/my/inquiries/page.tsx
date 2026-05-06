@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { MessageCircle, Calendar, MapPin, ChevronRight, Search } from 'lucide-react'
@@ -50,6 +50,16 @@ function formatDate(iso: string) {
 }
 
 export default function MyInquiriesPage() {
+  // useSearchParams forces dynamic rendering; wrap so the rest of the page
+  // can prerender and the search-param read happens inside the suspense.
+  return (
+    <Suspense fallback={null}>
+      <MyInquiriesPageInner />
+    </Suspense>
+  )
+}
+
+function MyInquiriesPageInner() {
   const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [submittedEmail, setSubmittedEmail] = useState('')
