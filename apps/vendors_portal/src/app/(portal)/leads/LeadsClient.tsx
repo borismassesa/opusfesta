@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Image from 'next/image'
-import { Filter, MapPin, Phone, Mail, Search, Wallet } from 'lucide-react'
+import { Filter, MapPin, Mail, Search, Wallet, Users, MessageSquare, Check, X, Send } from 'lucide-react'
 import type { InquiryRow } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
 
@@ -32,13 +32,76 @@ const BANNER_BY_SOURCE: Record<LeadsSource['kind'], string | null> = {
     'DEV: Vendor backend not connected — showing seed data. Check Supabase env vars and that migrations are applied to your Supabase project.',
 }
 
-export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
+const STATUS_LABEL: Record<InquiryRow['status'], string> = {
+  new: 'New',
+  replied: 'Replied',
+  booked: 'Booked',
+  declined: 'Declined',
+  closed: 'Closed',
+}
+
+const STATUS_STYLE: Record<InquiryRow['status'], string> = {
+  new: 'bg-[#F0DFF6] text-[#7E5896]',
+  replied: 'bg-blue-50 text-blue-700',
+  booked: 'bg-green-50 text-green-700',
+  declined: 'bg-red-50 text-red-600',
+  closed: 'bg-gray-100 text-gray-500',
+}
+
+export default function LeadsClient({ inquiries: initialInquiries, source }: LeadsClientProps) {
   const [active, setActive] = useState<(typeof TABS)[number]>('Inquiries')
-  const [selected, setSelected] = useState(inquiries[0]?.id ?? null)
+  const [inquiries, setInquiries] = useState(initialInquiries)
+  const [selected, setSelected] = useState(initialInquiries[0]?.id ?? null)
+  const [replyText, setReplyText] = useState('')
+  const [replyOpen, setReplyOpen] = useState(false)
+  const [sending, setSending] = useState(false)
+  const [actionLoading, setActionLoading] = useState(false)
 
   const selectedRow = inquiries.find((r) => r.id === selected) ?? null
   const banner = BANNER_BY_SOURCE[source.kind]
   const isSampleData = source.kind === 'no-env'
+
+  function updateLocalStatus(id: string, status: InquiryRow['status']) {
+    setInquiries((rows) => rows.map((r) => (r.id === id ? { ...r, status } : r)))
+  }
+
+  async function patchInquiry(id: string, payload: Record<string, unknown>) {
+    const res = await fetch(`/api/inquiries/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    })
+    if (!res.ok) throw new Error('Request failed')
+  }
+
+  async function handleReply() {
+    if (!selectedRow || !replyText.trim()) return
+    setSending(true)
+    try {
+      await patchInquiry(selectedRow.id, { vendor_response: replyText.trim() })
+      updateLocalStatus(selectedRow.id, 'replied')
+      setReplyText('')
+      setReplyOpen(false)
+    } catch {
+      // keep reply open so vendor can retry
+    } finally {
+      setSending(false)
+    }
+  }
+
+  async function handleStatusChange(status: InquiryRow['status']) {
+    if (!selectedRow || isSampleData) return
+    const dbStatus = status === 'booked' ? 'accepted' : status === 'replied' ? 'responded' : status
+    setActionLoading(true)
+    try {
+      await patchInquiry(selectedRow.id, { status: dbStatus })
+      updateLocalStatus(selectedRow.id, status)
+    } catch {
+      // silent — row stays unchanged
+    } finally {
+      setActionLoading(false)
+    }
+  }
 
   return (
     <div className="p-8 pb-12">
@@ -49,7 +112,9 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
           </div>
         )}
         <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
-          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr_320px] min-h-[70vh]">
+          <div className="grid grid-cols-1 lg:grid-cols-[380px_1fr_300px] min-h-[70vh]">
+
+            {/* ── List sidebar ── */}
             <aside className="border-r border-gray-100 flex flex-col">
               <div className="p-5 border-b border-gray-100">
                 <div className="flex gap-1 border-b border-gray-100 -mx-5 px-5">
@@ -69,7 +134,6 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
                     </button>
                   ))}
                 </div>
-
                 <div className="mt-4 flex items-center gap-2">
                   <div className="relative flex-1">
                     <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -105,12 +169,10 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
                     <li key={row.id}>
                       <button
                         type="button"
-                        onClick={() => setSelected(row.id)}
+                        onClick={() => { setSelected(row.id); setReplyOpen(false) }}
                         className={cn(
                           'w-full flex items-start gap-3 px-5 py-4 border-b border-gray-50 transition-colors text-left',
-                          selected === row.id
-                            ? 'bg-[#FCF7FF]'
-                            : 'hover:bg-gray-50',
+                          selected === row.id ? 'bg-[#FCF7FF]' : 'hover:bg-gray-50',
                         )}
                       >
                         <Image
@@ -121,9 +183,14 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
                           className="w-10 h-10 rounded-full object-cover shrink-0"
                         />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">
-                            {isSampleData ? `[SAMPLE] ${row.couple}` : row.couple}
-                          </p>
+                          <div className="flex items-center justify-between gap-1">
+                            <p className="text-sm font-semibold text-gray-900 truncate">
+                              {isSampleData ? `[SAMPLE] ${row.couple}` : row.couple}
+                            </p>
+                            <span className={cn('shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold', STATUS_STYLE[row.status])}>
+                              {STATUS_LABEL[row.status]}
+                            </span>
+                          </div>
                           <p className="text-xs text-gray-500 mt-0.5 truncate">{row.date}</p>
                           <p className="text-xs text-gray-400 mt-0.5 truncate">{row.location}</p>
                         </div>
@@ -134,6 +201,7 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
               </ul>
             </aside>
 
+            {/* ── Detail panel ── */}
             <section className="border-r border-gray-100 p-8 flex flex-col">
               {selectedRow ? (
                 <>
@@ -146,9 +214,14 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
                       className="w-14 h-14 rounded-full object-cover"
                     />
                     <div className="flex-1 min-w-0">
-                      <h2 className="text-xl font-semibold text-gray-900">
-                        {isSampleData ? `[SAMPLE] ${selectedRow.couple}` : selectedRow.couple}
-                      </h2>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <h2 className="text-xl font-semibold text-gray-900">
+                          {isSampleData ? `[SAMPLE] ${selectedRow.couple}` : selectedRow.couple}
+                        </h2>
+                        <span className={cn('rounded-full px-2.5 py-0.5 text-[11px] font-bold', STATUS_STYLE[selectedRow.status])}>
+                          {STATUS_LABEL[selectedRow.status]}
+                        </span>
+                      </div>
                       <p className="text-sm text-gray-500 mt-0.5">
                         Wedding date · {selectedRow.date}
                       </p>
@@ -156,13 +229,17 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
                     <button
                       type="button"
                       disabled={isSampleData}
+                      onClick={() => setReplyOpen((o) => !o)}
                       className={cn(
-                        'text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors',
+                        'flex items-center gap-1.5 text-sm font-semibold px-4 py-2.5 rounded-xl transition-colors',
                         isSampleData
                           ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                          : 'bg-gray-900 text-white hover:bg-gray-800',
+                          : replyOpen
+                            ? 'bg-[#C9A0DC] text-black hover:bg-[#b98dcc]'
+                            : 'bg-gray-900 text-white hover:bg-gray-800',
                       )}
                     >
+                      <MessageSquare className="w-4 h-4" />
                       Reply
                     </button>
                   </div>
@@ -173,31 +250,96 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
                         <Wallet className="w-3.5 h-3.5" />
                         Budget
                       </p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1.5">
-                        {selectedRow.budget}
-                      </p>
+                      <p className="text-sm font-semibold text-gray-900 mt-1.5">{selectedRow.budget}</p>
                     </div>
                     <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
                       <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
                         <MapPin className="w-3.5 h-3.5" />
                         Location
                       </p>
-                      <p className="text-sm font-semibold text-gray-900 mt-1.5">
-                        {selectedRow.location}
-                      </p>
+                      <p className="text-sm font-semibold text-gray-900 mt-1.5">{selectedRow.location}</p>
                     </div>
+                    {selectedRow.guestCount !== undefined && (
+                      <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4">
+                        <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5">
+                          <Users className="w-3.5 h-3.5" />
+                          Guests
+                        </p>
+                        <p className="text-sm font-semibold text-gray-900 mt-1.5">{selectedRow.guestCount}+</p>
+                      </div>
+                    )}
                   </div>
 
-                  <div className="mt-6 rounded-xl border border-gray-100 p-5 bg-white">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
-                      Message
-                    </p>
-                    <p className="text-sm text-gray-700 leading-relaxed">
-                      Hi! We&apos;re planning a weekend wedding and love your portfolio.
-                      We&apos;d love to hear about your packages and availability on our date.
-                      Looking forward to your reply!
-                    </p>
-                  </div>
+                  {selectedRow.message && (
+                    <div className="mt-6 rounded-xl border border-gray-100 p-5 bg-white">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                        Message from couple
+                      </p>
+                      <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                        {selectedRow.message}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Reply composer */}
+                  {replyOpen && !isSampleData && (
+                    <div className="mt-6 rounded-xl border border-[#C9A0DC]/40 bg-[#FCF7FF] p-5">
+                      <p className="text-xs font-semibold uppercase tracking-wider text-[#7E5896] mb-3">
+                        Your reply
+                      </p>
+                      <textarea
+                        value={replyText}
+                        onChange={(e) => setReplyText(e.target.value)}
+                        placeholder="Write a personalised reply to this couple…"
+                        rows={5}
+                        className="w-full resize-none rounded-lg border border-gray-200 bg-white p-3 text-sm text-gray-800 focus:outline-none focus:border-[#C9A0DC] transition-colors"
+                      />
+                      <div className="mt-3 flex justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { setReplyOpen(false); setReplyText('') }}
+                          className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 transition-colors"
+                        >
+                          Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={sending || !replyText.trim()}
+                          onClick={handleReply}
+                          className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        >
+                          <Send className="w-3.5 h-3.5" />
+                          {sending ? 'Sending…' : 'Send reply'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Status actions */}
+                  {!isSampleData && selectedRow.status !== 'booked' && selectedRow.status !== 'closed' && (
+                    <div className="mt-auto pt-6 flex items-center gap-2 flex-wrap">
+                      <button
+                        type="button"
+                        disabled={actionLoading}
+                        onClick={() => handleStatusChange('booked')}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-600 text-white text-sm font-semibold hover:bg-green-700 disabled:opacity-50 transition-colors"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        Mark as booked
+                      </button>
+                      {selectedRow.status !== 'declined' && (
+                        <button
+                          type="button"
+                          disabled={actionLoading}
+                          onClick={() => handleStatusChange('declined')}
+                          className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 disabled:opacity-50 transition-colors"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                          Decline
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </>
               ) : (
                 <div className="flex-1 flex items-center justify-center text-sm text-gray-400">
@@ -206,20 +348,32 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
               )}
             </section>
 
+            {/* ── Contact sidebar ── */}
             <aside className="p-6">
               <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-400">
                 Contact information
               </h3>
               {selectedRow ? (
                 <ul className="mt-4 space-y-3 text-sm">
-                  <li className="flex items-center gap-2.5 text-gray-700">
-                    <Phone className="w-4 h-4 text-gray-400" />
-                    +255 712 000 000
-                  </li>
-                  <li className="flex items-center gap-2.5 text-gray-700">
-                    <Mail className="w-4 h-4 text-gray-400" />
-                    couple@example.com
-                  </li>
+                  {selectedRow.email && (
+                    <li className="flex items-center gap-2.5 text-gray-700 break-all">
+                      <Mail className="w-4 h-4 text-gray-400 shrink-0" />
+                      <a href={`mailto:${selectedRow.email}`} className="hover:underline">
+                        {selectedRow.email}
+                      </a>
+                    </li>
+                  )}
+                  {selectedRow.phone && (
+                    <li className="flex items-center gap-2.5 text-gray-700">
+                      <svg className="w-4 h-4 text-gray-400 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 7V5z"/></svg>
+                      <a href={`tel:${selectedRow.phone}`} className="hover:underline">
+                        {selectedRow.phone}
+                      </a>
+                    </li>
+                  )}
+                  {!selectedRow.email && !selectedRow.phone && (
+                    <li className="text-gray-400 text-sm">No contact info provided.</li>
+                  )}
                 </ul>
               ) : (
                 <p className="text-sm text-gray-400 mt-4">No contact selected.</p>
@@ -236,6 +390,7 @@ export default function LeadsClient({ inquiries, source }: LeadsClientProps) {
                 </div>
               </div>
             </aside>
+
           </div>
         </div>
       </div>

@@ -27,6 +27,10 @@ export type InquiryRow = {
   location: string
   status: 'new' | 'replied' | 'booked' | 'declined' | 'closed'
   avatarUrl: string
+  email?: string
+  phone?: string
+  message?: string
+  guestCount?: number
 }
 
 export type InsightPoint = { name: string; value: number }

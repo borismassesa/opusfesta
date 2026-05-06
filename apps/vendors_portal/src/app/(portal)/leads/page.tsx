@@ -25,9 +25,13 @@ const STATUS_TO_UI: Record<DbInquiryStatus, InquiryRow['status']> = {
 type InquiryRowFromDb = {
   id: string
   name: string | null
+  email: string | null
+  phone: string | null
   event_date: string | null
   budget: string | null
   location: string | null
+  message: string | null
+  guest_count: number | null
   status: DbInquiryStatus | null
 }
 
@@ -65,6 +69,10 @@ function mapRow(row: InquiryRowFromDb): InquiryRow {
     location: row.location ?? '—',
     status: mapStatus(row.status),
     avatarUrl: PLACEHOLDER_AVATAR,
+    email: row.email ?? undefined,
+    phone: row.phone ?? undefined,
+    message: row.message ?? undefined,
+    guestCount: row.guest_count ?? undefined,
   }
 }
 
@@ -89,7 +97,7 @@ async function loadInquiries(): Promise<{
   const supabase = await createClerkSupabaseServerClient()
   const inquiries = await supabase
     .from('inquiries')
-    .select('id, name, event_date, budget, location, status')
+    .select('id, name, email, phone, event_date, budget, location, message, guest_count, status')
     .eq('vendor_id', state.vendor.id)
     .order('created_at', { ascending: false })
     .limit(50)
