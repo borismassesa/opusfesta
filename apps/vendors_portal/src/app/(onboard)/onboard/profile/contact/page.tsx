@@ -45,7 +45,7 @@ export default function ContactPage() {
     >
       <OnboardHeading
         title="How should couples reach you?"
-        description="We send inquiry alerts to your email and your WhatsApp — most Tanzanian couples message vendors on WhatsApp first."
+        description="We send inquiry alerts to your email and your WhatsApp. Most Tanzanian couples message vendors on WhatsApp first."
       />
 
       <div className="space-y-6 max-w-xl">
@@ -60,7 +60,7 @@ export default function ContactPage() {
             autoComplete="email"
           />
           <p className="mt-2 text-xs text-gray-500">
-            We use this for inquiry alerts, payouts, and account recovery — never shown publicly.
+            We use this for inquiry alerts, payouts, and account recovery. Never shown publicly.
           </p>
         </div>
 
@@ -81,7 +81,7 @@ export default function ContactPage() {
               onChange={(e) => setUseBusinessPhone(e.target.checked)}
               className="w-4 h-4 accent-gray-900"
             />
-            Same as my business phone (+255 {draft.phone || '—'})
+            Same as my business phone (+255 {draft.phone || '...'})
           </label>
         </div>
       </div>
@@ -93,7 +93,7 @@ export default function ContactPage() {
         <WhyWeAsk title="Why we ask for email and WhatsApp">
           <p>
             Inquiries arrive at <strong>both</strong> your email and your WhatsApp so you never miss
-            a couple — and so couples get a fast first response, which is the single biggest driver
+            a couple, and so couples get a fast first response, which is the single biggest driver
             of bookings on OpusFesta.
           </p>
           <p>

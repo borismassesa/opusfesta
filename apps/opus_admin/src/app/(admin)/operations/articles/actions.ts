@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { revalidateWebsite as revalidateWebsitePaths } from '@/lib/revalidate'
 import { requireAdminRole, type AdminAccessRole } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
@@ -11,27 +12,17 @@ import {
   type AdviceIdeasSeedComment,
 } from '@/lib/cms/advice-ideas'
 
-const ARTICLE_WRITE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor', 'author']
+// Direct admin writes to advice_ideas_posts are restricted to internal staff.
+// External writers go through /contribute/* and the staging
+// advice_article_submissions table; the 'author' role no longer grants admin
+// article access.
+const ARTICLE_WRITE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 const ARTICLE_MANAGE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 
 async function revalidateWebsite(slug?: string): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_WEBSITE_URL
-  const secret = process.env.WEBSITE_REVALIDATE_SECRET
-  if (!url || !secret) return
   const paths = ['/advice-and-ideas']
   if (slug) paths.push(`/advice-and-ideas/${slug}`)
-  try {
-    await Promise.all(
-      paths.map((p) =>
-        fetch(`${url}/api/revalidate?path=${encodeURIComponent(p)}`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${secret}` },
-        })
-      )
-    )
-  } catch {
-    // Best effort.
-  }
+  await revalidateWebsitePaths(...paths)
 }
 
 export type PostUpsertInput = {

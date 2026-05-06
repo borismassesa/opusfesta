@@ -328,9 +328,20 @@ export async function submitApplication(
     years_in_business: draft.yearsInBusiness
       ? Number.parseInt(draft.yearsInBusiness, 10) || null
       : null,
-    // Full draft, so admin review can verify every answered field — including
-    // ones the schema doesn't break out into columns (style/personality,
-    // languages, deposit %, cancellation policy, FAQs, etc.).
+    // Dedicated columns the admin storefront editors and public storefront
+    // read directly. Without these the admin UI shows blank for fields the
+    // vendor actually answered during onboarding.
+    style: draft.style,
+    personality: draft.personality,
+    languages: draft.languages,
+    cancellation_level: draft.cancellationLevel,
+    reschedule_policy: draft.reschedulePolicy,
+    deposit_percent: draft.depositPercent
+      ? Number.parseInt(draft.depositPercent, 10) || null
+      : null,
+    // Full draft kept as a JSONB blob so admin review can audit every answered
+    // field (resolved labels included), even ones we haven't broken out into
+    // columns yet (FAQs, team avatars, etc.).
     application_snapshot: buildApplicationSnapshot(draft),
   }
 

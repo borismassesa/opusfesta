@@ -34,7 +34,7 @@ export default function StylePage() {
       backHref="/onboard/details/services"
     >
       <OnboardHeading
-        title="Let’s talk style — which style do you enjoy capturing most?"
+        title="Let’s talk style. Which style do you enjoy capturing most?"
         description="We know you can probably do multiple styles. We want to connect you with couples who value what you love to do."
       />
 

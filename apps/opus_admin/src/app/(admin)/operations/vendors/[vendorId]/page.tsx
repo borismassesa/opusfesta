@@ -39,11 +39,6 @@ type VendorRow = {
   suspension_reason: string | null
   created_at: string
   updated_at: string
-  // GAP 2 admin-fillable fields (migration 20260503000001).
-  capacity: { min?: number; max?: number } | null
-  lat: number | null
-  lng: number | null
-  gallery_urls: string[] | null
   // Storefront persistence columns from migration 20260503000003.
   team: Array<Record<string, unknown>> | null
   faqs: Array<Record<string, unknown>> | null
@@ -133,7 +128,7 @@ export default async function VendorReviewPage({
          location, contact_info, social_links, services_offered,
          years_in_business, onboarding_status, onboarding_started_at,
          onboarding_completed_at, suspended_at, suspension_reason,
-         created_at, updated_at, capacity, lat, lng, gallery_urls,
+         created_at, updated_at,
          team, faqs, packages, awards, hours, languages, response_time_hours,
          locally_owned, parallel_booking_capacity, deposit_percent,
          cancellation_level, reschedule_policy, style, personality`,
@@ -286,11 +281,6 @@ export default async function VendorReviewPage({
       suspendedAt: v.suspended_at,
       suspensionReason: v.suspension_reason,
       updatedAt: v.updated_at,
-      capacityMin: v.capacity?.min ?? null,
-      capacityMax: v.capacity?.max ?? null,
-      lat: v.lat,
-      lng: v.lng,
-      galleryUrls: v.gallery_urls ?? [],
       // Editable storefront columns — passed straight through. Editors
       // hydrate their internal state from these on first render.
       teamColumn: v.team ?? [],

@@ -1,5 +1,5 @@
 import { auth, currentUser } from '@clerk/nextjs/server'
-import { createSupabaseAdminClient } from '@/lib/supabase'
+import { createSupabaseAdminClient, hasSupabaseAdminConfig } from '@/lib/supabase'
 
 export type AdminAccessRole = 'owner' | 'admin' | 'editor' | 'author' | 'viewer'
 
@@ -45,6 +45,11 @@ function readClaimEmail(claims: unknown): string | null {
 }
 
 async function readWhitelistRole(email: string): Promise<AdminAccessRole | null> {
+  if (!hasSupabaseAdminConfig()) {
+    console.warn('[admin-auth] admin whitelist unavailable: Supabase admin env is missing')
+    return null
+  }
+
   const supabase = createSupabaseAdminClient()
   const normalized = email.trim().toLowerCase()
   const { data, error } = await supabase
@@ -112,11 +117,9 @@ export async function requireAdminRole(
       '(none)'
     const detail = `userId=${userId ?? '(none)'} email=${email} resolvedRole=${role ?? '(none)'} allowedRoles=[${roles.join(',')}]`
     console.error('[admin-auth] requireAdminRole denied:', detail)
-    const message =
-      process.env.NODE_ENV === 'production'
-        ? 'You do not have permission to perform this admin action.'
-        : `You do not have permission to perform this admin action. ${detail}`
-    throw new Error(message)
+    throw new Error(
+      "You don't have permission for that. Ask an owner to add you to the admin team, or sign in with an admin account."
+    )
   }
   return role
 }

@@ -537,7 +537,7 @@ export default function PendingClient({
   const isNeedsCorrections = variant === 'needs-corrections'
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FBF7FC] via-[#FDFDFD] to-[#FDFDFD] flex flex-col">
+    <div className="min-h-screen bg-[#F5F4F1] flex flex-col">
       <header className="px-6 sm:px-10 py-5 border-b border-gray-100/80 bg-white/70 backdrop-blur flex items-center justify-between">
         <Link href="/" aria-label="OpusFesta home" className="block">
           <Logo className="h-7 w-auto" />

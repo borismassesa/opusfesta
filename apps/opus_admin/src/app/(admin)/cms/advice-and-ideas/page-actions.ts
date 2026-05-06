@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { revalidateWebsite as revalidateWebsitePaths } from '@/lib/revalidate'
 import { requireAdminRole, type AdminAccessRole } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { ADVICE_IDEAS_PAGE_KEY } from '@/lib/cms/advice-ideas'
@@ -9,17 +10,7 @@ type SectionKey = 'hero' | 'topics' | 'section_headers'
 const PAGE_MANAGE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 
 async function revalidateWebsite(): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_WEBSITE_URL
-  const secret = process.env.WEBSITE_REVALIDATE_SECRET
-  if (!url || !secret) return
-  try {
-    await fetch(`${url}/api/revalidate?path=/advice-and-ideas`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${secret}` },
-    })
-  } catch {
-    // Best-effort — ISR will pick up changes on next cycle.
-  }
+  await revalidateWebsitePaths('/advice-and-ideas')
 }
 
 export async function saveAdvicePageDraft<T extends object>(sectionKey: SectionKey, draft: T): Promise<void> {
