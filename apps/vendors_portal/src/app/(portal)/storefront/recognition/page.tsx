@@ -123,15 +123,16 @@ export default function RecognitionPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated])
 
+  const [saving, startSaving] = useTransition()
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveOk, setSaveOk] = useState(false)
+
   if (!hydrated) return <div className="p-8" aria-hidden />
 
   const certificates = draft.awardCertificates
   const verifiedCount = certificates.filter((c) => c.status === 'verified').length
   const pendingCount = certificates.filter((c) => c.status === 'pending').length
 
-  const [saving, startSaving] = useTransition()
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [saveOk, setSaveOk] = useState(false)
   const onSave = () => {
     setSaveError(null)
     setSaveOk(false)

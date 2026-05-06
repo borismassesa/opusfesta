@@ -29,6 +29,9 @@ const newFaq = (seed?: Partial<FAQItem>): FAQItem => ({
 export default function ListingFAQPage() {
   const { draft, update, hydrated } = useOnboardingDraft()
   const [showSuggestions, setShowSuggestions] = useState(false)
+  const [saving, startSaving] = useTransition()
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveOk, setSaveOk] = useState(false)
 
   if (!hydrated) return <div className="p-8" aria-hidden />
 
@@ -51,9 +54,6 @@ export default function ListingFAQPage() {
     (q) => !usedSuggestions.has(q),
   )
 
-  const [saving, startSaving] = useTransition()
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [saveOk, setSaveOk] = useState(false)
   const completeFaqs = faqs.filter((f) => f.question.trim() && f.answer.trim()).length
 
   const onSave = () => {

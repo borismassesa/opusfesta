@@ -164,15 +164,22 @@ export default function PhotosPage() {
     return idx >= 0 && idx < sections.length - 1 ? sections[idx + 1].href : null
   }, [draft])
 
-  if (!hydrated) {
-    return <div className="p-8" aria-hidden />
-  }
-
   // Track in-flight uploads so the user gets a visible loading state and
   // can't double-pick the same slot.
   const [uploadingCovers, setUploadingCovers] = useState<Set<number>>(new Set())
   const [portfolioUploads, setPortfolioUploads] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
+
+  // Persist cover + portfolio URLs to the DB. Cover photo is the first
+  // populated cover slot; the rest of the cover slots are appended to
+  // gallery_urls so admins + couples see every uploaded image.
+  const [saving, startSaving] = useTransition()
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveOk, setSaveOk] = useState(false)
+
+  if (!hydrated) {
+    return <div className="p-8" aria-hidden />
+  }
 
   const uploadFile = async (
     file: File,
@@ -361,12 +368,6 @@ export default function PhotosPage() {
     if (nextHref) router.push(nextHref)
   }
 
-  // Persist cover + portfolio URLs to the DB. Cover photo is the first
-  // populated cover slot; the rest of the cover slots are appended to
-  // gallery_urls so admins + couples see every uploaded image.
-  const [saving, startSaving] = useTransition()
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [saveOk, setSaveOk] = useState(false)
   const onSave = () => {
     setSaveError(null)
     setSaveOk(false)
