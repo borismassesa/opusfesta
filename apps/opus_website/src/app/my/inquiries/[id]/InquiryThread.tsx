@@ -37,6 +37,20 @@ function formatTime(iso: string) {
   return d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
 }
 
+function sameInquiryMessages(a: InquiryMessage[], b: InquiryMessage[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every((message, index) => {
+    const other = b[index]
+    return Boolean(
+      other
+      && other.id === message.id
+      && other.content === message.content
+      && other.created_at === message.created_at
+      && other.read_at === message.read_at,
+    )
+  })
+}
+
 function MessageBubble({ msg }: Readonly<{ msg: InquiryMessage }>) {
   const isClient = msg.sender_type === 'client'
   return (
@@ -81,15 +95,52 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
   const [sending, setSending] = useState(false)
   const [sendError, setSendError] = useState('')
   const [inquiryStatus, setInquiryStatus] = useState<InquiryStatus>((inquiry.status ?? 'pending') as InquiryStatus)
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState('')
-  const [messageActionLoading, setMessageActionLoading] = useState(false)
   const [inquiryActionLoading, setInquiryActionLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  useEffect(() => {
+    let cancelled = false
+
+    const refreshMessages = async () => {
+      try {
+        const response = await fetch(
+          `/api/my/inquiries/${inquiry.id}/messages?email=${encodeURIComponent(email)}`,
+          { cache: 'no-store' },
+        )
+        if (!response.ok) return
+        const json = await response.json()
+        if (cancelled) return
+        const nextMessages = (json.messages ?? []) as InquiryMessage[]
+        setMessages((prev) => (sameInquiryMessages(prev, nextMessages) ? prev : nextMessages))
+      } catch {
+        // Keep current messages and retry on next watcher tick.
+      }
+    }
+
+    const intervalId = globalThis.setInterval(() => {
+      void refreshMessages()
+    }, 1500)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshMessages()
+      }
+    }
+
+    window.addEventListener('focus', handleVisibility)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      cancelled = true
+      globalThis.clearInterval(intervalId)
+      window.removeEventListener('focus', handleVisibility)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
+  }, [email, inquiry.id])
 
   const status = inquiryStatus
   const vendorLabel = inquiry.vendor_name ?? inquiry.vendor_slug ?? 'Vendor'
@@ -147,55 +198,6 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       setSendError('Network error. Please check your connection.')
     } finally {
       setSending(false)
-    }
-  }
-
-  async function handleUpdateMessage(messageId: string) {
-    if (!editDraft.trim() || messageActionLoading) return
-    setMessageActionLoading(true)
-    try {
-      const res = await fetch(`/api/my/inquiries/${inquiry.id}/messages/${messageId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, content: editDraft.trim() }),
-      })
-      const json = await res.json()
-      if (!res.ok) {
-        setSendError(json.error ?? 'Failed to update message.')
-        return
-      }
-      setMessages((prev) => prev.map((m) => (m.id === messageId ? json.message : m)))
-      setEditingMessageId(null)
-      setEditDraft('')
-      setSendError('')
-    } catch {
-      setSendError('Network error while updating message.')
-    } finally {
-      setMessageActionLoading(false)
-    }
-  }
-
-  async function handleDeleteMessage(messageId: string) {
-    if (messageActionLoading) return
-    setMessageActionLoading(true)
-    try {
-      const res = await fetch(`/api/my/inquiries/${inquiry.id}/messages/${messageId}?email=${encodeURIComponent(email)}`, {
-        method: 'DELETE',
-      })
-      if (!res.ok) {
-        setSendError('Failed to delete message.')
-        return
-      }
-      setMessages((prev) => prev.filter((m) => m.id !== messageId))
-      if (editingMessageId === messageId) {
-        setEditingMessageId(null)
-        setEditDraft('')
-      }
-      setSendError('')
-    } catch {
-      setSendError('Network error while deleting message.')
-    } finally {
-      setMessageActionLoading(false)
     }
   }
 
@@ -326,65 +328,7 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
           {thread.length === 0 ? (
             <p className="text-sm text-gray-400 text-center py-8">No messages yet.</p>
           ) : (
-            thread.map((msg) => {
-              const isOwn = msg.sender_type === 'client' && msg.id !== 'initial'
-              const isEditing = editingMessageId === msg.id
-              return (
-                <div key={msg.id} className="space-y-1.5">
-                  <MessageBubble msg={msg} />
-                  {isOwn && (
-                    <div className="flex justify-end gap-2 text-[11px] text-gray-400 pr-11">
-                      {isEditing ? (
-                        <div className="w-full max-w-md rounded-xl border border-(--accent)/40 bg-[#FCF7FF] p-2.5 space-y-2">
-                          <textarea
-                            value={editDraft}
-                            onChange={(e) => setEditDraft(e.target.value)}
-                            rows={3}
-                            className="w-full resize-none rounded-lg border border-gray-200 bg-white p-2 text-sm text-gray-800 focus:outline-none focus:border-(--accent)"
-                          />
-                          <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => { setEditingMessageId(null); setEditDraft('') }}
-                              className="text-xs text-gray-500 hover:text-gray-700"
-                            >
-                              Cancel
-                            </button>
-                            <button
-                              type="button"
-                              disabled={messageActionLoading || !editDraft.trim()}
-                              onClick={() => handleUpdateMessage(msg.id)}
-                              className="rounded-md bg-[#1A1A1A] px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50"
-                            >
-                              Save
-                            </button>
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <button
-                            type="button"
-                            onClick={() => { setEditingMessageId(msg.id); setEditDraft(msg.content) }}
-                            className="hover:text-gray-600 transition-colors"
-                          >
-                            Edit
-                          </button>
-                          <span>•</span>
-                          <button
-                            type="button"
-                            disabled={messageActionLoading}
-                            onClick={() => handleDeleteMessage(msg.id)}
-                            className="hover:text-red-500 transition-colors disabled:opacity-50"
-                          >
-                            Delete
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )
-            })
+            thread.map((msg) => <MessageBubble key={msg.id} msg={msg} />)
           )}
           <div ref={bottomRef} />
         </div>

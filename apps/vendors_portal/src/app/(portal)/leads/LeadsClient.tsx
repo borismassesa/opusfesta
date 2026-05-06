@@ -24,6 +24,19 @@ type ThreadMessage = {
   read_at: string | null
 }
 
+function sameThread(a: ThreadMessage[], b: ThreadMessage[]): boolean {
+  if (a.length !== b.length) return false
+  return a.every((message, index) => {
+    const other = b[index]
+    return Boolean(
+      other?.id === message.id
+      && other.content === message.content
+      && other.created_at === message.created_at
+      && other.read_at === message.read_at,
+    )
+  })
+}
+
 type LeadsClientProps = {
   inquiries: InquiryRow[]
   source: LeadsSource
@@ -214,18 +227,9 @@ function mapUiStatusToDbStatus(status: InquiryRow['status']) {
 
 type MessageBubbleProps = {
   msg: ThreadMessage
-  isEditing: boolean
-  editDraft: string
-  actionLoading: boolean
-  isSampleData: boolean
-  onEditStart: (id: string, content: string) => void
-  onEditCancel: () => void
-  onEditSave: (id: string) => void
-  onEditDraftChange: (v: string) => void
-  onDelete: (id: string) => void
 }
 
-function MessageBubble({ msg, isEditing, editDraft, actionLoading, isSampleData, onEditStart, onEditCancel, onEditSave, onEditDraftChange, onDelete }: Readonly<MessageBubbleProps>) {
+function MessageBubble({ msg }: Readonly<MessageBubbleProps>) {
   const isVendor = msg.sender_type === 'vendor'
   return (
     <div className={`flex gap-2.5 ${isVendor ? 'flex-row-reverse' : ''}`}>
@@ -234,40 +238,9 @@ function MessageBubble({ msg, isEditing, editDraft, actionLoading, isSampleData,
       </div>
       <div className={`flex flex-col gap-1 max-w-[80%] ${isVendor ? 'items-end' : 'items-start'}`}>
         <span className="text-[10px] text-gray-400 font-semibold">{msg.sender_name}</span>
-        {isEditing ? (
-          <div className="w-full rounded-xl border border-[#C9A0DC]/50 bg-[#FCF7FF] p-2.5">
-            <textarea
-              value={editDraft}
-              onChange={(e) => onEditDraftChange(e.target.value)}
-              rows={3}
-              className="w-full resize-none rounded-lg border border-gray-200 bg-white p-2 text-sm text-gray-800 focus:outline-none focus:border-[#C9A0DC]"
-            />
-            <div className="mt-2 flex justify-end gap-2">
-              <button type="button" onClick={onEditCancel} className="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
-              <button
-                type="button"
-                disabled={actionLoading || !editDraft.trim()}
-                onClick={() => onEditSave(msg.id)}
-                className="rounded-md bg-gray-900 px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50"
-              >
-                Save
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${isVendor ? 'bg-[#F0DFF6] text-[#1A1A1A] rounded-tr-sm' : 'bg-gray-100 text-gray-800 rounded-tl-sm'}`}>
-              {msg.content}
-            </div>
-            {isVendor && msg.id !== 'initial' && !isSampleData && (
-              <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                <button type="button" onClick={() => onEditStart(msg.id, msg.content)} className="hover:text-gray-600 transition-colors">Edit</button>
-                <span>•</span>
-                <button type="button" disabled={actionLoading} onClick={() => onDelete(msg.id)} className="hover:text-red-500 transition-colors disabled:opacity-50">Delete</button>
-              </div>
-            )}
-          </>
-        )}
+        <div className={`rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${isVendor ? 'bg-[#F0DFF6] text-[#1A1A1A] rounded-tr-sm' : 'bg-gray-100 text-gray-800 rounded-tl-sm'}`}>
+          {msg.content}
+        </div>
       </div>
     </div>
   )
@@ -337,9 +310,6 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
   const [actionLoading, setActionLoading] = useState(false)
   const [thread, setThread] = useState<ThreadMessage[]>([])
   const [threadLoading, setThreadLoading] = useState(false)
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
-  const [editDraft, setEditDraft] = useState('')
-  const [messageActionLoading, setMessageActionLoading] = useState(false)
   const [quoteOpen, setQuoteOpen] = useState(false)
   const [quoteAmount, setQuoteAmount] = useState('')
   const [quoteNote, setQuoteNote] = useState('')
@@ -365,8 +335,6 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
   useEffect(() => {
     if (!selected || isSampleData) { setThread([]); return }
     setThreadLoading(true)
-    setEditingMessageId(null)
-    setEditDraft('')
     setQuoteOpen(false)
     setQuoteAmount('')
     setQuoteNote('')
@@ -377,6 +345,45 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
       .then((json) => setThread(json.messages ?? []))
       .catch(() => setThread([]))
       .finally(() => setThreadLoading(false))
+  }, [selected, isSampleData])
+
+  useEffect(() => {
+    if (!selected || isSampleData) return
+
+    let cancelled = false
+
+    const refreshThread = async () => {
+      try {
+        const response = await fetch(`/api/inquiries/${selected}/messages`, { cache: 'no-store' })
+        if (!response.ok) return
+        const json = await response.json()
+        if (cancelled) return
+        const nextThread = (json.messages ?? []) as ThreadMessage[]
+        setThread((prev) => (sameThread(prev, nextThread) ? prev : nextThread))
+      } catch {
+        // Keep current thread and retry on the next watcher tick.
+      }
+    }
+
+    const intervalId = globalThis.setInterval(() => {
+      void refreshThread()
+    }, 1500)
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        void refreshThread()
+      }
+    }
+
+    window.addEventListener('focus', handleVisibility)
+    document.addEventListener('visibilitychange', handleVisibility)
+
+    return () => {
+      cancelled = true
+      globalThis.clearInterval(intervalId)
+      window.removeEventListener('focus', handleVisibility)
+      document.removeEventListener('visibilitychange', handleVisibility)
+    }
   }, [selected, isSampleData])
 
   function updateLocalStatus(id: string, status: InquiryRow['status']) {
@@ -399,34 +406,6 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
       setReplyText('')
       setReplyOpen(false)
     } catch { /* keep open */ } finally { setSending(false) }
-  }
-
-  async function handleUpdateMessage(messageId: string) {
-    if (!selectedRow || !editDraft.trim() || isSampleData) return
-    setMessageActionLoading(true)
-    try {
-      const res = await fetch(`/api/inquiries/${selectedRow.id}/messages/${messageId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: editDraft.trim() }),
-      })
-      if (!res.ok) throw new Error('update failed')
-      const json = await res.json()
-      setThread((prev) => prev.map((m) => (m.id === messageId ? json.message : m)))
-      setEditingMessageId(null)
-      setEditDraft('')
-    } catch { /* keep open */ } finally { setMessageActionLoading(false) }
-  }
-
-  async function handleDeleteMessage(messageId: string) {
-    if (!selectedRow || isSampleData) return
-    setMessageActionLoading(true)
-    try {
-      const res = await fetch(`/api/inquiries/${selectedRow.id}/messages/${messageId}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('delete failed')
-      setThread((prev) => prev.filter((m) => m.id !== messageId))
-      if (editingMessageId === messageId) { setEditingMessageId(null); setEditDraft('') }
-    } catch { /* silent */ } finally { setMessageActionLoading(false) }
   }
 
   async function handleClose() {
@@ -500,9 +479,6 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     actionLoading,
     thread,
     threadLoading,
-    editingMessageId, setEditingMessageId,
-    editDraft, setEditDraft,
-    messageActionLoading,
     quoteOpen, setQuoteOpen,
     quoteAmount, setQuoteAmount,
     quoteNote, setQuoteNote,
@@ -512,8 +488,6 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     visibleInquiries,
     selectedRow,
     handleReply,
-    handleUpdateMessage,
-    handleDeleteMessage,
     handleClose,
     handleDecline,
     handleSendQuote,
@@ -527,11 +501,10 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
   const {
     active, setActive, selected, setSelected, searchQuery, setSearchQuery,
     replyText, setReplyText, replyOpen, setReplyOpen, sending, actionLoading,
-    thread, threadLoading, editingMessageId, setEditingMessageId, editDraft, setEditDraft,
-    messageActionLoading, quoteOpen, setQuoteOpen, quoteAmount, setQuoteAmount,
+    thread, threadLoading, quoteOpen, setQuoteOpen, quoteAmount, setQuoteAmount,
     quoteNote, setQuoteNote, quoteSending, declineOpen, setDeclineOpen,
     declineReason, setDeclineReason, visibleInquiries, selectedRow,
-    handleReply, handleUpdateMessage, handleDeleteMessage, handleClose,
+    handleReply, handleClose,
     handleDecline, handleSendQuote, handleStatusChange,
   } = useLeadsState(initialInquiries, isSampleData)
 
@@ -712,15 +685,6 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                           <MessageBubble
                             key={msg.id}
                             msg={msg}
-                            isEditing={editingMessageId === msg.id}
-                            editDraft={editDraft}
-                            actionLoading={messageActionLoading}
-                            isSampleData={isSampleData}
-                            onEditStart={(id, content) => { setEditingMessageId(id); setEditDraft(content) }}
-                            onEditCancel={() => { setEditingMessageId(null); setEditDraft('') }}
-                            onEditSave={handleUpdateMessage}
-                            onEditDraftChange={setEditDraft}
-                            onDelete={handleDeleteMessage}
                           />
                         ))
                       )}
