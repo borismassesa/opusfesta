@@ -226,14 +226,36 @@ const REVIEW_INPUT_CLASS =
 // Component
 // ---------------------------------------------------------------------------
 
+type VendorTab = 'profile' | 'storefront' | 'availability' | 'verification'
+
+const TAB_ORDER: ReadonlyArray<{ id: VendorTab; label: string }> = [
+  { id: 'profile', label: 'Public Profile' },
+  { id: 'storefront', label: 'Storefront' },
+  { id: 'availability', label: 'Availability' },
+  { id: 'verification', label: 'Verification & Payout' },
+]
+
 export default function VendorReviewClient(props: VendorReviewProps) {
   const { vendor, tin, license, payout, agreement, historicalDocs } = props
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [bannerError, setBannerError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<VendorTab>('profile')
 
   const isApproved = vendor.onboardingStatus === 'active'
   const isSuspended = vendor.onboardingStatus === 'suspended'
+
+  const verificationFlags = {
+    agreement: !agreement,
+    payout: !payout || payout.status !== 'verified',
+    tin: !tin || tin.status !== 'approved',
+    license: !license || license.status !== 'approved',
+  }
+  const verificationPending =
+    verificationFlags.agreement ||
+    verificationFlags.payout ||
+    verificationFlags.tin ||
+    verificationFlags.license
 
   // Drive the global Header from real vendor data. The status pill and the
   // Approve / Suspend / Request-corrections buttons portal into the Header
@@ -383,7 +405,42 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           </div>
         )}
 
+        {/* Tab navigation — splits the page into 4 distinct jobs so the
+            highest-leverage actions (Verification & Payout) aren't buried
+            at the bottom of a long scroll. */}
+        <div className="border-b border-gray-200 mb-8 -mx-1 px-1 overflow-x-auto">
+          <nav className="flex gap-1" aria-label="Vendor review sections">
+            {TAB_ORDER.map((tab) => {
+              const isActive = activeTab === tab.id
+              const showDot = tab.id === 'verification' && verificationPending
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={cn(
+                    'relative inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap',
+                    isActive
+                      ? 'border-[#7E5896] text-[#7E5896]'
+                      : 'border-transparent text-gray-500 hover:text-gray-900'
+                  )}
+                >
+                  {tab.label}
+                  {showDot && (
+                    <span
+                      aria-label="Pending verification"
+                      className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500"
+                    />
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+
         <div className="space-y-10">
+          {activeTab === 'profile' && (
           <ReviewSection
             title="Public Profile"
             description="Edit the vendor details couples see first: business profile, contact details, location, capacity, photos, style, and languages."
@@ -426,7 +483,9 @@ export default function VendorReviewClient(props: VendorReviewProps) {
               }}
             />
           </ReviewSection>
+          )}
 
+          {activeTab === 'storefront' && (
           <ReviewSection
             title="Storefront Content"
             description="Manage the commercial content and trust signals shown on the vendor storefront."
@@ -481,7 +540,9 @@ export default function VendorReviewClient(props: VendorReviewProps) {
               }))}
             />
           </ReviewSection>
+          )}
 
+          {activeTab === 'availability' && (
           <ReviewSection
             title="Availability & Booking Rules"
             description="Set the operational rules that affect how couples book, pay deposits, cancel, and reschedule."
@@ -507,7 +568,9 @@ export default function VendorReviewClient(props: VendorReviewProps) {
               }}
             />
           </ReviewSection>
+          )}
 
+          {activeTab === 'verification' && (
           <ReviewSection
             title="Verification & Payout"
             description="Approve the required legal documents, confirm the vendor agreement, and verify the payout account before activating the vendor."
@@ -546,8 +609,9 @@ export default function VendorReviewClient(props: VendorReviewProps) {
               actionsDisabled={pending || isApproved || isSuspended}
             />
           </ReviewSection>
+          )}
 
-          {historicalDocs.length > 0 && (
+          {activeTab === 'verification' && historicalDocs.length > 0 && (
             <ReviewSection
               title="Past Submissions"
               description="Older uploads are kept here for audit context; the current review only uses the latest document for each requirement."
