@@ -74,7 +74,9 @@ export default async function AdviceIdeasDetailPage({
       : []
   const continueReading = [...related, ...fallbackRelated]
 
-  const tocItems = post.body.map((s) => ({ id: s.id, label: s.heading }))
+  const tocItems = post.body
+    .filter((s) => s.heading)
+    .map((s) => ({ id: s.id, label: s.heading as string }))
 
   const authors = await loadAdviceIdeasAuthors()
   const author = getAuthorFromMap(authors, post.author)
