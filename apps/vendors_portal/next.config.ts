@@ -14,6 +14,9 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'randomuser.me' },
       // Supabase Storage — vendor portfolio images, avatars, asset uploads.
       { protocol: 'https', hostname: '*.supabase.co' },
+      // Clerk — user profile photos.
+      { protocol: 'https', hostname: 'img.clerk.com' },
+      { protocol: 'https', hostname: '*.clerk.com' },
     ],
   },
 }

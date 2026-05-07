@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
 // Public endpoint — no auth required. RLS policy "Anyone can create inquiries"
@@ -132,6 +133,27 @@ export async function POST(request: Request) {
       { error: 'Unable to send your request. Please try again.' },
       { status: 500 },
     )
+  }
+
+  // If the request came from an authenticated Clerk user, link inquiry to them
+  try {
+    const { userId } = await auth()
+    if (userId) {
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('id')
+        .eq('clerk_id', userId)
+        .single()
+
+      if (userRow) {
+        await supabase
+          .from('inquiries')
+          .update({ user_id: userRow.id })
+          .eq('id', data.id)
+      }
+    }
+  } catch {
+    // Non-critical: don't fail the request if user linking fails
   }
 
   return NextResponse.json({ success: true, id: data.id }, { status: 201 })

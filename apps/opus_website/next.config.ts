@@ -13,6 +13,10 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'images.unsplash.com',
       },
+      // Clerk — user profile photos and OAuth provider avatars
+      { protocol: 'https', hostname: 'img.clerk.com' },
+      { protocol: 'https', hostname: '**.clerk.com' },
+      { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
     ],
   },
 }
