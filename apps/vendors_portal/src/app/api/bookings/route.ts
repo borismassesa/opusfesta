@@ -59,6 +59,14 @@ export async function POST(request: Request) {
   }
 
   const value = Number(total_value)
+  if (!Number.isFinite(value) || !Number.isInteger(value) || value < 0) {
+    return NextResponse.json({ error: 'total_value must be a non-negative integer' }, { status: 400 })
+  }
+
+  const depositPct = Number(deposit_percent ?? 50)
+  if (!Number.isFinite(depositPct) || !Number.isInteger(depositPct) || depositPct < 0 || depositPct > 100) {
+    return NextResponse.json({ error: 'deposit_percent must be an integer between 0 and 100' }, { status: 400 })
+  }
   const initialTimeline = [
     {
       at: new Date().toISOString(),
@@ -84,7 +92,7 @@ export async function POST(request: Request) {
       package_name,
       location,
       total_value: value,
-      deposit_percent: Number(deposit_percent ?? 50),
+      deposit_percent: depositPct,
       stage: 'quoted',
       internal_status: 'quote_sent',
       timeline: initialTimeline,

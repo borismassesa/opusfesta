@@ -17,4 +17,4 @@ CREATE INDEX IF NOT EXISTS idx_vendor_bookings_client_user_id ON vendor_bookings
 -- Clients can read their own bookings (e.g. for a future client portal view).
 CREATE POLICY "clients_select_own_bookings" ON vendor_bookings
   FOR SELECT
-  USING (client_user_id = auth.uid());
+  USING (client_user_id = requesting_user_id());

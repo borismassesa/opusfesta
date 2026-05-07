@@ -131,20 +131,29 @@ function PhoneField({ initial }: { initial: string | null }) {
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function save() {
     setSaving(true)
+    setError(null)
     try {
-      await fetch('/api/profile', {
+      const res = await fetch('/api/profile', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ phone }),
       })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setError((json as Record<string, unknown>).error as string ?? 'Failed to save. Please try again.')
+        return
+      }
       setSaved(true)
+      setEditing(false)
       setTimeout(() => setSaved(false), 2000)
+    } catch {
+      setError('Network error. Please try again.')
     } finally {
       setSaving(false)
-      setEditing(false)
     }
   }
 
@@ -158,7 +167,7 @@ function PhoneField({ initial }: { initial: string | null }) {
           <input
             type="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => { setPhone(e.target.value); setError(null) }}
             placeholder="+255 7XX XXX XXX"
             autoFocus
             className="flex-1 text-sm font-semibold border-b border-[#C9A0DC] bg-transparent focus:outline-none text-gray-900 pb-0.5"
@@ -173,12 +182,15 @@ function PhoneField({ initial }: { initial: string | null }) {
           </button>
           <button
             type="button"
-            onClick={() => { setPhone(initial ?? ''); setEditing(false) }}
+            onClick={() => { setPhone(initial ?? ''); setEditing(false); setError(null) }}
             className="text-xs font-medium text-gray-400 hover:text-gray-600 transition-colors"
           >
             Cancel
           </button>
         </div>
+        {error && (
+          <p className="mt-1 text-xs text-red-500 px-6">{error}</p>
+        )}
       </div>
     )
   }

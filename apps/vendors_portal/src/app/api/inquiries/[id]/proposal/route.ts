@@ -107,6 +107,7 @@ async function acceptCounter(
   await createBookingFromInquiry(supabase, {
     id: inquiryId,
     vendor_id: inquiry.vendor_id,
+    user_id: inquiry.user_id,
     name: inquiry.name,
     email: inquiry.email,
     phone: inquiry.phone,

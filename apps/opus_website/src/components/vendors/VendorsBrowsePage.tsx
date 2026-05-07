@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { LucideIcon } from 'lucide-react'
@@ -419,6 +419,7 @@ function BrowseCard({ vendor, hovered, onHover }: {
   const images = getVendorCardImages(vendor)
   const [idx, setIdx] = useState(0)
   const dragStart = useRef<number | null>(null)
+  const router = useRouter()
   const prev = (e: React.MouseEvent) => { e.preventDefault(); setIdx((i) => (i - 1 + images.length) % images.length) }
   const next = (e: React.MouseEvent) => { e.preventDefault(); setIdx((i) => (i + 1) % images.length) }
   const onTouchStart = (e: React.TouchEvent) => { dragStart.current = e.touches[0].clientX }
@@ -522,13 +523,12 @@ function BrowseCard({ vendor, hovered, onHover }: {
             <p className="text-[10px] text-gray-400">Starting at</p>
             <p className="text-[15px] font-bold text-[#1A1A1A]">{startPrice}</p>
           </div>
-          <Link
-            href={`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`}
-            onClick={(e) => e.stopPropagation()}
+          <button
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`) }}
             className="shrink-0 rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-bold text-[#1A1A1A] transition-colors hover:bg-[#b98dcc]"
           >
             Get a quote
-          </Link>
+          </button>
         </div>
       </div>
     </Link>
@@ -594,6 +594,7 @@ function GridCardImageCarousel({ vendor }: { vendor: Vendor }) {
 function GridCard({ vendor }: { vendor: Vendor }) {
   const isNew = vendor.badge === 'New'
   const startingPrice = vendor.priceRange.split('–')[0].trim()
+  const router = useRouter()
 
   return (
     <Link href={`${VENDORS_BASE_PATH}/${vendor.slug}`}
@@ -656,9 +657,9 @@ function GridCard({ vendor }: { vendor: Vendor }) {
             <p className="font-display text-[16px] leading-none text-black">{startingPrice}</p>
           </div>
           {isNew ? (
-            <Link href={`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`} onClick={(e) => e.stopPropagation()} className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[rgba(201,160,220,0.15)]">Get a quote</Link>
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`) }} className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[rgba(201,160,220,0.15)]">Get a quote</button>
           ) : (
-            <Link href={`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`} onClick={(e) => e.stopPropagation()} className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[#b98dcc]">Get a quote</Link>
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`) }} className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[#b98dcc]">Get a quote</button>
           )}
         </div>
       </div>
@@ -676,6 +677,7 @@ function MapListCard({ vendor, onHover, onClick }: {
   const images = getVendorCardImages(vendor)
   const [idx, setIdx] = useState(0)
   const dragStart = useRef<number | null>(null)
+  const router = useRouter()
 
   const prev = (e: React.MouseEvent) => { e.preventDefault(); setIdx((i) => (i - 1 + images.length) % images.length) }
   const next = (e: React.MouseEvent) => { e.preventDefault(); setIdx((i) => (i + 1) % images.length) }
@@ -781,9 +783,9 @@ function MapListCard({ vendor, onHover, onClick }: {
             <p className="font-display text-[16px] leading-none text-black">{startingPrice}</p>
           </div>
           {isNew ? (
-            <Link href={`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`} onClick={(e) => e.stopPropagation()} className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[rgba(201,160,220,0.15)]">Get a quote</Link>
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`) }} className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[rgba(201,160,220,0.15)]">Get a quote</button>
           ) : (
-            <Link href={`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`} onClick={(e) => e.stopPropagation()} className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[#b98dcc]">Get a quote</Link>
+            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`) }} className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[#b98dcc]">Get a quote</button>
           )}
         </div>
       </div>

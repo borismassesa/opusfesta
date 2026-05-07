@@ -1,14 +1,17 @@
-import { NextResponse, type NextRequest } from 'next/server'
+import { NextResponse } from 'next/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
-function isValidEmail(e: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
-}
+export async function GET() {
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
-export async function GET(request: NextRequest) {
-  const email = request.nextUrl.searchParams.get('email')?.trim().toLowerCase() ?? ''
-  if (!isValidEmail(email)) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
+  const clerkUser = await currentUser().catch(() => null)
+  const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase()
+  if (!email) {
+    return NextResponse.json({ error: 'Could not resolve user email' }, { status: 400 })
   }
 
   const supabase = createSupabaseServerClient()

@@ -1,26 +1,23 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
-function isValidEmail(e: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
-}
-
-function getValidatedEmail(request: NextRequest, fromBody?: unknown) {
-  const bodyEmail = typeof fromBody === 'string' ? fromBody : ''
-  const queryEmail = request.nextUrl.searchParams.get('email')?.trim().toLowerCase() ?? ''
-  const email = (bodyEmail.trim().toLowerCase() || queryEmail)
-  return isValidEmail(email) ? email : null
+async function getAuthenticatedEmail(): Promise<string | null> {
+  const { userId } = await auth()
+  if (!userId) return null
+  const clerkUser = await currentUser().catch(() => null)
+  return clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase() ?? null
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const email = getValidatedEmail(request)
+  const email = await getAuthenticatedEmail()
 
   if (!email) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const supabase = createSupabaseServerClient()
@@ -56,6 +53,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const email = await getAuthenticatedEmail()
+
+  if (!email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   let body: unknown
   try {
@@ -65,11 +67,6 @@ export async function PATCH(
   }
 
   const payload = body as Record<string, unknown>
-  const email = getValidatedEmail(request, payload.email)
-  if (!email) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
-  }
-
   const nextStatus = payload.status
   if (nextStatus !== 'closed') {
     return NextResponse.json({ error: 'Only status "closed" is supported' }, { status: 400 })
@@ -91,14 +88,14 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const email = getValidatedEmail(request)
+  const email = await getAuthenticatedEmail()
 
   if (!email) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const supabase = createSupabaseServerClient()

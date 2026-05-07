@@ -1,9 +1,8 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { MessageCircle, Calendar, MapPin, ChevronRight, Search, X } from 'lucide-react'
+import { MessageCircle, Calendar, MapPin, ChevronRight } from 'lucide-react'
 
 type InquiryStatus = 'pending' | 'responded' | 'accepted' | 'declined' | 'closed'
 
@@ -54,76 +53,15 @@ function formatDate(iso: string) {
   return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-// Wrapper to isolate useSearchParams inside a Suspense boundary
-function SearchParamsReader({
-  onParams,
-}: {
-  onParams: (email: string | null) => void
-}) {
-  const searchParams = useSearchParams()
-  useEffect(() => {
-    onParams(searchParams.get('email'))
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
-  return null
-}
-
 export default function InquiriesClient({ initialEmail, initialInquiries }: Props) {
-  const [email, setEmail] = useState(initialEmail ?? '')
-  const [submittedEmail, setSubmittedEmail] = useState(initialEmail ?? '')
-  const [inquiries, setInquiries] = useState<InquirySummary[] | null>(initialInquiries ?? null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [showSearch, setShowSearch] = useState(!initialEmail)
-
-  // When no initial data, read search params and sessionStorage
-  useEffect(() => {
-    if (initialEmail) return
-    const stored = sessionStorage.getItem('of_inquiry_email')
-    if (stored) setEmail(stored)
-  }, [initialEmail])
-
-  async function handleSearch(e: React.SyntheticEvent) {
-    e.preventDefault()
-    const trimmed = email.trim().toLowerCase()
-    if (!trimmed) return
-
-    setLoading(true)
-    setError('')
-    try {
-      const res = await fetch(`/api/my/inquiries?email=${encodeURIComponent(trimmed)}`)
-      const json = await res.json()
-      if (res.ok) {
-        sessionStorage.setItem('of_inquiry_email', trimmed)
-        setSubmittedEmail(trimmed)
-        setInquiries(json.inquiries)
-        setShowSearch(false)
-      } else {
-        setError(json.error ?? 'Something went wrong. Please try again.')
-      }
-    } catch {
-      setError('Network error. Please check your connection and try again.')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const hasPreloaded = !!initialEmail && initialInquiries !== null
+  const [inquiries] = useState<InquirySummary[] | null>(initialInquiries ?? null)
 
   return (
     <div className="py-8 px-4 sm:px-8 max-w-2xl">
-      <Suspense>
-        <SearchParamsReader
-          onParams={(urlEmail) => {
-            if (!initialEmail && urlEmail) setEmail(urlEmail)
-          }}
-        />
-      </Suspense>
-
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold text-[#1A1A1A] tracking-tight">Your Inquiries</h1>
-        {hasPreloaded ? (
+        {initialEmail ? (
           <p className="text-sm text-gray-400 mt-1">
             Showing quote requests linked to <span className="font-semibold text-[#1A1A1A]">{initialEmail}</span>
           </p>
@@ -133,81 +71,6 @@ export default function InquiriesClient({ initialEmail, initialInquiries }: Prop
           </p>
         )}
       </div>
-
-      {/* Search toggle */}
-      {hasPreloaded && (
-        <div className="mb-6">
-          {!showSearch ? (
-            <button
-              type="button"
-              onClick={() => setShowSearch(true)}
-              className="text-xs font-semibold text-gray-400 hover:text-[#1A1A1A] transition-colors flex items-center gap-1.5"
-            >
-              <Search className="w-3.5 h-3.5" />
-              Search by a different email
-            </button>
-          ) : (
-            <div className="bg-gray-50 rounded-xl border border-gray-100 p-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-xs font-semibold text-gray-600">Search by email</p>
-                <button type="button" onClick={() => setShowSearch(false)}>
-                  <X className="w-4 h-4 text-gray-400 hover:text-[#1A1A1A]" />
-                </button>
-              </div>
-              <form onSubmit={handleSearch} className="flex gap-2">
-                <div className="relative flex-1">
-                  <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                  <input
-                    type="email"
-                    value={email}
-                    onChange={e => setEmail(e.target.value)}
-                    placeholder="different@email.com"
-                    required
-                    className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-(--accent) transition-colors"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="shrink-0 px-4 py-2.5 rounded-xl bg-(--accent) font-semibold text-sm text-(--on-accent) hover:bg-(--accent-hover) disabled:opacity-60 transition-colors"
-                >
-                  {loading ? 'Searching…' : 'Search'}
-                </button>
-              </form>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Primary email search (no pre-loaded data) */}
-      {!hasPreloaded && (
-        <form onSubmit={handleSearch} className="flex gap-2 mb-8">
-          <div className="relative flex-1">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-            <input
-              type="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              required
-              className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:border-(--accent) transition-colors"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className="shrink-0 px-5 py-3 rounded-xl bg-(--accent) font-semibold text-sm text-(--on-accent) hover:bg-(--accent-hover) disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
-          >
-            {loading ? 'Searching…' : 'Search'}
-          </button>
-        </form>
-      )}
-
-      {error && (
-        <p className="text-sm text-red-600 rounded-xl bg-red-50 border border-red-200 px-4 py-3 mb-6">
-          {error}
-        </p>
-      )}
 
       {/* Results */}
       {inquiries !== null && (
@@ -219,31 +82,26 @@ export default function InquiriesClient({ initialEmail, initialInquiries }: Prop
               </div>
               <p className="font-semibold text-[#1A1A1A] mb-2">No requests found</p>
               <p className="text-sm text-gray-500 max-w-sm mx-auto leading-relaxed">
-                {hasPreloaded
-                  ? "You haven't sent any quote requests yet. Browse vendors to get started."
-                  : `No requests found for ${submittedEmail}. Check you used the exact email from the vendor contact form.`}
+                You haven&apos;t sent any quote requests yet. Browse vendors to get started.
               </p>
-              {hasPreloaded && (
-                <Link
-                  href="/vendors"
-                  className="inline-flex items-center gap-2 mt-5 bg-(--accent) text-(--on-accent) px-5 py-2.5 rounded-full text-sm font-bold hover:bg-(--accent-hover) transition-colors"
-                >
-                  Browse vendors
-                  <ChevronRight className="w-4 h-4" />
-                </Link>
-              )}
+              <Link
+                href="/vendors"
+                className="inline-flex items-center gap-2 mt-5 bg-(--accent) text-(--on-accent) px-5 py-2.5 rounded-full text-sm font-bold hover:bg-(--accent-hover) transition-colors"
+              >
+                Browse vendors
+                <ChevronRight className="w-4 h-4" />
+              </Link>
             </div>
           ) : (
             <>
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-400 mb-3">
                 {inquiries.length} {inquiries.length === 1 ? 'request' : 'requests'}
-                {submittedEmail && !hasPreloaded ? ` for ${submittedEmail}` : ''}
               </p>
               <ul className="space-y-3">
                 {inquiries.map(inq => (
                   <li key={inq.id}>
                     <Link
-                      href={`/my/inquiries/${inq.id}?email=${encodeURIComponent(submittedEmail || initialEmail || '')}`}
+                      href={`/my/inquiries/${inq.id}`}
                       className="flex items-start justify-between gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:border-(--accent)/30 hover:shadow-md transition-all group"
                     >
                       <div className="flex-1 min-w-0">
@@ -279,11 +137,11 @@ export default function InquiriesClient({ initialEmail, initialInquiries }: Prop
         </>
       )}
 
-      {/* Empty state before any search */}
-      {inquiries === null && !loading && (
+      {/* Empty state before data loads */}
+      {inquiries === null && (
         <div className="text-center py-16 text-gray-300">
           <MessageCircle className="w-10 h-10 mx-auto mb-3" />
-          <p className="text-sm text-gray-400">Enter your email above to track your quote requests.</p>
+          <p className="text-sm text-gray-400">No inquiry data available.</p>
         </div>
       )}
     </div>

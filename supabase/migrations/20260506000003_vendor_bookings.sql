@@ -78,24 +78,30 @@ ALTER TABLE vendor_bookings ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "vendors_select_own_bookings" ON vendor_bookings
   FOR SELECT
   USING (
-    vendor_id IN (
-      SELECT id FROM vendors WHERE requesting_user_id = auth.uid()
+    EXISTS (
+      SELECT 1 FROM vendors
+      WHERE vendors.id = vendor_bookings.vendor_id
+        AND vendors.user_id = requesting_user_id()
     )
   );
 
 CREATE POLICY "vendors_insert_own_bookings" ON vendor_bookings
   FOR INSERT
   WITH CHECK (
-    vendor_id IN (
-      SELECT id FROM vendors WHERE requesting_user_id = auth.uid()
+    EXISTS (
+      SELECT 1 FROM vendors
+      WHERE vendors.id = vendor_bookings.vendor_id
+        AND vendors.user_id = requesting_user_id()
     )
   );
 
 CREATE POLICY "vendors_update_own_bookings" ON vendor_bookings
   FOR UPDATE
   USING (
-    vendor_id IN (
-      SELECT id FROM vendors WHERE requesting_user_id = auth.uid()
+    EXISTS (
+      SELECT 1 FROM vendors
+      WHERE vendors.id = vendor_bookings.vendor_id
+        AND vendors.user_id = requesting_user_id()
     )
   );
 

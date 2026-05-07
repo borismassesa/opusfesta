@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import InquiryThread from './InquiryThread'
 
@@ -45,18 +46,23 @@ export type InquiryMessage = {
 
 interface Props {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ email?: string }>
 }
 
-export default async function InquiryDetailPage({ params, searchParams }: Readonly<Props>) {
+export default async function InquiryDetailPage({ params }: Readonly<Props>) {
   const { id } = await params
-  const { email } = await searchParams
 
-  if (!email) {
-    redirect(`/my/inquiries`)
+  const { userId } = await auth()
+  if (!userId) {
+    redirect('/sign-in')
   }
 
-  const normalizedEmail = email.trim().toLowerCase()
+  const clerkUser = await currentUser().catch(() => null)
+  const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase()
+  if (!email) {
+    redirect('/my/inquiries')
+  }
+
+  const normalizedEmail = email
   const supabase = createSupabaseServerClient()
 
   const { data: inquiry, error: inquiryErr } = await supabase

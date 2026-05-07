@@ -1,11 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
 type ProposalAction = 'accept' | 'counter'
-
-function isValidEmail(e: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
-}
 
 function parsePositiveInteger(value: unknown) {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) return value
@@ -22,6 +19,17 @@ export async function PATCH(
 ) {
   const { id } = await params
 
+  const { userId } = await auth()
+  if (!userId) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  const clerkUser = await currentUser().catch(() => null)
+  const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase()
+  if (!email) {
+    return NextResponse.json({ error: 'Could not resolve user email' }, { status: 400 })
+  }
+
   let body: unknown
   try {
     body = await request.json()
@@ -30,10 +38,6 @@ export async function PATCH(
   }
 
   const payload = body as Record<string, unknown>
-  const email = typeof payload.email === 'string' ? payload.email.trim().toLowerCase() : ''
-  if (!isValidEmail(email)) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
-  }
 
   const action = payload.action as ProposalAction | undefined
   if (action !== 'accept' && action !== 'counter') {

@@ -15,7 +15,8 @@ function nullIfBlank(value: string | undefined | null): string | null {
 }
 
 function validateEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  if (email.length > 254) return false
+  return /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email.trim())
 }
 
 function isValidDate(value: string): boolean {
