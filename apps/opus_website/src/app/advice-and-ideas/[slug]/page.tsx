@@ -115,43 +115,13 @@ export default async function AdviceIdeasDetailPage({
         </div>
       </div>
 
-      {/* Article header */}
-      <header className="mx-auto max-w-4xl pl-3 pr-4 pt-6 pb-8 sm:px-4 sm:pt-8">
-        <Link
-          href={getAdviceIdeasSectionHref(post.sectionId)}
-          className="inline-block text-[13px] font-semibold text-[var(--accent-hover)] transition-colors hover:text-[#1A1A1A]"
-        >
-          {post.category}
-        </Link>
-        <h1 className="mt-3 text-[28px] font-bold leading-[1.15] tracking-[-0.015em] text-[#1A1A1A] sm:text-[34px] md:text-[40px]">
-          {post.title}
-        </h1>
-        <p className="mt-4 text-[17px] leading-relaxed text-gray-600 sm:text-[18px]">
-          {post.excerpt}
-        </p>
-
-        <div className="mt-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-gray-500">
-          <span className="font-semibold text-[#1A1A1A]">{post.author}</span>
-          <span className="text-gray-300" aria-hidden>·</span>
-          <span>{post.authorRole}</span>
-          <span className="text-gray-300" aria-hidden>·</span>
-          <time>{post.date}</time>
-          <span className="text-gray-300" aria-hidden>·</span>
-          <span className="inline-flex items-center gap-1">
-            <Clock size={12} className="text-gray-400" aria-hidden />
-            {post.readTime}
-          </span>
-        </div>
-
-        {/* Share — small horizontal version for mobile/tablet only */}
-        <div className="mt-5 lg:hidden">
-          <ShareRow title={post.title} slug={post.slug} />
-        </div>
-      </header>
-
-      {/* Hero media */}
-      <figure className="mx-auto max-w-4xl pl-3 pr-4 sm:px-4">
-        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-gray-100">
+      {/* Hybrid hero — full-bleed image on top, title card overlapping on
+          desktop and stacked below on mobile. Image first sets the magazine
+          feel; the card keeps the title legible regardless of cover-photo
+          composition (so we don't bet on every contributor having Vogue-grade
+          negative space). */}
+      <figure className="relative mt-4 w-full">
+        <div className="relative aspect-[4/5] w-full overflow-hidden bg-gray-100 sm:aspect-[16/9] md:aspect-[21/9]">
           {post.heroMedia.type === 'video' ? (
             <video
               src={post.heroMedia.src}
@@ -168,12 +138,54 @@ export default async function AdviceIdeasDetailPage({
               alt={post.heroMedia.alt}
               fill
               priority
-              sizes="(min-width: 768px) 768px, 100vw"
+              sizes="100vw"
               className="object-cover"
             />
           )}
+          {/* Soft fade into the page — anchors the white title card visually
+              so it reads as emerging from the photo, not slapped on top. */}
+          <div
+            aria-hidden
+            className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-white/40 to-transparent md:h-40"
+          />
         </div>
       </figure>
+
+      {/* Article header — floating title card */}
+      <header className="relative z-10 mx-auto -mt-10 max-w-4xl px-3 sm:-mt-16 sm:px-4 md:-mt-24">
+        <div className="rounded-2xl bg-white p-6 shadow-[0_12px_40px_-12px_rgba(0,0,0,0.18)] ring-1 ring-gray-100 sm:p-8 md:p-10">
+          <Link
+            href={getAdviceIdeasSectionHref(post.sectionId)}
+            className="inline-block text-[13px] font-semibold text-[var(--accent-hover)] transition-colors hover:text-[#1A1A1A]"
+          >
+            {post.category}
+          </Link>
+          <h1 className="mt-3 text-[28px] font-bold leading-[1.15] tracking-[-0.015em] text-[#1A1A1A] sm:text-[34px] md:text-[40px]">
+            {post.title}
+          </h1>
+          <p className="mt-4 text-[17px] leading-relaxed text-gray-600 sm:text-[18px]">
+            {post.excerpt}
+          </p>
+
+          <div className="mt-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-gray-500">
+            <span className="font-semibold text-[#1A1A1A]">{post.author}</span>
+            <span className="text-gray-300" aria-hidden>·</span>
+            <span>{post.authorRole}</span>
+            <span className="text-gray-300" aria-hidden>·</span>
+            <time>{post.date}</time>
+            <span className="text-gray-300" aria-hidden>·</span>
+            <span className="inline-flex items-center gap-1">
+              <Clock size={12} className="text-gray-400" aria-hidden />
+              {post.readTime}
+            </span>
+          </div>
+
+          {/* Share — small horizontal version for mobile/tablet only */}
+          <div className="mt-5 lg:hidden">
+            <ShareRow title={post.title} slug={post.slug} />
+          </div>
+        </div>
+      </header>
 
       {/* Body */}
       <div className="mx-auto max-w-4xl pl-3 pr-4 pt-12 pb-16 sm:px-4">

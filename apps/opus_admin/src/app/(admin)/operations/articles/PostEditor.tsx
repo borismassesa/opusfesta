@@ -13,7 +13,6 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
-  Eye,
   EyeOff,
   MessageSquare,
   Plus,
@@ -35,6 +34,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Card, Field, FieldGroup, inputCls } from '@/app/(admin)/cms/advice-and-ideas/_ui'
 import { resolveMediaUrl } from '@/app/(admin)/cms/advice-and-ideas/_media'
+import { ArticleEditor } from '@/lib/editor'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot } from '@/components/HeaderPortals'
 import { createAdvicePost, updateAdvicePost, uploadAdviceMedia, type PostUpsertInput } from './actions'
@@ -282,7 +282,6 @@ export default function PostEditor({
   }, [])
 
   const publishErrors = useMemo(() => validateForPublish(draft), [draft])
-  const canPublish = publishErrors.length === 0
   const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL ?? ''
   const previewUrl =
     workflow === 'post' && draft.slug
@@ -685,18 +684,25 @@ export default function PostEditor({
     </>
   )
 
+  // === RENDER ===
+  // Two-column editor layout. Left column = writing canvas (title, summary,
+  // hero, body, seed comments — what the admin is *making*). Right column =
+  // metadata rail (slug, category, section, author, dates — what the admin
+  // is *configuring*). Mirrors the contributor editor's WritingCanvas +
+  // RightRail pattern. On <lg the rail collapses below the canvas.
   return (
     <div className="px-8 pt-8 pb-12">
       {!isContributorSubmission && <HeaderActionsSlot>{actionControls}</HeaderActionsSlot>}
 
-      <div className="max-w-[1200px] mx-auto space-y-6">
+      <div className="max-w-[1280px] mx-auto">
         {isContributorSubmission && (
-          <div className="sticky top-0 z-20 -mx-4 flex flex-wrap items-center justify-end gap-2 border-b border-gray-100 bg-[#FDFDFD]/95 px-4 py-3 backdrop-blur">
+          <div className="sticky top-0 z-20 -mx-4 mb-6 flex flex-wrap items-center justify-end gap-2 border-b border-gray-100 bg-[#FDFDFD]/95 px-4 py-3 backdrop-blur">
             {actionControls}
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-4">
+        {/* Top row — back link + preview link, full width above the grid */}
+        <div className="mb-6 flex items-center justify-between gap-4">
           <Link
             href={backHref ?? '/operations/articles'}
             className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 whitespace-nowrap"
@@ -717,427 +723,438 @@ export default function PostEditor({
           )}
         </div>
 
+        {/* Banners (correction notes / admin notes / publish errors) sit
+            above the grid so they get full reading width. */}
         {correctionNotes && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/70 px-4 py-3 text-sm text-amber-900">
             <p className="font-semibold">Correction request</p>
             <p className="mt-1 leading-relaxed">{correctionNotes}</p>
           </div>
         )}
 
         {adminNotes && isAdminSubmission && (
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
+          <div className="mb-6 rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm text-gray-700">
             <p className="font-semibold text-gray-900">Admin notes</p>
             <p className="mt-1 leading-relaxed">{adminNotes}</p>
           </div>
         )}
 
-      {/* Publish readiness panel — only shown once the author has tried to publish */}
-      {showPublishErrors && publishErrors.length > 0 && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 flex items-start gap-3">
-          <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-amber-800">
-              A few things to fix before {isContributorSubmission ? 'submitting' : 'publishing'}
-            </p>
-            <ul className="mt-1 list-disc pl-4 text-sm text-amber-700 space-y-0.5">
-              {publishErrors.map((e) => (
-                <li key={e}>{e}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      )}
-
-      {/* Essentials */}
-      <Card title="Essentials">
-        <Field label="Title">
-          <input type="text" value={draft.title} onChange={(e) => onTitleChange(e.target.value)} className={inputCls} />
-        </Field>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field label="Slug (URL)">
-            <div className="flex items-stretch">
-              <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 text-xs text-gray-500">
-                /advice-and-ideas/
-              </span>
-              <input
-                type="text"
-                value={draft.slug}
-                onChange={(e) => onSlugChange(e.target.value)}
-                className={cn(inputCls, 'rounded-l-none')}
-                placeholder="post-slug"
-              />
-            </div>
-          </Field>
-          <Field label="Category">
-            <select
-              value={CATEGORY_OPTIONS.includes(draft.category) ? draft.category : ''}
-              onChange={(e) => set('category', e.target.value)}
-              className={inputCls}
-            >
-              <option value="" disabled>
-                Select a category…
-              </option>
-              {CATEGORY_OPTIONS.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field label="Section (used to group on index)">
-            <select
-              value={draft.section_id}
-              onChange={(e) => set('section_id', e.target.value as AdviceIdeasSectionId)}
-              className={inputCls}
-            >
-              {ADVICE_IDEAS_SECTION_IDS.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field
-            label="Read time (minutes)"
-            hint={
-              <span className="inline-flex items-center gap-1">
-                <Clock className="w-3 h-3" />
-                {wordCount} word{wordCount === 1 ? '' : 's'}
-                {!readTimeManual ? ' · auto' : ''}
-              </span>
-            }
-          >
-            <div className="flex items-stretch gap-2">
-              <input
-                type="number"
-                min={1}
-                value={draft.read_time}
-                onChange={(e) => {
-                  setReadTimeManual(true)
-                  set('read_time', parseInt(e.target.value || '1', 10))
-                }}
-                className={inputCls}
-              />
-              {readTimeManual && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setReadTimeManual(false)
-                    set('read_time', suggestedReadTime)
-                  }}
-                  className="text-xs font-semibold text-[#7E5896] hover:text-[#5c3f72] px-2 rounded-md border border-[#E7D5EE] hover:bg-[#F8F0FB] whitespace-nowrap"
-                  title="Reset to estimated read time based on body word count"
-                >
-                  Auto
-                </button>
-              )}
-            </div>
-          </Field>
-        </div>
-
-        <Field label="Excerpt (shown on cards)">
-          <textarea value={draft.excerpt} onChange={(e) => set('excerpt', e.target.value)} rows={2} className={inputCls} />
-        </Field>
-        <Field label="Description (SEO + meta)">
-          <textarea
-            value={draft.description}
-            onChange={(e) => set('description', e.target.value)}
-            rows={2}
-            className={inputCls}
-          />
-        </Field>
-      </Card>
-
-      {/* Author + publication */}
-      <Card title="Author & publication">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <Field label="Author name">
-            <input
-              type="text"
-              value={draft.author_name}
-              onChange={(e) => set('author_name', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Author role/title">
-            <input
-              type="text"
-              value={draft.author_role}
-              onChange={(e) => set('author_role', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
-        </div>
-        <Field label="Author avatar (optional)">
-          <div
-            onDragOver={(e) => {
-              e.preventDefault()
-              setAvatarDragOver(true)
-            }}
-            onDragLeave={() => setAvatarDragOver(false)}
-            onDrop={onAvatarDrop}
-            className={cn(
-              'flex items-center gap-4 rounded-xl border-2 border-dashed p-3 transition-colors',
-              avatarDragOver
-                ? 'border-[#C9A0DC] bg-[#F8F0FB]'
-                : 'border-gray-200 bg-gray-50/40 hover:border-gray-300'
-            )}
-          >
-            <div className="w-16 h-16 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center text-[10px] font-bold uppercase tracking-wider text-gray-400">
-              {draft.author_avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={resolveMediaUrl(draft.author_avatar_url)}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span>No image</span>
-              )}
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm text-gray-700">
-                Drag &amp; drop an image here, or{' '}
-                <button
-                  type="button"
-                  onClick={() => avatarInputRef.current?.click()}
-                  disabled={pending}
-                  className="font-semibold text-[#7E5896] hover:text-[#5c3f72] underline-offset-2 hover:underline disabled:opacity-50"
-                >
-                  browse
-                </button>
-                .
+        {showPublishErrors && publishErrors.length > 0 && (
+          <div className="mb-6 rounded-xl border border-amber-200 bg-amber-50/60 px-4 py-3 flex items-start gap-3">
+            <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-amber-800">
+                A few things to fix before {isContributorSubmission ? 'submitting' : 'publishing'}
               </p>
-              <p className="text-xs text-gray-500 mt-0.5">PNG / JPG / WebP — appears in the Author Card.</p>
+              <ul className="mt-1 list-disc pl-4 text-sm text-amber-700 space-y-0.5">
+                {publishErrors.map((e) => (
+                  <li key={e}>{e}</li>
+                ))}
+              </ul>
             </div>
-            {draft.author_avatar_url && (
-              <button
-                type="button"
-                onClick={() => set('author_avatar_url', '')}
-                disabled={pending}
-                className="text-xs font-medium text-gray-500 hover:text-gray-900 px-2 py-1 rounded-md hover:bg-white border border-transparent hover:border-gray-200 transition-colors disabled:opacity-50 shrink-0"
-              >
-                Remove
-              </button>
-            )}
-            <input
-              ref={avatarInputRef}
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={onAvatarFileInput}
-            />
           </div>
-        </Field>
-        {!isContributorSubmission && (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end">
-              <Field label="Published date">
-                <input
-                  type="date"
-                  value={toDateInput(draft.published_at)}
-                  onChange={(e) => set('published_at', fromDateInput(e.target.value))}
-                  className={inputCls}
-                />
-              </Field>
-              <label className="flex items-center gap-2 text-sm text-gray-700 pb-2 whitespace-nowrap">
-                <input
-                  type="checkbox"
-                  checked={draft.featured}
-                  onChange={(e) => set('featured', e.target.checked)}
-                  className="rounded border-gray-300"
-                />
-                Feature on the homepage
-              </label>
-            </div>
-            <p className="text-xs text-gray-500">
-              {isAdminSubmission
-                ? 'Approval and publishing are controlled from the review action bar above.'
-                : 'Publish status is controlled from the action bar above — use '}
-              {!isAdminSubmission && (
-                <>
-                  <span className="font-semibold text-gray-700">Publish</span> /{' '}
-                  <span className="font-semibold text-gray-700">Unpublish</span>.
-                </>
-              )}
-            </p>
-          </>
         )}
-      </Card>
 
-      {/* Hero media */}
-      <Card title="Hero media">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="space-y-3">
-            <Field label="Media type">
-              <select
-                value={draft.hero_media_type}
-                onChange={(e) => set('hero_media_type', e.target.value as 'image' | 'video')}
-                className={inputCls}
+        {/* Two-column layout */}
+        <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+
+          {/* === LEFT: writing canvas === */}
+          <div className="min-w-0 space-y-6">
+
+            {/* Document header — borderless title + summary, Notion-style. */}
+            <div className="px-1 pt-2 pb-1">
+              <input
+                type="text"
+                aria-label="Article title"
+                value={draft.title}
+                onChange={(e) => onTitleChange(e.target.value)}
+                placeholder="Article title"
+                className="block w-full border-0 bg-transparent p-0 text-[28px] font-semibold leading-tight tracking-tight text-gray-950 outline-none placeholder:text-gray-400 sm:text-[32px]"
+              />
+              <textarea
+                aria-label="Article summary"
+                value={draft.excerpt}
+                onChange={(e) => {
+                  set('excerpt', e.target.value)
+                  e.currentTarget.style.height = 'auto'
+                  e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`
+                }}
+                placeholder="Short summary — appears on cards and in search results."
+                rows={2}
+                className="mt-5 block min-h-[48px] w-full resize-none border-0 bg-transparent p-0 text-base leading-[1.6] text-gray-600 outline-none placeholder:text-gray-400"
+              />
+            </div>
+
+            {/* Hero media */}
+            <Card title="Hero media">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-3">
+                  <Field label="Media type">
+                    <select
+                      value={draft.hero_media_type}
+                      onChange={(e) => set('hero_media_type', e.target.value as 'image' | 'video')}
+                      className={inputCls}
+                    >
+                      <option value="image">Image</option>
+                      <option value="video">Video</option>
+                    </select>
+                  </Field>
+                  <Field label="Media URL">
+                    <input
+                      type="text"
+                      value={draft.hero_media_src}
+                      onChange={(e) => set('hero_media_src', e.target.value)}
+                      className={inputCls}
+                      placeholder="/assets/images/… or https://…"
+                    />
+                  </Field>
+                  <Field label="Alt text">
+                    <input
+                      type="text"
+                      value={draft.hero_media_alt}
+                      onChange={(e) => set('hero_media_alt', e.target.value)}
+                      className={inputCls}
+                    />
+                  </Field>
+                  {draft.hero_media_type === 'video' && (
+                    <Field label="Poster image URL (optional)">
+                      <input
+                        type="text"
+                        value={draft.hero_media_poster}
+                        onChange={(e) => set('hero_media_poster', e.target.value)}
+                        className={inputCls}
+                      />
+                    </Field>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => heroInputRef.current?.click()}
+                      disabled={pending}
+                      className="flex items-center gap-2 text-sm font-medium text-gray-700 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload media
+                    </button>
+                    <input
+                      ref={heroInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      hidden
+                      onChange={uploadHero}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="rounded-xl overflow-hidden bg-gray-100 aspect-[16/10]">
+                    {draft.hero_media_src ? (
+                      draft.hero_media_type === 'video' ? (
+                        <video src={resolveMediaUrl(draft.hero_media_src)} className="w-full h-full object-cover" autoPlay muted loop playsInline />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={resolveMediaUrl(draft.hero_media_src)} alt="" className="w-full h-full object-cover" />
+                      )
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
+                        No media set
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Article body — TipTap WYSIWYG editor (same component the
+                contributor flow uses, in admin mode). Replaces the legacy
+                form-based section/block editor. The data shape on disk is
+                still AdviceIdeasBodySection[]; the editor translates to/from
+                its internal TipTap doc transparently. */}
+            <Card title="Article body">
+              <ArticleEditor
+                value={draft.body}
+                onChange={(body) => setDraft((d) => ({ ...d, body }))}
+                mode="admin"
+                placeholder="Start writing the article — use the toolbar to add headings, lists, quotes, images…"
+                onUploadImage={async (file) => {
+                  const fd = new FormData()
+                  fd.append('file', file)
+                  fd.append('slug', draft.slug || 'new')
+                  if (id) fd.append('submissionId', id)
+                  const { url } = isContributorSubmission
+                    ? await uploadContributorMedia(fd)
+                    : await uploadAdviceMedia(fd)
+                  return url
+                }}
+              />
+            </Card>
+
+            {showSeedComments && (
+              <Card
+                title={`Seed comments (${draft.seed_comments.length})`}
+                action={
+                  <button
+                    type="button"
+                    onClick={() =>
+                      set('seed_comments', [
+                        ...draft.seed_comments,
+                        { id: `c-${Date.now()}`, name: '', body: '', date: new Date().toISOString().slice(0, 10), likes: 0 },
+                      ])
+                    }
+                    className="flex items-center gap-1.5 text-xs font-semibold text-[#7E5896] hover:text-[#5c3f72] px-2.5 py-1.5 rounded-md border border-[#E7D5EE] hover:bg-[#F8F0FB] transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add comment
+                  </button>
+                }
               >
-                <option value="image">Image</option>
-                <option value="video">Video</option>
-              </select>
-            </Field>
-            <Field label="Media URL">
-              <input
-                type="text"
-                value={draft.hero_media_src}
-                onChange={(e) => set('hero_media_src', e.target.value)}
-                className={inputCls}
-                placeholder="/assets/images/… or https://…"
-              />
-            </Field>
-            <Field label="Alt text">
-              <input
-                type="text"
-                value={draft.hero_media_alt}
-                onChange={(e) => set('hero_media_alt', e.target.value)}
-                className={inputCls}
-              />
-            </Field>
-            {draft.hero_media_type === 'video' && (
-              <Field label="Poster image URL (optional)">
+                <p className="text-xs text-gray-500 -mt-2 mb-2">
+                  Seed-populate the article&apos;s comment thread (shown beneath the Author Card).
+                </p>
+                <div className="space-y-3">
+                  {draft.seed_comments.map((c, i) => (
+                    <SeedCommentRow
+                      key={c.id}
+                      index={i}
+                      total={draft.seed_comments.length}
+                      comment={c}
+                      onChange={(patch) =>
+                        set(
+                          'seed_comments',
+                          draft.seed_comments.map((cc, idx) => (idx === i ? { ...cc, ...patch } : cc))
+                        )
+                      }
+                      onRemove={() =>
+                        set('seed_comments', draft.seed_comments.filter((_, idx) => idx !== i))
+                      }
+                      onMove={(dir) => {
+                        const t = i + dir
+                        if (t < 0 || t >= draft.seed_comments.length) return
+                        const next = [...draft.seed_comments]
+                        ;[next[i], next[t]] = [next[t], next[i]]
+                        set('seed_comments', next)
+                      }}
+                    />
+                  ))}
+                  {draft.seed_comments.length === 0 && (
+                    <div className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-6 text-center">
+                      No seed comments yet — add one above.
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
+          </div>
+
+          {/* === RIGHT: metadata rail (sticky on lg+) === */}
+          <aside className="space-y-6 lg:sticky lg:top-4">
+
+            {/* Author + publication */}
+            <Card title="Author & publication">
+              <Field label="Author name">
                 <input
                   type="text"
-                  value={draft.hero_media_poster}
-                  onChange={(e) => set('hero_media_poster', e.target.value)}
+                  value={draft.author_name}
+                  onChange={(e) => set('author_name', e.target.value)}
                   className={inputCls}
                 />
               </Field>
-            )}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => heroInputRef.current?.click()}
-                disabled={pending}
-                className="flex items-center gap-2 text-sm font-medium text-gray-700 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
-              >
-                <Upload className="w-4 h-4" />
-                Upload media
-              </button>
-              <input
-                ref={heroInputRef}
-                type="file"
-                accept="image/*,video/*"
-                hidden
-                onChange={uploadHero}
-              />
-            </div>
-          </div>
-          <div>
-            <div className="rounded-xl overflow-hidden bg-gray-100 aspect-[16/10]">
-              {draft.hero_media_src ? (
-                draft.hero_media_type === 'video' ? (
-                  <video src={resolveMediaUrl(draft.hero_media_src)} className="w-full h-full object-cover" autoPlay muted loop playsInline />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={resolveMediaUrl(draft.hero_media_src)} alt="" className="w-full h-full object-cover" />
-                )
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-xs text-gray-400">
-                  No media set
+              <Field label="Author role/title">
+                <input
+                  type="text"
+                  value={draft.author_role}
+                  onChange={(e) => set('author_role', e.target.value)}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Author avatar (optional)">
+                <div
+                  onDragOver={(e) => {
+                    e.preventDefault()
+                    setAvatarDragOver(true)
+                  }}
+                  onDragLeave={() => setAvatarDragOver(false)}
+                  onDrop={onAvatarDrop}
+                  className={cn(
+                    'flex items-center gap-3 rounded-xl border-2 border-dashed p-3 transition-colors',
+                    avatarDragOver
+                      ? 'border-[#C9A0DC] bg-[#F8F0FB]'
+                      : 'border-gray-200 bg-gray-50/40 hover:border-gray-300'
+                  )}
+                >
+                  <div className="w-12 h-12 rounded-full bg-white border border-gray-200 overflow-hidden shrink-0 flex items-center justify-center text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                    {draft.author_avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={resolveMediaUrl(draft.author_avatar_url)}
+                        alt=""
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>No</span>
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-gray-700">
+                      Drag &amp; drop, or{' '}
+                      <button
+                        type="button"
+                        onClick={() => avatarInputRef.current?.click()}
+                        disabled={pending}
+                        className="font-semibold text-[#7E5896] hover:text-[#5c3f72] underline-offset-2 hover:underline disabled:opacity-50"
+                      >
+                        browse
+                      </button>
+                      .
+                    </p>
+                  </div>
+                  {draft.author_avatar_url && (
+                    <button
+                      type="button"
+                      onClick={() => set('author_avatar_url', '')}
+                      disabled={pending}
+                      className="text-xs font-medium text-gray-500 hover:text-gray-900 px-2 py-1 rounded-md hover:bg-white border border-transparent hover:border-gray-200 transition-colors disabled:opacity-50 shrink-0"
+                    >
+                      Remove
+                    </button>
+                  )}
+                  <input
+                    ref={avatarInputRef}
+                    type="file"
+                    accept="image/*"
+                    hidden
+                    onChange={onAvatarFileInput}
+                  />
                 </div>
+              </Field>
+              {!isContributorSubmission && (
+                <>
+                  <Field label="Published date">
+                    <input
+                      type="date"
+                      value={toDateInput(draft.published_at)}
+                      onChange={(e) => set('published_at', fromDateInput(e.target.value))}
+                      className={inputCls}
+                    />
+                  </Field>
+                  <label className="flex items-center gap-2 text-sm text-gray-700 whitespace-nowrap">
+                    <input
+                      type="checkbox"
+                      checked={draft.featured}
+                      onChange={(e) => set('featured', e.target.checked)}
+                      className="rounded border-gray-300"
+                    />
+                    Feature on the homepage
+                  </label>
+                  <p className="text-xs text-gray-500">
+                    {isAdminSubmission
+                      ? 'Approval and publishing are controlled from the review action bar above.'
+                      : 'Publish status is controlled from the action bar above — use '}
+                    {!isAdminSubmission && (
+                      <>
+                        <span className="font-semibold text-gray-700">Publish</span> /{' '}
+                        <span className="font-semibold text-gray-700">Unpublish</span>.
+                      </>
+                    )}
+                  </p>
+                </>
               )}
-            </div>
-          </div>
-        </div>
-      </Card>
+            </Card>
 
-      {/* Body */}
-      <Card
-        title={`Body (${draft.body.length} section${draft.body.length === 1 ? '' : 's'})`}
-        action={
-          <button
-            type="button"
-            onClick={addSection}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#7E5896] hover:text-[#5c3f72] px-2.5 py-1.5 rounded-md border border-[#E7D5EE] hover:bg-[#F8F0FB] transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add section
-          </button>
-        }
-      >
-        <div className="space-y-3">
-          {draft.body.map((section, idx) => (
-            <BodySectionRow
-              key={section.id}
-              index={idx}
-              total={draft.body.length}
-              section={section}
-              onPatch={(patch) => updateSection(section.id, patch)}
-              onRemove={() => removeSection(section.id)}
-              onMove={(dir) => moveSection(section.id, dir)}
-              uploadWorkflow={workflow}
-              submissionId={id}
-            />
-          ))}
-          {draft.body.length === 0 && (
-            <div className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-8 text-center">
-              No body sections yet — add one above.
-            </div>
-          )}
-        </div>
-      </Card>
+            {/* Essentials — without title/excerpt (those live in the writing canvas) */}
+            <Card title="Essentials">
+              <Field label="Slug (URL)">
+                <div className="flex items-stretch">
+                  <span className="inline-flex items-center px-3 rounded-l-lg border border-r-0 border-gray-200 bg-gray-50 text-xs text-gray-500">
+                    /advice-and-ideas/
+                  </span>
+                  <input
+                    type="text"
+                    value={draft.slug}
+                    onChange={(e) => onSlugChange(e.target.value)}
+                    className={cn(inputCls, 'rounded-l-none')}
+                    placeholder="post-slug"
+                  />
+                </div>
+              </Field>
+              <Field label="Category">
+                <select
+                  value={CATEGORY_OPTIONS.includes(draft.category) ? draft.category : ''}
+                  onChange={(e) => set('category', e.target.value)}
+                  className={inputCls}
+                >
+                  <option value="" disabled>
+                    Select a category…
+                  </option>
+                  {CATEGORY_OPTIONS.map((c) => (
+                    <option key={c} value={c}>
+                      {c}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Section (used to group on index)">
+                <select
+                  value={draft.section_id}
+                  onChange={(e) => set('section_id', e.target.value as AdviceIdeasSectionId)}
+                  className={inputCls}
+                >
+                  {ADVICE_IDEAS_SECTION_IDS.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field
+                label="Read time (minutes)"
+                hint={
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="w-3 h-3" />
+                    {wordCount} word{wordCount === 1 ? '' : 's'}
+                    {!readTimeManual ? ' · auto' : ''}
+                  </span>
+                }
+              >
+                <div className="flex items-stretch gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    value={draft.read_time}
+                    onChange={(e) => {
+                      setReadTimeManual(true)
+                      set('read_time', parseInt(e.target.value || '1', 10))
+                    }}
+                    className={inputCls}
+                  />
+                  {readTimeManual && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReadTimeManual(false)
+                        set('read_time', suggestedReadTime)
+                      }}
+                      className="text-xs font-semibold text-[#7E5896] hover:text-[#5c3f72] px-2 rounded-md border border-[#E7D5EE] hover:bg-[#F8F0FB] whitespace-nowrap"
+                      title="Reset to estimated read time based on body word count"
+                    >
+                      Auto
+                    </button>
+                  )}
+                </div>
+              </Field>
+              <Field label="Description (SEO + meta)">
+                <textarea
+                  value={draft.description}
+                  onChange={(e) => set('description', e.target.value)}
+                  rows={2}
+                  className={inputCls}
+                />
+              </Field>
+            </Card>
 
-      {showSeedComments && (
-        <Card
-          title={`Seed comments (${draft.seed_comments.length})`}
-          action={
-            <button
-              type="button"
-              onClick={() =>
-                set('seed_comments', [
-                  ...draft.seed_comments,
-                  { id: `c-${Date.now()}`, name: '', body: '', date: new Date().toISOString().slice(0, 10), likes: 0 },
-                ])
-              }
-              className="flex items-center gap-1.5 text-xs font-semibold text-[#7E5896] hover:text-[#5c3f72] px-2.5 py-1.5 rounded-md border border-[#E7D5EE] hover:bg-[#F8F0FB] transition-colors"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Add comment
-            </button>
-          }
-        >
-          <p className="text-xs text-gray-500 -mt-2 mb-2">
-            Seed-populate the article&apos;s comment thread (shown beneath the Author Card).
-          </p>
-          <div className="space-y-3">
-            {draft.seed_comments.map((c, i) => (
-              <SeedCommentRow
-                key={c.id}
-                index={i}
-                total={draft.seed_comments.length}
-                comment={c}
-                onChange={(patch) =>
-                  set(
-                    'seed_comments',
-                    draft.seed_comments.map((cc, idx) => (idx === i ? { ...cc, ...patch } : cc))
-                  )
-                }
-                onRemove={() =>
-                  set('seed_comments', draft.seed_comments.filter((_, idx) => idx !== i))
-                }
-                onMove={(dir) => {
-                  const t = i + dir
-                  if (t < 0 || t >= draft.seed_comments.length) return
-                  const next = [...draft.seed_comments]
-                  ;[next[i], next[t]] = [next[t], next[i]]
-                  set('seed_comments', next)
-                }}
-              />
-            ))}
-            {draft.seed_comments.length === 0 && (
-              <div className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-6 text-center">
-                No seed comments yet — add one above.
-              </div>
-            )}
-          </div>
-        </Card>
-      )}
+          </aside>
+
+        </div>
       </div>
     </div>
   )
