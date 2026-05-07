@@ -385,45 +385,6 @@ export default function VendorReviewClient(props: VendorReviewProps) {
 
         <div className="space-y-10">
           <ReviewSection
-            title="Verification & Payout"
-            description="Approve the required legal documents, confirm the vendor agreement, and verify the payout account before activating the vendor."
-          >
-            <DocReviewCard
-              title="TRA TIN certificate"
-              subtitle="Tanzania Revenue Authority tax ID."
-              icon={FileText}
-              doc={tin}
-              missingMessage="Vendor hasn't uploaded the TIN certificate yet."
-              onApprove={(id) =>
-                runAction('Approve TIN', () => approveDocument(id))
-              }
-              onReject={(id, reason) =>
-                runAction('Reject TIN', () => rejectDocument(id, reason))
-              }
-              actionsDisabled={pending || isApproved || isSuspended}
-            />
-
-            <PayoutPanel vendorId={vendor.id} payout={payout} />
-
-            <DocReviewCard
-              title="Business license"
-              subtitle="BRELA registration, council license, or sole-proprietor declaration."
-              icon={FileText}
-              doc={license}
-              missingMessage="Vendor hasn't uploaded a business license yet."
-              onApprove={(id) =>
-                runAction('Approve license', () => approveDocument(id))
-              }
-              onReject={(id, reason) =>
-                runAction('Reject license', () => rejectDocument(id, reason))
-              }
-              actionsDisabled={pending || isApproved || isSuspended}
-            />
-
-            <AgreementReviewCard agreement={agreement} vendorId={vendor.id} />
-          </ReviewSection>
-
-          <ReviewSection
             title="Public Profile"
             description="Edit the vendor details couples see first: business profile, contact details, location, capacity, photos, style, and languages."
           >
@@ -462,32 +423,6 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                 style: vendor.styleColumn,
                 personality: vendor.personalityColumn,
                 languages: vendor.languagesColumn,
-              }}
-            />
-          </ReviewSection>
-
-          <ReviewSection
-            title="Availability & Booking Rules"
-            description="Set the operational rules that affect how couples book, pay deposits, cancel, and reschedule."
-          >
-            <AdminHoursEditor
-              vendorId={vendor.id}
-              initial={
-                vendor.hoursColumn
-                  ? (vendor.hoursColumn as Parameters<
-                      typeof AdminHoursEditor
-                    >[0]['initial'])
-                  : null
-              }
-            />
-
-            <AdminBookingPoliciesEditor
-              vendorId={vendor.id}
-              initial={{
-                depositPercent: vendor.depositPercentColumn,
-                cancellationLevel: vendor.cancellationLevelColumn,
-                reschedulePolicy: vendor.reschedulePolicyColumn,
-                parallelBookingCapacity: vendor.parallelBookingCapacityColumn,
               }}
             />
           </ReviewSection>
@@ -544,6 +479,71 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                 question: typeof f.question === 'string' ? f.question : '',
                 answer: typeof f.answer === 'string' ? f.answer : '',
               }))}
+            />
+          </ReviewSection>
+
+          <ReviewSection
+            title="Availability & Booking Rules"
+            description="Set the operational rules that affect how couples book, pay deposits, cancel, and reschedule."
+          >
+            <AdminHoursEditor
+              vendorId={vendor.id}
+              initial={
+                vendor.hoursColumn
+                  ? (vendor.hoursColumn as Parameters<
+                      typeof AdminHoursEditor
+                    >[0]['initial'])
+                  : null
+              }
+            />
+
+            <AdminBookingPoliciesEditor
+              vendorId={vendor.id}
+              initial={{
+                depositPercent: vendor.depositPercentColumn,
+                cancellationLevel: vendor.cancellationLevelColumn,
+                reschedulePolicy: vendor.reschedulePolicyColumn,
+                parallelBookingCapacity: vendor.parallelBookingCapacityColumn,
+              }}
+            />
+          </ReviewSection>
+
+          <ReviewSection
+            title="Verification & Payout"
+            description="Approve the required legal documents, confirm the vendor agreement, and verify the payout account before activating the vendor."
+          >
+            <AgreementReviewCard agreement={agreement} vendorId={vendor.id} />
+
+            <PayoutPanel vendorId={vendor.id} payout={payout} />
+
+            <DocReviewCard
+              title="TRA TIN certificate"
+              subtitle="Tanzania Revenue Authority tax ID."
+              icon={FileText}
+              doc={tin}
+              missingMessage="Vendor hasn't uploaded the TIN certificate yet."
+              onApprove={(id) =>
+                runAction('Approve TIN', () => approveDocument(id))
+              }
+              onReject={(id, reason) =>
+                runAction('Reject TIN', () => rejectDocument(id, reason))
+              }
+              actionsDisabled={pending || isApproved || isSuspended}
+            />
+
+            <DocReviewCard
+              title="Business license"
+              subtitle="BRELA registration, council license, or sole-proprietor declaration."
+              icon={FileText}
+              doc={license}
+              missingMessage="Vendor hasn't uploaded a business license yet."
+              onApprove={(id) =>
+                runAction('Approve license', () => approveDocument(id))
+              }
+              onReject={(id, reason) =>
+                runAction('Reject license', () => rejectDocument(id, reason))
+              }
+              actionsDisabled={pending || isApproved || isSuspended}
             />
           </ReviewSection>
 
