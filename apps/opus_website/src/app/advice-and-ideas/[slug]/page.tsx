@@ -86,7 +86,7 @@ export default async function AdviceIdeasDetailPage({
       <ArticleShareRail title={post.title} slug={post.slug} />
 
       {/* Top row — breadcrumb + search, aligned with article column */}
-      <div className="mx-auto flex max-w-4xl flex-col gap-3 pl-3 pr-4 pt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-4">
+      <div className="mx-auto flex max-w-2xl flex-col gap-3 pl-3 pr-4 pt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-4">
         <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex flex-wrap items-center gap-x-2 text-[14px] text-gray-700">
             <li>
@@ -115,78 +115,68 @@ export default async function AdviceIdeasDetailPage({
         </div>
       </div>
 
-      {/* Editorial hero — Vogue / Conde Nast pattern. Image fills a
-          constrained-height section, text overlaid directly on a soft dark
-          gradient at the bottom. No glass card chrome — chrome makes the
-          composition feel like a modal, not an article. Excerpt stays in
-          the hero but tightly capped so it doesn't crowd the title. */}
-      <section className="relative mt-4 flex min-h-[440px] w-full flex-col justify-end overflow-hidden bg-gray-950 sm:h-[55vh] sm:max-h-[680px]">
-        {/* Background media */}
-        {post.heroMedia.type === 'video' ? (
-          <video
-            src={post.heroMedia.src}
-            poster={post.heroMedia.poster}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="absolute inset-0 h-full w-full object-cover"
-          />
-        ) : (
-          <Image
-            src={post.heroMedia.src}
-            alt={post.heroMedia.alt}
-            fill
-            priority
-            sizes="100vw"
-            className="object-cover"
-          />
-        )}
+      {/* Article header */}
+      <header className="mx-auto max-w-2xl pl-3 pr-4 pt-6 pb-8 sm:px-4 sm:pt-8">
+        <Link
+          href={getAdviceIdeasSectionHref(post.sectionId)}
+          className="inline-block text-[13px] font-semibold text-[var(--accent-hover)] transition-colors hover:text-[#1A1A1A]"
+        >
+          {post.category}
+        </Link>
+        <h1 className="mt-3 text-[28px] font-bold leading-[1.15] tracking-[-0.015em] text-[#1A1A1A] sm:text-[34px] md:text-[40px]">
+          {post.title}
+        </h1>
+        <p className="mt-4 text-[17px] leading-relaxed text-gray-600 sm:text-[18px]">
+          {post.excerpt}
+        </p>
 
-        {/* Dark gradient — concentrated in the bottom half for text
-            legibility. Top half stays clear so the photo gets to breathe. */}
-        <div
-          aria-hidden
-          className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"
-        />
+        <div className="mt-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-gray-500">
+          <span className="font-semibold text-[#1A1A1A]">{post.author}</span>
+          <span className="text-gray-300" aria-hidden>·</span>
+          <span>{post.authorRole}</span>
+          <span className="text-gray-300" aria-hidden>·</span>
+          <time>{post.date}</time>
+          <span className="text-gray-300" aria-hidden>·</span>
+          <span className="inline-flex items-center gap-1">
+            <Clock size={12} className="text-gray-400" aria-hidden />
+            {post.readTime}
+          </span>
+        </div>
 
-        {/* Headline block — bottom-left aligned, directly on the image.
-            Generous padding from edges, max-w on title for line-length. */}
-        <header className="relative z-10 mx-auto w-full max-w-5xl px-4 pb-10 sm:px-8 sm:pb-12 md:px-12 md:pb-16">
-          <Link
-            href={getAdviceIdeasSectionHref(post.sectionId)}
-            className="inline-block text-[11px] font-bold uppercase tracking-[0.18em] text-white/85 transition-colors hover:text-white sm:text-[12px]"
-          >
-            {post.category}
-          </Link>
-          <h1 className="mt-3 max-w-[18ch] text-[32px] font-extrabold leading-[1.02] tracking-[-0.02em] text-white sm:text-[42px] md:text-[56px] lg:text-[64px]">
-            {post.title}
-          </h1>
-          <p className="mt-4 line-clamp-2 max-w-2xl text-[15px] leading-snug text-white/85 sm:text-base md:line-clamp-3 md:text-[17px]">
-            {post.excerpt}
-          </p>
-          <div className="mt-5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[12px] text-white/70 sm:text-[13px]">
-            <span className="inline-flex items-center gap-1">
-              <Clock size={12} className="text-white/60" aria-hidden />
-              {post.readTime}
-            </span>
-            <span aria-hidden className="text-white/30">·</span>
-            <time>{post.date}</time>
-            <span aria-hidden className="text-white/30">·</span>
-            <span>
-              By <span className="font-semibold text-white">{post.author}</span>
-            </span>
-          </div>
+        {/* Share — small horizontal version for mobile/tablet only */}
+        <div className="mt-5 lg:hidden">
+          <ShareRow title={post.title} slug={post.slug} />
+        </div>
+      </header>
 
-          {/* Share — small horizontal version for mobile/tablet only */}
-          <div className="mt-5 lg:hidden">
-            <ShareRow title={post.title} slug={post.slug} />
-          </div>
-        </header>
-      </section>
+      {/* Hero media */}
+      <figure className="mx-auto max-w-2xl pl-3 pr-4 sm:px-4">
+        <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-gray-100">
+          {post.heroMedia.type === 'video' ? (
+            <video
+              src={post.heroMedia.src}
+              poster={post.heroMedia.poster}
+              autoPlay
+              muted
+              loop
+              playsInline
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <Image
+              src={post.heroMedia.src}
+              alt={post.heroMedia.alt}
+              fill
+              priority
+              sizes="(min-width: 768px) 640px, 100vw"
+              className="object-cover"
+            />
+          )}
+        </div>
+      </figure>
 
       {/* Body */}
-      <div className="mx-auto max-w-4xl pl-3 pr-4 pt-12 pb-16 sm:px-4">
+      <div className="mx-auto max-w-2xl pl-3 pr-4 pt-12 pb-16 sm:px-4">
         <div id="article-rail-start" aria-hidden className="h-px w-full" />
         <div id="article-body">
           {post.body.map((section, i) => (
@@ -246,9 +236,11 @@ function ArticleSection({
           {section.label}
         </p>
       )}
-      <h2 className="mb-5 text-[22px] font-bold leading-[1.25] tracking-[-0.005em] text-[#1A1A1A] sm:text-[26px]">
-        {section.heading}
-      </h2>
+      {section.heading && (
+        <h2 className="mb-5 text-[22px] font-bold leading-[1.25] tracking-[-0.005em] text-[#1A1A1A] sm:text-[26px]">
+          {section.heading}
+        </h2>
+      )}
       <div className="space-y-5">
         {section.blocks.map((block, i) => (
           <BlockRenderer key={i} block={block} />
@@ -328,7 +320,7 @@ function BlockRenderer({ block }: { block: AdviceIdeasBlock }) {
               src={block.src}
               alt={block.alt}
               fill
-              sizes="(min-width: 768px) 768px, 100vw"
+              sizes="(min-width: 768px) 640px, 100vw"
               className="object-cover"
             />
           </div>
