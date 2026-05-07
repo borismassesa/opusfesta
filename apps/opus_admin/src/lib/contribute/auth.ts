@@ -41,8 +41,10 @@ export async function getContributorIdentity(): Promise<ContributorIdentity | nu
     readRole(user?.privateMetadata) ||
     readRole(user?.unsafeMetadata)
 
-  const roleLooksAdmin = role ? ['owner', 'admin', 'editor', 'viewer'].includes(role) : false
-  const adminRole = roleLooksAdmin ? await getAdminAccessRole() : null
+  // Always consult admin_whitelist (DB source of truth) so an admin whose
+  // Clerk role is still 'contributor' from a prior invite acceptance is
+  // recognized as an admin here too.
+  const adminRole = await getAdminAccessRole()
   return {
     clerkId: userId,
     email,

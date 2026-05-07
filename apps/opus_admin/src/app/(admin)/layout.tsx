@@ -4,13 +4,13 @@ import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { PageHeadingProvider } from '@/components/PageHeading'
 import { PageSearchProvider } from '@/components/PageSearch'
-import { getAdminAccessRole } from '@/lib/admin-auth'
+import { getAdminAccessRole, isAdminDashboardRole } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const role = await getAdminAccessRole()
-  if (!role) redirect('/contribute')
+  if (!isAdminDashboardRole(role)) redirect('/contribute')
 
   return (
     <PageHeadingProvider>

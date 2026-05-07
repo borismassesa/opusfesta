@@ -115,6 +115,7 @@ const sections: NavSection[] = [
         href: "/operations/articles",
         activePaths: ["/operations/authors", "/operations/articles/submissions"],
       },
+      { icon: ShieldCheck, label: "Admin Team", href: "/operations/admins" },
     ],
   },
   {
