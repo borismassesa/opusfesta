@@ -8,6 +8,11 @@ import Link from '@tiptap/extension-link'
 import Image from '@tiptap/extension-image'
 import Placeholder from '@tiptap/extension-placeholder'
 import CharacterCount from '@tiptap/extension-character-count'
+import { TextAlign } from '@tiptap/extension-text-align'
+import { Highlight } from '@tiptap/extension-highlight'
+import { Subscript } from '@tiptap/extension-subscript'
+import { Superscript } from '@tiptap/extension-superscript'
+import { Typography } from '@tiptap/extension-typography'
 import { Callout } from './nodes/Callout'
 import { LegacyBlock } from './nodes/LegacyBlock'
 
@@ -45,6 +50,13 @@ export function buildArticleEditorExtensions(
       includeChildren: false,
     }),
     CharacterCount,
+    // Word-style formatting extensions (driven by the new TipTap UI toolbar):
+    // alignment, highlight, sub/superscript, smart-typography substitutions.
+    TextAlign.configure({ types: ['heading', 'paragraph'] }),
+    Highlight.configure({ multicolor: true }),
+    Subscript,
+    Superscript,
+    Typography,
     Callout,
     LegacyBlock,
   ]

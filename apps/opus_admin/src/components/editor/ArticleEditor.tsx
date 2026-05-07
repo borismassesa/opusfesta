@@ -1,12 +1,11 @@
 'use client'
 
-// TipTap article-body editor. Step 1 of the OF-ADM-EDITOR-001 migration —
-// renders the body via a real rich-text engine instead of the legacy block-
-// form, while persisting through the existing `AdviceIdeasBodySection[]` save
-// path. Slash menu / drag handle / bubble menu / custom embed/gallery/section
-// nodes land in subsequent steps.
+// TipTap article-body editor. Wraps the editor instance in EditorContext so
+// the official TipTap UI components (toolbar, dropdowns, popovers) can
+// consume it. Persists through the existing AdviceIdeasBodySection[] save
+// path via legacyToTipTap / tiptapToLegacy.
 
-import { useEditor, EditorContent } from '@tiptap/react'
+import { useEditor, EditorContent, EditorContext } from '@tiptap/react'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { buildArticleEditorExtensions } from '@/lib/editor/extensions'
 import {
@@ -15,7 +14,22 @@ import {
   type ProseMirrorDoc,
 } from '@/lib/editor/translate'
 import type { AdviceIdeasBodySection } from '@/lib/cms/advice-ideas'
-import EditorToolbar from './EditorToolbar'
+import {
+  Toolbar,
+  ToolbarGroup,
+  ToolbarSeparator,
+} from '@/components/tiptap-ui-primitive/toolbar'
+import { Spacer } from '@/components/tiptap-ui-primitive/spacer'
+import { HeadingDropdownMenu } from '@/components/tiptap-ui/heading-dropdown-menu'
+import { ListDropdownMenu } from '@/components/tiptap-ui/list-dropdown-menu'
+import { BlockquoteButton } from '@/components/tiptap-ui/blockquote-button'
+import { ColorHighlightPopover } from '@/components/tiptap-ui/color-highlight-popover'
+import { LinkPopover } from '@/components/tiptap-ui/link-popover'
+import { MarkButton } from '@/components/tiptap-ui/mark-button'
+import { TextAlignButton } from '@/components/tiptap-ui/text-align-button'
+import { UndoRedoButton } from '@/components/tiptap-ui/undo-redo-button'
+import { Button } from '@/components/tiptap-ui-primitive/button'
+import { ImagePlusIcon } from '@/components/tiptap-icons/image-plus-icon'
 import './article-editor.css'
 
 type Props = {
@@ -118,14 +132,122 @@ export default function ArticleEditor({
     onWordCountRef.current?.(wc)
   }, [editor])
 
+  if (!editor) return null
+
   return (
-    <div>
-      {editable && <EditorToolbar editor={editor} onUploadImage={onUploadImage} />}
+    <EditorContext.Provider value={{ editor }}>
+      {editable && (
+        <Toolbar>
+          <ToolbarGroup>
+            <UndoRedoButton action="undo" />
+            <UndoRedoButton action="redo" />
+          </ToolbarGroup>
+
+          <ToolbarSeparator />
+
+          <ToolbarGroup>
+            <HeadingDropdownMenu modal={false} levels={[2, 3]} />
+            <ListDropdownMenu
+              modal={false}
+              types={['bulletList', 'orderedList']}
+            />
+            <BlockquoteButton />
+          </ToolbarGroup>
+
+          <ToolbarSeparator />
+
+          <ToolbarGroup>
+            <MarkButton type="bold" />
+            <MarkButton type="italic" />
+            <MarkButton type="underline" />
+            <MarkButton type="strike" />
+            <ColorHighlightPopover />
+            <LinkPopover />
+          </ToolbarGroup>
+
+          <ToolbarSeparator />
+
+          <ToolbarGroup>
+            <MarkButton type="superscript" />
+            <MarkButton type="subscript" />
+          </ToolbarGroup>
+
+          <ToolbarSeparator />
+
+          <ToolbarGroup>
+            <TextAlignButton align="left" />
+            <TextAlignButton align="center" />
+            <TextAlignButton align="right" />
+            <TextAlignButton align="justify" />
+          </ToolbarGroup>
+
+          {onUploadImage && (
+            <>
+              <ToolbarSeparator />
+              <ToolbarGroup>
+                <ImageInsertButton editor={editor} onUploadImage={onUploadImage} />
+              </ToolbarGroup>
+            </>
+          )}
+
+          <Spacer />
+        </Toolbar>
+      )}
       <EditorContent editor={editor} />
-    </div>
+    </EditorContext.Provider>
+  )
+}
+
+// Custom image-insert button that uses our existing onUploadImage callback
+// instead of the TipTap ImageUploadNode (which assumes a different upload
+// pipeline). Keeps the visual style consistent with the rest of the toolbar.
+function ImageInsertButton({
+  editor,
+  onUploadImage,
+}: {
+  editor: NonNullable<ReturnType<typeof useEditor>>
+  onUploadImage: (file: File) => Promise<string>
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  return (
+    <>
+      <Button
+        type="button"
+        data-style="ghost"
+        aria-label="Insert image"
+        tooltip="Insert image"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => fileRef.current?.click()}
+      >
+        <ImagePlusIcon className="tiptap-button-icon" />
+      </Button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        className="hidden"
+        onChange={async (event) => {
+          const file = event.target.files?.[0]
+          event.currentTarget.value = ''
+          if (!file) return
+          try {
+            const url = await onUploadImage(file)
+            editor
+              .chain()
+              .focus()
+              .setImage({ src: url, alt: file.name.replace(/\.[^.]+$/, '') })
+              .run()
+          } catch (err) {
+            console.error('Image upload failed', err)
+          }
+        }}
+      />
+    </>
   )
 }
 
 function countWords(text: string): number {
-  return text.trim() ? text.trim().split(/\s+/).filter(Boolean).length : 0
+  const trimmed = text.trim()
+  if (!trimmed) return 0
+  return trimmed.split(/\s+/).filter(Boolean).length
 }
