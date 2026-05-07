@@ -50,6 +50,10 @@ import {
   AdminStylePersonalityEditor,
   AdminTeamEditor,
 } from './StorefrontEditors'
+import {
+  VendorEditorProvider,
+  useEditorRegistry,
+} from './EditorRegistry'
 
 // ---------------------------------------------------------------------------
 // Types — mirror the server-page projection
@@ -287,6 +291,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
   }
 
   return (
+    <VendorEditorProvider>
     <div className="px-8 pt-4 pb-12">
       <div className="max-w-[1200px] mx-auto">
         {/* Status pill — portaled into the global Header next to the title. */}
@@ -412,7 +417,8 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           <nav className="flex gap-1" aria-label="Vendor review sections">
             {TAB_ORDER.map((tab) => {
               const isActive = activeTab === tab.id
-              const showDot = tab.id === 'verification' && verificationPending
+              const showPendingBadge =
+                tab.id === 'verification' && verificationPending
               return (
                 <button
                   key={tab.id}
@@ -427,11 +433,10 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                   )}
                 >
                   {tab.label}
-                  {showDot && (
-                    <span
-                      aria-label="Pending verification"
-                      className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500"
-                    />
+                  {showPendingBadge && (
+                    <span className="ml-1 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                      Review
+                    </span>
                   )}
                 </button>
               )
@@ -648,7 +653,9 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           )}
         </div>
       </div>
+      <GlobalSaveBar />
     </div>
+    </VendorEditorProvider>
   )
 }
 
@@ -677,6 +684,122 @@ function ReviewSection({
       </header>
       <div className="space-y-5">{children}</div>
     </section>
+  )
+}
+
+// Sticky bottom action bar — appears only when one or more storefront editors
+// are dirty. Replaces the per-section gray Save buttons. Save All runs every
+// dirty editor's save in parallel and shows a transient toast with the result.
+function GlobalSaveBar() {
+  const editors = useEditorRegistry()
+  const dirty = editors.filter((e) => e.dirty)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<
+    { kind: 'ok' | 'mixed' | 'error'; text: string } | null
+  >(null)
+
+  // Auto-dismiss toast after 3s.
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  const onSaveAll = async () => {
+    if (dirty.length === 0 || saving) return
+    setSaving(true)
+    setToast(null)
+    const results = await Promise.allSettled(
+      dirty.map(async (editor) => ({ editor, result: await editor.save() }))
+    )
+    setSaving(false)
+    let okCount = 0
+    const failed: string[] = []
+    results.forEach((r) => {
+      if (r.status === 'fulfilled' && r.value.result.ok) okCount += 1
+      else if (r.status === 'fulfilled') failed.push(r.value.editor.label)
+      else failed.push('Unknown section')
+    })
+    if (failed.length === 0) {
+      setToast({ kind: 'ok', text: `Saved ${okCount} section${okCount === 1 ? '' : 's'}.` })
+    } else if (okCount === 0) {
+      setToast({
+        kind: 'error',
+        text: `Couldn't save: ${failed.join(', ')}.`,
+      })
+    } else {
+      setToast({
+        kind: 'mixed',
+        text: `Saved ${okCount}, failed: ${failed.join(', ')}.`,
+      })
+    }
+  }
+
+  const onDiscardAll = () => {
+    if (dirty.length === 0 || saving) return
+    dirty.forEach((e) => e.discard())
+  }
+
+  if (dirty.length === 0 && !toast) return null
+
+  return (
+    <div
+      role="region"
+      aria-label="Unsaved changes"
+      className="fixed bottom-0 inset-x-0 z-40 pointer-events-none flex justify-center pb-4 px-4"
+    >
+      <div className="pointer-events-auto w-full max-w-[1200px]">
+        {toast && (
+          <div
+            className={cn(
+              'mb-3 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold shadow-lg border',
+              toast.kind === 'ok' &&
+                'bg-emerald-600 border-emerald-700 text-white',
+              toast.kind === 'mixed' &&
+                'bg-amber-500 border-amber-600 text-white',
+              toast.kind === 'error' &&
+                'bg-rose-600 border-rose-700 text-white'
+            )}
+          >
+            {toast.kind === 'ok' && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+            {toast.kind === 'mixed' && <AlertCircle className="w-3.5 h-3.5" />}
+            {toast.kind === 'error' && <XCircle className="w-3.5 h-3.5" />}
+            {toast.text}
+          </div>
+        )}
+        {dirty.length > 0 && (
+          <div className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-2xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] px-5 py-3">
+            <div className="text-sm">
+              <span className="font-semibold text-gray-900">
+                {dirty.length} unsaved change{dirty.length === 1 ? '' : 's'}
+              </span>
+              <span className="text-gray-500 ml-2 hidden sm:inline">
+                {dirty.map((e) => e.label).join(' · ')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onDiscardAll}
+                disabled={saving}
+                className="inline-flex items-center text-sm font-semibold px-4 py-2 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={onSaveAll}
+                disabled={saving}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-[#7E5896] hover:bg-[#6B4880] text-white shadow-sm disabled:opacity-50 transition-colors"
+              >
+                <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 

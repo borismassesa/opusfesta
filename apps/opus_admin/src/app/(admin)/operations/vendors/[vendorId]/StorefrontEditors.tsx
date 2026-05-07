@@ -16,6 +16,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { updateStorefrontSection, type StorefrontPatch } from '../actions'
+import { useEditorRegistration } from './EditorRegistry'
 
 // ---------------------------------------------------------------------------
 // Shared primitives — keeps the per-section editors compact
@@ -64,39 +65,6 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   )
 }
 
-function SaveBar({
-  pending,
-  dirty,
-  error,
-  saved,
-  onSave,
-  cta = 'Save',
-}: {
-  pending: boolean
-  dirty: boolean
-  error: string | null
-  saved: boolean
-  onSave: () => void
-  cta?: string
-}) {
-  return (
-    <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-      <div className="text-xs">
-        {error && <span className="text-rose-700">{error}</span>}
-        {saved && !error && <span className="text-emerald-700">Saved.</span>}
-      </div>
-      <button
-        type="button"
-        onClick={onSave}
-        disabled={pending || !dirty}
-        className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-gray-900 hover:bg-black text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-      >
-        {pending ? 'Saving…' : cta}
-      </button>
-    </div>
-  )
-}
-
 function newId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
@@ -104,24 +72,30 @@ function newId(): string {
 }
 
 // useStorefrontSave — boilerplate the editors share. Wraps the server action,
-// handles transitions, and refreshes the route on success.
+// handles transitions, refreshes the route on success, and resolves a Promise
+// so the global save bar can await the result and aggregate toasts.
 function useStorefrontSave(vendorId: string) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [saved, setSaved] = useState(false)
-  const save = (patch: StorefrontPatch, after?: () => void) => {
-    setError(null)
-    setSaved(false)
-    startTransition(async () => {
-      const res = await updateStorefrontSection(vendorId, patch)
-      if (!res.ok) {
-        setError(res.error)
-        return
-      }
-      setSaved(true)
-      after?.()
-      router.refresh()
+  const save = (
+    patch: StorefrontPatch
+  ): Promise<{ ok: boolean; error?: string }> => {
+    return new Promise((resolve) => {
+      setError(null)
+      setSaved(false)
+      startTransition(async () => {
+        const res = await updateStorefrontSection(vendorId, patch)
+        if (!res.ok) {
+          setError(res.error)
+          resolve(res)
+          return
+        }
+        setSaved(true)
+        router.refresh()
+        resolve(res)
+      })
     })
   }
   return { pending, error, saved, save }
@@ -159,7 +133,7 @@ export function AdminProfileEditor({
 }) {
   const [v, setV] = useState(initial)
   const dirty = JSON.stringify(v) !== JSON.stringify(initial)
-  const { pending, error, saved, save } = useStorefrontSave(vendorId)
+  const { save } = useStorefrontSave(vendorId)
 
   const onSave = () =>
     save({
@@ -183,6 +157,14 @@ export function AdminProfileEditor({
       socialTiktok: v.socialTiktok,
       socialWhatsapp: v.socialWhatsapp,
     })
+
+  useEditorRegistration({
+    id: 'profile-business',
+    label: 'Business profile & contact',
+    dirty,
+    save: onSave,
+    discard: () => setV(initial),
+  })
 
   return (
     <Card
@@ -344,13 +326,6 @@ export function AdminProfileEditor({
         </div>
       </div>
 
-      <SaveBar
-        pending={pending}
-        dirty={dirty}
-        error={error}
-        saved={saved}
-        onSave={onSave}
-      />
     </Card>
   )
 }
@@ -403,7 +378,19 @@ export function AdminStylePersonalityEditor({
     style !== initial.style ||
     personality !== initial.personality ||
     JSON.stringify(languages) !== JSON.stringify(initial.languages)
-  const { pending, error, saved, save } = useStorefrontSave(vendorId)
+  const { save } = useStorefrontSave(vendorId)
+
+  useEditorRegistration({
+    id: 'style-personality',
+    label: 'Style, personality & languages',
+    dirty,
+    save: () => save({ style, personality, languages }),
+    discard: () => {
+      setStyle(initial.style)
+      setPersonality(initial.personality)
+      setLanguages(initial.languages)
+    },
+  })
 
   const toggleLang = (id: string) =>
     setLanguages((cur) =>
@@ -472,13 +459,6 @@ export function AdminStylePersonalityEditor({
           })}
         </div>
       </div>
-      <SaveBar
-        pending={pending}
-        dirty={dirty}
-        error={error}
-        saved={saved}
-        onSave={() => save({ style, personality, languages })}
-      />
     </Card>
   )
 }
@@ -523,7 +503,15 @@ export function AdminHoursEditor({
   const seed = initial ?? DEFAULT_HOURS
   const [hours, setHours] = useState<HoursMap>(seed)
   const dirty = JSON.stringify(hours) !== JSON.stringify(seed)
-  const { pending, error, saved, save } = useStorefrontSave(vendorId)
+  const { save } = useStorefrontSave(vendorId)
+
+  useEditorRegistration({
+    id: 'hours',
+    label: 'Business hours',
+    dirty,
+    save: () => save({ hours }),
+    discard: () => setHours(seed),
+  })
 
   return (
     <Card
@@ -583,13 +571,6 @@ export function AdminHoursEditor({
           )
         })}
       </ul>
-      <SaveBar
-        pending={pending}
-        dirty={dirty}
-        error={error}
-        saved={saved}
-        onSave={() => save({ hours })}
-      />
     </Card>
   )
 }
@@ -612,7 +593,21 @@ export function AdminBookingPoliciesEditor({
 }) {
   const [v, setV] = useState(initial)
   const dirty = JSON.stringify(v) !== JSON.stringify(initial)
-  const { pending, error, saved, save } = useStorefrontSave(vendorId)
+  const { save } = useStorefrontSave(vendorId)
+
+  useEditorRegistration({
+    id: 'booking-policies',
+    label: 'Booking policies',
+    dirty,
+    save: () =>
+      save({
+        depositPercent: v.depositPercent,
+        cancellationLevel: v.cancellationLevel,
+        reschedulePolicy: v.reschedulePolicy,
+        parallelBookingCapacity: v.parallelBookingCapacity,
+      }),
+    discard: () => setV(initial),
+  })
 
   return (
     <Card
@@ -677,20 +672,6 @@ export function AdminBookingPoliciesEditor({
           </select>
         </Field>
       </div>
-      <SaveBar
-        pending={pending}
-        dirty={dirty}
-        error={error}
-        saved={saved}
-        onSave={() =>
-          save({
-            depositPercent: v.depositPercent,
-            cancellationLevel: v.cancellationLevel,
-            reschedulePolicy: v.reschedulePolicy,
-            parallelBookingCapacity: v.parallelBookingCapacity,
-          })
-        }
-      />
     </Card>
   )
 }
@@ -712,7 +693,20 @@ export function AdminRecognitionEditor({
 }) {
   const [v, setV] = useState(initial)
   const dirty = JSON.stringify(v) !== JSON.stringify(initial)
-  const { pending, error, saved, save } = useStorefrontSave(vendorId)
+  const { save } = useStorefrontSave(vendorId)
+
+  useEditorRegistration({
+    id: 'recognition',
+    label: 'Recognition',
+    dirty,
+    save: () =>
+      save({
+        awards: v.awards,
+        responseTimeHours: v.responseTimeHours,
+        locallyOwned: v.locallyOwned,
+      }),
+    discard: () => setV(initial),
+  })
 
   return (
     <Card
@@ -751,19 +745,6 @@ export function AdminRecognitionEditor({
           </label>
         </Field>
       </div>
-      <SaveBar
-        pending={pending}
-        dirty={dirty}
-        error={error}
-        saved={saved}
-        onSave={() =>
-          save({
-            awards: v.awards,
-            responseTimeHours: v.responseTimeHours,
-            locallyOwned: v.locallyOwned,
-          })
-        }
-      />
     </Card>
   )
 }
@@ -783,7 +764,25 @@ export function AdminTeamEditor({
 }) {
   const [team, setTeam] = useState<TeamMember[]>(initial)
   const dirty = JSON.stringify(team) !== JSON.stringify(initial)
-  const { pending, error, saved, save } = useStorefrontSave(vendorId)
+  const { save } = useStorefrontSave(vendorId)
+
+  useEditorRegistration({
+    id: 'team',
+    label: 'Team members',
+    dirty,
+    save: () =>
+      save({
+        team: team
+          .filter((m) => m.name.trim() || m.role.trim())
+          .map((m) => ({
+            id: m.id,
+            name: m.name.trim(),
+            role: m.role.trim(),
+            bio: m.bio.trim() || undefined,
+          })),
+      }),
+    discard: () => setTeam(initial),
+  })
 
   const add = () =>
     setTeam([...team, { id: newId(), name: '', role: '', bio: '' }])
@@ -850,24 +849,6 @@ export function AdminTeamEditor({
       >
         <Plus className="w-3.5 h-3.5" /> Add team member
       </button>
-      <SaveBar
-        pending={pending}
-        dirty={dirty}
-        error={error}
-        saved={saved}
-        onSave={() =>
-          save({
-            team: team
-              .filter((m) => m.name.trim() || m.role.trim())
-              .map((m) => ({
-                id: m.id,
-                name: m.name.trim(),
-                role: m.role.trim(),
-                bio: m.bio.trim() || undefined,
-              })),
-          })
-        }
-      />
     </Card>
   )
 }
@@ -887,7 +868,24 @@ export function AdminFaqEditor({
 }) {
   const [faqs, setFaqs] = useState<Faq[]>(initial)
   const dirty = JSON.stringify(faqs) !== JSON.stringify(initial)
-  const { pending, error, saved, save } = useStorefrontSave(vendorId)
+  const { save } = useStorefrontSave(vendorId)
+
+  useEditorRegistration({
+    id: 'faqs',
+    label: 'FAQs',
+    dirty,
+    save: () =>
+      save({
+        faqs: faqs
+          .filter((f) => f.question.trim() && f.answer.trim())
+          .map((f) => ({
+            id: f.id,
+            question: f.question.trim(),
+            answer: f.answer.trim(),
+          })),
+      }),
+    discard: () => setFaqs(initial),
+  })
 
   const add = () =>
     setFaqs([...faqs, { id: newId(), question: '', answer: '' }])
@@ -945,23 +943,6 @@ export function AdminFaqEditor({
       >
         <Plus className="w-3.5 h-3.5" /> Add FAQ
       </button>
-      <SaveBar
-        pending={pending}
-        dirty={dirty}
-        error={error}
-        saved={saved}
-        onSave={() =>
-          save({
-            faqs: faqs
-              .filter((f) => f.question.trim() && f.answer.trim())
-              .map((f) => ({
-                id: f.id,
-                question: f.question.trim(),
-                answer: f.answer.trim(),
-              })),
-          })
-        }
-      />
     </Card>
   )
 }
@@ -987,7 +968,29 @@ export function AdminPackagesEditor({
 }) {
   const [packages, setPackages] = useState<Package[]>(initial)
   const dirty = JSON.stringify(packages) !== JSON.stringify(initial)
-  const { pending, error, saved, save } = useStorefrontSave(vendorId)
+  const { save } = useStorefrontSave(vendorId)
+
+  useEditorRegistration({
+    id: 'packages',
+    label: 'Packages & pricing',
+    dirty,
+    save: () =>
+      save({
+        packages: packages
+          .filter((p) => p.name.trim() && p.price.trim())
+          .map((p) => ({
+            id: p.id,
+            name: p.name.trim(),
+            price: p.price.trim(),
+            description: p.description.trim() || undefined,
+            includes: p.includes
+              .split(/\r?\n/)
+              .map((s) => s.trim())
+              .filter(Boolean),
+          })),
+      }),
+    discard: () => setPackages(initial),
+  })
 
   const add = () =>
     setPackages([
@@ -1073,28 +1076,6 @@ export function AdminPackagesEditor({
       >
         <Plus className="w-3.5 h-3.5" /> Add package
       </button>
-      <SaveBar
-        pending={pending}
-        dirty={dirty}
-        error={error}
-        saved={saved}
-        onSave={() =>
-          save({
-            packages: packages
-              .filter((p) => p.name.trim() && p.price.trim())
-              .map((p) => ({
-                id: p.id,
-                name: p.name.trim(),
-                price: p.price.trim(),
-                description: p.description.trim() || undefined,
-                includes: p.includes
-                  .split(/\r?\n/)
-                  .map((s) => s.trim())
-                  .filter(Boolean),
-              })),
-          })
-        }
-      />
     </Card>
   )
 }
