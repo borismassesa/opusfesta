@@ -88,7 +88,7 @@ export default async function AdviceIdeasDetailPage({
       <ArticleShareRail title={post.title} slug={post.slug} />
 
       {/* Top row — breadcrumb + search, aligned with article column */}
-      <div className="mx-auto flex max-w-3xl flex-col gap-3 pl-3 pr-4 pt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-4">
+      <div className="mx-auto flex max-w-[52rem] flex-col gap-3 pl-3 pr-4 pt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-4">
         <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex flex-wrap items-center gap-x-2 text-[14px] text-gray-700">
             <li>
@@ -118,7 +118,7 @@ export default async function AdviceIdeasDetailPage({
       </div>
 
       {/* Article header */}
-      <header className="mx-auto max-w-3xl pl-3 pr-4 pt-6 pb-8 sm:px-4 sm:pt-8">
+      <header className="mx-auto max-w-[52rem] pl-3 pr-4 pt-6 pb-8 sm:px-4 sm:pt-8">
         <Link
           href={getAdviceIdeasSectionHref(post.sectionId)}
           className="inline-block text-[13px] font-semibold text-[var(--accent-hover)] transition-colors hover:text-[#1A1A1A]"
@@ -152,7 +152,7 @@ export default async function AdviceIdeasDetailPage({
       </header>
 
       {/* Hero media */}
-      <figure className="mx-auto max-w-3xl pl-3 pr-4 sm:px-4">
+      <figure className="mx-auto max-w-[52rem] pl-3 pr-4 sm:px-4">
         <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-gray-100">
           {post.heroMedia.type === 'video' ? (
             <video
@@ -170,7 +170,7 @@ export default async function AdviceIdeasDetailPage({
               alt={post.heroMedia.alt}
               fill
               priority
-              sizes="(min-width: 768px) 736px, 100vw"
+              sizes="(min-width: 768px) 800px, 100vw"
               className="object-cover"
             />
           )}
@@ -178,7 +178,7 @@ export default async function AdviceIdeasDetailPage({
       </figure>
 
       {/* Body */}
-      <div className="mx-auto max-w-3xl pl-3 pr-4 pt-12 pb-16 sm:px-4">
+      <div className="mx-auto max-w-[52rem] pl-3 pr-4 pt-12 pb-16 sm:px-4">
         <div id="article-rail-start" aria-hidden className="h-px w-full" />
         <div id="article-body">
           {post.body.map((section, i) => (
@@ -322,7 +322,7 @@ function BlockRenderer({ block }: { block: AdviceIdeasBlock }) {
               src={block.src}
               alt={block.alt}
               fill
-              sizes="(min-width: 768px) 736px, 100vw"
+              sizes="(min-width: 768px) 800px, 100vw"
               className="object-cover"
             />
           </div>
