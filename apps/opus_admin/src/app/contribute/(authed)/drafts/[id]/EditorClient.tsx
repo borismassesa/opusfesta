@@ -14,6 +14,7 @@ import ContributorTopBar from './_components/ContributorTopBar'
 import WritingCanvas from './_components/WritingCanvas'
 import RightRail from './_components/RightRail'
 import RevisionsBanner from './_components/RevisionsBanner'
+import ArticlePreview from '@/components/article-preview/ArticlePreview'
 
 type SaveState = 'saved' | 'saving' | 'failed'
 
@@ -261,32 +262,35 @@ function SubmitModal({
   )
 }
 
+// Renders the draft using the shared ArticlePreview component so the
+// preview matches the public /advice-and-ideas/[slug] layout exactly.
 function PreviewModal({ draft, onClose }: { draft: ContributorDraft; onClose: () => void }) {
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-white">
-      <div className="mx-auto max-w-3xl px-6 py-8">
-        <button type="button" onClick={onClose} className="mb-8 text-sm font-semibold text-[#5B2D8E]">
+      <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white/95 px-6 py-3 backdrop-blur">
+        <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-500">
+          Preview · matches the live article layout
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-sm font-semibold text-[#5B2D8E] hover:underline"
+        >
           Close preview
         </button>
-        {draft.cover_image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={draft.cover_image_url} alt={draft.cover_image_alt} className="mb-8 aspect-video w-full rounded-xl object-cover" />
-        )}
-        <p className="text-xs font-bold uppercase tracking-[0.12em] text-[#5B2D8E]">{draft.category}</p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-tight text-gray-950">{draft.title || 'Untitled draft'}</h1>
-        {draft.summary && <p className="mt-4 text-lg leading-8 text-gray-600">{draft.summary}</p>}
-        <div className="mt-10 space-y-6 text-base leading-8 text-gray-800">
-          {draft.body.flatMap((section) =>
-            section.blocks.map((block, index) => {
-              if (block.type === 'paragraph') return <p key={`${section.id}-${index}`}>{block.text}</p>
-              if (block.type === 'subheading') return <h2 key={`${section.id}-${index}`} className="text-2xl font-semibold text-gray-950">{block.text}</h2>
-              if (block.type === 'quote') return <blockquote key={`${section.id}-${index}`} className="border-l-4 border-[#C9A0DC] pl-4 italic text-gray-600">{block.quote}</blockquote>
-              if (block.type === 'list') return <ul key={`${section.id}-${index}`} className="list-disc pl-6">{block.items.map((item) => <li key={item}>{item}</li>)}</ul>
-              return null
-            })
-          )}
-        </div>
       </div>
+      <ArticlePreview
+        post={{
+          title: draft.title,
+          excerpt: draft.summary,
+          category: draft.category,
+          authorName: 'You',
+          heroMediaSrc: draft.cover_image_url || undefined,
+          heroMediaAlt: draft.cover_image_alt || '',
+          heroMediaType: 'image',
+          body: draft.body,
+        }}
+      />
     </div>
   )
 }

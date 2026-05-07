@@ -48,6 +48,10 @@ export default function CoverImageCard({
       <p className="text-[11px] font-bold uppercase tracking-[0.04em] text-gray-500">
         Cover image <span className="text-[11px] font-medium lowercase tracking-normal text-gray-400">(optional)</span>
       </p>
+      <p className="mt-1 text-[11px] leading-snug text-gray-500">
+        Wide landscape works best — it fills the article hero and frames the
+        title.
+      </p>
       <input
         ref={inputRef}
         type="file"
@@ -125,6 +129,45 @@ export default function CoverImageCard({
           {!uploading && <span className="font-semibold text-[#5B2D8E] underline">browse</span>}
         </button>
       )}
+
+      {/* Cover-image guidance — collapsed by default so the rail stays
+          tidy, but always visible to first-time contributors who don't
+          know what makes a great hero image. */}
+      <details className="mt-3 group">
+        <summary className="cursor-pointer list-none text-[11px] font-semibold text-gray-600 hover:text-gray-900">
+          <span className="inline-flex items-center gap-1">
+            <span className="transition-transform group-open:rotate-90" aria-hidden>
+              ›
+            </span>
+            What makes a great cover image?
+          </span>
+        </summary>
+        <ul className="mt-2 space-y-1.5 pl-3 text-[11px] leading-relaxed text-gray-600">
+          <li>
+            <span className="font-semibold text-gray-800">Aspect ratio:</span>{' '}
+            16:9 or wider (landscape). Vertical phone shots get cropped.
+          </li>
+          <li>
+            <span className="font-semibold text-gray-800">Size:</span>{' '}
+            at least 1600&nbsp;px wide; under 5&nbsp;MB. JPG, PNG, or WebP.
+          </li>
+          <li>
+            <span className="font-semibold text-gray-800">Composition:</span>{' '}
+            keep the subject in the upper or right half — the article title
+            sits over the bottom-left corner.
+          </li>
+          <li>
+            <span className="font-semibold text-gray-800">Quality:</span>{' '}
+            sharp focus, natural light, no logos or watermarks. Real-wedding
+            photos beat stock every time.
+          </li>
+          <li>
+            <span className="font-semibold text-gray-800">Rights:</span>{' '}
+            you must own the photo or have the photographer's permission to
+            publish it.
+          </li>
+        </ul>
+      </details>
     </section>
   )
 }
