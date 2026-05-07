@@ -382,12 +382,22 @@ export async function getInvitationPreview(
 
 export async function acceptContributorInvitation(token: string): Promise<{ id: string }> {
   const identity = await getIdentity()
-  return acceptContributorInvitationByToken(token, identity)
+  const result = await acceptContributorInvitationByToken(token, identity)
+  revalidateContributorRoutes()
+  return result
 }
 
 export async function acceptPendingContributorInvitationForCurrentUser(): Promise<{ id: string } | null> {
   const identity = await getIdentity()
-  return acceptLatestPendingInvitationForIdentity(identity)
+  const result = await acceptLatestPendingInvitationForIdentity(identity)
+  if (result) revalidateContributorRoutes()
+  return result
+}
+
+function revalidateContributorRoutes(): void {
+  revalidatePath('/contribute')
+  revalidatePath('/contribute/articles')
+  revalidatePath('/operations/articles/submissions')
 }
 
 async function loadOwnedSubmission(

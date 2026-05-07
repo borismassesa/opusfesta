@@ -1,5 +1,4 @@
 import { createHash } from 'crypto'
-import { revalidatePath } from 'next/cache'
 import { clerkClient } from '@clerk/nextjs/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { slugify } from '@/lib/cms/advice-ideas'
@@ -137,9 +136,12 @@ async function acceptInvitationForIdentity(
 
   await promoteToContributorRole(identity.clerkId)
 
-  revalidatePath('/contribute')
-  revalidatePath('/contribute/articles')
-  revalidatePath('/operations/articles/submissions')
+  // Cache invalidation belongs in the server-action callers (see
+  // acceptContributorInvitation in advice-submission-actions.ts). This
+  // function is also invoked during page render (the invite letter page
+  // auto-accepts when the signed-in email matches), where revalidatePath
+  // throws. Page-render callers immediately redirect, and the affected
+  // routes are force-dynamic, so skipping revalidation here is safe.
   return { id: submission.id }
 }
 
