@@ -248,9 +248,11 @@ function ArticleSection({
           {section.label}
         </p>
       )}
-      <h2 className="mb-5 text-[22px] font-bold leading-[1.25] tracking-[-0.005em] text-[#1A1A1A] sm:text-[26px]">
-        {section.heading}
-      </h2>
+      {section.heading && (
+        <h2 className="mb-5 text-[22px] font-bold leading-[1.25] tracking-[-0.005em] text-[#1A1A1A] sm:text-[26px]">
+          {section.heading}
+        </h2>
+      )}
       <div className="space-y-5">
         {section.blocks.map((block, i) => (
           <BlockRenderer key={i} block={block} />

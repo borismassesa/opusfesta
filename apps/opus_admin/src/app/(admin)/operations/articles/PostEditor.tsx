@@ -37,6 +37,7 @@ import { resolveMediaUrl } from '@/app/(admin)/cms/advice-and-ideas/_media'
 import { ArticleEditor } from '@/lib/editor'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot } from '@/components/HeaderPortals'
+import ArticlePreview from '@/components/article-preview/ArticlePreview'
 import { createAdvicePost, updateAdvicePost, uploadAdviceMedia, type PostUpsertInput } from './actions'
 import {
   approveAdviceSubmission,
@@ -179,13 +180,20 @@ export default function PostEditor({
   const [readTimeManual, setReadTimeManual] = useState<boolean>(!!initial.read_time && initial.read_time !== 5)
   const heroInputRef = useRef<HTMLInputElement>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
   const summaryRef = useRef<HTMLTextAreaElement>(null)
   const [avatarDragOver, setAvatarDragOver] = useState(false)
 
-  // Auto-grow the summary textarea when its value changes externally (e.g.
-  // loading an existing post with a multi-line excerpt). The onChange handler
-  // resizes during typing; this effect handles the initial render and any
+  // Auto-grow the borderless title + summary textareas when their values
+  // change externally (e.g. loading an existing post). The onChange handlers
+  // resize during typing; these effects handle initial render and any
   // server-side autosave restoration.
+  useEffect(() => {
+    const el = titleRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [draft.title])
   useEffect(() => {
     const el = summaryRef.current
     if (!el) return
@@ -294,11 +302,13 @@ export default function PostEditor({
   }, [])
 
   const publishErrors = useMemo(() => validateForPublish(draft), [draft])
-  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL ?? ''
-  const previewUrl =
-    workflow === 'post' && draft.slug
-      ? `${websiteUrl}/advice-and-ideas/${draft.slug}`
-      : null
+  // Inline preview modal state. Renders the draft via the shared
+  // ArticlePreview component so what admins see here matches the public
+  // /advice-and-ideas/[slug] layout exactly — and works on unsaved drafts
+  // (no need to publish first to preview).
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const canPreview =
+    workflow !== 'contributor-submission' && Boolean(draft.title.trim())
 
   const headingTitle =
     isContributorSubmission
@@ -558,7 +568,7 @@ export default function PostEditor({
     <>
       <span
         className={cn(
-          'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full',
+          'inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full',
           dirty
             ? 'bg-amber-50 text-amber-700'
             : isSubmission && submissionStatus
@@ -568,20 +578,6 @@ export default function PostEditor({
                 : 'bg-gray-100 text-gray-600'
         )}
       >
-        <span
-          className={cn(
-            'w-1.5 h-1.5 rounded-full',
-            dirty
-              ? 'bg-amber-500'
-              : isSubmission && submissionStatus === 'published'
-                ? 'bg-[#7E5896]'
-                : isSubmission && submissionStatus === 'submitted'
-                  ? 'bg-amber-500'
-                  : draft.published
-                    ? 'bg-emerald-500'
-                    : 'bg-gray-400'
-          )}
-        />
         {dirty
           ? 'Unsaved changes'
           : isSubmission && submissionStatus
@@ -722,16 +718,15 @@ export default function PostEditor({
             <ArrowLeft className="w-4 h-4" /> {backLabel ?? 'All articles'}
           </Link>
 
-          {previewUrl && (
-            <a
-              href={previewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+          {canPreview && (
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
             >
               <ExternalLink className="w-4 h-4" />
               Preview
-            </a>
+            </button>
           )}
         </div>
 
@@ -775,13 +770,23 @@ export default function PostEditor({
 
             {/* Document header — borderless title + summary, Notion-style. */}
             <div className="px-1 pt-2 pb-1">
-              <input
-                type="text"
+              <textarea
+                ref={titleRef}
                 aria-label="Article title"
                 value={draft.title}
-                onChange={(e) => onTitleChange(e.target.value)}
+                onChange={(e) => {
+                  onTitleChange(e.target.value)
+                  e.currentTarget.style.height = 'auto'
+                  e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`
+                }}
+                onKeyDown={(e) => {
+                  // Titles are single-paragraph — Enter shouldn't insert a
+                  // newline. Wrapping happens automatically as text fills width.
+                  if (e.key === 'Enter') e.preventDefault()
+                }}
                 placeholder="Article title"
-                className="block w-full border-0 bg-transparent p-0 text-[28px] font-semibold leading-tight tracking-tight text-gray-950 outline-none placeholder:text-gray-400 sm:text-[32px]"
+                rows={1}
+                className="block w-full resize-none border-0 bg-transparent p-0 text-[28px] font-semibold leading-tight tracking-tight text-gray-950 outline-none placeholder:text-gray-400 sm:text-[32px]"
               />
               <textarea
                 ref={summaryRef}
@@ -796,6 +801,33 @@ export default function PostEditor({
                 rows={2}
                 className="mt-5 block min-h-[48px] w-full resize-none border-0 bg-transparent p-0 text-base leading-[1.6] text-gray-600 outline-none placeholder:text-gray-400"
               />
+              {(() => {
+                // Soft word limit — the summary renders unclamped on the
+                // /advice-and-ideas trending hero card, so an overly long one
+                // pushes layout. Advisory only; doesn't block publishing.
+                const SUMMARY_MAX_WORDS = 50
+                const trimmed = draft.excerpt.trim()
+                const words = trimmed
+                  ? trimmed.split(/\s+/).filter(Boolean).length
+                  : 0
+                const over = words > SUMMARY_MAX_WORDS
+                const near = !over && words > SUMMARY_MAX_WORDS * 0.85
+                return (
+                  <p
+                    className={cn(
+                      'mt-2 text-[11px] tabular-nums font-medium',
+                      over
+                        ? 'text-rose-600'
+                        : near
+                          ? 'text-amber-600'
+                          : 'text-gray-400'
+                    )}
+                  >
+                    {words}/{SUMMARY_MAX_WORDS} words
+                    {over && ' · trim for cleaner card layout'}
+                  </p>
+                )
+              })()}
             </div>
 
             {/* Hero media */}
@@ -887,8 +919,20 @@ export default function PostEditor({
                 value={draft.body}
                 onChange={(body) => setDraft((d) => ({ ...d, body }))}
                 mode="admin"
-                placeholder="Start writing the article — use the toolbar to add headings, lists, quotes, images…"
+                placeholder="Start writing the article — use the toolbar to add headings, lists, quotes, images, videos…"
                 onUploadImage={async (file) => {
+                  const fd = new FormData()
+                  fd.append('file', file)
+                  fd.append('slug', draft.slug || 'new')
+                  if (id) fd.append('submissionId', id)
+                  const { url } = isContributorSubmission
+                    ? await uploadContributorMedia(fd)
+                    : await uploadAdviceMedia(fd)
+                  return url
+                }}
+                onUploadVideo={async (file) => {
+                  // Same upload path as image — the media endpoints accept
+                  // both (already used for hero video uploads).
                   const fd = new FormData()
                   fd.append('file', file)
                   fd.append('slug', draft.slug || 'new')
@@ -1171,6 +1215,53 @@ export default function PostEditor({
 
         </div>
       </div>
+
+      {/* Inline preview modal — renders the draft using the shared
+          ArticlePreview component so it matches the public article layout. */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-white">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white/95 px-6 py-3 backdrop-blur">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-500">
+              Preview · matches the live article layout
+            </p>
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(false)}
+              className="text-sm font-semibold text-[#7E5896] hover:underline"
+            >
+              Close preview
+            </button>
+          </div>
+          <ArticlePreview
+            post={{
+              title: draft.title,
+              excerpt: draft.excerpt,
+              category: draft.category,
+              authorName: draft.author_name,
+              authorRole: draft.author_role,
+              readTime: draft.read_time
+                ? `${draft.read_time} min read`
+                : undefined,
+              date: draft.published_at
+                ? new Date(draft.published_at).toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })
+                : undefined,
+              heroMediaSrc: draft.hero_media_src
+                ? resolveMediaUrl(draft.hero_media_src)
+                : undefined,
+              heroMediaAlt: draft.hero_media_alt,
+              heroMediaType: draft.hero_media_type,
+              heroMediaPoster: draft.hero_media_poster
+                ? resolveMediaUrl(draft.hero_media_poster)
+                : undefined,
+              body: draft.body,
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

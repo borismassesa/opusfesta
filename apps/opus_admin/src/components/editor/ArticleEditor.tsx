@@ -6,7 +6,7 @@
 // path via legacyToTipTap / tiptapToLegacy.
 
 import { useEditor, EditorContent, EditorContext } from '@tiptap/react'
-import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { buildArticleEditorExtensions } from '@/lib/editor/extensions'
 import {
   legacyToTipTap,
@@ -30,6 +30,7 @@ import { TextAlignButton } from '@/components/tiptap-ui/text-align-button'
 import { UndoRedoButton } from '@/components/tiptap-ui/undo-redo-button'
 import { Button } from '@/components/tiptap-ui-primitive/button'
 import { ImagePlusIcon } from '@/components/tiptap-icons/image-plus-icon'
+import { Video } from 'lucide-react'
 import './article-editor.css'
 
 type Props = {
@@ -40,6 +41,7 @@ type Props = {
   mode?: 'admin' | 'contributor'
   editable?: boolean
   onUploadImage?: (file: File) => Promise<string>
+  onUploadVideo?: (file: File) => Promise<string>
 }
 
 export default function ArticleEditor({
@@ -50,6 +52,7 @@ export default function ArticleEditor({
   mode = 'admin',
   editable = true,
   onUploadImage,
+  onUploadVideo,
 }: Props) {
   // Build the initial doc from `value` exactly once. Subsequent prop changes
   // are reconciled by an external sync below — re-running `legacyToTipTap`
@@ -181,11 +184,16 @@ export default function ArticleEditor({
             <TextAlignButton align="justify" />
           </ToolbarGroup>
 
-          {onUploadImage && (
+          {(onUploadImage || onUploadVideo) && (
             <>
               <ToolbarSeparator />
               <ToolbarGroup>
-                <ImageInsertButton editor={editor} onUploadImage={onUploadImage} />
+                {onUploadImage && (
+                  <ImageInsertButton editor={editor} onUploadImage={onUploadImage} />
+                )}
+                {onUploadVideo && (
+                  <VideoInsertButton editor={editor} onUploadVideo={onUploadVideo} />
+                )}
               </ToolbarGroup>
             </>
           )}
@@ -242,6 +250,95 @@ function ImageInsertButton({
           }
         }}
       />
+    </>
+  )
+}
+
+// 50 MB video cap — mirrors the server-side limits in
+// apps/opus_admin/src/app/(admin)/operations/articles/actions.ts and
+// apps/opus_admin/src/lib/advice-submission-actions.ts. Pre-flight here
+// so users get instant feedback instead of a slow upload + 413.
+const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024
+
+// Video insert — uploads a video file via the parent's onUploadVideo
+// callback, then inserts a `legacyBlock` of type 'video' at the cursor.
+// The public site renders this as a real <video controls> element via the
+// BlockRenderer; in the editor it shows as an atomic chip (video preview
+// is intentionally out-of-scope for v1 of the TipTap migration — keeps
+// the editor surface lean).
+function VideoInsertButton({
+  editor,
+  onUploadVideo,
+}: {
+  editor: NonNullable<ReturnType<typeof useEditor>>
+  onUploadVideo: (file: File) => Promise<string>
+}) {
+  const fileRef = useRef<HTMLInputElement>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
+  return (
+    <>
+      <Button
+        type="button"
+        data-style="ghost"
+        aria-label="Insert video"
+        tooltip={uploading ? 'Uploading video…' : 'Insert video'}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => fileRef.current?.click()}
+        disabled={uploading}
+      >
+        <Video className="tiptap-button-icon" />
+      </Button>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="video/mp4,video/webm,video/quicktime,video/*"
+        className="hidden"
+        onChange={async (event) => {
+          const file = event.target.files?.[0]
+          event.currentTarget.value = ''
+          if (!file) return
+          setUploadError(null)
+          if (file.size > MAX_VIDEO_SIZE_BYTES) {
+            setUploadError('Videos must be 50MB or smaller.')
+            return
+          }
+          setUploading(true)
+          try {
+            const url = await onUploadVideo(file)
+            editor
+              .chain()
+              .focus()
+              .insertContent({
+                type: 'legacyBlock',
+                attrs: {
+                  data: {
+                    type: 'video',
+                    src: url,
+                    alt: file.name.replace(/\.[^.]+$/, ''),
+                    poster: '',
+                    caption: '',
+                  },
+                },
+              })
+              .run()
+          } catch (err) {
+            setUploadError(
+              err instanceof Error ? err.message : 'Video upload failed.'
+            )
+          } finally {
+            setUploading(false)
+          }
+        }}
+      />
+      {uploadError && (
+        <p
+          role="alert"
+          className="absolute mt-1 text-xs font-medium text-rose-700"
+        >
+          {uploadError}
+        </p>
+      )}
     </>
   )
 }

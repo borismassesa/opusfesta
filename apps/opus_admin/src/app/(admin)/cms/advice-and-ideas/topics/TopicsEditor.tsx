@@ -1,13 +1,23 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { ArrowDown, ArrowUp, Plus, Trash2, Upload } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ChevronDown,
+  ChevronRight,
+  ImageIcon,
+  Plus,
+  Trash2,
+  Upload,
+} from 'lucide-react'
 import {
   ADVICE_IDEAS_SECTION_IDS,
   type AdviceIdeasSectionId,
   type AdviceTopicItem,
   type AdviceTopicsContent,
 } from '@/lib/cms/advice-ideas'
+import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 import { Card, Field, inputCls } from '../_ui'
 import { resolveMediaUrl } from '../_media'
@@ -21,29 +31,42 @@ export default function TopicsEditor({ initial, hasDraft: initialHasDraft }: Pro
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
+  const [openIdx, setOpenIdx] = useState<number | null>(null)
   const { bind, unbind } = useEditorActions()
 
   const update = (idx: number, patch: Partial<AdviceTopicItem>) =>
     setItems((list) => list.map((it, i) => (i === idx ? { ...it, ...patch } : it)))
-  const remove = (idx: number) => setItems((list) => list.filter((_, i) => i !== idx))
+  const remove = (idx: number) =>
+    setItems((list) => list.filter((_, i) => i !== idx))
   const move = (idx: number, dir: -1 | 1) => {
     const t = idx + dir
     if (t < 0 || t >= items.length) return
     const next = [...items]
     ;[next[idx], next[t]] = [next[t], next[idx]]
     setItems(next)
+    // Keep the moved row's expanded state, since identity follows the index
+    // we use for openIdx.
+    if (openIdx === idx) setOpenIdx(t)
+    else if (openIdx === t) setOpenIdx(idx)
   }
   const add = () => {
-    const unused = ADVICE_IDEAS_SECTION_IDS.find((id) => !items.some((it) => it.id === id))
-    setItems((list) => [
-      ...list,
-      {
-        id: (unused ?? 'planning-guides') as AdviceIdeasSectionId,
-        label: 'New topic',
-        description: 'Short description of this topic.',
-        cover_image_url: '',
-      },
-    ])
+    const unused = ADVICE_IDEAS_SECTION_IDS.find(
+      (id) => !items.some((it) => it.id === id)
+    )
+    setItems((list) => {
+      const next = [
+        ...list,
+        {
+          id: (unused ?? 'planning-guides') as AdviceIdeasSectionId,
+          label: 'New topic',
+          description: 'Short description of this topic.',
+          cover_image_url: '',
+        },
+      ]
+      // Auto-open the freshly added row.
+      setOpenIdx(next.length - 1)
+      return next
+    })
   }
 
   const handleSaveDraft = () =>
@@ -65,6 +88,7 @@ export default function TopicsEditor({ initial, hasDraft: initialHasDraft }: Pro
       setItems(initial.items)
       setHasDraft(false)
       setMessage('Draft discarded.')
+      setOpenIdx(null)
     })
 
   useEffect(() => {
@@ -81,66 +105,45 @@ export default function TopicsEditor({ initial, hasDraft: initialHasDraft }: Pro
   }, [hasDraft, pending, message, items])
 
   return (
-    <div className="space-y-6">
-      <Card
-        title={`Topics (${items.length})`}
-        action={
-          <button
-            type="button"
-            onClick={add}
-            className="flex items-center gap-1.5 text-xs font-semibold text-[#7E5896] hover:text-[#5c3f72] px-2.5 py-1.5 rounded-md border border-[#E7D5EE] hover:bg-[#F8F0FB] transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Add topic
-          </button>
-        }
-      >
-        <p className="text-xs text-gray-500 -mt-2 mb-2">
-          This list powers both the sticky dark topics strip at the top of the page and the Popular
-          Topics card grid below the Editor\u2019s Picks section.
-        </p>
-        <div className="space-y-3">
-          {items.map((it, idx) => (
-            <TopicRow
-              key={`${it.id}-${idx}`}
-              idx={idx}
-              total={items.length}
-              item={it}
-              onUpdate={(patch) => update(idx, patch)}
-              onRemove={() => remove(idx)}
-              onMove={(dir) => move(idx, dir)}
-              disabled={pending}
-              onUploadDone={(url) => update(idx, { cover_image_url: url })}
-            />
-          ))}
-          {items.length === 0 && (
-            <div className="text-sm text-gray-400 border border-dashed border-gray-200 rounded-lg px-4 py-6 text-center">
-              No topics yet — add one above.
-            </div>
-          )}
-        </div>
-      </Card>
-
-      <Card title="Popular Topics preview" action={<span className="text-xs text-gray-400">Approximate</span>}>
-        <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
-          {items.map((it) => (
-            <li key={it.id} className="space-y-2">
-              <div className="relative aspect-[4/3] rounded-lg bg-gray-100 overflow-hidden">
-                {it.cover_image_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={resolveMediaUrl(it.cover_image_url)} alt="" className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[11px] text-gray-400">
-                    No cover
-                  </div>
-                )}
-              </div>
-              <p className="text-[15px] font-bold text-[#1A1A1A]">{it.label}</p>
-            </li>
-          ))}
-        </ul>
-      </Card>
-    </div>
+    <Card
+      title={`Topics (${items.length})`}
+      action={
+        <button
+          type="button"
+          onClick={add}
+          className="flex items-center gap-1.5 rounded-md border border-[#E7D5EE] px-2.5 py-1.5 text-xs font-semibold text-[#7E5896] transition-colors hover:bg-[#F8F0FB] hover:text-[#5c3f72]"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          Add topic
+        </button>
+      }
+    >
+      <div className="overflow-hidden rounded-lg border border-gray-200">
+        {items.map((it, idx) => (
+          <TopicRow
+            key={`${it.id}-${idx}`}
+            idx={idx}
+            total={items.length}
+            item={it}
+            open={openIdx === idx}
+            onToggle={() => setOpenIdx(openIdx === idx ? null : idx)}
+            onUpdate={(patch) => update(idx, patch)}
+            onRemove={() => {
+              if (openIdx === idx) setOpenIdx(null)
+              remove(idx)
+            }}
+            onMove={(dir) => move(idx, dir)}
+            disabled={pending}
+            onUploadDone={(url) => update(idx, { cover_image_url: url })}
+          />
+        ))}
+        {items.length === 0 && (
+          <div className="border-t border-dashed border-gray-200 px-4 py-10 text-center text-sm text-gray-400">
+            No topics yet — add one above.
+          </div>
+        )}
+      </div>
+    </Card>
   )
 }
 
@@ -148,6 +151,8 @@ function TopicRow({
   idx,
   total,
   item,
+  open,
+  onToggle,
   onUpdate,
   onRemove,
   onMove,
@@ -157,10 +162,108 @@ function TopicRow({
   idx: number
   total: number
   item: AdviceTopicItem
+  open: boolean
+  onToggle: () => void
   onUpdate: (patch: Partial<AdviceTopicItem>) => void
   onRemove: () => void
   onMove: (dir: -1 | 1) => void
   disabled: boolean
+  onUploadDone: (url: string) => void
+}) {
+  return (
+    <div
+      className={cn(
+        'border-b border-gray-100 last:border-b-0',
+        open && 'bg-[#FAF5FB]/50'
+      )}
+    >
+      {/* Compact row — click to expand */}
+      <div className="flex items-center gap-3 px-3 py-2.5">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-expanded={open}
+          aria-label={open ? 'Collapse topic' : 'Expand topic'}
+          className="flex flex-1 items-center gap-3 rounded-md text-left transition-colors hover:bg-white/60"
+        >
+          <span className="text-gray-400">
+            {open ? (
+              <ChevronDown className="h-4 w-4" />
+            ) : (
+              <ChevronRight className="h-4 w-4" />
+            )}
+          </span>
+          <span className="relative h-10 w-14 shrink-0 overflow-hidden rounded bg-gray-100">
+            {item.cover_image_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={resolveMediaUrl(item.cover_image_url)}
+                alt=""
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <span className="flex h-full w-full items-center justify-center text-gray-300">
+                <ImageIcon className="h-4 w-4" />
+              </span>
+            )}
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-semibold text-gray-900">
+              {item.label || <em className="font-normal italic text-gray-400">Untitled topic</em>}
+            </span>
+            <span className="block truncate text-xs text-gray-500">
+              <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px] text-gray-700">
+                #{item.id}
+              </code>
+            </span>
+          </span>
+        </button>
+
+        <div className="flex shrink-0 items-center gap-0.5">
+          <IconBtn
+            title="Move up"
+            onClick={() => onMove(-1)}
+            disabled={idx === 0}
+          >
+            <ArrowUp className="h-3.5 w-3.5" />
+          </IconBtn>
+          <IconBtn
+            title="Move down"
+            onClick={() => onMove(1)}
+            disabled={idx === total - 1}
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+          </IconBtn>
+          <IconBtn title="Remove" onClick={onRemove} danger>
+            <Trash2 className="h-3.5 w-3.5" />
+          </IconBtn>
+        </div>
+      </div>
+
+      {/* Expanded edit form */}
+      {open && (
+        <div className="border-t border-gray-100 bg-white px-4 py-4">
+          <ExpandedFields
+            item={item}
+            disabled={disabled}
+            onUpdate={onUpdate}
+            onUploadDone={onUploadDone}
+          />
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ExpandedFields({
+  item,
+  disabled,
+  onUpdate,
+  onUploadDone,
+}: {
+  item: AdviceTopicItem
+  disabled: boolean
+  onUpdate: (patch: Partial<AdviceTopicItem>) => void
   onUploadDone: (url: string) => void
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
@@ -183,49 +286,66 @@ function TopicRow({
   }
 
   return (
-    <div className="border border-gray-200 rounded-xl p-3 bg-gray-50/50">
-      <div className="flex items-start justify-between gap-3 mb-2">
-        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-          Topic {idx + 1}
-        </span>
-        <div className="flex items-center gap-1">
-          <IconBtn title="Move up" onClick={() => onMove(-1)} disabled={idx === 0}>
-            <ArrowUp className="w-3.5 h-3.5" />
-          </IconBtn>
-          <IconBtn title="Move down" onClick={() => onMove(1)} disabled={idx === total - 1}>
-            <ArrowDown className="w-3.5 h-3.5" />
-          </IconBtn>
-          <IconBtn title="Remove" onClick={onRemove} danger>
-            <Trash2 className="w-3.5 h-3.5" />
-          </IconBtn>
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-[180px_1fr]">
+      {/* Cover preview + upload */}
+      <div className="space-y-2">
+        <div className="relative aspect-[4/3] overflow-hidden rounded-lg border border-gray-200 bg-gray-100">
+          {item.cover_image_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={resolveMediaUrl(item.cover_image_url)}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center text-xs text-gray-400">
+              No cover
+            </span>
+          )}
         </div>
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          disabled={disabled || uploading}
+          className="flex w-full items-center justify-center gap-2 rounded-md border border-gray-200 px-2.5 py-1.5 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+        >
+          <Upload className="h-3.5 w-3.5" />
+          {uploading ? 'Uploading…' : 'Upload cover'}
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={onUpload}
+        />
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-3">
-        <Field label="Section ID (anchor)">
-          <select
-            value={item.id}
-            onChange={(e) => onUpdate({ id: e.target.value as AdviceIdeasSectionId })}
-            className={inputCls}
-          >
-            {ADVICE_IDEAS_SECTION_IDS.map((id) => (
-              <option key={id} value={id}>
-                {id}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Label (shown on the strip and card)">
-          <input
-            type="text"
-            value={item.label}
-            onChange={(e) => onUpdate({ label: e.target.value })}
-            className={inputCls}
-          />
-        </Field>
-      </div>
-
-      <div className="mt-3">
+      {/* Fields */}
+      <div className="space-y-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[160px_1fr]">
+          <Field label="Section">
+            <select
+              value={item.id}
+              onChange={(e) => onUpdate({ id: e.target.value as AdviceIdeasSectionId })}
+              className={inputCls}
+            >
+              {ADVICE_IDEAS_SECTION_IDS.map((id) => (
+                <option key={id} value={id}>
+                  {id}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Label">
+            <input
+              type="text"
+              value={item.label}
+              onChange={(e) => onUpdate({ label: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
+        </div>
         <Field label="Short description">
           <input
             type="text"
@@ -234,42 +354,15 @@ function TopicRow({
             className={inputCls}
           />
         </Field>
-      </div>
-
-      <div className="mt-3 grid grid-cols-1 md:grid-cols-[180px_1fr] gap-3 items-start">
-        <div className="relative aspect-[4/3] rounded-lg bg-gray-100 overflow-hidden border border-gray-200">
-          {item.cover_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={resolveMediaUrl(item.cover_image_url)} alt="" className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-[11px] text-gray-400">
-              No cover
-            </div>
-          )}
-        </div>
-        <div className="space-y-2">
-          <Field label="Cover image URL (used on the Popular Topics grid)">
-            <input
-              type="text"
-              value={item.cover_image_url}
-              onChange={(e) => onUpdate({ cover_image_url: e.target.value })}
-              className={inputCls}
-              placeholder="/assets/images/… or https://…"
-            />
-          </Field>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => fileRef.current?.click()}
-              disabled={disabled || uploading}
-              className="flex items-center gap-2 text-xs font-medium text-gray-700 px-2.5 py-1.5 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
-            >
-              <Upload className="w-3.5 h-3.5" />
-              {uploading ? 'Uploading…' : 'Upload cover'}
-            </button>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onUpload} />
-          </div>
-        </div>
+        <Field label="Cover image URL">
+          <input
+            type="text"
+            value={item.cover_image_url}
+            onChange={(e) => onUpdate({ cover_image_url: e.target.value })}
+            className={inputCls}
+            placeholder="/assets/images/… or https://…"
+          />
+        </Field>
       </div>
     </div>
   )
@@ -294,11 +387,12 @@ function IconBtn({
       title={title}
       onClick={onClick}
       disabled={disabled}
-      className={`p-1.5 rounded-md transition-colors disabled:opacity-30 ${
+      className={cn(
+        'rounded-md p-1.5 transition-colors disabled:opacity-30 disabled:hover:bg-transparent',
         danger
-          ? 'text-gray-500 hover:text-red-600 hover:bg-red-50'
-          : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
-      }`}
+          ? 'text-gray-500 hover:bg-red-50 hover:text-red-600'
+          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+      )}
     >
       {children}
     </button>

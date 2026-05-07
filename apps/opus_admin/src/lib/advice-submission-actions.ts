@@ -469,6 +469,12 @@ export async function submitContributorSubmission(
   revalidatePath('/operations/articles/submissions')
 }
 
+// Mirrors apps/opus_admin/src/app/api/contribute/drafts/[id]/media — keep
+// in sync. Both paths share the same Supabase bucket, so the limit must
+// match no matter which call site is used.
+const CONTRIBUTOR_MEDIA_MAX_IMAGE_SIZE = 10 * 1024 * 1024
+const CONTRIBUTOR_MEDIA_MAX_VIDEO_SIZE = 50 * 1024 * 1024
+
 export async function uploadContributorMedia(
   formData: FormData
 ): Promise<{ url: string; type: 'image' | 'video' }> {
@@ -476,6 +482,16 @@ export async function uploadContributorMedia(
   const submissionId = (formData.get('submissionId') as string | null) ?? ''
   if (!file) throw new Error('No file provided.')
   if (!submissionId) throw new Error('Missing submission.')
+
+  const isVideo = file.type.startsWith('video')
+  const max = isVideo
+    ? CONTRIBUTOR_MEDIA_MAX_VIDEO_SIZE
+    : CONTRIBUTOR_MEDIA_MAX_IMAGE_SIZE
+  if (file.size > max) {
+    throw new Error(
+      isVideo ? 'Videos must be 50MB or smaller.' : 'Images must be 10MB or smaller.'
+    )
+  }
 
   await loadOwnedSubmission(submissionId, true)
 

@@ -74,12 +74,6 @@ export default async function AdvicePostsListPage() {
       <SetArticlesHeading title="Articles" subtitle={subtitle} />
       <HeaderActionsSlot>
         <Link
-          href="/operations/articles/submissions"
-          className="flex items-center gap-2 text-sm font-semibold text-gray-700 border border-gray-200 hover:bg-gray-50 px-4 py-2 rounded-lg transition-colors"
-        >
-          Submissions
-        </Link>
-        <Link
           href="/operations/articles/new"
           className="flex items-center gap-2 rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#b97fd0]"
         >
