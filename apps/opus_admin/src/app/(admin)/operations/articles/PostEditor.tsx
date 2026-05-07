@@ -179,7 +179,19 @@ export default function PostEditor({
   const [readTimeManual, setReadTimeManual] = useState<boolean>(!!initial.read_time && initial.read_time !== 5)
   const heroInputRef = useRef<HTMLInputElement>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  const summaryRef = useRef<HTMLTextAreaElement>(null)
   const [avatarDragOver, setAvatarDragOver] = useState(false)
+
+  // Auto-grow the summary textarea when its value changes externally (e.g.
+  // loading an existing post with a multi-line excerpt). The onChange handler
+  // resizes during typing; this effect handles the initial render and any
+  // server-side autosave restoration.
+  useEffect(() => {
+    const el = summaryRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [draft.excerpt])
 
   const set = <K extends keyof PostUpsertInput>(key: K, value: PostUpsertInput[K]) =>
     setDraft((d) => ({ ...d, [key]: value }))
@@ -772,6 +784,7 @@ export default function PostEditor({
                 className="block w-full border-0 bg-transparent p-0 text-[28px] font-semibold leading-tight tracking-tight text-gray-950 outline-none placeholder:text-gray-400 sm:text-[32px]"
               />
               <textarea
+                ref={summaryRef}
                 aria-label="Article summary"
                 value={draft.excerpt}
                 onChange={(e) => {
@@ -946,8 +959,10 @@ export default function PostEditor({
 
           </div>
 
-          {/* === RIGHT: metadata rail (sticky on lg+) === */}
-          <aside className="space-y-6 lg:sticky lg:top-4">
+          {/* === RIGHT: metadata rail (sticky on lg+, with internal scroll
+                so a tall rail doesn't cut off Essentials when the viewport
+                is shorter than the rail's combined card height). === */}
+          <aside className="space-y-6 lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto">
 
             {/* Author + publication */}
             <Card title="Author & publication">
