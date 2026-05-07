@@ -46,6 +46,10 @@ export default function TeamPage() {
     return idx >= 0 && idx < sections.length - 1 ? sections[idx + 1].href : null
   }, [draft])
 
+  const [saving, startSaving] = useTransition()
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [saveOk, setSaveOk] = useState(false)
+
   if (!hydrated) return <div className="p-8" aria-hidden />
 
   const team = draft.team
@@ -87,9 +91,6 @@ export default function TeamPage() {
   // Persist to the database. Avatar `avatarUrl` is a blob: URL only the
   // current browser tab can resolve, so we strip it before sending — image
   // upload to a real CDN URL is a separate flow handled by the photo step.
-  const [saving, startSaving] = useTransition()
-  const [saveError, setSaveError] = useState<string | null>(null)
-  const [saveOk, setSaveOk] = useState(false)
   const onSave = () => {
     setSaveError(null)
     setSaveOk(false)

@@ -44,7 +44,7 @@ export default function SocialsPage() {
     >
       <OnboardHeading
         title="Where can couples see your work online?"
-        description="Couples almost always check Instagram and TikTok before reaching out. Add at least one — you can leave the rest blank."
+        description="Couples almost always check Instagram and TikTok before reaching out. Add at least one. You can leave the rest blank."
       />
 
       <div className="space-y-4 max-w-2xl">
@@ -94,7 +94,7 @@ export default function SocialsPage() {
         <WhyWeAsk title="Why we ask for socials">
           <p>
             Vendors with at least one linked social account get <strong>3-4× more inquiries</strong>{' '}
-            than those without — couples want to scroll your real work, not just your packages.
+            than those without. Couples want to scroll your real work, not just your packages.
           </p>
           <p>
             Instagram and TikTok matter most for visual categories (photo, video, decor, beauty).

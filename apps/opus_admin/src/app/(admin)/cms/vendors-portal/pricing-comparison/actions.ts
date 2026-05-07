@@ -1,25 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { revalidateVendorsPortal } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import type { PricingComparisonContent } from '@/lib/cms/pricing-comparison'
 
 const PAGE_KEY = 'vendors_home'
 const SECTION_KEY = 'pricing-comparison'
-
-async function revalidateVendorsPortal(): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL
-  const secret = process.env.VENDORS_PORTAL_REVALIDATE_SECRET
-  if (!url || !secret) return
-  try {
-    await fetch(`${url}/api/revalidate?path=/`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${secret}` },
-    })
-  } catch {
-    // Best-effort.
-  }
-}
 
 export async function savePricingComparisonDraft(
   draft: PricingComparisonContent

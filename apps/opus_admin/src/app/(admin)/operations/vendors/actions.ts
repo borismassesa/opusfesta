@@ -3,6 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { auth } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { isEmailConfigured, sendEmail } from '@/lib/email'
+import {
+  buildVendorStatusEmail,
+  type VendorStatusEvent,
+} from '@/lib/vendor-status-email'
 
 export type ActionResult =
   | { ok: true }
@@ -170,6 +175,78 @@ export async function rejectDocument(
 // =============================================================================
 
 /**
+ * Best-effort transactional email + audit log when a vendor's lifecycle status
+ * flips. Looks up business name + recipient email (preferring contact_info
+ * email, falling back to the linked auth user's email), renders a templated
+ * Resend message, and fires it. Never throws — email failures must not roll
+ * back the underlying status change. Logs `[email]` warnings on failure so
+ * ops can investigate.
+ */
+async function notifyVendorOfStatusChange(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  vendorId: string,
+  event: VendorStatusEvent,
+  note?: string | null
+): Promise<void> {
+  if (!isEmailConfigured()) return
+
+  const { data, error } = await admin
+    .from('vendors')
+    .select('business_name, contact_info, user_id')
+    .eq('id', vendorId)
+    .maybeSingle<{
+      business_name: string | null
+      contact_info: { email?: string | null } | null
+      user_id: string | null
+    }>()
+  if (error || !data) {
+    console.warn(
+      `[email] vendor lookup failed for ${event} notify (vendor=${vendorId}): ${error?.message ?? 'no row'}`
+    )
+    return
+  }
+
+  let recipient = data.contact_info?.email?.trim() || ''
+  if (!recipient && data.user_id) {
+    const userRow = await admin
+      .from('users')
+      .select('email')
+      .eq('id', data.user_id)
+      .maybeSingle<{ email: string | null }>()
+    recipient = userRow.data?.email?.trim() || ''
+  }
+  if (!recipient) {
+    console.warn(
+      `[email] no recipient address for vendor=${vendorId} event=${event}; skipping notify`
+    )
+    return
+  }
+
+  const portalUrl =
+    process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL?.trim() ||
+    'https://vendors.opusfesta.com'
+  const message = buildVendorStatusEmail({
+    event,
+    businessName: data.business_name?.trim() || 'OpusFesta vendor',
+    recipientEmail: recipient,
+    note: note ?? null,
+    portalUrl,
+  })
+
+  const result = await sendEmail({
+    to: recipient,
+    subject: message.subject,
+    html: message.html,
+    text: message.text,
+  })
+  if (!result.sent) {
+    console.warn(
+      `[email] vendor status notify failed (vendor=${vendorId} event=${event}): ${result.reason}${result.error ? ` — ${result.error}` : ''}`
+    )
+  }
+}
+
+/**
  * Approve the vendor: flip `onboarding_status` to `active` so they can take
  * bookings on the marketplace. Caller is expected to have approved the
  * individual documents already; we don't enforce that here so admins can
@@ -199,6 +276,8 @@ export async function approveVendor(vendorId: string): Promise<ActionResult> {
     }
   }
 
+  await notifyVendorOfStatusChange(admin, vendorId, 'approved')
+
   revalidatePath('/operations/vendors')
   revalidatePath(`/operations/vendors/${vendorId}`)
   return { ok: true }
@@ -210,10 +289,13 @@ export async function approveVendor(vendorId: string): Promise<ActionResult> {
  * notes on /verify. This action just flips the high-level status to
  * `needs_corrections` so /pending shows the "Action required" banner and
  * the verify-page auto-transition gate stops promoting them to admin_review
- * until they re-submit.
+ * until they re-submit. The optional `note` is included verbatim in the
+ * notification email so the vendor knows what high-level area to address
+ * (per-document notes are still surfaced separately on /verify).
  */
 export async function requestCorrections(
-  vendorId: string
+  vendorId: string,
+  note?: string
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
@@ -234,6 +316,13 @@ export async function requestCorrections(
       error: `[admin] request corrections failed: ${error.code} ${error.message}`,
     }
   }
+
+  await notifyVendorOfStatusChange(
+    admin,
+    vendorId,
+    'corrections_requested',
+    note
+  )
 
   revalidatePath('/operations/vendors')
   revalidatePath(`/operations/vendors/${vendorId}`)
@@ -271,106 +360,7 @@ export async function suspendVendor(
     }
   }
 
-  revalidatePath('/operations/vendors')
-  revalidatePath(`/operations/vendors/${vendorId}`)
-  return { ok: true }
-}
-
-// =============================================================================
-// Vendor field editing — admin-only, fills gaps onboarding doesn't cover yet
-// =============================================================================
-
-export type VendorEditableFields = {
-  capacityMin: number | null
-  capacityMax: number | null
-  lat: number | null
-  lng: number | null
-  galleryUrls: string[]
-}
-
-/**
- * Update the admin-fillable structured fields on a vendor row that the
- * onboarding flow doesn't yet collect (capacity, map coordinates, public
- * gallery URLs). Each null/empty value clears its column. Returns ok with
- * the updated record snapshot or a typed error.
- */
-export async function updateVendorEditableFields(
-  vendorId: string,
-  fields: VendorEditableFields
-): Promise<ActionResult> {
-  const { userId } = await auth()
-  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
-
-  // Coerce + validate. Reject obviously bad shapes rather than silently
-  // dropping them — catches typos before they hit the DB.
-  const min = fields.capacityMin
-  const max = fields.capacityMax
-  if (min != null && (!Number.isFinite(min) || min < 0)) {
-    return {
-      ok: false,
-      reason: 'invalid',
-      error: 'Min capacity must be a positive number.',
-    }
-  }
-  if (max != null && (!Number.isFinite(max) || max < 0)) {
-    return {
-      ok: false,
-      reason: 'invalid',
-      error: 'Max capacity must be a positive number.',
-    }
-  }
-  if (min != null && max != null && max < min) {
-    return {
-      ok: false,
-      reason: 'invalid',
-      error: 'Max capacity must be ≥ min capacity.',
-    }
-  }
-  const lat = fields.lat
-  const lng = fields.lng
-  if (lat != null && (!Number.isFinite(lat) || lat < -90 || lat > 90)) {
-    return {
-      ok: false,
-      reason: 'invalid',
-      error: 'Latitude must be between -90 and 90.',
-    }
-  }
-  if (lng != null && (!Number.isFinite(lng) || lng < -180 || lng > 180)) {
-    return {
-      ok: false,
-      reason: 'invalid',
-      error: 'Longitude must be between -180 and 180.',
-    }
-  }
-
-  const cleanedGallery = fields.galleryUrls
-    .map((u) => u.trim())
-    .filter((u) => u.length > 0)
-    // Reject anything that isn't an http(s) URL — protects the public site
-    // from data: / javascript: schemes if a future textarea ever leaks.
-    .filter((u) => /^https?:\/\//i.test(u))
-
-  const capacity =
-    min != null || max != null ? { min: min ?? 0, max: max ?? min ?? 0 } : null
-
-  const admin = createSupabaseAdminClient()
-  const { error } = await admin
-    .from('vendors')
-    .update({
-      capacity,
-      lat,
-      lng,
-      gallery_urls: cleanedGallery.length > 0 ? cleanedGallery : null,
-    })
-    .eq('id', vendorId)
-
-  if (error) {
-    return {
-      ok: false,
-      reason: 'unknown',
-      error: `[admin] update vendor fields failed: ${error.code} ${error.message}`,
-    }
-  }
+  await notifyVendorOfStatusChange(admin, vendorId, 'suspended', reason)
 
   revalidatePath('/operations/vendors')
   revalidatePath(`/operations/vendors/${vendorId}`)
@@ -998,6 +988,8 @@ export async function reactivateVendor(
       error: `[admin] reactivate vendor failed: ${error.code} ${error.message}`,
     }
   }
+
+  await notifyVendorOfStatusChange(admin, vendorId, 'reactivated')
 
   revalidatePath('/operations/vendors')
   revalidatePath(`/operations/vendors/${vendorId}`)

@@ -15,19 +15,17 @@ import {
   CreditCard,
   FileText,
   Gem,
+  Gift,
   Globe,
   Globe2,
   Heart,
   HelpCircle,
   History,
   Home,
-  Image as ImageIcon,
   Inbox,
   Landmark,
   LayoutDashboard,
   Lightbulb,
-  ListTree,
-  MapPin,
   MessageSquare,
   Newspaper,
   PanelLeftClose,
@@ -43,19 +41,28 @@ import {
   Smartphone,
   Star,
   Store,
-  Tags,
   TrendingUp,
   UserCheck,
   UserCog,
   UserPlus,
   Users,
   Wallet,
+  Wrench,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import Logo from "./ui/Logo";
 
-type NavItem = { icon: LucideIcon; label: string; href: string; badge?: string };
+type NavItem = {
+  icon: LucideIcon;
+  label: string;
+  href: string;
+  badge?: string;
+  // Extra path prefixes that should also count as "active". Used when one
+  // sidebar entry covers a group of routes that don't share a URL prefix
+  // (e.g. Articles owns /operations/articles and /operations/authors).
+  activePaths?: string[];
+};
 type NavSection = {
   id: string;
   label: string;
@@ -75,17 +82,13 @@ const sections: NavSection[] = [
     icon: Globe,
     items: [
       { icon: Home, label: "Homepage", href: "/cms/homepage" },
-      { icon: Store, label: "Vendors", href: "/cms/vendors" },
-      { icon: MapPin, label: "Planning Tools", href: "/cms/planning-tools" },
-      { icon: Lightbulb, label: "Advice & Ideas", href: "/cms/advice-and-ideas" },
+      { icon: Wrench, label: "Planning Tools", href: "/cms/planning-tools" },
+      { icon: Store, label: "Vendors Marketplace", href: "/cms/vendors" },
+      { icon: UserCheck, label: "Guest & RSVPs", href: "/cms/guests" },
+      { icon: Globe2, label: "Wedding Website", href: "/cms/wedding-websites" },
+      { icon: Lightbulb, label: "Ideas & Advice", href: "/cms/advice-and-ideas" },
       { icon: Gem, label: "Attire & Rings", href: "/cms/attire-and-rings" },
-      { icon: UserCheck, label: "Guests", href: "/cms/guests" },
-      { icon: Globe2, label: "Wedding Websites", href: "/cms/wedding-websites" },
-      { icon: FileText, label: "Pages", href: "/cms/pages" },
-      { icon: ImageIcon, label: "Media Library", href: "/cms/media" },
-      { icon: ClipboardList, label: "Forms", href: "/cms/forms" },
-      { icon: Tags, label: "Categories & Tags", href: "/cms/taxonomy" },
-      { icon: ListTree, label: "Navigation", href: "/cms/navigation" },
+      { icon: Gift, label: "Registry", href: "/cms/registry" },
     ],
   },
   {
@@ -93,7 +96,7 @@ const sections: NavSection[] = [
     label: "Vendors Portal CMS",
     icon: Store,
     items: [
-      { icon: Home, label: "Landing page", href: "/cms/vendors-portal" },
+      { icon: Home, label: "Homepage", href: "/cms/vendors-portal" },
     ],
   },
   {
@@ -106,7 +109,13 @@ const sections: NavSection[] = [
       { icon: Building2, label: "Vendor Accounts", href: "/operations/vendors" },
       { icon: Star, label: "Reviews & Moderation", href: "/operations/reviews" },
       { icon: Calendar, label: "Calendar", href: "/operations/calendar" },
-      { icon: Newspaper, label: "Articles", href: "/operations/articles" },
+      {
+        icon: Newspaper,
+        label: "Articles",
+        href: "/operations/articles",
+        activePaths: ["/operations/authors", "/operations/articles/submissions"],
+      },
+      { icon: ShieldCheck, label: "Admin Team", href: "/operations/admins" },
     ],
   },
   {
@@ -156,13 +165,16 @@ const bottomNavItems: NavItem[] = [
 
 const COLLAPSED_KEY = 'opusfesta:sidebar-collapsed'
 
-function isItemActive(pathname: string, href: string) {
-  if (href === '/') return pathname === '/'
-  return pathname === href || pathname.startsWith(href + '/')
+function isItemActive(pathname: string, item: NavItem) {
+  if (item.href === '/') return pathname === '/'
+  if (pathname === item.href || pathname.startsWith(item.href + '/')) return true
+  return (item.activePaths ?? []).some(
+    (p) => pathname === p || pathname.startsWith(p + '/')
+  )
 }
 
 function isSectionActive(pathname: string, section: NavSection) {
-  return section.items.some((i) => isItemActive(pathname, i.href))
+  return section.items.some((i) => isItemActive(pathname, i))
 }
 
 export function Sidebar() {
@@ -246,7 +258,7 @@ export function Sidebar() {
         <nav className={cn(collapsed ? 'space-y-1' : 'space-y-1 mb-2')}>
           {topItems.map((item) => {
             const Icon = item.icon;
-            const isActive = isItemActive(pathname, item.href);
+            const isActive = isItemActive(pathname, item);
             return (
               <Link
                 key={item.label}
@@ -341,7 +353,7 @@ export function Sidebar() {
                 <nav className="mt-1 mb-2 space-y-0.5 pl-2 border-l border-gray-100 ml-5">
                   {section.items.map((item) => {
                     const Icon = item.icon;
-                    const itemActive = isItemActive(pathname, item.href);
+                    const itemActive = isItemActive(pathname, item);
                     return (
                       <Link
                         key={item.label}

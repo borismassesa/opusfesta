@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { revalidateWebsite as revalidateWebsitePaths } from '@/lib/revalidate'
 import { requireAdminRole, type AdminAccessRole } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
@@ -11,27 +12,17 @@ import {
   type AdviceIdeasSeedComment,
 } from '@/lib/cms/advice-ideas'
 
-const ARTICLE_WRITE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor', 'author']
+// Direct admin writes to advice_ideas_posts are restricted to internal staff.
+// External writers go through /contribute/* and the staging
+// advice_article_submissions table; the 'author' role no longer grants admin
+// article access.
+const ARTICLE_WRITE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 const ARTICLE_MANAGE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 
 async function revalidateWebsite(slug?: string): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_WEBSITE_URL
-  const secret = process.env.WEBSITE_REVALIDATE_SECRET
-  if (!url || !secret) return
   const paths = ['/advice-and-ideas']
   if (slug) paths.push(`/advice-and-ideas/${slug}`)
-  try {
-    await Promise.all(
-      paths.map((p) =>
-        fetch(`${url}/api/revalidate?path=${encodeURIComponent(p)}`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${secret}` },
-        })
-      )
-    )
-  } catch {
-    // Best effort.
-  }
+  await revalidateWebsitePaths(...paths)
 }
 
 export type PostUpsertInput = {
@@ -146,6 +137,9 @@ export async function deleteAdvicePost(id: string): Promise<void> {
   if (error) throw error
 
   revalidatePath('/operations/articles')
+  // Submissions page filters orphan published rows; refresh so the deleted
+  // post disappears from the queue.
+  revalidatePath('/operations/articles/submissions')
   await revalidateWebsite(row?.slug)
 }
 
@@ -179,11 +173,25 @@ export async function togglePostFeatured(id: string, featured: boolean): Promise
   await revalidateWebsite(row?.slug)
 }
 
+// 50 MB hard cap for videos / 10 MB for images. Sanity check; the
+// contributor API route enforces the same so the limit holds for both
+// upload paths.
+const ADVICE_MEDIA_MAX_IMAGE_SIZE = 10 * 1024 * 1024
+const ADVICE_MEDIA_MAX_VIDEO_SIZE = 50 * 1024 * 1024
+
 export async function uploadAdviceMedia(formData: FormData): Promise<{ url: string; type: 'image' | 'video' }> {
   await requireAdminRole(ARTICLE_WRITE_ROLES)
   const file = formData.get('file') as File | null
   const slug = (formData.get('slug') as string | null) ?? '_orphan'
   if (!file) throw new Error('No file provided')
+
+  const isVideo = file.type.startsWith('video')
+  const max = isVideo ? ADVICE_MEDIA_MAX_VIDEO_SIZE : ADVICE_MEDIA_MAX_IMAGE_SIZE
+  if (file.size > max) {
+    throw new Error(
+      isVideo ? 'Videos must be 50MB or smaller.' : 'Images must be 10MB or smaller.'
+    )
+  }
 
   const supabase = createSupabaseAdminClient()
   const ext = file.name.split('.').pop() ?? 'bin'

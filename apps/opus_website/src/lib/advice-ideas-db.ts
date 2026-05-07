@@ -166,7 +166,10 @@ function normalizeBody(value: unknown): AdviceIdeasBodySection[] {
     .map((section, index) => ({
       id: readString(section.id) || `section-${index + 1}`,
       label: readString(section.label) || undefined,
-      heading: readString(section.heading) || `Section ${index + 1}`,
+      // Empty heading is fine — the renderer skips the <h2> when there's
+      // nothing to show. We used to default to "Section N" here, which
+      // leaked into published articles when contributors didn't add an h2.
+      heading: readString(section.heading),
       blocks: normalizeBlocks(section.blocks),
     }))
 }

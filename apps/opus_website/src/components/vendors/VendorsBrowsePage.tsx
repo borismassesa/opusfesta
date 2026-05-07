@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo, useCallback, useRef, useEffect } from 'react'
-import { useSearchParams, useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { LucideIcon } from 'lucide-react'
@@ -415,13 +415,18 @@ function BrowseCard({ vendor, hovered, onHover }: {
   hovered?: boolean
   onHover?: (id: string | null) => void
 }) {
+  const router = useRouter()
   const startPrice = vendor.priceRange.split('–')[0].trim()
   const images = getVendorCardImages(vendor)
   const [idx, setIdx] = useState(0)
   const dragStart = useRef<number | null>(null)
-  const router = useRouter()
   const prev = (e: React.MouseEvent) => { e.preventDefault(); setIdx((i) => (i - 1 + images.length) % images.length) }
   const next = (e: React.MouseEvent) => { e.preventDefault(); setIdx((i) => (i + 1) % images.length) }
+  const goToContact = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`)
+  }
   const onTouchStart = (e: React.TouchEvent) => { dragStart.current = e.touches[0].clientX }
   const onTouchEnd = (e: React.TouchEvent) => {
     if (dragStart.current === null) return
@@ -524,7 +529,8 @@ function BrowseCard({ vendor, hovered, onHover }: {
             <p className="text-[15px] font-bold text-[#1A1A1A]">{startPrice}</p>
           </div>
           <button
-            onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`) }}
+            type="button"
+            onClick={goToContact}
             className="shrink-0 rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-bold text-[#1A1A1A] transition-colors hover:bg-[#b98dcc]"
           >
             Get a quote
@@ -592,9 +598,14 @@ function GridCardImageCarousel({ vendor }: { vendor: Vendor }) {
 }
 
 function GridCard({ vendor }: { vendor: Vendor }) {
+  const router = useRouter()
   const isNew = vendor.badge === 'New'
   const startingPrice = vendor.priceRange.split('–')[0].trim()
-  const router = useRouter()
+  const goToContact = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`)
+  }
 
   return (
     <Link href={`${VENDORS_BASE_PATH}/${vendor.slug}`}
@@ -657,9 +668,9 @@ function GridCard({ vendor }: { vendor: Vendor }) {
             <p className="font-display text-[16px] leading-none text-black">{startingPrice}</p>
           </div>
           {isNew ? (
-            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`) }} className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[rgba(201,160,220,0.15)]">Get a quote</button>
+            <button type="button" onClick={goToContact} className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[rgba(201,160,220,0.15)]">Get a quote</button>
           ) : (
-            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`) }} className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[#b98dcc]">Get a quote</button>
+            <button type="button" onClick={goToContact} className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[#b98dcc]">Get a quote</button>
           )}
         </div>
       </div>
@@ -672,15 +683,20 @@ function MapListCard({ vendor, onHover, onClick }: {
   vendor: Vendor
   onHover: (id: string | null) => void; onClick: (id: string) => void
 }) {
+  const router = useRouter()
   const isNew = vendor.badge === 'New'
   const startingPrice = vendor.priceRange.split('–')[0].trim()
   const images = getVendorCardImages(vendor)
   const [idx, setIdx] = useState(0)
   const dragStart = useRef<number | null>(null)
-  const router = useRouter()
 
   const prev = (e: React.MouseEvent) => { e.preventDefault(); setIdx((i) => (i - 1 + images.length) % images.length) }
   const next = (e: React.MouseEvent) => { e.preventDefault(); setIdx((i) => (i + 1) % images.length) }
+  const goToContact = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`)
+  }
   const onTouchStart = (e: React.TouchEvent) => { dragStart.current = e.touches[0].clientX }
   const onTouchEnd = (e: React.TouchEvent) => {
     if (dragStart.current === null) return
@@ -783,9 +799,9 @@ function MapListCard({ vendor, onHover, onClick }: {
             <p className="font-display text-[16px] leading-none text-black">{startingPrice}</p>
           </div>
           {isNew ? (
-            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`) }} className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[rgba(201,160,220,0.15)]">Get a quote</button>
+            <button type="button" onClick={goToContact} className="rounded-full border border-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[rgba(201,160,220,0.15)]">Get a quote</button>
           ) : (
-            <button onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push(`${VENDORS_BASE_PATH}/${vendor.slug}#vendor-contact`) }} className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[#b98dcc]">Get a quote</button>
+            <button type="button" onClick={goToContact} className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[12px] font-semibold text-black transition-colors hover:bg-[#b98dcc]">Get a quote</button>
           )}
         </div>
       </div>

@@ -1,25 +1,12 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { revalidateWebsite as revalidateWebsitePaths } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import type { VendorRecord } from '@/lib/cms/vendors'
 
 async function revalidateWebsite(): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_WEBSITE_URL
-  const secret = process.env.WEBSITE_REVALIDATE_SECRET
-  if (!url || !secret) return
-  try {
-    await Promise.all([
-      fetch(`${url}/api/revalidate?path=/vendors`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${secret}` },
-      }),
-      fetch(`${url}/api/revalidate?path=/`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${secret}` },
-      }),
-    ])
-  } catch {}
+  await revalidateWebsitePaths('/vendors', '/')
 }
 
 export async function upsertVendor(vendor: VendorRecord): Promise<{ id: string }> {

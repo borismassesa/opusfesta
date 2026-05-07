@@ -183,7 +183,7 @@ export default function PayoutPage() {
           </p>
           <p>
             Mobile money payouts arrive instantly. Bank transfers take 1–2 business days. We never
-            charge a payout fee — TZS in, TZS out.
+            charge a payout fee. TZS in, TZS out.
           </p>
         </WhyWeAsk>
       </div>
