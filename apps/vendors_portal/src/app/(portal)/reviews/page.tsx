@@ -90,9 +90,14 @@ async function loadReviews(): Promise<{
     .returns<ReviewRowFromDb[]>()
 
   if (reviews.error) {
-    throw new Error(
+    // Match the dashboard pattern (vendor_views, invoices): degrade
+    // gracefully when the table is missing from the schema cache (PGRST205,
+    // typically pre-migration) or any other transient query failure, so the
+    // page still renders with an empty list instead of a 500.
+    console.warn(
       `[reviews] reviews query failed: ${reviews.error.code} ${reviews.error.message}`,
     )
+    return { initialReviews: [], source: { kind: 'live' } }
   }
 
   return {
