@@ -298,14 +298,8 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
     const refreshMessages = async () => {
       try {
         const [messagesResponse, inquiryResponse] = await Promise.all([
-          fetch(
-            `/api/my/inquiries/${inquiry.id}/messages`,
-            { cache: 'no-store' },
-          ),
-          fetch(
-            `/api/my/inquiries/${inquiry.id}`,
-            { cache: 'no-store' },
-          ),
+          fetch(`/api/my/inquiries/${inquiry.id}/messages`, { cache: 'no-store' }),
+          fetch(`/api/my/inquiries/${inquiry.id}`, { cache: 'no-store' }),
         ])
         if (!messagesResponse.ok || !inquiryResponse.ok) return
         const [json, inquiryJson] = await Promise.all([messagesResponse.json(), inquiryResponse.json()])
@@ -427,16 +421,15 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
 
   async function handleDeleteInquiry() {
     if (inquiryActionLoading) return
+    if (!window.confirm('Delete this quote request? This cannot be undone.')) return
     setInquiryActionLoading(true)
     try {
-      const res = await fetch(`/api/my/inquiries/${inquiry.id}`, {
-        method: 'DELETE',
-      })
+      const res = await fetch(`/api/my/inquiries/${inquiry.id}`, { method: 'DELETE' })
       if (!res.ok) {
         setSendError('Failed to delete request.')
         return
       }
-      router.push(`/my/inquiries`)
+      router.push('/my/inquiries')
       router.refresh()
     } catch {
       setSendError('Network error while deleting request.')

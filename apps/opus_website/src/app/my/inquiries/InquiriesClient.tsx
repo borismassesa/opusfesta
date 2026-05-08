@@ -48,9 +48,13 @@ function StatusBadge({ status }: Readonly<{ status: InquiryStatus | null }>) {
 }
 
 function formatDate(iso: string) {
-  const d = new Date(iso)
+  // Date-only strings (YYYY-MM-DD) are UTC; parse parts to avoid timezone shift
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso)
+  const d = dateOnly
+    ? new Date(`${iso}T00:00:00`)
+    : new Date(iso)
   if (Number.isNaN(d.getTime())) return iso
-  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', timeZone: dateOnly ? 'UTC' : undefined })
 }
 
 export default function InquiriesClient({ initialEmail, initialInquiries }: Props) {

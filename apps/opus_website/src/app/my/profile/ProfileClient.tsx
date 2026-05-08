@@ -8,7 +8,7 @@ import { useClerk } from '@clerk/nextjs'
 import {
   Calendar, Check, ChevronRight, Heart,
   LogOut, MapPin, MessageCircle, Pencil,
-  Phone, Trash2, Users, Wallet, X,
+  Phone, Tag, Trash2, Users, Wallet, X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -68,7 +68,11 @@ type Props = {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  const dateOnly = /^\d{4}-\d{2}-\d{2}$/.test(iso)
+  return new Date(dateOnly ? `${iso}T00:00:00` : iso).toLocaleDateString('en-GB', {
+    day: 'numeric', month: 'long', year: 'numeric',
+    ...(dateOnly ? { timeZone: 'UTC' } : {}),
+  })
 }
 
 // ── Avatar ───────────────────────────────────────────────────────────────────
@@ -370,7 +374,6 @@ export default function ProfileClient({ clerkName, clerkEmail, clerkImageUrl, pr
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : 'Something went wrong')
       setDeleting(false)
-      setShowDelete(false)
     }
   }
 
@@ -434,12 +437,12 @@ export default function ProfileClient({ clerkName, clerkEmail, clerkImageUrl, pr
                 <DetailRow icon={MapPin} label="Location"
                   value={[profile.city, profile.region].filter(Boolean).join(', ')} />
                 <DetailRow icon={Users} label="Guest count"
-                  value={profile.guest_count ? `${profile.guest_count} guests` : null} />
+                  value={profile.guest_count != null ? `${profile.guest_count} guests` : null} />
                 <DetailRow icon={Wallet} label="Budget"
                   value={profile.budget_range ? BUDGET_LABELS[profile.budget_range] : null} />
                 <DetailRow icon={Phone} label="WhatsApp"
                   value={profile.whatsapp_phone} />
-                <DetailRow icon={Heart} label="Looking for"
+                <DetailRow icon={Tag} label="Looking for"
                   value={profile.preferred_categories?.length
                     ? profile.preferred_categories.map(c => CATEGORY_OPTIONS.find(o => o.value === c)?.label ?? c).join(', ')
                     : null}
@@ -482,7 +485,7 @@ export default function ProfileClient({ clerkName, clerkEmail, clerkImageUrl, pr
           {deleteError && (
             <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3 mb-1">{deleteError}</p>
           )}
-          <button type="button" onClick={() => signOut().then(() => router.push('/'))}
+          <button type="button" onClick={() => signOut().then(() => router.push('/')).catch(() => router.push('/'))}
             className="flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-[#1A1A1A] transition-colors">
             <LogOut className="w-4 h-4" />
             Sign out

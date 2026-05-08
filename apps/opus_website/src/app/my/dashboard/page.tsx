@@ -70,6 +70,9 @@ export default async function DashboardPage() {
       : Promise.resolve({ data: [], error: null }),
   ])
 
+  if (profileResult.error) console.error('[dashboard] profile fetch failed', profileResult.error.code)
+  if (inquiriesResult.error) console.error('[dashboard] inquiries fetch failed', inquiriesResult.error.code)
+
   const inquiries = (inquiriesResult.data ?? []) as RecentInquiry[]
 
   const inquirySummary: InquirySummary = {

@@ -27,12 +27,13 @@ export default async function InquiriesPage() {
 
   if (email) {
     const supabase = createSupabaseServerClient()
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('inquiries')
       .select('id, vendor_name, vendor_slug, status, created_at, event_date, location, guest_count')
       .eq('email', email)
       .order('created_at', { ascending: false })
       .limit(30)
+    if (error) console.error('[inquiries-page] fetch failed', error.code)
     initialInquiries = (data ?? []) as InquirySummary[]
   }
 

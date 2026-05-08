@@ -188,15 +188,12 @@ function Step2({
           />
           <label className="flex items-center gap-2.5 cursor-pointer select-none mt-0.5">
             <div
+              aria-hidden="true"
               className={`w-5 h-5 rounded flex items-center justify-center border-2 transition-all shrink-0 ${
                 dateUndecided
                   ? 'bg-[#C9A0DC] border-[#C9A0DC]'
                   : 'border-gray-300 bg-white hover:border-[#C9A0DC]'
               }`}
-              onClick={() => {
-                onDateUndecidedChange(!dateUndecided)
-                if (!dateUndecided) onWeddingDateChange('')
-              }}
             >
               {dateUndecided && <Check size={11} strokeWidth={3} className="text-white" />}
             </div>

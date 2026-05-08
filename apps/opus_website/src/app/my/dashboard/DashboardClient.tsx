@@ -346,7 +346,7 @@ export default function DashboardClient({
               return (
                 <Link
                   key={inq.id}
-                  href={`/my/inquiries/${inq.id}${clerkEmail ? `?email=${encodeURIComponent(clerkEmail)}` : ''}`}
+                  href={`/my/inquiries/${inq.id}`}
                   className="flex items-center gap-3 px-5 py-4 hover:bg-gray-50 transition-colors group"
                 >
                   <div className={cn('w-2.5 h-2.5 rounded-full shrink-0', STATUS_DOT[status])} />

@@ -24,7 +24,7 @@ export default async function ProfilePage() {
 
   const [clerkUser, profile] = await Promise.all([
     currentUser().catch(() => null),
-    fetchProfile(userId),
+    fetchProfile(userId).catch(() => null),
   ])
 
   return (
@@ -39,19 +39,21 @@ export default async function ProfilePage() {
 
 async function fetchProfile(clerkId: string): Promise<CoupleProfile | null> {
   const supabase = createSupabaseServerClient()
-  const { data: userRow } = await supabase
+  const { data: userRow, error: userErr } = await supabase
     .from('users')
     .select('id')
     .eq('clerk_id', clerkId)
     .maybeSingle<{ id: string }>()
 
+  if (userErr) console.error('[profile-page] user lookup failed', userErr.code)
   if (!userRow) return null
 
-  const { data } = await supabase
+  const { data, error: profileErr } = await supabase
     .from('couple_profiles')
     .select('partner1_name, partner2_name, wedding_date, date_undecided, city, region, guest_count, budget_range, whatsapp_phone, preferred_categories')
     .eq('user_id', userRow.id)
     .maybeSingle<CoupleProfile>()
 
+  if (profileErr) console.error('[profile-page] profile lookup failed', profileErr.code)
   return data ?? null
 }

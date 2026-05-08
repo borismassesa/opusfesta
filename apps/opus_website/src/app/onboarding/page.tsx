@@ -27,23 +27,26 @@ export default async function OnboardingPage() {
 
   // Find internal user id — use maybeSingle so a missing row (webhook not yet
   // fired) returns null instead of throwing PGRST116.
-  const { data: userRow } = await supabase
+  const { data: userRow, error: userErr } = await supabase
     .from('users')
     .select('id')
     .eq('clerk_id', userId)
     .maybeSingle()
 
+  if (userErr) console.error('[onboarding] user lookup failed', userErr.code)
+
   let existingProfile: CoupleProfile | null = null
 
   if (userRow) {
-    const { data: profile } = await supabase
+    const { data: profile, error: profileErr } = await supabase
       .from('couple_profiles')
       .select(
         'partner1_name, partner2_name, wedding_date, date_undecided, city, region, guest_count, budget_range, whatsapp_phone, preferred_categories',
       )
       .eq('user_id', userRow.id)
-      .single()
+      .maybeSingle()
 
+    if (profileErr) console.error('[onboarding] profile lookup failed', profileErr.code)
     if (profile) {
       existingProfile = profile as CoupleProfile
     }

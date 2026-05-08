@@ -74,15 +74,22 @@ export default async function InquiryDetailPage({ params }: Readonly<Props>) {
     .eq('email', normalizedEmail)
     .maybeSingle()
 
-  if (inquiryErr || !inquiry) {
+  if (inquiryErr) {
+    console.error('[inquiry-detail] query failed', inquiryErr.code)
     notFound()
   }
 
-  const { data: messages } = await supabase
+  if (!inquiry) {
+    notFound()
+  }
+
+  const { data: messages, error: messagesErr } = await supabase
     .from('inquiry_messages')
     .select('id, sender_type, sender_name, content, created_at, read_at')
     .eq('inquiry_id', id)
     .order('created_at', { ascending: true })
+
+  if (messagesErr) console.error('[inquiry-detail] messages query failed', messagesErr.code)
 
   return (
     <InquiryThread

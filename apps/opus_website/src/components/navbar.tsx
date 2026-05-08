@@ -301,7 +301,7 @@ const navItems: Array<{
 ]
 
 export default function Navbar() {
-  const { isSignedIn } = useUser()
+  const { isSignedIn, isLoaded } = useUser()
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
@@ -354,7 +354,7 @@ export default function Navbar() {
 
         {/* Right: auth + hamburger */}
         <div className="flex shrink-0 items-center gap-2 font-semibold text-sm sm:gap-3 lg:text-[15px]">
-          {!isSignedIn ? (
+          {isLoaded && !isSignedIn ? (
             <>
               <Link
                 href="/sign-in"
@@ -369,7 +369,7 @@ export default function Navbar() {
                 Sign up
               </Link>
             </>
-          ) : (
+          ) : isLoaded ? (
             <div className="flex items-center gap-3">
               <Link
                 href="/my/dashboard"
@@ -379,7 +379,7 @@ export default function Navbar() {
               </Link>
               <UserButton appearance={{ elements: { avatarBox: 'w-9 h-9' } }} />
             </div>
-          )}
+          ) : null}
           <button
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 lg:hidden sm:h-10 sm:w-10"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
@@ -565,7 +565,7 @@ export default function Navbar() {
 
             {/* Footer CTA */}
             <div className="shrink-0 px-4 py-5 border-t border-gray-100 flex flex-col gap-2.5">
-              {!isSignedIn ? (
+              {isLoaded && !isSignedIn ? (
                 <>
                   <Link
                     href="/sign-in"
@@ -582,7 +582,7 @@ export default function Navbar() {
                     Sign up, it&apos;s free
                   </Link>
                 </>
-              ) : (
+              ) : isLoaded ? (
                 <div className="flex flex-col gap-2.5">
                   <Link
                     href="/my/dashboard"
@@ -595,7 +595,7 @@ export default function Navbar() {
                     <UserButton appearance={{ elements: { avatarBox: 'w-10 h-10' } }} />
                   </div>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
 
