@@ -653,7 +653,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           )}
         </div>
       </div>
-      <GlobalSaveBar />
+      <GlobalSaveBar bottomOffsetClass={activeTab === 'verification' ? 'pb-[100px]' : 'pb-4'} />
     </div>
     </VendorEditorProvider>
   )
@@ -690,7 +690,9 @@ function ReviewSection({
 // Sticky bottom action bar — appears only when one or more storefront editors
 // are dirty. Replaces the per-section gray Save buttons. Save All runs every
 // dirty editor's save in parallel and shows a transient toast with the result.
-function GlobalSaveBar() {
+// bottomOffsetClass lets the parent bump this bar up when the verification
+// action bar is also showing, so they stack instead of overlap.
+function GlobalSaveBar({ bottomOffsetClass = 'pb-4' }: { bottomOffsetClass?: string }) {
   const editors = useEditorRegistry()
   const dirty = editors.filter((e) => e.dirty)
   const [saving, setSaving] = useState(false)
@@ -746,7 +748,10 @@ function GlobalSaveBar() {
     <div
       role="region"
       aria-label="Unsaved changes"
-      className="fixed bottom-0 inset-x-0 z-40 pointer-events-none flex justify-center pb-4 px-4"
+      className={cn(
+        'fixed bottom-0 inset-x-0 z-40 pointer-events-none flex justify-center px-4',
+        bottomOffsetClass
+      )}
     >
       <div className="pointer-events-auto w-full max-w-[1200px]">
         {toast && (
@@ -774,7 +779,7 @@ function GlobalSaveBar() {
                 {dirty.length} unsaved change{dirty.length === 1 ? '' : 's'}
               </span>
               <span className="text-gray-500 ml-2 hidden sm:inline">
-                {dirty.map((e) => e.label).join(' · ')}
+                {dirty.map((e) => e.label).join(', ')}
               </span>
             </div>
             <div className="flex items-center gap-2 shrink-0">
@@ -928,6 +933,7 @@ function PayoutPanel({
   }
 
   return (
+    <>
     <SidePanel title="Payout method" icon={Banknote}>
       <div className="flex flex-col gap-3">
         <Field label="Method">
@@ -986,45 +992,75 @@ function PayoutPanel({
         Verify the account holder name matches the TIN certificate above before
         approving the vendor.
       </p>
-      <ReviewPanelActions
-        pending={pending}
-        dirty={dirty}
-        error={error}
-        saved={saved}
-        onSave={() => save()}
-        saveLabel={payout ? 'Save payout' : 'Create payout'}
-      >
-        <button
-          type="button"
-          onClick={() => saveWithStatus('verified')}
-          disabled={pending}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-50 transition-colors"
-        >
-          <ShieldCheck className="w-3 h-3" />
-          Verify
-        </button>
-        <button
-          type="button"
-          onClick={() => saveWithStatus('failed')}
-          disabled={pending}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 disabled:opacity-50 transition-colors"
-        >
-          <XCircle className="w-3 h-3" />
-          Mark failed
-        </button>
-        {payout?.id && (
+    </SidePanel>
+
+    {/* Sticky payout action bar — these are the highest-leverage buttons
+        on the page (Verify / Mark failed / Save / Delete). When PayoutPanel
+        is mounted (Verification tab is active), they sit at viewport bottom
+        instead of being a quiet trio buried at the end of the card. */}
+    <div className="fixed bottom-0 inset-x-0 z-30 pointer-events-none flex justify-center pb-4 px-4">
+      <div className="pointer-events-auto w-full max-w-[1200px] flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-2xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] px-5 py-3 flex-wrap">
+        <div className="text-sm flex items-center gap-2 min-w-0">
+          <Banknote className="w-4 h-4 text-gray-500 shrink-0" />
+          <div className="min-w-0">
+            <span className="font-semibold text-gray-900">Payout method</span>
+            {error && (
+              <span className="ml-2 text-rose-700 text-xs">{error}</span>
+            )}
+            {saved && !error && (
+              <span className="ml-2 text-emerald-700 text-xs">Saved.</span>
+            )}
+            {!error && !saved && (
+              <span className="ml-2 text-gray-500 text-xs">
+                {payout
+                  ? `${PAYOUT_METHOD_LABEL[methodType] ?? methodType} — ${status}`
+                  : 'Not created yet'}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {payout?.id && (
+            <button
+              type="button"
+              onClick={deletePayout}
+              disabled={pending}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete
+            </button>
+          )}
           <button
             type="button"
-            onClick={deletePayout}
+            onClick={() => saveWithStatus('failed')}
             disabled={pending}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 disabled:opacity-50 transition-colors"
           >
-            <Trash2 className="w-3 h-3" />
-            Delete
+            <XCircle className="w-3 h-3" />
+            Mark failed
           </button>
-        )}
-      </ReviewPanelActions>
-    </SidePanel>
+          <button
+            type="button"
+            onClick={() => save()}
+            disabled={pending || !dirty}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-gray-900 hover:bg-black text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
+            {pending ? 'Saving…' : payout ? 'Save payout' : 'Create payout'}
+          </button>
+          <button
+            type="button"
+            onClick={() => saveWithStatus('verified')}
+            disabled={pending}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-50 transition-colors"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Verify
+          </button>
+        </div>
+      </div>
+    </div>
+    </>
   )
 }
 

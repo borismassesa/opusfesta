@@ -8,7 +8,12 @@ import {
   Calendar,
   Check,
   ClipboardList,
+  Facebook,
+  Globe,
   HelpCircle,
+  Instagram,
+  MessageCircle,
+  Music2,
   Plus,
   Star,
   Trash2,
@@ -61,6 +66,72 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
         {label}
       </label>
       {children}
+    </div>
+  )
+}
+
+// Social-channel input with the channel icon prefixed inside the input.
+function SocialField({
+  icon,
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  icon: ReactNode
+  label: string
+  value: string
+  onChange: (value: string) => void
+  placeholder?: string
+}) {
+  return (
+    <Field label={label}>
+      <div className="relative">
+        <span
+          aria-hidden
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400"
+        >
+          {icon}
+        </span>
+        <input
+          className={`${inputCls} pl-8`}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+        />
+      </div>
+    </Field>
+  )
+}
+
+// Lavender-tinted empty state — used by the list editors (packages, team,
+// FAQs) when the collection is empty. Replaces the old plain gray italic
+// "No X yet" text with a properly composed nudge to take action.
+function EmptyState({
+  icon,
+  message,
+  ctaLabel,
+  onCta,
+}: {
+  icon: ReactNode
+  message: string
+  ctaLabel: string
+  onCta: () => void
+}) {
+  return (
+    <div className="rounded-2xl border border-[#E0C7E8] bg-[#FAF5FA] p-8 text-center">
+      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-white border border-[#E0C7E8] text-[#7E5896] mb-3">
+        {icon}
+      </div>
+      <p className="text-sm text-gray-700 mb-4">{message}</p>
+      <button
+        type="button"
+        onClick={onCta}
+        className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-[#7E5896] hover:bg-[#6B4880] text-white transition-colors"
+      >
+        <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+        {ctaLabel}
+      </button>
     </div>
   )
 }
@@ -211,7 +282,7 @@ export function AdminProfileEditor({
         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
           Address
         </p>
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Street">
             <input
               className={inputCls}
@@ -240,13 +311,15 @@ export function AdminProfileEditor({
               onChange={(e) => setV({ ...v, region: e.target.value })}
             />
           </Field>
-          <Field label="Postal code">
-            <input
-              className={inputCls}
-              value={v.postalCode}
-              onChange={(e) => setV({ ...v, postalCode: e.target.value })}
-            />
-          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Postal code">
+              <input
+                className={inputCls}
+                value={v.postalCode}
+                onChange={(e) => setV({ ...v, postalCode: e.target.value })}
+              />
+            </Field>
+          </div>
         </div>
       </div>
 
@@ -254,7 +327,7 @@ export function AdminProfileEditor({
         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
           Contact
         </p>
-        <div className="flex flex-col gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Phone">
             <input
               className={inputCls}
@@ -269,60 +342,57 @@ export function AdminProfileEditor({
               onChange={(e) => setV({ ...v, whatsapp: e.target.value })}
             />
           </Field>
-          <Field label="Email">
-            <input
-              type="email"
-              className={inputCls}
-              value={v.email}
-              onChange={(e) => setV({ ...v, email: e.target.value })}
-            />
-          </Field>
+          <div className="sm:col-span-2">
+            <Field label="Email">
+              <input
+                type="email"
+                className={inputCls}
+                value={v.email}
+                onChange={(e) => setV({ ...v, email: e.target.value })}
+              />
+            </Field>
+          </div>
         </div>
       </div>
 
       <div className="mt-5 pt-4 border-t border-gray-100">
         <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
-          Social media & website
+          Social media &amp; website
         </p>
-        <div className="flex flex-col gap-3">
-          <Field label="Website">
-            <input
-              className={inputCls}
-              value={v.socialWebsite}
-              onChange={(e) => setV({ ...v, socialWebsite: e.target.value })}
-              placeholder="https://"
-            />
-          </Field>
-          <Field label="WhatsApp business">
-            <input
-              className={inputCls}
-              value={v.socialWhatsapp}
-              onChange={(e) => setV({ ...v, socialWhatsapp: e.target.value })}
-            />
-          </Field>
-          <Field label="Instagram">
-            <input
-              className={inputCls}
-              value={v.socialInstagram}
-              onChange={(e) => setV({ ...v, socialInstagram: e.target.value })}
-              placeholder="@handle"
-            />
-          </Field>
-          <Field label="Facebook">
-            <input
-              className={inputCls}
-              value={v.socialFacebook}
-              onChange={(e) => setV({ ...v, socialFacebook: e.target.value })}
-            />
-          </Field>
-          <Field label="TikTok">
-            <input
-              className={inputCls}
-              value={v.socialTiktok}
-              onChange={(e) => setV({ ...v, socialTiktok: e.target.value })}
-              placeholder="@handle"
-            />
-          </Field>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <SocialField
+            icon={<Globe className="w-3.5 h-3.5" />}
+            label="Website"
+            value={v.socialWebsite}
+            onChange={(value) => setV({ ...v, socialWebsite: value })}
+            placeholder="https://"
+          />
+          <SocialField
+            icon={<MessageCircle className="w-3.5 h-3.5" />}
+            label="WhatsApp business"
+            value={v.socialWhatsapp}
+            onChange={(value) => setV({ ...v, socialWhatsapp: value })}
+          />
+          <SocialField
+            icon={<Instagram className="w-3.5 h-3.5" />}
+            label="Instagram"
+            value={v.socialInstagram}
+            onChange={(value) => setV({ ...v, socialInstagram: value })}
+            placeholder="@handle"
+          />
+          <SocialField
+            icon={<Facebook className="w-3.5 h-3.5" />}
+            label="Facebook"
+            value={v.socialFacebook}
+            onChange={(value) => setV({ ...v, socialFacebook: value })}
+          />
+          <SocialField
+            icon={<Music2 className="w-3.5 h-3.5" />}
+            label="TikTok"
+            value={v.socialTiktok}
+            onChange={(value) => setV({ ...v, socialTiktok: value })}
+            placeholder="@handle"
+          />
         </div>
       </div>
 
@@ -797,7 +867,12 @@ export function AdminTeamEditor({
       subtitle="People shown on the vendor storefront."
     >
       {team.length === 0 ? (
-        <p className="text-sm text-gray-500 italic">No team members yet.</p>
+        <EmptyState
+          icon={<Users className="w-6 h-6" strokeWidth={1.75} />}
+          message="No team members yet. Add the people couples will see on the storefront."
+          ctaLabel="Add first member"
+          onCta={add}
+        />
       ) : (
         <ul className="space-y-3">
           {team.map((m) => (
@@ -842,13 +917,15 @@ export function AdminTeamEditor({
           ))}
         </ul>
       )}
-      <button
-        type="button"
-        onClick={add}
-        className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
-      >
-        <Plus className="w-3.5 h-3.5" /> Add team member
-      </button>
+      {team.length > 0 && (
+        <button
+          type="button"
+          onClick={add}
+          className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add team member
+        </button>
+      )}
     </Card>
   )
 }
@@ -900,7 +977,12 @@ export function AdminFaqEditor({
       subtitle="Questions and answers couples see before inquiring."
     >
       {faqs.length === 0 ? (
-        <p className="text-sm text-gray-500 italic">No FAQs yet.</p>
+        <EmptyState
+          icon={<HelpCircle className="w-6 h-6" strokeWidth={1.75} />}
+          message="No FAQs yet. Add answers to questions couples ask before inquiring."
+          ctaLabel="Add first FAQ"
+          onCta={add}
+        />
       ) : (
         <ul className="space-y-3">
           {faqs.map((f) => (
@@ -936,13 +1018,15 @@ export function AdminFaqEditor({
           ))}
         </ul>
       )}
-      <button
-        type="button"
-        onClick={add}
-        className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
-      >
-        <Plus className="w-3.5 h-3.5" /> Add FAQ
-      </button>
+      {faqs.length > 0 && (
+        <button
+          type="button"
+          onClick={add}
+          className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add FAQ
+        </button>
+      )}
     </Card>
   )
 }
@@ -1009,7 +1093,12 @@ export function AdminPackagesEditor({
       subtitle="Commercial packages, prices, descriptions, and included items."
     >
       {packages.length === 0 ? (
-        <p className="text-sm text-gray-500 italic">No packages yet.</p>
+        <EmptyState
+          icon={<Star className="w-6 h-6" strokeWidth={1.75} />}
+          message="No packages yet. Add the commercial offers couples can choose from."
+          ctaLabel="Add first package"
+          onCta={add}
+        />
       ) : (
         <ul className="space-y-3">
           {packages.map((p) => (
@@ -1069,13 +1158,15 @@ export function AdminPackagesEditor({
           ))}
         </ul>
       )}
-      <button
-        type="button"
-        onClick={add}
-        className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
-      >
-        <Plus className="w-3.5 h-3.5" /> Add package
-      </button>
+      {packages.length > 0 && (
+        <button
+          type="button"
+          onClick={add}
+          className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-gray-900"
+        >
+          <Plus className="w-3.5 h-3.5" /> Add package
+        </button>
+      )}
     </Card>
   )
 }
