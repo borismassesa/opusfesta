@@ -14,6 +14,8 @@
   min-height: 480px;
   padding: 8px 4px 64px 4px;
   caret-color: #5B2D8E;
+  /* Counter for the inline "Section N" badge that appears before every H2. */
+  counter-reset: section;
 }
 
 .article-editor:focus {
@@ -31,10 +33,46 @@
   line-height: 1.25;
   color: #111827;
   margin: 32px 0 12px 0;
+  /* Increments per H2 so the ::before label below counts up automatically. */
+  counter-increment: section;
 }
 
 .article-editor h2:first-child {
   margin-top: 0;
+}
+
+/* Inline "SECTION N" eyebrow rendered above each H2 in the editor. Pure CSS
+ * counter — author doesn't have to think about numbering, and TipTap doesn't
+ * need a custom node. The label is a non-editable widget the cursor skips. */
+.article-editor h2::before {
+  content: 'Section ' counter(section);
+  display: block;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: #7E5896;
+  margin-bottom: 4px;
+  user-select: none;
+  pointer-events: none;
+}
+
+/* When a section is jumped to from the rail card, the H2 briefly highlights
+ * so the author sees the cursor / scroll target. The class is added by JS
+ * and removed after a short delay (matches the duration below). */
+.article-editor h2.section-flash {
+  animation: section-flash 1.4s ease-out;
+}
+
+@keyframes section-flash {
+  0% {
+    background: rgba(126, 88, 150, 0.18);
+    box-shadow: 0 0 0 6px rgba(126, 88, 150, 0.18);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 0 transparent;
+  }
 }
 
 .article-editor h3 {
