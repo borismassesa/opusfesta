@@ -749,7 +749,7 @@ function GlobalSaveBar({ bottomOffsetClass = 'pb-4' }: { bottomOffsetClass?: str
       role="region"
       aria-label="Unsaved changes"
       className={cn(
-        'fixed bottom-0 inset-x-0 z-40 pointer-events-none flex justify-center px-4',
+        'fixed bottom-0 right-0 left-0 lg:left-64 z-40 pointer-events-none flex justify-center px-4',
         bottomOffsetClass
       )}
     >
@@ -998,7 +998,7 @@ function PayoutPanel({
         on the page (Verify / Mark failed / Save / Delete). When PayoutPanel
         is mounted (Verification tab is active), they sit at viewport bottom
         instead of being a quiet trio buried at the end of the card. */}
-    <div className="fixed bottom-0 inset-x-0 z-30 pointer-events-none flex justify-center pb-4 px-4">
+    <div className="fixed bottom-0 right-0 left-0 lg:left-64 z-30 pointer-events-none flex justify-center pb-4 px-4">
       <div className="pointer-events-auto w-full max-w-[1200px] flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-2xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] px-5 py-3 flex-wrap">
         <div className="text-sm flex items-center gap-2 min-w-0">
           <Banknote className="w-4 h-4 text-gray-500 shrink-0" />
