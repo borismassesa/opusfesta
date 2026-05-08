@@ -1,5 +1,3 @@
-'use server'
-
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
@@ -27,7 +25,7 @@ export async function PATCH(request: Request) {
     .eq('clerk_id', userId)
 
   if (error) {
-    console.error('[profile] update failed', error)
+    console.error('[profile] update failed', error.code)
     return NextResponse.json({ error: 'Update failed' }, { status: 500 })
   }
 

@@ -73,13 +73,17 @@ export async function PATCH(
   const supabase = createSupabaseAdminClient()
 
   // Confirm ownership and fetch current timeline before writing.
-  const { data: existing } = await supabase
+  const { data: existing, error: ownerErr } = await supabase
     .from('vendor_bookings')
     .select('id, timeline')
     .eq('id', id)
     .eq('vendor_id', state.vendor.id)
     .maybeSingle<{ id: string; timeline: unknown }>()
 
+  if (ownerErr) {
+    console.error('[bookings] ownership check failed', ownerErr.code)
+    return NextResponse.json({ error: 'Failed to fetch booking' }, { status: 500 })
+  }
   if (!existing) {
     return NextResponse.json({ error: 'Booking not found' }, { status: 404 })
   }
@@ -95,6 +99,9 @@ export async function PATCH(
 
   // Append a timeline entry if provided.
   if (body.timeline_entry !== undefined) {
+    if (typeof body.timeline_entry !== 'object' || body.timeline_entry === null || Array.isArray(body.timeline_entry)) {
+      return NextResponse.json({ error: 'timeline_entry must be an object' }, { status: 400 })
+    }
     const prev = Array.isArray(existing.timeline) ? existing.timeline : []
     update.timeline = [...prev, body.timeline_entry]
   }
@@ -103,6 +110,7 @@ export async function PATCH(
     .from('vendor_bookings')
     .update(update)
     .eq('id', id)
+    .eq('vendor_id', state.vendor.id)
 
   if (error) {
     console.error('[bookings] patch failed', error)

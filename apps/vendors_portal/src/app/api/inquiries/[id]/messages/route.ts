@@ -17,13 +17,17 @@ export async function GET(
   const supabase = createSupabaseAdminClient()
 
   // Verify inquiry belongs to this vendor
-  const { data: inquiry } = await supabase
+  const { data: inquiry, error: inquiryErr } = await supabase
     .from('inquiries')
     .select('id, name, message, created_at')
     .eq('id', id)
     .eq('vendor_id', vendorId)
     .maybeSingle()
 
+  if (inquiryErr) {
+    console.error('[vendor/inquiries/messages] GET inquiry lookup failed', inquiryErr.code)
+    return NextResponse.json({ error: 'Failed to fetch inquiry' }, { status: 500 })
+  }
   if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
@@ -87,13 +91,17 @@ export async function POST(
   const supabase = createSupabaseAdminClient()
 
   // Confirm inquiry belongs to this vendor
-  const { data: existing } = await supabase
+  const { data: existing, error: existingErr } = await supabase
     .from('inquiries')
     .select('id')
     .eq('id', id)
     .eq('vendor_id', vendorId)
     .maybeSingle()
 
+  if (existingErr) {
+    console.error('[vendor/inquiries/messages] POST inquiry lookup failed', existingErr.code)
+    return NextResponse.json({ error: 'Failed to fetch inquiry' }, { status: 500 })
+  }
   if (!existing) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
@@ -115,11 +123,12 @@ export async function POST(
   }
 
   // Update inquiry status to responded if it was pending
-  await supabase
+  const { error: statusErr } = await supabase
     .from('inquiries')
     .update({ status: 'responded', responded_at: new Date().toISOString(), updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('status', 'pending')
+  if (statusErr) console.error('[vendor/inquiries/messages] status update failed', statusErr.code)
 
   return NextResponse.json({ message }, { status: 201 })
 }

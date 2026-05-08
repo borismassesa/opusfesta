@@ -247,6 +247,7 @@ function FilterBar({
             value={search}
             onChange={(e) => onSearch(e.target.value)}
             placeholder="Search couple, venue…"
+            aria-label="Search bookings"
             className="pl-9 pr-3 py-1.5 bg-white border border-gray-200 rounded-md text-sm w-56 focus:outline-none focus:ring-1 focus:ring-gray-900 focus:border-gray-900"
           />
         </div>
@@ -255,6 +256,7 @@ function FilterBar({
           <select
             value={sort}
             onChange={(e) => onSort(e.target.value as SortKey)}
+            aria-label="Sort bookings"
             className="bg-transparent outline-none cursor-pointer"
           >
             <option value="soonest">Soonest event</option>
@@ -292,6 +294,7 @@ function FilterPill({
       )}
       aria-pressed={active}
     >
+      {dotClass && <span className={cn('w-2 h-2 rounded-full shrink-0', dotClass)} aria-hidden />}
       {label}
       <span
         className={cn(
@@ -332,7 +335,7 @@ function BookingsTable({ rows }: { rows: Booking[] }) {
 
 function BookingRow({ b }: { b: Booking }) {
   const stage = STAGE_META[b.stage]
-  const initials = (b.couple.match(/[A-Z]/g) ?? []).slice(0, 2).join('') || 'C'
+  const initials = b.couple.split(/\s*&\s*|\s+/).filter(Boolean).map((p) => p[0]).slice(0, 2).join('').toUpperCase() || 'C'
 
   let depositText: string
   let depositTone: 'paid' | 'pending' | 'na'
@@ -360,7 +363,7 @@ function BookingRow({ b }: { b: Booking }) {
         <span
           className="w-9 h-9 rounded-full bg-cover bg-center bg-gray-200 shrink-0 ring-1 ring-white shadow-sm"
           style={{
-            backgroundImage: b.avatarUrl ? `url(${b.avatarUrl})` : undefined,
+            backgroundImage: b.avatarUrl ? `url('${b.avatarUrl}')` : undefined,
           }}
           aria-hidden
         >

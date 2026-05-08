@@ -24,8 +24,8 @@ async function loadBookings(): Promise<Booking[]> {
     .returns<DbBookingRow[]>()
 
   if (error) {
-    console.error('[bookings page] query failed', error)
-    return []
+    console.error('[bookings page] query failed', error.code)
+    throw new Error('Failed to load bookings')
   }
 
   return (data ?? []).map(mapDbBooking)

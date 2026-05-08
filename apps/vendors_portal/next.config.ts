@@ -2,11 +2,6 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  experimental: {
-    serverActions: {
-      bodySizeLimit: '10mb',
-    },
-  },
   images: {
     remotePatterns: [
       { protocol: 'https', hostname: 'images.unsplash.com' },
@@ -16,7 +11,6 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: '*.supabase.co' },
       // Clerk — user profile photos.
       { protocol: 'https', hostname: 'img.clerk.com' },
-      { protocol: 'https', hostname: '*.clerk.com' },
     ],
   },
 }

@@ -201,10 +201,10 @@ function Timeline({ entries }: { entries: BookingTimelineEntry[] }) {
       <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500 mb-4">Timeline</p>
       <ol className="relative pl-5">
         <span className="absolute left-[7px] top-1 bottom-1 w-px bg-gray-200" aria-hidden />
-        {sorted.map((e) => {
+        {sorted.map((e, i) => {
           const Icon = TIMELINE_ICON[e.kind]
           return (
-            <li key={`${e.at}-${e.kind}`} className="relative pl-5 pb-4 last:pb-0">
+            <li key={`${e.at}-${e.kind}-${i}`} className="relative pl-5 pb-4 last:pb-0">
               <span className="absolute -left-0 top-0.5 w-4 h-4 rounded-full bg-white border border-gray-200 flex items-center justify-center">
                 <Icon className="w-2.5 h-2.5 text-gray-500" />
               </span>
@@ -296,7 +296,7 @@ function MessagesCard({ booking: b }: { booking: Booking }) {
 /* ---------- Couple card ---------- */
 
 function CoupleCard({ booking: b }: { booking: Booking }) {
-  const initials = (b.couple.match(/[A-Z]/g) ?? []).slice(0, 2).join('') || 'C'
+  const initials = b.couple.trim().split(/\s*&\s*|\s+/).filter(Boolean).map((p) => [...p][0] ?? '').slice(0, 2).join('').toUpperCase() || 'C'
   return (
     <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5">
       <div className="flex items-center gap-3 mb-3">

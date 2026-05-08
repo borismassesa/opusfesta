@@ -54,7 +54,7 @@ export async function POST(request: Request) {
     deposit_percent,
   } = body
 
-  if (!event_date || !start_time || !end_time || !partner_a || !partner_b || !email || !package_name || !location || total_value === undefined) {
+  if (!event_date || !start_time || !end_time || !partner_a || !partner_b || !email || !package_name || !location || total_value == null) {
     return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
   }
 

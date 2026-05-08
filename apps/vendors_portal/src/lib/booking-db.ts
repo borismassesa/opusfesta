@@ -47,8 +47,15 @@ export type DbBookingRow = {
   updated_at: string
 }
 
+const VALID_STAGES = new Set(['quoted', 'reserved', 'confirmed', 'completed', 'cancelled'])
+const VALID_INTERNAL = new Set([
+  'quote_sent', 'quote_accepted', 'contract_sent', 'contract_signed',
+  'deposit_pending', 'confirmed', 'reschedule_requested', 'rescheduled',
+  'completed', 'cancelled',
+])
+
 function firstName(name: string): string {
-  return name.split(' ')[0]
+  return name.trim().split(/\s+/)[0] || name
 }
 
 export function mapDbBooking(row: DbBookingRow): Booking {
@@ -66,8 +73,8 @@ export function mapDbBooking(row: DbBookingRow): Booking {
     avatarUrl: null,
     packageName: row.package_name,
     location: row.location,
-    stage: row.stage as BookingStage,
-    internalStatus: row.internal_status as BookingInternalStatus,
+    stage: (VALID_STAGES.has(row.stage) ? row.stage : 'quoted') as BookingStage,
+    internalStatus: (VALID_INTERNAL.has(row.internal_status) ? row.internal_status : 'quote_sent') as BookingInternalStatus,
     totalValue: row.total_value,
     depositPercent: row.deposit_percent,
     depositPaid: row.deposit_paid,

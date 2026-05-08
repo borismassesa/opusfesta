@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useUser, useClerk } from '@clerk/nextjs'
@@ -46,7 +46,7 @@ type Props = {
 
 function Avatar({ imageUrl, name }: { imageUrl: string | undefined; name: string | null }) {
   const initials = name
-    ? name.split(' ').map((p) => p[0]).join('').slice(0, 2).toUpperCase()
+    ? name.split(/\s+/).filter(Boolean).map((p) => p[0]).join('').slice(0, 2).toUpperCase()
     : '?'
 
   return (
@@ -132,6 +132,9 @@ function PhoneField({ initial }: { initial: string | null }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => () => { if (savedTimerRef.current) clearTimeout(savedTimerRef.current) }, [])
 
   async function save() {
     setSaving(true)
@@ -149,7 +152,8 @@ function PhoneField({ initial }: { initial: string | null }) {
       }
       setSaved(true)
       setEditing(false)
-      setTimeout(() => setSaved(false), 2000)
+      if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
+      savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
     } catch {
       setError('Network error. Please try again.')
     } finally {

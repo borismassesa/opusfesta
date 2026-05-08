@@ -67,7 +67,7 @@ export async function PATCH(
   // Confirm the inquiry belongs to this vendor before writing; fetch proposal
   // fields now so we can create a booking if status is moving to 'accepted'.
   const supabase = createSupabaseAdminClient()
-  const { data: existing } = await supabase
+  const { data: existing, error: ownerErr } = await supabase
     .from('inquiries')
     .select('id, vendor_id, user_id, name, email, phone, proposal_event_date, proposal_venue, proposal_package, proposal_invoice_amount, proposal_counter_amount')
     .eq('id', id)
@@ -86,6 +86,10 @@ export async function PATCH(
       proposal_counter_amount: number | null
     }>()
 
+  if (ownerErr) {
+    console.error('[inquiries] ownership check failed', ownerErr.code)
+    return NextResponse.json({ error: 'Failed to fetch inquiry' }, { status: 500 })
+  }
   if (!existing) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
@@ -110,7 +114,11 @@ export async function PATCH(
 
   // Promote to booking pipeline when vendor marks the inquiry as accepted.
   if (status === 'accepted') {
-    await createBookingFromInquiry(supabase, existing)
+    try {
+      await createBookingFromInquiry(supabase, existing)
+    } catch (err) {
+      console.error('[inquiries] createBookingFromInquiry failed', err)
+    }
   }
 
   return NextResponse.json({ success: true })

@@ -1,4 +1,5 @@
 import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import SettingsClient from './SettingsClient'
@@ -7,9 +8,11 @@ export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
   const { userId } = await auth()
+  if (!userId) redirect('/sign-in')
+
   const [state, userRow] = await Promise.all([
     getCurrentVendor(),
-    userId ? fetchUserRow(userId) : null,
+    fetchUserRow(userId),
   ])
 
   const vendor = state.kind === 'live' ? state.vendor : null
@@ -24,10 +27,11 @@ export default async function SettingsPage() {
 
 async function fetchUserRow(clerkId: string) {
   const supabase = createSupabaseAdminClient()
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('users')
     .select('phone')
     .eq('clerk_id', clerkId)
     .maybeSingle<{ phone: string | null }>()
+  if (error) console.error('[settings] user row fetch failed', error.code)
   return data
 }

@@ -114,8 +114,9 @@ async function acceptCounter(
     proposal_event_date: inquiry.proposal_event_date,
     proposal_venue: inquiry.proposal_venue,
     proposal_package: inquiry.proposal_package,
-    proposal_invoice_amount: inquiry.proposal_invoice_amount,
-    proposal_counter_amount: inquiry.proposal_counter_amount,
+    // Use the counter amount since that's what was accepted
+    proposal_invoice_amount: inquiry.proposal_counter_amount ?? inquiry.proposal_invoice_amount,
+    proposal_counter_amount: null,
   })
 
   return NextResponse.json({ success: true })
@@ -146,7 +147,7 @@ export async function PATCH(
   }
 
   const supabase = createSupabaseAdminClient()
-  const { data: inquiry } = await supabase
+  const { data: inquiry, error: inquiryErr } = await supabase
     .from('inquiries')
     .select('id, vendor_id, user_id, name, email, phone, proposal_status, proposal_event_date, proposal_venue, proposal_package, proposal_invoice_amount, proposal_counter_amount')
     .eq('id', id)
@@ -166,6 +167,10 @@ export async function PATCH(
       proposal_counter_amount: number | null
     }>()
 
+  if (inquiryErr) {
+    console.error('[vendor/inquiries/proposal] lookup failed', inquiryErr.code)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
   if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }

@@ -71,20 +71,15 @@ export async function POST(request: Request) {
   const { error } = await supabase
     .from('users')
     .upsert(
-      {
-        clerk_id: payload.id,
-        email,
-        name,
-        password: 'clerk-managed',
-      },
+      { clerk_id: payload.id, email, name },
       { onConflict: 'clerk_id' },
     )
 
   if (error) {
-    console.error(`[clerk-webhook] users upsert failed for ${payload.id}:`, error)
+    console.error(`[clerk-webhook] users upsert failed for ${payload.id}:`, error.code)
     return new Response('DB error', { status: 500 })
   }
 
-  console.log(`[clerk-webhook] ${event.type} synced: clerk_id=${payload.id} email=${email}`)
+  console.log(`[clerk-webhook] ${event.type} synced: clerk_id=${payload.id} email=***`)
   return new Response('OK', { status: 200 })
 }

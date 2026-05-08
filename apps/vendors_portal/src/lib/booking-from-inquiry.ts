@@ -23,12 +23,13 @@ export async function createBookingFromInquiry(
 ): Promise<string | null> {
   if (!inquiry.proposal_event_date) return null
 
-  const { data: existing } = await supabase
+  const { data: existing, error: existingErr } = await supabase
     .from('vendor_bookings')
     .select('id')
     .eq('inquiry_id', inquiry.id)
     .maybeSingle<{ id: string }>()
 
+  if (existingErr) console.error('[booking-from-inquiry] lookup failed', existingErr.code)
   if (existing) return existing.id
 
   // "Amani & Zuri" → partnerA = "Amani", partnerB = "Zuri"
@@ -52,7 +53,7 @@ export async function createBookingFromInquiry(
       partner_b: partnerB,
       phone: inquiry.phone ?? null,
       whatsapp: inquiry.phone ?? null,
-      email: inquiry.email ?? '',
+      email: inquiry.email ?? null,
       package_name: inquiry.proposal_package ?? 'TBC',
       location: inquiry.proposal_venue ?? 'TBC',
       total_value: value,

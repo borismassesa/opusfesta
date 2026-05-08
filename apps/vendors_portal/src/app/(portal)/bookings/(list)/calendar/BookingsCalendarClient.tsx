@@ -90,7 +90,7 @@ export default function BookingsCalendarClient({
 }) {
   const { draft, update, hydrated } = useOnboardingDraft()
 
-  const todayKey = useMemo(() => formatISODate(new Date()), [])
+  const todayKey = formatISODate(new Date())
   const [view, setView] = useState<CalendarView>('month')
   const [anchor, setAnchor] = useState<Date>(() => new Date())
   const [selected, setSelected] = useState<string | null>(null)
@@ -590,8 +590,9 @@ function DayView({
   const over = bookings.length > capacity
   const sorted = [...bookings].sort((a, b) => a.startTime.localeCompare(b.startTime))
 
-  const earliest = sorted.length ? Math.min(...sorted.map((b) => parseInt(b.startTime.slice(0, 2), 10))) : 9
-  const latest = sorted.length ? Math.max(...sorted.map((b) => parseInt(b.endTime.slice(0, 2), 10))) : 21
+  const parseHour = (t: string) => { const h = parseInt(t.slice(0, 2), 10); return Number.isFinite(h) ? h : 0 }
+  const earliest = sorted.length ? Math.min(...sorted.map((b) => parseHour(b.startTime))) : 9
+  const latest = sorted.length ? Math.max(...sorted.map((b) => parseHour(b.endTime))) : 21
   const startHour = Math.max(0, Math.min(earliest, 9))
   const endHour = Math.min(24, Math.max(latest, 21))
   const hours = Array.from({ length: endHour - startHour + 1 }, (_, i) => startHour + i)
@@ -635,11 +636,11 @@ function DayView({
           {hours.map((h) => {
             const slot = `${String(h).padStart(2, '0')}:00`
             const overlapping = sorted.filter((b) => {
-              const start = parseInt(b.startTime.slice(0, 2), 10)
-              const end = parseInt(b.endTime.slice(0, 2), 10)
+              const start = parseHour(b.startTime)
+              const end = parseHour(b.endTime)
               return h >= start && h < end
             })
-            const startsHere = sorted.filter((b) => parseInt(b.startTime.slice(0, 2), 10) === h)
+            const startsHere = sorted.filter((b) => parseHour(b.startTime) === h)
             return (
               <li key={h} className="flex items-stretch gap-3 px-2 py-2 min-h-[44px]">
                 <span className="w-12 shrink-0 text-[10px] font-semibold uppercase tracking-wider text-gray-400 tabular-nums pt-1">
@@ -781,7 +782,7 @@ function SelectedDatePanel({
       <textarea
         value={note}
         onChange={(e) => setNote(e.target.value)}
-        onBlur={() => { if (isOff) onMarkOff(note.trim() || undefined) }}
+        onBlur={() => { onMarkOff(note.trim() || undefined) }}
         placeholder="e.g. Personal leave, training day"
         rows={3}
         className="w-full text-xs bg-white border border-gray-300 rounded-md px-3 py-2 text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 outline-none resize-none"

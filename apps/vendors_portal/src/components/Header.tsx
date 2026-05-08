@@ -104,9 +104,9 @@ export function Header() {
   const bookingsHeading = useBookingsHeading(pathname)
   const heading = PAGE_HEADINGS[pathname] ?? storefrontHeading ?? bookingsHeading
   const isStorefront = pathname.startsWith('/storefront')
-  const { user } = useUser()
+  const { user, isLoaded } = useUser()
   const initials = user?.fullName
-    ? user.fullName.split(' ').map((p: string) => p[0]).join('').slice(0, 2).toUpperCase()
+    ? user.fullName.split(/\s+/).filter(Boolean).map((p: string) => p[0]).join('').slice(0, 2).toUpperCase()
     : (user?.primaryEmailAddress?.emailAddress?.[0] ?? '?').toUpperCase()
 
   return (
@@ -173,25 +173,27 @@ export function Header() {
           <span className="absolute top-0 right-0.5 w-2 h-2 bg-red-500 border-2 border-gray-50 rounded-full" />
         </button>
 
-        <Link
-          href="/settings"
-          aria-label="Profile settings"
-          className="shrink-0"
-        >
-          {user?.imageUrl ? (
-            <Image
-              src={user.imageUrl}
-              alt={user.fullName ?? 'Profile'}
-              width={40}
-              height={40}
-              className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm hover:ring-[#C9A0DC] transition-all"
-            />
-          ) : (
-            <div className="w-10 h-10 rounded-full ring-2 ring-white shadow-sm bg-[#F0DFF6] text-[#7E5896] font-bold flex items-center justify-center text-sm hover:ring-[#C9A0DC] transition-all">
-              {initials}
-            </div>
-          )}
-        </Link>
+        {isLoaded && (
+          <Link
+            href="/settings"
+            aria-label="Profile settings"
+            className="shrink-0"
+          >
+            {user?.imageUrl ? (
+              <Image
+                src={user.imageUrl}
+                alt={user.fullName ?? 'Profile'}
+                width={40}
+                height={40}
+                className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm hover:ring-[#C9A0DC] transition-all"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full ring-2 ring-white shadow-sm bg-[#F0DFF6] text-[#7E5896] font-bold flex items-center justify-center text-sm hover:ring-[#C9A0DC] transition-all">
+                {initials}
+              </div>
+            )}
+          </Link>
+        )}
       </div>
     </header>
   )
