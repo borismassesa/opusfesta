@@ -1,10 +1,17 @@
 'use client'
 
-import type { AdviceIdeasBodySection } from '@/lib/cms/advice-ideas'
+import {
+  stripLeadingHeadingNumber,
+  type AdviceIdeasBodySection,
+} from '@/lib/cms/advice-ideas'
 
 // Live preview of the article's sections — what the reader will see in the
 // floating right-rail TOC on the published page. Each "Heading 2" the author
 // inserts in the editor body becomes one section here, numbered 1, 2, 3…
+//
+// Sections are always numbered — the order is the source of truth, so any
+// leading "1." / "2." the author manually typed into the heading is stripped
+// before display so the result is single-numbered (not "1. 1. Topic").
 //
 // Used in both the contributor RightRail and the admin PostEditor so writers
 // always have a visible mapping between "I just added an H2" → "I just added
@@ -34,8 +41,8 @@ export default function SectionsCard({
         <p className="mt-3 text-[11px] leading-5 text-gray-500">
           Insert a{' '}
           <span className="font-semibold text-gray-700">Heading&nbsp;2</span>{' '}
-          in the body to start a new section. Each one becomes a numbered
-          entry in the table of contents on the live article.
+          in the body to start a new section. Each one is numbered
+          automatically and shows in the table of contents on the live article.
         </p>
       ) : (
         <ol className="mt-3 space-y-1.5">
@@ -48,7 +55,7 @@ export default function SectionsCard({
                 {index + 1}.
               </span>
               <span className="line-clamp-2 break-words">
-                {section.heading}
+                {stripLeadingHeadingNumber(section.heading ?? '')}
               </span>
             </li>
           ))}

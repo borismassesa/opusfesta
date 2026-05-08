@@ -74,6 +74,16 @@ export function getCategorySection(
   return null
 }
 
+// Strips a leading "1. " / "2. " etc. from a heading string. Sections are
+// auto-numbered everywhere they're displayed (right-rail TOC, article H2,
+// admin SectionsCard) using their position in the body as the source of
+// truth, so any number the author typed manually gets stripped before
+// re-prefixing. Result for both "1. Start at least…" and "Start at least…"
+// is the same: "Start at least…".
+export function stripLeadingHeadingNumber(text: string): string {
+  return text.replace(/^\s*\d+[.)]\s*/, '').trim()
+}
+
 // Maps a navbar category to the closest hub section bucket. Used to
 // auto-derive section_id when the admin picks a category, so the article
 // lands in the right bucket on /advice-and-ideas without having to set
