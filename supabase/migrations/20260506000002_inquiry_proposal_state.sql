@@ -23,7 +23,7 @@ BEGIN
       ADD CONSTRAINT inquiries_proposal_status_check
       CHECK (
         proposal_status IS NULL
-        OR proposal_status IN ('sent', 'countered', 'accepted')
+        OR proposal_status IN ('sent', 'countered', 'accepted', 'declined')
       );
   END IF;
 
@@ -34,7 +34,7 @@ BEGIN
   ) THEN
     ALTER TABLE inquiries
       ADD CONSTRAINT inquiries_proposal_guest_count_check
-      CHECK (proposal_guest_count IS NULL OR proposal_guest_count >= 0);
+      CHECK (proposal_guest_count IS NULL OR proposal_guest_count > 0);
   END IF;
 
   IF NOT EXISTS (
@@ -62,5 +62,5 @@ CREATE INDEX IF NOT EXISTS idx_inquiries_proposal_status
   ON inquiries(proposal_status)
   WHERE proposal_status IS NOT NULL;
 
-COMMENT ON COLUMN inquiries.proposal_status IS 'Proposal lifecycle: sent, countered, accepted';
+COMMENT ON COLUMN inquiries.proposal_status IS 'Proposal lifecycle: sent, countered, accepted, declined';
 COMMENT ON COLUMN inquiries.proposal_counter_message IS 'Client counter note pending vendor decision';

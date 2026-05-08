@@ -15,6 +15,7 @@ WHERE b.inquiry_id = i.id
 CREATE INDEX IF NOT EXISTS idx_vendor_bookings_client_user_id ON vendor_bookings(client_user_id);
 
 -- Clients can read their own bookings (e.g. for a future client portal view).
+DROP POLICY IF EXISTS "clients_select_own_bookings" ON vendor_bookings;
 CREATE POLICY "clients_select_own_bookings" ON vendor_bookings
-  FOR SELECT
+  FOR SELECT TO authenticated
   USING (client_user_id = requesting_user_id());

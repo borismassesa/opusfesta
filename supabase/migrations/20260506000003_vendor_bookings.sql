@@ -9,8 +9,8 @@ CREATE TABLE vendor_bookings (
 
   -- Event
   event_date DATE NOT NULL,
-  start_time TEXT NOT NULL,   -- HH:MM 24h
-  end_time TEXT NOT NULL,
+  start_time TEXT NOT NULL CHECK (start_time ~ '^\d{2}:\d{2}$'),
+  end_time   TEXT NOT NULL CHECK (end_time   ~ '^\d{2}:\d{2}$'),
 
   -- Couple
   partner_a TEXT NOT NULL,
@@ -35,8 +35,8 @@ CREATE TABLE vendor_bookings (
       'completed', 'cancelled'
     )),
 
-  -- Pricing — TZS integers
-  total_value INTEGER NOT NULL CHECK (total_value >= 0),
+  -- Pricing — TZS integers (BIGINT: TZS values can exceed INTEGER range for large events)
+  total_value BIGINT NOT NULL CHECK (total_value >= 0),
   deposit_percent INTEGER NOT NULL DEFAULT 50 CHECK (deposit_percent BETWEEN 0 AND 100),
   deposit_paid BOOLEAN NOT NULL DEFAULT FALSE,
   balance_due_date DATE,
@@ -108,7 +108,8 @@ CREATE POLICY "vendors_update_own_bookings" ON vendor_bookings
 CREATE POLICY "service_role_all_vendor_bookings" ON vendor_bookings
   FOR ALL TO service_role USING (TRUE) WITH CHECK (TRUE);
 
-CREATE INDEX idx_vendor_bookings_vendor_id ON vendor_bookings(vendor_id);
+CREATE INDEX idx_vendor_bookings_vendor_id  ON vendor_bookings(vendor_id);
+CREATE INDEX idx_vendor_bookings_inquiry_id ON vendor_bookings(inquiry_id);
 CREATE INDEX idx_vendor_bookings_event_date ON vendor_bookings(event_date);
-CREATE INDEX idx_vendor_bookings_stage ON vendor_bookings(stage);
+CREATE INDEX idx_vendor_bookings_stage      ON vendor_bookings(stage);
 CREATE INDEX idx_vendor_bookings_created_at ON vendor_bookings(created_at DESC);
