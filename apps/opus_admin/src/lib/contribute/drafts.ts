@@ -1,8 +1,11 @@
 import { notFound } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { slugify, type AdviceIdeasBodySection } from '@/lib/cms/advice-ideas'
 import {
-  CONTRIBUTOR_CATEGORIES,
+  sectionIdForCategory as canonicalSectionIdForCategory,
+  slugify,
+  type AdviceIdeasBodySection,
+} from '@/lib/cms/advice-ideas'
+import {
   type ContributorDraft,
   type ContributorSubmissionStatus,
   isEditableContributorStatus,
@@ -39,15 +42,19 @@ type SubmissionRow = {
 
 export function normalizeCategory(value: string | null | undefined): string {
   const category = (value || '').trim()
-  return CONTRIBUTOR_CATEGORIES.includes(category as (typeof CONTRIBUTOR_CATEGORIES)[number])
-    ? category
-    : 'Planning Guides'
+  if (!category) return 'Planning Guides'
+  // Accept any canonical category. Legacy values (e.g. "Style", "Vendors",
+  // "Advice & Ideas" from before the navbar refresh) are preserved as-is so
+  // existing drafts don't silently lose their category — the editor surfaces
+  // them with a "(legacy)" suffix until the contributor re-picks one.
+  return category
 }
 
+// Section-id mapping for legacy categories that aren't in the canonical
+// navbar list (Style → themes-styles, Etiquette → etiquette-wording, etc.).
+// Anything else falls back to the canonical mapping or planning-guides.
 function sectionIdForCategory(category: string): string {
   switch (category) {
-    case 'Real Weddings':
-      return 'real-weddings'
     case 'Style':
       return 'themes-styles'
     case 'Etiquette':
@@ -55,10 +62,9 @@ function sectionIdForCategory(category: string): string {
     case 'Advice & Ideas':
       return 'featured-stories'
     case 'Vendors':
-    case 'Planning Guides':
-    default:
       return 'planning-guides'
   }
+  return canonicalSectionIdForCategory(category) ?? 'planning-guides'
 }
 
 export function rowToContributorDraft(row: SubmissionRow): ContributorDraft {

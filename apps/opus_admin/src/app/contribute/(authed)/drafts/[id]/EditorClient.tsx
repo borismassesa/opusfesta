@@ -176,6 +176,7 @@ export default function EditorClient({ initialDraft }: { initialDraft: Contribut
           draftId={draft.id}
           draftTitle={draft.title}
           category={draft.category}
+          body={draft.body}
           coverUrl={draft.cover_image_url}
           coverAlt={draft.cover_image_alt}
           readOnly={readOnly}
