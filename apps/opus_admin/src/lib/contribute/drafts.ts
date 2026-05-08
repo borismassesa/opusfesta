@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { slugify, type AdviceIdeasBodySection } from '@/lib/cms/advice-ideas'
 import {
-  CONTRIBUTOR_CATEGORIES,
   type ContributorDraft,
   type ContributorSubmissionStatus,
   isEditableContributorStatus,
@@ -39,15 +38,39 @@ type SubmissionRow = {
 
 export function normalizeCategory(value: string | null | undefined): string {
   const category = (value || '').trim()
-  return CONTRIBUTOR_CATEGORIES.includes(category as (typeof CONTRIBUTOR_CATEGORIES)[number])
-    ? category
-    : 'Planning Guides'
+  if (!category) return 'Planning Guides'
+  // Accept any canonical category. Legacy values (e.g. "Style", "Vendors",
+  // "Advice & Ideas" from before the navbar refresh) are preserved as-is so
+  // existing drafts don't silently lose their category — the editor surfaces
+  // them with a "(legacy)" suffix until the contributor re-picks one.
+  return category
 }
 
 function sectionIdForCategory(category: string): string {
   switch (category) {
+    // Inspiration group
     case 'Real Weddings':
       return 'real-weddings'
+    case 'Themes & Styles':
+      return 'themes-styles'
+    case 'Photo & Video Ideas':
+      return 'themes-styles'
+    case 'Honeymoon Ideas':
+      return 'honeymoon-ideas'
+    case 'Destination Weddings':
+      return 'real-weddings'
+    // Advice group
+    case 'Planning Guides':
+      return 'planning-guides'
+    case 'Etiquette & Wording':
+      return 'etiquette-wording'
+    case 'For Families & Guests':
+      return 'etiquette-wording'
+    case 'Bridal Shower Ideas':
+      return 'bridal-shower-ideas'
+    case 'Engagement Party Tips':
+      return 'bridal-shower-ideas'
+    // Legacy values from before the navbar refresh
     case 'Style':
       return 'themes-styles'
     case 'Etiquette':
@@ -55,7 +78,6 @@ function sectionIdForCategory(category: string): string {
     case 'Advice & Ideas':
       return 'featured-stories'
     case 'Vendors':
-    case 'Planning Guides':
     default:
       return 'planning-guides'
   }

@@ -14,6 +14,50 @@ export const ADVICE_IDEAS_SECTION_IDS = [
 ] as const
 export type AdviceIdeasSectionId = (typeof ADVICE_IDEAS_SECTION_IDS)[number]
 
+// Article categories shown in the editor dropdowns. Each category belongs to
+// one of two top-level sections (Inspiration / Advice) — the same grouping
+// that's rendered in the website Ideas & Advice navbar dropdown. Authors pick
+// a category; the section follows automatically via getCategorySection.
+export const ADVICE_IDEAS_CATEGORY_GROUPS = [
+  {
+    section: 'Inspiration',
+    categories: [
+      'Real Weddings',
+      'Themes & Styles',
+      'Photo & Video Ideas',
+      'Honeymoon Ideas',
+      'Destination Weddings',
+    ],
+  },
+  {
+    section: 'Advice',
+    categories: [
+      'Planning Guides',
+      'Etiquette & Wording',
+      'For Families & Guests',
+      'Bridal Shower Ideas',
+      'Engagement Party Tips',
+    ],
+  },
+] as const
+
+export type AdviceIdeasSection =
+  (typeof ADVICE_IDEAS_CATEGORY_GROUPS)[number]['section']
+
+export const ADVICE_IDEAS_CATEGORIES: readonly string[] =
+  ADVICE_IDEAS_CATEGORY_GROUPS.flatMap((g) => g.categories)
+
+export function getCategorySection(
+  category: string
+): AdviceIdeasSection | null {
+  for (const group of ADVICE_IDEAS_CATEGORY_GROUPS) {
+    if ((group.categories as readonly string[]).includes(category)) {
+      return group.section
+    }
+  }
+  return null
+}
+
 // ---------- Hero (AdviceHero) ----------
 
 export type AdviceHeroContent = {

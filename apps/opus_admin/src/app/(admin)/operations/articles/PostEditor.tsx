@@ -24,7 +24,10 @@ import {
 } from 'lucide-react'
 import {
   ADVICE_BLOCK_TYPES,
+  ADVICE_IDEAS_CATEGORIES,
+  ADVICE_IDEAS_CATEGORY_GROUPS,
   ADVICE_IDEAS_SECTION_IDS,
+  getCategorySection,
   slugify,
   type AdviceIdeasBlock,
   type AdviceIdeasBodySection,
@@ -66,15 +69,10 @@ type Props = {
   backLabel?: string
 }
 
-const CATEGORY_OPTIONS = [
-  'Planning Guides',
-  'Real Weddings',
-  'Themes & Styles',
-  'Etiquette & Wording',
-  'Bridal Shower Ideas',
-  'Honeymoon Ideas',
-  'Featured Stories',
-]
+// Same canonical list the contributor side uses — see ADVICE_IDEAS_CATEGORY_GROUPS
+// in lib/cms/advice-ideas. The dropdown renders them grouped by section
+// (Inspiration / Advice).
+const CATEGORY_OPTIONS = ADVICE_IDEAS_CATEGORIES
 
 function toDateInput(iso: string): string {
   if (!iso) return ''
@@ -1138,19 +1136,36 @@ export default function PostEditor({
               </Field>
               <Field label="Category">
                 <select
-                  value={CATEGORY_OPTIONS.includes(draft.category) ? draft.category : ''}
+                  value={draft.category ?? ''}
                   onChange={(e) => set('category', e.target.value)}
                   className={inputCls}
                 >
                   <option value="" disabled>
                     Select a category…
                   </option>
-                  {CATEGORY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                  {draft.category &&
+                    !CATEGORY_OPTIONS.includes(draft.category) && (
+                      <option value={draft.category}>
+                        {draft.category} (legacy)
+                      </option>
+                    )}
+                  {ADVICE_IDEAS_CATEGORY_GROUPS.map((group) => (
+                    <optgroup key={group.section} label={group.section}>
+                      {group.categories.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
+                {draft.category && (
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    {getCategorySection(draft.category)
+                      ? `Goes under ${getCategorySection(draft.category)} on the live site.`
+                      : 'Legacy category — pick one of the canonical options to map this article to a section.'}
+                  </p>
+                )}
               </Field>
               <Field label="Section (used to group on index)">
                 <select
