@@ -1,6 +1,10 @@
 import { notFound } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { slugify, type AdviceIdeasBodySection } from '@/lib/cms/advice-ideas'
+import {
+  sectionIdForCategory as canonicalSectionIdForCategory,
+  slugify,
+  type AdviceIdeasBodySection,
+} from '@/lib/cms/advice-ideas'
 import {
   type ContributorDraft,
   type ContributorSubmissionStatus,
@@ -46,31 +50,11 @@ export function normalizeCategory(value: string | null | undefined): string {
   return category
 }
 
+// Section-id mapping for legacy categories that aren't in the canonical
+// navbar list (Style → themes-styles, Etiquette → etiquette-wording, etc.).
+// Anything else falls back to the canonical mapping or planning-guides.
 function sectionIdForCategory(category: string): string {
   switch (category) {
-    // Inspiration group
-    case 'Real Weddings':
-      return 'real-weddings'
-    case 'Themes & Styles':
-      return 'themes-styles'
-    case 'Photo & Video Ideas':
-      return 'themes-styles'
-    case 'Honeymoon Ideas':
-      return 'honeymoon-ideas'
-    case 'Destination Weddings':
-      return 'real-weddings'
-    // Advice group
-    case 'Planning Guides':
-      return 'planning-guides'
-    case 'Etiquette & Wording':
-      return 'etiquette-wording'
-    case 'For Families & Guests':
-      return 'etiquette-wording'
-    case 'Bridal Shower Ideas':
-      return 'bridal-shower-ideas'
-    case 'Engagement Party Tips':
-      return 'bridal-shower-ideas'
-    // Legacy values from before the navbar refresh
     case 'Style':
       return 'themes-styles'
     case 'Etiquette':
@@ -78,9 +62,9 @@ function sectionIdForCategory(category: string): string {
     case 'Advice & Ideas':
       return 'featured-stories'
     case 'Vendors':
-    default:
       return 'planning-guides'
   }
+  return canonicalSectionIdForCategory(category) ?? 'planning-guides'
 }
 
 export function rowToContributorDraft(row: SubmissionRow): ContributorDraft {

@@ -27,7 +27,9 @@ import {
   ADVICE_IDEAS_CATEGORIES,
   ADVICE_IDEAS_CATEGORY_GROUPS,
   ADVICE_IDEAS_SECTION_IDS,
+  ADVICE_IDEAS_SECTION_LABELS,
   getCategorySection,
+  sectionIdForCategory,
   slugify,
   type AdviceIdeasBlock,
   type AdviceIdeasBodySection,
@@ -1137,7 +1139,14 @@ export default function PostEditor({
               <Field label="Category">
                 <select
                   value={draft.category ?? ''}
-                  onChange={(e) => set('category', e.target.value)}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    set('category', next)
+                    // Auto-derive the hub section so the article lands in the
+                    // right bucket. Admin can still override afterwards.
+                    const derived = sectionIdForCategory(next)
+                    if (derived) set('section_id', derived)
+                  }}
                   className={inputCls}
                 >
                   <option value="" disabled>
@@ -1167,18 +1176,28 @@ export default function PostEditor({
                   </p>
                 )}
               </Field>
-              <Field label="Section (used to group on index)">
+              <Field label="Hub section">
                 <select
                   value={draft.section_id}
-                  onChange={(e) => set('section_id', e.target.value as AdviceIdeasSectionId)}
+                  onChange={(e) =>
+                    set('section_id', e.target.value as AdviceIdeasSectionId)
+                  }
                   className={inputCls}
                 >
                   {ADVICE_IDEAS_SECTION_IDS.map((s) => (
                     <option key={s} value={s}>
-                      {s}
+                      {ADVICE_IDEAS_SECTION_LABELS[s]}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Which bucket the article appears in on{' '}
+                  <span className="font-mono text-gray-600">
+                    /advice-and-ideas
+                  </span>
+                  . Auto-fills from category — change to override (e.g., move
+                  to <span className="font-semibold">Featured Stories</span>).
+                </p>
               </Field>
               <Field
                 label="Read time (minutes)"

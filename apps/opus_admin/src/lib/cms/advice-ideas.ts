@@ -14,6 +14,22 @@ export const ADVICE_IDEAS_SECTION_IDS = [
 ] as const
 export type AdviceIdeasSectionId = (typeof ADVICE_IDEAS_SECTION_IDS)[number]
 
+// Human-readable label for each hub-section slug. The slug is what gets stored
+// and used in URLs (#planning-guides), the label is what the admin sees in
+// dropdowns. "Featured Stories" is reserved for the curated top bucket and
+// has no matching navbar category — admins set it manually to feature an
+// article regardless of its category.
+export const ADVICE_IDEAS_SECTION_LABELS: Record<AdviceIdeasSectionId, string> =
+  {
+    'featured-stories': 'Featured Stories',
+    'planning-guides': 'Planning Guides',
+    'real-weddings': 'Real Weddings',
+    'themes-styles': 'Themes & Styles',
+    'etiquette-wording': 'Etiquette & Wording',
+    'bridal-shower-ideas': 'Bridal Shower Ideas',
+    'honeymoon-ideas': 'Honeymoon Ideas',
+  }
+
 // Article categories shown in the editor dropdowns. Each category belongs to
 // one of two top-level sections (Inspiration / Advice) — the same grouping
 // that's rendered in the website Ideas & Advice navbar dropdown. Authors pick
@@ -56,6 +72,32 @@ export function getCategorySection(
     }
   }
   return null
+}
+
+// Maps a navbar category to the closest hub section bucket. Used to
+// auto-derive section_id when the admin picks a category, so the article
+// lands in the right bucket on /advice-and-ideas without having to set
+// section_id separately. Admin can still override afterwards (e.g., to
+// move an article into the "Featured Stories" bucket).
+const CATEGORY_TO_SECTION_ID: Record<string, AdviceIdeasSectionId> = {
+  // Inspiration
+  'Real Weddings': 'real-weddings',
+  'Themes & Styles': 'themes-styles',
+  'Photo & Video Ideas': 'themes-styles',
+  'Honeymoon Ideas': 'honeymoon-ideas',
+  'Destination Weddings': 'real-weddings',
+  // Advice
+  'Planning Guides': 'planning-guides',
+  'Etiquette & Wording': 'etiquette-wording',
+  'For Families & Guests': 'etiquette-wording',
+  'Bridal Shower Ideas': 'bridal-shower-ideas',
+  'Engagement Party Tips': 'bridal-shower-ideas',
+}
+
+export function sectionIdForCategory(
+  category: string
+): AdviceIdeasSectionId | null {
+  return CATEGORY_TO_SECTION_ID[category] ?? null
 }
 
 // ---------- Hero (AdviceHero) ----------
