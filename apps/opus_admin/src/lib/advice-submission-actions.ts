@@ -21,6 +21,11 @@ import {
 } from '@/lib/advice-submissions'
 import { getResendConfigError, isEmailConfigured, sendEmail } from '@/lib/email'
 import { buildContributorInviteEmail } from '@/lib/contributor-invite-email'
+import {
+  buildChangesRequestedEmail,
+  buildSubmissionApprovedEmail,
+  buildSubmissionRejectedEmail,
+} from '@/lib/submission-decision-email'
 
 const ARTICLE_MANAGE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 
@@ -157,6 +162,100 @@ async function dispatchInviteEmail(args: {
   })
   if (result.sent) return { sent: true, via: 'resend' }
   return { sent: false, reason: result.reason, error: result.error }
+}
+
+type DecisionRecipient = {
+  authorEmail: string
+  authorName: string | null
+  articleTitle: string
+  draftLink: string
+  reviewer: { name: string | null; email: string | null }
+}
+
+type DecisionEmailArgs =
+  | (DecisionRecipient & { kind: 'changes_requested'; notes: string })
+  | (DecisionRecipient & { kind: 'rejected'; notes: string | null })
+  | (DecisionRecipient & {
+      kind: 'approved'
+      published: true
+      publicLink: string
+      excerpt: string | null
+      heroImageUrl: string | null
+    })
+  | (DecisionRecipient & {
+      kind: 'approved'
+      published: false
+      publicLink: null
+      excerpt: string | null
+      heroImageUrl: string | null
+    })
+
+// Best-effort: a Resend hiccup must never fail the underlying review action,
+// since the submission row is already updated by the time we get here. The
+// reviewer's email is set as Reply-To so authors can reply directly to the
+// editor who reviewed their work, not to the shared admin inbox.
+async function dispatchAuthorDecisionEmail(args: DecisionEmailArgs): Promise<void> {
+  try {
+    if (!isEmailConfigured() || !args.authorEmail) return
+    let template: { subject: string; text: string; html: string }
+    switch (args.kind) {
+      case 'changes_requested':
+        template = buildChangesRequestedEmail({
+          authorName: args.authorName,
+          authorEmail: args.authorEmail,
+          articleTitle: args.articleTitle,
+          notes: args.notes,
+          draftLink: args.draftLink,
+          reviewer: args.reviewer,
+        })
+        break
+      case 'rejected':
+        template = buildSubmissionRejectedEmail({
+          authorName: args.authorName,
+          authorEmail: args.authorEmail,
+          articleTitle: args.articleTitle,
+          notes: args.notes,
+          draftLink: args.draftLink,
+          reviewer: args.reviewer,
+        })
+        break
+      case 'approved':
+        template = buildSubmissionApprovedEmail({
+          authorName: args.authorName,
+          authorEmail: args.authorEmail,
+          articleTitle: args.articleTitle,
+          notes: null,
+          draftLink: args.draftLink,
+          reviewer: args.reviewer,
+          published: args.published,
+          publicLink: args.publicLink,
+          excerpt: args.excerpt,
+          heroImageUrl: args.heroImageUrl,
+        })
+        break
+    }
+    await sendEmail({
+      to: args.authorEmail,
+      subject: template.subject,
+      html: template.html,
+      text: template.text,
+      replyTo: args.reviewer.email ?? undefined,
+    })
+  } catch (err) {
+    console.error('[advice-submission] decision email failed', {
+      kind: args.kind,
+      author: args.authorEmail,
+      reviewer: args.reviewer.email,
+      title: args.articleTitle,
+      err: err instanceof Error ? err.message : String(err),
+    })
+  }
+}
+
+function publicSiteOrigin(): string | null {
+  const raw = process.env.NEXT_PUBLIC_WEBSITE_URL?.trim()
+  if (!raw) return null
+  return raw.replace(/\/$/, '')
 }
 
 export async function createContributorInvitation(
@@ -532,22 +631,36 @@ export async function requestAdviceSubmissionCorrections(
   notes: string
 ): Promise<void> {
   await requireAdminRole(ARTICLE_MANAGE_ROLES)
-  if (!notes.trim()) throw new Error('Correction notes are required.')
+  const trimmed = notes.trim()
+  if (!trimmed) throw new Error('Correction notes are required.')
 
+  const identity = await getIdentity()
   const supabase = createSupabaseAdminClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('advice_article_submissions')
     .update({
       status: 'changes_requested',
-      correction_notes: notes.trim(),
+      correction_notes: trimmed,
       reviewed_at: new Date().toISOString(),
-      reviewed_by_clerk_id: (await getIdentity()).clerkId,
+      reviewed_by_clerk_id: identity.clerkId,
     })
     .eq('id', id)
+    .select('id, author_email, author_name, title')
+    .single<Pick<AdviceArticleSubmissionRow, 'id' | 'author_email' | 'author_name' | 'title'>>()
 
   if (error) throw error
   revalidatePath('/operations/articles/submissions')
   revalidatePath(`/operations/articles/submissions/${id}`)
+
+  void dispatchAuthorDecisionEmail({
+    kind: 'changes_requested',
+    authorEmail: data.author_email,
+    authorName: data.author_name,
+    articleTitle: data.title,
+    notes: trimmed,
+    draftLink: `${await getOrigin()}/contribute/drafts/${id}`,
+    reviewer: { name: identity.name, email: identity.email },
+  })
 }
 
 export async function rejectAdviceSubmission(
@@ -555,20 +668,34 @@ export async function rejectAdviceSubmission(
   notes: string
 ): Promise<void> {
   await requireAdminRole(ARTICLE_MANAGE_ROLES)
+  const trimmed = notes.trim() || null
+  const identity = await getIdentity()
   const supabase = createSupabaseAdminClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('advice_article_submissions')
     .update({
       status: 'rejected',
-      admin_notes: notes.trim() || null,
+      admin_notes: trimmed,
       reviewed_at: new Date().toISOString(),
-      reviewed_by_clerk_id: (await getIdentity()).clerkId,
+      reviewed_by_clerk_id: identity.clerkId,
     })
     .eq('id', id)
+    .select('id, author_email, author_name, title')
+    .single<Pick<AdviceArticleSubmissionRow, 'id' | 'author_email' | 'author_name' | 'title'>>()
 
   if (error) throw error
   revalidatePath('/operations/articles/submissions')
   revalidatePath(`/operations/articles/submissions/${id}`)
+
+  void dispatchAuthorDecisionEmail({
+    kind: 'rejected',
+    authorEmail: data.author_email,
+    authorName: data.author_name,
+    articleTitle: data.title,
+    notes: trimmed,
+    draftLink: `${await getOrigin()}/contribute/drafts/${id}`,
+    reviewer: { name: identity.name, email: identity.email },
+  })
 }
 
 export async function approveAdviceSubmission(
@@ -646,6 +773,35 @@ export async function approveAdviceSubmission(
   revalidatePath('/operations/articles/submissions')
   revalidatePath(`/operations/articles/submissions/${id}`)
   await revalidateWebsite(slug)
+
+  // The "published" branch needs a public URL — fall back to the unpublished
+  // shape if NEXT_PUBLIC_WEBSITE_URL is missing so the type stays honest.
+  const websiteOrigin = publicSiteOrigin()
+  const draftLink = `${await getOrigin()}/contribute/drafts/${id}`
+  const baseDecision = {
+    kind: 'approved' as const,
+    authorEmail: submission.author_email,
+    authorName: submission.author_name,
+    articleTitle: submission.title,
+    draftLink,
+    reviewer: { name: identity.name, email: identity.email },
+    excerpt: submission.excerpt ?? null,
+    heroImageUrl: submission.hero_media_type === 'image' ? submission.hero_media_src : null,
+  }
+  if (publish && websiteOrigin) {
+    void dispatchAuthorDecisionEmail({
+      ...baseDecision,
+      published: true,
+      publicLink: `${websiteOrigin}/advice-and-ideas/${slug}`,
+    })
+  } else {
+    void dispatchAuthorDecisionEmail({
+      ...baseDecision,
+      published: false,
+      publicLink: null,
+    })
+  }
+
   return { postId }
 }
 
