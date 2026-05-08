@@ -43,6 +43,7 @@ import { ArticleEditor } from '@/lib/editor'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot } from '@/components/HeaderPortals'
 import ArticlePreview from '@/components/article-preview/ArticlePreview'
+import SectionsCard from '@/components/article-sections/SectionsCard'
 import { createAdvicePost, updateAdvicePost, uploadAdviceMedia, type PostUpsertInput } from './actions'
 import {
   approveAdviceSubmission,
@@ -915,6 +916,9 @@ export default function PostEditor({
                 still AdviceIdeasBodySection[]; the editor translates to/from
                 its internal TipTap doc transparently. */}
             <Card title="Article body">
+              <div className="mb-4">
+                <SectionsCard body={draft.body} />
+              </div>
               <ArticleEditor
                 value={draft.body}
                 onChange={(body) => setDraft((d) => ({ ...d, body }))}
