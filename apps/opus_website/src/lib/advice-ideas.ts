@@ -135,13 +135,6 @@ export const ADVICE_IDEAS_BASE_PATH = '/advice-and-ideas'
 // Thumbnail source for any post — falls back to the video poster image
 // for posts where the hero is an `.mov` / `.mp4`. next/image can't render
 // a video file, so cards need to reach for the poster jpg instead.
-// Sections are auto-numbered by position. If the author manually typed
-// "1. " / "2. " into the heading text, strip it so we don't end up with
-// double-prefixed labels like "1. 1. Start at least…".
-export function stripLeadingHeadingNumber(text: string): string {
-  return text.replace(/^\s*\d+[.)]\s*/, '').trim()
-}
-
 export function heroThumb(post: { heroMedia: { type: 'image' | 'video'; src: string; poster?: string } }): string {
   if (post.heroMedia.type === 'video' && post.heroMedia.poster) {
     return post.heroMedia.poster
