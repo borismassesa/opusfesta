@@ -6,9 +6,12 @@ type ProposalAction = 'accept' | 'counter'
 
 function parsePositiveInteger(value: unknown) {
   if (typeof value === 'number' && Number.isInteger(value) && value > 0) return value
-  if (typeof value === 'string' && value.trim()) {
-    const parsed = Number.parseInt(value.trim(), 10)
-    return Number.isInteger(parsed) && parsed > 0 ? parsed : null
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    // Validate entire string matches positive integer pattern
+    if (!/^[1-9]\d*$/.test(trimmed)) return null
+    const parsed = Number.parseInt(trimmed, 10)
+    return parsed
   }
   return null
 }
@@ -24,8 +27,11 @@ export async function PATCH(
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const clerkUser = await currentUser().catch(() => null)
-  const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase()
+  const user = await currentUser()
+  const email = user?.emailAddresses.find(
+    (e) => e.id === user.primaryEmailAddressId
+  )?.emailAddress || user?.emailAddresses[0]?.emailAddress
+
   if (!email) {
     return NextResponse.json({ error: 'Could not resolve user email' }, { status: 400 })
   }
@@ -38,7 +44,6 @@ export async function PATCH(
   }
 
   const payload = body as Record<string, unknown>
-
   const action = payload.action as ProposalAction | undefined
   if (action !== 'accept' && action !== 'counter') {
     return NextResponse.json({ error: 'Unsupported proposal action' }, { status: 400 })
@@ -49,12 +54,18 @@ export async function PATCH(
     .from('inquiries')
     .select('id, proposal_status, proposal_invoice_amount')
     .eq('id', id)
-    .eq('email', email)
+    .eq('email', email.toLowerCase())
     .maybeSingle()
 
-  if (lookupErr || !inquiry) {
+  if (lookupErr) {
+    console.error('[my/inquiries/proposal] lookup failed', lookupErr)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+
+  if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
+
   if (inquiry.proposal_status !== 'sent') {
     return NextResponse.json({ error: 'No pending proposal to respond to' }, { status: 400 })
   }
@@ -62,7 +73,7 @@ export async function PATCH(
   const now = new Date().toISOString()
 
   if (action === 'accept') {
-    const { error } = await supabase
+    const { data: updated, error } = await supabase
       .from('inquiries')
       .update({
         proposal_status: 'accepted',
@@ -72,10 +83,16 @@ export async function PATCH(
       })
       .eq('id', id)
       .eq('email', email)
+      .eq('proposal_status', 'sent')  // Atomic check
+      .select('id')
 
     if (error) {
       console.error('[my/inquiries/proposal] accept failed', error)
       return NextResponse.json({ error: 'Failed to accept proposal' }, { status: 500 })
+    }
+
+    if (!updated || updated.length === 0) {
+      return NextResponse.json({ error: 'Proposal was already acted upon' }, { status: 409 })
     }
 
     return NextResponse.json({ success: true })
@@ -87,7 +104,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Add a counter amount or a note' }, { status: 400 })
   }
 
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from('inquiries')
     .update({
       proposal_status: 'countered',
@@ -98,10 +115,16 @@ export async function PATCH(
     })
     .eq('id', id)
     .eq('email', email)
+    .eq('proposal_status', 'sent')  // Atomic check
+    .select('id')
 
   if (error) {
     console.error('[my/inquiries/proposal] counter failed', error)
     return NextResponse.json({ error: 'Failed to submit counter' }, { status: 500 })
+  }
+
+  if (!updated || updated.length === 0) {
+    return NextResponse.json({ error: 'Proposal was already acted upon' }, { status: 409 })
   }
 
   return NextResponse.json({ success: true })

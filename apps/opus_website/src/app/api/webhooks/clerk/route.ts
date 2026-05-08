@@ -75,7 +75,6 @@ export async function POST(request: Request) {
         clerk_id: payload.id,
         email,
         name,
-        password: 'clerk-managed',
       },
       { onConflict: 'clerk_id' },
     )
@@ -85,6 +84,6 @@ export async function POST(request: Request) {
     return new Response('DB error', { status: 500 })
   }
 
-  console.log(`[clerk-webhook] ${event.type} synced: clerk_id=${payload.id} email=${email}`)
+  console.log(`[clerk-webhook] ${event.type} synced: clerk_id=${payload.id} email=***`)
   return new Response('OK', { status: 200 })
 }

@@ -29,7 +29,12 @@ export async function GET(
     .eq('email', email)
     .maybeSingle()
 
-  if (inquiryErr || !inquiry) {
+  if (inquiryErr) {
+    console.error('[my/inquiries/messages] query failed', inquiryErr)
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+  }
+
+  if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
@@ -80,7 +85,12 @@ export async function POST(
     .eq('email', email)
     .maybeSingle()
 
-  if (lookupErr || !inquiry) {
+  if (lookupErr) {
+    console.error('[my/inquiries/messages] lookup failed', lookupErr)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+
+  if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 

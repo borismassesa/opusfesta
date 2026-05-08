@@ -8,8 +8,11 @@ export async function GET() {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const clerkUser = await currentUser().catch(() => null)
-  const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase()
+  const user = await currentUser()
+  const email = user?.emailAddresses.find(
+    (e) => e.id === user.primaryEmailAddressId
+  )?.emailAddress || user?.emailAddresses[0]?.emailAddress
+
   if (!email) {
     return NextResponse.json({ error: 'Could not resolve user email' }, { status: 400 })
   }
@@ -18,7 +21,7 @@ export async function GET() {
   const { data, error } = await supabase
     .from('inquiries')
     .select('id, vendor_name, vendor_slug, status, created_at, event_date, location, guest_count')
-    .eq('email', email)
+    .eq('email', email.toLowerCase())
     .order('created_at', { ascending: false })
     .limit(20)
 

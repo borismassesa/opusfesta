@@ -5,8 +5,11 @@ import { createSupabaseServerClient } from '@/lib/supabase'
 async function getAuthenticatedEmail(): Promise<string | null> {
   const { userId } = await auth()
   if (!userId) return null
-  const clerkUser = await currentUser().catch(() => null)
-  return clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase() ?? null
+  const user = await currentUser()
+  const email = user?.emailAddresses.find(
+    (e) => e.id === user.primaryEmailAddressId
+  )?.emailAddress || user?.emailAddresses[0]?.emailAddress
+  return email?.toLowerCase() || null
 }
 
 export async function GET(
@@ -31,7 +34,12 @@ export async function GET(
     .eq('email', email)
     .maybeSingle()
 
-  if (inquiryErr || !inquiry) {
+  if (inquiryErr) {
+    console.error('[my/inquiries/[id]] query failed', inquiryErr.code)
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+  }
+
+  if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
@@ -73,15 +81,20 @@ export async function PATCH(
   }
 
   const supabase = createSupabaseServerClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('inquiries')
     .update({ status: 'closed', updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('email', email)
+    .select('id')
 
   if (error) {
     console.error('[my/inquiries/[id]] update failed', error)
     return NextResponse.json({ error: 'Failed to update inquiry' }, { status: 500 })
+  }
+
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
   return NextResponse.json({ success: true })
@@ -99,15 +112,20 @@ export async function DELETE(
   }
 
   const supabase = createSupabaseServerClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('inquiries')
     .delete()
     .eq('id', id)
     .eq('email', email)
+    .select('id')
 
   if (error) {
     console.error('[my/inquiries/[id]] delete failed', error)
     return NextResponse.json({ error: 'Failed to delete inquiry' }, { status: 500 })
+  }
+
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
   return new NextResponse(null, { status: 204 })

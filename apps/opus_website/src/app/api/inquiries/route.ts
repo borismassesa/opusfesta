@@ -19,7 +19,8 @@ function validateEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email.trim())
 }
 
-function isValidDate(value: string): boolean {
+function isValidDate(value: string | undefined | null): boolean {
+  if (!value || typeof value !== 'string' || !value.trim()) return false
   const d = new Date(value)
   return !isNaN(d.getTime())
 }
@@ -93,7 +94,7 @@ export async function POST(request: Request) {
   if (message && typeof message === 'string' && message.trim()) {
     noteLines.push(message.trim())
   }
-  if (!parsedDate) {
+  if (!parsedDate && weddingDate && typeof weddingDate === 'string' && weddingDate.trim()) {
     noteLines.push(`Wedding date (as entered): ${weddingDate}`)
   }
   if (flexibleDate === true) {
