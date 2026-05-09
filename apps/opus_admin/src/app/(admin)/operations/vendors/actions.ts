@@ -192,12 +192,13 @@ async function notifyVendorOfStatusChange(
 
   const { data, error } = await admin
     .from('vendors')
-    .select('business_name, contact_info, user_id')
+    .select('business_name, contact_info, user_id, vendor_code')
     .eq('id', vendorId)
     .maybeSingle<{
       business_name: string | null
       contact_info: { email?: string | null } | null
       user_id: string | null
+      vendor_code: string | null
     }>()
   if (error || !data) {
     console.warn(
@@ -234,19 +235,65 @@ async function notifyVendorOfStatusChange(
     recipientEmail: recipient,
     note: note ?? null,
     portalUrl,
+    vendorCode: data.vendor_code,
   })
+
+  // CC the admin team so every status decision is visible across the
+  // review group, not only to the admin who clicked the button.
+  const adminCc = await resolveAdminBccRecipients(admin, recipient)
 
   const result = await sendEmail({
     to: recipient,
     subject: message.subject,
     html: message.html,
     text: message.text,
+    bcc: adminCc.length > 0 ? adminCc : undefined,
   })
   if (!result.sent) {
     console.warn(
       `[email] vendor status notify failed (vendor=${vendorId} event=${event}): ${result.reason}${result.error ? ` — ${result.error}` : ''}`
     )
   }
+}
+
+// Resolve the admin team for BCC. Mirrors apps/vendors_portal/src/lib/email/
+// admin-recipients.ts so both halves of the vendor lifecycle (submit and
+// status decisions) target the same audience: env override first, then active
+// admin_whitelist rows with owner|admin roles. Excludes the vendor recipient
+// defensively in case any whitelist email collides with their contact address.
+async function resolveAdminBccRecipients(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  excludeEmail: string
+): Promise<string[]> {
+  const exclude = excludeEmail.trim().toLowerCase()
+  const dedupe = (emails: string[]): string[] =>
+    Array.from(new Set(emails.filter((email) => email && email !== exclude)))
+
+  const envRaw =
+    process.env.VENDOR_NOTIFY_ADMIN_EMAIL || process.env.ADMIN_NOTIFY_EMAIL
+  if (envRaw) {
+    const envRecipients = envRaw
+      .split(',')
+      .map((entry) => entry.trim().toLowerCase())
+      .filter((entry) => entry.includes('@'))
+    if (envRecipients.length > 0) return dedupe(envRecipients)
+  }
+
+  const { data, error } = await admin
+    .from('admin_whitelist')
+    .select('email, role, is_active')
+    .eq('is_active', true)
+    .in('role', ['owner', 'admin'])
+
+  if (error) {
+    console.warn(`[email] admin BCC lookup failed: ${error.message}`)
+    return []
+  }
+  if (!data) return []
+  const emails = data
+    .map((row) => row.email?.trim().toLowerCase())
+    .filter((email): email is string => Boolean(email && email.includes('@')))
+  return dedupe(emails)
 }
 
 /**

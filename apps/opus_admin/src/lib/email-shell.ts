@@ -144,7 +144,15 @@ export type EmailSection =
   | { kind: 'excerpt'; text: string }
   | { kind: 'cta'; href: string; label: string }
   | { kind: 'secondaryLink'; href: string; label: string }
+  | { kind: 'statusBadge'; label: string; tone: 'positive' | 'negative' | 'warning' | 'info' }
   | { kind: 'spacer'; size?: number }
+
+const BADGE_TONES = {
+  positive: { fg: '#15803D', bg: '#15803D14', border: '#15803D33' },
+  negative: { fg: '#B91C1C', bg: '#B91C1C14', border: '#B91C1C33' },
+  warning: { fg: '#B45309', bg: '#B4530914', border: '#B4530933' },
+  info: { fg: BRAND.accent, bg: BRAND.accentTintWash, border: BRAND.accentTintPale },
+} as const
 
 function renderSection(section: EmailSection): string {
   switch (section.kind) {
@@ -224,6 +232,10 @@ function renderSection(section: EmailSection): string {
       return `<tr><td align="center" style="padding:24px 32px 8px;">${bulletproofButton({ href: section.href, label: section.label })}</td></tr>`
     case 'secondaryLink':
       return `<tr><td align="center" style="padding:6px 32px 0;"><a href="${escapeHtml(section.href)}" style="color:${BRAND.ink.primary};text-decoration:underline;font-size:14px;">${escapeHtml(section.label)}</a></td></tr>`
+    case 'statusBadge': {
+      const tone = BADGE_TONES[section.tone]
+      return `<tr><td style="padding:14px 32px 0;"><span style="display:inline-block;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;color:${tone.fg};background:${tone.bg};border:1px solid ${tone.border};padding:4px 10px;border-radius:999px;">${escapeHtml(section.label)}</span></td></tr>`
+    }
     case 'spacer':
       return `<tr><td style="font-size:0;line-height:0;height:${section.size ?? 8}px;">&nbsp;</td></tr>`
   }
@@ -233,6 +245,10 @@ export function renderEmail(args: {
   preheader: string
   eyebrow: string
   heading: string
+  // Optional human-readable reference (e.g. "VND-10001") shown in the
+  // header strip and the subject — gives recipients an ID to quote when
+  // they reply or escalate.
+  referenceCode?: string | null
   sections: EmailSection[]
   reviewer?: { name: string | null; email: string | null; role?: string } | null
   closing?: string
@@ -288,6 +304,11 @@ export function renderEmail(args: {
                     </td>
                     <td align="right">
                       <span class="ink-muted" style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;color:${BRAND.ink.muted};">${escapeHtml(args.eyebrow)}</span>
+                      ${
+                        args.referenceCode
+                          ? `<div class="ink-primary" style="margin-top:6px;font-size:11px;font-weight:600;color:${BRAND.ink.primary};font-family:'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:0.04em;">${escapeHtml(args.referenceCode)}</div>`
+                          : ''
+                      }
                     </td>
                   </tr>
                 </table>

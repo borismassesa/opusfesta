@@ -10,13 +10,20 @@ export type VendorSubmitConfirmationInput = {
   recipientEmail: string
   submittedAt: string
   portalUrl: string
+  // Human-readable reference like "VND-10001" — populated from the vendors
+  // row's vendor_code column. Surfaced in the subject and header so the
+  // vendor (and our support team) can quote it when following up.
+  vendorCode: string | null
 }
 
 export function buildVendorSubmitConfirmationEmail(
   input: VendorSubmitConfirmationInput,
 ): { subject: string; text: string; html: string } {
   const business = input.businessName.trim() || 'OpusFesta vendor'
-  const subject = `We received your application — ${business}`
+  const reference = input.vendorCode?.trim() || null
+  const subject = reference
+    ? `[${reference}] We received your application — ${business}`
+    : `We received your application — ${business}`
   const submittedDate = new Date(input.submittedAt).toLocaleString(undefined, {
     dateStyle: 'medium',
     timeStyle: 'short',
@@ -24,14 +31,16 @@ export function buildVendorSubmitConfirmationEmail(
   const portalBase = input.portalUrl.replace(/\/$/, '')
   const verifyUrl = `${portalBase}/verify`
 
-  const preheader =
-    'Your application is in our review queue. You\'ll hear from us within 1–2 business days.'
+  const preheader = reference
+    ? `Application ${reference} is in our review queue. You'll hear from us within 1–2 business days.`
+    : "Your application is in our review queue. You'll hear from us within 1–2 business days."
 
   const text = plaintextLines([
     `Hi ${business},`,
     '',
     'We just received your OpusFesta vendor application — thank you.',
     '',
+    reference ? `Application reference: ${reference}` : null,
     `Submitted: ${submittedDate}`,
     'Status: Verification pending',
     '',
@@ -45,10 +54,17 @@ export function buildVendorSubmitConfirmationEmail(
     '— The OpusFesta team',
   ])
 
+  const detailRows: Array<{ label: string; value: string }> = []
+  if (reference) detailRows.push({ label: 'Application reference', value: reference })
+  detailRows.push({ label: 'Business', value: business })
+  detailRows.push({ label: 'Status', value: 'Verification pending' })
+  detailRows.push({ label: 'Submitted', value: submittedDate })
+
   const html = renderEmail({
     preheader,
     eyebrow: 'Vendors · Application received',
     heading: 'We received your application',
+    referenceCode: reference,
     sections: [
       {
         kind: 'paragraph',
@@ -57,11 +73,7 @@ export function buildVendorSubmitConfirmationEmail(
       {
         kind: 'detailRows',
         label: 'Submission details',
-        rows: [
-          { label: 'Business', value: business },
-          { label: 'Status', value: 'Verification pending' },
-          { label: 'Submitted', value: submittedDate },
-        ],
+        rows: detailRows,
       },
       {
         kind: 'paragraph',

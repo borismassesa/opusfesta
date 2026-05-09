@@ -17,6 +17,7 @@ import { buildVendorSubmitConfirmationEmail } from './vendor-submit-confirmation
 
 export type NotifyOnSubmitInput = {
   vendorId: string
+  vendorCode: string | null
   businessName: string
   category: string | null
   region: string | null
@@ -56,6 +57,7 @@ async function notifyAdmins(input: NotifyOnSubmitInput): Promise<void> {
 
   const message = buildVendorSubmitNotificationEmail({
     businessName: input.businessName,
+    vendorCode: input.vendorCode,
     category: input.category,
     region: input.region,
     city: input.city,
@@ -89,6 +91,7 @@ async function notifyVendor(input: NotifyOnSubmitInput): Promise<void> {
 
   const message = buildVendorSubmitConfirmationEmail({
     businessName: input.businessName,
+    vendorCode: input.vendorCode,
     recipientEmail: recipient,
     submittedAt: input.submittedAt,
     portalUrl: vendorPortalUrl(),

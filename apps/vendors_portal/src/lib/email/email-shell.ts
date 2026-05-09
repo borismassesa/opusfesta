@@ -1,12 +1,18 @@
-// Shared chrome for transactional emails sent from vendors_portal. Kept in
-// lockstep with apps/opus_admin/src/lib/email-shell.ts so the brand chrome
-// (logo, accent, footer, dark-mode rules) renders identically regardless of
-// which app sent the message.
+// Shared chrome for every transactional email the admin app sends.
+// Mirrors the brand colors actually used in apps/opus_website and
+// apps/vendors_portal (single lavender accent, dark text on accent), and
+// pulls the official wordmark from the website's public assets folder.
+//
+// Centralizes the preheader trick, dark-mode rules, the bulletproof button
+// pattern, and the standard footer so individual templates just supply
+// content.
 
 export const BRAND = {
+  // Single lavender accent — matches `--accent` in the website + vendors_portal.
   accent: '#C9A0DC',
   accentHover: '#b97fd0',
   onAccent: '#1A1A1A',
+  // Surface tints used for cards, notes, metadata blocks.
   accentTintWash: '#FCF7FF',
   accentTintPale: '#F0DFF6',
   ink: {
@@ -30,10 +36,11 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-// Email recipients are external (Gmail, Apple Mail, etc.) so this must be
-// publicly reachable — localhost dev URLs render as broken images. Defaults
-// to the production opusfesta.com asset; override with EMAIL_LOGO_URL when
-// staging on a non-prod domain.
+// Public URL to the OpusFesta wordmark, embedded as <img src> in every email.
+// Email recipients are external (Gmail, Apple Mail, etc.) so the URL must be
+// publicly reachable — localhost dev URLs will render as broken images.
+// Defaults to the production opusfesta.com asset; override with EMAIL_LOGO_URL
+// when staging on a non-prod domain.
 export function logoUrl(): string {
   return (
     process.env.EMAIL_LOGO_URL?.trim() ||
@@ -41,12 +48,18 @@ export function logoUrl(): string {
   )
 }
 
+// Hidden preheader: shows in inbox previews next to the subject line.
+// The trailing whitespace stops Gmail from leaking surrounding HTML into the
+// snippet.
 function preheaderHtml(text: string): string {
   if (!text) return ''
   const padding = '&zwnj;&nbsp;'.repeat(120)
   return `<div style="display:none !important;visibility:hidden;mso-hide:all;font-size:1px;color:${BRAND.surface.page};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(text)}${padding}</div>`
 }
 
+// Outlook-friendly button: uses MSO conditional VML so Outlook 2007–2019
+// renders pill-shaped buttons instead of fallback text. Other clients pick
+// up the styled <a>.
 export function bulletproofButton(args: {
   href: string
   label: string
@@ -70,6 +83,44 @@ export function bulletproofButton(args: {
     <!--<![endif]-->`
 }
 
+function reviewerSignatureHtml(args: {
+  reviewerName: string | null
+  reviewerEmail: string | null
+  reviewerRole?: string
+}): string {
+  const role = args.reviewerRole ?? 'Editor, OpusFesta'
+  if (!args.reviewerName?.trim()) return ''
+  const reply = args.reviewerEmail
+    ? `<p style="margin:6px 0 0;font-size:13px;line-height:1.55;color:${BRAND.ink.muted};">Reply to this email and I&rsquo;ll get back to you.</p>`
+    : ''
+  const initials = args.reviewerName
+    .trim()
+    .split(/\s+/)
+    .map((part) => part[0] ?? '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase()
+  return `
+    <tr>
+      <td style="padding:8px 32px 0;">
+        <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td valign="middle" style="padding-right:12px;">
+              <div style="width:40px;height:40px;border-radius:999px;background:${BRAND.accentTintPale};color:${BRAND.onAccent};font-size:14px;font-weight:700;line-height:40px;text-align:center;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+                ${escapeHtml(initials)}
+              </div>
+            </td>
+            <td valign="middle">
+              <div style="font-size:14px;font-weight:600;color:${BRAND.ink.primary};line-height:1.3;">${escapeHtml(args.reviewerName)}</div>
+              <div style="font-size:13px;color:${BRAND.ink.muted};line-height:1.3;">${escapeHtml(role)}</div>
+              ${reply}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>`
+}
+
 function footerHtml(): string {
   return `
     <tr>
@@ -78,7 +129,7 @@ function footerHtml(): string {
           OpusFesta · Dar es Salaam, Tanzania
         </p>
         <p style="margin:6px 0 0;font-size:12px;line-height:1.65;color:${BRAND.ink.muted};">
-          Automated message — replies route to a human team member when applicable.
+          You received this because you have an OpusFesta editorial account. This is an automated message — replies route to a human editor when applicable.
         </p>
       </td>
     </tr>`
@@ -89,9 +140,19 @@ export type EmailSection =
   | { kind: 'titleCard'; title: string; meta?: string }
   | { kind: 'detailRows'; label?: string; rows: Array<{ label: string; value: string }> }
   | { kind: 'notesCard'; label: string; body: string }
+  | { kind: 'heroImage'; src: string; alt: string }
+  | { kind: 'excerpt'; text: string }
   | { kind: 'cta'; href: string; label: string }
   | { kind: 'secondaryLink'; href: string; label: string }
+  | { kind: 'statusBadge'; label: string; tone: 'positive' | 'negative' | 'warning' | 'info' }
   | { kind: 'spacer'; size?: number }
+
+const BADGE_TONES = {
+  positive: { fg: '#15803D', bg: '#15803D14', border: '#15803D33' },
+  negative: { fg: '#B91C1C', bg: '#B91C1C14', border: '#B91C1C33' },
+  warning: { fg: '#B45309', bg: '#B4530914', border: '#B4530933' },
+  info: { fg: BRAND.accent, bg: BRAND.accentTintWash, border: BRAND.accentTintPale },
+} as const
 
 function renderSection(section: EmailSection): string {
   switch (section.kind) {
@@ -156,10 +217,25 @@ function renderSection(section: EmailSection): string {
           </td>
         </tr>`
     }
+    case 'heroImage': {
+      return `
+        <tr>
+          <td style="padding:18px 32px 0;">
+            <img src="${escapeHtml(section.src)}" alt="${escapeHtml(section.alt)}" width="496" style="display:block;width:100%;max-width:496px;height:auto;border-radius:12px;border:0;outline:none;text-decoration:none;" />
+          </td>
+        </tr>`
+    }
+    case 'excerpt': {
+      return `<tr><td style="padding:14px 32px 0;"><p style="margin:0;padding:0 0 0 14px;border-left:3px solid ${BRAND.accentTintPale};font-size:15px;line-height:1.65;font-style:italic;color:${BRAND.ink.muted};">${escapeHtml(section.text)}</p></td></tr>`
+    }
     case 'cta':
       return `<tr><td align="center" style="padding:24px 32px 8px;">${bulletproofButton({ href: section.href, label: section.label })}</td></tr>`
     case 'secondaryLink':
       return `<tr><td align="center" style="padding:6px 32px 0;"><a href="${escapeHtml(section.href)}" style="color:${BRAND.ink.primary};text-decoration:underline;font-size:14px;">${escapeHtml(section.label)}</a></td></tr>`
+    case 'statusBadge': {
+      const tone = BADGE_TONES[section.tone]
+      return `<tr><td style="padding:14px 32px 0;"><span style="display:inline-block;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;color:${tone.fg};background:${tone.bg};border:1px solid ${tone.border};padding:4px 10px;border-radius:999px;">${escapeHtml(section.label)}</span></td></tr>`
+    }
     case 'spacer':
       return `<tr><td style="font-size:0;line-height:0;height:${section.size ?? 8}px;">&nbsp;</td></tr>`
   }
@@ -169,10 +245,22 @@ export function renderEmail(args: {
   preheader: string
   eyebrow: string
   heading: string
+  // Optional human-readable reference (e.g. "VND-10001") shown in the
+  // header strip and the subject — gives recipients an ID to quote when
+  // they reply or escalate.
+  referenceCode?: string | null
   sections: EmailSection[]
+  reviewer?: { name: string | null; email: string | null; role?: string } | null
   closing?: string
 }): string {
   const sections = args.sections.map((s) => renderSection(s)).join('')
+  const reviewerSig = args.reviewer
+    ? reviewerSignatureHtml({
+        reviewerName: args.reviewer.name,
+        reviewerEmail: args.reviewer.email,
+        reviewerRole: args.reviewer.role,
+      })
+    : ''
   const closing = args.closing
     ? `<tr><td style="padding:18px 32px 0;"><p style="margin:0;font-size:14px;line-height:1.65;color:${BRAND.ink.secondary};">${args.closing}</p></td></tr>`
     : ''
@@ -216,6 +304,11 @@ export function renderEmail(args: {
                     </td>
                     <td align="right">
                       <span class="ink-muted" style="font-size:11px;letter-spacing:0.14em;text-transform:uppercase;font-weight:700;color:${BRAND.ink.muted};">${escapeHtml(args.eyebrow)}</span>
+                      ${
+                        args.referenceCode
+                          ? `<div class="ink-primary" style="margin-top:6px;font-size:11px;font-weight:600;color:${BRAND.ink.primary};font-family:'SFMono-Regular',Menlo,Consolas,monospace;letter-spacing:0.04em;">${escapeHtml(args.referenceCode)}</div>`
+                          : ''
+                      }
                     </td>
                   </tr>
                 </table>
@@ -228,6 +321,7 @@ export function renderEmail(args: {
             </tr>
             ${sections}
             ${closing}
+            ${reviewerSig}
             <tr><td style="font-size:0;line-height:0;height:24px;">&nbsp;</td></tr>
             ${footerHtml()}
           </table>
