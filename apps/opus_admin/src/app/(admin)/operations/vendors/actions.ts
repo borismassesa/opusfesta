@@ -222,9 +222,12 @@ async function notifyVendorOfStatusChange(
     return
   }
 
+  // The custom subdomain `vendors.opusfesta.com` isn't attached in DNS yet,
+  // so default to the live Vercel URL until it lands. Override via
+  // NEXT_PUBLIC_VENDORS_PORTAL_URL once the subdomain is configured.
   const portalUrl =
     process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL?.trim() ||
-    'https://vendors.opusfesta.com'
+    'https://opusfesta-vendors-portal.vercel.app'
   const message = buildVendorStatusEmail({
     event,
     businessName: data.business_name?.trim() || 'OpusFesta vendor',
