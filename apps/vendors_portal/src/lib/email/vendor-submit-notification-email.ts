@@ -54,7 +54,7 @@ export function buildVendorSubmitNotificationEmail(
     sections: [
       {
         kind: 'paragraph',
-        text: `<strong>${escapeHtml(business)}</strong> just submitted a vendor application. Their onboarding status is <strong>verification_pending</strong> — open the admin app to review their profile, documents, and approve or request corrections.`,
+        text: `<strong>${escapeHtml(business)}</strong> just submitted a vendor application and is awaiting verification — open the admin app to review their profile, documents, and approve or request corrections.`,
       },
       { kind: 'titleCard', title: business, meta: category },
       {
@@ -68,7 +68,6 @@ export function buildVendorSubmitNotificationEmail(
         ],
       },
       { kind: 'cta', href: input.reviewLink, label: 'Open vendor review' },
-      { kind: 'secondaryLink', href: input.reviewLink, label: input.reviewLink },
     ],
   })
 

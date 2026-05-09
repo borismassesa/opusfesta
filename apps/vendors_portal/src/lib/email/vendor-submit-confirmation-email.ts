@@ -69,7 +69,6 @@ export function buildVendorSubmitConfirmationEmail(
           'While you wait, you can finish uploading any verification documents in the portal. We\'ll email you again the moment your application moves forward.',
       },
       { kind: 'cta', href: verifyUrl, label: 'Open the portal' },
-      { kind: 'secondaryLink', href: verifyUrl, label: verifyUrl },
     ],
     closing:
       'Questions? Just reply to this email or reach us at <a href="mailto:vendors@opusfesta.com">vendors@opusfesta.com</a>.',

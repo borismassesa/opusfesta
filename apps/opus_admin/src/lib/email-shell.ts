@@ -36,12 +36,16 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;')
 }
 
-// Public URL to the OpusFesta wordmark. The PNG sits in
-// apps/opus_website/public/assets/logo so it's served at
-// {WEBSITE_URL}/assets/logo/opusfesta-logo-black.png.
+// Public URL to the OpusFesta wordmark, embedded as <img src> in every email.
+// Email recipients are external (Gmail, Apple Mail, etc.) so the URL must be
+// publicly reachable — localhost dev URLs will render as broken images.
+// Defaults to the production opusfesta.com asset; override with EMAIL_LOGO_URL
+// when staging on a non-prod domain.
 export function logoUrl(): string {
-  const raw = process.env.NEXT_PUBLIC_WEBSITE_URL?.trim() || 'https://opusfesta.com'
-  return `${raw.replace(/\/$/, '')}/assets/logo/opusfesta-logo-black.png`
+  return (
+    process.env.EMAIL_LOGO_URL?.trim() ||
+    'https://www.opusfesta.com/assets/logo/opusfesta-logo-black.png'
+  )
 }
 
 // Hidden preheader: shows in inbox previews next to the subject line.
