@@ -6,6 +6,7 @@ import {
   createSupabaseAdminClient,
   createClerkSupabaseServerClient,
 } from '@/lib/supabase'
+import { notifyOnVendorSubmit } from '@/lib/email/notify-on-submit'
 import { findCategory } from './categories'
 import { LANGUAGES } from './languages'
 import { PERSONALITY_OPTIONS } from './personality'
@@ -479,6 +480,30 @@ export async function submitApplication(
   // an explicit e-signature step on /verify *after* the document uploads.
   // The auto-transition to admin_review checks for the agreement row's
   // presence, so the vendor must complete that step before review begins.
+
+  // 5) Best-effort transactional emails: ping admins about the new
+  //    application and receipt the vendor. Email failures are logged but
+  //    never block the submit — the persisted vendor row + payout method
+  //    above are the source of truth.
+  try {
+    const region =
+      TZ_REGIONS.find((r) => r.code === draft.region)?.name ?? draft.region ?? null
+    await notifyOnVendorSubmit({
+      vendorId,
+      businessName: draft.businessName.trim(),
+      category: findCategory(draft.categoryId!)?.profileLabel ?? dbCategory,
+      region,
+      city: draft.city.trim() || null,
+      vendorContactEmail: draft.email?.trim() || email,
+      vendorContactPhone: draft.phone?.trim() || null,
+      submittedAt: new Date().toISOString(),
+    })
+  } catch (err) {
+    console.warn(
+      `[submit] notifyOnVendorSubmit threw for vendor=${vendorId}:`,
+      err instanceof Error ? err.message : err,
+    )
+  }
 
   return { ok: true, vendorId }
 }

@@ -24,7 +24,12 @@ import {
 } from 'lucide-react'
 import {
   ADVICE_BLOCK_TYPES,
+  ADVICE_IDEAS_CATEGORIES,
+  ADVICE_IDEAS_CATEGORY_GROUPS,
   ADVICE_IDEAS_SECTION_IDS,
+  ADVICE_IDEAS_SECTION_LABELS,
+  getCategorySection,
+  sectionIdForCategory,
   slugify,
   type AdviceIdeasBlock,
   type AdviceIdeasBodySection,
@@ -38,6 +43,7 @@ import { ArticleEditor } from '@/lib/editor'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot } from '@/components/HeaderPortals'
 import ArticlePreview from '@/components/article-preview/ArticlePreview'
+import SectionsCard from '@/components/article-sections/SectionsCard'
 import { createAdvicePost, updateAdvicePost, uploadAdviceMedia, type PostUpsertInput } from './actions'
 import {
   approveAdviceSubmission,
@@ -66,15 +72,10 @@ type Props = {
   backLabel?: string
 }
 
-const CATEGORY_OPTIONS = [
-  'Planning Guides',
-  'Real Weddings',
-  'Themes & Styles',
-  'Etiquette & Wording',
-  'Bridal Shower Ideas',
-  'Honeymoon Ideas',
-  'Featured Stories',
-]
+// Same canonical list the contributor side uses — see ADVICE_IDEAS_CATEGORY_GROUPS
+// in lib/cms/advice-ideas. The dropdown renders them grouped by section
+// (Inspiration / Advice).
+const CATEGORY_OPTIONS = ADVICE_IDEAS_CATEGORIES
 
 function toDateInput(iso: string): string {
   if (!iso) return ''
@@ -915,6 +916,9 @@ export default function PostEditor({
                 still AdviceIdeasBodySection[]; the editor translates to/from
                 its internal TipTap doc transparently. */}
             <Card title="Article body">
+              <div className="mb-4">
+                <SectionsCard body={draft.body} />
+              </div>
               <ArticleEditor
                 value={draft.body}
                 onChange={(body) => setDraft((d) => ({ ...d, body }))}
@@ -1138,32 +1142,66 @@ export default function PostEditor({
               </Field>
               <Field label="Category">
                 <select
-                  value={CATEGORY_OPTIONS.includes(draft.category) ? draft.category : ''}
-                  onChange={(e) => set('category', e.target.value)}
+                  value={draft.category ?? ''}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    set('category', next)
+                    // Auto-derive the hub section so the article lands in the
+                    // right bucket. Admin can still override afterwards.
+                    const derived = sectionIdForCategory(next)
+                    if (derived) set('section_id', derived)
+                  }}
                   className={inputCls}
                 >
                   <option value="" disabled>
                     Select a category…
                   </option>
-                  {CATEGORY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                  {draft.category &&
+                    !CATEGORY_OPTIONS.includes(draft.category) && (
+                      <option value={draft.category}>
+                        {draft.category} (legacy)
+                      </option>
+                    )}
+                  {ADVICE_IDEAS_CATEGORY_GROUPS.map((group) => (
+                    <optgroup key={group.section} label={group.section}>
+                      {group.categories.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
+                {draft.category && (
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    {getCategorySection(draft.category)
+                      ? `Goes under ${getCategorySection(draft.category)} on the live site.`
+                      : 'Legacy category — pick one of the canonical options to map this article to a section.'}
+                  </p>
+                )}
               </Field>
-              <Field label="Section (used to group on index)">
+              <Field label="Hub section">
                 <select
                   value={draft.section_id}
-                  onChange={(e) => set('section_id', e.target.value as AdviceIdeasSectionId)}
+                  onChange={(e) =>
+                    set('section_id', e.target.value as AdviceIdeasSectionId)
+                  }
                   className={inputCls}
                 >
                   {ADVICE_IDEAS_SECTION_IDS.map((s) => (
                     <option key={s} value={s}>
-                      {s}
+                      {ADVICE_IDEAS_SECTION_LABELS[s]}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Which bucket the article appears in on{' '}
+                  <span className="font-mono text-gray-600">
+                    /advice-and-ideas
+                  </span>
+                  . Auto-fills from category — change to override (e.g., move
+                  to <span className="font-semibold">Featured Stories</span>).
+                </p>
               </Field>
               <Field
                 label="Read time (minutes)"

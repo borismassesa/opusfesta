@@ -1,7 +1,9 @@
 'use client'
 
+import type { AdviceIdeasBodySection } from '@/lib/cms/advice-ideas'
 import type { ReadinessItem } from '@/lib/contribute/validateReadiness'
 import type { ContributorSubmissionStatus } from '@/lib/contribute/types'
+import SectionsCard from '@/components/article-sections/SectionsCard'
 import CategoryCard from './CategoryCard'
 import CoverImageCard from './CoverImageCard'
 import ReadinessCard from './ReadinessCard'
@@ -12,6 +14,7 @@ export default function RightRail({
   draftId,
   draftTitle,
   category,
+  body,
   coverUrl,
   coverAlt,
   readOnly,
@@ -26,6 +29,7 @@ export default function RightRail({
   draftId: string
   draftTitle: string
   category: string
+  body: AdviceIdeasBodySection[]
   coverUrl: string
   coverAlt: string
   readOnly: boolean
@@ -39,6 +43,7 @@ export default function RightRail({
 }) {
   return (
     <aside className="space-y-7">
+      <SectionsCard body={body} />
       <CategoryCard value={category} onChange={onCategoryChange} readOnly={readOnly} />
       <CoverImageCard
         draftId={draftId}
