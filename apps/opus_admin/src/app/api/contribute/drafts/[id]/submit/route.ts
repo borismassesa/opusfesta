@@ -13,6 +13,7 @@ import { countBodyWords } from '@/lib/contribute/bodyMetrics'
 import { isEditableContributorStatus, type ContributorDraft } from '@/lib/contribute/types'
 import { isEmailConfigured, sendEmail } from '@/lib/email'
 import { buildEditorialNotificationEmail } from '@/lib/editorial-notification-email'
+import { resolveEditorialRecipients } from '@/lib/editorial-recipients'
 
 type RouteContext = { params: Promise<{ id: string }> }
 
@@ -100,8 +101,35 @@ async function notifyEditorialTeam(args: {
   submittedAt: string
 }): Promise<void> {
   try {
-    const recipients = parseEditorialRecipients(process.env.EDITORIAL_NOTIFY_EMAIL)
-    if (recipients.length === 0 || !isEmailConfigured()) return
+    if (!isEmailConfigured()) {
+      console.warn('[contribute draft submit] notify skipped: RESEND_API_KEY not set', {
+        submissionId: args.submissionId,
+      })
+      return
+    }
+    const resolution = await resolveEditorialRecipients()
+    if (resolution.source === 'whitelist_error') {
+      console.error(
+        '[contribute draft submit] notify failed: admin_whitelist query errored — editorial NOT notified',
+        {
+          submissionId: args.submissionId,
+          authorEmail: args.authorEmail,
+          error: resolution.error,
+        }
+      )
+      return
+    }
+    if (resolution.recipients.length === 0) {
+      console.warn(
+        '[contribute draft submit] notify skipped: no recipients (set EDITORIAL_NOTIFY_EMAIL or activate admin_whitelist rows)',
+        { submissionId: args.submissionId }
+      )
+      return
+    }
+    console.info(
+      `[contribute draft submit] notifying ${resolution.recipients.length} recipient(s) via ${resolution.source}`
+    )
+    const recipients = resolution.recipients
 
     const reviewLink = `${await getAdminOrigin()}/operations/articles/submissions/${args.submissionId}`
     const template = buildEditorialNotificationEmail({
@@ -121,16 +149,12 @@ async function notifyEditorialTeam(args: {
       replyTo: args.authorEmail,
     })
   } catch (notifyError) {
-    console.error('[contribute draft submit] notify failed', notifyError)
+    console.error('[contribute draft submit] notify failed', {
+      submissionId: args.submissionId,
+      authorEmail: args.authorEmail,
+      err: notifyError instanceof Error ? notifyError.message : String(notifyError),
+    })
   }
-}
-
-function parseEditorialRecipients(raw: string | undefined): string[] {
-  if (!raw) return []
-  return raw
-    .split(',')
-    .map((entry) => entry.trim())
-    .filter((entry) => entry.includes('@'))
 }
 
 async function getAdminOrigin(): Promise<string> {

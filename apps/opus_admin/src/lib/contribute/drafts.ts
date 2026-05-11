@@ -1,19 +1,26 @@
 import { notFound } from 'next/navigation'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { slugify, type AdviceIdeasBodySection } from '@/lib/cms/advice-ideas'
 import {
-  CONTRIBUTOR_CATEGORIES,
+  sectionIdForCategory as canonicalSectionIdForCategory,
+  slugify,
+  type AdviceIdeasBodySection,
+} from '@/lib/cms/advice-ideas'
+import {
   type ContributorDraft,
   type ContributorSubmissionStatus,
   isEditableContributorStatus,
 } from './types'
 import { countBodyWords } from './bodyMetrics'
 import { ownsDraft, requireContributorIdentity } from './auth'
+import { getContributorProfileByEmail } from './profile'
 
 type SubmissionRow = {
   id: string
   author_email: string
   author_clerk_id: string | null
+  author_name?: string | null
+  author_role?: string | null
+  author_avatar_url?: string | null
   status: ContributorSubmissionStatus
   title: string
   description?: string | null
@@ -39,15 +46,19 @@ type SubmissionRow = {
 
 export function normalizeCategory(value: string | null | undefined): string {
   const category = (value || '').trim()
-  return CONTRIBUTOR_CATEGORIES.includes(category as (typeof CONTRIBUTOR_CATEGORIES)[number])
-    ? category
-    : 'Planning Guides'
+  if (!category) return 'Planning Guides'
+  // Accept any canonical category. Legacy values (e.g. "Style", "Vendors",
+  // "Advice & Ideas" from before the navbar refresh) are preserved as-is so
+  // existing drafts don't silently lose their category — the editor surfaces
+  // them with a "(legacy)" suffix until the contributor re-picks one.
+  return category
 }
 
+// Section-id mapping for legacy categories that aren't in the canonical
+// navbar list (Style → themes-styles, Etiquette → etiquette-wording, etc.).
+// Anything else falls back to the canonical mapping or planning-guides.
 function sectionIdForCategory(category: string): string {
   switch (category) {
-    case 'Real Weddings':
-      return 'real-weddings'
     case 'Style':
       return 'themes-styles'
     case 'Etiquette':
@@ -55,15 +66,15 @@ function sectionIdForCategory(category: string): string {
     case 'Advice & Ideas':
       return 'featured-stories'
     case 'Vendors':
-    case 'Planning Guides':
-    default:
       return 'planning-guides'
   }
+  return canonicalSectionIdForCategory(category) ?? 'planning-guides'
 }
 
 export function rowToContributorDraft(row: SubmissionRow): ContributorDraft {
   const body = Array.isArray(row.body) ? row.body : []
   const summary = row.summary ?? row.excerpt ?? row.description ?? ''
+  const authorName = row.author_name?.trim() || row.author_email.split('@')[0] || ''
   return {
     id: row.id,
     author_email: row.author_email,
@@ -72,6 +83,11 @@ export function rowToContributorDraft(row: SubmissionRow): ContributorDraft {
     title: row.title ?? '',
     summary,
     category: normalizeCategory(row.category),
+    author_name: authorName,
+    author_role: row.author_role ?? '',
+    author_avatar_url: row.author_avatar_url ?? '',
+    author_bio: '',
+    author_initials: initialsFromName(authorName),
     cover_image_url: row.cover_image_url ?? row.hero_media_src ?? '',
     cover_image_alt: row.cover_image_alt ?? row.hero_media_alt ?? '',
     body,
@@ -83,6 +99,22 @@ export function rowToContributorDraft(row: SubmissionRow): ContributorDraft {
     slug: row.slug,
     created_at: row.created_at,
     updated_at: row.updated_at,
+  }
+}
+
+export async function withContributorProfile(
+  draft: ContributorDraft
+): Promise<ContributorDraft> {
+  const profile = await getContributorProfileByEmail(draft.author_email)
+  if (!profile) return draft
+  const authorName = profile.name?.trim() || draft.author_name
+  return {
+    ...draft,
+    author_name: authorName,
+    author_role: profile.role ?? draft.author_role,
+    author_avatar_url: profile.avatar_url ?? draft.author_avatar_url,
+    author_bio: profile.bio ?? '',
+    author_initials: profile.initials || initialsFromName(authorName),
   }
 }
 
@@ -122,7 +154,7 @@ export async function findOwnedContributorDraft(
 
   if (error) throw error
   if (!data || !ownsDraft(data, identity)) return null
-  return rowToContributorDraft(data)
+  return withContributorProfile(rowToContributorDraft(data))
 }
 
 export function contributorPatchPayload(input: Partial<ContributorDraft>): Record<string, unknown> {
@@ -150,6 +182,11 @@ export function contributorPatchPayload(input: Partial<ContributorDraft>): Recor
     payload.cover_image_alt = input.cover_image_alt
     payload.hero_media_alt = input.cover_image_alt
   }
+  if (input.author_name !== undefined) payload.author_name = input.author_name || null
+  if (input.author_role !== undefined) payload.author_role = input.author_role || null
+  if (input.author_avatar_url !== undefined) {
+    payload.author_avatar_url = input.author_avatar_url || null
+  }
   if (input.body !== undefined) {
     payload.body = input.body
     payload.word_count = input.word_count ?? countBodyWords(input.body)
@@ -159,6 +196,16 @@ export function contributorPatchPayload(input: Partial<ContributorDraft>): Recor
     payload.read_time = Math.max(1, Math.ceil(input.word_count / 200))
   }
   return payload
+}
+
+function initialsFromName(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0] ?? '')
+    .join('')
+    .toUpperCase()
+    .slice(0, 3)
 }
 
 export async function assertOwnedEditableDraft(id: string): Promise<ContributorDraft> {

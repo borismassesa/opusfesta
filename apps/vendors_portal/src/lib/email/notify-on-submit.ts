@@ -17,6 +17,7 @@ import { buildVendorSubmitConfirmationEmail } from './vendor-submit-confirmation
 
 export type NotifyOnSubmitInput = {
   vendorId: string
+  vendorCode: string | null
   businessName: string
   category: string | null
   region: string | null
@@ -35,9 +36,13 @@ function adminReviewUrl(vendorId: string): string {
 }
 
 function vendorPortalUrl(): string {
+  // The custom subdomain `vendors.opusfesta.com` is not yet attached in DNS,
+  // so emails using it produce DNS_PROBE_FINISHED_NXDOMAIN for recipients.
+  // Default to the Vercel deployment URL until the subdomain is configured;
+  // override via NEXT_PUBLIC_VENDORS_PORTAL_URL once DNS lands.
   return (
     process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL?.trim() ||
-    'https://vendors.opusfesta.com'
+    'https://opusfesta-vendors-portal.vercel.app'
   )
 }
 
@@ -52,6 +57,7 @@ async function notifyAdmins(input: NotifyOnSubmitInput): Promise<void> {
 
   const message = buildVendorSubmitNotificationEmail({
     businessName: input.businessName,
+    vendorCode: input.vendorCode,
     category: input.category,
     region: input.region,
     city: input.city,
@@ -85,6 +91,7 @@ async function notifyVendor(input: NotifyOnSubmitInput): Promise<void> {
 
   const message = buildVendorSubmitConfirmationEmail({
     businessName: input.businessName,
+    vendorCode: input.vendorCode,
     recipientEmail: recipient,
     submittedAt: input.submittedAt,
     portalUrl: vendorPortalUrl(),

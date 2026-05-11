@@ -242,11 +242,10 @@ function ActionButtons() {
     <>
       <span
         className={cn(
-          'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full mr-1',
+          'inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full mr-1',
           hasDraft ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
         )}
       >
-        <span className={cn('w-1.5 h-1.5 rounded-full', hasDraft ? 'bg-amber-500' : 'bg-emerald-500')} />
         {hasDraft ? 'Unpublished draft' : 'All changes published'}
       </span>
       {message && <span className="text-xs text-gray-500 mr-1">{message}</span>}

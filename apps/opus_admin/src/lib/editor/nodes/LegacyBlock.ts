@@ -44,10 +44,34 @@ export const LegacyBlock = Node.create({
   },
 
   parseHTML() {
-    return [{ tag: 'div[data-legacy-block]' }]
+    return [{ tag: '[data-legacy-block]' }]
   },
 
-  renderHTML({ HTMLAttributes }) {
+  renderHTML({ node, HTMLAttributes }) {
+    const data = node.attrs.data as AdviceIdeasBlock | null
+    if (data?.type === 'video') {
+      const attrs = mergeAttributes(HTMLAttributes, {
+        'data-legacy-block': '',
+        'data-legacy-kind': 'video',
+      })
+      const videoAttrs = {
+        src: data.src,
+        poster: data.poster || undefined,
+        controls: 'true',
+        playsinline: 'true',
+        preload: 'metadata',
+        'aria-label': data.alt || 'Article video',
+      }
+      return data.caption
+        ? [
+            'figure',
+            attrs,
+            ['video', videoAttrs],
+            ['figcaption', data.caption],
+          ]
+        : ['figure', attrs, ['video', videoAttrs]]
+    }
+
     return ['div', mergeAttributes(HTMLAttributes, { 'data-legacy-block': '' })]
   },
 })

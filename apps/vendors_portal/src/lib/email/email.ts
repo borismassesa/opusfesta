@@ -27,6 +27,8 @@ export type EmailPayload = {
   text?: string
   from?: string
   replyTo?: string
+  cc?: string | string[]
+  bcc?: string | string[]
 }
 
 export type EmailResult =
@@ -53,6 +55,8 @@ export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
       html: payload.html,
       text: payload.text,
       replyTo: payload.replyTo,
+      ...(payload.cc ? { cc: payload.cc } : {}),
+      ...(payload.bcc ? { bcc: payload.bcc } : {}),
     })
     if (result.error) {
       console.error('[email] resend error:', result.error)

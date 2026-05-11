@@ -24,7 +24,12 @@ import {
 } from 'lucide-react'
 import {
   ADVICE_BLOCK_TYPES,
+  ADVICE_IDEAS_CATEGORIES,
+  ADVICE_IDEAS_CATEGORY_GROUPS,
   ADVICE_IDEAS_SECTION_IDS,
+  ADVICE_IDEAS_SECTION_LABELS,
+  getCategorySection,
+  sectionIdForCategory,
   slugify,
   type AdviceIdeasBlock,
   type AdviceIdeasBodySection,
@@ -37,7 +42,9 @@ import { resolveMediaUrl } from '@/app/(admin)/cms/advice-and-ideas/_media'
 import { ArticleEditor } from '@/lib/editor'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot } from '@/components/HeaderPortals'
-import { createAdvicePost, updateAdvicePost, uploadAdviceMedia, type PostUpsertInput } from './actions'
+import ArticlePreview from '@/components/article-preview/ArticlePreview'
+import SectionsCard from '@/components/article-sections/SectionsCard'
+import { createAdvicePost, updateAdvicePost, type PostUpsertInput } from './actions'
 import {
   approveAdviceSubmission,
   rejectAdviceSubmission,
@@ -65,15 +72,10 @@ type Props = {
   backLabel?: string
 }
 
-const CATEGORY_OPTIONS = [
-  'Planning Guides',
-  'Real Weddings',
-  'Themes & Styles',
-  'Etiquette & Wording',
-  'Bridal Shower Ideas',
-  'Honeymoon Ideas',
-  'Featured Stories',
-]
+// Same canonical list the contributor side uses — see ADVICE_IDEAS_CATEGORY_GROUPS
+// in lib/cms/advice-ideas. The dropdown renders them grouped by section
+// (Inspiration / Advice).
+const CATEGORY_OPTIONS = ADVICE_IDEAS_CATEGORIES
 
 function toDateInput(iso: string): string {
   if (!iso) return ''
@@ -115,6 +117,28 @@ function countBodyWords(body: PostUpsertInput['body']): number {
 
 function estimateReadMinutes(words: number): number {
   return Math.max(1, Math.round(words / 225))
+}
+
+async function uploadAdminAdviceMedia(
+  file: File,
+  slug: string
+): Promise<{ url: string; type: 'image' | 'video' }> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('slug', slug || 'new')
+  const response = await fetch('/api/operations/articles/media', {
+    method: 'POST',
+    body: form,
+  })
+  const payload = (await response.json().catch(() => ({}))) as {
+    url?: string
+    type?: 'image' | 'video'
+    error?: string
+  }
+  if (!response.ok || !payload.url || !payload.type) {
+    throw new Error(payload.error || 'Upload failed.')
+  }
+  return { url: payload.url, type: payload.type }
 }
 
 function formatRelativeTime(then: number, now: number): string {
@@ -179,13 +203,20 @@ export default function PostEditor({
   const [readTimeManual, setReadTimeManual] = useState<boolean>(!!initial.read_time && initial.read_time !== 5)
   const heroInputRef = useRef<HTMLInputElement>(null)
   const avatarInputRef = useRef<HTMLInputElement>(null)
+  const titleRef = useRef<HTMLTextAreaElement>(null)
   const summaryRef = useRef<HTMLTextAreaElement>(null)
   const [avatarDragOver, setAvatarDragOver] = useState(false)
 
-  // Auto-grow the summary textarea when its value changes externally (e.g.
-  // loading an existing post with a multi-line excerpt). The onChange handler
-  // resizes during typing; this effect handles the initial render and any
+  // Auto-grow the borderless title + summary textareas when their values
+  // change externally (e.g. loading an existing post). The onChange handlers
+  // resize during typing; these effects handle initial render and any
   // server-side autosave restoration.
+  useEffect(() => {
+    const el = titleRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [draft.title])
   useEffect(() => {
     const el = summaryRef.current
     if (!el) return
@@ -294,11 +325,13 @@ export default function PostEditor({
   }, [])
 
   const publishErrors = useMemo(() => validateForPublish(draft), [draft])
-  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL ?? ''
-  const previewUrl =
-    workflow === 'post' && draft.slug
-      ? `${websiteUrl}/advice-and-ideas/${draft.slug}`
-      : null
+  // Inline preview modal state. Renders the draft via the shared
+  // ArticlePreview component so what admins see here matches the public
+  // /advice-and-ideas/[slug] layout exactly — and works on unsaved drafts
+  // (no need to publish first to preview).
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const canPreview =
+    workflow !== 'contributor-submission' && Boolean(draft.title.trim())
 
   const headingTitle =
     isContributorSubmission
@@ -326,7 +359,7 @@ export default function PostEditor({
       try {
         const { url, type } = isContributorSubmission
           ? await uploadContributorMedia(fd)
-          : await uploadAdviceMedia(fd)
+          : await uploadAdminAdviceMedia(file, draft.slug || 'new')
         setDraft((d) => ({ ...d, hero_media_src: url, hero_media_type: type }))
         setMessage('Hero media uploaded.')
       } catch (err) {
@@ -348,7 +381,7 @@ export default function PostEditor({
       try {
         const { url } = isContributorSubmission
           ? await uploadContributorMedia(fd)
-          : await uploadAdviceMedia(fd)
+          : await uploadAdminAdviceMedia(file, draft.slug || 'new')
         setDraft((d) => ({ ...d, author_avatar_url: url }))
         setMessage('Avatar uploaded.')
       } catch (err) {
@@ -558,7 +591,7 @@ export default function PostEditor({
     <>
       <span
         className={cn(
-          'inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full',
+          'inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full',
           dirty
             ? 'bg-amber-50 text-amber-700'
             : isSubmission && submissionStatus
@@ -568,20 +601,6 @@ export default function PostEditor({
                 : 'bg-gray-100 text-gray-600'
         )}
       >
-        <span
-          className={cn(
-            'w-1.5 h-1.5 rounded-full',
-            dirty
-              ? 'bg-amber-500'
-              : isSubmission && submissionStatus === 'published'
-                ? 'bg-[#7E5896]'
-                : isSubmission && submissionStatus === 'submitted'
-                  ? 'bg-amber-500'
-                  : draft.published
-                    ? 'bg-emerald-500'
-                    : 'bg-gray-400'
-          )}
-        />
         {dirty
           ? 'Unsaved changes'
           : isSubmission && submissionStatus
@@ -722,16 +741,15 @@ export default function PostEditor({
             <ArrowLeft className="w-4 h-4" /> {backLabel ?? 'All articles'}
           </Link>
 
-          {previewUrl && (
-            <a
-              href={previewUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+          {canPreview && (
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(true)}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900"
             >
               <ExternalLink className="w-4 h-4" />
               Preview
-            </a>
+            </button>
           )}
         </div>
 
@@ -775,13 +793,23 @@ export default function PostEditor({
 
             {/* Document header — borderless title + summary, Notion-style. */}
             <div className="px-1 pt-2 pb-1">
-              <input
-                type="text"
+              <textarea
+                ref={titleRef}
                 aria-label="Article title"
                 value={draft.title}
-                onChange={(e) => onTitleChange(e.target.value)}
+                onChange={(e) => {
+                  onTitleChange(e.target.value)
+                  e.currentTarget.style.height = 'auto'
+                  e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`
+                }}
+                onKeyDown={(e) => {
+                  // Titles are single-paragraph — Enter shouldn't insert a
+                  // newline. Wrapping happens automatically as text fills width.
+                  if (e.key === 'Enter') e.preventDefault()
+                }}
                 placeholder="Article title"
-                className="block w-full border-0 bg-transparent p-0 text-[28px] font-semibold leading-tight tracking-tight text-gray-950 outline-none placeholder:text-gray-400 sm:text-[32px]"
+                rows={1}
+                className="block w-full resize-none border-0 bg-transparent p-0 text-[28px] font-semibold leading-tight tracking-tight text-gray-950 outline-none placeholder:text-gray-400 sm:text-[32px]"
               />
               <textarea
                 ref={summaryRef}
@@ -796,6 +824,33 @@ export default function PostEditor({
                 rows={2}
                 className="mt-5 block min-h-[48px] w-full resize-none border-0 bg-transparent p-0 text-base leading-[1.6] text-gray-600 outline-none placeholder:text-gray-400"
               />
+              {(() => {
+                // Soft word limit — the summary renders unclamped on the
+                // /advice-and-ideas trending hero card, so an overly long one
+                // pushes layout. Advisory only; doesn't block publishing.
+                const SUMMARY_MAX_WORDS = 50
+                const trimmed = draft.excerpt.trim()
+                const words = trimmed
+                  ? trimmed.split(/\s+/).filter(Boolean).length
+                  : 0
+                const over = words > SUMMARY_MAX_WORDS
+                const near = !over && words > SUMMARY_MAX_WORDS * 0.85
+                return (
+                  <p
+                    className={cn(
+                      'mt-2 text-[11px] tabular-nums font-medium',
+                      over
+                        ? 'text-rose-600'
+                        : near
+                          ? 'text-amber-600'
+                          : 'text-gray-400'
+                    )}
+                  >
+                    {words}/{SUMMARY_MAX_WORDS} words
+                    {over && ' · trim for cleaner card layout'}
+                  </p>
+                )
+              })()}
             </div>
 
             {/* Hero media */}
@@ -883,11 +938,14 @@ export default function PostEditor({
                 still AdviceIdeasBodySection[]; the editor translates to/from
                 its internal TipTap doc transparently. */}
             <Card title="Article body">
+              <div className="mb-4">
+                <SectionsCard body={draft.body} />
+              </div>
               <ArticleEditor
                 value={draft.body}
                 onChange={(body) => setDraft((d) => ({ ...d, body }))}
                 mode="admin"
-                placeholder="Start writing the article — use the toolbar to add headings, lists, quotes, images…"
+                placeholder="Start writing the article — use the toolbar to add headings, lists, quotes, images, videos…"
                 onUploadImage={async (file) => {
                   const fd = new FormData()
                   fd.append('file', file)
@@ -895,7 +953,19 @@ export default function PostEditor({
                   if (id) fd.append('submissionId', id)
                   const { url } = isContributorSubmission
                     ? await uploadContributorMedia(fd)
-                    : await uploadAdviceMedia(fd)
+                    : await uploadAdminAdviceMedia(file, draft.slug || 'new')
+                  return url
+                }}
+                onUploadVideo={async (file) => {
+                  // Same upload path as image — the media endpoints accept
+                  // both (already used for hero video uploads).
+                  const fd = new FormData()
+                  fd.append('file', file)
+                  fd.append('slug', draft.slug || 'new')
+                  if (id) fd.append('submissionId', id)
+                  const { url } = isContributorSubmission
+                    ? await uploadContributorMedia(fd)
+                    : await uploadAdminAdviceMedia(file, draft.slug || 'new')
                   return url
                 }}
               />
@@ -1094,32 +1164,66 @@ export default function PostEditor({
               </Field>
               <Field label="Category">
                 <select
-                  value={CATEGORY_OPTIONS.includes(draft.category) ? draft.category : ''}
-                  onChange={(e) => set('category', e.target.value)}
+                  value={draft.category ?? ''}
+                  onChange={(e) => {
+                    const next = e.target.value
+                    set('category', next)
+                    // Auto-derive the hub section so the article lands in the
+                    // right bucket. Admin can still override afterwards.
+                    const derived = sectionIdForCategory(next)
+                    if (derived) set('section_id', derived)
+                  }}
                   className={inputCls}
                 >
                   <option value="" disabled>
                     Select a category…
                   </option>
-                  {CATEGORY_OPTIONS.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
+                  {draft.category &&
+                    !CATEGORY_OPTIONS.includes(draft.category) && (
+                      <option value={draft.category}>
+                        {draft.category} (legacy)
+                      </option>
+                    )}
+                  {ADVICE_IDEAS_CATEGORY_GROUPS.map((group) => (
+                    <optgroup key={group.section} label={group.section}>
+                      {group.categories.map((c) => (
+                        <option key={c} value={c}>
+                          {c}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
                 </select>
+                {draft.category && (
+                  <p className="mt-1 text-[11px] text-gray-500">
+                    {getCategorySection(draft.category)
+                      ? `Goes under ${getCategorySection(draft.category)} on the live site.`
+                      : 'Legacy category — pick one of the canonical options to map this article to a section.'}
+                  </p>
+                )}
               </Field>
-              <Field label="Section (used to group on index)">
+              <Field label="Hub section">
                 <select
                   value={draft.section_id}
-                  onChange={(e) => set('section_id', e.target.value as AdviceIdeasSectionId)}
+                  onChange={(e) =>
+                    set('section_id', e.target.value as AdviceIdeasSectionId)
+                  }
                   className={inputCls}
                 >
                   {ADVICE_IDEAS_SECTION_IDS.map((s) => (
                     <option key={s} value={s}>
-                      {s}
+                      {ADVICE_IDEAS_SECTION_LABELS[s]}
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-[11px] text-gray-500">
+                  Which bucket the article appears in on{' '}
+                  <span className="font-mono text-gray-600">
+                    /advice-and-ideas
+                  </span>
+                  . Auto-fills from category — change to override (e.g., move
+                  to <span className="font-semibold">Featured Stories</span>).
+                </p>
               </Field>
               <Field
                 label="Read time (minutes)"
@@ -1171,6 +1275,56 @@ export default function PostEditor({
 
         </div>
       </div>
+
+      {/* Inline preview modal — renders the draft using the shared
+          ArticlePreview component so it matches the public article layout. */}
+      {previewOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-white">
+          <div className="sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white/95 px-6 py-3 backdrop-blur">
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-gray-500">
+              Preview · matches the live article layout
+            </p>
+            <button
+              type="button"
+              onClick={() => setPreviewOpen(false)}
+              className="text-sm font-semibold text-[#7E5896] hover:underline"
+            >
+              Close preview
+            </button>
+          </div>
+          <ArticlePreview
+            post={{
+              title: draft.title,
+              excerpt: draft.excerpt,
+              category: draft.category,
+              authorName: draft.author_name,
+              authorRole: draft.author_role,
+              authorAvatarUrl: draft.author_avatar_url
+                ? resolveMediaUrl(draft.author_avatar_url)
+                : undefined,
+              readTime: draft.read_time
+                ? `${draft.read_time} min read`
+                : undefined,
+              date: draft.published_at
+                ? new Date(draft.published_at).toLocaleDateString('en-GB', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })
+                : undefined,
+              heroMediaSrc: draft.hero_media_src
+                ? resolveMediaUrl(draft.hero_media_src)
+                : undefined,
+              heroMediaAlt: draft.hero_media_alt,
+              heroMediaType: draft.hero_media_type,
+              heroMediaPoster: draft.hero_media_poster
+                ? resolveMediaUrl(draft.hero_media_poster)
+                : undefined,
+              body: draft.body,
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -1542,7 +1696,7 @@ function MediaBlockFields({
       setUploading(true)
       const { url } = uploadWorkflow === 'contributor-submission'
         ? await uploadContributorMedia(fd)
-        : await uploadAdviceMedia(fd)
+        : await uploadAdminAdviceMedia(file, 'body')
       onChange({ src: url } as Partial<AdviceIdeasBlock>)
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed.')

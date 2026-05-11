@@ -50,7 +50,7 @@ export default async function ArticleSubmissionReviewPage({
   const wordCount = wordCountOf(data.body ?? [])
 
   return (
-    <div className="bg-[#FAF6F1] pb-24">
+    <div className="bg-white pb-24">
       <div className="border-b border-gray-200 bg-white">
         <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-4 px-8 py-5">
           <div className="flex min-w-0 items-center gap-3">

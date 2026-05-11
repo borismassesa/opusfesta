@@ -31,6 +31,9 @@ export default async function SignInPage({
         appearance={{
           elements: {
             formButtonPrimary: 'bg-[#C9A0DC] hover:bg-[#b97fd0] text-[#1A1A1A]',
+            // Hide Clerk's footer (dev-mode branding + "Secured by Clerk").
+            // The sign-in <-> sign-up cross-link still works via direct URLs.
+            footer: 'hidden',
           },
         }}
       />

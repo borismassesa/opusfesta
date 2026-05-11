@@ -1,5 +1,5 @@
 import type { Metadata } from 'next'
-import { Suspense } from 'react'
+import { Suspense, type ReactNode } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
@@ -18,6 +18,8 @@ import {
   type AdviceIdeasBlock,
   type AdviceIdeasBodySection,
   type AdviceIdeasPost,
+  type AdviceIdeasRichTextMark,
+  type AdviceIdeasRichTextNode,
 } from '@/lib/advice-ideas'
 import {
   getAuthorFromMap,
@@ -79,7 +81,12 @@ export default async function AdviceIdeasDetailPage({
     .map((s) => ({ id: s.id, label: s.heading as string }))
 
   const authors = await loadAdviceIdeasAuthors()
-  const author = getAuthorFromMap(authors, post.author)
+  const mappedAuthor = getAuthorFromMap(authors, post.author)
+  const author = {
+    ...mappedAuthor,
+    role: mappedAuthor.role || post.authorRole,
+    avatarUrl: mappedAuthor.avatarUrl || post.authorAvatarUrl,
+  }
 
   return (
     <article className="bg-white text-[#1A1A1A]">
@@ -88,7 +95,7 @@ export default async function AdviceIdeasDetailPage({
       <ArticleShareRail title={post.title} slug={post.slug} />
 
       {/* Top row — breadcrumb + search, aligned with article column */}
-      <div className="mx-auto flex max-w-3xl flex-col gap-3 pl-3 pr-4 pt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-4">
+      <div className="mx-auto flex max-w-[52rem] flex-col gap-3 pl-3 pr-4 pt-8 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-4">
         <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex flex-wrap items-center gap-x-2 text-[14px] text-gray-700">
             <li>
@@ -118,7 +125,7 @@ export default async function AdviceIdeasDetailPage({
       </div>
 
       {/* Article header */}
-      <header className="mx-auto max-w-3xl pl-3 pr-4 pt-6 pb-8 sm:px-4 sm:pt-8">
+      <header className="mx-auto max-w-[52rem] pl-3 pr-4 pt-6 pb-8 sm:px-4 sm:pt-8">
         <Link
           href={getAdviceIdeasSectionHref(post.sectionId)}
           className="inline-block text-[13px] font-semibold text-[var(--accent-hover)] transition-colors hover:text-[#1A1A1A]"
@@ -133,11 +140,22 @@ export default async function AdviceIdeasDetailPage({
         </p>
 
         <div className="mt-6 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-gray-500">
-          <span className="font-semibold text-[#1A1A1A]">{post.author}</span>
-          <span className="text-gray-300" aria-hidden>·</span>
-          <span>{post.authorRole}</span>
-          <span className="text-gray-300" aria-hidden>·</span>
-          <time>{post.date}</time>
+          <span className="inline-flex items-center gap-2 font-semibold text-[#1A1A1A]">
+            <span className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-[#FAF7F2] text-[10px] font-bold uppercase tracking-wider text-[var(--accent-hover)]">
+              {author.avatarUrl ? (
+                <Image
+                  src={author.avatarUrl}
+                  alt=""
+                  fill
+                  sizes="32px"
+                  className="object-cover"
+                />
+              ) : (
+                <span>{author.initials}</span>
+              )}
+            </span>
+            {post.author}
+          </span>
           <span className="text-gray-300" aria-hidden>·</span>
           <span className="inline-flex items-center gap-1">
             <Clock size={12} className="text-gray-400" aria-hidden />
@@ -152,7 +170,7 @@ export default async function AdviceIdeasDetailPage({
       </header>
 
       {/* Hero media */}
-      <figure className="mx-auto max-w-3xl pl-3 pr-4 sm:px-4">
+      <figure className="mx-auto max-w-[52rem] pl-3 pr-4 sm:px-4">
         <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-gray-100">
           {post.heroMedia.type === 'video' ? (
             <video
@@ -170,7 +188,7 @@ export default async function AdviceIdeasDetailPage({
               alt={post.heroMedia.alt}
               fill
               priority
-              sizes="(min-width: 768px) 736px, 100vw"
+              sizes="(min-width: 768px) 800px, 100vw"
               className="object-cover"
             />
           )}
@@ -178,7 +196,7 @@ export default async function AdviceIdeasDetailPage({
       </figure>
 
       {/* Body */}
-      <div className="mx-auto max-w-3xl pl-3 pr-4 pt-12 pb-16 sm:px-4">
+      <div className="mx-auto max-w-[52rem] pl-3 pr-4 pt-12 pb-16 sm:px-4">
         <div id="article-rail-start" aria-hidden className="h-px w-full" />
         <div id="article-body">
           {post.body.map((section, i) => (
@@ -258,7 +276,7 @@ function BlockRenderer({ block }: { block: AdviceIdeasBlock }) {
     case 'paragraph':
       return (
         <p className="text-[16px] leading-[1.7] text-gray-700 sm:text-[17px]">
-          {block.text}
+          <RichInline content={block.richText} fallback={block.text} />
         </p>
       )
     case 'list': {
@@ -274,8 +292,8 @@ function BlockRenderer({ block }: { block: AdviceIdeasBlock }) {
               key={i}
               className={
                 block.ordered
-                  ? 'pl-1 marker:font-semibold marker:text-[var(--accent-hover)]'
-                  : 'relative pl-5 before:absolute before:left-0 before:top-[0.7em] before:h-[6px] before:w-[6px] before:rounded-full before:bg-[var(--accent)]'
+                  ? 'pl-1 marker:font-semibold marker:text-[#1A1A1A]'
+                  : 'relative pl-5 before:absolute before:left-0 before:top-[0.7em] before:h-[6px] before:w-[6px] before:rounded-full before:bg-[#1A1A1A]'
               }
             >
               {item}
@@ -322,7 +340,7 @@ function BlockRenderer({ block }: { block: AdviceIdeasBlock }) {
               src={block.src}
               alt={block.alt}
               fill
-              sizes="(min-width: 768px) 736px, 100vw"
+              sizes="(min-width: 768px) 800px, 100vw"
               className="object-cover"
             />
           </div>
@@ -373,6 +391,76 @@ function BlockRenderer({ block }: { block: AdviceIdeasBlock }) {
           ))}
         </div>
       )
+  }
+}
+
+function RichInline({
+  content,
+  fallback,
+}: {
+  content?: AdviceIdeasRichTextNode[]
+  fallback: string
+}) {
+  if (!content?.length) return <>{fallback}</>
+  return (
+    <>
+      {content.map((node, index) => {
+        if (node.type === 'hardBreak') return <br key={index} />
+        let child: ReactNode = node.text ?? ''
+        for (const mark of node.marks ?? []) {
+          child = renderRichMark(mark, child, index)
+        }
+        return <span key={index}>{child}</span>
+      })}
+    </>
+  )
+}
+
+function renderRichMark(
+  mark: AdviceIdeasRichTextMark,
+  child: ReactNode,
+  key: number
+): ReactNode {
+  switch (mark.type) {
+    case 'bold':
+      return <strong key={key}>{child}</strong>
+    case 'italic':
+      return <em key={key}>{child}</em>
+    case 'underline':
+      return <u key={key}>{child}</u>
+    case 'strike':
+      return <s key={key}>{child}</s>
+    case 'code':
+      return <code key={key} className="rounded bg-gray-100 px-1 py-0.5 text-[0.92em]">{child}</code>
+    case 'superscript':
+      return <sup key={key}>{child}</sup>
+    case 'subscript':
+      return <sub key={key}>{child}</sub>
+    case 'highlight':
+      return <mark key={key} className="rounded-sm bg-[#FAEEDA] px-0.5">{child}</mark>
+    case 'link': {
+      const href = safeHref(mark.attrs?.href)
+      return href ? (
+        <a key={key} href={href} className="font-medium text-[var(--accent-hover)] underline underline-offset-2">
+          {child}
+        </a>
+      ) : child
+    }
+    default:
+      return child
+  }
+}
+
+function safeHref(value: unknown): string | null {
+  if (typeof value !== 'string') return null
+  const href = value.trim()
+  if (!href) return null
+  if (href.startsWith('/') || href.startsWith('#')) return href
+  try {
+    const url = new URL(href)
+    return ['http:', 'https:', 'mailto:', 'tel:'].includes(url.protocol) ? href : null
+  } catch {
+    return null
   }
 }
 

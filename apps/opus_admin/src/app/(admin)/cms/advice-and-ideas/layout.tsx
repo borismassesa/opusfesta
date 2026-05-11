@@ -141,8 +141,7 @@ function ActionButtons() {
   return (
     <>
       {hasDraft && (
-        <span className="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full mr-1 bg-amber-50 text-amber-700">
-          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+        <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full mr-1 bg-amber-50 text-amber-700">
           Unpublished draft
         </span>
       )}

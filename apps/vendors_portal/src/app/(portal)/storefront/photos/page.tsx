@@ -23,6 +23,7 @@ import { getStorefrontSections } from '@/lib/storefront/completion'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { cn } from '@/lib/utils'
 import { savePhotos, uploadStorefrontPhoto } from '../sections/actions'
+import { compressImage } from '@/lib/compress-image'
 
 type Photo = {
   id: string
@@ -181,50 +182,103 @@ export default function PhotosPage() {
     return <div className="p-8" aria-hidden />
   }
 
+  // Uploads a single file. Returns either a URL (success) or an error
+  // message (failure). NEVER throws — a thrown server-action rejection
+  // would orphan the loop's progress counter and strand the UI on
+  // "Uploading…" indefinitely.
   const uploadFile = async (
     file: File,
     kind: 'cover' | 'gallery',
-  ): Promise<string | null> => {
-    // Server actions accept FormData when there's a File. The action itself
-    // validates MIME + size, but we mirror those checks client-side so the
-    // common error paths surface immediately without a round-trip.
+  ): Promise<{ url: string } | { error: string }> => {
     if (!file.type.startsWith('image/')) {
-      setUploadError('Only image files are allowed.')
-      return null
+      return { error: 'Only image files are allowed.' }
     }
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError(`That file is over 10 MB.`)
-      return null
+    // Compress before checking size — we routinely cut 6–12 MB phone
+    // photos down to <2 MB, which keeps everything under the
+    // server-action body limit even with multipart-encoding overhead.
+    let toUpload = file
+    try {
+      toUpload = await compressImage(file)
+    } catch {
+      // Compression is best-effort; fall back to the original file. Only
+      // common cause is a corrupt image, which the server will reject
+      // cleanly anyway.
     }
-    const fd = new FormData()
-    fd.append('file', file)
-    fd.append('kind', kind)
-    const res = await uploadStorefrontPhoto(fd)
-    if (!res.ok) {
-      setUploadError(res.error)
-      return null
+    if (toUpload.size > 10 * 1024 * 1024) {
+      return {
+        error: `${file.name}: file is over 10 MB after compression — try a smaller original.`,
+      }
     }
-    return res.url
+    try {
+      const fd = new FormData()
+      fd.append('file', toUpload)
+      fd.append('kind', kind)
+      const res = await uploadStorefrontPhoto(fd)
+      if (!res.ok) return { error: `${file.name}: ${res.error}` }
+      return { url: res.url }
+    } catch (err) {
+      // Server-action rejections (e.g. body-size guard, network drop) land
+      // here. Surface a useful message instead of leaving the spinner.
+      const message = err instanceof Error ? err.message : 'Upload failed.'
+      return { error: `${file.name}: ${message}` }
+    }
   }
+
+  // Concurrency-limited batch upload. 13 photos in series at 5 s each is a
+  // 65-second hang; 3-at-a-time keeps per-request work small while letting
+  // the network do real parallel work.
+  const UPLOAD_CONCURRENCY = 3
 
   const addPhotoFiles = async (files: FileList | File[]) => {
     setUploadError(null)
     const list = Array.from(files).filter((f) => f.type.startsWith('image/'))
     if (list.length === 0) return
     setPortfolioUploads((n) => n + list.length)
-    for (const file of list) {
-      const url = await uploadFile(file, 'gallery')
-      if (url) {
-        setPhotos((prev) => [
-          ...prev,
-          {
+
+    let queueIndex = 0
+    // Sparse arrays parallel to `list`, populated by index — so "first
+    // error" and "uploaded photos" stay in user-selected order regardless
+    // of which worker finishes first.
+    const errors: Array<string | null> = new Array(list.length).fill(null)
+    const results: Array<Photo | null> = new Array(list.length).fill(null)
+
+    const worker = async () => {
+      while (true) {
+        const idx = queueIndex++
+        if (idx >= list.length) return
+        const file = list[idx]
+        const outcome = await uploadFile(file, 'gallery')
+        if ('url' in outcome) {
+          results[idx] = {
             id: newId(),
-            url,
+            url: outcome.url,
             caption: file.name.replace(/\.[^.]+$/, ''),
-          },
-        ])
+          }
+        } else {
+          errors[idx] = outcome.error
+        }
+        // Decrement per file so the spinner reflects real progress.
+        setPortfolioUploads((n) => n - 1)
       }
-      setPortfolioUploads((n) => n - 1)
+    }
+
+    const workers = Array.from(
+      { length: Math.min(UPLOAD_CONCURRENCY, list.length) },
+      worker,
+    )
+    await Promise.all(workers)
+
+    const successes = results.filter((p): p is Photo => p !== null)
+    if (successes.length > 0) {
+      setPhotos((prev) => [...prev, ...successes])
+    }
+    const errorMessages = errors.filter((e): e is string => e !== null)
+    if (errorMessages.length > 0) {
+      setUploadError(
+        errorMessages.length === 1
+          ? errorMessages[0]
+          : `${successes.length} of ${list.length} uploaded · ${errorMessages.length} failed (${errorMessages[0]}${errorMessages.length > 1 ? '; …' : ''})`,
+      )
     }
   }
 
@@ -235,16 +289,19 @@ export default function PhotosPage() {
     if (!file.type.startsWith('image/')) return
     setUploadError(null)
     setUploadingCovers((s) => new Set(s).add(idx))
-    const url = await uploadFile(file, 'cover')
+    const outcome = await uploadFile(file, 'cover')
     setUploadingCovers((s) => {
       const next = new Set(s)
       next.delete(idx)
       return next
     })
-    if (!url) return
+    if ('error' in outcome) {
+      setUploadError(outcome.error)
+      return
+    }
     setCovers((prev) => {
       const next = prev.slice()
-      next[idx] = { id: newId(), url }
+      next[idx] = { id: newId(), url: outcome.url }
       return next
     })
   }

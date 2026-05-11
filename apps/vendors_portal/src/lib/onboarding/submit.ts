@@ -488,8 +488,17 @@ export async function submitApplication(
   try {
     const region =
       TZ_REGIONS.find((r) => r.code === draft.region)?.name ?? draft.region ?? null
+    // The set_vendor_code_trigger populated vendor_code on insert; on
+    // re-submit it's already there. Read it back so the receipt + admin
+    // notification can quote the human-readable application reference.
+    const codeRow = await admin
+      .from('vendors')
+      .select('vendor_code')
+      .eq('id', vendorId)
+      .maybeSingle<{ vendor_code: string | null }>()
     await notifyOnVendorSubmit({
       vendorId,
+      vendorCode: codeRow.data?.vendor_code ?? null,
       businessName: draft.businessName.trim(),
       category: findCategory(draft.categoryId!)?.profileLabel ?? dbCategory,
       region,

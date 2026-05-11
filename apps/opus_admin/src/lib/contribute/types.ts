@@ -1,15 +1,14 @@
-import type { AdviceIdeasBodySection } from '@/lib/cms/advice-ideas'
+import {
+  ADVICE_IDEAS_CATEGORIES,
+  type AdviceIdeasBodySection,
+} from '@/lib/cms/advice-ideas'
 
-export const CONTRIBUTOR_CATEGORIES = [
-  'Advice & Ideas',
-  'Real Weddings',
-  'Planning Guides',
-  'Style',
-  'Vendors',
-  'Etiquette',
-] as const
+// Canonical category list — same items the website's Ideas & Advice navbar
+// shows (Inspiration / Advice groups). Re-exported here so existing imports
+// in contributor code keep working.
+export const CONTRIBUTOR_CATEGORIES = ADVICE_IDEAS_CATEGORIES
 
-export type ContributorCategory = (typeof CONTRIBUTOR_CATEGORIES)[number]
+export type ContributorCategory = string
 
 export const EDITABLE_CONTRIBUTOR_STATUSES = ['draft', 'revisions', 'changes_requested'] as const
 export const LOCKED_CONTRIBUTOR_STATUSES = ['pending', 'submitted', 'approved', 'rejected', 'published'] as const
@@ -32,6 +31,11 @@ export type ContributorDraft = {
   title: string
   summary: string
   category: string
+  author_name: string
+  author_role: string
+  author_avatar_url: string
+  author_bio: string
+  author_initials: string
   cover_image_url: string
   cover_image_alt: string
   body: AdviceIdeasBodySection[]

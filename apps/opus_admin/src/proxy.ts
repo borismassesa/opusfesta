@@ -1,10 +1,12 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-// Public routes — sign-in/sign-up pages and Clerk's own callback handling.
+// Public routes — sign-in/sign-up pages, Clerk's own callback handling, and
+// webhook endpoints (which are authenticated by their own signing secrets).
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/contribute/invite(.*)',
+  '/api/webhooks/(.*)',
 ])
 
 export default clerkMiddleware(

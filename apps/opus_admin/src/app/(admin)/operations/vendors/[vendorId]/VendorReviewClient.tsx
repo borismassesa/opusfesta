@@ -50,6 +50,10 @@ import {
   AdminStylePersonalityEditor,
   AdminTeamEditor,
 } from './StorefrontEditors'
+import {
+  VendorEditorProvider,
+  useEditorRegistry,
+} from './EditorRegistry'
 
 // ---------------------------------------------------------------------------
 // Types — mirror the server-page projection
@@ -226,14 +230,36 @@ const REVIEW_INPUT_CLASS =
 // Component
 // ---------------------------------------------------------------------------
 
+type VendorTab = 'profile' | 'storefront' | 'availability' | 'verification'
+
+const TAB_ORDER: ReadonlyArray<{ id: VendorTab; label: string }> = [
+  { id: 'profile', label: 'Public Profile' },
+  { id: 'storefront', label: 'Storefront' },
+  { id: 'availability', label: 'Availability' },
+  { id: 'verification', label: 'Verification & Payout' },
+]
+
 export default function VendorReviewClient(props: VendorReviewProps) {
   const { vendor, tin, license, payout, agreement, historicalDocs } = props
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [bannerError, setBannerError] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<VendorTab>('profile')
 
   const isApproved = vendor.onboardingStatus === 'active'
   const isSuspended = vendor.onboardingStatus === 'suspended'
+
+  const verificationFlags = {
+    agreement: !agreement,
+    payout: !payout || payout.status !== 'verified',
+    tin: !tin || tin.status !== 'approved',
+    license: !license || license.status !== 'approved',
+  }
+  const verificationPending =
+    verificationFlags.agreement ||
+    verificationFlags.payout ||
+    verificationFlags.tin ||
+    verificationFlags.license
 
   // Drive the global Header from real vendor data. The status pill and the
   // Approve / Suspend / Request-corrections buttons portal into the Header
@@ -265,6 +291,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
   }
 
   return (
+    <VendorEditorProvider>
     <div className="px-8 pt-4 pb-12">
       <div className="max-w-[1200px] mx-auto">
         {/* Status pill — portaled into the global Header next to the title. */}
@@ -383,46 +410,42 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           </div>
         )}
 
+        {/* Tab navigation — splits the page into 4 distinct jobs so the
+            highest-leverage actions (Verification & Payout) aren't buried
+            at the bottom of a long scroll. */}
+        <div className="border-b border-gray-200 mb-8 -mx-1 px-1 overflow-x-auto">
+          <nav className="flex gap-1" aria-label="Vendor review sections">
+            {TAB_ORDER.map((tab) => {
+              const isActive = activeTab === tab.id
+              const showPendingBadge =
+                tab.id === 'verification' && verificationPending
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  aria-current={isActive ? 'page' : undefined}
+                  className={cn(
+                    'relative inline-flex items-center gap-2 px-4 py-2.5 text-sm font-semibold transition-colors border-b-2 -mb-px whitespace-nowrap',
+                    isActive
+                      ? 'border-[#7E5896] text-[#7E5896]'
+                      : 'border-transparent text-gray-500 hover:text-gray-900'
+                  )}
+                >
+                  {tab.label}
+                  {showPendingBadge && (
+                    <span className="ml-1 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded bg-amber-100 text-amber-800">
+                      Review
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </nav>
+        </div>
+
         <div className="space-y-10">
-          <ReviewSection
-            title="Verification & Payout"
-            description="Approve the required legal documents, confirm the vendor agreement, and verify the payout account before activating the vendor."
-          >
-            <DocReviewCard
-              title="TRA TIN certificate"
-              subtitle="Tanzania Revenue Authority tax ID."
-              icon={FileText}
-              doc={tin}
-              missingMessage="Vendor hasn't uploaded the TIN certificate yet."
-              onApprove={(id) =>
-                runAction('Approve TIN', () => approveDocument(id))
-              }
-              onReject={(id, reason) =>
-                runAction('Reject TIN', () => rejectDocument(id, reason))
-              }
-              actionsDisabled={pending || isApproved || isSuspended}
-            />
-
-            <PayoutPanel vendorId={vendor.id} payout={payout} />
-
-            <DocReviewCard
-              title="Business license"
-              subtitle="BRELA registration, council license, or sole-proprietor declaration."
-              icon={FileText}
-              doc={license}
-              missingMessage="Vendor hasn't uploaded a business license yet."
-              onApprove={(id) =>
-                runAction('Approve license', () => approveDocument(id))
-              }
-              onReject={(id, reason) =>
-                runAction('Reject license', () => rejectDocument(id, reason))
-              }
-              actionsDisabled={pending || isApproved || isSuspended}
-            />
-
-            <AgreementReviewCard agreement={agreement} vendorId={vendor.id} />
-          </ReviewSection>
-
+          {activeTab === 'profile' && (
           <ReviewSection
             title="Public Profile"
             description="Edit the vendor details couples see first: business profile, contact details, location, capacity, photos, style, and languages."
@@ -465,33 +488,9 @@ export default function VendorReviewClient(props: VendorReviewProps) {
               }}
             />
           </ReviewSection>
+          )}
 
-          <ReviewSection
-            title="Availability & Booking Rules"
-            description="Set the operational rules that affect how couples book, pay deposits, cancel, and reschedule."
-          >
-            <AdminHoursEditor
-              vendorId={vendor.id}
-              initial={
-                vendor.hoursColumn
-                  ? (vendor.hoursColumn as Parameters<
-                      typeof AdminHoursEditor
-                    >[0]['initial'])
-                  : null
-              }
-            />
-
-            <AdminBookingPoliciesEditor
-              vendorId={vendor.id}
-              initial={{
-                depositPercent: vendor.depositPercentColumn,
-                cancellationLevel: vendor.cancellationLevelColumn,
-                reschedulePolicy: vendor.reschedulePolicyColumn,
-                parallelBookingCapacity: vendor.parallelBookingCapacityColumn,
-              }}
-            />
-          </ReviewSection>
-
+          {activeTab === 'storefront' && (
           <ReviewSection
             title="Storefront Content"
             description="Manage the commercial content and trust signals shown on the vendor storefront."
@@ -546,8 +545,78 @@ export default function VendorReviewClient(props: VendorReviewProps) {
               }))}
             />
           </ReviewSection>
+          )}
 
-          {historicalDocs.length > 0 && (
+          {activeTab === 'availability' && (
+          <ReviewSection
+            title="Availability & Booking Rules"
+            description="Set the operational rules that affect how couples book, pay deposits, cancel, and reschedule."
+          >
+            <AdminHoursEditor
+              vendorId={vendor.id}
+              initial={
+                vendor.hoursColumn
+                  ? (vendor.hoursColumn as Parameters<
+                      typeof AdminHoursEditor
+                    >[0]['initial'])
+                  : null
+              }
+            />
+
+            <AdminBookingPoliciesEditor
+              vendorId={vendor.id}
+              initial={{
+                depositPercent: vendor.depositPercentColumn,
+                cancellationLevel: vendor.cancellationLevelColumn,
+                reschedulePolicy: vendor.reschedulePolicyColumn,
+                parallelBookingCapacity: vendor.parallelBookingCapacityColumn,
+              }}
+            />
+          </ReviewSection>
+          )}
+
+          {activeTab === 'verification' && (
+          <ReviewSection
+            title="Verification & Payout"
+            description="Approve the required legal documents, confirm the vendor agreement, and verify the payout account before activating the vendor."
+          >
+            <AgreementReviewCard agreement={agreement} vendorId={vendor.id} />
+
+            <PayoutPanel vendorId={vendor.id} payout={payout} />
+
+            <DocReviewCard
+              title="TRA TIN certificate"
+              subtitle="Tanzania Revenue Authority tax ID."
+              icon={FileText}
+              doc={tin}
+              missingMessage="Vendor hasn't uploaded the TIN certificate yet."
+              onApprove={(id) =>
+                runAction('Approve TIN', () => approveDocument(id))
+              }
+              onReject={(id, reason) =>
+                runAction('Reject TIN', () => rejectDocument(id, reason))
+              }
+              actionsDisabled={pending || isApproved || isSuspended}
+            />
+
+            <DocReviewCard
+              title="Business license"
+              subtitle="BRELA registration, council license, or sole-proprietor declaration."
+              icon={FileText}
+              doc={license}
+              missingMessage="Vendor hasn't uploaded a business license yet."
+              onApprove={(id) =>
+                runAction('Approve license', () => approveDocument(id))
+              }
+              onReject={(id, reason) =>
+                runAction('Reject license', () => rejectDocument(id, reason))
+              }
+              actionsDisabled={pending || isApproved || isSuspended}
+            />
+          </ReviewSection>
+          )}
+
+          {activeTab === 'verification' && historicalDocs.length > 0 && (
             <ReviewSection
               title="Past Submissions"
               description="Older uploads are kept here for audit context; the current review only uses the latest document for each requirement."
@@ -584,7 +653,9 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           )}
         </div>
       </div>
+      <GlobalSaveBar bottomOffsetClass={activeTab === 'verification' ? 'pb-[100px]' : 'pb-4'} />
     </div>
+    </VendorEditorProvider>
   )
 }
 
@@ -613,6 +684,127 @@ function ReviewSection({
       </header>
       <div className="space-y-5">{children}</div>
     </section>
+  )
+}
+
+// Sticky bottom action bar — appears only when one or more storefront editors
+// are dirty. Replaces the per-section gray Save buttons. Save All runs every
+// dirty editor's save in parallel and shows a transient toast with the result.
+// bottomOffsetClass lets the parent bump this bar up when the verification
+// action bar is also showing, so they stack instead of overlap.
+function GlobalSaveBar({ bottomOffsetClass = 'pb-4' }: { bottomOffsetClass?: string }) {
+  const editors = useEditorRegistry()
+  const dirty = editors.filter((e) => e.dirty)
+  const [saving, setSaving] = useState(false)
+  const [toast, setToast] = useState<
+    { kind: 'ok' | 'mixed' | 'error'; text: string } | null
+  >(null)
+
+  // Auto-dismiss toast after 3s.
+  useEffect(() => {
+    if (!toast) return
+    const t = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(t)
+  }, [toast])
+
+  const onSaveAll = async () => {
+    if (dirty.length === 0 || saving) return
+    setSaving(true)
+    setToast(null)
+    const results = await Promise.allSettled(
+      dirty.map(async (editor) => ({ editor, result: await editor.save() }))
+    )
+    setSaving(false)
+    let okCount = 0
+    const failed: string[] = []
+    results.forEach((r) => {
+      if (r.status === 'fulfilled' && r.value.result.ok) okCount += 1
+      else if (r.status === 'fulfilled') failed.push(r.value.editor.label)
+      else failed.push('Unknown section')
+    })
+    if (failed.length === 0) {
+      setToast({ kind: 'ok', text: `Saved ${okCount} section${okCount === 1 ? '' : 's'}.` })
+    } else if (okCount === 0) {
+      setToast({
+        kind: 'error',
+        text: `Couldn't save: ${failed.join(', ')}.`,
+      })
+    } else {
+      setToast({
+        kind: 'mixed',
+        text: `Saved ${okCount}, failed: ${failed.join(', ')}.`,
+      })
+    }
+  }
+
+  const onDiscardAll = () => {
+    if (dirty.length === 0 || saving) return
+    dirty.forEach((e) => e.discard())
+  }
+
+  if (dirty.length === 0 && !toast) return null
+
+  return (
+    <div
+      role="region"
+      aria-label="Unsaved changes"
+      className={cn(
+        'fixed bottom-0 right-0 left-0 lg:left-64 z-40 pointer-events-none flex justify-center px-4',
+        bottomOffsetClass
+      )}
+    >
+      <div className="pointer-events-auto w-full max-w-[1200px]">
+        {toast && (
+          <div
+            className={cn(
+              'mb-3 inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-semibold shadow-lg border',
+              toast.kind === 'ok' &&
+                'bg-emerald-600 border-emerald-700 text-white',
+              toast.kind === 'mixed' &&
+                'bg-amber-500 border-amber-600 text-white',
+              toast.kind === 'error' &&
+                'bg-rose-600 border-rose-700 text-white'
+            )}
+          >
+            {toast.kind === 'ok' && <Check className="w-3.5 h-3.5" strokeWidth={3} />}
+            {toast.kind === 'mixed' && <AlertCircle className="w-3.5 h-3.5" />}
+            {toast.kind === 'error' && <XCircle className="w-3.5 h-3.5" />}
+            {toast.text}
+          </div>
+        )}
+        {dirty.length > 0 && (
+          <div className="flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-2xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] px-5 py-3">
+            <div className="text-sm">
+              <span className="font-semibold text-gray-900">
+                {dirty.length} unsaved change{dirty.length === 1 ? '' : 's'}
+              </span>
+              <span className="text-gray-500 ml-2 hidden sm:inline">
+                {dirty.map((e) => e.label).join(', ')}
+              </span>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={onDiscardAll}
+                disabled={saving}
+                className="inline-flex items-center text-sm font-semibold px-4 py-2 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+              >
+                Discard
+              </button>
+              <button
+                type="button"
+                onClick={onSaveAll}
+                disabled={saving}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-[#7E5896] hover:bg-[#6B4880] text-white shadow-sm disabled:opacity-50 transition-colors"
+              >
+                <Check className="w-3.5 h-3.5" strokeWidth={3} />
+                {saving ? 'Saving…' : 'Save changes'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
   )
 }
 
@@ -741,6 +933,7 @@ function PayoutPanel({
   }
 
   return (
+    <>
     <SidePanel title="Payout method" icon={Banknote}>
       <div className="flex flex-col gap-3">
         <Field label="Method">
@@ -799,45 +992,75 @@ function PayoutPanel({
         Verify the account holder name matches the TIN certificate above before
         approving the vendor.
       </p>
-      <ReviewPanelActions
-        pending={pending}
-        dirty={dirty}
-        error={error}
-        saved={saved}
-        onSave={() => save()}
-        saveLabel={payout ? 'Save payout' : 'Create payout'}
-      >
-        <button
-          type="button"
-          onClick={() => saveWithStatus('verified')}
-          disabled={pending}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 disabled:opacity-50 transition-colors"
-        >
-          <ShieldCheck className="w-3 h-3" />
-          Verify
-        </button>
-        <button
-          type="button"
-          onClick={() => saveWithStatus('failed')}
-          disabled={pending}
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 disabled:opacity-50 transition-colors"
-        >
-          <XCircle className="w-3 h-3" />
-          Mark failed
-        </button>
-        {payout?.id && (
+    </SidePanel>
+
+    {/* Sticky payout action bar — these are the highest-leverage buttons
+        on the page (Verify / Mark failed / Save / Delete). When PayoutPanel
+        is mounted (Verification tab is active), they sit at viewport bottom
+        instead of being a quiet trio buried at the end of the card. */}
+    <div className="fixed bottom-0 right-0 left-0 lg:left-64 z-30 pointer-events-none flex justify-center pb-4 px-4">
+      <div className="pointer-events-auto w-full max-w-[1200px] flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-2xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] px-5 py-3 flex-wrap">
+        <div className="text-sm flex items-center gap-2 min-w-0">
+          <Banknote className="w-4 h-4 text-gray-500 shrink-0" />
+          <div className="min-w-0">
+            <span className="font-semibold text-gray-900">Payout method</span>
+            {error && (
+              <span className="ml-2 text-rose-700 text-xs">{error}</span>
+            )}
+            {saved && !error && (
+              <span className="ml-2 text-emerald-700 text-xs">Saved.</span>
+            )}
+            {!error && !saved && (
+              <span className="ml-2 text-gray-500 text-xs">
+                {payout
+                  ? `${PAYOUT_METHOD_LABEL[methodType] ?? methodType} — ${status}`
+                  : 'Not created yet'}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 flex-wrap">
+          {payout?.id && (
+            <button
+              type="button"
+              onClick={deletePayout}
+              disabled={pending}
+              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              <Trash2 className="w-3 h-3" />
+              Delete
+            </button>
+          )}
           <button
             type="button"
-            onClick={deletePayout}
+            onClick={() => saveWithStatus('failed')}
             disabled={pending}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 disabled:opacity-50 transition-colors"
           >
-            <Trash2 className="w-3 h-3" />
-            Delete
+            <XCircle className="w-3 h-3" />
+            Mark failed
           </button>
-        )}
-      </ReviewPanelActions>
-    </SidePanel>
+          <button
+            type="button"
+            onClick={() => save()}
+            disabled={pending || !dirty}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-gray-900 hover:bg-black text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+          >
+            {pending ? 'Saving…' : payout ? 'Save payout' : 'Create payout'}
+          </button>
+          <button
+            type="button"
+            onClick={() => saveWithStatus('verified')}
+            disabled={pending}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-50 transition-colors"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" />
+            Verify
+          </button>
+        </div>
+      </div>
+    </div>
+    </>
   )
 }
 

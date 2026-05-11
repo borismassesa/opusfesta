@@ -1,5 +1,16 @@
+export type AdviceIdeasRichTextMark = {
+  type: string
+  attrs?: Record<string, unknown>
+}
+
+export type AdviceIdeasRichTextNode = {
+  type: 'text' | 'hardBreak'
+  text?: string
+  marks?: AdviceIdeasRichTextMark[]
+}
+
 export type AdviceIdeasBlock =
-  | { type: 'paragraph'; text: string }
+  | { type: 'paragraph'; text: string; richText?: AdviceIdeasRichTextNode[] }
   | { type: 'list'; items: string[]; ordered?: boolean }
   | { type: 'quote'; quote: string; attribution?: string }
   | { type: 'tip'; title: string; text: string }
@@ -44,6 +55,7 @@ export type AdviceIdeasPost = {
   readTime: string
   author: string
   authorRole: string
+  authorAvatarUrl?: string
   featured?: boolean
   heroMedia: {
     type: 'image' | 'video'

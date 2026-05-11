@@ -105,6 +105,12 @@ async function acceptInvitationForIdentity(
   }
 
   const title = invite.article_title ?? ''
+  const { data: profile, error: profileError } = await supabase
+    .from('advice_ideas_authors')
+    .select('name, role, avatar_url')
+    .ilike('email', identity.email)
+    .maybeSingle<{ name: string | null; role: string | null; avatar_url: string | null }>()
+  if (profileError) throw profileError
   const { data: submission, error: insertError } = await supabase
     .from('advice_article_submissions')
     .insert({
@@ -114,7 +120,9 @@ async function acceptInvitationForIdentity(
       status: 'draft',
       title,
       slug: title ? slugify(title) : '',
-      author_name: invite.full_name || identity.name || identity.email.split('@')[0],
+      author_name: profile?.name || invite.full_name || identity.name || identity.email.split('@')[0],
+      author_role: profile?.role || null,
+      author_avatar_url: profile?.avatar_url || null,
       published: false,
     })
     .select('id')
