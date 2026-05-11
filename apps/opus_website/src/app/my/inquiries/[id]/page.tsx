@@ -1,4 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import InquiryThread from './InquiryThread'
 
@@ -45,18 +46,23 @@ export type InquiryMessage = {
 
 interface Props {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ email?: string }>
 }
 
-export default async function InquiryDetailPage({ params, searchParams }: Readonly<Props>) {
+export default async function InquiryDetailPage({ params }: Readonly<Props>) {
   const { id } = await params
-  const { email } = await searchParams
 
-  if (!email) {
-    redirect(`/my/inquiries`)
+  const { userId } = await auth()
+  if (!userId) {
+    redirect('/sign-in')
   }
 
-  const normalizedEmail = email.trim().toLowerCase()
+  const clerkUser = await currentUser().catch(() => null)
+  const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase()
+  if (!email) {
+    redirect('/my/inquiries')
+  }
+
+  const normalizedEmail = email
   const supabase = createSupabaseServerClient()
 
   const { data: inquiry, error: inquiryErr } = await supabase
@@ -68,15 +74,22 @@ export default async function InquiryDetailPage({ params, searchParams }: Readon
     .eq('email', normalizedEmail)
     .maybeSingle()
 
-  if (inquiryErr || !inquiry) {
+  if (inquiryErr) {
+    console.error('[inquiry-detail] query failed', inquiryErr.code)
     notFound()
   }
 
-  const { data: messages } = await supabase
+  if (!inquiry) {
+    notFound()
+  }
+
+  const { data: messages, error: messagesErr } = await supabase
     .from('inquiry_messages')
     .select('id, sender_type, sender_name, content, created_at, read_at')
     .eq('inquiry_id', id)
     .order('created_at', { ascending: true })
+
+  if (messagesErr) console.error('[inquiry-detail] messages query failed', messagesErr.code)
 
   return (
     <InquiryThread

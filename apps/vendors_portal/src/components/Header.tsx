@@ -1,8 +1,10 @@
 'use client'
 
+import Image from 'next/image'
 import Link from 'next/link'
 import { Bell, ChevronRight, ExternalLink, HelpCircle } from 'lucide-react'
 import { usePathname } from 'next/navigation'
+import { useUser } from '@clerk/nextjs'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { bookings } from '@/lib/mock-data'
@@ -26,51 +28,23 @@ const SEGMENT_LABELS: Record<string, string> = {
 
 type PageHeading = { title: string; subtitle: string }
 
-function buildPageHeadings(vendorName: string): Record<string, PageHeading> {
-  return {
-    '/': {
-      title: `Welcome back, ${vendorName}.`,
-      subtitle: "Here's what's happening with your storefront today.",
-    },
-    '/dashboard': {
-      title: `Welcome back, ${vendorName}`,
-      subtitle: "Here's what's happening with your storefront today.",
-    },
-    '/leads': {
-      title: 'Leads',
-      subtitle: 'Inquiries from interested couples. Reply within 24 hours to boost your match rate.',
-    },
-    '/reviews': {
-      title: 'Reviews',
-      subtitle: 'Auto-collected from couples after every event. Reply, pin, or request a review.',
-    },
-  }
+const PAGE_HEADINGS: Record<string, PageHeading> = {
+  '/': {
+    title: 'Welcome back, OpusFesta Photography.',
+    subtitle: "Here's what's happening with your storefront today.",
+  },
+  '/leads': {
+    title: 'Leads',
+    subtitle: 'Inquiries from interested couples. Reply within 24 hours to boost your match rate.',
+  },
+  '/reviews': {
+    title: 'Reviews',
+    subtitle: 'Auto-collected from couples after every event. Reply, pin, or request a review.',
+  },
 }
 
 function humanize(seg: string): string {
   return seg.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
-}
-
-function vendorInitials(name: string): string {
-  const trimmed = name.trim()
-  if (!trimmed) return '··'
-
-  const wordParts = trimmed.split(/\s+/).filter(Boolean)
-  const first = wordParts[0]
-  const last = wordParts[wordParts.length - 1]
-  if (first && last && wordParts.length >= 2) {
-    return (first.charAt(0) + last.charAt(0)).toUpperCase()
-  }
-
-  // Single token: split on CamelCase, fall back to first two chars.
-  const camel = trimmed.match(/[A-Z][a-z0-9]*|[a-z0-9]+/g) ?? []
-  const camelFirst = camel[0]
-  const camelLast = camel[camel.length - 1]
-  if (camelFirst && camelLast && camel.length >= 2) {
-    return (camelFirst.charAt(0) + camelLast.charAt(0)).toUpperCase()
-  }
-
-  return trimmed.slice(0, 2).toUpperCase()
 }
 
 type Crumb = { label: string; href: string }
@@ -123,14 +97,17 @@ function useBookingsHeading(pathname: string): PageHeading | null {
   }
 }
 
-export function Header({ vendorName }: { vendorName: string }) {
+export function Header() {
   const pathname = usePathname()
   const crumbs = buildCrumbs(pathname)
   const storefrontHeading = useStorefrontHeading(pathname)
   const bookingsHeading = useBookingsHeading(pathname)
-  const headings = buildPageHeadings(vendorName)
-  const heading = headings[pathname] ?? storefrontHeading ?? bookingsHeading
+  const heading = PAGE_HEADINGS[pathname] ?? storefrontHeading ?? bookingsHeading
   const isStorefront = pathname.startsWith('/storefront')
+  const { user, isLoaded } = useUser()
+  const initials = user?.fullName
+    ? user.fullName.split(/\s+/).filter(Boolean).map((p: string) => p[0]).join('').slice(0, 2).toUpperCase()
+    : (user?.primaryEmailAddress?.emailAddress?.[0] ?? '?').toUpperCase()
 
   return (
     <header className="flex items-center justify-between py-6 px-8 bg-gray-50/50 relative z-10 w-full shrink-0">
@@ -196,13 +173,27 @@ export function Header({ vendorName }: { vendorName: string }) {
           <span className="absolute top-0 right-0.5 w-2 h-2 bg-red-500 border-2 border-gray-50 rounded-full" />
         </button>
 
-        <div
-          className="w-10 h-10 rounded-full ring-2 ring-white shadow-sm bg-[#F0DFF6] text-[#7E5896] font-bold flex items-center justify-center text-sm"
-          aria-label={vendorName}
-          title={vendorName}
-        >
-          {vendorInitials(vendorName)}
-        </div>
+        {isLoaded && (
+          <Link
+            href="/settings"
+            aria-label="Profile settings"
+            className="shrink-0"
+          >
+            {user?.imageUrl ? (
+              <Image
+                src={user.imageUrl}
+                alt={user.fullName ?? 'Profile'}
+                width={40}
+                height={40}
+                className="w-10 h-10 rounded-full object-cover ring-2 ring-white shadow-sm hover:ring-[#C9A0DC] transition-all"
+              />
+            ) : (
+              <div className="w-10 h-10 rounded-full ring-2 ring-white shadow-sm bg-[#F0DFF6] text-[#7E5896] font-bold flex items-center justify-center text-sm hover:ring-[#C9A0DC] transition-all">
+                {initials}
+              </div>
+            )}
+          </Link>
+        )}
       </div>
     </header>
   )

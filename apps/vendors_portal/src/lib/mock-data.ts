@@ -27,7 +27,7 @@ export type InquiryRow = {
   budget: string
   location: string
   status: 'new' | 'replied' | 'booked' | 'declined' | 'closed'
-  avatarUrl: string
+  avatarUrl: string | null
   email?: string
   phone?: string
   message?: string

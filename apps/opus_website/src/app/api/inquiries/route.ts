@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { auth } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
 // Public endpoint — no auth required. RLS policy "Anyone can create inquiries"
@@ -14,10 +15,12 @@ function nullIfBlank(value: string | undefined | null): string | null {
 }
 
 function validateEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
+  if (email.length > 254) return false
+  return /^[^\s@]+@[^\s@.]+(?:\.[^\s@.]+)+$/.test(email.trim())
 }
 
-function isValidDate(value: string): boolean {
+function isValidDate(value: string | undefined | null): boolean {
+  if (!value || typeof value !== 'string' || !value.trim()) return false
   const d = new Date(value)
   return !isNaN(d.getTime())
 }
@@ -91,7 +94,7 @@ export async function POST(request: Request) {
   if (message && typeof message === 'string' && message.trim()) {
     noteLines.push(message.trim())
   }
-  if (!parsedDate) {
+  if (!parsedDate && weddingDate && typeof weddingDate === 'string' && weddingDate.trim()) {
     noteLines.push(`Wedding date (as entered): ${weddingDate}`)
   }
   if (flexibleDate === true) {
@@ -132,6 +135,27 @@ export async function POST(request: Request) {
       { error: 'Unable to send your request. Please try again.' },
       { status: 500 },
     )
+  }
+
+  // If the request came from an authenticated Clerk user, link inquiry to them
+  try {
+    const { userId } = await auth()
+    if (userId) {
+      const { data: userRow } = await supabase
+        .from('users')
+        .select('id')
+        .eq('clerk_id', userId)
+        .single()
+
+      if (userRow) {
+        await supabase
+          .from('inquiries')
+          .update({ user_id: userRow.id })
+          .eq('id', data.id)
+      }
+    }
+  } catch {
+    // Non-critical: don't fail the request if user linking fails
   }
 
   return NextResponse.json({ success: true, id: data.id }, { status: 201 })

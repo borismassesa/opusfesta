@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useState } from 'react'
+import { UserButton, useUser } from '@clerk/nextjs'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import {
@@ -300,6 +301,7 @@ const navItems: Array<{
 ]
 
 export default function Navbar() {
+  const { isSignedIn, isLoaded } = useUser()
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
@@ -352,15 +354,32 @@ export default function Navbar() {
 
         {/* Right: auth + hamburger */}
         <div className="flex shrink-0 items-center gap-2 font-semibold text-sm sm:gap-3 lg:text-[15px]">
-          <a
-            href="#"
-            className="hidden lg:block text-gray-700 hover:text-[#1A1A1A] transition-colors whitespace-nowrap px-4 py-2.5 rounded-full hover:bg-gray-100"
-          >
-            Log in
-          </a>
-          <button className="shrink-0 rounded-full bg-(--accent) px-3.5 py-2 text-xs font-bold whitespace-nowrap text-(--on-accent) transition-colors hover:bg-(--accent-hover) sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]">
-            Sign up
-          </button>
+          {isLoaded && !isSignedIn ? (
+            <>
+              <Link
+                href="/sign-in"
+                className="hidden lg:block text-gray-700 hover:text-[#1A1A1A] transition-colors whitespace-nowrap px-4 py-2.5 rounded-full hover:bg-gray-100"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/sign-up"
+                className="shrink-0 rounded-full bg-(--accent) px-3.5 py-2 text-xs font-bold whitespace-nowrap text-(--on-accent) transition-colors hover:bg-(--accent-hover) sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]"
+              >
+                Sign up
+              </Link>
+            </>
+          ) : isLoaded ? (
+            <div className="flex items-center gap-3">
+              <Link
+                href="/my/dashboard"
+                className="hidden lg:flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-[#1A1A1A] px-4 py-2.5 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap"
+              >
+                My Wedding
+              </Link>
+              <UserButton appearance={{ elements: { avatarBox: 'w-9 h-9' } }} />
+            </div>
+          ) : null}
           <button
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 lg:hidden sm:h-10 sm:w-10"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
@@ -546,15 +565,37 @@ export default function Navbar() {
 
             {/* Footer CTA */}
             <div className="shrink-0 px-4 py-5 border-t border-gray-100 flex flex-col gap-2.5">
-              <a
-                href="#"
-                className="w-full text-center py-3 rounded-full border-2 border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
-              >
-                Log in
-              </a>
-              <button className="w-full bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) py-3 rounded-full font-bold text-sm transition-colors">
-                Sign up, it&apos;s free
-              </button>
+              {isLoaded && !isSignedIn ? (
+                <>
+                  <Link
+                    href="/sign-in"
+                    onClick={() => setMobileOpen(false)}
+                    className="w-full text-center py-3 rounded-full border-2 border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Log in
+                  </Link>
+                  <Link
+                    href="/sign-up"
+                    onClick={() => setMobileOpen(false)}
+                    className="w-full text-center bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) py-3 rounded-full font-bold text-sm transition-colors"
+                  >
+                    Sign up, it&apos;s free
+                  </Link>
+                </>
+              ) : isLoaded ? (
+                <div className="flex flex-col gap-2.5">
+                  <Link
+                    href="/my/dashboard"
+                    onClick={() => setMobileOpen(false)}
+                    className="w-full text-center py-3 rounded-full border-2 border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    My Wedding
+                  </Link>
+                  <div className="flex items-center justify-center pt-1">
+                    <UserButton appearance={{ elements: { avatarBox: 'w-10 h-10' } }} />
+                  </div>
+                </div>
+              ) : null}
             </div>
           </div>
 

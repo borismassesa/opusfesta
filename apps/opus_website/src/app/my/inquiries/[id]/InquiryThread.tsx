@@ -298,14 +298,8 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
     const refreshMessages = async () => {
       try {
         const [messagesResponse, inquiryResponse] = await Promise.all([
-          fetch(
-            `/api/my/inquiries/${inquiry.id}/messages?email=${encodeURIComponent(email)}`,
-            { cache: 'no-store' },
-          ),
-          fetch(
-            `/api/my/inquiries/${inquiry.id}?email=${encodeURIComponent(email)}`,
-            { cache: 'no-store' },
-          ),
+          fetch(`/api/my/inquiries/${inquiry.id}/messages`, { cache: 'no-store' }),
+          fetch(`/api/my/inquiries/${inquiry.id}`, { cache: 'no-store' }),
         ])
         if (!messagesResponse.ok || !inquiryResponse.ok) return
         const [json, inquiryJson] = await Promise.all([messagesResponse.json(), inquiryResponse.json()])
@@ -341,7 +335,7 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       window.removeEventListener('focus', handleVisibility)
       document.removeEventListener('visibilitychange', handleVisibility)
     }
-  }, [email, inquiry.id])
+  }, [inquiry.id])
 
   const status = inquiryStatus
   const vendorLabel = inquiry.vendor_name ?? inquiry.vendor_slug ?? 'Vendor'
@@ -386,7 +380,7 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       const res = await fetch(`/api/my/inquiries/${inquiry.id}/messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, content: draft.trim() }),
+        body: JSON.stringify({ content: draft.trim() }),
       })
       const json = await res.json()
       if (res.ok) {
@@ -409,7 +403,7 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       const res = await fetch(`/api/my/inquiries/${inquiry.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, status: 'closed' }),
+        body: JSON.stringify({ status: 'closed' }),
       })
       const json = await res.json()
       if (!res.ok) {
@@ -427,16 +421,15 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
 
   async function handleDeleteInquiry() {
     if (inquiryActionLoading) return
+    if (!window.confirm('Delete this quote request? This cannot be undone.')) return
     setInquiryActionLoading(true)
     try {
-      const res = await fetch(`/api/my/inquiries/${inquiry.id}?email=${encodeURIComponent(email)}`, {
-        method: 'DELETE',
-      })
+      const res = await fetch(`/api/my/inquiries/${inquiry.id}`, { method: 'DELETE' })
       if (!res.ok) {
         setSendError('Failed to delete request.')
         return
       }
-      router.push(`/my/inquiries?email=${encodeURIComponent(email)}`)
+      router.push('/my/inquiries')
       router.refresh()
     } catch {
       setSendError('Network error while deleting request.')
@@ -452,7 +445,7 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       const res = await fetch(`/api/my/inquiries/${inquiry.id}/proposal`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, action: 'accept' }),
+        body: JSON.stringify({ action: 'accept' }),
       })
       const json = await res.json()
       if (!res.ok) {
@@ -478,7 +471,6 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email,
           action: 'counter',
           counterAmount,
           counterMessage,

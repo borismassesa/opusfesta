@@ -3,13 +3,13 @@
 -- All access goes through service-role API routes — no direct client access.
 
 CREATE TABLE IF NOT EXISTS inquiry_messages (
-  id          UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   inquiry_id  UUID NOT NULL REFERENCES inquiries(id) ON DELETE CASCADE,
   sender_type TEXT NOT NULL CHECK (sender_type IN ('client', 'vendor')),
   sender_name TEXT NOT NULL,
   content     TEXT NOT NULL,
   read_at     TIMESTAMP WITH TIME ZONE,
-  created_at  TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+  created_at  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_inquiry_messages_inquiry_id ON inquiry_messages(inquiry_id);

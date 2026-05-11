@@ -144,6 +144,9 @@ async function loadInquiries(): Promise<{
       .maybeSingle<VendorPackagesRow>(),
   ])
 
+  if (websiteVendorRow.error) console.error('[leads] website_vendors fetch failed', websiteVendorRow.error.code)
+  if (storefrontRow.error) console.error('[leads] vendors packages fetch failed', storefrontRow.error.code)
+
   const pricingDetails: VendorPricingPackage[] =
     websiteVendorRow.data?.pricing_details ?? []
 
@@ -165,7 +168,7 @@ async function loadInquiries(): Promise<{
   const seen = new Set<string>()
   const packages: VendorPricingPackage[] = []
   for (const pkg of [...storefrontPackages, ...pricingDetails]) {
-    const key = pkg.label.trim().toLowerCase()
+    const key = (pkg.label ?? '').trim().toLowerCase()
     if (key && !seen.has(key)) {
       seen.add(key)
       packages.push(pkg)
