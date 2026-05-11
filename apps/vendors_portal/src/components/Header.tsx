@@ -28,6 +28,10 @@ const SEGMENT_LABELS: Record<string, string> = {
 
 type PageHeading = { title: string; subtitle: string }
 
+type HeaderProps = {
+  vendorName?: string
+}
+
 const PAGE_HEADINGS: Record<string, PageHeading> = {
   '/': {
     title: 'Welcome back, OpusFesta Photography.',
@@ -97,12 +101,19 @@ function useBookingsHeading(pathname: string): PageHeading | null {
   }
 }
 
-export function Header() {
+export function Header({ vendorName }: HeaderProps) {
   const pathname = usePathname()
   const crumbs = buildCrumbs(pathname)
   const storefrontHeading = useStorefrontHeading(pathname)
   const bookingsHeading = useBookingsHeading(pathname)
-  const heading = PAGE_HEADINGS[pathname] ?? storefrontHeading ?? bookingsHeading
+  const rootHeading =
+    pathname === '/'
+      ? {
+          title: `Welcome back, ${vendorName || 'OpusFesta Photography'}.`,
+          subtitle: "Here's what's happening with your storefront today.",
+        }
+      : null
+  const heading = rootHeading ?? PAGE_HEADINGS[pathname] ?? storefrontHeading ?? bookingsHeading
   const isStorefront = pathname.startsWith('/storefront')
   const { user, isLoaded } = useUser()
   const initials = user?.fullName
