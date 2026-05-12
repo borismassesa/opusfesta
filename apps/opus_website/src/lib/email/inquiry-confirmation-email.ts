@@ -16,7 +16,8 @@ export type InquiryConfirmationInput = {
 export function buildInquiryConfirmationEmail(
   input: InquiryConfirmationInput,
 ): { subject: string; text: string; html: string } {
-  const normalizedEmail = input.clientEmail.trim().toLowerCase()
+  // clientEmail is expected to be pre-normalized (trimmed, lowercased) by the caller.
+  const clientEmail = input.clientEmail
   const firstName = input.clientName.trim().split(' ')[0] || null
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,'
   const htmlGreeting = firstName
@@ -30,8 +31,8 @@ export function buildInquiryConfirmationEmail(
     'https://opusfesta.com'
   ).replace(/\/$/, '')
 
-  const trackUrl = `${websiteBase}/my/inquiries/${input.inquiryId}?email=${encodeURIComponent(normalizedEmail)}`
-  const inquiriesUrl = `${websiteBase}/my/inquiries?email=${encodeURIComponent(normalizedEmail)}`
+  const trackUrl = `${websiteBase}/my/inquiries/${input.inquiryId}?email=${encodeURIComponent(clientEmail)}`
+  const inquiriesUrl = `${websiteBase}/my/inquiries?email=${encodeURIComponent(clientEmail)}`
 
   const submittedDate = new Date(input.submittedAt).toLocaleString(undefined, {
     dateStyle: 'medium',
