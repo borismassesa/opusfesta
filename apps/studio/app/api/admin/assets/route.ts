@@ -5,7 +5,11 @@ import { ASSETS_BUCKET } from '@/lib/cms/assets';
 
 // Max upload size — enforced at the route level to catch oversized files
 // before we invoke Supabase Storage (which has its own limits too).
-const MAX_BYTES = 10 * 1024 * 1024; // 10 MB
+// 25 MB covers raw phone-camera HEIC originals; larger media should
+// flow through the signed-URL endpoint at /api/admin/media/upload-url
+// which uploads direct-to-Supabase and bypasses the Vercel function
+// payload cap.
+const MAX_BYTES = 25 * 1024 * 1024; // 25 MB
 
 const ALLOWED_MIMES = new Set([
   'image/jpeg',

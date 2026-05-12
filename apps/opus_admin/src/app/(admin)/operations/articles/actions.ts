@@ -173,11 +173,11 @@ export async function togglePostFeatured(id: string, featured: boolean): Promise
   await revalidateWebsite(row?.slug)
 }
 
-// 50 MB hard cap for videos / 10 MB for images. Sanity check; the
+// 100 MB hard cap for videos / 25 MB for images. Sanity check; the
 // contributor API route enforces the same so the limit holds for both
 // upload paths.
-const ADVICE_MEDIA_MAX_IMAGE_SIZE = 10 * 1024 * 1024
-const ADVICE_MEDIA_MAX_VIDEO_SIZE = 50 * 1024 * 1024
+const ADVICE_MEDIA_MAX_IMAGE_SIZE = 25 * 1024 * 1024
+const ADVICE_MEDIA_MAX_VIDEO_SIZE = 100 * 1024 * 1024
 
 export async function uploadAdviceMedia(formData: FormData): Promise<{ url: string; type: 'image' | 'video' }> {
   await requireAdminRole(ARTICLE_WRITE_ROLES)
@@ -189,7 +189,7 @@ export async function uploadAdviceMedia(formData: FormData): Promise<{ url: stri
   const max = isVideo ? ADVICE_MEDIA_MAX_VIDEO_SIZE : ADVICE_MEDIA_MAX_IMAGE_SIZE
   if (file.size > max) {
     throw new Error(
-      isVideo ? 'Videos must be 50MB or smaller.' : 'Images must be 10MB or smaller.'
+      isVideo ? 'Videos must be 100MB or smaller.' : 'Images must be 25MB or smaller.'
     )
   }
 

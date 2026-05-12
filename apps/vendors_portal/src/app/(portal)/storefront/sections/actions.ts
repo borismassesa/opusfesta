@@ -190,7 +190,12 @@ const ALLOWED_MIME = new Set([
   'image/png',
   'image/webp',
 ])
-const MAX_BYTES = 10 * 1024 * 1024
+// Post-compression safety net. compressImage() reliably produces files
+// under ~2 MB; this cap exists for the rare case where compression
+// can't help (already-small WebP, unusual aspect ratio). Raised from
+// 10 MB to 25 MB to match the vendor-portfolios Supabase bucket limit
+// on the Pro tier — keeps client and bucket in sync.
+const MAX_BYTES = 25 * 1024 * 1024
 
 export async function uploadStorefrontPhoto(
   formData: FormData,
@@ -215,7 +220,7 @@ export async function uploadStorefrontPhoto(
     return {
       ok: false,
       reason: 'invalid',
-      error: `File is over the 10 MB limit (${(file.size / 1024 / 1024).toFixed(1)} MB).`,
+      error: `File is over the 25 MB limit (${(file.size / 1024 / 1024).toFixed(1)} MB).`,
     }
   }
 

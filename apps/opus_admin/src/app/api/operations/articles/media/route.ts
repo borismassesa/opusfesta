@@ -12,8 +12,8 @@ const ACCEPTED_VIDEO_TYPES = new Set([
   'video/quicktime',
   'video/x-quicktime',
 ])
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024
+const MAX_IMAGE_SIZE = 25 * 1024 * 1024
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,10 +34,10 @@ export async function POST(request: NextRequest) {
       )
     }
     if (isImage && file.size > MAX_IMAGE_SIZE) {
-      return NextResponse.json({ error: 'Images must be 10MB or smaller.' }, { status: 413 })
+      return NextResponse.json({ error: 'Images must be 25MB or smaller.' }, { status: 413 })
     }
     if (isVideo && file.size > MAX_VIDEO_SIZE) {
-      return NextResponse.json({ error: 'Videos must be 50MB or smaller.' }, { status: 413 })
+      return NextResponse.json({ error: 'Videos must be 100MB or smaller.' }, { status: 413 })
     }
 
     const extByMime: Record<string, string> = {

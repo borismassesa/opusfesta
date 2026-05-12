@@ -8,7 +8,7 @@ import { isEditableContributorStatus } from '@/lib/contribute/types'
 type RouteContext = { params: Promise<{ id: string }> }
 
 const ACCEPTED_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp'])
-const MAX_SIZE = 10 * 1024 * 1024
+const MAX_SIZE = 25 * 1024 * 1024
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Use a PNG, JPEG, or WebP image.' }, { status: 415 })
     }
     if (file.size > MAX_SIZE) {
-      return NextResponse.json({ error: 'Cover images must be 10MB or smaller.' }, { status: 413 })
+      return NextResponse.json({ error: 'Cover images must be 25MB or smaller.' }, { status: 413 })
     }
 
     const extension = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg'

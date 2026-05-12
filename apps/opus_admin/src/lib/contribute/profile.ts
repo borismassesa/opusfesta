@@ -17,8 +17,9 @@ import type {
   ContributorProfileFormInput,
 } from './profile-types'
 
-// 5 MB cap matches the contributor cover image — avatars are smaller still.
-const AVATAR_MAX_SIZE = 5 * 1024 * 1024
+// 10 MB cap; avatars are normally a fraction of this but raw phone
+// photos can be larger, and the upload happens once per profile.
+const AVATAR_MAX_SIZE = 10 * 1024 * 1024
 const AVATAR_ACCEPTED_TYPES = new Set([
   'image/png',
   'image/jpeg',
@@ -164,7 +165,7 @@ export async function uploadContributorAvatar(
     throw new Error('Avatar must be PNG, JPEG, or WebP.')
   }
   if (file.size > AVATAR_MAX_SIZE) {
-    throw new Error('Avatar must be 5MB or smaller.')
+    throw new Error('Avatar must be 10MB or smaller.')
   }
 
   const ext = file.type === 'image/png'
