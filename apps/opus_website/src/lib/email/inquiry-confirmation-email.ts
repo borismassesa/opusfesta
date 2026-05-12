@@ -17,7 +17,11 @@ export function buildInquiryConfirmationEmail(
   input: InquiryConfirmationInput,
 ): { subject: string; text: string; html: string } {
   const normalizedEmail = input.clientEmail.trim().toLowerCase()
-  const firstName = input.clientName.trim().split(' ')[0] || 'there'
+  const firstName = input.clientName.trim().split(' ')[0] || null
+  const greeting = firstName ? `Hi ${firstName},` : 'Hello,'
+  const htmlGreeting = firstName
+    ? `Hi <strong>${escapeHtml(firstName)}</strong> —`
+    : 'Hello —'
   const subject = `Your inquiry to ${input.vendorName} was received — OpusFesta`
 
   const websiteBase = (
@@ -37,7 +41,7 @@ export function buildInquiryConfirmationEmail(
   const preheader = `${input.vendorName} will get back to you soon. Track your request in your OpusFesta inbox.`
 
   const text = plaintextLines([
-    `Hi ${firstName},`,
+    greeting,
     '',
     `Your inquiry to ${input.vendorName} was received — we've forwarded it to them and they'll be in touch soon.`,
     '',
@@ -64,7 +68,7 @@ export function buildInquiryConfirmationEmail(
     sections: [
       {
         kind: 'paragraph',
-        text: `Hi <strong>${escapeHtml(firstName)}</strong> — your inquiry to <strong>${escapeHtml(input.vendorName)}</strong> has been received. They'll get back to you soon.`,
+        text: `${htmlGreeting} your inquiry to <strong>${escapeHtml(input.vendorName)}</strong> has been received. They'll get back to you soon.`,
       },
       {
         kind: 'detailRows',
