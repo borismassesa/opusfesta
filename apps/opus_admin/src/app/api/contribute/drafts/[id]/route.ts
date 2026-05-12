@@ -6,6 +6,7 @@ import {
   contributorPatchPayload,
   findOwnedContributorDraft,
   rowToContributorDraft,
+  withContributorProfile,
 } from '@/lib/contribute/drafts'
 import { isEditableContributorStatus, type ContributorDraft } from '@/lib/contribute/types'
 import { countBodyWords } from '@/lib/contribute/bodyMetrics'
@@ -43,7 +44,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     if (error) throw error
     revalidatePath('/contribute')
     revalidatePath(`/contribute/drafts/${id}`)
-    return NextResponse.json({ draft: rowToContributorDraft(data) })
+    return NextResponse.json({ draft: await withContributorProfile(rowToContributorDraft(data)) })
   } catch (error) {
     return errorResponse(error)
   }

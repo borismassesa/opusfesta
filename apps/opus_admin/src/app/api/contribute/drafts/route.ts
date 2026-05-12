@@ -6,7 +6,9 @@ import {
   defaultCategoryForUser,
   normalizeCategory,
   rowToContributorDraft,
+  withContributorProfile,
 } from '@/lib/contribute/drafts'
+import { getContributorProfileByEmail } from '@/lib/contribute/profile'
 
 export async function GET() {
   try {
@@ -19,7 +21,8 @@ export async function GET() {
       .order('updated_at', { ascending: false })
 
     if (error) throw error
-    return NextResponse.json({ drafts: (data ?? []).map(rowToContributorDraft) })
+    const drafts = await Promise.all((data ?? []).map((row) => withContributorProfile(rowToContributorDraft(row))))
+    return NextResponse.json({ drafts })
   } catch (error) {
     return errorResponse(error)
   }
@@ -30,13 +33,16 @@ export async function POST(request: NextRequest) {
     const identity = await requireContributorIdentity()
     const body = (await request.json().catch(() => ({}))) as { category?: string }
     const category = normalizeCategory(body.category ?? (await defaultCategoryForUser(identity)))
+    const profile = await getContributorProfileByEmail(identity.email)
     const supabase = createSupabaseAdminClient()
     const { data, error } = await supabase
       .from('advice_article_submissions')
       .insert({
         author_email: identity.email,
         author_clerk_id: identity.clerkId,
-        author_name: identity.name || identity.email.split('@')[0],
+        author_name: profile?.name || identity.name || identity.email.split('@')[0],
+        author_role: profile?.role || null,
+        author_avatar_url: profile?.avatar_url || null,
         status: 'draft',
         title: '',
         slug: '',
@@ -55,7 +61,7 @@ export async function POST(request: NextRequest) {
 
     if (error) throw error
     revalidatePath('/contribute')
-    return NextResponse.json({ draft: rowToContributorDraft(data), id: data.id }, { status: 201 })
+    return NextResponse.json({ draft: await withContributorProfile(rowToContributorDraft(data)), id: data.id }, { status: 201 })
   } catch (error) {
     return errorResponse(error)
   }

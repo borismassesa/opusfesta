@@ -12,11 +12,15 @@ import {
 } from './types'
 import { countBodyWords } from './bodyMetrics'
 import { ownsDraft, requireContributorIdentity } from './auth'
+import { getContributorProfileByEmail } from './profile'
 
 type SubmissionRow = {
   id: string
   author_email: string
   author_clerk_id: string | null
+  author_name?: string | null
+  author_role?: string | null
+  author_avatar_url?: string | null
   status: ContributorSubmissionStatus
   title: string
   description?: string | null
@@ -70,6 +74,7 @@ function sectionIdForCategory(category: string): string {
 export function rowToContributorDraft(row: SubmissionRow): ContributorDraft {
   const body = Array.isArray(row.body) ? row.body : []
   const summary = row.summary ?? row.excerpt ?? row.description ?? ''
+  const authorName = row.author_name?.trim() || row.author_email.split('@')[0] || ''
   return {
     id: row.id,
     author_email: row.author_email,
@@ -78,6 +83,11 @@ export function rowToContributorDraft(row: SubmissionRow): ContributorDraft {
     title: row.title ?? '',
     summary,
     category: normalizeCategory(row.category),
+    author_name: authorName,
+    author_role: row.author_role ?? '',
+    author_avatar_url: row.author_avatar_url ?? '',
+    author_bio: '',
+    author_initials: initialsFromName(authorName),
     cover_image_url: row.cover_image_url ?? row.hero_media_src ?? '',
     cover_image_alt: row.cover_image_alt ?? row.hero_media_alt ?? '',
     body,
@@ -89,6 +99,22 @@ export function rowToContributorDraft(row: SubmissionRow): ContributorDraft {
     slug: row.slug,
     created_at: row.created_at,
     updated_at: row.updated_at,
+  }
+}
+
+export async function withContributorProfile(
+  draft: ContributorDraft
+): Promise<ContributorDraft> {
+  const profile = await getContributorProfileByEmail(draft.author_email)
+  if (!profile) return draft
+  const authorName = profile.name?.trim() || draft.author_name
+  return {
+    ...draft,
+    author_name: authorName,
+    author_role: profile.role ?? draft.author_role,
+    author_avatar_url: profile.avatar_url ?? draft.author_avatar_url,
+    author_bio: profile.bio ?? '',
+    author_initials: profile.initials || initialsFromName(authorName),
   }
 }
 
@@ -128,7 +154,7 @@ export async function findOwnedContributorDraft(
 
   if (error) throw error
   if (!data || !ownsDraft(data, identity)) return null
-  return rowToContributorDraft(data)
+  return withContributorProfile(rowToContributorDraft(data))
 }
 
 export function contributorPatchPayload(input: Partial<ContributorDraft>): Record<string, unknown> {
@@ -156,6 +182,11 @@ export function contributorPatchPayload(input: Partial<ContributorDraft>): Recor
     payload.cover_image_alt = input.cover_image_alt
     payload.hero_media_alt = input.cover_image_alt
   }
+  if (input.author_name !== undefined) payload.author_name = input.author_name || null
+  if (input.author_role !== undefined) payload.author_role = input.author_role || null
+  if (input.author_avatar_url !== undefined) {
+    payload.author_avatar_url = input.author_avatar_url || null
+  }
   if (input.body !== undefined) {
     payload.body = input.body
     payload.word_count = input.word_count ?? countBodyWords(input.body)
@@ -165,6 +196,16 @@ export function contributorPatchPayload(input: Partial<ContributorDraft>): Recor
     payload.read_time = Math.max(1, Math.ceil(input.word_count / 200))
   }
   return payload
+}
+
+function initialsFromName(name: string): string {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((part) => part[0] ?? '')
+    .join('')
+    .toUpperCase()
+    .slice(0, 3)
 }
 
 export async function assertOwnedEditableDraft(id: string): Promise<ContributorDraft> {

@@ -62,13 +62,13 @@ export async function POST(request: NextRequest, context: RouteContext) {
     const extension = extByMime[file.type] ?? 'bin'
     const path = `${identity.clerkId}/${id}/body/${Date.now()}-${randomUUID()}.${extension}`
     const supabase = createSupabaseAdminClient()
-    const { error } = await supabase.storage.from('submission-covers').upload(path, file, {
+    const { error } = await supabase.storage.from('website-media').upload(path, file, {
       contentType: file.type,
       upsert: false,
     })
     if (error) throw error
 
-    const { data } = supabase.storage.from('submission-covers').getPublicUrl(path)
+    const { data } = supabase.storage.from('website-media').getPublicUrl(path)
     return NextResponse.json({ url: data.publicUrl })
   } catch (error) {
     console.error('[contribute draft media POST]', error)

@@ -31,6 +31,11 @@ export type ContributorDraft = {
   title: string
   summary: string
   category: string
+  author_name: string
+  author_role: string
+  author_avatar_url: string
+  author_bio: string
+  author_initials: string
   cover_image_url: string
   cover_image_alt: string
   body: AdviceIdeasBodySection[]

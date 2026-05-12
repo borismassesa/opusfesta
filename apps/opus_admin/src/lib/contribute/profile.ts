@@ -25,7 +25,7 @@ const AVATAR_ACCEPTED_TYPES = new Set([
   'image/webp',
 ])
 
-async function loadByEmail(email: string): Promise<ContributorProfile | null> {
+export async function getContributorProfileByEmail(email: string): Promise<ContributorProfile | null> {
   const supabase = createSupabaseAdminClient()
   // Use ilike with the full email to match the LOWER(email) unique index
   // — case-insensitive without needing raw SQL.
@@ -47,7 +47,7 @@ export async function getContributorProfile(): Promise<{
   identity: { email: string; name: string | null }
 }> {
   const identity = await requireContributorIdentity()
-  const profile = await loadByEmail(identity.email)
+  const profile = await getContributorProfileByEmail(identity.email)
   return {
     profile,
     identity: { email: identity.email, name: identity.name },
@@ -72,7 +72,7 @@ export async function updateContributorProfile(
   }
 
   const supabase = createSupabaseAdminClient()
-  const existing = await loadByEmail(identity.email)
+  const existing = await getContributorProfileByEmail(identity.email)
 
   if (existing) {
     // Defence in depth: only update the row whose email matches the caller.
@@ -83,13 +83,16 @@ export async function updateContributorProfile(
       .update(payload)
       .eq('id', existing.id)
     if (error) throw error
+    await syncEditableSubmissionsForProfile(identity, payload)
     revalidatePath('/contribute/profile')
+    revalidatePath('/contribute')
     revalidatePath('/operations/authors')
+    revalidatePath('/operations/articles/submissions')
     await revalidateWebsitePaths('/advice-and-ideas')
     return { id: existing.id }
   }
 
-  // Race window: between loadByEmail above and this INSERT, another tab /
+  // Race window: between the lookup above and this INSERT, another tab /
   // double-click could have inserted a row with the same email. The
   // LOWER(email) unique index will then 23505 us; catch that and fall
   // through to an update by re-looking-up the row.
@@ -100,8 +103,11 @@ export async function updateContributorProfile(
     .single<{ id: string }>()
 
   if (!error) {
+    await syncEditableSubmissionsForProfile(identity, payload)
     revalidatePath('/contribute/profile')
+    revalidatePath('/contribute')
     revalidatePath('/operations/authors')
+    revalidatePath('/operations/articles/submissions')
     await revalidateWebsitePaths('/advice-and-ideas')
     return { id: data.id }
   }
@@ -111,7 +117,7 @@ export async function updateContributorProfile(
   if (!isUniqueViolation) throw error
 
   // Another writer beat us. Re-fetch and update instead.
-  const racedExisting = await loadByEmail(identity.email)
+  const racedExisting = await getContributorProfileByEmail(identity.email)
   if (!racedExisting) {
     // Genuinely lost the row in between — surface the original error so
     // the contributor sees something actionable.
@@ -122,10 +128,30 @@ export async function updateContributorProfile(
     .update(payload)
     .eq('id', racedExisting.id)
   if (updateError) throw updateError
+  await syncEditableSubmissionsForProfile(identity, payload)
   revalidatePath('/contribute/profile')
+  revalidatePath('/contribute')
   revalidatePath('/operations/authors')
+  revalidatePath('/operations/articles/submissions')
   await revalidateWebsitePaths('/advice-and-ideas')
   return { id: racedExisting.id }
+}
+
+async function syncEditableSubmissionsForProfile(
+  identity: { clerkId: string; email: string },
+  profile: { name: string; role: string; avatar_url: string | null }
+) {
+  const supabase = createSupabaseAdminClient()
+  const { error } = await supabase
+    .from('advice_article_submissions')
+    .update({
+      author_name: profile.name,
+      author_role: profile.role || null,
+      author_avatar_url: profile.avatar_url,
+    })
+    .or(`author_clerk_id.eq.${identity.clerkId},author_email.ilike.${identity.email}`)
+    .in('status', ['draft', 'revisions', 'changes_requested'])
+  if (error) throw error
 }
 
 export async function uploadContributorAvatar(

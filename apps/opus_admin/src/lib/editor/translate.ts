@@ -20,6 +20,7 @@
 import {
   type AdviceIdeasBlock,
   type AdviceIdeasBodySection,
+  type AdviceIdeasRichTextNode,
 } from '@/lib/cms/advice-ideas'
 
 export type ProseMirrorNode = {
@@ -39,6 +40,18 @@ const EMPTY_DOC: ProseMirrorDoc = {
   type: 'doc',
   content: [{ type: 'paragraph' }],
 }
+
+const SUPPORTED_RICH_TEXT_MARKS = new Set([
+  'bold',
+  'italic',
+  'underline',
+  'strike',
+  'code',
+  'link',
+  'highlight',
+  'superscript',
+  'subscript',
+])
 
 // ---------- legacy → ProseMirror ----------
 
@@ -68,7 +81,9 @@ function textNode(text: string): ProseMirrorNode {
   return { type: 'text', text }
 }
 
-function paragraphNode(text: string): ProseMirrorNode {
+function paragraphNode(text: string, richText?: AdviceIdeasRichTextNode[]): ProseMirrorNode {
+  const richContent = richTextToProseMirror(richText)
+  if (richContent?.length) return { type: 'paragraph', content: richContent }
   if (!text) return { type: 'paragraph' }
   return { type: 'paragraph', content: [textNode(text)] }
 }
@@ -76,7 +91,7 @@ function paragraphNode(text: string): ProseMirrorNode {
 function legacyBlockToNodes(block: AdviceIdeasBlock): ProseMirrorNode[] {
   switch (block.type) {
     case 'paragraph':
-      return [paragraphNode(block.text)]
+      return [paragraphNode(block.text, block.richText)]
 
     case 'subheading':
       return [headingNode(3, block.text)]
@@ -221,7 +236,8 @@ function nodeToLegacyBlock(node: ProseMirrorNode): AdviceIdeasBlock | null {
       // Drop empty paragraphs at section boundaries — the legacy renderer
       // would render them as an empty `<p>`, which is noisy.
       if (!text) return null
-      return { type: 'paragraph', text }
+      const richText = proseMirrorToRichText(node.content)
+      return { type: 'paragraph', text, ...(richText ? { richText } : {}) }
     }
 
     case 'heading': {
@@ -295,4 +311,59 @@ function collectText(node: ProseMirrorNode): string {
       return collectText(child)
     })
     .join('')
+}
+
+function richTextToProseMirror(
+  richText: AdviceIdeasRichTextNode[] | undefined
+): ProseMirrorNode[] | null {
+  if (!Array.isArray(richText)) return null
+  const content = richText.flatMap((node): ProseMirrorNode[] => {
+    if (node.type === 'hardBreak') return [{ type: 'hardBreak' }]
+    if (node.type !== 'text' || !node.text) return []
+    const marks = Array.isArray(node.marks)
+      ? node.marks
+          .filter(
+            (mark) =>
+              mark &&
+              typeof mark.type === 'string' &&
+              SUPPORTED_RICH_TEXT_MARKS.has(mark.type)
+          )
+          .map((mark) => ({
+            type: mark.type,
+            ...(mark.attrs ? { attrs: mark.attrs } : {}),
+          }))
+      : undefined
+    return [{ type: 'text', text: node.text, ...(marks?.length ? { marks } : {}) }]
+  })
+  return content.length ? content : null
+}
+
+function proseMirrorToRichText(
+  content: ProseMirrorNode[] | undefined
+): AdviceIdeasRichTextNode[] | undefined {
+  if (!content?.length) return undefined
+  let hasFormatting = false
+  const richText = content.flatMap((node): AdviceIdeasRichTextNode[] => {
+    if (node.type === 'hardBreak') {
+      hasFormatting = true
+      return [{ type: 'hardBreak' }]
+    }
+    if (node.type !== 'text' || !node.text) return []
+    const marks = Array.isArray(node.marks)
+      ? node.marks
+          .filter(
+            (mark) =>
+              mark &&
+              typeof mark.type === 'string' &&
+              SUPPORTED_RICH_TEXT_MARKS.has(mark.type)
+          )
+          .map((mark) => ({
+            type: mark.type,
+            ...(mark.attrs ? { attrs: mark.attrs } : {}),
+          }))
+      : undefined
+    if (marks?.length) hasFormatting = true
+    return [{ type: 'text', text: node.text, ...(marks?.length ? { marks } : {}) }]
+  })
+  return hasFormatting && richText.length ? richText : undefined
 }

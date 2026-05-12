@@ -66,7 +66,7 @@ export default function ArticleEditor({
 
   // Cache the latest serialised JSON we emitted, so we can no-op when the
   // parent passes back the same `value` (which would otherwise loop).
-  const lastEmittedRef = useRef<string>('')
+  const lastEmittedRef = useRef<string>(JSON.stringify(value))
   const onChangeRef = useRef(onChange)
   const onWordCountRef = useRef(onWordCountChange)
   onChangeRef.current = onChange
@@ -118,8 +118,17 @@ export default function ArticleEditor({
       const incoming = JSON.stringify(next)
       if (incoming === lastEmittedRef.current) return
       const nextDoc = legacyToTipTap(next)
+      if (JSON.stringify(editor.getJSON()) === JSON.stringify(nextDoc)) {
+        lastEmittedRef.current = incoming
+        return
+      }
+      const selection = editor.state.selection
       lastEmittedRef.current = incoming
       editor.commands.setContent(nextDoc, { emitUpdate: false })
+      const maxPos = editor.state.doc.content.size
+      if (selection.from <= maxPos && selection.to <= maxPos) {
+        editor.commands.setTextSelection({ from: selection.from, to: selection.to })
+      }
     },
     [editor]
   )
@@ -160,10 +169,10 @@ export default function ArticleEditor({
           <ToolbarSeparator />
 
           <ToolbarGroup>
-            <MarkButton type="bold" />
-            <MarkButton type="italic" />
-            <MarkButton type="underline" />
-            <MarkButton type="strike" />
+            <MarkButton type="bold" onMouseDown={(e) => e.preventDefault()} />
+            <MarkButton type="italic" onMouseDown={(e) => e.preventDefault()} />
+            <MarkButton type="underline" onMouseDown={(e) => e.preventDefault()} />
+            <MarkButton type="strike" onMouseDown={(e) => e.preventDefault()} />
             <ColorHighlightPopover />
             <LinkPopover />
           </ToolbarGroup>
@@ -171,8 +180,8 @@ export default function ArticleEditor({
           <ToolbarSeparator />
 
           <ToolbarGroup>
-            <MarkButton type="superscript" />
-            <MarkButton type="subscript" />
+            <MarkButton type="superscript" onMouseDown={(e) => e.preventDefault()} />
+            <MarkButton type="subscript" onMouseDown={(e) => e.preventDefault()} />
           </ToolbarGroup>
 
           <ToolbarSeparator />
@@ -217,6 +226,22 @@ function ImageInsertButton({
   onUploadImage: (file: File) => Promise<string>
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const selectionRef = useRef<{ from: number; to: number } | null>(null)
+  const saveSelection = () => {
+    selectionRef.current = {
+      from: editor.state.selection.from,
+      to: editor.state.selection.to,
+    }
+  }
+  const restoreSelection = () => {
+    const selection = selectionRef.current
+    if (!selection) return
+    const maxPos = editor.state.doc.content.size
+    editor.commands.setTextSelection({
+      from: Math.min(selection.from, maxPos),
+      to: Math.min(selection.to, maxPos),
+    })
+  }
   return (
     <>
       <Button
@@ -224,8 +249,14 @@ function ImageInsertButton({
         data-style="ghost"
         aria-label="Insert image"
         tooltip="Insert image"
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => fileRef.current?.click()}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          saveSelection()
+        }}
+        onClick={() => {
+          saveSelection()
+          fileRef.current?.click()
+        }}
       >
         <ImagePlusIcon className="tiptap-button-icon" />
       </Button>
@@ -240,6 +271,7 @@ function ImageInsertButton({
           if (!file) return
           try {
             const url = await onUploadImage(file)
+            restoreSelection()
             editor
               .chain()
               .focus()
@@ -274,8 +306,24 @@ function VideoInsertButton({
   onUploadVideo: (file: File) => Promise<string>
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
+  const selectionRef = useRef<{ from: number; to: number } | null>(null)
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
+  const saveSelection = () => {
+    selectionRef.current = {
+      from: editor.state.selection.from,
+      to: editor.state.selection.to,
+    }
+  }
+  const restoreSelection = () => {
+    const selection = selectionRef.current
+    if (!selection) return
+    const maxPos = editor.state.doc.content.size
+    editor.commands.setTextSelection({
+      from: Math.min(selection.from, maxPos),
+      to: Math.min(selection.to, maxPos),
+    })
+  }
   return (
     <>
       <Button
@@ -283,8 +331,14 @@ function VideoInsertButton({
         data-style="ghost"
         aria-label="Insert video"
         tooltip={uploading ? 'Uploading video…' : 'Insert video'}
-        onMouseDown={(e) => e.preventDefault()}
-        onClick={() => fileRef.current?.click()}
+        onMouseDown={(e) => {
+          e.preventDefault()
+          saveSelection()
+        }}
+        onClick={() => {
+          saveSelection()
+          fileRef.current?.click()
+        }}
         disabled={uploading}
       >
         <Video className="tiptap-button-icon" />
@@ -306,6 +360,7 @@ function VideoInsertButton({
           setUploading(true)
           try {
             const url = await onUploadVideo(file)
+            restoreSelection()
             editor
               .chain()
               .focus()

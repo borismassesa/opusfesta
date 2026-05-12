@@ -7,6 +7,11 @@ export const dynamic = 'force-dynamic'
 const base = {
   author_email: 'preview@opusfesta.com',
   author_clerk_id: 'preview',
+  author_name: 'Preview Author',
+  author_role: 'Contributor',
+  author_avatar_url: '',
+  author_bio: 'Preview author bio shown on the contributor profile card.',
+  author_initials: 'PA',
   category: 'Planning Guides',
   cover_image_url: '',
   cover_image_alt: '',

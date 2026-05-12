@@ -44,7 +44,7 @@ import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot } from '@/components/HeaderPortals'
 import ArticlePreview from '@/components/article-preview/ArticlePreview'
 import SectionsCard from '@/components/article-sections/SectionsCard'
-import { createAdvicePost, updateAdvicePost, uploadAdviceMedia, type PostUpsertInput } from './actions'
+import { createAdvicePost, updateAdvicePost, type PostUpsertInput } from './actions'
 import {
   approveAdviceSubmission,
   rejectAdviceSubmission,
@@ -117,6 +117,28 @@ function countBodyWords(body: PostUpsertInput['body']): number {
 
 function estimateReadMinutes(words: number): number {
   return Math.max(1, Math.round(words / 225))
+}
+
+async function uploadAdminAdviceMedia(
+  file: File,
+  slug: string
+): Promise<{ url: string; type: 'image' | 'video' }> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('slug', slug || 'new')
+  const response = await fetch('/api/operations/articles/media', {
+    method: 'POST',
+    body: form,
+  })
+  const payload = (await response.json().catch(() => ({}))) as {
+    url?: string
+    type?: 'image' | 'video'
+    error?: string
+  }
+  if (!response.ok || !payload.url || !payload.type) {
+    throw new Error(payload.error || 'Upload failed.')
+  }
+  return { url: payload.url, type: payload.type }
 }
 
 function formatRelativeTime(then: number, now: number): string {
@@ -337,7 +359,7 @@ export default function PostEditor({
       try {
         const { url, type } = isContributorSubmission
           ? await uploadContributorMedia(fd)
-          : await uploadAdviceMedia(fd)
+          : await uploadAdminAdviceMedia(file, draft.slug || 'new')
         setDraft((d) => ({ ...d, hero_media_src: url, hero_media_type: type }))
         setMessage('Hero media uploaded.')
       } catch (err) {
@@ -359,7 +381,7 @@ export default function PostEditor({
       try {
         const { url } = isContributorSubmission
           ? await uploadContributorMedia(fd)
-          : await uploadAdviceMedia(fd)
+          : await uploadAdminAdviceMedia(file, draft.slug || 'new')
         setDraft((d) => ({ ...d, author_avatar_url: url }))
         setMessage('Avatar uploaded.')
       } catch (err) {
@@ -931,7 +953,7 @@ export default function PostEditor({
                   if (id) fd.append('submissionId', id)
                   const { url } = isContributorSubmission
                     ? await uploadContributorMedia(fd)
-                    : await uploadAdviceMedia(fd)
+                    : await uploadAdminAdviceMedia(file, draft.slug || 'new')
                   return url
                 }}
                 onUploadVideo={async (file) => {
@@ -943,7 +965,7 @@ export default function PostEditor({
                   if (id) fd.append('submissionId', id)
                   const { url } = isContributorSubmission
                     ? await uploadContributorMedia(fd)
-                    : await uploadAdviceMedia(fd)
+                    : await uploadAdminAdviceMedia(file, draft.slug || 'new')
                   return url
                 }}
               />
@@ -1277,6 +1299,9 @@ export default function PostEditor({
               category: draft.category,
               authorName: draft.author_name,
               authorRole: draft.author_role,
+              authorAvatarUrl: draft.author_avatar_url
+                ? resolveMediaUrl(draft.author_avatar_url)
+                : undefined,
               readTime: draft.read_time
                 ? `${draft.read_time} min read`
                 : undefined,
@@ -1671,7 +1696,7 @@ function MediaBlockFields({
       setUploading(true)
       const { url } = uploadWorkflow === 'contributor-submission'
         ? await uploadContributorMedia(fd)
-        : await uploadAdviceMedia(fd)
+        : await uploadAdminAdviceMedia(file, 'body')
       onChange({ src: url } as Partial<AdviceIdeasBlock>)
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed.')

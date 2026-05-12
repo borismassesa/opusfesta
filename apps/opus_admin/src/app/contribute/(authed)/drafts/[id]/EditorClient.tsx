@@ -53,6 +53,9 @@ export default function EditorClient({ initialDraft }: { initialDraft: Contribut
       category: snapshot.category,
       cover_image_url: snapshot.cover_image_url,
       cover_image_alt: snapshot.cover_image_alt,
+      author_name: snapshot.author_name,
+      author_role: snapshot.author_role,
+      author_avatar_url: snapshot.author_avatar_url,
       body: snapshot.body,
       word_count: snapshot.word_count,
     }
@@ -187,6 +190,11 @@ export default function EditorClient({ initialDraft }: { initialDraft: Contribut
           shaking={shaking}
           onCategoryChange={(category) => markDirty({ category })}
           onCoverChange={(next) => markDirty(next)}
+          authorName={draft.author_name}
+          authorRole={draft.author_role}
+          authorAvatarUrl={draft.author_avatar_url}
+          authorBio={draft.author_bio}
+          authorInitials={draft.author_initials}
         />
       </main>
 
@@ -285,7 +293,10 @@ function PreviewModal({ draft, onClose }: { draft: ContributorDraft; onClose: ()
           title: draft.title,
           excerpt: draft.summary,
           category: draft.category,
-          authorName: 'You',
+          authorName: draft.author_name || 'Author',
+          authorRole: draft.author_role,
+          authorAvatarUrl: draft.author_avatar_url || undefined,
+          readTime: `${Math.max(1, Math.ceil(draft.word_count / 200))} min read`,
           heroMediaSrc: draft.cover_image_url || undefined,
           heroMediaAlt: draft.cover_image_alt || '',
           heroMediaType: 'image',

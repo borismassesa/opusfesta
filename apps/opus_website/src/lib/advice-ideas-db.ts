@@ -7,6 +7,7 @@ import {
   type AdviceIdeasBlock,
   type AdviceIdeasBodySection,
   type AdviceIdeasPost,
+  type AdviceIdeasRichTextNode,
   type AdviceIdeasSeedComment,
   type AdviceIdeasSectionId,
 } from '@/lib/advice-ideas'
@@ -54,6 +55,30 @@ function readString(value: unknown): string {
   return typeof value === 'string' ? value : ''
 }
 
+function normalizeRichText(value: unknown): AdviceIdeasRichTextNode[] | undefined {
+  if (!Array.isArray(value)) return undefined
+  const nodes = value.flatMap((node): AdviceIdeasRichTextNode[] => {
+    if (!isRecord(node)) return []
+    if (node.type === 'hardBreak') return [{ type: 'hardBreak' }]
+    if (node.type !== 'text') return []
+    const text = readString(node.text)
+    if (!text) return []
+    const marks = Array.isArray(node.marks)
+      ? node.marks.flatMap((mark) => {
+          if (!isRecord(mark) || typeof mark.type !== 'string') return []
+          return [
+            {
+              type: mark.type,
+              ...(isRecord(mark.attrs) ? { attrs: mark.attrs } : {}),
+            },
+          ]
+        })
+      : undefined
+    return [{ type: 'text', text, ...(marks?.length ? { marks } : {}) }]
+  })
+  return nodes.length ? nodes : undefined
+}
+
 function normalizeSectionId(value: string | null): AdviceIdeasSectionId {
   return value && SECTION_IDS.has(value as AdviceIdeasSectionId)
     ? (value as AdviceIdeasSectionId)
@@ -82,7 +107,8 @@ function normalizeBlocks(value: unknown): AdviceIdeasBlock[] {
     const type = block.type
 
     if (type === 'paragraph') {
-      return [{ type, text: readString(block.text) }]
+      const richText = normalizeRichText(block.richText)
+      return [{ type, text: readString(block.text), ...(richText ? { richText } : {}) }]
     }
     if (type === 'subheading') {
       return [{ type, text: readString(block.text) }]
@@ -208,6 +234,7 @@ function mapPost(row: AdviceIdeasPostRow): AdviceIdeasPost {
     readTime: formatReadTime(row.read_time),
     author: row.author_name || 'OpusFesta Editorial',
     authorRole: row.author_role || '',
+    authorAvatarUrl: row.author_avatar_url || undefined,
     featured: Boolean(row.featured),
     heroMedia: {
       type: row.hero_media_type === 'video' ? 'video' : 'image',

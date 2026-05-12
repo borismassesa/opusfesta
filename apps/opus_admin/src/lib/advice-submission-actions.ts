@@ -26,6 +26,7 @@ import {
   buildSubmissionApprovedEmail,
   buildSubmissionRejectedEmail,
 } from '@/lib/submission-decision-email'
+import { getContributorProfileByEmail } from '@/lib/contribute/profile'
 
 const ARTICLE_MANAGE_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 
@@ -713,6 +714,7 @@ export async function approveAdviceSubmission(
 
   if (loadError) throw loadError
   if (!submission) throw new Error('Submission not found.')
+  const contributorProfile = await getContributorProfileByEmail(submission.author_email)
 
   const draft = {
     slug: submission.slug,
@@ -721,9 +723,9 @@ export async function approveAdviceSubmission(
     excerpt: submission.excerpt,
     category: submission.category,
     section_id: submission.section_id,
-    author_name: submission.author_name ?? '',
-    author_role: submission.author_role ?? '',
-    author_avatar_url: submission.author_avatar_url ?? '',
+    author_name: contributorProfile?.name ?? submission.author_name ?? '',
+    author_role: contributorProfile?.role ?? submission.author_role ?? '',
+    author_avatar_url: contributorProfile?.avatar_url ?? submission.author_avatar_url ?? '',
     read_time: submission.read_time,
     featured: submission.featured,
     published: publish,

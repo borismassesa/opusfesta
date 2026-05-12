@@ -207,6 +207,29 @@
   color: #374151;
 }
 
+.article-editor figure[data-legacy-block][data-legacy-kind='video'] {
+  display: block;
+  margin: 20px 0;
+}
+
+.article-editor figure[data-legacy-block][data-legacy-kind='video'] video {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: 520px;
+  border-radius: 10px;
+  background: #111827;
+  object-fit: cover;
+}
+
+.article-editor figure[data-legacy-block][data-legacy-kind='video'] figcaption {
+  margin-top: 8px;
+  color: #6B7280;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.5;
+}
+
 /* Placeholder text from @tiptap/extension-placeholder (only shown on the
  * first empty doc node). */
 .article-editor p.is-editor-empty:first-child::before {

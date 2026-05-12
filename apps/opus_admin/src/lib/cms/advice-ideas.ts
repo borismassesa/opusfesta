@@ -255,8 +255,19 @@ export type AdvicePageSectionRow<T> = {
 
 // ---------- Post rows ----------
 
+export type AdviceIdeasRichTextMark = {
+  type: string
+  attrs?: Record<string, unknown>
+}
+
+export type AdviceIdeasRichTextNode = {
+  type: 'text' | 'hardBreak'
+  text?: string
+  marks?: AdviceIdeasRichTextMark[]
+}
+
 export type AdviceIdeasBlock =
-  | { type: 'paragraph'; text: string }
+  | { type: 'paragraph'; text: string; richText?: AdviceIdeasRichTextNode[] }
   | { type: 'subheading'; text: string }
   | { type: 'list'; items: string[]; ordered?: boolean }
   | { type: 'quote'; quote: string; attribution?: string }
