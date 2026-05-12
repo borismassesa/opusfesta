@@ -16,7 +16,8 @@ export type InquiryConfirmationInput = {
 export function buildInquiryConfirmationEmail(
   input: InquiryConfirmationInput,
 ): { subject: string; text: string; html: string } {
-  const firstName = input.clientName.split(' ')[0] || input.clientName
+  const normalizedEmail = input.clientEmail.trim().toLowerCase()
+  const firstName = input.clientName.trim().split(' ')[0] || 'there'
   const subject = `Your inquiry to ${input.vendorName} was received — OpusFesta`
 
   const websiteBase = (
@@ -25,8 +26,8 @@ export function buildInquiryConfirmationEmail(
     'https://opusfesta.com'
   ).replace(/\/$/, '')
 
-  const trackUrl = `${websiteBase}/my/inquiries/${input.inquiryId}?email=${encodeURIComponent(input.clientEmail.trim().toLowerCase())}`
-  const inquiriesUrl = `${websiteBase}/my/inquiries?email=${encodeURIComponent(input.clientEmail.trim().toLowerCase())}`
+  const trackUrl = `${websiteBase}/my/inquiries/${input.inquiryId}?email=${encodeURIComponent(normalizedEmail)}`
+  const inquiriesUrl = `${websiteBase}/my/inquiries?email=${encodeURIComponent(normalizedEmail)}`
 
   const submittedDate = new Date(input.submittedAt).toLocaleString(undefined, {
     dateStyle: 'medium',

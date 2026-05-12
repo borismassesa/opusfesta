@@ -106,6 +106,7 @@ export async function POST(request: Request) {
   // vendor_id is UUID FK (nullable). Set it only for marketplace vendors with
   // a proper UUID; CMS/website vendors use slug IDs (text) so they get NULL.
   const vendorUuid = UUID_RE.test(slug) ? slug : null
+  const normalizedEmail = (email as string).trim().toLowerCase()
 
   const supabase = createSupabaseServerClient()
 
@@ -116,7 +117,7 @@ export async function POST(request: Request) {
       vendor_slug: slug,
       vendor_name: nullIfBlank(vendorName as string | undefined),
       name,
-      email: (email as string).trim().toLowerCase(),
+      email: normalizedEmail,
       phone: nullIfBlank(phone as string | undefined),
       event_type: 'wedding',
       event_date: parsedDate,
@@ -164,7 +165,7 @@ export async function POST(request: Request) {
   void notifyOnInquirySubmit({
     inquiryId: data.id,
     clientName: name,
-    clientEmail: (email as string).trim().toLowerCase(),
+    clientEmail: normalizedEmail,
     vendorName: nullIfBlank(vendorName as string | undefined) ?? 'the vendor',
     emailNotificationsOptIn: emailNotifications === true,
     submittedAt: new Date().toISOString(),

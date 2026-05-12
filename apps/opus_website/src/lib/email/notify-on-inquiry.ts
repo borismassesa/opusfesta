@@ -52,5 +52,9 @@ export async function notifyOnInquirySubmit(input: NotifyOnInquiryInput): Promis
     console.warn(
       `[email] inquiry confirmation failed (inquiry=${input.inquiryId}): ${result.reason}${result.error ? ` — ${result.error}` : ''}`,
     )
+  } else {
+    console.info(
+      `[email] inquiry confirmation sent (inquiry=${input.inquiryId}, emailId=${result.id ?? 'n/a'})`,
+    )
   }
 }
