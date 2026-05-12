@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import { BOOKING_SELECT, mapDbBooking, type DbBookingRow } from '@/lib/booking-db'
+import { notifyBookingEventEmail } from '@/lib/email/notify-leads-bookings'
 
 const ALLOWED_STAGES = new Set(['quoted', 'reserved', 'confirmed', 'completed', 'cancelled'])
 const ALLOWED_INTERNAL = new Set([
@@ -10,6 +11,7 @@ const ALLOWED_INTERNAL = new Set([
   'completed', 'cancelled',
 ])
 const MUTABLE_FIELDS = new Set([
+  'event_date', 'start_time', 'end_time',
   'deposit_paid', 'balance_due_date', 'contract_sent_at', 'contract_signed',
   'invoice_issued', 'brief_submitted', 'slot_held_until',
   'last_message_at', 'last_message_preview',
@@ -75,10 +77,17 @@ export async function PATCH(
   // Confirm ownership and fetch current timeline before writing.
   const { data: existing, error: ownerErr } = await supabase
     .from('vendor_bookings')
-    .select('id, timeline')
+    .select('id, timeline, partner_a, partner_b, email, event_date')
     .eq('id', id)
     .eq('vendor_id', state.vendor.id)
-    .maybeSingle<{ id: string; timeline: unknown }>()
+    .maybeSingle<{
+      id: string
+      timeline: unknown
+      partner_a: string | null
+      partner_b: string | null
+      email: string | null
+      event_date: string | null
+    }>()
 
   if (ownerErr) {
     console.error('[bookings] ownership check failed', ownerErr.code)
@@ -115,6 +124,32 @@ export async function PATCH(
   if (error) {
     console.error('[bookings] patch failed', error)
     return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+  }
+
+  let eventLabel: string | null = null
+  if (body.stage === 'reserved' || body.internal_status === 'quote_accepted') {
+    eventLabel = 'Offer accepted'
+  } else if (body.internal_status === 'contract_sent') {
+    eventLabel = 'Contract sent'
+  } else if (body.deposit_paid === true) {
+    eventLabel = 'Deposit received'
+  } else if (body.stage === 'confirmed') {
+    eventLabel = 'Booking confirmed'
+  } else if (body.stage === 'cancelled') {
+    eventLabel = 'Booking cancelled'
+  } else if (body.review_requested === true) {
+    eventLabel = 'Review requested'
+  }
+
+  if (eventLabel) {
+    void notifyBookingEventEmail({
+      recipientEmail: existing.email,
+      recipientName: [existing.partner_a, existing.partner_b].filter(Boolean).join(' & ') || null,
+      vendorName: state.vendor.businessName,
+      bookingId: existing.id,
+      eventDate: existing.event_date,
+      eventLabel,
+    })
   }
 
   return NextResponse.json({ success: true })
