@@ -24,8 +24,34 @@ async function loadBookings(): Promise<Booking[]> {
     .returns<DbBookingRow[]>()
 
   if (error) {
-    console.error('[bookings page] query failed', error.code)
-    throw new Error('Failed to load bookings')
+    const payload = {
+      code: error.code,
+      message: error.message,
+      details: error.details,
+      hint: error.hint,
+      vendorId: state.vendor.id,
+    }
+
+    if (error.code === 'PGRST205') {
+      console.error(
+        '[bookings page] query failed: schema cache is stale or relation missing',
+        payload,
+      )
+    } else if (error.code === '42703') {
+      console.error(
+        '[bookings page] query failed: missing column in vendor_bookings (likely migration drift)',
+        payload,
+      )
+    } else if (error.code === '42501') {
+      console.error(
+        '[bookings page] query failed: permission denied (RLS/auth context issue)',
+        payload,
+      )
+    } else {
+      console.error('[bookings page] query failed', payload)
+    }
+
+    return []
   }
 
   return (data ?? []).map(mapDbBooking)

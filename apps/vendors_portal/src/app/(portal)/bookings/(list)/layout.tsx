@@ -3,8 +3,10 @@
 import type { ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useState } from 'react'
 import { CalendarDays, ListChecks, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import NewBookingModal from '@/components/bookings/NewBookingModal'
 
 type Tab = { href: string; label: string; icon: typeof ListChecks }
 
@@ -13,8 +15,9 @@ const TABS: Tab[] = [
   { href: '/bookings/calendar', label: 'Calendar', icon: CalendarDays },
 ]
 
-export default function BookingsListLayout({ children }: { children: ReactNode }) {
+export default function BookingsListLayout({ children }: { readonly children: ReactNode }) {
   const pathname = usePathname()
+  const [showModal, setShowModal] = useState(false)
   return (
     <div className="flex flex-col min-h-full">
       <div className="px-8 pt-2 border-b border-gray-100 flex items-center gap-3">
@@ -42,6 +45,7 @@ export default function BookingsListLayout({ children }: { children: ReactNode }
         </nav>
         <button
           type="button"
+          onClick={() => setShowModal(true)}
           className="ml-auto mb-2 inline-flex items-center gap-1.5 bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-800 transition-colors"
         >
           <Plus className="w-4 h-4" />
@@ -49,6 +53,7 @@ export default function BookingsListLayout({ children }: { children: ReactNode }
         </button>
       </div>
       <div className="flex-1">{children}</div>
+      {showModal ? <NewBookingModal onClose={() => setShowModal(false)} /> : null}
     </div>
   )
 }

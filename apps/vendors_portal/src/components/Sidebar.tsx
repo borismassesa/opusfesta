@@ -29,7 +29,7 @@ type NavItem = { icon: LucideIcon; label: string; href: string; badge?: string }
 
 const topItems: NavItem[] = [
   { icon: LayoutDashboard, label: 'Dashboard', href: '/dashboard' },
-  { icon: Inbox, label: 'Leads', href: '/leads', badge: '12' },
+  { icon: Inbox, label: 'Leads', href: '/leads' },
 ]
 
 const mainItems: NavItem[] = [
