@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import { ClerkProvider } from '@clerk/nextjs'
+import { Toaster } from 'sonner'
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
 import './globals.css'
 
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <html lang="en" className="bg-white">
         <body className="bg-white">
           <SmoothScrollProvider>{children}</SmoothScrollProvider>
+          <Toaster position="bottom-right" richColors closeButton />
         </body>
       </html>
     </ClerkProvider>

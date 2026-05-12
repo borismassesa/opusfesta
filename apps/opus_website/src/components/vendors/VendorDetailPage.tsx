@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import {
   Star,
   MapPin,
@@ -728,13 +729,15 @@ function WriteReviewModal({ vendor, onClose }: { vendor: Vendor; onClose: () => 
       })
       if (!res.ok) {
         setSubmitError(res.error)
+        toast.error(res.error)
         return
       }
       setSubmitted(true)
+      toast.success('Review submitted!', { description: 'Thank you for sharing your experience.' })
     } catch (err) {
-      setSubmitError(
-        err instanceof Error ? err.message : 'Could not submit your review.',
-      )
+      const msg = err instanceof Error ? err.message : 'Could not submit your review.'
+      setSubmitError(msg)
+      toast.error(msg)
     } finally {
       setSubmitting(false)
     }
@@ -1878,8 +1881,10 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
       })
       const json = await res.json()
       if (!res.ok) {
-        setErrorMsg(json.error ?? 'Something went wrong. Please try again.')
+        const msg = json.error ?? 'Something went wrong. Please try again.'
+        setErrorMsg(msg)
         setStatus('error')
+        toast.error(msg)
       } else {
         setInquiryId(json.id ?? null)
         // Store email so /my/inquiries can auto-populate the search
@@ -1887,10 +1892,13 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
           try { sessionStorage.setItem('of_inquiry_email', form.email.trim().toLowerCase()) } catch { /* ignore */ }
         }
         setStatus('success')
+        toast.success('Request sent!', { description: `${vendor.name} will get back to you soon.` })
       }
     } catch {
-      setErrorMsg('Network error. Please check your connection and try again.')
+      const msg = 'Network error. Please check your connection and try again.'
+      setErrorMsg(msg)
       setStatus('error')
+      toast.error(msg)
     }
   }
   const inputCls = `w-full rounded border border-gray-300 text-sm focus:outline-none focus:border-(--accent) ${

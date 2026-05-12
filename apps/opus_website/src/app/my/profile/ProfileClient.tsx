@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useClerk } from '@clerk/nextjs'
+import { toast } from 'sonner'
 import {
   Calendar, Check, ChevronRight, Heart,
   LogOut, MapPin, MessageCircle, Pencil,
@@ -224,8 +225,11 @@ function EditForm({
         whatsapp_phone: whatsappPhone.trim() || null,
         preferred_categories: Array.from(categories),
       })
+      toast.success('Profile saved!')
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const msg = err instanceof Error ? err.message : 'Something went wrong'
+      setError(msg)
+      toast.error(msg)
       setSaving(false)
     }
   }
@@ -372,7 +376,9 @@ export default function ProfileClient({ clerkName, clerkEmail, clerkImageUrl, pr
       await signOut()
       router.push('/')
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Something went wrong')
+      const msg = err instanceof Error ? err.message : 'Something went wrong'
+      setDeleteError(msg)
+      toast.error(msg)
       setDeleting(false)
     }
   }

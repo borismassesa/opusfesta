@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { auth } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { notifyOnInquirySubmit } from '@/lib/email/notify-on-inquiry'
 
 // Public endpoint — no auth required. RLS policy "Anyone can create inquiries"
 // allows anon INSERT; we use the service role here so the insert always lands
@@ -157,6 +158,17 @@ export async function POST(request: Request) {
   } catch {
     // Non-critical: don't fail the request if user linking fails
   }
+
+  // Best-effort: send confirmation email to the client (if opted in).
+  // Runs after the response is prepared — failure must never affect the 201.
+  void notifyOnInquirySubmit({
+    inquiryId: data.id,
+    clientName: name,
+    clientEmail: (email as string).trim().toLowerCase(),
+    vendorName: nullIfBlank(vendorName as string | undefined) ?? 'the vendor',
+    emailNotificationsOptIn: emailNotifications === true,
+    submittedAt: new Date().toISOString(),
+  })
 
   return NextResponse.json({ success: true, id: data.id }, { status: 201 })
 }
