@@ -162,13 +162,15 @@ export async function POST(request: Request) {
 
   // Best-effort: send confirmation email to the client (if opted in).
   // Runs after the response is prepared — failure must never affect the 201.
-  void notifyOnInquirySubmit({
+  notifyOnInquirySubmit({
     inquiryId: data.id,
     clientName: name,
     clientEmail: normalizedEmail,
     vendorName: nullIfBlank(vendorName as string | undefined) ?? 'the vendor',
     emailNotificationsOptIn: emailNotifications === true,
     submittedAt: new Date().toISOString(),
+  }).catch((err) => {
+    console.error('[inquiries] notifyOnInquirySubmit unexpected error:', err)
   })
 
   return NextResponse.json({ success: true, id: data.id }, { status: 201 })

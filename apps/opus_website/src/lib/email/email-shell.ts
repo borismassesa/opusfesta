@@ -36,9 +36,14 @@ export function logoUrl(): string {
   )
 }
 
+// Number of zero-width spacer entities appended after the preheader text.
+// This prevents email clients (Gmail in particular) from leaking surrounding
+// HTML into the inbox snippet preview.
+const PREHEADER_PADDING_LENGTH = 120
+
 function preheaderHtml(text: string): string {
   if (!text) return ''
-  const padding = '&zwnj;&nbsp;'.repeat(120)
+  const padding = '&zwnj;&nbsp;'.repeat(PREHEADER_PADDING_LENGTH)
   return `<div style="display:none !important;visibility:hidden;mso-hide:all;font-size:1px;color:${BRAND.surface.page};line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">${escapeHtml(text)}${padding}</div>`
 }
 

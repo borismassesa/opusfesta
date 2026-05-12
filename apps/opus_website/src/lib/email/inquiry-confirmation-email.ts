@@ -18,7 +18,7 @@ export function buildInquiryConfirmationEmail(
 ): { subject: string; text: string; html: string } {
   // clientEmail is expected to be pre-normalized (trimmed, lowercased) by the caller.
   const clientEmail = input.clientEmail
-  const firstName = input.clientName.trim().split(' ')[0] || null
+  const firstName = input.clientName.trim().split(' ')[0]?.trim() || null
   const greeting = firstName ? `Hi ${firstName},` : 'Hello,'
   const htmlGreeting = firstName
     ? `Hi <strong>${escapeHtml(firstName)}</strong> —`
@@ -34,7 +34,7 @@ export function buildInquiryConfirmationEmail(
   const trackUrl = `${websiteBase}/my/inquiries/${input.inquiryId}?email=${encodeURIComponent(clientEmail)}`
   const inquiriesUrl = `${websiteBase}/my/inquiries?email=${encodeURIComponent(clientEmail)}`
 
-  const submittedDate = new Date(input.submittedAt).toLocaleString(undefined, {
+  const submittedDate = new Date(input.submittedAt).toLocaleString('en-GB', {
     dateStyle: 'medium',
     timeStyle: 'short',
   })
