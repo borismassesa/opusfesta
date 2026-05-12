@@ -60,7 +60,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       'video/x-quicktime': 'mov',
     }
     const extension = extByMime[file.type] ?? 'bin'
-    const path = `advice-and-ideas/submissions/${id}/body/${Date.now()}-${randomUUID()}.${extension}`
+    const path = `${identity.clerkId}/${id}/body/${Date.now()}-${randomUUID()}.${extension}`
     const supabase = createSupabaseAdminClient()
     const { error } = await supabase.storage.from('website-media').upload(path, file, {
       contentType: file.type,

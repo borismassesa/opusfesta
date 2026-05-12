@@ -10,8 +10,12 @@ import { randomUUID } from 'crypto'
 import { revalidatePath } from 'next/cache'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { requireContributorIdentity } from '@/lib/contribute/auth'
-import { initialsFromName, type AdviceIdeasAuthorRow } from '@/lib/cms/advice-ideas'
+import { initialsFromName } from '@/lib/cms/advice-ideas'
 import { revalidateWebsite as revalidateWebsitePaths } from '@/lib/revalidate'
+import type {
+  ContributorProfile,
+  ContributorProfileFormInput,
+} from './profile-types'
 
 // 5 MB cap matches the contributor cover image — avatars are smaller still.
 const AVATAR_MAX_SIZE = 5 * 1024 * 1024
@@ -20,19 +24,6 @@ const AVATAR_ACCEPTED_TYPES = new Set([
   'image/jpeg',
   'image/webp',
 ])
-
-// Public-facing shape returned to the client form. A profile may not exist
-// yet (a contributor invited via email but never edited) — in that case the
-// row is `null` and the form starts blank.
-export type ContributorProfile = AdviceIdeasAuthorRow & { email: string | null }
-
-export type ContributorProfileFormInput = {
-  name: string
-  role: string
-  bio: string
-  initials: string
-  avatar_url: string
-}
 
 export async function getContributorProfileByEmail(email: string): Promise<ContributorProfile | null> {
   const supabase = createSupabaseAdminClient()
@@ -101,22 +92,49 @@ export async function updateContributorProfile(
     return { id: existing.id }
   }
 
+  // Race window: between the lookup above and this INSERT, another tab /
+  // double-click could have inserted a row with the same email. The
+  // LOWER(email) unique index will then 23505 us; catch that and fall
+  // through to an update by re-looking-up the row.
   const { data, error } = await supabase
     .from('advice_ideas_authors')
-    .insert({
-      ...payload,
-      sort_order: 100,
-    })
+    .insert({ ...payload, sort_order: 100 })
     .select('id')
     .single<{ id: string }>()
-  if (error) throw error
+
+  if (!error) {
+    await syncEditableSubmissionsForProfile(identity, payload)
+    revalidatePath('/contribute/profile')
+    revalidatePath('/contribute')
+    revalidatePath('/operations/authors')
+    revalidatePath('/operations/articles/submissions')
+    await revalidateWebsitePaths('/advice-and-ideas')
+    return { id: data.id }
+  }
+
+  const isUniqueViolation =
+    (error as { code?: string }).code === '23505'
+  if (!isUniqueViolation) throw error
+
+  // Another writer beat us. Re-fetch and update instead.
+  const racedExisting = await getContributorProfileByEmail(identity.email)
+  if (!racedExisting) {
+    // Genuinely lost the row in between — surface the original error so
+    // the contributor sees something actionable.
+    throw error
+  }
+  const { error: updateError } = await supabase
+    .from('advice_ideas_authors')
+    .update(payload)
+    .eq('id', racedExisting.id)
+  if (updateError) throw updateError
   await syncEditableSubmissionsForProfile(identity, payload)
   revalidatePath('/contribute/profile')
   revalidatePath('/contribute')
   revalidatePath('/operations/authors')
   revalidatePath('/operations/articles/submissions')
   await revalidateWebsitePaths('/advice-and-ideas')
-  return { id: data.id }
+  return { id: racedExisting.id }
 }
 
 async function syncEditableSubmissionsForProfile(

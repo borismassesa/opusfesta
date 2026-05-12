@@ -7,8 +7,8 @@ import { initialsFromName } from '@/lib/cms/advice-ideas'
 import {
   updateContributorProfile,
   uploadContributorAvatar,
-  type ContributorProfileFormInput,
 } from '@/lib/contribute/profile'
+import type { ContributorProfileFormInput } from '@/lib/contribute/profile-types'
 
 type Props = {
   initial: ContributorProfileFormInput

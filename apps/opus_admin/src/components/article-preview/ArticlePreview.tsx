@@ -64,6 +64,18 @@ export default function ArticlePreview({ post }: { post: ArticlePreviewData }) {
             </span>
             {post.authorName || 'Author'}
           </span>
+          {post.authorRole && (
+            <>
+              <span className="text-gray-300" aria-hidden>·</span>
+              <span>{post.authorRole}</span>
+            </>
+          )}
+          {post.date && (
+            <>
+              <span className="text-gray-300" aria-hidden>·</span>
+              <time>{post.date}</time>
+            </>
+          )}
           {post.readTime && (
             <>
               <span className="text-gray-300" aria-hidden>·</span>

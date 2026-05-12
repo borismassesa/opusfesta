@@ -157,6 +157,10 @@ export default async function AdviceIdeasDetailPage({
             {post.author}
           </span>
           <span className="text-gray-300" aria-hidden>·</span>
+          <span>{post.authorRole}</span>
+          <span className="text-gray-300" aria-hidden>·</span>
+          <time>{post.date}</time>
+          <span className="text-gray-300" aria-hidden>·</span>
           <span className="inline-flex items-center gap-1">
             <Clock size={12} className="text-gray-400" aria-hidden />
             {post.readTime}
