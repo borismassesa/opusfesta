@@ -14,8 +14,8 @@ const ACCEPTED_VIDEO_TYPES = new Set([
   'video/quicktime',
   'video/x-quicktime',
 ])
-const MAX_IMAGE_SIZE = 10 * 1024 * 1024 // 10 MB
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024 // 50 MB
+const MAX_IMAGE_SIZE = 25 * 1024 * 1024 // 25 MB
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024 // 100 MB
 
 export async function POST(request: NextRequest, context: RouteContext) {
   try {
@@ -42,10 +42,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
       )
     }
     if (isImage && file.size > MAX_IMAGE_SIZE) {
-      return NextResponse.json({ error: 'Body images must be 10MB or smaller.' }, { status: 413 })
+      return NextResponse.json({ error: 'Body images must be 25MB or smaller.' }, { status: 413 })
     }
     if (isVideo && file.size > MAX_VIDEO_SIZE) {
-      return NextResponse.json({ error: 'Videos must be 50MB or smaller.' }, { status: 413 })
+      return NextResponse.json({ error: 'Videos must be 100MB or smaller.' }, { status: 413 })
     }
 
     // Pick a sensible extension from the MIME (filename ext can be wrong).

@@ -22,7 +22,7 @@ const ACCEPT_MAP: Record<MediaType, string> = {
 };
 
 const DEFAULT_MAX_SIZE_MB: Record<MediaType, number> = {
-  image: 10,
+  image: 25,
   video: 500,
   any: 500,
 };

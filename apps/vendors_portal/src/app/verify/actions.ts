@@ -34,7 +34,7 @@ const ACCEPTED_MIMES = new Set([
   'application/pdf',
 ])
 
-const MAX_BYTES = 10 * 1024 * 1024 // 10MB — matches the storage bucket limit
+const MAX_BYTES = 25 * 1024 * 1024 // 25MB — matches the storage bucket limit
 
 const EXT_BY_MIME: Record<string, string> = {
   'image/jpeg': 'jpg',
@@ -81,7 +81,7 @@ export async function uploadVerificationDocument(
     return {
       ok: false,
       reason: 'invalid',
-      error: 'File is over 10MB. Compress or trim before uploading.',
+      error: 'File is over 25MB. Compress or trim before uploading.',
     }
   }
 

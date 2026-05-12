@@ -286,11 +286,11 @@ function ImageInsertButton({
   )
 }
 
-// 50 MB video cap — mirrors the server-side limits in
+// 100 MB video cap — mirrors the server-side limits in
 // apps/opus_admin/src/app/(admin)/operations/articles/actions.ts and
 // apps/opus_admin/src/lib/advice-submission-actions.ts. Pre-flight here
 // so users get instant feedback instead of a slow upload + 413.
-const MAX_VIDEO_SIZE_BYTES = 50 * 1024 * 1024
+const MAX_VIDEO_SIZE_BYTES = 100 * 1024 * 1024
 
 // Video insert — uploads a video file via the parent's onUploadVideo
 // callback, then inserts a `legacyBlock` of type 'video' at the cursor.
@@ -354,7 +354,7 @@ function VideoInsertButton({
           if (!file) return
           setUploadError(null)
           if (file.size > MAX_VIDEO_SIZE_BYTES) {
-            setUploadError('Videos must be 50MB or smaller.')
+            setUploadError('Videos must be 100MB or smaller.')
             return
           }
           setUploading(true)

@@ -147,7 +147,7 @@ export default function ProfileEditor({ initial, email, existingId }: Props) {
             />
           </Field>
 
-          <Field label="Avatar" hint="PNG, JPEG, or WebP — under 5MB.">
+          <Field label="Avatar" hint="PNG, JPEG, or WebP — under 10MB.">
             <div
               onDragOver={(e) => {
                 e.preventDefault()
