@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
 import { ClerkProvider } from '@clerk/nextjs'
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
+import ToastProvider from '@/components/providers/ToastProvider'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -23,6 +24,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
       <html lang="en" className="bg-white">
         <body className="bg-white">
           <SmoothScrollProvider>{children}</SmoothScrollProvider>
+          <ToastProvider />
         </body>
       </html>
     </ClerkProvider>

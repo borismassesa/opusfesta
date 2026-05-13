@@ -1,6 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { verifyInquiryToken } from '@/lib/inquiry-token'
 import InquiryThread from './InquiryThread'
 
 type InquiryStatus = 'pending' | 'responded' | 'accepted' | 'declined' | 'closed'
@@ -46,23 +47,41 @@ export type InquiryMessage = {
 
 interface Props {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ access_token?: string; email?: string }>
 }
 
-export default async function InquiryDetailPage({ params }: Readonly<Props>) {
+export default async function InquiryDetailPage({ params, searchParams }: Readonly<Props>) {
   const { id } = await params
+  const { access_token, email: emailParam } = await searchParams
 
-  const { userId } = await auth()
-  if (!userId) {
-    redirect('/sign-in')
+  let normalizedEmail: string | null = null
+
+  // Try token-based access first (supports unauthenticated access)
+  if (access_token) {
+    const tokenPayload = verifyInquiryToken(access_token)
+    if (tokenPayload && tokenPayload.inquiryId === id) {
+      normalizedEmail = tokenPayload.email.toLowerCase()
+    } else {
+      // Invalid or expired token
+      notFound()
+    }
   }
 
-  const clerkUser = await currentUser().catch(() => null)
-  const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase()
-  if (!email) {
-    redirect('/my/inquiries')
+  // Fall back to authenticated Clerk user
+  if (!normalizedEmail) {
+    const { userId } = await auth()
+    if (!userId) {
+      redirect('/sign-in')
+    }
+
+    const clerkUser = await currentUser().catch(() => null)
+    const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase()
+    if (!email) {
+      redirect('/my/inquiries')
+    }
+    normalizedEmail = email
   }
 
-  const normalizedEmail = email
   const supabase = createSupabaseServerClient()
 
   const { data: inquiry, error: inquiryErr } = await supabase

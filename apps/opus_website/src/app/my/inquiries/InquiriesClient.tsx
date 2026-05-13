@@ -8,8 +8,10 @@ type InquiryStatus = 'pending' | 'responded' | 'accepted' | 'declined' | 'closed
 
 type InquirySummary = {
   id: string
+  vendor_id: string | null
   vendor_name: string | null
   vendor_slug: string | null
+  vendor_page_slug: string | null
   status: InquiryStatus | null
   created_at: string
   event_date: string | null
@@ -104,15 +106,22 @@ export default function InquiriesClient({ initialEmail, initialInquiries }: Prop
               <ul className="space-y-3">
                 {inquiries.map(inq => (
                   <li key={inq.id}>
-                    <Link
-                      href={`/my/inquiries/${inq.id}`}
-                      className="flex items-start justify-between gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:border-(--accent)/30 hover:shadow-md transition-all group"
-                    >
+                    <article className="flex items-start justify-between gap-3 bg-white rounded-2xl border border-gray-100 shadow-sm p-5 hover:border-(--accent)/30 hover:shadow-md transition-all group">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                          <h3 className="font-bold text-[#1A1A1A] truncate text-sm">
-                            {inq.vendor_name ?? inq.vendor_slug ?? 'Vendor'}
-                          </h3>
+                          {inq.vendor_page_slug ? (
+                            <Link
+                              href={`/vendors/${inq.vendor_page_slug}`}
+                              className="font-bold text-[#1A1A1A] truncate text-sm underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) rounded-sm"
+                              aria-label={`View ${(inq.vendor_name ?? inq.vendor_page_slug ?? 'vendor')} profile page`}
+                            >
+                              {inq.vendor_name ?? inq.vendor_page_slug ?? 'Vendor'}
+                            </Link>
+                          ) : (
+                            <h3 className="font-bold text-[#1A1A1A] truncate text-sm">
+                              {inq.vendor_name ?? inq.vendor_slug ?? 'Vendor'}
+                            </h3>
+                          )}
                           <StatusBadge status={inq.status} />
                         </div>
                         <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
@@ -131,8 +140,15 @@ export default function InquiriesClient({ initialEmail, initialInquiries }: Prop
                           <span className="text-gray-300">Sent {formatDate(inq.created_at)}</span>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-(--accent) transition-colors shrink-0 mt-0.5" />
-                    </Link>
+                      <Link
+                        href={`/my/inquiries/${inq.id}`}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-(--accent) focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-(--accent) rounded-sm shrink-0 mt-0.5"
+                        aria-label={`Open inquiry thread for ${inq.vendor_name ?? inq.vendor_slug ?? 'vendor'}`}
+                      >
+                        Open
+                        <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-(--accent) transition-colors" />
+                      </Link>
+                    </article>
                   </li>
                 ))}
               </ul>
