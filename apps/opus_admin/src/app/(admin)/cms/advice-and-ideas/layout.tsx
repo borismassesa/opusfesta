@@ -52,7 +52,8 @@ const sections: Section[] = [
     label: 'Front Page Picks',
     icon: Star,
     href: '/cms/advice-and-ideas/front-page',
-    description: 'Pick which articles land on the public front and in what order. Slot 1 is the Trending hero; slots 2\u20135 are the Editor Picks row beneath it.',
+    description:
+      'Pick which articles land on the public front and in what order. Slot 1 is the Trending hero; slots 2\u20135 are the Editor Picks row beneath it. Empty slots auto-fill with the most recent published articles.',
   },
 ]
 
@@ -66,7 +67,7 @@ export default function AdviceIdeasCmsLayout({ children }: { children: ReactNode
 
 function AdviceIdeasCmsShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
-  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL ?? 'http://localhost:3007'
+  const websiteUrl = process.env.NEXT_PUBLIC_WEBSITE_URL ?? 'http://localhost:3006'
   const activeSection =
     sections.find((s) => pathname.startsWith(s.href)) ?? sections[0]
 

@@ -22,7 +22,6 @@
 import { useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import {
-  ExternalLink,
   Eye,
   GripVertical,
   Plus,
@@ -329,8 +328,7 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
         <header className="border-b border-gray-100 px-5 py-4">
           <h2 className="text-sm font-semibold text-gray-900">Pinned slots</h2>
           <p className="mt-0.5 text-xs text-gray-500">
-            {pinned.length} of {maxSlots} slots filled · slot 1 is the
-            Trending hero, slots 2–5 are Editor Picks · drag to reorder
+            {pinned.length} of {maxSlots} slots filled · drag to reorder
           </p>
         </header>
 
@@ -541,17 +539,6 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
         )}
       </section>
 
-      {/* ── HELP TEXT ───────────────────────────────────────────────── */}
-      <p className="px-1 text-xs text-gray-500">
-        Articles render on the public site at{' '}
-        <code className="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-[11px]">
-          /advice-and-ideas
-        </code>
-        . Slot 1 = Trending hero (the big image at the top). Slots 2–5 =
-        Editor Picks (the row beneath the hero). If fewer than 5 slots are
-        filled, the public site auto-fills with the most recent published
-        articles.
-      </p>
     </div>
   )
 }
@@ -566,34 +553,14 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
 // duplicates the one in the CMS layout, but having it here puts it
 // next to the thing it previews.
 function PublicPreview({ slots }: { slots: PreviewSlot[] }) {
-  const websiteUrl =
-    process.env.NEXT_PUBLIC_WEBSITE_URL ?? 'http://localhost:3007'
   const hero = slots[0]
   const stack = slots.slice(1, 5)
   return (
     <section className="rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-      <header className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-        <div>
-          <h2 className="text-sm font-semibold text-gray-900">
-            Public preview
-          </h2>
-          <p className="mt-0.5 text-xs text-gray-500">
-            How the Editor Picks row will appear on{' '}
-            <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[10px]">
-              /advice-and-ideas
-            </code>
-            .
-          </p>
-        </div>
-        <a
-          href={`${websiteUrl}/advice-and-ideas`}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-        >
-          View live page
-          <ExternalLink className="h-3.5 w-3.5" />
-        </a>
+      <header className="border-b border-gray-100 px-5 py-4">
+        <h2 className="text-sm font-semibold text-gray-900">
+          Public preview
+        </h2>
       </header>
       <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-[1.6fr_1fr]">
         <PreviewHeroCard slot={hero} />
