@@ -1,6 +1,8 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { sendEmail } from '@/lib/email/email'
+import { buildProposalClientConfirmationEmail } from '@/lib/email/proposal-client-confirmation-email'
 
 type ProposalAction = 'accept' | 'counter'
 
@@ -52,7 +54,7 @@ export async function PATCH(
   const supabase = createSupabaseServerClient()
   const { data: inquiry, error: lookupErr } = await supabase
     .from('inquiries')
-    .select('id, proposal_status, proposal_invoice_amount')
+    .select('id, name, vendor_name, vendor_slug, proposal_status, proposal_invoice_amount')
     .eq('id', id)
     .eq('email', email.toLowerCase())
     .maybeSingle()
@@ -95,6 +97,24 @@ export async function PATCH(
       return NextResponse.json({ error: 'Proposal was already acted upon' }, { status: 409 })
     }
 
+    try {
+      const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')
+      const payload = buildProposalClientConfirmationEmail({
+        clientName: inquiry.name?.trim() || 'there',
+        vendorName: inquiry.vendor_name?.trim() || inquiry.vendor_slug?.trim() || 'Vendor',
+        action: 'accept',
+        inquiryUrl: `${appUrl}/my/inquiries/${id}?email=${encodeURIComponent(email.toLowerCase())}`,
+      })
+      await sendEmail({
+        to: email.toLowerCase(),
+        subject: payload.subject,
+        html: payload.html,
+        text: payload.text,
+      })
+    } catch (emailError) {
+      console.warn('[my/inquiries/proposal] accept email failed', emailError)
+    }
+
     return NextResponse.json({ success: true })
   }
 
@@ -125,6 +145,24 @@ export async function PATCH(
 
   if (!updated || updated.length === 0) {
     return NextResponse.json({ error: 'Proposal was already acted upon' }, { status: 409 })
+  }
+
+  try {
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')
+    const payload = buildProposalClientConfirmationEmail({
+      clientName: inquiry.name?.trim() || 'there',
+      vendorName: inquiry.vendor_name?.trim() || inquiry.vendor_slug?.trim() || 'Vendor',
+      action: 'counter',
+      inquiryUrl: `${appUrl}/my/inquiries/${id}?email=${encodeURIComponent(email.toLowerCase())}`,
+    })
+    await sendEmail({
+      to: email.toLowerCase(),
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+    })
+  } catch (emailError) {
+    console.warn('[my/inquiries/proposal] counter email failed', emailError)
   }
 
   return NextResponse.json({ success: true })

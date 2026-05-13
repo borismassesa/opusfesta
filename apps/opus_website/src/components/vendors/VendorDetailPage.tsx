@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import {
   Star,
   MapPin,
@@ -1878,7 +1879,9 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
       })
       const json = await res.json()
       if (!res.ok) {
-        setErrorMsg(json.error ?? 'Something went wrong. Please try again.')
+        const message = json.error ?? 'Something went wrong. Please try again.'
+        setErrorMsg(message)
+        toast.error(message)
         setStatus('error')
       } else {
         setInquiryId(json.id ?? null)
@@ -1890,6 +1893,7 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
       }
     } catch {
       setErrorMsg('Network error. Please check your connection and try again.')
+      toast.error('Network error. Please check your connection and try again.')
       setStatus('error')
     }
   }

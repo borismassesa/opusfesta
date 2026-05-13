@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useClerk } from '@clerk/nextjs'
+import { toast } from 'sonner'
 import {
   Calendar, Check, ChevronRight, Heart,
   LogOut, MapPin, MessageCircle, Pencil,
@@ -225,7 +226,9 @@ function EditForm({
         preferred_categories: Array.from(categories),
       })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong')
+      const message = err instanceof Error ? err.message : 'Something went wrong'
+      setError(message)
+      toast.error(message)
       setSaving(false)
     }
   }
@@ -372,7 +375,9 @@ export default function ProfileClient({ clerkName, clerkEmail, clerkImageUrl, pr
       await signOut()
       router.push('/')
     } catch (err) {
-      setDeleteError(err instanceof Error ? err.message : 'Something went wrong')
+      const message = err instanceof Error ? err.message : 'Something went wrong'
+      setDeleteError(message)
+      toast.error(message)
       setDeleting(false)
     }
   }
@@ -424,7 +429,11 @@ export default function ProfileClient({ clerkName, clerkEmail, clerkImageUrl, pr
               <div className="py-5">
                 <EditForm
                   initial={profile ?? emptyProfile}
-                  onSave={(updated) => { setProfile(updated); setEditing(false) }}
+                  onSave={(updated) => {
+                    setProfile(updated)
+                    setEditing(false)
+                    toast.success('Profile updated')
+                  }}
                   onCancel={() => setEditing(false)}
                 />
               </div>

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { sendEmail } from '@/lib/email/email'
+import { buildWelcomeEmail } from '@/lib/email/welcome-email'
 
 export async function POST(request: Request) {
   const { userId } = await auth()
@@ -108,6 +110,20 @@ export async function POST(request: Request) {
       { error: 'Unable to save your profile. Please try again.' },
       { status: 500 },
     )
+  }
+
+  try {
+    const displayName = (partner1Name as string).trim() || 'there'
+    const vendorsUrl = `${(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')}/vendors`
+    const payload = buildWelcomeEmail({ name: displayName, vendorsUrl })
+    await sendEmail({
+      to: email.toLowerCase(),
+      subject: payload.subject,
+      html: payload.html,
+      text: payload.text,
+    })
+  } catch (emailError) {
+    console.warn('[onboarding] welcome email failed', emailError)
   }
 
   return NextResponse.json({ success: true }, { status: 200 })
