@@ -2493,75 +2493,57 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
             </button>
             )}
 
-            {/* Cells 2–5: pull from portfolioItems so videos appear too.
-                Video thumbnails render <video preload="metadata"> so the
-                browser paints the first frame instead of every cell
-                sharing the same fallback poster. */}
-            {portfolioItems.slice(1, 4).map((item, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => openGallery(item.kind === 'video' ? 'videos' : 'photos')}
-                className="relative hidden overflow-hidden sm:block"
-                aria-label={`Open ${item.kind} ${i + 2}`}
-              >
-                {item.kind === 'video' ? (
-                  <>
-                    <video
-                      src={item.src}
-                      poster={(item as { poster?: string }).poster}
-                      muted
-                      playsInline
-                      preload="metadata"
-                      className="h-full w-full object-cover bg-black"
-                    />
-                    <div className="pointer-events-none absolute inset-0 bg-black/20" />
-                    <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-[#1A1A1A]">
-                      <LayoutGrid size={9} /> Video
-                    </div>
-                  </>
-                ) : (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={item.src}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                )}
-              </button>
-            ))}
+            {/* Cells 2–5 are always photos. Videos live in the hero cell
+                only — a wall of moving thumbnails competes with itself
+                and washes out the page. If the hero is showing a video,
+                cells 2–5 pull the first 4 photos; if the hero is already
+                a photo, we skip it (it's at images[0]) and use the next
+                four. */}
+            {(() => {
+              const heroIsVideo = portfolioItems[0]?.kind === 'video'
+              const remainingPhotos = heroIsVideo ? images : images.slice(1)
+              return (
+                <>
+                  {remainingPhotos.slice(0, 3).map((src, i) => (
+                    <button
+                      key={`grid-img-${i}-${src}`}
+                      type="button"
+                      onClick={() => openGallery('photos')}
+                      className="relative hidden overflow-hidden sm:block"
+                      aria-label={`Open photo ${i + 2}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
 
-            {/* Cell 5 — "See all" overlay. Same per-kind treatment. */}
-            {portfolioItems[4] && (
-              <div className="relative hidden sm:block overflow-hidden">
-                {portfolioItems[4].kind === 'video' ? (
-                  <video
-                    src={portfolioItems[4].src}
-                    poster={(portfolioItems[4] as { poster?: string }).poster}
-                    muted
-                    playsInline
-                    preload="metadata"
-                    className="h-full w-full object-cover bg-black"
-                  />
-                ) : (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={portfolioItems[4].src}
-                    alt=""
-                    className="h-full w-full object-cover"
-                  />
-                )}
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
-                <button
-                  onClick={() => openGallery('portfolio')}
-                  className="absolute bottom-3 right-3 flex items-center gap-2 rounded-full bg-white/95 px-3 py-2 text-[#1A1A1A] shadow-lg transition hover:bg-white"
-                >
-                  <LayoutGrid size={15} />
-                  <span className="text-sm font-bold">See all</span>
-                  <span className="text-xs font-medium text-gray-500">({portfolioItems.length})</span>
-                </button>
-              </div>
-            )}
+                  {/* Cell 5 — "See all" overlay over the next photo. */}
+                  {remainingPhotos[3] && (
+                    <div className="relative hidden sm:block overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={remainingPhotos[3]}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
+                      <button
+                        onClick={() => openGallery('portfolio')}
+                        className="absolute bottom-3 right-3 flex items-center gap-2 rounded-full bg-white/95 px-3 py-2 text-[#1A1A1A] shadow-lg transition hover:bg-white"
+                      >
+                        <LayoutGrid size={15} />
+                        <span className="text-sm font-bold">See all</span>
+                        <span className="text-xs font-medium text-gray-500">({portfolioItems.length})</span>
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
           )}
         </div>
