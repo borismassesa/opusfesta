@@ -491,6 +491,10 @@ export type StorefrontProfileFields = {
   personality?: string | null
   homeMarket?: string | null
   serviceMarkets?: string[]
+  // Languages the vendor speaks with clients. Until now only saveRecognition
+  // wrote this, which left the About page's language picker stuck on local
+  // draft despite a perfectly good vendors.languages column existing.
+  languages?: string[]
   depositPercent?: string | null
   cancellationLevel?: 'flexible' | 'moderate' | 'strict' | null
   reschedulePolicy?: 'one-free' | 'unlimited' | 'none' | null
@@ -513,6 +517,12 @@ export async function saveProfileFields(input: StorefrontProfileFields): Promise
   if (input.personality !== undefined) update.personality = input.personality
   if (input.homeMarket !== undefined) update.home_market = input.homeMarket
   if (input.serviceMarkets !== undefined) update.service_markets = input.serviceMarkets
+  if (input.languages !== undefined) {
+    const cleaned = Array.isArray(input.languages)
+      ? input.languages.filter((l) => typeof l === 'string' && l.trim() !== '')
+      : []
+    update.languages = cleaned.length > 0 ? cleaned : null
+  }
   if (input.depositPercent !== undefined) update.deposit_percent = input.depositPercent
   if (input.cancellationLevel !== undefined) update.cancellation_level = input.cancellationLevel
   if (input.reschedulePolicy !== undefined) update.reschedule_policy = input.reschedulePolicy
