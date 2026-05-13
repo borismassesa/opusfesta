@@ -2482,9 +2482,6 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                     className="h-full w-full object-cover bg-black"
                   />
                   <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
-                  <div className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#1A1A1A]">
-                    Video
-                  </div>
                 </>
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
@@ -2743,9 +2740,6 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                               />
                             </div>
                             <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/25 to-transparent" />
-                            <div className="absolute left-4 top-4 rounded-full bg-white/92 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#1A1A1A]">
-                              Video
-                            </div>
                           </div>
                         ) : (
                           <div className="overflow-hidden">
