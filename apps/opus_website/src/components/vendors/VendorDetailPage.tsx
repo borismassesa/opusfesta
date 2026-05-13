@@ -2482,8 +2482,8 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                     className="h-full w-full object-cover bg-black"
                   />
                   <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
-                  <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#1A1A1A]">
-                    <LayoutGrid size={11} /> Video
+                  <div className="absolute bottom-3 left-3 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#1A1A1A]">
+                    Video
                   </div>
                 </>
               ) : (
@@ -2745,9 +2745,6 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                             <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/25 to-transparent" />
                             <div className="absolute left-4 top-4 rounded-full bg-white/92 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#1A1A1A]">
                               Video
-                            </div>
-                            <div className="absolute bottom-4 left-4 flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#1A1A1A] shadow-lg">
-                              <LayoutGrid size={16} />
                             </div>
                           </div>
                         ) : (
