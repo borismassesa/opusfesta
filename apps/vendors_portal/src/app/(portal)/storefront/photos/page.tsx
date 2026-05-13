@@ -110,6 +110,7 @@ export default function PhotosPage() {
   const { draft, update, hydrated } = useOnboardingDraft()
   const photoInputRef = useRef<HTMLInputElement>(null)
   const videoInputRef = useRef<HTMLInputElement>(null)
+  const coverBulkInputRef = useRef<HTMLInputElement>(null)
 
   const [covers, setCovers] = useState<CoverSlot[]>(EMPTY_COVERS)
   // Vendors start with a clean grid — we previously seeded SAMPLE_PHOTOS so
@@ -361,6 +362,82 @@ export default function PhotosPage() {
     })
   }
 
+  // Bulk cover upload — drag a stack of files at once, they fill the empty
+  // cover slots in order. Anything left over after the 4 slots are full
+  // overflows into the portfolio so no upload is wasted.
+  const addCoverFilesBulk = async (files: FileList | File[]) => {
+    setUploadError(null)
+    const list = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    if (list.length === 0) return
+
+    // Snapshot the empty slot indices at call time so concurrent uploads
+    // don't fight over the same slot. Filling left-to-right matches the
+    // landscape/portrait orientation hints below each slot.
+    const emptyIndices: number[] = []
+    covers.forEach((slot, i) => {
+      if (!slot) emptyIndices.push(i)
+    })
+
+    const coverAssignments = list
+      .slice(0, emptyIndices.length)
+      .map((file, i) => ({ file, idx: emptyIndices[i] }))
+    const overflowFiles = list.slice(emptyIndices.length)
+
+    if (coverAssignments.length > 0) {
+      setUploadingCovers((s) => {
+        const next = new Set(s)
+        for (const { idx } of coverAssignments) next.add(idx)
+        return next
+      })
+      // Upload covers in parallel — keeps the UX snappy when filling all
+      // 4 slots from one drop. Each result lands in its assigned slot.
+      const errors: string[] = []
+      await Promise.all(
+        coverAssignments.map(async ({ file, idx }) => {
+          const outcome = await uploadFile(file, 'cover')
+          setUploadingCovers((s) => {
+            const next = new Set(s)
+            next.delete(idx)
+            return next
+          })
+          if ('error' in outcome) {
+            errors.push(outcome.error)
+            return
+          }
+          setCovers((prev) => {
+            const next = prev.slice()
+            next[idx] = { id: newId(), url: outcome.url }
+            return next
+          })
+        }),
+      )
+      if (errors.length > 0) {
+        setUploadError(
+          errors.length === 1
+            ? errors[0]
+            : `${coverAssignments.length - errors.length} of ${coverAssignments.length} covers uploaded · ${errors[0]}${errors.length > 1 ? '; …' : ''}`,
+        )
+      }
+    }
+
+    // Spillover goes to the portfolio so the vendor doesn't have to re-pick
+    // the leftover files.
+    if (overflowFiles.length > 0) {
+      await addPhotoFiles(overflowFiles)
+    }
+  }
+
+  const handleCoverBulkInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files) void addCoverFilesBulk(e.target.files)
+    e.target.value = ''
+  }
+
+  const handleCoverBulkDrop = (e: React.DragEvent<HTMLElement>) => {
+    e.preventDefault()
+    setCoverDragOverIdx(null)
+    if (e.dataTransfer.files) void addCoverFilesBulk(e.dataTransfer.files)
+  }
+
   const clearCover = (idx: number) => {
     setCovers((prev) => {
       const before = prev[idx]
@@ -577,13 +654,34 @@ export default function PhotosPage() {
           {/* 1. Cover photos — 4 fixed slots that drive listing card carousels */}
           <Section
             title="Cover photos"
-            hint={`These run as a carousel on your storefront and search cards. Fill all ${COVER_SLOT_COUNT} — slot ${COVER_SLOT_COUNT} is portrait for mobile.`}
+            hint={`These run as a carousel on your storefront and search cards. Fill all ${COVER_SLOT_COUNT} — slot ${COVER_SLOT_COUNT} is portrait for mobile. Pick or drop multiple photos at once and they fill empty slots in order.`}
             right={
-              <span className="text-xs font-semibold text-gray-700 tabular-nums">
-                {filledCovers} / {COVER_SLOT_COUNT}
-              </span>
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-gray-700 tabular-nums">
+                  {filledCovers} / {COVER_SLOT_COUNT}
+                </span>
+                {filledCovers < COVER_SLOT_COUNT && (
+                  <button
+                    type="button"
+                    onClick={() => coverBulkInputRef.current?.click()}
+                    className="inline-flex items-center gap-1.5 bg-gray-900 hover:bg-gray-800 text-white text-xs font-semibold px-3 py-1.5 rounded-full transition-colors"
+                  >
+                    <UploadCloud className="w-3.5 h-3.5" />
+                    Upload covers
+                  </button>
+                )}
+              </div>
             }
           >
+            <input
+              ref={coverBulkInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={handleCoverBulkInput}
+              className="hidden"
+            />
+
             {/* Rules callout */}
             <div className="rounded-xl border border-gray-100 bg-gray-50/60 p-4 mb-5">
               <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-2">
@@ -593,11 +691,32 @@ export default function PhotosPage() {
                 <li>Landscape 16:9 works best for the first three; the fourth is portrait 3:4 for mobile.</li>
                 <li>Photos are auto-cropped from the center.</li>
                 <li>Don’t use photos with watermarks.</li>
+                <li>Pick or drop multiple files — empty slots fill in order, extras overflow to the portfolio.</li>
                 <li>Max photo size: 10 MB.</li>
               </ul>
             </div>
 
-            <div className="rounded-xl border border-gray-100 bg-white">
+            <div
+              className={cn(
+                'rounded-xl border bg-white transition-colors',
+                coverDragOverIdx === -1
+                  ? 'border-gray-900 ring-2 ring-gray-900/30'
+                  : 'border-gray-100',
+              )}
+              onDragOver={(e) => {
+                // Only treat as a bulk drop if no specific slot is hovered.
+                if (coverDragOverIdx === null) {
+                  e.preventDefault()
+                  setCoverDragOverIdx(-1)
+                }
+              }}
+              onDragLeave={() => {
+                if (coverDragOverIdx === -1) setCoverDragOverIdx(null)
+              }}
+              onDrop={(e) => {
+                if (coverDragOverIdx === -1) handleCoverBulkDrop(e)
+              }}
+            >
               <p className="text-[11px] font-medium text-gray-500 px-4 py-3 border-b border-gray-100">
                 Each photo is displayed on desktop and mobile web.
               </p>
