@@ -17,6 +17,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { HeaderActionsSlot } from '@/components/HeaderPortals'
+import { useSetPageHeading } from '@/components/PageHeading'
 import { EditorActionsProvider, useEditorActions } from './EditorActionsContext'
 
 type Section = {
@@ -89,32 +91,33 @@ function AdviceIdeasCmsShell({ children }: { children: ReactNode }) {
   const activeSection =
     sections.find((s) => pathname.startsWith(s.href)) ?? sections[0]
 
+  // Publish the page title + description to the global admin header
+  // (the one with bell / help / avatar), so this CMS section reads
+  // visually consistent with every other admin page. The cleanup-pass
+  // before this used a local sub-header that duplicated the global
+  // chrome and pushed content further down the viewport.
+  useSetPageHeading({
+    title: activeSection.label,
+    subtitle: activeSection.description,
+  })
+
   return (
     <div className="pt-2 pb-6">
-      <div className="flex items-start justify-between gap-4 px-8 pb-6 mb-6 border-b border-gray-100">
-        <div className="min-w-0">
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
-            {activeSection.label}
-          </h2>
-          {activeSection.description && (
-            <p className="text-sm text-gray-500 mt-2 max-w-2xl">
-              {activeSection.description}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <ActionButtons />
-          <a
-            href={`${websiteUrl}/advice-and-ideas`}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            View live page
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        </div>
-      </div>
+      {/* Action buttons portal into the global header's actions slot,
+          so Save draft / Publish / View live page sit next to the
+          help / bell / avatar icons rather than in a second header bar. */}
+      <HeaderActionsSlot>
+        <ActionButtons />
+        <a
+          href={`${websiteUrl}/advice-and-ideas`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          View live page
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      </HeaderActionsSlot>
 
       <div className="flex items-start gap-0">
         <aside className="w-[240px] shrink-0 border-r border-gray-100 self-stretch">
