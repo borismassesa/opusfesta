@@ -21,11 +21,19 @@ export default async function PortalLayout({
     redirect('/pending')
   }
 
-  // Vendor name is only resolved here in the server layout; PortalShell needs
-  // it to greet the vendor in the header on /dashboard. `no-env` falls back
-  // to the seed name so designers see a populated greeting offline.
+  // Vendor name + slug are resolved here in the server layout — PortalShell
+  // needs the name to greet the vendor in the header, and the slug feeds
+  // the "Preview public storefront" link in the storefront sidebar.
+  // `no-env` falls back to the seed values so designers see a populated
+  // greeting offline.
   const vendorName =
     state.kind === 'live' ? state.vendor.businessName : 'OpusFesta Photography'
+  const vendorSlug =
+    state.kind === 'live' ? state.vendor.slug : null
 
-  return <PortalShell vendorName={vendorName}>{children}</PortalShell>
+  return (
+    <PortalShell vendorName={vendorName} vendorSlug={vendorSlug}>
+      {children}
+    </PortalShell>
+  )
 }

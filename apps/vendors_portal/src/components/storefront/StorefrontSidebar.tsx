@@ -11,7 +11,11 @@ import {
 } from '@/lib/storefront/completion'
 import { cn } from '@/lib/utils'
 
-export function StorefrontSidebar() {
+export function StorefrontSidebar({
+  vendorSlug,
+}: {
+  vendorSlug: string | null
+}) {
   const pathname = usePathname()
   const { draft, hydrated } = useOnboardingDraft()
 
@@ -126,12 +130,21 @@ export function StorefrontSidebar() {
           </div>
         ) : null}
 
-        <Link
-          href="#"
-          className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-        >
-          <Eye className="w-3.5 h-3.5" /> Preview public storefront
-        </Link>
+        {/* Preview link — opens the public storefront on opus_website in a
+            new tab. `NEXT_PUBLIC_WEBSITE_URL` is set per environment (e.g.
+            http://localhost:3007 in dev, https://opusfesta.com in prod).
+            We render the link only once we have a slug; otherwise it'd
+            point at /vendors/null. */}
+        {vendorSlug ? (
+          <a
+            href={buildPublicStorefrontUrl(vendorSlug)}
+            target="_blank"
+            rel="noreferrer"
+            className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors"
+          >
+            <Eye className="w-3.5 h-3.5" /> Preview public storefront
+          </a>
+        ) : null}
       </div>
     </aside>
   )
@@ -228,4 +241,13 @@ function StatusIcon({ status }: { status: SectionStatus }) {
       <CircleDashed className="w-3.5 h-3.5" />
     </span>
   )
+}
+
+// Resolve the public storefront URL for a vendor. NEXT_PUBLIC_WEBSITE_URL
+// points at opus_website (http://localhost:3007 in dev, the production
+// URL in prod). Falls back to a relative path if the env var is missing
+// so the link still resolves to *something* on shared previews.
+function buildPublicStorefrontUrl(slug: string): string {
+  const base = (process.env.NEXT_PUBLIC_WEBSITE_URL ?? '').replace(/\/$/, '')
+  return `${base}/vendors/${encodeURIComponent(slug)}`
 }
