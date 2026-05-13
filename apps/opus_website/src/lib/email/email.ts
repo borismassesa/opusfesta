@@ -38,6 +38,12 @@ function defaultFromAddress(): string {
   return process.env.RESEND_FROM_EMAIL || 'OpusFesta <noreply@thefestaevents.com>'
 }
 
+/** Strip CR, LF, and other ASCII control characters from header-ish fields */
+function sanitizeHeaderField(value: string): string {
+  // eslint-disable-next-line no-control-regex
+  return value.replace(/[\r\n\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
+}
+
 export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
   if (!resend) {
     return { sent: false, reason: 'not_configured', error: new ResendConfigError().message }
@@ -45,12 +51,12 @@ export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
 
   try {
     const result = await resend.emails.send({
-      from: payload.from || defaultFromAddress(),
+      from: sanitizeHeaderField(payload.from || defaultFromAddress()),
       to: Array.isArray(payload.to) ? payload.to : [payload.to],
-      subject: payload.subject,
+      subject: sanitizeHeaderField(payload.subject),
       html: payload.html,
       text: payload.text,
-      replyTo: payload.replyTo,
+      replyTo: payload.replyTo ? sanitizeHeaderField(payload.replyTo) : undefined,
       ...(payload.cc ? { cc: payload.cc } : {}),
       ...(payload.bcc ? { bcc: payload.bcc } : {}),
     })

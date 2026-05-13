@@ -31,13 +31,15 @@ export async function PATCH(
   }
 
   const user = await currentUser()
-  const email = user?.emailAddresses.find(
+  const rawEmail = user?.emailAddresses.find(
     (e) => e.id === user.primaryEmailAddressId
   )?.emailAddress || user?.emailAddresses[0]?.emailAddress
 
-  if (!email) {
+  if (!rawEmail) {
     return NextResponse.json({ error: 'Could not resolve user email' }, { status: 400 })
   }
+
+  const email = rawEmail.trim().toLowerCase()
 
   let body: unknown
   try {
@@ -57,7 +59,7 @@ export async function PATCH(
     .from('inquiries')
     .select('id, name, vendor_name, vendor_slug, proposal_status, proposal_invoice_amount')
     .eq('id', id)
-    .eq('email', email.toLowerCase())
+    .eq('email', email)
     .maybeSingle()
 
   if (lookupErr) {
@@ -98,23 +100,22 @@ export async function PATCH(
       return NextResponse.json({ error: 'Proposal was already acted upon' }, { status: 409 })
     }
 
-    try {
-      const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')
-      const accessToken = generateInquiryToken(id, email.toLowerCase())
-      const payload = buildProposalClientConfirmationEmail({
-        clientName: inquiry.name?.trim() || 'there',
-        vendorName: inquiry.vendor_name?.trim() || inquiry.vendor_slug?.trim() || 'Vendor',
-        action: 'accept',
-        inquiryUrl: `${appUrl}/my/inquiries/${id}?access_token=${accessToken}`,
-      })
-      await sendEmail({
-        to: email.toLowerCase(),
-        subject: payload.subject,
-        html: payload.html,
-        text: payload.text,
-      })
-    } catch (emailError) {
-      console.warn('[my/inquiries/proposal] accept email failed', emailError)
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')
+    const accessToken = generateInquiryToken(id, email)
+    const emailPayload = buildProposalClientConfirmationEmail({
+      clientName: inquiry.name?.trim() || 'there',
+      vendorName: inquiry.vendor_name?.trim() || inquiry.vendor_slug?.trim() || 'Vendor',
+      action: 'accept',
+      inquiryUrl: `${appUrl}/my/inquiries/${id}?access_token=${accessToken}`,
+    })
+    const emailResult = await sendEmail({
+      to: email,
+      subject: emailPayload.subject,
+      html: emailPayload.html,
+      text: emailPayload.text,
+    })
+    if (!emailResult.sent) {
+      console.warn('[my/inquiries/proposal] accept email failed', emailResult.reason, emailResult.error)
     }
 
     return NextResponse.json({ success: true })
@@ -149,23 +150,22 @@ export async function PATCH(
     return NextResponse.json({ error: 'Proposal was already acted upon' }, { status: 409 })
   }
 
-  try {
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')
-    const accessToken = generateInquiryToken(id, email.toLowerCase())
-    const payload = buildProposalClientConfirmationEmail({
-      clientName: inquiry.name?.trim() || 'there',
-      vendorName: inquiry.vendor_name?.trim() || inquiry.vendor_slug?.trim() || 'Vendor',
-      action: 'counter',
-      inquiryUrl: `${appUrl}/my/inquiries/${id}?access_token=${accessToken}`,
-    })
-    await sendEmail({
-      to: email.toLowerCase(),
-      subject: payload.subject,
-      html: payload.html,
-      text: payload.text,
-    })
-  } catch (emailError) {
-    console.warn('[my/inquiries/proposal] counter email failed', emailError)
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')
+  const accessToken = generateInquiryToken(id, email)
+  const emailPayload = buildProposalClientConfirmationEmail({
+    clientName: inquiry.name?.trim() || 'there',
+    vendorName: inquiry.vendor_name?.trim() || inquiry.vendor_slug?.trim() || 'Vendor',
+    action: 'counter',
+    inquiryUrl: `${appUrl}/my/inquiries/${id}?access_token=${accessToken}`,
+  })
+  const emailResult = await sendEmail({
+    to: email,
+    subject: emailPayload.subject,
+    html: emailPayload.html,
+    text: emailPayload.text,
+  })
+  if (!emailResult.sent) {
+    console.warn('[my/inquiries/proposal] counter email failed', emailResult.reason, emailResult.error)
   }
 
   return NextResponse.json({ success: true })

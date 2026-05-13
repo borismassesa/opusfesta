@@ -35,7 +35,7 @@ export default async function InquiriesPage() {
   if (!userId) redirect('/sign-in')
 
   const clerkUser = await currentUser().catch(() => null)
-  const email = clerkUser?.emailAddresses?.[0]?.emailAddress ?? null
+  const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase() ?? null
 
   let initialInquiries: InquirySummary[] | null = null
 

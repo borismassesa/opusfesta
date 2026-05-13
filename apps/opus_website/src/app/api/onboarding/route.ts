@@ -112,18 +112,17 @@ export async function POST(request: Request) {
     )
   }
 
-  try {
-    const displayName = (partner1Name as string).trim() || 'there'
-    const vendorsUrl = `${(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')}/vendors`
-    const payload = buildWelcomeEmail({ name: displayName, vendorsUrl })
-    await sendEmail({
-      to: email.toLowerCase(),
-      subject: payload.subject,
-      html: payload.html,
-      text: payload.text,
-    })
-  } catch (emailError) {
-    console.warn('[onboarding] welcome email failed', emailError)
+  const displayName = (partner1Name as string).trim() || 'there'
+  const vendorsUrl = `${(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')}/vendors`
+  const payload = buildWelcomeEmail({ name: displayName, vendorsUrl })
+  const emailResult = await sendEmail({
+    to: email.toLowerCase(),
+    subject: payload.subject,
+    html: payload.html,
+    text: payload.text,
+  })
+  if (!emailResult.sent) {
+    console.warn('[onboarding] welcome email failed', emailResult.reason, emailResult.error)
   }
 
   return NextResponse.json({ success: true }, { status: 200 })
