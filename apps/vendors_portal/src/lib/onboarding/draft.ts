@@ -238,9 +238,18 @@ function writeDraft(draft: OnboardingDraft) {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
-    window.dispatchEvent(
-      new CustomEvent(DRAFT_CHANGE_EVENT, { detail: draft }),
-    )
+    // Defer the cross-instance broadcast. `writeDraft` is called from
+    // inside the `setDraft` state updater in `update()` — dispatching
+    // synchronously would call listeners' setState during the calling
+    // component's render/commit phase, which React warns about as a
+    // cross-component setState-in-render. A microtask runs after the
+    // current updater returns but before paint, so the sidebar still
+    // refreshes in the same tick.
+    queueMicrotask(() => {
+      window.dispatchEvent(
+        new CustomEvent(DRAFT_CHANGE_EVENT, { detail: draft }),
+      )
+    })
   } catch {
     // ignore quota / private browsing errors — UX still works in-memory
   }
