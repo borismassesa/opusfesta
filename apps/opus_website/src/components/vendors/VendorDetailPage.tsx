@@ -2281,10 +2281,23 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
     if (vendor.heroMedia.src && vendor.heroMedia.src.trim() !== '') return [vendor.heroMedia.src]
     return []
   })()
-  const hasMedia = images.length > 0 || vendor.heroMedia.type === 'video'
-  const videos = vendor.heroMedia.type === 'video'
-    ? [{ src: vendor.heroMedia.src, poster: vendor.heroMedia.poster ?? images[0] }]
-    : []
+  // Portfolio videos persisted by the vendor portal (uploads + YouTube/
+  // Vimeo embed links) plus a hero video if the vendor set one. We keep
+  // them as a single ordered list so the Videos tab and the bento
+  // gallery both pick everything up.
+  const portfolioVideoSrcs = (vendor.videos ?? []).filter(
+    (s): s is string => typeof s === 'string' && s.trim() !== '',
+  )
+  const videos: Array<{ src: string; poster?: string }> = [
+    ...(vendor.heroMedia.type === 'video'
+      ? [{ src: vendor.heroMedia.src, poster: vendor.heroMedia.poster ?? images[0] }]
+      : []),
+    ...portfolioVideoSrcs.map((src) => ({
+      src,
+      poster: images[0],
+    })),
+  ]
+  const hasMedia = images.length > 0 || videos.length > 0
   const portfolioItems = [
     ...images.map((src, index) => ({ kind: 'photo' as const, src, index })),
     ...videos.map((video, index) => ({ kind: 'video' as const, ...video, index })),
