@@ -1,17 +1,17 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import {
   ChevronDown,
   Crosshair,
   ExternalLink,
   Loader2,
   MapPin,
-  Save,
   Users,
 } from 'lucide-react'
 import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import { saveProfileFields } from '../sections/actions'
+import { ABOUT_PAGE_SAVE_EVENT } from './AboutEditor'
 
 // Capacity + map coordinates were previously admin-only fields (filled in by
 // the OpusFesta team via the operations review page). Vendors can now set
@@ -112,6 +112,26 @@ export default function LocationAndCapacityEditor({
       setSaved(true)
     })
   }
+
+  // The About page's single "Save changes" button is the canonical save
+  // for everything on the page. AboutEditor fires ABOUT_PAGE_SAVE_EVENT
+  // after its own save lands; we react by persisting capacity + map pin
+  // too, but only if anything's actually changed on this card —
+  // otherwise we'd overwrite a previously-set capacity with nulls.
+  const onSaveRef = useRef(onSave)
+  const dirtyRef = useRef(dirty)
+  const canEditRef = useRef(canEdit)
+  onSaveRef.current = onSave
+  dirtyRef.current = dirty
+  canEditRef.current = canEdit
+  useEffect(() => {
+    const handler = () => {
+      if (!canEditRef.current || !dirtyRef.current) return
+      onSaveRef.current()
+    }
+    window.addEventListener(ABOUT_PAGE_SAVE_EVENT, handler)
+    return () => window.removeEventListener(ABOUT_PAGE_SAVE_EVENT, handler)
+  }, [])
 
   return (
     <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-6 lg:p-7 mt-6">
@@ -307,22 +327,23 @@ export default function LocationAndCapacityEditor({
         </details>
       </div>
 
-      <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap">
-        <div className="text-xs">
+      <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-between gap-3 flex-wrap text-xs">
+        <span className="text-gray-500">
+          Saves with the rest of your profile when you click{' '}
+          <span className="font-semibold text-gray-700">Save changes</span> at
+          the bottom of the page.
+        </span>
+        <div>
           {error && <span className="text-rose-700">{error}</span>}
-          {saved && !error && (
+          {pending && (
+            <span className="inline-flex items-center gap-1 text-amber-700">
+              <Loader2 className="w-3 h-3 animate-spin" /> Saving…
+            </span>
+          )}
+          {saved && !error && !pending && (
             <span className="text-emerald-700">Capacity & map saved.</span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={onSave}
-          disabled={!canEdit || pending || !dirty}
-          className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-gray-900 hover:bg-black text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-        >
-          <Save className="w-3.5 h-3.5" />
-          {pending ? 'Saving…' : 'Save capacity & map'}
-        </button>
       </div>
     </section>
   )

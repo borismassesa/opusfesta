@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
+  ArrowRight,
   Check,
   Facebook,
   Globe,
@@ -31,7 +32,14 @@ import {
 } from '@/lib/onboarding/regions'
 import { saveProfile } from './actions'
 import { saveProfileFields } from '../sections/actions'
+import { getStorefrontSections } from '@/lib/storefront/completion'
 import { profilesEqual, type DbProfile } from './mapping'
+
+// Custom event the About sticky save bar fires after its own save lands.
+// LocationAndCapacityEditor (rendered below this component) listens for
+// it and triggers its own save in response — that's how the single
+// "Save changes" button persists every section on the page in one click.
+export const ABOUT_PAGE_SAVE_EVENT = 'opusfesta:about-page-save'
 
 const DAYS = [
   { key: 'mon', label: 'Monday', short: 'Mon' },
@@ -124,6 +132,19 @@ export default function AboutEditor({
     return !draftsEqual(snapshotDraft(draft), draftSnapshot)
   }, [profile, savedSnapshot, draft, draftSnapshot])
 
+  // Resolve the next storefront section so the bottom bar's "Next" button
+  // mirrors the flow on every other section page. Same helper the sidebar
+  // uses, so the order stays in sync.
+  const nextHref = useMemo(() => {
+    const sections = getStorefrontSections(draft)
+    const idx = sections.findIndex((s) => s.id === 'about')
+    return idx >= 0 && idx < sections.length - 1 ? sections[idx + 1].href : null
+  }, [draft])
+
+  const onNext = () => {
+    if (nextHref) router.push(nextHref)
+  }
+
   const bioLength = profile.bio.trim().length
   const bioHint =
     bioLength === 0
@@ -195,6 +216,14 @@ export default function AboutEditor({
       }
       setSavedSnapshot(profile)
       setDraftSnapshot(snapshotDraft(draft))
+      // Tell the LocationAndCapacityEditor (rendered below this component
+      // by the parent page) to persist its own state. Keeping it as a
+      // sibling event rather than lifting state lets each editor own its
+      // dirty tracking, but a single Save click still writes everything
+      // on the page.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(ABOUT_PAGE_SAVE_EVENT))
+      }
       // Mirror the DB-backed profile fields into the onboarding draft
       // so the storefront sidebar's completion checks (which read from
       // the draft) reflect the just-saved values. Without this, the
@@ -636,15 +665,27 @@ export default function AboutEditor({
               </span>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saveDisabled}
-            className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            {pending ? 'Saving…' : 'Save changes'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saveDisabled}
+              className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {pending ? 'Saving…' : 'Save changes'}
+            </button>
+            {nextHref ? (
+              <button
+                type="button"
+                onClick={onNext}
+                className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
+              >
+                Next
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
