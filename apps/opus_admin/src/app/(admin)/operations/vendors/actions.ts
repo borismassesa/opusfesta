@@ -1039,6 +1039,212 @@ async function mirrorPatchToSnapshot(
  * suspended_at + suspension_reason fields.
  */
 // =============================================================================
+// Admin-created vendor accounts
+// =============================================================================
+//
+// Admin can spin up a vendor record directly — useful for vendors who
+// can't (or won't) navigate the self-serve onboarding flow, or for
+// seeding curated featured vendors before they sign up. The flow:
+//
+//   1. Upsert a `public.users` row keyed on email (placeholder password
+//      since Clerk owns auth). If the email is already a user we reuse
+//      the existing row — no orphans.
+//   2. Insert the `vendors` row pointing at that user with a unique slug
+//      derived from the business name. Status starts at
+//      `application_in_progress` so admin can fill in the rest via the
+//      existing review-page editors.
+//   3. Insert an owner-role `vendor_memberships` row so the vendor can
+//      eventually claim the account when they sign in with the matching
+//      email.
+//
+// The created vendor row is intentionally minimal — admin fills the rest
+// (address, phone, packages, photos, etc.) using the per-section
+// editors on the review page.
+
+const VALID_VENDOR_CATEGORIES = [
+  'Venues',
+  'Photographers',
+  'Videographers',
+  'Caterers',
+  'Wedding Planners',
+  'Florists',
+  'DJs & Music',
+  'Beauty & Makeup',
+  'Bridal Salons',
+  'Cake & Desserts',
+  'Decorators',
+  'Officiants',
+  'Rentals',
+  'Transportation',
+] as const
+
+export type VendorCategory = (typeof VALID_VENDOR_CATEGORIES)[number]
+
+function slugifyForVendor(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+}
+
+export type CreateVendorInput = {
+  businessName: string
+  category: string
+  contactEmail: string
+  city?: string
+  phone?: string
+  bio?: string
+}
+
+export type CreateVendorResult =
+  | { ok: true; vendorId: string }
+  | {
+      ok: false
+      error: string
+      reason: 'unauth' | 'invalid' | 'duplicate' | 'unknown'
+    }
+
+export async function createVendorAccount(
+  input: CreateVendorInput,
+): Promise<CreateVendorResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+
+  const businessName = input.businessName?.trim()
+  const email = input.contactEmail?.trim().toLowerCase()
+  const category = input.category as VendorCategory
+  if (!businessName) {
+    return { ok: false, reason: 'invalid', error: 'Business name is required.' }
+  }
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'A valid contact email is required.',
+    }
+  }
+  if (!VALID_VENDOR_CATEGORIES.includes(category)) {
+    return { ok: false, reason: 'invalid', error: 'Pick a vendor category.' }
+  }
+
+  const admin = createSupabaseAdminClient()
+
+  // 1) Upsert the user keyed on email. The legacy `password` column is
+  // NOT NULL but unused under Clerk — store an opaque marker. clerk_id
+  // is left null and gets linked when the vendor signs in via the
+  // matching email.
+  const userUpsert = await admin
+    .from('users')
+    .upsert(
+      {
+        email,
+        name: businessName,
+        password: 'admin-created-placeholder',
+        role: 'vendor',
+      },
+      { onConflict: 'email' },
+    )
+    .select('id')
+    .single<{ id: string }>()
+  if (userUpsert.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] users upsert failed: ${userUpsert.error.code} ${userUpsert.error.message}`,
+    }
+  }
+  const supabaseUserId = userUpsert.data.id
+
+  // 2) Resolve a unique slug — append a short random suffix on collision.
+  const baseSlug = slugifyForVendor(businessName) || 'vendor'
+  let slug = baseSlug
+  const slugCheck = await admin
+    .from('vendors')
+    .select('id', { count: 'exact', head: true })
+    .eq('slug', baseSlug)
+  if (slugCheck.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] slug check failed: ${slugCheck.error.code} ${slugCheck.error.message}`,
+    }
+  }
+  if ((slugCheck.count ?? 0) > 0) {
+    slug = `${baseSlug}-${Math.random().toString(36).slice(2, 8)}`
+  }
+
+  // Guard against a duplicate vendor row for the same user — if admin
+  // already created one for this contact email, surface a clear error
+  // rather than letting the insert blow up on a unique constraint.
+  const existing = await admin
+    .from('vendors')
+    .select('id, business_name')
+    .eq('user_id', supabaseUserId)
+    .limit(1)
+    .maybeSingle<{ id: string; business_name: string }>()
+  if (existing.data) {
+    return {
+      ok: false,
+      reason: 'duplicate',
+      error: `A vendor already exists for ${email}: ${existing.data.business_name}.`,
+    }
+  }
+
+  const corePayload: Record<string, unknown> = {
+    slug,
+    user_id: supabaseUserId,
+    business_name: businessName,
+    category,
+    bio: input.bio?.trim() || null,
+    location: input.city?.trim() ? { city: input.city.trim() } : {},
+    contact_info: {
+      email,
+      ...(input.phone?.trim() ? { phone: input.phone.trim() } : {}),
+    },
+    onboarding_status: 'application_in_progress' as const,
+    onboarding_started_at: new Date().toISOString(),
+  }
+
+  const insert = await admin
+    .from('vendors')
+    .insert(corePayload)
+    .select('id')
+    .single<{ id: string }>()
+  if (insert.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] vendor insert failed: ${insert.error.code} ${insert.error.message}`,
+    }
+  }
+  const vendorId = insert.data.id
+
+  // 3) Owner membership so the vendor can claim the account on sign-in.
+  // ON CONFLICT (vendor_id, user_id) — same pattern as the portal submit
+  // flow, see vendors_portal/src/lib/onboarding/submit.ts.
+  const membership = await admin.from('vendor_memberships').upsert(
+    {
+      vendor_id: vendorId,
+      user_id: supabaseUserId,
+      role: 'owner' as const,
+      status: 'active' as const,
+    },
+    { onConflict: 'vendor_id,user_id' },
+  )
+  if (membership.error) {
+    console.warn(
+      `[admin] vendor_memberships upsert failed for vendor=${vendorId}: ${membership.error.code} ${membership.error.message} — vendor row exists but owner membership wasn't created`,
+    )
+  }
+
+  revalidatePath('/operations/vendors')
+  return { ok: true, vendorId }
+}
+
+// =============================================================================
 // Admin-side media uploads (photos + videos) on behalf of a vendor
 // =============================================================================
 //

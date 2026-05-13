@@ -1,19 +1,45 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Building2, ChevronDown } from 'lucide-react'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  AlertCircle,
+  Building2,
+  ChevronDown,
+  Loader2,
+  Plus,
+  X,
+} from 'lucide-react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { cn } from '@/lib/utils'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { useSetPageSearch } from '@/components/PageSearch'
+import { HeaderActionsSlot } from '@/components/HeaderPortals'
 import { QueueHealthStrip } from './_components/QueueHealthStrip'
 import { VendorRowCard } from './_components/VendorRowCard'
+import { createVendorAccount } from './actions'
 import type {
   QueueHealth,
   VendorAccount,
   VendorStatus,
   VendorStatusCounts,
 } from './_lib/types'
+
+const NEW_VENDOR_CATEGORIES = [
+  'Venues',
+  'Photographers',
+  'Videographers',
+  'Caterers',
+  'Wedding Planners',
+  'Florists',
+  'DJs & Music',
+  'Beauty & Makeup',
+  'Bridal Salons',
+  'Cake & Desserts',
+  'Decorators',
+  'Officiants',
+  'Rentals',
+  'Transportation',
+] as const
 
 type ListStatus = VendorStatus | 'all'
 type SortMode = 'oldest' | 'newest' | 'name'
@@ -229,8 +255,33 @@ export default function VendorsListClient({
   const totalCount = vendors.length
   const showHealth = status === 'awaiting_review' || status === 'all'
 
+  const [createOpen, setCreateOpen] = useState(false)
+
   return (
     <div className="px-8 pt-4 pb-12">
+      {/* Create vendor CTA — portaled into the global Header so it sits
+          next to the help/bell icons, matching the pattern used on the
+          vendor review page. */}
+      <HeaderActionsSlot>
+        <button
+          type="button"
+          onClick={() => setCreateOpen(true)}
+          className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-[#7E5896] hover:bg-[#6B4880] text-white shadow-sm transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+          New vendor
+        </button>
+      </HeaderActionsSlot>
+
+      <CreateVendorDialog
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        onCreated={(id) => {
+          setCreateOpen(false)
+          router.push(`/operations/vendors/${id}`)
+        }}
+      />
+
       <div className="max-w-[1200px] mx-auto">
         {/* Search now lives in the global admin Header (registered via
             useSetPageSearch above). */}
@@ -518,6 +569,247 @@ function EmptyState({
           ? 'Clear the search or pick a different letter.'
           : 'When vendors hit this state, they’ll appear here.'}
       </p>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Create vendor dialog
+//
+// Admin spins up a vendor row directly with the bare minimum (business
+// name, category, contact email). Status starts at
+// `application_in_progress` so the admin can fill in everything else
+// (address, packages, photos, etc.) via the existing per-section editors
+// on the review page. The contact email also creates a placeholder
+// `users` row — when the real vendor signs in with the matching email,
+// they pick up the existing membership and storefront.
+// ---------------------------------------------------------------------------
+
+function CreateVendorDialog({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean
+  onClose: () => void
+  onCreated: (vendorId: string) => void
+}) {
+  const [businessName, setBusinessName] = useState('')
+  const [category, setCategory] = useState<string>('')
+  const [contactEmail, setContactEmail] = useState('')
+  const [city, setCity] = useState('')
+  const [phone, setPhone] = useState('')
+  const [bio, setBio] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+
+  // Reset the form whenever the dialog opens so reopening doesn't show
+  // stale input from the previous attempt.
+  useEffect(() => {
+    if (!open) return
+    setBusinessName('')
+    setCategory('')
+    setContactEmail('')
+    setCity('')
+    setPhone('')
+    setBio('')
+    setError(null)
+  }, [open])
+
+  // Close on Esc — small affordance, no library needed.
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !pending) onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, pending, onClose])
+
+  if (!open) return null
+
+  const submit = () => {
+    setError(null)
+    startTransition(async () => {
+      const res = await createVendorAccount({
+        businessName,
+        category,
+        contactEmail,
+        city: city || undefined,
+        phone: phone || undefined,
+        bio: bio || undefined,
+      })
+      if (!res.ok) {
+        setError(res.error)
+        return
+      }
+      onCreated(res.vendorId)
+    })
+  }
+
+  const valid =
+    businessName.trim().length > 1 &&
+    category.length > 0 &&
+    /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contactEmail.trim())
+
+  const fieldCls =
+    'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7E5896]/30 focus:border-[#7E5896]/40'
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="create-vendor-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !pending) onClose()
+      }}
+    >
+      <div className="relative bg-white rounded-2xl shadow-xl border border-gray-100 w-full max-w-lg">
+        <div className="flex items-start justify-between gap-4 px-6 pt-5 pb-3 border-b border-gray-100">
+          <div>
+            <h2
+              id="create-vendor-title"
+              className="text-base font-semibold text-gray-900"
+            >
+              New vendor account
+            </h2>
+            <p className="text-xs text-gray-500 mt-0.5">
+              Fill in the basics. You can complete the storefront (packages,
+              photos, hours) on the review page.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="text-gray-400 hover:text-gray-700 disabled:opacity-50"
+            aria-label="Close"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="px-6 py-4 space-y-3">
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-rose-800 leading-relaxed">{error}</p>
+            </div>
+          )}
+
+          <FormField label="Business name">
+            <input
+              autoFocus
+              className={fieldCls}
+              value={businessName}
+              onChange={(e) => setBusinessName(e.target.value)}
+              placeholder="e.g. Bahari Catering"
+            />
+          </FormField>
+
+          <FormField label="Category">
+            <select
+              className={fieldCls}
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+            >
+              <option value="">Select a category…</option>
+              {NEW_VENDOR_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField label="Contact email">
+            <input
+              type="email"
+              className={fieldCls}
+              value={contactEmail}
+              onChange={(e) => setContactEmail(e.target.value)}
+              placeholder="owner@example.co.tz"
+            />
+            <p className="text-[11px] text-gray-500 mt-1">
+              The vendor claims the account when they sign in with this email.
+            </p>
+          </FormField>
+
+          <div className="grid grid-cols-2 gap-3">
+            <FormField label="City (optional)">
+              <input
+                className={fieldCls}
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="Dar es Salaam"
+              />
+            </FormField>
+            <FormField label="Phone (optional)">
+              <input
+                className={fieldCls}
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+                placeholder="+255 7XX XXX XXX"
+              />
+            </FormField>
+          </div>
+
+          <FormField label="Short bio (optional)">
+            <textarea
+              rows={2}
+              className={fieldCls}
+              value={bio}
+              onChange={(e) => setBio(e.target.value)}
+              placeholder="One sentence about the vendor — couples see this on the listing card."
+            />
+          </FormField>
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="text-sm font-semibold px-3 py-2 rounded-lg text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={!valid || pending}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-lg bg-[#7E5896] hover:bg-[#6B4880] text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
+          >
+            {pending ? (
+              <>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" /> Creating…
+              </>
+            ) : (
+              <>
+                <Plus className="w-3.5 h-3.5" /> Create vendor
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FormField({
+  label,
+  children,
+}: {
+  label: string
+  children: React.ReactNode
+}) {
+  return (
+    <div>
+      <label className="block text-[11px] font-bold uppercase tracking-wider text-gray-500 mb-1">
+        {label}
+      </label>
+      {children}
     </div>
   )
 }
