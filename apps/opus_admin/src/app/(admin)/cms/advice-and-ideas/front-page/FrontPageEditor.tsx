@@ -1,30 +1,28 @@
-// Drag-to-reorder editor for the public /advice-and-ideas Editor Picks
-// row. Three sections:
+// Front-page curation editor. Two sections:
 //
-//  1. Slots         — the up-to-5 pinned articles. Drag rows to reorder.
-//                     Click the X to send a row back to "the pool" (still
-//                     featured, just unpinned).
-//  2. Featured pool — articles with featured=true but no rank. They fill
-//                     any empty slots on the public site in published_at
-//                     order. Click "Pin" to lock one to a specific slot.
-//  3. Add article   — searchable list of every other published article.
-//                     Click to add as the next pinned slot.
+//  1. Pinned slots — the up-to-5 articles on the public front, in order.
+//     Drag rows to reorder. Click ✕ to unpin (article stays in featured
+//     pool, just loses its specific slot).
 //
-// Reorder/pin/unpin all funnel through the same `reorderFrontPage` server
-// action, which is bulk — it rewrites the whole rank sequence in one call.
-// Keeps the data model simple: there's no partial-update path to get out
-// of sync with.
+//  2. All articles — every published article in the library, searchable.
+//     Each row shows current state and the right action:
+//       · Pinned to slot #N → "Pinned" badge, no action (it's already up
+//         in the slots list — manage from there)
+//       · In featured pool (featured=true, no rank) → "In pool" badge +
+//         "Pin to slot" action. Pinning moves it to the slots list.
+//       · Not featured → "Add to front" action. One click features +
+//         pins to the next available slot.
+//     If all slots are full, action buttons disable with an explanation.
 //
-// Server actions still live with the article CRUD module in
-// /operations/articles/actions.ts because they mutate advice_ideas_posts
-// rows. This page is purely a "how does the public front compose itself"
-// view, which is why it lives under CMS instead.
+// Reorder/pin/unpin all funnel through the same bulk `reorderFrontPage`
+// server action so there's no partial-update path to drift out of sync.
 
 'use client'
 
 import { useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import {
+  Eye,
   GripVertical,
   Plus,
   Search,
@@ -57,44 +55,77 @@ type Props = {
   maxSlots: number
 }
 
+type Status = 'pinned' | 'pool' | 'available'
+
+function statusOf(a: FrontPageArticle): Status {
+  if (a.featured && a.featuredRank != null) return 'pinned'
+  if (a.featured) return 'pool'
+  return 'available'
+}
+
 export default function FrontPageEditor({ articles, maxSlots }: Props) {
-  // Local copy keeps the UI responsive while a server action is in
-  // flight. We reconcile against the server result after each save.
-  const [pinned, setPinned] = useState<FrontPageArticle[]>(() =>
-    articles
-      .filter((a) => a.featured && a.featuredRank != null)
-      .sort((a, b) => (a.featuredRank ?? 0) - (b.featuredRank ?? 0))
-  )
-  const [pool, setPool] = useState<FrontPageArticle[]>(() =>
-    articles.filter((a) => a.featured && a.featuredRank == null)
-  )
-  const [pickerOpen, setPickerOpen] = useState(false)
-  const [pickerQuery, setPickerQuery] = useState('')
+  // Local mirror of the server state so the UI stays responsive while
+  // server actions are in flight. We use this single source of truth
+  // for all derived views (pinned slots, available list).
+  const [items, setItems] = useState<FrontPageArticle[]>(() => articles)
+  const [query, setQuery] = useState('')
   const [pending, startTransition] = useTransition()
   const [saveError, setSaveError] = useState<string | null>(null)
   const dragIndexRef = useRef<number | null>(null)
 
-  const unfeatured = useMemo(
-    () => articles.filter((a) => !a.featured),
-    [articles]
+  // Pinned slots — ordered by rank.
+  const pinned = useMemo(
+    () =>
+      items
+        .filter((a) => statusOf(a) === 'pinned')
+        .sort((a, b) => (a.featuredRank ?? 0) - (b.featuredRank ?? 0)),
+    [items]
   )
-  const filteredUnfeatured = useMemo(() => {
-    const q = pickerQuery.trim().toLowerCase()
-    if (!q) return unfeatured
-    return unfeatured.filter(
+  const slotsFull = pinned.length >= maxSlots
+
+  // Everything not currently pinned — pool first (they're "warm",
+  // already in the featured set), then plain available articles.
+  // Stable sort by status so visually featured-pool items group at the
+  // top of the list.
+  const browseable = useMemo(() => {
+    const rest = items.filter((a) => statusOf(a) !== 'pinned')
+    return rest.sort((a, b) => {
+      const sa = statusOf(a)
+      const sb = statusOf(b)
+      if (sa !== sb) return sa === 'pool' ? -1 : 1
+      // Within a status group keep newest first.
+      return (
+        new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+      )
+    })
+  }, [items])
+
+  const filteredBrowseable = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return browseable
+    return browseable.filter(
       (a) =>
         a.title.toLowerCase().includes(q) ||
         a.slug.toLowerCase().includes(q) ||
         (a.authorName?.toLowerCase().includes(q) ?? false) ||
         a.category.toLowerCase().includes(q)
     )
-  }, [unfeatured, pickerQuery])
+  }, [browseable, query])
 
-  // Persist the current pinned order. Bulk replace — the action
-  // clears any orphan ranks for us so the data model stays clean.
-  function persist(nextPinned: FrontPageArticle[]) {
+  // ── Mutations ──────────────────────────────────────────────────────
+  //
+  // Each mutation updates `items` optimistically and then fires the
+  // server action. On failure we surface the error and let the user
+  // retry; the parent revalidatePath will re-render with server truth
+  // on the next navigation.
+
+  function applyRanks(nextItems: FrontPageArticle[]) {
+    // Recompute ranks from the order of pinned items in nextItems.
+    const pinnedOrder = nextItems
+      .filter((a) => statusOf(a) === 'pinned')
+      .sort((a, b) => (a.featuredRank ?? 0) - (b.featuredRank ?? 0))
+    const ids = pinnedOrder.map((a) => a.id)
     setSaveError(null)
-    const ids = nextPinned.map((a) => a.id)
     startTransition(async () => {
       try {
         await reorderFrontPage(ids)
@@ -110,63 +141,100 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
 
   function move(fromIndex: number, toIndex: number) {
     if (fromIndex === toIndex || toIndex < 0 || toIndex >= pinned.length) return
-    const next = [...pinned]
-    const [item] = next.splice(fromIndex, 1)
-    next.splice(toIndex, 0, item)
-    setPinned(next)
-    persist(next)
+    const reordered = [...pinned]
+    const [moved] = reordered.splice(fromIndex, 1)
+    reordered.splice(toIndex, 0, moved)
+    const newRanks = new Map(reordered.map((a, i) => [a.id, i + 1]))
+    setItems((prev) =>
+      prev.map((a) => {
+        const nextRank = newRanks.get(a.id)
+        return nextRank != null
+          ? { ...a, featured: true, featuredRank: nextRank }
+          : a
+      })
+    )
+    applyRanks(
+      items.map((a) => {
+        const nextRank = newRanks.get(a.id)
+        return nextRank != null
+          ? { ...a, featured: true, featuredRank: nextRank }
+          : a
+      })
+    )
   }
 
   function unpin(id: string) {
-    const article = pinned.find((a) => a.id === id)
-    if (!article) return
-    const nextPinned = pinned.filter((a) => a.id !== id)
-    setPinned(nextPinned)
-    setPool([{ ...article, featuredRank: null }, ...pool])
-    persist(nextPinned)
-  }
-
-  function pinFromPool(id: string) {
-    if (pinned.length >= maxSlots) return
-    const article = pool.find((a) => a.id === id)
-    if (!article) return
-    const nextPinned = [...pinned, { ...article, featuredRank: pinned.length + 1 }]
-    setPinned(nextPinned)
-    setPool(pool.filter((a) => a.id !== id))
-    persist(nextPinned)
-  }
-
-  function addFromPicker(article: FrontPageArticle) {
-    if (pinned.length >= maxSlots) return
+    setItems((prev) => {
+      const next = prev.map((a) =>
+        a.id === id ? { ...a, featuredRank: null } : a
+      )
+      // Recompact remaining pinned ranks to 1..N.
+      const stillPinned = next
+        .filter((a) => statusOf(a) === 'pinned')
+        .sort((a, b) => (a.featuredRank ?? 0) - (b.featuredRank ?? 0))
+      const recompacted = new Map(stillPinned.map((a, i) => [a.id, i + 1]))
+      return next.map((a) => {
+        const r = recompacted.get(a.id)
+        return r != null ? { ...a, featuredRank: r } : a
+      })
+    })
+    // Optimistic UI updated above; bulk-save the new pinned order.
     setSaveError(null)
-    setPickerQuery('')
-    setPickerOpen(false)
-    // Two writes: flip `featured` on first, then the bulk reorder.
-    // togglePostFeatured already revalidates and we follow with the
-    // rank update so the pinned set settles in one batch.
     startTransition(async () => {
       try {
-        await togglePostFeatured(article.id, true)
-        const nextPinned = [
-          ...pinned,
-          { ...article, featured: true, featuredRank: pinned.length + 1 },
-        ]
-        setPinned(nextPinned)
-        await reorderFrontPage(nextPinned.map((a) => a.id))
+        const remaining = pinned.filter((a) => a.id !== id).map((a) => a.id)
+        await reorderFrontPage(remaining)
       } catch (err) {
         setSaveError(
           err instanceof Error
             ? err.message
-            : 'Could not add the article. Try again.'
+            : 'Could not unpin. Try again.'
         )
       }
     })
   }
 
-  function removeFromFeatured(id: string) {
-    // From the pool — unfeatures the article entirely.
+  function pinArticle(article: FrontPageArticle) {
+    if (slotsFull) return
+    const nextRank = pinned.length + 1
+    const wasFeaturedAlready = statusOf(article) === 'pool'
+    setItems((prev) =>
+      prev.map((a) =>
+        a.id === article.id
+          ? { ...a, featured: true, featuredRank: nextRank }
+          : a
+      )
+    )
     setSaveError(null)
-    setPool(pool.filter((a) => a.id !== id))
+    startTransition(async () => {
+      try {
+        // If the article wasn't in the featured pool yet, set
+        // featured=true first so the bucket count is right; then
+        // reorder. Pool articles only need the reorder.
+        if (!wasFeaturedAlready) {
+          await togglePostFeatured(article.id, true)
+        }
+        const nextIds = [...pinned.map((a) => a.id), article.id]
+        await reorderFrontPage(nextIds)
+      } catch (err) {
+        setSaveError(
+          err instanceof Error
+            ? err.message
+            : 'Could not pin the article. Try again.'
+        )
+      }
+    })
+  }
+
+  function unfeature(id: string) {
+    // Drop from the featured pool entirely. If it was pinned, drop
+    // the rank too.
+    setItems((prev) =>
+      prev.map((a) =>
+        a.id === id ? { ...a, featured: false, featuredRank: null } : a
+      )
+    )
+    setSaveError(null)
     startTransition(async () => {
       try {
         await togglePostFeatured(id, false)
@@ -174,7 +242,7 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
         setSaveError(
           err instanceof Error
             ? err.message
-            : 'Could not remove the article. Try again.'
+            : 'Could not remove from featured. Try again.'
         )
       }
     })
@@ -206,25 +274,12 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
 
       {/* ── PINNED SLOTS ────────────────────────────────────────────── */}
       <section className="rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-        <header className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <div>
-            <h2 className="text-sm font-semibold text-gray-900">
-              Pinned slots
-            </h2>
-            <p className="mt-0.5 text-xs text-gray-500">
-              {pinned.length} of {maxSlots} slots filled · slot 1 is the
-              Trending hero · drag to reorder
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setPickerOpen((v) => !v)}
-            disabled={pinned.length >= maxSlots || pending}
-            className="flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#b97fd0] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <Plus className="h-4 w-4" />
-            Add article
-          </button>
+        <header className="border-b border-gray-100 px-5 py-4">
+          <h2 className="text-sm font-semibold text-gray-900">Pinned slots</h2>
+          <p className="mt-0.5 text-xs text-gray-500">
+            {pinned.length} of {maxSlots} slots filled · slot 1 is the
+            Trending hero, slots 2–5 are Editor Picks · drag to reorder
+          </p>
         </header>
 
         {pinned.length === 0 ? (
@@ -234,8 +289,7 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
               No pinned slots yet
             </p>
             <p className="mt-1 text-xs text-gray-500">
-              Click <span className="font-semibold">Add article</span> to put
-              something on the front, or pin from the featured pool below.
+              Pick an article from the list below to put it on the front.
             </p>
           </div>
         ) : (
@@ -319,144 +373,121 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
         )}
       </section>
 
-      {/* ── ADD-ARTICLE PICKER (when open) ──────────────────────────── */}
-      {pickerOpen && (
-        <section className="rounded-2xl border border-gray-200 bg-white shadow-[0_4px_20px_-8px_rgba(0,0,0,0.1)]">
-          <header className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-            <h3 className="text-sm font-semibold text-gray-900">
-              Pick an article to add to the front
-            </h3>
-            <button
-              type="button"
-              onClick={() => {
-                setPickerOpen(false)
-                setPickerQuery('')
-              }}
-              className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </header>
-          <div className="border-b border-gray-100 px-5 py-3">
-            <div className="relative">
+      {/* ── ALL ARTICLES ────────────────────────────────────────────── */}
+      <section className="rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+        <header className="border-b border-gray-100 px-5 py-4">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-semibold text-gray-900">
+                All articles
+              </h2>
+              <p className="mt-0.5 text-xs text-gray-500">
+                {browseable.length} published{' '}
+                {browseable.length === 1 ? 'article' : 'articles'} available
+                {slotsFull && ' · all slots full — unpin one to free space'}
+              </p>
+            </div>
+            <div className="relative w-full max-w-[280px]">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
               <input
                 type="search"
-                autoFocus
-                value={pickerQuery}
-                onChange={(e) => setPickerQuery(e.target.value)}
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search by title, author, or category"
                 className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9A0DC]"
               />
             </div>
           </div>
-          {filteredUnfeatured.length === 0 ? (
-            <p className="px-5 py-8 text-center text-sm text-gray-500">
-              No articles match — try a different search, or publish a new
-              article first.
-            </p>
-          ) : (
-            <ul className="max-h-[420px] divide-y divide-gray-100 overflow-y-auto">
-              {filteredUnfeatured.slice(0, 40).map((article) => (
-                <li key={article.id}>
-                  <button
-                    type="button"
-                    onClick={() => addFromPicker(article)}
-                    disabled={pending}
-                    className="flex w-full items-center gap-3 px-5 py-3 text-left transition-colors hover:bg-amber-50/40 disabled:cursor-not-allowed disabled:opacity-50"
-                  >
-                    <ArticleThumbnail
-                      category={article.category}
-                      heroSrc={article.heroSrc}
-                      heroAlt={article.heroAlt}
-                      heroType={article.heroType}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-900">
-                        {article.title || 'Untitled'}
-                      </p>
-                      <p className="mt-0.5 truncate text-xs text-gray-500">
-                        {article.category}
-                        {article.authorName
-                          ? ` · by ${article.authorName}`
-                          : ''}
-                      </p>
-                    </div>
-                    <Plus className="h-4 w-4 shrink-0 text-amber-700" />
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
-
-      {/* ── FEATURED POOL (unpinned but featured) ───────────────────── */}
-      {pool.length > 0 && (
-        <section className="rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-          <header className="border-b border-gray-100 px-5 py-4">
-            <h2 className="text-sm font-semibold text-gray-900">
-              Featured pool
-            </h2>
-            <p className="mt-0.5 text-xs text-gray-500">
-              These articles are featured but not pinned to a specific slot.
-              They fill any unpinned slots in published-date order.
-            </p>
-          </header>
+        </header>
+        {filteredBrowseable.length === 0 ? (
+          <p className="px-5 py-8 text-center text-sm text-gray-500">
+            {query
+              ? 'No articles match — try a different search.'
+              : 'No more articles available. Every published article is already on the front.'}
+          </p>
+        ) : (
           <ul className="divide-y divide-gray-100">
-            {pool.map((article) => (
-              <li
-                key={article.id}
-                className="flex items-center gap-3 px-5 py-3.5 transition-colors hover:bg-gray-50/60"
-              >
-                <ArticleThumbnail
-                  category={article.category}
-                  heroSrc={article.heroSrc}
-                  heroAlt={article.heroAlt}
-                  heroType={article.heroType}
-                />
-                <div className="min-w-0 flex-1">
-                  <Link
-                    href={`/operations/articles/${article.id}`}
-                    className="block truncate text-sm font-semibold text-gray-900 hover:text-[#7E5896]"
-                  >
-                    {article.title || 'Untitled'}
-                  </Link>
-                  <p className="mt-0.5 truncate text-xs text-gray-500">
-                    {article.category}
-                    {article.authorName ? ` · by ${article.authorName}` : ''}
-                  </p>
-                </div>
-                <div className="flex shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => pinFromPool(article.id)}
-                    disabled={pending || pinned.length >= maxSlots}
-                    title={
-                      pinned.length >= maxSlots
-                        ? 'All slots full — unpin one first'
-                        : 'Pin to a specific slot'
-                    }
-                    className="flex items-center gap-1 rounded-md px-2.5 py-1.5 text-xs font-semibold text-amber-700 transition-colors hover:bg-amber-50 disabled:cursor-not-allowed disabled:opacity-40"
-                  >
-                    <Star className="h-3.5 w-3.5" />
-                    Pin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => removeFromFeatured(article.id)}
-                    disabled={pending}
-                    title="Remove from featured pool entirely"
-                    className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-              </li>
-            ))}
+            {filteredBrowseable.map((article) => {
+              const status = statusOf(article)
+              return (
+                <li
+                  key={article.id}
+                  className="flex items-center gap-3 px-5 py-3 transition-colors hover:bg-gray-50/60"
+                >
+                  <ArticleThumbnail
+                    category={article.category}
+                    heroSrc={article.heroSrc}
+                    heroAlt={article.heroAlt}
+                    heroType={article.heroType}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/operations/articles/${article.id}`}
+                        className="block min-w-0 truncate text-sm font-semibold text-gray-900 hover:text-[#7E5896]"
+                      >
+                        {article.title || 'Untitled'}
+                      </Link>
+                      {status === 'pool' && (
+                        <span
+                          title="Featured but not pinned to a specific slot. Pin it to lock its position."
+                          className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 ring-1 ring-amber-200"
+                        >
+                          <Eye className="h-3 w-3" />
+                          In pool
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-0.5 truncate text-xs text-gray-500">
+                      {article.category}
+                      {article.authorName
+                        ? ` · by ${article.authorName}`
+                        : ''}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => pinArticle(article)}
+                      disabled={pending || slotsFull}
+                      title={
+                        slotsFull
+                          ? 'All slots full — unpin one first'
+                          : status === 'pool'
+                            ? 'Pin to a specific slot'
+                            : 'Add to the front page'
+                      }
+                      className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                        status === 'pool'
+                          ? 'text-amber-700 hover:bg-amber-50'
+                          : 'bg-[#C9A0DC] text-white hover:bg-[#b97fd0] disabled:bg-gray-200 disabled:text-gray-400'
+                      }`}
+                    >
+                      {status === 'pool' ? (
+                        <Star className="h-3.5 w-3.5" />
+                      ) : (
+                        <Plus className="h-3.5 w-3.5" />
+                      )}
+                      {status === 'pool' ? 'Pin to slot' : 'Add to front'}
+                    </button>
+                    {status === 'pool' && (
+                      <button
+                        type="button"
+                        onClick={() => unfeature(article.id)}
+                        disabled={pending}
+                        title="Remove from featured pool entirely"
+                        className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 disabled:opacity-40"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
           </ul>
-        </section>
-      )}
+        )}
+      </section>
 
       {/* ── HELP TEXT ───────────────────────────────────────────────── */}
       <p className="px-1 text-xs text-gray-500">
