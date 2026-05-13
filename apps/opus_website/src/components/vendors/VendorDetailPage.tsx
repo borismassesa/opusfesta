@@ -2726,16 +2726,17 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                         {item.kind === 'video' ? (
                           <div className="group relative">
                             <div className="overflow-hidden bg-black aspect-video">
-                              {/* Render the actual video element with
-                                  preload="metadata" so the browser paints
-                                  the first frame as a thumbnail. The
-                                  shared `images[0]` poster fallback meant
-                                  every tile looked identical — now each
-                                  reel shows its own frame. */}
+                              {/* Auto-play each reel inline (muted, looped).
+                                  Browsers permit autoplay only when muted
+                                  + playsInline are both set, which they are.
+                                  No poster fallback — the user explicitly
+                                  asked for the videos themselves to play,
+                                  not static thumbnails. */}
                               <video
                                 src={item.src}
-                                poster={item.poster}
+                                autoPlay
                                 muted
+                                loop
                                 playsInline
                                 preload="metadata"
                                 className="block h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
