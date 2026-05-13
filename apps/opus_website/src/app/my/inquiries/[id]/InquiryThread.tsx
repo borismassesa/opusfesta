@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft, Calendar, MapPin, Users, Send, CheckCircle2 } from 'lucide-react'
+import { toast } from 'sonner'
 import type { InquiryDetail, InquiryMessage } from './page'
 
 type InquiryStatus = 'pending' | 'responded' | 'accepted' | 'declined' | 'closed'
@@ -387,10 +388,13 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
         setMessages((prev) => [...prev, json.message])
         setDraft('')
       } else {
-        setSendError(json.error ?? 'Failed to send. Please try again.')
+        const message = json.error ?? 'Failed to send. Please try again.'
+        setSendError(message)
+        toast.error(message)
       }
     } catch {
       setSendError('Network error. Please check your connection.')
+      toast.error('Network error. Please check your connection.')
     } finally {
       setSending(false)
     }
@@ -407,13 +411,17 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       })
       const json = await res.json()
       if (!res.ok) {
-        setSendError(json.error ?? 'Failed to close request.')
+        const message = json.error ?? 'Failed to close request.'
+        setSendError(message)
+        toast.error(message)
         return
       }
       setInquiryStatus('closed')
       setSendError('')
+      toast.success('Request closed')
     } catch {
       setSendError('Network error while closing request.')
+      toast.error('Network error while closing request.')
     } finally {
       setInquiryActionLoading(false)
     }
@@ -427,12 +435,15 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       const res = await fetch(`/api/my/inquiries/${inquiry.id}`, { method: 'DELETE' })
       if (!res.ok) {
         setSendError('Failed to delete request.')
+        toast.error('Failed to delete request.')
         return
       }
+      toast.success('Request deleted')
       router.push('/my/inquiries')
       router.refresh()
     } catch {
       setSendError('Network error while deleting request.')
+      toast.error('Network error while deleting request.')
     } finally {
       setInquiryActionLoading(false)
     }
@@ -449,15 +460,19 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       })
       const json = await res.json()
       if (!res.ok) {
-        setSendError(json.error ?? 'Failed to accept proposal.')
+        const message = json.error ?? 'Failed to accept proposal.'
+        setSendError(message)
+        toast.error(message)
         return
       }
       setInquiryStatus('accepted')
       setProposal((prev) => prev ? { ...prev, status: 'accepted', acceptedAt: new Date().toISOString() } : prev)
       setCounterOpen(false)
       setSendError('')
+      toast.success('Proposal accepted')
     } catch {
       setSendError('Network error while accepting proposal.')
+      toast.error('Network error while accepting proposal.')
     } finally {
       setInquiryActionLoading(false)
     }
@@ -478,7 +493,9 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       })
       const json = await res.json()
       if (!res.ok) {
-        setSendError(json.error ?? 'Failed to send counter.')
+        const message = json.error ?? 'Failed to send counter.'
+        setSendError(message)
+        toast.error(message)
         return
       }
       setProposal((prev) => prev ? {
@@ -490,8 +507,10 @@ export default function InquiryThread({ inquiry, messages: initialMessages, emai
       } : prev)
       setCounterOpen(false)
       setSendError('')
+      toast.success('Counter sent')
     } catch {
       setSendError('Network error while sending counter.')
+      toast.error('Network error while sending counter.')
     } finally {
       setInquiryActionLoading(false)
     }
