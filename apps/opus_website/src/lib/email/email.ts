@@ -38,7 +38,7 @@ function defaultFromAddress(): string {
   return process.env.RESEND_FROM_EMAIL || 'OpusFesta <noreply@thefestaevents.com>'
 }
 
-/** Strip CR, LF, and other ASCII control characters from header-ish fields */
+/** Strip CR, LF, and other ASCII control characters from email header fields to prevent header injection attacks */
 function sanitizeHeaderField(value: string): string {
   // eslint-disable-next-line no-control-regex
   return value.replace(/[\r\n\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '')
