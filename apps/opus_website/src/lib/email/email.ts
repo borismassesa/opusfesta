@@ -35,7 +35,7 @@ export function isEmailConfigured(): boolean {
 }
 
 function defaultFromAddress(): string {
-  return process.env.RESEND_FROM_EMAIL || 'OpusFesta <admin@opusfesta.com>'
+  return process.env.RESEND_FROM_EMAIL || 'OpusFesta <noreply@thefestaevents.com>'
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {

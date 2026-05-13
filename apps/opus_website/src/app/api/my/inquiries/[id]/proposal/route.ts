@@ -3,6 +3,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import { sendEmail } from '@/lib/email/email'
 import { buildProposalClientConfirmationEmail } from '@/lib/email/proposal-client-confirmation-email'
+import { generateInquiryToken } from '@/lib/inquiry-token'
 
 type ProposalAction = 'accept' | 'counter'
 
@@ -99,11 +100,12 @@ export async function PATCH(
 
     try {
       const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')
+      const accessToken = generateInquiryToken(id, email.toLowerCase())
       const payload = buildProposalClientConfirmationEmail({
         clientName: inquiry.name?.trim() || 'there',
         vendorName: inquiry.vendor_name?.trim() || inquiry.vendor_slug?.trim() || 'Vendor',
         action: 'accept',
-        inquiryUrl: `${appUrl}/my/inquiries/${id}?email=${encodeURIComponent(email.toLowerCase())}`,
+        inquiryUrl: `${appUrl}/my/inquiries/${id}?access_token=${accessToken}`,
       })
       await sendEmail({
         to: email.toLowerCase(),
@@ -149,11 +151,12 @@ export async function PATCH(
 
   try {
     const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')
+    const accessToken = generateInquiryToken(id, email.toLowerCase())
     const payload = buildProposalClientConfirmationEmail({
       clientName: inquiry.name?.trim() || 'there',
       vendorName: inquiry.vendor_name?.trim() || inquiry.vendor_slug?.trim() || 'Vendor',
       action: 'counter',
-      inquiryUrl: `${appUrl}/my/inquiries/${id}?email=${encodeURIComponent(email.toLowerCase())}`,
+      inquiryUrl: `${appUrl}/my/inquiries/${id}?access_token=${accessToken}`,
     })
     await sendEmail({
       to: email.toLowerCase(),

@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase'
 import { sendEmail } from '@/lib/email/email'
 import { buildInquiryClientConfirmationEmail } from '@/lib/email/inquiry-client-confirmation-email'
 import { buildInquiryVendorNotificationEmail } from '@/lib/email/inquiry-vendor-notification-email'
+import { generateInquiryToken } from '@/lib/inquiry-token'
 
 // Public endpoint — no auth required. RLS policy "Anyone can create inquiries"
 // allows anon INSERT; we use the service role here so the insert always lands
@@ -216,7 +217,8 @@ export async function POST(request: Request) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006'
-  const inquiryUrl = `${appUrl.replace(/\/$/, '')}/my/inquiries/${data.id}?email=${encodeURIComponent((email as string).trim().toLowerCase())}`
+  const accessToken = generateInquiryToken(data.id, (email as string).trim().toLowerCase())
+  const inquiryUrl = `${appUrl.replace(/\/$/, '')}/my/inquiries/${data.id}?access_token=${accessToken}`
 
   try {
     const clientEmailPayload = buildInquiryClientConfirmationEmail({
@@ -273,5 +275,5 @@ export async function POST(request: Request) {
     console.warn('[inquiries] email notifications failed', emailError)
   }
 
-  return NextResponse.json({ success: true, id: data.id }, { status: 201 })
+  return NextResponse.json({ success: true, id: data.id, accessToken }, { status: 201 })
 }
