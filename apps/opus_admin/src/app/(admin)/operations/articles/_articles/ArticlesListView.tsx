@@ -191,7 +191,7 @@ function FrontPageStrip({
   const allEmpty = slotsFilled === 0
   return (
     <Link
-      href="/operations/articles/front-page"
+      href="/cms/advice-and-ideas/front-page"
       className="group flex items-center justify-between gap-4 rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50/80 to-white px-5 py-4 transition-colors hover:border-amber-200 hover:from-amber-50"
     >
       <div className="flex items-center gap-3">

@@ -14,6 +14,11 @@
 // action, which is bulk — it rewrites the whole rank sequence in one call.
 // Keeps the data model simple: there's no partial-update path to get out
 // of sync with.
+//
+// Server actions still live with the article CRUD module in
+// /operations/articles/actions.ts because they mutate advice_ideas_posts
+// rows. This page is purely a "how does the public front compose itself"
+// view, which is why it lives under CMS instead.
 
 'use client'
 
@@ -27,8 +32,11 @@ import {
   TrendingUp,
   X,
 } from 'lucide-react'
-import { reorderFrontPage, togglePostFeatured } from '../actions'
-import ArticleThumbnail from '../_articles/ArticleThumbnail'
+import {
+  reorderFrontPage,
+  togglePostFeatured,
+} from '@/app/(admin)/operations/articles/actions'
+import ArticleThumbnail from '@/app/(admin)/operations/articles/_articles/ArticleThumbnail'
 
 export type FrontPageArticle = {
   id: string

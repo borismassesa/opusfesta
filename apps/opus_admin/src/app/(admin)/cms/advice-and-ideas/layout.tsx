@@ -9,6 +9,7 @@ import {
   Save,
   Send,
   Sparkles,
+  Star,
   Tags,
   Trash2,
   type LucideIcon,
@@ -45,6 +46,13 @@ const sections: Section[] = [
     icon: Heading1,
     href: '/cms/advice-and-ideas/section-headers',
     description: 'Titles, subtitles, and "View all" labels for Editor\u2019s Picks, Loved by Couples, Our Favorites, Latest Stories, and Search results.',
+  },
+  {
+    key: 'front-page',
+    label: 'Front Page Picks',
+    icon: Star,
+    href: '/cms/advice-and-ideas/front-page',
+    description: 'Pick which articles land on the public front and in what order. Slot 1 is the Trending hero; slots 2\u20135 are the Editor Picks row beneath it.',
   },
 ]
 

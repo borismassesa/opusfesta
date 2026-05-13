@@ -130,7 +130,7 @@ export async function updateAdvicePost(id: string, input: PostUpsertInput): Prom
 
   revalidatePath('/operations/articles')
   revalidatePath(`/operations/articles/${id}`)
-  revalidatePath('/operations/articles/front-page')
+  revalidatePath('/cms/advice-and-ideas/front-page')
   await revalidateWebsite(slug)
 }
 
@@ -186,7 +186,7 @@ export async function togglePostFeatured(id: string, featured: boolean): Promise
   if (error) throw error
 
   revalidatePath('/operations/articles')
-  revalidatePath('/operations/articles/front-page')
+  revalidatePath('/cms/advice-and-ideas/front-page')
   await revalidateWebsite(row?.slug)
 }
 
@@ -229,7 +229,7 @@ export async function reorderFrontPage(orderedIds: string[]): Promise<void> {
   }
 
   revalidatePath('/operations/articles')
-  revalidatePath('/operations/articles/front-page')
+  revalidatePath('/cms/advice-and-ideas/front-page')
   await revalidateWebsite()
 }
 
@@ -249,7 +249,7 @@ export async function unpinFromFrontPage(id: string): Promise<void> {
   if (error) throw error
 
   revalidatePath('/operations/articles')
-  revalidatePath('/operations/articles/front-page')
+  revalidatePath('/cms/advice-and-ideas/front-page')
   await revalidateWebsite(row?.slug)
 }
 
