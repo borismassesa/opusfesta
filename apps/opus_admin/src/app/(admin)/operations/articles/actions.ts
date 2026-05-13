@@ -94,6 +94,15 @@ export async function updateAdvicePost(id: string, input: PostUpsertInput): Prom
   const slug = (input.slug || slugify(input.title)).trim()
   if (!slug) throw new Error('Slug is required')
 
+  // When the editor unchecks "Feature on the homepage" from the article
+  // edit form, also clear any pinned front-page rank so the slot doesn't
+  // linger. Keeping `featured_rank` untouched when `featured` stays true
+  // means drag-to-reorder picks in the Front Page screen aren't clobbered
+  // by an unrelated save here.
+  const featuredUpdate = input.featured
+    ? { featured: true as const }
+    : { featured: false as const, featured_rank: null }
+
   const payload = {
     slug,
     title: input.title,
@@ -105,7 +114,7 @@ export async function updateAdvicePost(id: string, input: PostUpsertInput): Prom
     author_role: input.author_role || null,
     author_avatar_url: input.author_avatar_url || null,
     read_time: Math.max(1, Math.round(input.read_time || 1)),
-    featured: !!input.featured,
+    ...featuredUpdate,
     published: !!input.published,
     published_at: input.published_at,
     hero_media_type: input.hero_media_type,
@@ -121,6 +130,7 @@ export async function updateAdvicePost(id: string, input: PostUpsertInput): Prom
 
   revalidatePath('/operations/articles')
   revalidatePath(`/operations/articles/${id}`)
+  revalidatePath('/operations/articles/front-page')
   await revalidateWebsite(slug)
 }
 
@@ -161,15 +171,85 @@ export async function togglePostPublished(id: string, published: boolean): Promi
 export async function togglePostFeatured(id: string, featured: boolean): Promise<void> {
   await requireAdminRole(ARTICLE_MANAGE_ROLES)
   const supabase = createSupabaseAdminClient()
+  // When un-featuring, also clear the rank so the slot doesn't linger.
+  // When featuring (no rank specified), the article joins the pool
+  // unranked and sorts behind any explicitly-ranked picks.
+  const payload = featured
+    ? { featured: true }
+    : { featured: false, featured_rank: null }
   const { data: row, error } = await supabase
     .from('advice_ideas_posts')
-    .update({ featured })
+    .update(payload)
     .eq('id', id)
     .select('slug')
     .single()
   if (error) throw error
 
   revalidatePath('/operations/articles')
+  revalidatePath('/operations/articles/front-page')
+  await revalidateWebsite(row?.slug)
+}
+
+// Bulk reorder the front-page picks. Caller passes the desired slot order
+// as an array of post IDs (index 0 = Trending hero / rank 1, index 1 =
+// Editor Picks #2, etc.). Articles in the array get rank=position+1 and
+// featured=true; any articles not in the array that previously had a
+// rank get cleared back to unranked-but-featured so they don't disappear
+// from the pool — only explicit "remove from front" should un-feature.
+export async function reorderFrontPage(orderedIds: string[]): Promise<void> {
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
+  const supabase = createSupabaseAdminClient()
+
+  // Clear ranks on any currently-ranked rows that aren't in the new
+  // order. They stay featured but lose their pinned slot.
+  if (orderedIds.length === 0) {
+    const { error: clearAllErr } = await supabase
+      .from('advice_ideas_posts')
+      .update({ featured_rank: null })
+      .not('featured_rank', 'is', null)
+    if (clearAllErr) throw clearAllErr
+  } else {
+    const { error: clearErr } = await supabase
+      .from('advice_ideas_posts')
+      .update({ featured_rank: null })
+      .not('featured_rank', 'is', null)
+      .not('id', 'in', `(${orderedIds.map((id) => `"${id}"`).join(',')})`)
+    if (clearErr) throw clearErr
+  }
+
+  // Assign new ranks 1..N. Sequential awaits — the front list is small
+  // (capped at 5 by UX) so the round-trip cost is negligible and a
+  // multi-row UPDATE with CASE WHEN would be more code than it's worth.
+  for (let i = 0; i < orderedIds.length; i++) {
+    const { error } = await supabase
+      .from('advice_ideas_posts')
+      .update({ featured: true, featured_rank: i + 1 })
+      .eq('id', orderedIds[i])
+    if (error) throw error
+  }
+
+  revalidatePath('/operations/articles')
+  revalidatePath('/operations/articles/front-page')
+  await revalidateWebsite()
+}
+
+// Remove an article from the pinned front-page slots without
+// un-featuring it. The article stays in the featured pool (so it
+// still fills in if there are fewer than 5 ranked picks) but loses
+// its specific slot.
+export async function unpinFromFrontPage(id: string): Promise<void> {
+  await requireAdminRole(ARTICLE_MANAGE_ROLES)
+  const supabase = createSupabaseAdminClient()
+  const { data: row, error } = await supabase
+    .from('advice_ideas_posts')
+    .update({ featured_rank: null })
+    .eq('id', id)
+    .select('slug')
+    .single()
+  if (error) throw error
+
+  revalidatePath('/operations/articles')
+  revalidatePath('/operations/articles/front-page')
   await revalidateWebsite(row?.slug)
 }
 

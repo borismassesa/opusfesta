@@ -57,6 +57,10 @@ export type AdviceIdeasPost = {
   authorRole: string
   authorAvatarUrl?: string
   featured?: boolean
+  // Editor-picked slot on the Editor Picks front-page row. 1 = Trending
+  // hero, 2..5 = Editor Picks. Null = featured but unranked (sorts after
+  // ranked picks by published date).
+  featuredRank?: number | null
   heroMedia: {
     type: 'image' | 'video'
     src: string

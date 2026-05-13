@@ -348,6 +348,10 @@ export type AdviceIdeasPostRow = {
   author_avatar_url: string | null
   read_time: number // minutes
   featured: boolean
+  // Explicit slot on the public front when set: 1 = Trending hero,
+  // 2..5 = Editor Picks. NULL = in the featured pool but unranked
+  // (sorts after ranked items by published_at).
+  featured_rank: number | null
   published: boolean
   published_at: string
   hero_media_type: 'image' | 'video'

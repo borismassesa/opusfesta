@@ -3,13 +3,25 @@
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ExternalLink, Eye, EyeOff, Pencil, Trash2 } from 'lucide-react'
-import { deleteAdvicePost, togglePostPublished } from './actions'
+import { ExternalLink, Eye, EyeOff, Pencil, Star, Trash2 } from 'lucide-react'
+import { deleteAdvicePost, togglePostFeatured, togglePostPublished } from './actions'
 import ConfirmDialog from '../_shared/ConfirmDialog'
 
-type Props = { id: string; slug: string; published: boolean }
+type Props = {
+  id: string
+  slug: string
+  published: boolean
+  featured: boolean
+  featuredRank: number | null
+}
 
-export default function PostsTableActions({ id, slug, published }: Props) {
+export default function PostsTableActions({
+  id,
+  slug,
+  published,
+  featured,
+  featuredRank,
+}: Props) {
   const [pending, startTransition] = useTransition()
   const [confirmOpen, setConfirmOpen] = useState(false)
   const router = useRouter()
@@ -21,6 +33,12 @@ export default function PostsTableActions({ id, slug, published }: Props) {
       router.refresh()
     })
 
+  const onToggleFeatured = () =>
+    startTransition(async () => {
+      await togglePostFeatured(id, !featured)
+      router.refresh()
+    })
+
   const onConfirmDelete = () => {
     startTransition(async () => {
       await deleteAdvicePost(id)
@@ -29,9 +47,29 @@ export default function PostsTableActions({ id, slug, published }: Props) {
     })
   }
 
+  const featuredTitle = featured
+    ? featuredRank
+      ? `Remove from the front (currently slot #${featuredRank})`
+      : 'Remove from the featured pool'
+    : 'Add to the featured pool'
+
   return (
     <>
       <div className="flex items-center justify-end gap-1">
+        <IconButton
+          title={featuredTitle}
+          onClick={onToggleFeatured}
+          disabled={pending || !published}
+          active={featured}
+        >
+          <Star
+            className={`h-4 w-4 ${
+              featured
+                ? 'fill-amber-500 stroke-amber-600'
+                : 'stroke-gray-500'
+            }`}
+          />
+        </IconButton>
         <IconButton
           title={published ? 'Unpublish' : 'Publish'}
           onClick={onTogglePublished}
@@ -97,12 +135,14 @@ function IconButton({
   onClick,
   disabled,
   danger,
+  active,
 }: {
   children: React.ReactNode
   title: string
   onClick: () => void
   disabled?: boolean
   danger?: boolean
+  active?: boolean
 }) {
   return (
     <button
@@ -113,7 +153,9 @@ function IconButton({
       className={`rounded-md p-1.5 transition-colors disabled:opacity-40 ${
         danger
           ? 'text-gray-500 hover:bg-red-50 hover:text-red-600'
-          : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
+          : active
+            ? 'bg-amber-50 text-amber-700 hover:bg-amber-100'
+            : 'text-gray-500 hover:bg-gray-100 hover:text-gray-900'
       }`}
     >
       {children}
