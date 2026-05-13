@@ -123,7 +123,13 @@ function useBookingsHeading(pathname: string): PageHeading | null {
   }
 }
 
-export function Header({ vendorName }: { vendorName: string }) {
+export function Header({
+  vendorName,
+  vendorSlug,
+}: {
+  vendorName: string
+  vendorSlug: string | null
+}) {
   const pathname = usePathname()
   const crumbs = buildCrumbs(pathname)
   const storefrontHeading = useStorefrontHeading(pathname)
@@ -169,14 +175,16 @@ export function Header({ vendorName }: { vendorName: string }) {
       )}
 
       <div className="flex items-center gap-4 shrink-0">
-        {isStorefront ? (
-          <Link
-            href="#"
+        {isStorefront && vendorSlug ? (
+          <a
+            href={`${(process.env.NEXT_PUBLIC_WEBSITE_URL ?? '').replace(/\/$/, '')}/vendors/${encodeURIComponent(vendorSlug)}`}
+            target="_blank"
+            rel="noreferrer"
             className="hidden sm:inline-flex items-center gap-1.5 border border-gray-200 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-white transition-colors"
           >
             View public storefront
             <ExternalLink className="w-3.5 h-3.5" />
-          </Link>
+          </a>
         ) : null}
 
         <button
