@@ -434,7 +434,7 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
               <p className="mt-0.5 text-xs text-gray-500">
                 {browseable.length} published{' '}
                 {browseable.length === 1 ? 'article' : 'articles'} available
-                {slotsFull && ' · all slots full — unpin one to free space'}
+                {slotsFull && ' · all slots full, unpin one to free space'}
               </p>
             </div>
             <div className="relative w-full max-w-[280px]">
@@ -452,7 +452,7 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
         {filteredBrowseable.length === 0 ? (
           <p className="px-5 py-8 text-center text-sm text-gray-500">
             {query
-              ? 'No articles match — try a different search.'
+              ? 'No articles match. Try a different search.'
               : 'No more articles available. Every published article is already on the front.'}
           </p>
         ) : (
@@ -502,7 +502,7 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
                       disabled={pending || slotsFull}
                       title={
                         slotsFull
-                          ? 'All slots full — unpin one first'
+                          ? 'All slots full. Unpin one first.'
                           : status === 'pool'
                             ? 'Pin to a specific slot'
                             : 'Add to the front page'
@@ -700,8 +700,8 @@ function SourceBadge({
         source === 'pinned'
           ? 'You pinned this article to this slot'
           : source === 'pool'
-            ? 'In the featured pool — pin it to lock this slot'
-            : 'Auto-filling from the most recent published article — pin one to override'
+            ? 'In the featured pool. Pin it to lock this slot.'
+            : 'Auto-filling from the most recent published article. Pin one to override.'
       }
       className={`inline-flex shrink-0 items-center rounded-full ${compact ? 'px-1 py-0' : 'px-2 py-0.5'} text-[9px] font-bold uppercase tracking-wider ${tone}`}
     >

@@ -31,14 +31,14 @@ const sections: Section[] = [
     label: 'Hero',
     icon: Sparkles,
     href: '/cms/advice-and-ideas/hero',
-    description: '"Plan a wedding that feels ___" — rotating words, subheadline, and the Start Reading / Latest Stories CTAs.',
+    description: 'Edit the rotating headline, subheadline, and the Start Reading and Latest Stories CTAs.',
   },
   {
     key: 'topics',
     label: 'Topics & Popular Topics',
     icon: Tags,
     href: '/cms/advice-and-ideas/topics',
-    description: 'Shared list powering the sticky dark topic strip and the Popular Topics card grid.',
+    description: 'The shared topic list powering the sticky dark strip at the top of the page and the Popular Topics card grid.',
   },
   {
     key: 'section-headers',
@@ -53,7 +53,7 @@ const sections: Section[] = [
     icon: Star,
     href: '/cms/advice-and-ideas/front-page',
     description:
-      'Pick which articles land on the public front and in what order. Slot 1 is the Trending hero; slots 2\u20135 are the Editor Picks row beneath it. Empty slots auto-fill with the most recent published articles.',
+      'Pick which articles land on the public front and in what order. Slot 1 is the Trending hero. Slots 2 to 5 are the Editor Picks row beneath it. Empty slots auto-fill with the most recent published articles.',
   },
 ]
 
