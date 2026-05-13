@@ -2298,9 +2298,14 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
     })),
   ]
   const hasMedia = images.length > 0 || videos.length > 0
+  // Videos lead the portfolio order whenever a vendor has uploaded any —
+  // they're the highest-leverage content for converting a couple, and the
+  // bento gallery's first cell is the biggest visual slot on the page.
+  // Photos fill in behind. With zero videos this collapses to the
+  // original photo-only sequence.
   const portfolioItems = [
-    ...images.map((src, index) => ({ kind: 'photo' as const, src, index })),
     ...videos.map((video, index) => ({ kind: 'video' as const, ...video, index })),
+    ...images.map((src, index) => ({ kind: 'photo' as const, src, index })),
   ]
   const galleryTabs: Array<{ key: GalleryTabKey; label: string; count: number }> = [
     { key: 'portfolio', label: 'Portfolio', count: portfolioItems.length },
@@ -2458,20 +2463,23 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                           grid grid-cols-1
                           sm:grid-cols-[2fr_0.95fr_0.95fr] lg:grid-cols-[2.4fr_0.8fr_0.8fr] sm:grid-rows-2 sm:gap-1.5">
 
-            {/* Cell 1 — left, spans 2 rows */}
+            {/* Cell 1 — left, spans 2 rows. Sourced from portfolioItems[0]
+                so the videos-first ordering above automatically promotes a
+                reel into the hero slot when the vendor has uploaded any. */}
+            {portfolioItems[0] && (
             <button
               type="button"
-              onClick={() => openGallery(vendor.heroMedia.type === 'video' ? 'videos' : 'photos')}
+              onClick={() => openGallery(portfolioItems[0].kind === 'video' ? 'videos' : 'photos')}
               className="relative overflow-hidden sm:row-span-2"
               aria-label="Open media"
             >
-              {vendor.heroMedia.type === 'video' ? (
+              {portfolioItems[0].kind === 'video' ? (
                 <>
                   <video
-                    src={vendor.heroMedia.src}
-                    poster={vendor.heroMedia.poster}
-                    autoPlay muted loop playsInline
-                    className="h-full w-full object-cover"
+                    src={portfolioItems[0].src}
+                    poster={(portfolioItems[0] as { poster?: string }).poster}
+                    autoPlay muted loop playsInline preload="metadata"
+                    className="h-full w-full object-cover bg-black"
                   />
                   <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
                   <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#1A1A1A]">
@@ -2480,11 +2488,15 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                 </>
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={images[0]} alt={vendor.heroMedia.alt} className="h-full w-full object-cover" />
+                <img src={portfolioItems[0].src} alt={vendor.heroMedia.alt} className="h-full w-full object-cover" />
               )}
             </button>
+            )}
 
-            {/* Cells 2–5: pull from portfolioItems so videos appear too */}
+            {/* Cells 2–5: pull from portfolioItems so videos appear too.
+                Video thumbnails render <video preload="metadata"> so the
+                browser paints the first frame instead of every cell
+                sharing the same fallback poster. */}
             {portfolioItems.slice(1, 4).map((item, i) => (
               <button
                 key={i}
@@ -2493,32 +2505,52 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                 className="relative hidden overflow-hidden sm:block"
                 aria-label={`Open ${item.kind} ${i + 2}`}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.kind === 'video' ? (item as { poster: string }).poster : item.src}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-                {item.kind === 'video' && (
+                {item.kind === 'video' ? (
                   <>
+                    <video
+                      src={item.src}
+                      poster={(item as { poster?: string }).poster}
+                      muted
+                      playsInline
+                      preload="metadata"
+                      className="h-full w-full object-cover bg-black"
+                    />
                     <div className="pointer-events-none absolute inset-0 bg-black/20" />
                     <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-[#1A1A1A]">
                       <LayoutGrid size={9} /> Video
                     </div>
                   </>
+                ) : (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={item.src}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
                 )}
               </button>
             ))}
 
-            {/* Cell 5 — "See all" overlay */}
+            {/* Cell 5 — "See all" overlay. Same per-kind treatment. */}
             {portfolioItems[4] && (
               <div className="relative hidden sm:block overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={portfolioItems[4].kind === 'video' ? (portfolioItems[4] as { poster: string }).poster : portfolioItems[4].src}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
+                {portfolioItems[4].kind === 'video' ? (
+                  <video
+                    src={portfolioItems[4].src}
+                    poster={(portfolioItems[4] as { poster?: string }).poster}
+                    muted
+                    playsInline
+                    preload="metadata"
+                    className="h-full w-full object-cover bg-black"
+                  />
+                ) : (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={portfolioItems[4].src}
+                    alt=""
+                    className="h-full w-full object-cover"
+                  />
+                )}
                 <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
                 <button
                   onClick={() => openGallery('portfolio')}
@@ -2711,12 +2743,20 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                       >
                         {item.kind === 'video' ? (
                           <div className="group relative">
-                            <div className="overflow-hidden">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={item.poster}
-                                alt={`${vendor.name} video preview`}
-                                className="block h-auto w-full transition duration-500 group-hover:scale-[1.02]"
+                            <div className="overflow-hidden bg-black aspect-video">
+                              {/* Render the actual video element with
+                                  preload="metadata" so the browser paints
+                                  the first frame as a thumbnail. The
+                                  shared `images[0]` poster fallback meant
+                                  every tile looked identical — now each
+                                  reel shows its own frame. */}
+                              <video
+                                src={item.src}
+                                poster={item.poster}
+                                muted
+                                playsInline
+                                preload="metadata"
+                                className="block h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
                               />
                             </div>
                             <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/25 to-transparent" />
