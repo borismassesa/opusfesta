@@ -71,14 +71,16 @@ const photosStatus = (d: OnboardingDraft): SectionStatus => {
   return 'partial'
 }
 
+// Recognition is wholly optional — every field is a bonus trust signal, not
+// a requirement. Plenty of legit vendors have no awards and don't yet have
+// an established response time. Treat the section as complete the moment a
+// vendor adds anything; otherwise leave it empty. We never return 'partial'
+// here so the sidebar doesn't nag a vendor who simply has no awards yet.
 const recognitionStatus = (d: OnboardingDraft): SectionStatus => {
   const hasAwards = d.awards.trim() !== '' || d.awardCertificates.length > 0
-  const filled = [hasAwards, d.responseTimeHours.trim() !== '', d.locallyOwned].filter(
-    Boolean,
-  ).length
-  if (filled === 0) return 'empty'
-  if (filled === 3) return 'complete'
-  return 'partial'
+  const hasResponseTime = d.responseTimeHours.trim() !== ''
+  if (hasAwards || hasResponseTime || d.locallyOwned) return 'complete'
+  return 'empty'
 }
 
 export function getStorefrontSections(d: OnboardingDraft): StorefrontSection[] {
@@ -169,9 +171,26 @@ export function computeCompleteness(sections: StorefrontSection[]) {
   const trackable = sections.filter((s) => s.status !== 'auto')
   const total = trackable.length
   const complete = trackable.filter((s) => s.status === 'complete').length
-  const partial = trackable.filter((s) => s.status === 'partial').length
-  // Partial counts as half-credit for the headline percentage.
-  const percent = total === 0 ? 0 : Math.round(((complete + partial * 0.5) / total) * 100)
+
+  // Percentage math: required sections drive the headline number, optional
+  // sections only ever add credit. A vendor with no awards (recognition is
+  // optional) shouldn't see their % drop just for leaving an optional
+  // section untouched — that contradicts the "optional" label.
+  const required = trackable.filter((s) => s.required)
+  const requiredComplete = required.filter((s) => s.status === 'complete').length
+  const requiredPartial = required.filter((s) => s.status === 'partial').length
+  const optionalComplete = trackable.filter(
+    (s) => !s.required && s.status === 'complete',
+  ).length
+  // Each filled-in optional section adds bonus credit equal to one required
+  // slot's worth. Capped at the same denominator so the headline never
+  // exceeds 100%.
+  const earnedRequired = requiredComplete + requiredPartial * 0.5
+  const earned = Math.min(required.length, earnedRequired + optionalComplete)
+  const percent = required.length === 0
+    ? 0
+    : Math.round((earned / required.length) * 100)
+
   const requiredMissing = sections.filter(
     (s) => s.required && s.status !== 'complete' && s.status !== 'auto',
   )

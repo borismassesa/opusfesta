@@ -27,31 +27,6 @@ import {
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { cn } from '@/lib/utils'
 
-// Mock seed: one verified + one pending so vendors can see both states out of
-// the box. Removed automatically once they upload their first real certificate.
-const SAMPLE_CERTIFICATES: AwardCertificate[] = [
-  {
-    id: 'cert_seed_verified',
-    title: 'Best Photography Studio',
-    issuer: 'Tanzania Wedding Awards',
-    year: '2024',
-    fileName: 'tza-wedding-awards-2024.pdf',
-    status: 'verified',
-    submittedAt: '2026-02-12T10:00:00.000Z',
-    verifiedAt: '2026-02-15T16:30:00.000Z',
-  },
-  {
-    id: 'cert_seed_pending',
-    title: 'Finalist — Bridal Photographer of the Year',
-    issuer: 'East African Bridal Awards',
-    year: '2023',
-    fileName: 'eaba-finalist-2023.pdf',
-    status: 'pending',
-    submittedAt: '2026-04-20T09:00:00.000Z',
-    verifiedAt: null,
-  },
-]
-
 const STATUS_META: Record<
   AwardCertStatus,
   {
@@ -112,16 +87,6 @@ export default function RecognitionPage() {
     const idx = sections.findIndex((s) => s.id === 'recognition')
     return idx >= 0 && idx < sections.length - 1 ? sections[idx + 1].href : null
   }, [draft])
-
-  // Seed mock certificates on first visit so the verification states are
-  // visible without the vendor having to upload anything yet.
-  useEffect(() => {
-    if (!hydrated) return
-    if (draft.awardCertificates.length === 0) {
-      update({ awardCertificates: SAMPLE_CERTIFICATES })
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hydrated])
 
   const [saving, startSaving] = useTransition()
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -207,8 +172,24 @@ export default function RecognitionPage() {
     <div className="flex flex-col min-h-full">
       <div className="flex-1 px-6 lg:px-10 pt-4 lg:pt-5 pb-6">
         <div className="max-w-4xl space-y-6">
+          {/* Section-level "Optional" framing so vendors without awards
+              don't feel like they have homework. Every field on this page
+              is a bonus trust signal — couples don't filter on awards,
+              they just notice them when present. */}
+          <div className="rounded-2xl border border-gray-100 bg-gray-50/60 px-5 py-4 flex items-start gap-3">
+            <span className="shrink-0 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-white border border-gray-200 text-gray-600">
+              Optional
+            </span>
+            <p className="text-xs text-gray-700 leading-relaxed">
+              Fill in whatever applies — couples don't expect every vendor to
+              have awards, and skipping this section doesn't hurt your
+              storefront. If you do have an award worth showing, verifying it
+              earns you the OpusFesta badge beside it on your public profile.
+            </p>
+          </div>
+
           {/* 1. Awards & verified recognition */}
-          <Card icon={<Award className="w-4 h-4" />} title="Awards & verified recognition">
+          <Card icon={<Award className="w-4 h-4" />} title="Awards & verified recognition (optional)">
             <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 p-4 mb-5 flex items-start gap-3">
               <span className="shrink-0 w-9 h-9 rounded-lg bg-white text-emerald-700 flex items-center justify-center shadow-sm">
                 <ShieldCheck className="w-4 h-4" />
@@ -250,8 +231,13 @@ export default function RecognitionPage() {
               </ul>
             ) : (
               <div className="rounded-xl border border-dashed border-gray-200 bg-gray-50/60 px-4 py-6 text-center mb-6">
-                <p className="text-sm text-gray-500">
-                  No certificates uploaded yet. Add one below to start the verification process.
+                <p className="text-sm text-gray-700 font-medium">
+                  No awards? No problem.
+                </p>
+                <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+                  This section is purely for vendors who've won industry
+                  recognition. Skip it and your storefront still looks great —
+                  couples don't filter by awards.
                 </p>
               </div>
             )}
@@ -313,7 +299,7 @@ export default function RecognitionPage() {
           </Card>
 
           {/* 2. Response time */}
-          <Card icon={<Clock className="w-4 h-4" />} title="Response time">
+          <Card icon={<Clock className="w-4 h-4" />} title="Response time (optional)">
             <FieldLabel>Typical reply window</FieldLabel>
             <TextInput
               placeholder="e.g. 1 hour"
@@ -327,7 +313,7 @@ export default function RecognitionPage() {
           </Card>
 
           {/* 3. Trust badges */}
-          <Card icon={<MapPin className="w-4 h-4" />} title="Trust badges">
+          <Card icon={<MapPin className="w-4 h-4" />} title="Trust badges (optional)">
             <label className="flex items-start gap-3 cursor-pointer select-none p-3 -ml-3 rounded-lg hover:bg-gray-50">
               <input
                 type="checkbox"
