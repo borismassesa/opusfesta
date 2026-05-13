@@ -92,9 +92,11 @@ export default function RecognitionPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveOk, setSaveOk] = useState(false)
 
-  if (!hydrated) return <div className="p-8" aria-hidden />
-
-  const certificates = draft.awardCertificates
+  // See FAQ page comment: rendering a placeholder div before localStorage
+  // hydrates created a structural mismatch with the global <main>. We
+  // render the real structure always and let `hydrated` gate any
+  // mutation that would write back to localStorage.
+  const certificates = hydrated ? draft.awardCertificates : []
   const verifiedCount = certificates.filter((c) => c.status === 'verified').length
   const pendingCount = certificates.filter((c) => c.status === 'pending').length
 

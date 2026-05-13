@@ -36,11 +36,15 @@ const policiesComplete = (d: OnboardingDraft) =>
 const payoutComplete = (d: OnboardingDraft) =>
   Boolean(d.payoutMethod) && d.payoutNumber.trim() !== '' && d.payoutAccountName.trim() !== ''
 
+// FAQ is an optional section — vendors may have one cornerstone Q&A or
+// none at all. Treating the section as "partial" until 3 are filled in
+// is overkill; the sidebar should reward any answered Q&A with a tick
+// (same optional-friendly treatment as the Recognition section). Empty
+// → empty; one or more valid pairs → complete.
 const faqStatus = (d: OnboardingDraft): SectionStatus => {
   const valid = d.faqs.filter((f) => f.question.trim() && f.answer.trim()).length
   if (valid === 0) return 'empty'
-  if (valid >= 3) return 'complete'
-  return 'partial'
+  return 'complete'
 }
 
 const teamStatus = (d: OnboardingDraft): SectionStatus => {
