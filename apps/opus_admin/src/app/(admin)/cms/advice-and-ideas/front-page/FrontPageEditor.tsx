@@ -22,6 +22,7 @@
 import { useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import {
+  ExternalLink,
   Eye,
   GripVertical,
   Plus,
@@ -61,6 +62,49 @@ function statusOf(a: FrontPageArticle): Status {
   if (a.featured && a.featuredRank != null) return 'pinned'
   if (a.featured) return 'pool'
   return 'available'
+}
+
+// Mirror of the public-site logic in apps/opus_website/src/app/
+// advice-and-ideas/page.tsx — featured-pool first (pinned by rank, then
+// unranked-but-featured by date), padded by non-featured articles until
+// we have 5 slots. Keep this in sync if the public-side query order
+// ever changes. Each slot includes a `source` so the preview can
+// distinguish a deliberate pick from an auto-filled placeholder.
+type PreviewSlot =
+  | { article: FrontPageArticle; source: 'pinned' | 'pool' | 'fallback' }
+  | { article: null; source: 'empty' }
+
+function computeEffectiveSlots(
+  items: FrontPageArticle[],
+  maxSlots: number
+): PreviewSlot[] {
+  const pinned = items
+    .filter((a) => statusOf(a) === 'pinned')
+    .sort((a, b) => (a.featuredRank ?? 0) - (b.featuredRank ?? 0))
+  // Newest first inside the pool — same ordering as the public site
+  // after its `.reverse()` + stable sort by rank.
+  const byPublishedDesc = (a: FrontPageArticle, b: FrontPageArticle) =>
+    new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime()
+  const pool = items
+    .filter((a) => statusOf(a) === 'pool')
+    .sort(byPublishedDesc)
+  const available = items
+    .filter((a) => statusOf(a) === 'available')
+    .sort(byPublishedDesc)
+
+  const filled: PreviewSlot[] = [
+    ...pinned.map((article) => ({ article, source: 'pinned' as const })),
+    ...pool.map((article) => ({ article, source: 'pool' as const })),
+  ]
+  let i = 0
+  while (filled.length < maxSlots && i < available.length) {
+    filled.push({ article: available[i], source: 'fallback' as const })
+    i++
+  }
+  while (filled.length < maxSlots) {
+    filled.push({ article: null, source: 'empty' as const })
+  }
+  return filled.slice(0, maxSlots)
 }
 
 export default function FrontPageEditor({ articles, maxSlots }: Props) {
@@ -264,6 +308,11 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
     move(source, targetIndex)
   }
 
+  const previewSlots = useMemo(
+    () => computeEffectiveSlots(items, maxSlots),
+    [items, maxSlots]
+  )
+
   return (
     <div className="space-y-6">
       {saveError && (
@@ -271,6 +320,9 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
           {saveError}
         </div>
       )}
+
+      {/* ── PUBLIC PREVIEW ──────────────────────────────────────────── */}
+      <PublicPreview slots={previewSlots} />
 
       {/* ── PINNED SLOTS ────────────────────────────────────────────── */}
       <section className="rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
@@ -501,5 +553,192 @@ export default function FrontPageEditor({ articles, maxSlots }: Props) {
         articles.
       </p>
     </div>
+  )
+}
+
+// Mini layout that mirrors the public Editor Picks row: 1 large hero
+// card (slot 1) on the left + 4 stacked cards (slots 2–5) on the right.
+// Updates live as the editor pins/unpins/reorders because it's driven
+// by the same `items` state through `computeEffectiveSlots`.
+//
+// We render this above the controls so the cause-and-effect is visible
+// in one glance. The "View live page" external link in the panel header
+// duplicates the one in the CMS layout, but having it here puts it
+// next to the thing it previews.
+function PublicPreview({ slots }: { slots: PreviewSlot[] }) {
+  const websiteUrl =
+    process.env.NEXT_PUBLIC_WEBSITE_URL ?? 'http://localhost:3007'
+  const hero = slots[0]
+  const stack = slots.slice(1, 5)
+  return (
+    <section className="rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+      <header className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+        <div>
+          <h2 className="text-sm font-semibold text-gray-900">
+            Public preview
+          </h2>
+          <p className="mt-0.5 text-xs text-gray-500">
+            How the Editor Picks row will appear on{' '}
+            <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[10px]">
+              /advice-and-ideas
+            </code>
+            .
+          </p>
+        </div>
+        <a
+          href={`${websiteUrl}/advice-and-ideas`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+        >
+          View live page
+          <ExternalLink className="h-3.5 w-3.5" />
+        </a>
+      </header>
+      <div className="grid grid-cols-1 gap-3 p-5 md:grid-cols-[1.6fr_1fr]">
+        <PreviewHeroCard slot={hero} />
+        <div className="grid grid-cols-2 gap-3 md:grid-cols-1">
+          {stack.map((slot, i) => (
+            <PreviewStackCard key={i} slot={slot} index={i + 2} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function PreviewHeroCard({ slot }: { slot: PreviewSlot | undefined }) {
+  if (!slot || slot.source === 'empty') {
+    return (
+      <div className="flex aspect-[4/3] items-center justify-center rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 text-center text-xs text-gray-400">
+        <div>
+          <Star className="mx-auto h-6 w-6 text-gray-300" />
+          <p className="mt-2 font-medium">Slot 1 empty</p>
+          <p className="mt-0.5">
+            Pin an article to use this spot as the Trending hero
+          </p>
+        </div>
+      </div>
+    )
+  }
+  const { article, source } = slot
+  return (
+    <article className="relative overflow-hidden rounded-xl bg-gray-900 aspect-[4/3]">
+      {article.heroSrc ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={article.heroSrc}
+          alt={article.heroAlt ?? ''}
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+      ) : (
+        <div className="absolute inset-0 bg-gradient-to-br from-gray-700 to-gray-900" />
+      )}
+      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
+      <div className="absolute left-0 right-0 top-0 flex items-center justify-between p-3">
+        <span className="rounded-full bg-purple-500/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+          <TrendingUp className="mr-0.5 inline h-3 w-3" />
+          Trending · Slot 1
+        </span>
+        <SourceBadge source={source} />
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 p-4 text-white">
+        <p className="text-[10px] font-bold uppercase tracking-wider opacity-80">
+          {article.category}
+        </p>
+        <h3 className="mt-1 line-clamp-2 text-base font-bold leading-tight">
+          {article.title || 'Untitled'}
+        </h3>
+        {article.authorName && (
+          <p className="mt-1 text-xs opacity-80">by {article.authorName}</p>
+        )}
+      </div>
+    </article>
+  )
+}
+
+function PreviewStackCard({
+  slot,
+  index,
+}: {
+  slot: PreviewSlot | undefined
+  index: number
+}) {
+  if (!slot || slot.source === 'empty') {
+    return (
+      <div className="flex h-full min-h-[88px] items-center justify-center rounded-lg border-2 border-dashed border-gray-200 bg-gray-50 px-3 py-2 text-center text-[11px] text-gray-400">
+        <div>
+          <p className="font-medium">Slot {index} empty</p>
+          <p className="mt-0.5">Auto-fills with the next recent article</p>
+        </div>
+      </div>
+    )
+  }
+  const { article, source } = slot
+  return (
+    <article className="flex gap-2.5 rounded-lg border border-gray-100 bg-white p-2.5">
+      <div className="relative aspect-square w-16 shrink-0 overflow-hidden rounded-md bg-gray-100">
+        {article.heroSrc ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={article.heroSrc}
+            alt={article.heroAlt ?? ''}
+            className="h-full w-full object-cover"
+          />
+        ) : null}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-1.5">
+          <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[9px] font-bold text-amber-700">
+            #{index}
+          </span>
+          <SourceBadge source={source} compact />
+        </div>
+        <p className="mt-1 line-clamp-2 text-xs font-semibold leading-tight text-gray-900">
+          {article.title || 'Untitled'}
+        </p>
+        <p className="mt-0.5 truncate text-[10px] text-gray-500">
+          {article.category}
+        </p>
+      </div>
+    </article>
+  )
+}
+
+// Tells the editor whether a slot is from a deliberate pick (pinned),
+// a soft default (pool), or auto-filled from the most-recent fallback.
+function SourceBadge({
+  source,
+  compact,
+}: {
+  source: PreviewSlot['source']
+  compact?: boolean
+}) {
+  if (source === 'empty') return null
+  const label =
+    source === 'pinned'
+      ? 'Pinned'
+      : source === 'pool'
+        ? 'From pool'
+        : 'Auto-fill'
+  const tone =
+    source === 'pinned'
+      ? 'bg-white/90 text-amber-700'
+      : source === 'pool'
+        ? 'bg-white/90 text-gray-700'
+        : 'bg-white/80 text-gray-500'
+  return (
+    <span
+      title={
+        source === 'pinned'
+          ? 'You pinned this article to this slot'
+          : source === 'pool'
+            ? 'In the featured pool — pin it to lock this slot'
+            : 'Auto-filling from the most recent published article — pin one to override'
+      }
+      className={`inline-flex shrink-0 items-center rounded-full ${compact ? 'px-1 py-0' : 'px-2 py-0.5'} text-[9px] font-bold uppercase tracking-wider ${tone}`}
+    >
+      {label}
+    </span>
   )
 }
