@@ -6,12 +6,14 @@ import { usePathname } from 'next/navigation'
 import {
   ExternalLink,
   Heading1,
+  Heart,
   Save,
   Send,
   Sparkles,
   Star,
   Tags,
   Trash2,
+  ThumbsUp,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -49,11 +51,27 @@ const sections: Section[] = [
   },
   {
     key: 'front-page',
-    label: 'Front Page Picks',
+    label: 'Editor Picks',
     icon: Star,
     href: '/cms/advice-and-ideas/front-page',
     description:
       'Pick which articles land on the public front and in what order. Slot 1 is the Trending hero. Slots 2 to 5 are the Editor Picks row beneath it. Empty slots auto-fill with the most recent published articles.',
+  },
+  {
+    key: 'loved-by-couples',
+    label: 'Loved by Couples',
+    icon: Heart,
+    href: '/cms/advice-and-ideas/loved-by-couples',
+    description:
+      'Four articles that appear in the "Loved by Couples" grid in the middle of the page. Empty slots auto-fill with the most recent published articles.',
+  },
+  {
+    key: 'our-favorites',
+    label: 'Our Favorites',
+    icon: ThumbsUp,
+    href: '/cms/advice-and-ideas/our-favorites',
+    description:
+      'Four articles in the "Our Favorites" section. Slot 1 is the hero card. Slots 2 to 4 are the smaller stacked cards. Empty slots auto-fill with the most recent published articles.',
   },
 ]
 

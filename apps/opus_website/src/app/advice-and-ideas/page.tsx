@@ -14,7 +14,10 @@ import {
   type AdviceIdeasPost,
   type AdviceIdeasTopic,
 } from '@/lib/advice-ideas'
-import { loadPublishedAdviceIdeasPosts } from '@/lib/advice-ideas-db'
+import {
+  loadAdviceSectionPickIds,
+  loadPublishedAdviceIdeasPosts,
+} from '@/lib/advice-ideas-db'
 
 export const dynamic = 'force-dynamic'
 
@@ -68,7 +71,15 @@ export default async function AdviceAndIdeasPage({
   searchParams: Promise<{ q?: string }>
 }) {
   const { q } = await searchParams
-  const posts = await loadPublishedAdviceIdeasPosts()
+  // Three reads in parallel: the post list (used by every section)
+  // plus the two admin-curated section pick lists. Falling-back lists
+  // come back empty if the table doesn't exist (e.g. migration not yet
+  // applied) so the legacy auto-derived behaviour kicks in cleanly.
+  const [posts, lovedPickIds, favoritesPickIds] = await Promise.all([
+    loadPublishedAdviceIdeasPosts(),
+    loadAdviceSectionPickIds('loved_by_couples'),
+    loadAdviceSectionPickIds('our_favorites'),
+  ])
   const query = q?.trim() ?? ''
   const searchMode = query.length > 0
 
@@ -138,12 +149,43 @@ export default async function AdviceAndIdeasPage({
 
   const trending = featured[0] ?? posts[0]
 
-  const lovedByCouples = remaining.slice(0, 4)
+  // Loved by Couples + Our Favorites both follow the same rule:
+  // admin-pinned articles fill their slots in order; any leftover
+  // slots auto-fill from the most recent non-featured articles
+  // (excluding ones already on screen elsewhere so the page doesn't
+  // duplicate cards). This preserves the prior public behaviour when
+  // no admin picks exist, and lets the new CMS take over once they do.
+  const pickById = new Map(posts.map((p) => [p.id, p]))
+  const resolvePicks = (ids: readonly string[]): AdviceIdeasPost[] =>
+    ids
+      .map((id) => pickById.get(id))
+      .filter((p): p is AdviceIdeasPost => p != null)
 
-  const favoritesFeatured = remaining[4] ?? remaining[0]
-  const favoritesStack = remaining
-    .filter((post) => post.id !== favoritesFeatured?.id)
-    .slice(0, 3)
+  const lovedByCouplesPicked = resolvePicks(lovedPickIds)
+  const favoritesPicked = resolvePicks(favoritesPickIds)
+
+  const usedIds = new Set<string>([
+    ...editorPicks.map((p) => p.id),
+    ...lovedByCouplesPicked.map((p) => p.id),
+    ...favoritesPicked.map((p) => p.id),
+  ])
+  const fallbackPool = remaining.filter((p) => !usedIds.has(p.id))
+
+  const fillSlots = (
+    picked: AdviceIdeasPost[],
+    slots: number,
+  ): AdviceIdeasPost[] => {
+    if (picked.length >= slots) return picked.slice(0, slots)
+    const extras = fallbackPool
+      .filter((p) => !picked.some((q) => q.id === p.id))
+      .slice(0, slots - picked.length)
+    return [...picked, ...extras]
+  }
+
+  const lovedByCouples = fillSlots(lovedByCouplesPicked, 4)
+  const ourFavorites = fillSlots(favoritesPicked, 4)
+  const favoritesFeatured = ourFavorites[0] ?? remaining[0]
+  const favoritesStack = ourFavorites.slice(1, 4)
 
   const latest = [...posts].reverse().slice(0, 12)
 

@@ -275,6 +275,41 @@ export async function loadPublishedAdviceIdeasPosts(): Promise<AdviceIdeasPost[]
   }
 }
 
+// Admin-curated picks for the secondary sections on /advice-and-ideas
+// (Loved by Couples, Our Favorites). Editor Picks uses its own
+// mechanism (advice_ideas_posts.featured_rank) and isn't touched here.
+//
+// Returns IDs in slot order — the page resolves them against the
+// already-loaded post list, then pads with the fallback feed for any
+// empty slots. Keep this in sync with the section_key check
+// constraint in supabase/migrations/20260512000003_advice_ideas_section_picks.sql
+// and the admin CMS pages under /cms/advice-and-ideas/.
+export type AdviceSectionKey = 'loved_by_couples' | 'our_favorites'
+
+export async function loadAdviceSectionPickIds(
+  sectionKey: AdviceSectionKey,
+): Promise<string[]> {
+  try {
+    const supabase = createSupabaseServerClient()
+    const { data, error } = await supabase
+      .from('advice_ideas_section_picks')
+      .select('post_id, rank')
+      .eq('section_key', sectionKey)
+      .order('rank', { ascending: true })
+    if (error) throw error
+    return (data ?? []).map((row) => row.post_id as string)
+  } catch (error) {
+    // The table is new; if it doesn't exist on the DB yet (migration
+    // pending) we treat that as "no picks" so the public site keeps
+    // rendering the auto-derived fallback rather than hard-erroring.
+    console.warn(
+      `[opus_website] could not load section picks for ${sectionKey}:`,
+      error instanceof Error ? error.message : error,
+    )
+    return []
+  }
+}
+
 export async function loadAdviceIdeasAuthors(): Promise<Record<string, AdviceIdeasAuthor>> {
   try {
     const supabase = createSupabaseServerClient()
