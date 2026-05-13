@@ -154,6 +154,25 @@ export default function AboutEditor({
       const result = await saveProfile(profile)
       if (result.ok) {
         setSavedSnapshot(profile)
+        // Mirror the DB-backed profile fields into the onboarding draft so
+        // the storefront sidebar's completion checks (which read from the
+        // draft) reflect the just-saved values. Without this, the vendor
+        // saves a complete bio / contact / socials but the sidebar keeps
+        // showing "needs more work" because draft.bio etc. are still empty.
+        update({
+          bio: profile.bio,
+          yearsInBusiness: profile.yearsInBusiness,
+          phone: profile.phone,
+          email: profile.email,
+          whatsapp: profile.whatsapp,
+          socials: {
+            website: profile.socialWebsite,
+            instagram: profile.socialInstagram,
+            facebook: profile.socialFacebook,
+            tiktok: profile.socialTiktok,
+            whatsapp: profile.socialWhatsapp,
+          },
+        })
         setFeedback({ kind: 'success', message: 'Profile saved.' })
       } else {
         setFeedback({ kind: 'error', message: result.error })
