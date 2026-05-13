@@ -52,13 +52,13 @@ export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
   try {
     const result = await resend.emails.send({
       from: sanitizeHeaderField(payload.from || defaultFromAddress()),
-      to: Array.isArray(payload.to) ? payload.to : [payload.to],
+      to: Array.isArray(payload.to) ? payload.to.map(sanitizeHeaderField) : [sanitizeHeaderField(payload.to)],
       subject: sanitizeHeaderField(payload.subject),
       html: payload.html,
       text: payload.text,
       replyTo: payload.replyTo ? sanitizeHeaderField(payload.replyTo) : undefined,
-      ...(payload.cc ? { cc: payload.cc } : {}),
-      ...(payload.bcc ? { bcc: payload.bcc } : {}),
+      ...(payload.cc ? { cc: Array.isArray(payload.cc) ? payload.cc.map(sanitizeHeaderField) : [sanitizeHeaderField(payload.cc)] } : {}),
+      ...(payload.bcc ? { bcc: Array.isArray(payload.bcc) ? payload.bcc.map(sanitizeHeaderField) : [sanitizeHeaderField(payload.bcc)] } : {}),
     })
 
     if (result.error) {

@@ -100,7 +100,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Proposal was already acted upon' }, { status: 409 })
     }
 
-    const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')
+    const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3006').replace(/\/$/, '')
     const accessToken = generateInquiryToken(id, email)
     const emailPayload = buildProposalClientConfirmationEmail({
       clientName: inquiry.name?.trim() || 'there',
@@ -150,7 +150,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'Proposal was already acted upon' }, { status: 409 })
   }
 
-  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006').replace(/\/$/, '')
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3006').replace(/\/$/, '')
   const accessToken = generateInquiryToken(id, email)
   const emailPayload = buildProposalClientConfirmationEmail({
     clientName: inquiry.name?.trim() || 'there',
