@@ -356,7 +356,14 @@ export async function savePhotos(input: StorefrontPhotos): Promise<SaveResult> {
   const cover = input.coverImage?.trim()
   const coverValid = cover && /^https?:\/\//i.test(cover) ? cover : null
 
-  const supabase = await createClerkSupabaseServerClient()
+  // Use the service-role admin client for the UPDATE. `ensureLiveVendor`
+  // has already validated that the authenticated user owns `vendorId`
+  // (it reads via the admin client too), so scoping the UPDATE to that
+  // specific id is safe. The Clerk-authed client falls back to an
+  // unauthenticated client when the 'supabase' JWT template isn't set —
+  // RLS then matches 0 rows and the UPDATE silently no-ops with
+  // error: null, which is the worst possible outcome for a save action.
+  const admin = createSupabaseAdminClient()
   // Two-step update: try with `video_urls`; if PostgREST reports the column
   // doesn't exist yet (migration 20260512000010 not applied), drop the
   // field and retry so vendors can still save photos in environments
@@ -365,19 +372,22 @@ export async function savePhotos(input: StorefrontPhotos): Promise<SaveResult> {
     cover_image: coverValid,
     gallery_urls: cleanedGallery.length > 0 ? cleanedGallery : null,
   }
-  let { error } = await supabase
+  let { data, error } = await admin
     .from('vendors')
     .update({
       ...baseUpdate,
       video_urls: cleanedVideos.length > 0 ? cleanedVideos : null,
     })
     .eq('id', guard.vendorId)
+    .select('id')
   if (error && (error.code === '42703' || error.code === 'PGRST204')) {
-    const retry = await supabase
+    const retry = await admin
       .from('vendors')
       .update(baseUpdate)
       .eq('id', guard.vendorId)
+      .select('id')
     error = retry.error
+    data = retry.data
     if (!error && cleanedVideos.length > 0) {
       console.warn(
         '[storefront] video_urls column missing — videos were not persisted. Apply migration 20260512000010.',
@@ -387,6 +397,16 @@ export async function savePhotos(input: StorefrontPhotos): Promise<SaveResult> {
   if (error) {
     if (isPermissionError(error)) return permissionResult()
     return unknownResult(error)
+  }
+  // Defensive: if the UPDATE matched 0 rows despite no error, that means
+  // the vendor row vanished between the ensureLiveVendor check and this
+  // update — surface it instead of pretending the save worked.
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: '[storefront] save matched no rows — vendor record may have been deleted.',
+    }
   }
   revalidatePath('/storefront/photos')
   return { ok: true }

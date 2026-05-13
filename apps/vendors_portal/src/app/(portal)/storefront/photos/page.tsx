@@ -951,6 +951,28 @@ export default function PhotosPage() {
         </div>
       </div>
 
+      {/* Inline save banner — sits above the sticky bar so an error or
+          confirmation is impossible to miss after clicking Save. The thin
+          text inside the bar is fine for in-progress upload chatter, but
+          a save failure or success deserves a more visible affordance. */}
+      {(saveError || saveOk) && (
+        <div className="px-6 lg:px-10">
+          <div
+            className={cn(
+              'rounded-lg border px-3 py-2 mb-2 text-xs',
+              saveError
+                ? 'bg-rose-50 border-rose-200 text-rose-800'
+                : 'bg-emerald-50 border-emerald-200 text-emerald-800',
+            )}
+            role={saveError ? 'alert' : 'status'}
+          >
+            {saveError
+              ? `Couldn't save: ${saveError}`
+              : 'Photos & videos saved.'}
+          </div>
+        </div>
+      )}
+
       {/* Sticky bottom bar — Save + Next */}
       <div className="sticky bottom-0 border-t border-gray-100 bg-white/95 backdrop-blur z-30">
         <div className="px-6 lg:px-10 py-3 flex items-center justify-between gap-4 flex-wrap">
