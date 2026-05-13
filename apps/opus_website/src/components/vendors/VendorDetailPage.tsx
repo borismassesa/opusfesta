@@ -2071,11 +2071,34 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
         </label>
 
         <div className="text-xs text-gray-500 space-y-1">
-          <p className="font-semibold underline cursor-pointer">Why use OpusFesta to message vendors?</p>
+          <a
+            href="/why-opusfesta-messaging"
+            target="_blank"
+            rel="noreferrer"
+            className="block font-semibold underline hover:text-[#1A1A1A]"
+          >
+            Why use OpusFesta to message vendors?
+          </a>
           <p>
-            By clicking "Request quote," you accept our{' '}
-            <a href="#" className="underline">Terms of Use</a> and agree to OpusFesta creating an
-            account for you. See our <a href="#" className="underline">Privacy Policy</a>.
+            By clicking &ldquo;Request quote,&rdquo; you accept our{' '}
+            <a
+              href="/terms-of-use"
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:text-[#1A1A1A]"
+            >
+              Terms of Use
+            </a>{' '}
+            and agree to OpusFesta creating an account for you. See our{' '}
+            <a
+              href="/privacy-policy"
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:text-[#1A1A1A]"
+            >
+              Privacy Policy
+            </a>
+            .
           </p>
         </div>
 
