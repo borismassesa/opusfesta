@@ -11,16 +11,26 @@ import {
   Facebook,
   Globe,
   HelpCircle,
+  ImageIcon,
   Instagram,
+  Link2,
+  Loader2,
   MessageCircle,
   Music2,
   Plus,
   Star,
   Trash2,
+  UploadCloud,
   Users,
+  Video as VideoIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { updateStorefrontSection, type StorefrontPatch } from '../actions'
+import {
+  adminCreateVendorVideoUploadUrl,
+  adminUploadVendorPhoto,
+  updateStorefrontSection,
+  type StorefrontPatch,
+} from '../actions'
 import { useEditorRegistration } from './EditorRegistry'
 
 // ---------------------------------------------------------------------------
@@ -1168,5 +1178,457 @@ export function AdminPackagesEditor({
         </button>
       )}
     </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Photos & Videos — admin curation of the storefront gallery
+//
+// Couples spend the most time staring at the vendor's portfolio. Admin
+// needs to be able to:
+//   - swap a watermarked cover photo,
+//   - add gallery photos a vendor emails over,
+//   - upload a highlight reel the vendor couldn't get through the portal,
+//   - drop in a YouTube/Vimeo embed link,
+//   - remove anything inappropriate.
+//
+// Reads the same `cover_image` / `gallery_urls` / `video_urls` columns the
+// vendor portal writes to, so changes show up immediately on the public
+// profile.
+// ---------------------------------------------------------------------------
+
+const HTTP_URL = /^https?:\/\//i
+
+function isVideoEmbedUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return (
+      u.hostname.includes('youtube.com') ||
+      u.hostname.includes('youtu.be') ||
+      u.hostname.includes('vimeo.com')
+    )
+  } catch {
+    return false
+  }
+}
+
+export function AdminPhotosVideosEditor({
+  vendorId,
+  initial,
+}: {
+  vendorId: string
+  initial: {
+    coverImage: string | null
+    galleryUrls: string[]
+    videoUrls: string[]
+  }
+}) {
+  const [coverImage, setCoverImage] = useState<string | null>(initial.coverImage)
+  const [galleryUrls, setGalleryUrls] = useState<string[]>(initial.galleryUrls)
+  const [videoUrls, setVideoUrls] = useState<string[]>(initial.videoUrls)
+  const [embedDraft, setEmbedDraft] = useState('')
+  const [error, setError] = useState<string | null>(null)
+  const [photoUploads, setPhotoUploads] = useState(0)
+  const [videoUploads, setVideoUploads] = useState(0)
+  const [coverBusy, setCoverBusy] = useState(false)
+
+  const dirty =
+    coverImage !== initial.coverImage ||
+    JSON.stringify(galleryUrls) !== JSON.stringify(initial.galleryUrls) ||
+    JSON.stringify(videoUrls) !== JSON.stringify(initial.videoUrls)
+
+  const { save } = useStorefrontSave(vendorId)
+
+  useEditorRegistration({
+    id: 'photos-videos',
+    label: 'Photos & videos',
+    dirty,
+    save: () =>
+      save({
+        coverImage: coverImage ?? null,
+        galleryUrls: galleryUrls.filter((u) => HTTP_URL.test(u)),
+        videoUrls: videoUrls.filter((u) => HTTP_URL.test(u)),
+      }),
+    discard: () => {
+      setCoverImage(initial.coverImage)
+      setGalleryUrls(initial.galleryUrls)
+      setVideoUrls(initial.videoUrls)
+    },
+  })
+
+  const uploadPhoto = async (file: File, kind: 'cover' | 'gallery') => {
+    const fd = new FormData()
+    fd.append('vendorId', vendorId)
+    fd.append('kind', kind)
+    fd.append('file', file)
+    return adminUploadVendorPhoto(fd)
+  }
+
+  const onCoverPick = async (file: File) => {
+    setError(null)
+    setCoverBusy(true)
+    const res = await uploadPhoto(file, 'cover')
+    setCoverBusy(false)
+    if (!res.ok) {
+      setError(res.error)
+      return
+    }
+    setCoverImage(res.url)
+  }
+
+  const onGalleryPick = async (files: FileList) => {
+    setError(null)
+    const list = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    if (list.length === 0) return
+    setPhotoUploads((n) => n + list.length)
+    const errors: string[] = []
+    const added: string[] = []
+    // Upload sequentially — admin gallery additions are small batches; the
+    // simple loop keeps error messages aligned with file order.
+    for (const file of list) {
+      const res = await uploadPhoto(file, 'gallery')
+      if (res.ok) added.push(res.url)
+      else errors.push(`${file.name}: ${res.error}`)
+      setPhotoUploads((n) => n - 1)
+    }
+    if (added.length > 0) setGalleryUrls((prev) => [...prev, ...added])
+    if (errors.length > 0) {
+      setError(errors.length === 1 ? errors[0] : `${added.length} of ${list.length} uploaded · ${errors[0]}`)
+    }
+  }
+
+  const onVideoPick = async (files: FileList) => {
+    setError(null)
+    const list = Array.from(files).filter((f) => f.type.startsWith('video/'))
+    if (list.length === 0) return
+    setVideoUploads((n) => n + list.length)
+    const errors: string[] = []
+    const added: string[] = []
+    for (const file of list) {
+      const minted = await adminCreateVendorVideoUploadUrl({
+        vendorId,
+        filename: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+      })
+      if (!minted.ok) {
+        errors.push(`${file.name}: ${minted.error}`)
+        setVideoUploads((n) => n - 1)
+        continue
+      }
+      try {
+        const put = await fetch(minted.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type, 'x-upsert': 'false' },
+          body: file,
+        })
+        if (!put.ok) {
+          const body = await put.text().catch(() => '')
+          errors.push(
+            `${file.name}: storage rejected (${put.status}${body ? `: ${body.slice(0, 120)}` : ''})`,
+          )
+        } else {
+          added.push(minted.publicUrl)
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Upload failed.'
+        errors.push(`${file.name}: ${message}`)
+      } finally {
+        setVideoUploads((n) => n - 1)
+      }
+    }
+    if (added.length > 0) setVideoUrls((prev) => [...prev, ...added])
+    if (errors.length > 0) {
+      setError(errors.length === 1 ? errors[0] : `${added.length} of ${list.length} uploaded · ${errors[0]}`)
+    }
+  }
+
+  const addEmbed = () => {
+    const trimmed = embedDraft.trim()
+    if (!trimmed || !HTTP_URL.test(trimmed)) {
+      setError('Embed URL must start with http:// or https://')
+      return
+    }
+    setError(null)
+    setVideoUrls((prev) => [...prev, trimmed])
+    setEmbedDraft('')
+  }
+
+  const removeGalleryAt = (idx: number) =>
+    setGalleryUrls((prev) => prev.filter((_, i) => i !== idx))
+  const removeVideoAt = (idx: number) =>
+    setVideoUrls((prev) => prev.filter((_, i) => i !== idx))
+
+  return (
+    <Card
+      icon={<ImageIcon className="w-5 h-5" strokeWidth={1.75} />}
+      title="Photos & videos"
+      subtitle="Replace a cover, add photos the vendor emailed over, upload a highlight reel, or paste a YouTube/Vimeo link. Changes go live on the public profile when you save all."
+    >
+      {error && (
+        <div className="mb-4 flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
+          <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+          <p className="text-xs text-rose-800 leading-relaxed">{error}</p>
+        </div>
+      )}
+
+      <div className="space-y-6">
+        {/* Cover photo */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+              Cover photo
+            </h3>
+            <CoverPicker busy={coverBusy} onPick={onCoverPick} />
+          </div>
+          {coverImage ? (
+            <div className="relative w-full max-w-xl rounded-xl overflow-hidden border border-gray-100 bg-gray-100 aspect-[16/9]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={coverImage} alt="Cover" className="w-full h-full object-cover" />
+              <button
+                type="button"
+                onClick={() => setCoverImage(null)}
+                className="absolute top-2 right-2 inline-flex items-center gap-1 text-xs font-semibold bg-white/95 hover:bg-white text-rose-700 px-2 py-1 rounded-md shadow-sm"
+              >
+                <Trash2 className="w-3 h-3" /> Remove
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500 italic">
+              No cover photo yet. Upload one to set the hero image on the public profile.
+            </p>
+          )}
+        </section>
+
+        {/* Gallery */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                Gallery photos
+              </h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {galleryUrls.length} photo{galleryUrls.length === 1 ? '' : 's'}.
+                {photoUploads > 0 && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-amber-700">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Uploading {photoUploads}…
+                  </span>
+                )}
+              </p>
+            </div>
+            <GalleryPicker
+              busy={photoUploads > 0}
+              onPick={onGalleryPick}
+            />
+          </div>
+          {galleryUrls.length === 0 ? (
+            <p className="text-xs text-gray-500 italic">
+              No gallery photos yet. Upload as many as the vendor sent over.
+            </p>
+          ) : (
+            <ul className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2">
+              {galleryUrls.map((url, i) => (
+                <li
+                  key={`${url}-${i}`}
+                  className="relative aspect-square rounded-lg overflow-hidden bg-gray-100 group"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="Gallery photo" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => removeGalleryAt(i)}
+                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white/95 text-rose-700 hover:bg-rose-50 inline-flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Remove photo"
+                    title="Remove"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        {/* Videos */}
+        <section>
+          <div className="flex items-center justify-between mb-2">
+            <div>
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                Videos
+              </h3>
+              <p className="text-[11px] text-gray-400 mt-0.5">
+                {videoUrls.length} video{videoUrls.length === 1 ? '' : 's'}.
+                {videoUploads > 0 && (
+                  <span className="ml-2 inline-flex items-center gap-1 text-amber-700">
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                    Uploading {videoUploads}…
+                  </span>
+                )}
+              </p>
+            </div>
+            <VideoPicker
+              busy={videoUploads > 0}
+              onPick={onVideoPick}
+            />
+          </div>
+          {videoUrls.length === 0 ? (
+            <p className="text-xs text-gray-500 italic mb-3">
+              No videos yet. Upload an MP4/MOV/WebM reel or paste a YouTube / Vimeo link below.
+            </p>
+          ) : (
+            <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-3">
+              {videoUrls.map((url, i) => (
+                <li
+                  key={`${url}-${i}`}
+                  className="relative aspect-video rounded-lg overflow-hidden bg-gray-900 group"
+                >
+                  {isVideoEmbedUrl(url) ? (
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="absolute inset-0 flex flex-col items-center justify-center bg-gray-900 text-white gap-1.5"
+                    >
+                      <Link2 className="w-5 h-5" />
+                      <span className="text-[11px] font-semibold truncate max-w-[80%]">
+                        {url}
+                      </span>
+                    </a>
+                  ) : (
+                    <video
+                      src={url}
+                      controls
+                      playsInline
+                      preload="metadata"
+                      className="w-full h-full object-cover bg-black"
+                    />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => removeVideoAt(i)}
+                    className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-white/95 text-rose-700 hover:bg-rose-50 inline-flex items-center justify-center shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Remove video"
+                    title="Remove"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="rounded-xl border border-gray-100 bg-gray-50 p-3">
+            <Field label="Paste YouTube or Vimeo URL">
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  className={inputCls}
+                  value={embedDraft}
+                  onChange={(e) => setEmbedDraft(e.target.value)}
+                  placeholder="https://www.youtube.com/watch?v=…"
+                />
+                <button
+                  type="button"
+                  onClick={addEmbed}
+                  disabled={!embedDraft.trim()}
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-2 rounded-lg bg-gray-900 hover:bg-gray-800 text-white disabled:bg-gray-300 disabled:cursor-not-allowed"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add link
+                </button>
+              </div>
+            </Field>
+          </div>
+        </section>
+      </div>
+    </Card>
+  )
+}
+
+function CoverPicker({
+  busy,
+  onPick,
+}: {
+  busy: boolean
+  onPick: (file: File) => void
+}) {
+  return (
+    <label
+      className={cn(
+        'inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full cursor-pointer transition-colors',
+        busy
+          ? 'bg-gray-300 text-white cursor-wait'
+          : 'bg-gray-900 hover:bg-gray-800 text-white',
+      )}
+    >
+      {busy ? (
+        <Loader2 className="w-3.5 h-3.5 animate-spin" />
+      ) : (
+        <UploadCloud className="w-3.5 h-3.5" />
+      )}
+      {busy ? 'Uploading…' : 'Upload cover'}
+      <input
+        type="file"
+        className="hidden"
+        accept="image/*"
+        disabled={busy}
+        onChange={(e) => {
+          const file = e.target.files?.[0]
+          if (file) onPick(file)
+          e.target.value = ''
+        }}
+      />
+    </label>
+  )
+}
+
+function GalleryPicker({
+  busy,
+  onPick,
+}: {
+  busy: boolean
+  onPick: (files: FileList) => void
+}) {
+  return (
+    <label className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-900 hover:bg-gray-800 text-white cursor-pointer transition-colors">
+      <UploadCloud className="w-3.5 h-3.5" />
+      Upload photos
+      <input
+        type="file"
+        className="hidden"
+        accept="image/*"
+        multiple
+        disabled={busy}
+        onChange={(e) => {
+          if (e.target.files) onPick(e.target.files)
+          e.target.value = ''
+        }}
+      />
+    </label>
+  )
+}
+
+function VideoPicker({
+  busy,
+  onPick,
+}: {
+  busy: boolean
+  onPick: (files: FileList) => void
+}) {
+  return (
+    <label className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-900 hover:bg-gray-800 text-white cursor-pointer transition-colors">
+      <VideoIcon className="w-3.5 h-3.5" />
+      Upload videos
+      <input
+        type="file"
+        className="hidden"
+        accept="video/mp4,video/webm,video/quicktime"
+        multiple
+        disabled={busy}
+        onChange={(e) => {
+          if (e.target.files) onPick(e.target.files)
+          e.target.value = ''
+        }}
+      />
+    </label>
   )
 }

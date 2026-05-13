@@ -693,6 +693,8 @@ export type StorefrontPatch = {
   // Photos
   coverImage?: string | null
   galleryUrls?: string[]
+  // Videos — uploaded MP4/MOV/WebM URLs or YouTube/Vimeo embed links
+  videoUrls?: string[]
   // Services
   services?: string[]
   // Packages
@@ -850,6 +852,12 @@ export async function updateStorefrontSection(
       .filter((u) => /^https?:\/\//i.test(u))
     update.gallery_urls = cleaned.length > 0 ? cleaned : null
   }
+  if (patch.videoUrls !== undefined) {
+    const cleaned = patch.videoUrls
+      .map((u) => u.trim())
+      .filter((u) => /^https?:\/\//i.test(u))
+    update.video_urls = cleaned.length > 0 ? cleaned : null
+  }
 
   if (patch.services !== undefined) update.services_offered = patch.services
   if (patch.packages !== undefined) update.packages = patch.packages
@@ -878,10 +886,26 @@ export async function updateStorefrontSection(
     return { ok: false, reason: 'invalid', error: 'No fields to update.' }
   }
 
-  const { error } = await admin
-    .from('vendors')
-    .update(update)
-    .eq('id', vendorId)
+  // Try the full update first, then retry without `video_urls` if the
+  // column hasn't been migrated yet (same pattern as the existing
+  // packages / application_snapshot guards) so admin saves don't break in
+  // environments that are behind on migrations.
+  let { error } = await admin.from('vendors').update(update).eq('id', vendorId)
+  if (
+    error &&
+    'video_urls' in update &&
+    (error.code === '42703' || error.code === 'PGRST204')
+  ) {
+    const { video_urls: _omit, ...rest } = update
+    void _omit
+    const retry = await admin.from('vendors').update(rest).eq('id', vendorId)
+    error = retry.error
+    if (!error) {
+      console.warn(
+        '[admin] video_urls column missing — videos were not persisted. Apply migration 20260512000010.',
+      )
+    }
+  }
   if (error) {
     return {
       ok: false,
@@ -1014,6 +1038,154 @@ async function mirrorPatchToSnapshot(
  * Reactivate a suspended vendor. Symmetric to suspendVendor; clears the
  * suspended_at + suspension_reason fields.
  */
+// =============================================================================
+// Admin-side media uploads (photos + videos) on behalf of a vendor
+// =============================================================================
+//
+// Admins curate vendor storefronts: they need to add a missing cover, swap
+// a watermarked photo, or attach the highlight reel the vendor emailed
+// over. These actions write into the same `vendor-portfolios` bucket and
+// the same `cover_image` / `gallery_urls` / `video_urls` columns that the
+// vendor portal uses, so the public profile reads one canonical source.
+//
+// Photos travel through a server action (small, image MIME guard). Videos
+// use a signed *upload* URL — a 100 MB MOV would exceed the Vercel server
+// action body cap, so the browser PUTs the file directly to Supabase
+// Storage and we just persist the resulting public URL.
+
+const ADMIN_PHOTO_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const ADMIN_VIDEO_MIME = new Set(['video/mp4', 'video/webm', 'video/quicktime'])
+const ADMIN_PHOTO_MAX_BYTES = 25 * 1024 * 1024 // 25 MB — matches portal cap
+const ADMIN_VIDEO_MAX_BYTES = 500 * 1024 * 1024 // 500 MB — matches bucket cap
+
+export type AdminUploadResult =
+  | { ok: true; url: string; path: string }
+  | { ok: false; error: string; reason: 'unauth' | 'invalid' | 'unknown' }
+
+export type AdminVideoUploadUrlResult =
+  | {
+      ok: true
+      uploadUrl: string
+      token: string
+      publicUrl: string
+      path: string
+    }
+  | { ok: false; error: string; reason: 'unauth' | 'invalid' | 'unknown' }
+
+export async function adminUploadVendorPhoto(
+  formData: FormData,
+): Promise<AdminUploadResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+
+  const vendorId = formData.get('vendorId')
+  const kind = formData.get('kind')
+  const file = formData.get('file')
+  if (typeof vendorId !== 'string' || !vendorId) {
+    return { ok: false, reason: 'invalid', error: 'Missing vendor id.' }
+  }
+  if (kind !== 'cover' && kind !== 'gallery') {
+    return { ok: false, reason: 'invalid', error: 'Unknown upload kind.' }
+  }
+  if (!(file instanceof File)) {
+    return { ok: false, reason: 'invalid', error: 'No file in upload payload.' }
+  }
+  if (!ADMIN_PHOTO_MIME.has(file.type)) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'Only JPEG, PNG, WebP, or GIF images are allowed.',
+    }
+  }
+  if (file.size > ADMIN_PHOTO_MAX_BYTES) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: `${file.name}: file is over the 25 MB limit (${(file.size / 1024 / 1024).toFixed(1)} MB).`,
+    }
+  }
+
+  const ext = (() => {
+    if (file.type === 'image/jpeg') return 'jpg'
+    if (file.type === 'image/png') return 'png'
+    if (file.type === 'image/webp') return 'webp'
+    if (file.type === 'image/gif') return 'gif'
+    return 'bin'
+  })()
+  const path = `${vendorId}/storefront/${kind}/${Date.now()}.${ext}`
+  const admin = createSupabaseAdminClient()
+  const buf = Buffer.from(await file.arrayBuffer())
+  const upload = await admin.storage
+    .from('vendor-portfolios')
+    .upload(path, buf, { contentType: file.type, upsert: false })
+  if (upload.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] photo upload failed: ${upload.error.message}`,
+    }
+  }
+  const publicUrl = admin.storage.from('vendor-portfolios').getPublicUrl(path)
+  return { ok: true, url: publicUrl.data.publicUrl, path }
+}
+
+export async function adminCreateVendorVideoUploadUrl(input: {
+  vendorId: string
+  filename: string
+  mimeType: string
+  sizeBytes: number
+}): Promise<AdminVideoUploadUrlResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  if (!input.vendorId) {
+    return { ok: false, reason: 'invalid', error: 'Missing vendor id.' }
+  }
+  if (!ADMIN_VIDEO_MIME.has(input.mimeType)) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'Only MP4, WebM, or MOV video files are allowed.',
+    }
+  }
+  if (!Number.isFinite(input.sizeBytes) || input.sizeBytes <= 0) {
+    return { ok: false, reason: 'invalid', error: 'Missing file size.' }
+  }
+  if (input.sizeBytes > ADMIN_VIDEO_MAX_BYTES) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: `${input.filename}: video is over the 500 MB limit (${(input.sizeBytes / 1024 / 1024).toFixed(1)} MB).`,
+    }
+  }
+
+  const ext = (() => {
+    if (input.mimeType === 'video/mp4') return 'mp4'
+    if (input.mimeType === 'video/webm') return 'webm'
+    if (input.mimeType === 'video/quicktime') return 'mov'
+    return 'bin'
+  })()
+  const path = `${input.vendorId}/storefront/video/${Date.now()}.${ext}`
+  const admin = createSupabaseAdminClient()
+  const signed = await admin.storage
+    .from('vendor-portfolios')
+    .createSignedUploadUrl(path)
+  if (signed.error || !signed.data) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] signed upload URL failed: ${signed.error?.message ?? 'unknown'}`,
+    }
+  }
+  const publicUrl = admin.storage.from('vendor-portfolios').getPublicUrl(path)
+  return {
+    ok: true,
+    uploadUrl: signed.data.signedUrl,
+    token: signed.data.token,
+    publicUrl: publicUrl.data.publicUrl,
+    path,
+  }
+}
+
 export async function reactivateVendor(
   vendorId: string
 ): Promise<ActionResult> {

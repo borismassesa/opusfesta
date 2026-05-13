@@ -45,6 +45,7 @@ import {
   AdminFaqEditor,
   AdminHoursEditor,
   AdminPackagesEditor,
+  AdminPhotosVideosEditor,
   AdminProfileEditor,
   AdminRecognitionEditor,
   AdminStylePersonalityEditor,
@@ -134,6 +135,9 @@ export type VendorReviewProps = {
     reschedulePolicyColumn: string | null
     styleColumn: string | null
     personalityColumn: string | null
+    coverImageColumn: string | null
+    galleryUrlsColumn: string[]
+    videoUrlsColumn: string[]
   }
   tin: DocSummary | null
   license: DocSummary | null
@@ -495,6 +499,15 @@ export default function VendorReviewClient(props: VendorReviewProps) {
             title="Storefront Content"
             description="Manage the commercial content and trust signals shown on the vendor storefront."
           >
+            <AdminPhotosVideosEditor
+              vendorId={vendor.id}
+              initial={{
+                coverImage: vendor.coverImageColumn,
+                galleryUrls: vendor.galleryUrlsColumn,
+                videoUrls: vendor.videoUrlsColumn,
+              }}
+            />
+
             <AdminPackagesEditor
               vendorId={vendor.id}
               initial={vendor.packagesColumn.map((p, i) => ({

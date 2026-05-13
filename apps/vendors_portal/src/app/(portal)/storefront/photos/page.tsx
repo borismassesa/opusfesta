@@ -22,7 +22,12 @@ import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { cn } from '@/lib/utils'
-import { savePhotos, uploadStorefrontPhoto } from '../sections/actions'
+import {
+  createStorefrontVideoUploadUrl,
+  loadStorefrontPhotos,
+  savePhotos,
+  uploadStorefrontPhoto,
+} from '../sections/actions'
 import { compressImage } from '@/lib/compress-image'
 
 type Photo = {
@@ -112,6 +117,52 @@ export default function PhotosPage() {
   // never see fake stock photography.
   const [photos, setPhotos] = useState<Photo[]>([])
   const [videos, setVideos] = useState<VideoReel[]>([])
+  // Rehydrate from the database once on mount so a vendor who returns to
+  // this page sees the gallery they previously saved. Without this, the
+  // page reads empty on every reload and the vendor has to re-upload.
+  const [hydratedFromDb, setHydratedFromDb] = useState(false)
+  useEffect(() => {
+    let cancelled = false
+    void (async () => {
+      const res = await loadStorefrontPhotos()
+      if (cancelled) return
+      if (res.ok) {
+        const { coverImage, galleryUrls, videoUrls } = res.data
+        // Split the persisted gallery back into cover slots + portfolio.
+        // We stored slot 0 in cover_image and slots 1..3 plus every
+        // portfolio photo in gallery_urls (see onSave below). Assume the
+        // first three gallery entries were the remaining cover slots,
+        // which matches how onSave concatenates them.
+        const remainingCovers = galleryUrls.slice(0, COVER_SLOT_COUNT - 1)
+        const portfolioFromDb = galleryUrls.slice(COVER_SLOT_COUNT - 1)
+        const restoredCovers: CoverSlot[] = Array(COVER_SLOT_COUNT).fill(null)
+        if (coverImage) restoredCovers[0] = { id: newId(), url: coverImage }
+        remainingCovers.forEach((url, i) => {
+          restoredCovers[i + 1] = { id: newId(), url }
+        })
+        setCovers(restoredCovers)
+        setPhotos(
+          portfolioFromDb.map((url) => ({
+            id: newId(),
+            url,
+            caption: '',
+          })),
+        )
+        setVideos(
+          videoUrls.map((url) => ({
+            id: newId(),
+            kind: isEmbedUrl(url) ? 'embed' : 'upload',
+            url,
+            title: '',
+          })),
+        )
+      }
+      setHydratedFromDb(true)
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [])
   const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null)
   const [editingVideoId, setEditingVideoId] = useState<string | null>(null)
   const [videoUrl, setVideoUrl] = useState('')
@@ -133,7 +184,9 @@ export default function PhotosPage() {
   // empty default before persisted state loads.
   const filledCovers = covers.filter(Boolean).length
   useEffect(() => {
-    if (!hydrated) return
+    // Wait for *both* the localStorage draft hydration and the DB read so
+    // we don't clobber persisted counts with the empty initial state.
+    if (!hydrated || !hydratedFromDb) return
     if (
       draft.photoCount !== photos.length ||
       draft.videoCount !== videos.length ||
@@ -147,6 +200,7 @@ export default function PhotosPage() {
     }
   }, [
     hydrated,
+    hydratedFromDb,
     photos.length,
     videos.length,
     filledCovers,
@@ -169,6 +223,7 @@ export default function PhotosPage() {
   // can't double-pick the same slot.
   const [uploadingCovers, setUploadingCovers] = useState<Set<number>>(new Set())
   const [portfolioUploads, setPortfolioUploads] = useState(0)
+  const [videoUploads, setVideoUploads] = useState(0)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
   // Persist cover + portfolio URLs to the DB. Cover photo is the first
@@ -326,20 +381,83 @@ export default function PhotosPage() {
     })
   }
 
-  const addVideoFiles = (files: FileList | File[]) => {
+  // Uploads land in Supabase Storage via a signed PUT URL — server actions
+  // top out around 1 MB request bodies, but a typical 30-90s wedding reel
+  // is 30-100 MB. The signed URL bypasses the Next.js function entirely.
+  const addVideoFiles = async (files: FileList | File[]) => {
+    setUploadError(null)
     const list = Array.from(files).filter((f) => f.type.startsWith('video/'))
     if (list.length === 0) return
-    const next: VideoReel[] = list.map((file) => {
-      const url = URL.createObjectURL(file)
-      objectUrlsRef.current.push(url)
+
+    // Optimistic placeholders so the vendor sees progress per file.
+    const placeholders: VideoReel[] = list.map((file) => {
+      const previewUrl = URL.createObjectURL(file)
+      objectUrlsRef.current.push(previewUrl)
       return {
         id: newId(),
         kind: 'upload' as const,
-        url,
+        url: previewUrl,
         title: file.name.replace(/\.[^.]+$/, ''),
       }
     })
-    setVideos((prev) => [...prev, ...next])
+    setVideos((prev) => [...prev, ...placeholders])
+    setVideoUploads((n) => n + list.length)
+
+    // Upload sequentially. Wedding reels are large; running them concurrently
+    // saturates the vendor's upstream and tanks throughput more than it
+    // parallelizes. One at a time keeps the UI responsive and predictable.
+    const errors: string[] = []
+    for (let i = 0; i < list.length; i++) {
+      const file = list[i]
+      const placeholder = placeholders[i]
+      const minted = await createStorefrontVideoUploadUrl({
+        filename: file.name,
+        mimeType: file.type,
+        sizeBytes: file.size,
+      })
+      if (!minted.ok) {
+        errors.push(`${file.name}: ${minted.error}`)
+        setVideos((prev) => prev.filter((v) => v.id !== placeholder.id))
+        setVideoUploads((n) => n - 1)
+        continue
+      }
+      try {
+        const put = await fetch(minted.uploadUrl, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type, 'x-upsert': 'false' },
+          body: file,
+        })
+        if (!put.ok) {
+          const body = await put.text().catch(() => '')
+          errors.push(
+            `${file.name}: storage rejected upload (${put.status}${body ? `: ${body.slice(0, 120)}` : ''})`,
+          )
+          setVideos((prev) => prev.filter((v) => v.id !== placeholder.id))
+        } else {
+          // Swap the blob URL for the durable public URL.
+          setVideos((prev) =>
+            prev.map((v) =>
+              v.id === placeholder.id
+                ? { ...v, url: minted.publicUrl, kind: 'upload' as const }
+                : v,
+            ),
+          )
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : 'Upload failed.'
+        errors.push(`${file.name}: ${message}`)
+        setVideos((prev) => prev.filter((v) => v.id !== placeholder.id))
+      } finally {
+        setVideoUploads((n) => n - 1)
+      }
+    }
+    if (errors.length > 0) {
+      setUploadError(
+        errors.length === 1
+          ? errors[0]
+          : `${errors.length} video upload${errors.length === 1 ? '' : 's'} failed (${errors[0]}${errors.length > 1 ? '; …' : ''})`,
+      )
+    }
   }
 
   const handlePhotoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -348,7 +466,7 @@ export default function PhotosPage() {
   }
 
   const handleVideoInput = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) addVideoFiles(e.target.files)
+    if (e.target.files) void addVideoFiles(e.target.files)
     e.target.value = ''
   }
 
@@ -361,7 +479,7 @@ export default function PhotosPage() {
   const handleVideoDrop = (e: React.DragEvent<HTMLElement>) => {
     e.preventDefault()
     setVideoDragOver(false)
-    if (e.dataTransfer.files) addVideoFiles(e.dataTransfer.files)
+    if (e.dataTransfer.files) void addVideoFiles(e.dataTransfer.files)
   }
 
   const removePhoto = (id: string) => {
@@ -431,11 +549,18 @@ export default function PhotosPage() {
     startSaving(async () => {
       const coverUrls = covers.filter((c): c is { id: string; url: string } => !!c).map((c) => c.url)
       const portfolioUrls = photos.map((p) => p.url)
+      // Skip any video that's still on a blob: URL — those uploads either
+      // failed or are still in flight and would be rejected by the
+      // server's http(s) check anyway.
+      const videoUrls = videos
+        .map((v) => v.url)
+        .filter((u) => /^https?:\/\//i.test(u))
       const res = await savePhotos({
         coverImage: coverUrls[0] ?? null,
         // Slots 2-4 of the cover carousel + every portfolio photo all land
         // in `gallery_urls` on the public profile. Dedupe just in case.
         galleryUrls: Array.from(new Set([...coverUrls.slice(1), ...portfolioUrls])),
+        videoUrls,
       })
       if (!res.ok) {
         setSaveError(res.error)
@@ -717,7 +842,14 @@ export default function PhotosPage() {
             video{videos.length === 1 ? '' : 's'}
             {portfolioUploads > 0 && (
               <span className="ml-3 inline-flex items-center gap-1 text-amber-700">
-                <Loader2 className="w-3 h-3 animate-spin" /> Uploading {portfolioUploads}…
+                <Loader2 className="w-3 h-3 animate-spin" /> Uploading {portfolioUploads} photo
+                {portfolioUploads === 1 ? '' : 's'}…
+              </span>
+            )}
+            {videoUploads > 0 && (
+              <span className="ml-3 inline-flex items-center gap-1 text-amber-700">
+                <Loader2 className="w-3 h-3 animate-spin" /> Uploading {videoUploads} video
+                {videoUploads === 1 ? '' : 's'}…
               </span>
             )}
             {uploadError && (
@@ -732,7 +864,12 @@ export default function PhotosPage() {
             <button
               type="button"
               onClick={onSave}
-              disabled={saving || portfolioUploads > 0 || uploadingCovers.size > 0}
+              disabled={
+                saving ||
+                portfolioUploads > 0 ||
+                videoUploads > 0 ||
+                uploadingCovers.size > 0
+              }
               className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               <Save className="w-3.5 h-3.5" />
@@ -1262,6 +1399,22 @@ function CoverSlotView({
       )}
     </div>
   )
+}
+
+// A persisted video URL is treated as an embed if it points at a known
+// video host (YouTube/Vimeo). Otherwise we assume it's an upload from our
+// Supabase Storage bucket and render it with a native <video> tag.
+function isEmbedUrl(url: string): boolean {
+  try {
+    const u = new URL(url)
+    return (
+      u.hostname.includes('youtube.com') ||
+      u.hostname.includes('youtu.be') ||
+      u.hostname.includes('vimeo.com')
+    )
+  } catch {
+    return false
+  }
 }
 
 // Best-effort title extraction so a paste-only workflow still produces a label.

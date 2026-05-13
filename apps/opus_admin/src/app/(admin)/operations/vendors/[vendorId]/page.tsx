@@ -54,6 +54,12 @@ type VendorRow = {
   reschedule_policy: string | null
   style: string | null
   personality: string | null
+  cover_image: string | null
+  gallery_urls: string[] | null
+}
+
+type VideoUrlsRow = {
+  video_urls: string[] | null
 }
 
 type ApplicationSnapshotRow = {
@@ -131,7 +137,8 @@ export default async function VendorReviewPage({
          created_at, updated_at,
          team, faqs, packages, awards, hours, languages, response_time_hours,
          locally_owned, parallel_booking_capacity, deposit_percent,
-         cancellation_level, reschedule_policy, style, personality`,
+         cancellation_level, reschedule_policy, style, personality,
+         cover_image, gallery_urls`,
       )
       .eq('id', vendorId)
       .maybeSingle<VendorRow>(),
@@ -229,6 +236,34 @@ export default async function VendorReviewPage({
   } else {
     applicationSnapshot = snapshotRes.data?.application_snapshot ?? null
   }
+
+  // Best-effort fetch of `video_urls` (added by migration 20260512000010).
+  // Same degradation pattern as packages / application_snapshot — projects
+  // that haven't run the migration yet still load the page; they just see
+  // an empty video list.
+  let videoUrls: string[] = []
+  const videoRes = await admin
+    .from('vendors')
+    .select('video_urls')
+    .eq('id', vendorId)
+    .maybeSingle<VideoUrlsRow>()
+  if (videoRes.error) {
+    if (
+      videoRes.error.code === '42703' ||
+      videoRes.error.code === 'PGRST204'
+    ) {
+      console.warn(
+        `[admin] vendors.video_urls not available (${videoRes.error.code}). Apply migration 20260512000010.`,
+      )
+    } else {
+      console.warn(
+        `[admin] vendors.video_urls query failed: ${videoRes.error.code} ${videoRes.error.message}`,
+      )
+    }
+  } else {
+    videoUrls = videoRes.data?.video_urls ?? []
+  }
+
   const docs = docsRes.data ?? []
   const latestDocs = docs.filter((d) => d.is_latest)
   const docByType = new Map<string, DocRow>()
@@ -297,6 +332,9 @@ export default async function VendorReviewPage({
       reschedulePolicyColumn: v.reschedule_policy,
       styleColumn: v.style,
       personalityColumn: v.personality,
+      coverImageColumn: v.cover_image,
+      galleryUrlsColumn: v.gallery_urls ?? [],
+      videoUrlsColumn: videoUrls,
     },
     tin: tin && {
       id: tin.id,
