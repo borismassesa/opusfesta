@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { createEmployee, deleteEmployee, updateEmployee } from './actions'
 import { cn } from '@/lib/utils'
+import { HeaderActionsSlot } from '@/components/HeaderPortals'
 import Avatar from '../_components/Avatar'
 import StatusPill from '../_components/StatusPill'
 import Kpi, { KpiRow } from '../_components/Kpi'
@@ -147,6 +148,29 @@ export default function EmployeesClient({
 
   return (
     <div className="space-y-6">
+      {/* Page-level CTAs portal into the global admin Header so the header's
+          right rail owns the high-frequency actions and the in-page toolbar
+          can collapse to a single, scan-friendly row of search + filters. */}
+      <HeaderActionsSlot>
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={visible.length === 0}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-50"
+        >
+          <Download className="h-4 w-4" />
+          Export
+        </button>
+        <button
+          type="button"
+          onClick={() => setShowAdd(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#b97fd0]"
+        >
+          <Plus className="h-4 w-4" />
+          Add employee
+        </button>
+      </HeaderActionsSlot>
+
       <KpiRow>
         <Kpi label="Total employees" value={String(totalActive)} delta={`${employees.length} total`} deltaTone="neutral" icon={<Users className="h-4 w-4" />} />
         <Kpi label="Departments" value={String(totalDepartments)} hint={`across ${totalLocations} location${totalLocations === 1 ? '' : 's'}`} icon={<Briefcase className="h-4 w-4" />} />
@@ -154,12 +178,12 @@ export default function EmployeesClient({
         <Kpi label="Open roles" value={String(openJobs)} hint="recruitment pipeline" icon={<UserPlus className="h-4 w-4" />} />
       </KpiRow>
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-        {/* Top row: search + primary actions. Keep this row uncluttered so the
-            two highest-frequency tasks (find someone, add someone) stay
-            unambiguous. */}
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative min-w-[240px] flex-1">
+      {/* Single-row toolbar: search + filter pills + result count + view
+          toggle. Export and Add employee live in the global Header, so this
+          row stays focused on "narrow down what I'm looking at". */}
+      <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative min-w-[220px] flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
             <input
               type="search"
@@ -169,30 +193,6 @@ export default function EmployeesClient({
               className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9A0DC]"
             />
           </div>
-          <button
-            type="button"
-            onClick={exportCsv}
-            disabled={visible.length === 0}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            <Download className="h-4 w-4" />
-            Export
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowAdd(true)}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-3 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0]"
-          >
-            <Plus className="h-4 w-4" />
-            Add employee
-          </button>
-        </div>
-
-        {/* Filter row: compact pill selects. Labels are inside the control so
-            the row stays scannable; results count + view toggle sit on the
-            right. A Clear link appears only when at least one filter is on,
-            so the row stays minimal in the default state. */}
-        <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
           <FilterPill
             label="Department"
             value={department}
