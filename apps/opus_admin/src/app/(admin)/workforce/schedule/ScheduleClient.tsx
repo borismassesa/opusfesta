@@ -1,7 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
-import { CalendarDays, ChevronLeft, ChevronRight, Clock4, Plus, Users, X } from 'lucide-react'
+import {
+  CalendarDays,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Clock4,
+  Plus,
+  Users,
+  X,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Avatar from '../_components/Avatar'
 import Kpi, { KpiRow } from '../_components/Kpi'
@@ -11,12 +20,15 @@ import { clearShift, upsertShift } from './actions'
 const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 const SHIFT_TYPES: ShiftType[] = ['Full day', 'Half day', 'On-call', 'Remote', 'Off']
 
-const SHIFT_STYLES: Record<ShiftType, { bg: string; ring: string; text: string; dot: string }> = {
-  'Full day': { bg: 'bg-[#F0DFF6]', ring: 'ring-[#E0BEEC]', text: 'text-[#5B2D8E]', dot: 'bg-[#7E5896]' },
-  'Half day': { bg: 'bg-[#FFF3D9]', ring: 'ring-amber-200', text: 'text-amber-800', dot: 'bg-amber-500' },
-  Remote: { bg: 'bg-[#E5F2FB]', ring: 'ring-sky-200', text: 'text-sky-800', dot: 'bg-sky-500' },
-  'On-call': { bg: 'bg-[#FCE8F0]', ring: 'ring-rose-200', text: 'text-rose-800', dot: 'bg-rose-500' },
-  Off: { bg: 'bg-gray-50', ring: 'ring-gray-100', text: 'text-gray-400', dot: 'bg-gray-300' },
+// Soft-background palette only — dropped the dot indicator we used to render
+// in each pill and legend chip. The background tone already carries the
+// status; the dot was visual noise.
+const SHIFT_STYLES: Record<ShiftType, { bg: string; ring: string; text: string }> = {
+  'Full day': { bg: 'bg-[#F0DFF6]', ring: 'ring-[#E0BEEC]', text: 'text-[#5B2D8E]' },
+  'Half day': { bg: 'bg-[#FFF3D9]', ring: 'ring-amber-200', text: 'text-amber-800' },
+  Remote: { bg: 'bg-[#E5F2FB]', ring: 'ring-sky-200', text: 'text-sky-800' },
+  'On-call': { bg: 'bg-[#FCE8F0]', ring: 'ring-rose-200', text: 'text-rose-800' },
+  Off: { bg: 'bg-gray-50', ring: 'ring-gray-100', text: 'text-gray-400' },
 }
 
 function weekStart(date: Date): Date {
@@ -87,54 +99,61 @@ export default function ScheduleClient({
         <Kpi label="Coverage" value={`${coveragePct}%`} delta={coveragePct >= 70 ? 'Healthy' : 'Watch'} deltaTone={coveragePct >= 70 ? 'positive' : 'neutral'} hint="of weekday slots filled" />
       </KpiRow>
 
-      <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+      {/* Single-row toolbar: unified week navigator + chip-style filter +
+          colored legend chips. The previous design split the date range out
+          of the navigator and used a shouty uppercase "Department" label;
+          this version makes the date the primary text inside the navigator
+          and matches the Employees-page FilterPill chip vocabulary. */}
+      <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1.5">
+          <div className="inline-flex items-center rounded-lg border border-gray-200 bg-white">
             <button
               type="button"
               onClick={() => setOffset((o) => o - 1)}
-              className="rounded-md border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+              className="border-r border-gray-200 p-2 text-gray-500 hover:text-gray-900"
               aria-label="Previous week"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
-            <button
-              type="button"
-              onClick={() => setOffset(0)}
-              className="rounded-md border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-            >
-              This week
-            </button>
+            <span className="px-4 py-1.5 text-sm font-semibold text-gray-900 tabular-nums">
+              {formatRange(start)}
+            </span>
             <button
               type="button"
               onClick={() => setOffset((o) => o + 1)}
-              className="rounded-md border border-gray-200 p-1.5 text-gray-500 hover:bg-gray-50 hover:text-gray-900"
+              className="border-l border-gray-200 p-2 text-gray-500 hover:text-gray-900"
               aria-label="Next week"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
-            <span className="ml-3 text-sm font-semibold text-gray-900">{formatRange(start)}</span>
           </div>
-
-          <label className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
-            <span>Department</span>
-            <select
-              value={department}
-              onChange={(e) => setDepartment(e.target.value as Department | 'All')}
-              className="rounded-lg border border-gray-200 bg-white px-2.5 py-1.5 text-sm font-medium text-gray-900 outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9A0DC]"
+          {offset !== 0 && (
+            <button
+              type="button"
+              onClick={() => setOffset(0)}
+              className="rounded-full px-2.5 py-1 text-xs font-semibold text-[#5B2D8E] hover:bg-[#F0DFF6]"
             >
-              {(['All', ...departments] as const).map((d) => (
-                <option key={d} value={d}>
-                  {d}
-                </option>
-              ))}
-            </select>
-          </label>
+              Jump to this week
+            </button>
+          )}
 
-          <div className="ml-auto flex flex-wrap items-center gap-x-2 gap-y-1">
+          <FilterPill
+            label="Department"
+            value={department}
+            onChange={(v) => setDepartment(v as Department | 'All')}
+            options={['All', ...departments]}
+          />
+
+          <div className="ml-auto flex flex-wrap items-center gap-1.5">
             {SHIFT_TYPES.map((t) => (
-              <span key={t} className="inline-flex items-center gap-1.5 text-[11px] text-gray-600">
-                <span className={cn('h-2 w-2 rounded-full', SHIFT_STYLES[t].dot)} />
+              <span
+                key={t}
+                className={cn(
+                  'rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider',
+                  SHIFT_STYLES[t].bg,
+                  SHIFT_STYLES[t].text,
+                )}
+              >
                 {t}
               </span>
             ))}
@@ -233,8 +252,7 @@ function RosterRow({
           >
             <div className={cn('rounded-xl ring-1 px-2.5 py-2', style.bg, style.ring)}>
               <div className="flex items-center justify-between">
-                <span className={cn('inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider', style.text)}>
-                  <span className={cn('h-1.5 w-1.5 rounded-full', style.dot)} />
+                <span className={cn('text-[10px] font-bold uppercase tracking-wider', style.text)}>
                   {shift.type}
                 </span>
               </div>
@@ -442,5 +460,45 @@ function ShiftEditor({
         </div>
       </div>
     </div>
+  )
+}
+
+function FilterPill({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: readonly string[]
+}) {
+  const active = value !== 'All'
+  return (
+    <label
+      className={cn(
+        'relative inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+        active
+          ? 'border-[#E0BEEC] bg-[#F0DFF6] text-[#5B2D8E]'
+          : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+      )}
+    >
+      <span className="text-gray-400">{label}:</span>
+      <span className={active ? 'text-[#5B2D8E]' : 'text-gray-900'}>{value}</span>
+      <ChevronDown className="h-3 w-3 text-gray-400" />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        className="absolute inset-0 cursor-pointer opacity-0"
+      >
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    </label>
   )
 }
