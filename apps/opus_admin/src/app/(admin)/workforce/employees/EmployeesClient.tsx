@@ -368,7 +368,7 @@ function EmployeeRow({
         <p className="truncate text-xs text-gray-500">{employee.department}</p>
       </div>
       <div>
-        <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} dot={false} />
+        <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} />
       </div>
       <div>
         <StatusPill tone={STATUS_TONE[employee.status]} label={employee.status} />
@@ -379,7 +379,7 @@ function EmployeeRow({
         <p className="truncate text-[11px] text-gray-400">{tenureLabel(employee.startDate)}</p>
       </div>
       <div
-        className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+        className="flex items-center justify-end gap-0.5"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -387,7 +387,7 @@ function EmployeeRow({
           onClick={onEdit}
           aria-label={`Edit ${employee.name}`}
           title="Edit"
-          className="rounded-md p-1.5 text-gray-400 hover:bg-[#F0DFF6] hover:text-[#5B2D8E]"
+          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-[#F0DFF6] hover:text-[#5B2D8E]"
         >
           <Pencil className="h-4 w-4" />
         </button>
@@ -396,7 +396,7 @@ function EmployeeRow({
           onClick={onDelete}
           aria-label={`Delete ${employee.name}`}
           title="Delete"
-          className="rounded-md p-1.5 text-gray-400 hover:bg-rose-50 hover:text-rose-700"
+          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-rose-50 hover:text-rose-700"
         >
           <Trash2 className="h-4 w-4" />
         </button>
@@ -436,8 +436,8 @@ function EmployeeCard({
       <p className="mt-3 text-sm font-semibold text-gray-950">{employee.name}</p>
       <p className="text-xs text-gray-500">{employee.jobTitle}</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} dot={false} />
-        <StatusPill tone="gray" label={employee.department} dot={false} />
+        <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} />
+        <StatusPill tone="gray" label={employee.department} />
       </div>
       <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
         <span className="inline-flex items-center gap-1">
@@ -583,8 +583,8 @@ function EmployeeDrawer({
         <div className="space-y-6 px-6 py-6">
           <div className="flex flex-wrap gap-2">
             <StatusPill tone={STATUS_TONE[employee.status]} label={employee.status} />
-            <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} dot={false} />
-            <StatusPill tone="gray" label={employee.department} dot={false} />
+            <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} />
+            <StatusPill tone="gray" label={employee.department} />
           </div>
 
           <Section title="Contact">
