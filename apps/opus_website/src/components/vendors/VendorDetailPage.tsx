@@ -139,7 +139,7 @@ function VendorHeader({ vendor, onSave, saved }: { vendor: Vendor; onSave: () =>
 }
 
 // ── Tabs ──────────────────────────────────────────────────
-const VENDOR_TABS = ['Photos', 'About', 'Services', 'Pricing', 'Availability', 'Team', 'FAQ\'s', 'Reviews', 'Location']
+const VENDOR_TABS = ['Photos', 'About', 'Services', 'Pricing', 'Availability', 'Team', 'FAQ\'s', 'Location', 'Reviews']
 
 function VendorTabs({ onPhotos, saved, onSave, active, onActiveChange }: {
   onPhotos: () => void
@@ -2605,9 +2605,11 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
               <VendorAvailabilitySection vendor={vendor} />
               <VendorTeamSection vendor={vendor} />
               <VendorFaqSection vendor={vendor} />
-              <VendorReviewsSection vendor={vendor} />
               <VendorServiceAreaSection vendor={vendor} />
-              {/* Sentinel: sidebar stops being sticky after Location section ends */}
+              <VendorReviewsSection vendor={vendor} />
+              {/* Sentinel: sidebar stops being sticky after the last
+                  content section ends — Reviews now closes the page so
+                  the sentinel stays here, after Reviews. */}
               <div ref={reviewsSentinelRef} id="vendor-reviews-sentinel" />
             </div>
           </div>
