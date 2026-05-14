@@ -52,9 +52,10 @@ const LOCATIONS: Location[] = ['Dar es Salaam', 'Arusha', 'Zanzibar', 'Remote']
 // Seven columns now (was eight): Tenure folded into the Joined cell as
 // a quiet sub-label since it's just elapsed time from Start Date, not
 // an independent fact. Drops a column's worth of horizontal noise and
-// gives Salary room to breathe.
+// gives Salary room to breathe. Gap bumped to gap-5 because right-aligned
+// Salary content otherwise sat almost flush with left-aligned Joined text.
 const ROW_GRID =
-  'grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.5fr)_110px_110px_minmax(140px,1fr)_minmax(120px,0.9fr)_72px] items-center gap-3'
+  'grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.5fr)_110px_110px_minmax(140px,1fr)_minmax(140px,1fr)_72px] items-center gap-5'
 
 export default function EmployeesClient({
   employees,
