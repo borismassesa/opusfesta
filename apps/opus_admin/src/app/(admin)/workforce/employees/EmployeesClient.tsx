@@ -49,13 +49,14 @@ const EMPLOYMENT_TYPES: EmploymentType[] = ['Permanent', 'Contract', 'Probation'
 const STATUSES: EmployeeStatus[] = ['Active', 'On Leave', 'Onboarding', 'Resigned']
 const LOCATIONS: Location[] = ['Dar es Salaam', 'Arusha', 'Zanzibar', 'Remote']
 
-// Seven columns now (was eight): Tenure folded into the Joined cell as
-// a quiet sub-label since it's just elapsed time from Start Date, not
-// an independent fact. Drops a column's worth of horizontal noise and
-// gives Salary room to breathe. Gap bumped to gap-5 because right-aligned
-// Salary content otherwise sat almost flush with left-aligned Joined text.
+// Six columns: Employee, Role, Type, Joined, Status, Actions. Salary
+// dropped from the list view — sensitive comp info doesn't need to sit
+// on a screenshot-friendly directory page; it still lives in the row
+// drawer + CSV export. Joined moved next to Type so the temporal facts
+// (type + tenure) cluster together, with Status acting as the trailing
+// "current state" cell before the action icons.
 const ROW_GRID =
-  'grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.5fr)_110px_110px_minmax(140px,1fr)_minmax(140px,1fr)_72px] items-center gap-5'
+  'grid grid-cols-[minmax(0,2.4fr)_minmax(0,1.7fr)_110px_minmax(140px,1fr)_120px_72px] items-center gap-5'
 
 export default function EmployeesClient({
   employees,
@@ -267,9 +268,8 @@ export default function EmployeesClient({
             <span>Employee</span>
             <span>Role</span>
             <span>Type</span>
-            <span>Status</span>
-            <span className="text-right">Salary</span>
             <span>Joined</span>
+            <span>Status</span>
             <span className="text-right pr-1">Actions</span>
           </div>
 
@@ -371,13 +371,12 @@ function EmployeeRow({
       <div>
         <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} />
       </div>
-      <div>
-        <StatusPill tone={STATUS_TONE[employee.status]} label={employee.status} />
-      </div>
-      <div className="text-right text-sm font-medium tabular-nums text-gray-900">{formatTzs(employee.salaryTzs)}</div>
       <div className="min-w-0">
         <p className="truncate text-sm text-gray-700 tabular-nums">{formatDate(employee.startDate)}</p>
         <p className="truncate text-[11px] text-gray-400">{tenureLabel(employee.startDate)}</p>
+      </div>
+      <div>
+        <StatusPill tone={STATUS_TONE[employee.status]} label={employee.status} />
       </div>
       <div
         className="flex items-center justify-end gap-0.5"
