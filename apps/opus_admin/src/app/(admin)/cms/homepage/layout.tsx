@@ -23,6 +23,8 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useSetPageHeading } from '@/components/PageHeading'
+import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { EditorActionsProvider, useEditorActions } from './EditorActionsContext'
 
 type Section = {
@@ -141,32 +143,31 @@ function HomepageCmsShell({ children }: { children: ReactNode }) {
   const liveSections = sections.filter((s) => s.status === 'live')
   const soonSections = sections.filter((s) => s.status === 'soon')
 
+  // Hoist the section label + description into the global admin Header
+  // (next to the page-heading slot). Keeps the chrome consistent with
+  // other admin areas instead of carrying a duplicate inline title bar.
+  useSetPageHeading({
+    title: activeSection.label,
+    subtitle: activeSection.description ?? undefined,
+  })
+
   return (
     <div className="pt-2 pb-6">
-      <div className="flex items-start justify-between gap-4 px-8 pb-6 mb-6 border-b border-gray-100">
-        <div className="min-w-0">
-          <h2 className="text-3xl font-bold text-gray-900 tracking-tight">
-            {activeSection.label}
-          </h2>
-          {activeSection.description && (
-            <p className="text-sm text-gray-500 mt-2 max-w-2xl">
-              {activeSection.description}
-            </p>
-          )}
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          <ActionButtons />
-          <a
-            href={websiteUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
-          >
-            View live site
-            <ExternalLink className="w-3.5 h-3.5" />
-          </a>
-        </div>
-      </div>
+      <HeaderBadgeSlot>
+        <EditorStatusBadge />
+      </HeaderBadgeSlot>
+      <HeaderActionsSlot>
+        <EditorActionButtons />
+        <a
+          href={websiteUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+        >
+          View live site
+          <ExternalLink className="w-3.5 h-3.5" />
+        </a>
+      </HeaderActionsSlot>
 
       <div className="flex items-start gap-0">
         <aside className="w-[240px] shrink-0 border-r border-gray-100 self-stretch">
@@ -234,27 +235,35 @@ function SectionItemSoon({ section }: { section: Section }) {
   )
 }
 
-function ActionButtons() {
+function EditorStatusBadge() {
+  const { bound } = useEditorActions()
+  if (!bound) return null
+  const { hasDraft } = bound
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full',
+        hasDraft ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+      )}
+    >
+      {hasDraft ? 'Unpublished draft' : 'All changes published'}
+    </span>
+  )
+}
+
+function EditorActionButtons() {
   const { bound } = useEditorActions()
   if (!bound) return null
   const { hasDraft, pending, message, onSaveDraft, onPublish, onDiscard } = bound
   return (
     <>
-      <span
-        className={cn(
-          'inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full mr-1',
-          hasDraft ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
-        )}
-      >
-        {hasDraft ? 'Unpublished draft' : 'All changes published'}
-      </span>
       {message && <span className="text-xs text-gray-500 mr-1">{message}</span>}
       {hasDraft && (
         <button
           type="button"
           onClick={onDiscard}
           disabled={pending}
-          className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
           <Trash2 className="w-4 h-4" />
           Discard
@@ -264,7 +273,7 @@ function ActionButtons() {
         type="button"
         onClick={onSaveDraft}
         disabled={pending}
-        className="flex items-center gap-1.5 text-sm font-medium text-gray-700 px-3 py-2 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
+        className="flex items-center gap-1.5 text-sm font-medium text-gray-700 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
       >
         <Save className="w-4 h-4" />
         Save draft
@@ -273,7 +282,7 @@ function ActionButtons() {
         type="button"
         onClick={onPublish}
         disabled={pending}
-        className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#C9A0DC] hover:bg-[#b97fd0] px-4 py-2 rounded-lg transition-colors disabled:opacity-50"
+        className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#C9A0DC] hover:bg-[#b97fd0] px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50"
       >
         <Send className="w-4 h-4" />
         Publish
