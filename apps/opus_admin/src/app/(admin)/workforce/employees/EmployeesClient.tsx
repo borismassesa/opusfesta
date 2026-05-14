@@ -48,8 +48,12 @@ const EMPLOYMENT_TYPES: EmploymentType[] = ['Permanent', 'Contract', 'Probation'
 const STATUSES: EmployeeStatus[] = ['Active', 'On Leave', 'Onboarding', 'Resigned']
 const LOCATIONS: Location[] = ['Dar es Salaam', 'Arusha', 'Zanzibar', 'Remote']
 
+// Seven columns now (was eight): Tenure folded into the Joined cell as
+// a quiet sub-label since it's just elapsed time from Start Date, not
+// an independent fact. Drops a column's worth of horizontal noise and
+// gives Salary room to breathe.
 const ROW_GRID =
-  'grid grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_120px_120px_140px_120px_88px_88px] items-center gap-3'
+  'grid grid-cols-[minmax(0,2.2fr)_minmax(0,1.5fr)_110px_110px_minmax(140px,1fr)_minmax(120px,0.9fr)_72px] items-center gap-3'
 
 export default function EmployeesClient({
   employees,
@@ -93,6 +97,15 @@ export default function EmployeesClient({
 
   const totalActive = employees.filter((e) => e.status !== 'Resigned').length
   const totalDepartments = new Set(employees.map((e) => e.department)).size
+  const totalLocations = new Set(employees.map((e) => e.location)).size
+  const hasActiveFilters = department !== 'All' || status !== 'All' || type !== 'All' || search !== ''
+
+  function clearFilters() {
+    setDepartment('All')
+    setStatus('All')
+    setType('All')
+    setSearch('')
+  }
 
   function openEditFromDrawer() {
     if (!selected) return
@@ -136,7 +149,7 @@ export default function EmployeesClient({
     <div className="space-y-6">
       <KpiRow>
         <Kpi label="Total employees" value={String(totalActive)} delta={`${employees.length} total`} deltaTone="neutral" icon={<Users className="h-4 w-4" />} />
-        <Kpi label="Departments" value={String(totalDepartments)} hint="across 4 locations" icon={<Briefcase className="h-4 w-4" />} />
+        <Kpi label="Departments" value={String(totalDepartments)} hint={`across ${totalLocations} location${totalLocations === 1 ? '' : 's'}`} icon={<Briefcase className="h-4 w-4" />} />
         <Kpi label="Monthly salary bill" value={formatTzsCompact(totalSalary)} delta="+1.4%" hint="vs last month" icon={<Mail className="h-4 w-4" />} />
         <Kpi label="Open roles" value={String(openJobs)} hint="recruitment pipeline" icon={<UserPlus className="h-4 w-4" />} />
       </KpiRow>
@@ -176,7 +189,9 @@ export default function EmployeesClient({
         </div>
 
         {/* Filter row: compact pill selects. Labels are inside the control so
-            the row stays scannable; the view toggle sits on the right. */}
+            the row stays scannable; results count + view toggle sit on the
+            right. A Clear link appears only when at least one filter is on,
+            so the row stays minimal in the default state. */}
         <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-gray-100 pt-3">
           <FilterPill
             label="Department"
@@ -196,28 +211,45 @@ export default function EmployeesClient({
             onChange={(v) => setType(v as EmploymentType | 'All')}
             options={['All', ...EMPLOYMENT_TYPES]}
           />
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-gray-500 hover:text-[#5B2D8E]"
+            >
+              <X className="h-3 w-3" />
+              Clear
+            </button>
+          )}
 
-          <div className="ml-auto flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-semibold">
-            <button
-              type="button"
-              onClick={() => setView('list')}
-              className={cn(
-                'rounded-md px-2.5 py-1 transition-colors',
-                view === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500',
-              )}
-            >
-              List
-            </button>
-            <button
-              type="button"
-              onClick={() => setView('grid')}
-              className={cn(
-                'rounded-md px-2.5 py-1 transition-colors',
-                view === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500',
-              )}
-            >
-              Grid
-            </button>
+          <div className="ml-auto flex items-center gap-3">
+            <span className="text-xs text-gray-500 tabular-nums">
+              {visible.length === employees.length
+                ? `${employees.length} ${employees.length === 1 ? 'person' : 'people'}`
+                : `${visible.length} of ${employees.length}`}
+            </span>
+            <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => setView('list')}
+                className={cn(
+                  'rounded-md px-2.5 py-1 transition-colors',
+                  view === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500',
+                )}
+              >
+                List
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('grid')}
+                className={cn(
+                  'rounded-md px-2.5 py-1 transition-colors',
+                  view === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500',
+                )}
+              >
+                Grid
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -228,17 +260,16 @@ export default function EmployeesClient({
             role="row"
             className={cn(
               ROW_GRID,
-              'border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500',
+              'border-b border-gray-100 bg-gray-50/60 px-5 py-2.5 text-[11px] font-semibold text-gray-500',
             )}
           >
             <span>Employee</span>
             <span>Role</span>
             <span>Type</span>
             <span>Status</span>
-            <span>Salary (TZS)</span>
+            <span className="text-right">Salary</span>
             <span>Joined</span>
-            <span className="text-right">Tenure</span>
-            <span className="text-right">Actions</span>
+            <span className="text-right pr-1">Actions</span>
           </div>
 
           {visible.length === 0 ? (
@@ -321,12 +352,12 @@ function EmployeeRow({
       role="row"
       className={cn(
         ROW_GRID,
-        'group cursor-pointer border-b border-gray-100 px-5 py-3.5 transition-colors last:border-b-0 hover:bg-gray-50',
+        'group cursor-pointer border-b border-gray-100 px-5 py-3 transition-colors last:border-b-0 hover:bg-gray-50/80',
       )}
       onClick={onOpen}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <Avatar name={employee.name} color={employee.avatarColor} />
+        <Avatar name={employee.name} color={employee.avatarColor} size="sm" />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-gray-950">{employee.name}</p>
           <p className="truncate text-xs text-gray-500">{employee.email}</p>
@@ -337,18 +368,18 @@ function EmployeeRow({
         <p className="truncate text-xs text-gray-500">{employee.department}</p>
       </div>
       <div>
-        <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} />
+        <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} dot={false} />
       </div>
       <div>
         <StatusPill tone={STATUS_TONE[employee.status]} label={employee.status} />
       </div>
-      <div className="text-sm font-medium tabular-nums text-gray-900">{formatTzs(employee.salaryTzs)}</div>
-      <div className="text-xs text-gray-500">{formatDate(employee.startDate)}</div>
-      <div className="text-right text-xs font-bold uppercase tracking-wider text-[#7E5896]">
-        {tenureLabel(employee.startDate)}
+      <div className="text-right text-sm font-medium tabular-nums text-gray-900">{formatTzs(employee.salaryTzs)}</div>
+      <div className="min-w-0">
+        <p className="truncate text-sm text-gray-700 tabular-nums">{formatDate(employee.startDate)}</p>
+        <p className="truncate text-[11px] text-gray-400">{tenureLabel(employee.startDate)}</p>
       </div>
       <div
-        className="flex items-center justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
+        className="flex items-center justify-end gap-0.5 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100"
         onClick={(e) => e.stopPropagation()}
       >
         <button
@@ -405,8 +436,8 @@ function EmployeeCard({
       <p className="mt-3 text-sm font-semibold text-gray-950">{employee.name}</p>
       <p className="text-xs text-gray-500">{employee.jobTitle}</p>
       <div className="mt-3 flex flex-wrap gap-1.5">
-        <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} />
-        <StatusPill tone="gray" label={employee.department} />
+        <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} dot={false} />
+        <StatusPill tone="gray" label={employee.department} dot={false} />
       </div>
       <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
         <span className="inline-flex items-center gap-1">
@@ -552,8 +583,8 @@ function EmployeeDrawer({
         <div className="space-y-6 px-6 py-6">
           <div className="flex flex-wrap gap-2">
             <StatusPill tone={STATUS_TONE[employee.status]} label={employee.status} />
-            <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} />
-            <StatusPill tone="gray" label={employee.department} />
+            <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} dot={false} />
+            <StatusPill tone="gray" label={employee.department} dot={false} />
           </div>
 
           <Section title="Contact">
