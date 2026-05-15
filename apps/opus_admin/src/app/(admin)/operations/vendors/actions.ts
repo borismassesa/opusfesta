@@ -693,6 +693,8 @@ export type StorefrontPatch = {
   // Photos
   coverImage?: string | null
   galleryUrls?: string[]
+  // Videos — uploaded MP4/MOV/WebM URLs or YouTube/Vimeo embed links
+  videoUrls?: string[]
   // Services
   services?: string[]
   // Packages
@@ -850,6 +852,12 @@ export async function updateStorefrontSection(
       .filter((u) => /^https?:\/\//i.test(u))
     update.gallery_urls = cleaned.length > 0 ? cleaned : null
   }
+  if (patch.videoUrls !== undefined) {
+    const cleaned = patch.videoUrls
+      .map((u) => u.trim())
+      .filter((u) => /^https?:\/\//i.test(u))
+    update.video_urls = cleaned.length > 0 ? cleaned : null
+  }
 
   if (patch.services !== undefined) update.services_offered = patch.services
   if (patch.packages !== undefined) update.packages = patch.packages
@@ -878,10 +886,26 @@ export async function updateStorefrontSection(
     return { ok: false, reason: 'invalid', error: 'No fields to update.' }
   }
 
-  const { error } = await admin
-    .from('vendors')
-    .update(update)
-    .eq('id', vendorId)
+  // Try the full update first, then retry without `video_urls` if the
+  // column hasn't been migrated yet (same pattern as the existing
+  // packages / application_snapshot guards) so admin saves don't break in
+  // environments that are behind on migrations.
+  let { error } = await admin.from('vendors').update(update).eq('id', vendorId)
+  if (
+    error &&
+    'video_urls' in update &&
+    (error.code === '42703' || error.code === 'PGRST204')
+  ) {
+    const { video_urls: _omit, ...rest } = update
+    void _omit
+    const retry = await admin.from('vendors').update(rest).eq('id', vendorId)
+    error = retry.error
+    if (!error) {
+      console.warn(
+        '[admin] video_urls column missing — videos were not persisted. Apply migration 20260512000010.',
+      )
+    }
+  }
   if (error) {
     return {
       ok: false,
@@ -1014,6 +1038,360 @@ async function mirrorPatchToSnapshot(
  * Reactivate a suspended vendor. Symmetric to suspendVendor; clears the
  * suspended_at + suspension_reason fields.
  */
+// =============================================================================
+// Admin-created vendor accounts
+// =============================================================================
+//
+// Admin can spin up a vendor record directly — useful for vendors who
+// can't (or won't) navigate the self-serve onboarding flow, or for
+// seeding curated featured vendors before they sign up. The flow:
+//
+//   1. Upsert a `public.users` row keyed on email (placeholder password
+//      since Clerk owns auth). If the email is already a user we reuse
+//      the existing row — no orphans.
+//   2. Insert the `vendors` row pointing at that user with a unique slug
+//      derived from the business name. Status starts at
+//      `application_in_progress` so admin can fill in the rest via the
+//      existing review-page editors.
+//   3. Insert an owner-role `vendor_memberships` row so the vendor can
+//      eventually claim the account when they sign in with the matching
+//      email.
+//
+// The created vendor row is intentionally minimal — admin fills the rest
+// (address, phone, packages, photos, etc.) using the per-section
+// editors on the review page.
+
+const VALID_VENDOR_CATEGORIES = [
+  'Venues',
+  'Photographers',
+  'Videographers',
+  'Caterers',
+  'Wedding Planners',
+  'Florists',
+  'DJs & Music',
+  'Beauty & Makeup',
+  'Bridal Salons',
+  'Cake & Desserts',
+  'Decorators',
+  'Officiants',
+  'Rentals',
+  'Transportation',
+] as const
+
+export type VendorCategory = (typeof VALID_VENDOR_CATEGORIES)[number]
+
+function slugifyForVendor(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+}
+
+export type CreateVendorInput = {
+  businessName: string
+  category: string
+  contactEmail: string
+  city?: string
+  phone?: string
+  bio?: string
+}
+
+export type CreateVendorResult =
+  | { ok: true; vendorId: string }
+  | {
+      ok: false
+      error: string
+      reason: 'unauth' | 'invalid' | 'duplicate' | 'unknown'
+    }
+
+export async function createVendorAccount(
+  input: CreateVendorInput,
+): Promise<CreateVendorResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+
+  const businessName = input.businessName?.trim()
+  const email = input.contactEmail?.trim().toLowerCase()
+  const category = input.category as VendorCategory
+  if (!businessName) {
+    return { ok: false, reason: 'invalid', error: 'Business name is required.' }
+  }
+  if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'A valid contact email is required.',
+    }
+  }
+  if (!VALID_VENDOR_CATEGORIES.includes(category)) {
+    return { ok: false, reason: 'invalid', error: 'Pick a vendor category.' }
+  }
+
+  const admin = createSupabaseAdminClient()
+
+  // 1) Upsert the user keyed on email. The legacy `password` column is
+  // NOT NULL but unused under Clerk — store an opaque marker. clerk_id
+  // is left null and gets linked when the vendor signs in via the
+  // matching email.
+  const userUpsert = await admin
+    .from('users')
+    .upsert(
+      {
+        email,
+        name: businessName,
+        password: 'admin-created-placeholder',
+        role: 'vendor',
+      },
+      { onConflict: 'email' },
+    )
+    .select('id')
+    .single<{ id: string }>()
+  if (userUpsert.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] users upsert failed: ${userUpsert.error.code} ${userUpsert.error.message}`,
+    }
+  }
+  const supabaseUserId = userUpsert.data.id
+
+  // 2) Resolve a unique slug — append a short random suffix on collision.
+  const baseSlug = slugifyForVendor(businessName) || 'vendor'
+  let slug = baseSlug
+  const slugCheck = await admin
+    .from('vendors')
+    .select('id', { count: 'exact', head: true })
+    .eq('slug', baseSlug)
+  if (slugCheck.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] slug check failed: ${slugCheck.error.code} ${slugCheck.error.message}`,
+    }
+  }
+  if ((slugCheck.count ?? 0) > 0) {
+    slug = `${baseSlug}-${Math.random().toString(36).slice(2, 8)}`
+  }
+
+  // Guard against a duplicate vendor row for the same user — if admin
+  // already created one for this contact email, surface a clear error
+  // rather than letting the insert blow up on a unique constraint.
+  const existing = await admin
+    .from('vendors')
+    .select('id, business_name')
+    .eq('user_id', supabaseUserId)
+    .limit(1)
+    .maybeSingle<{ id: string; business_name: string }>()
+  if (existing.data) {
+    return {
+      ok: false,
+      reason: 'duplicate',
+      error: `A vendor already exists for ${email}: ${existing.data.business_name}.`,
+    }
+  }
+
+  const corePayload: Record<string, unknown> = {
+    slug,
+    user_id: supabaseUserId,
+    business_name: businessName,
+    category,
+    bio: input.bio?.trim() || null,
+    location: input.city?.trim() ? { city: input.city.trim() } : {},
+    contact_info: {
+      email,
+      ...(input.phone?.trim() ? { phone: input.phone.trim() } : {}),
+    },
+    onboarding_status: 'application_in_progress' as const,
+    onboarding_started_at: new Date().toISOString(),
+  }
+
+  const insert = await admin
+    .from('vendors')
+    .insert(corePayload)
+    .select('id')
+    .single<{ id: string }>()
+  if (insert.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] vendor insert failed: ${insert.error.code} ${insert.error.message}`,
+    }
+  }
+  const vendorId = insert.data.id
+
+  // 3) Owner membership so the vendor can claim the account on sign-in.
+  // ON CONFLICT (vendor_id, user_id) — same pattern as the portal submit
+  // flow, see vendors_portal/src/lib/onboarding/submit.ts.
+  const membership = await admin.from('vendor_memberships').upsert(
+    {
+      vendor_id: vendorId,
+      user_id: supabaseUserId,
+      role: 'owner' as const,
+      status: 'active' as const,
+    },
+    { onConflict: 'vendor_id,user_id' },
+  )
+  if (membership.error) {
+    console.warn(
+      `[admin] vendor_memberships upsert failed for vendor=${vendorId}: ${membership.error.code} ${membership.error.message} — vendor row exists but owner membership wasn't created`,
+    )
+  }
+
+  revalidatePath('/operations/vendors')
+  return { ok: true, vendorId }
+}
+
+// =============================================================================
+// Admin-side media uploads (photos + videos) on behalf of a vendor
+// =============================================================================
+//
+// Admins curate vendor storefronts: they need to add a missing cover, swap
+// a watermarked photo, or attach the highlight reel the vendor emailed
+// over. These actions write into the same `vendor-portfolios` bucket and
+// the same `cover_image` / `gallery_urls` / `video_urls` columns that the
+// vendor portal uses, so the public profile reads one canonical source.
+//
+// Photos travel through a server action (small, image MIME guard). Videos
+// use a signed *upload* URL — a 100 MB MOV would exceed the Vercel server
+// action body cap, so the browser PUTs the file directly to Supabase
+// Storage and we just persist the resulting public URL.
+
+const ADMIN_PHOTO_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
+const ADMIN_VIDEO_MIME = new Set(['video/mp4', 'video/webm', 'video/quicktime'])
+const ADMIN_PHOTO_MAX_BYTES = 25 * 1024 * 1024 // 25 MB — matches portal cap
+const ADMIN_VIDEO_MAX_BYTES = 500 * 1024 * 1024 // 500 MB — matches bucket cap
+
+export type AdminUploadResult =
+  | { ok: true; url: string; path: string }
+  | { ok: false; error: string; reason: 'unauth' | 'invalid' | 'unknown' }
+
+export type AdminVideoUploadUrlResult =
+  | {
+      ok: true
+      uploadUrl: string
+      token: string
+      publicUrl: string
+      path: string
+    }
+  | { ok: false; error: string; reason: 'unauth' | 'invalid' | 'unknown' }
+
+export async function adminUploadVendorPhoto(
+  formData: FormData,
+): Promise<AdminUploadResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+
+  const vendorId = formData.get('vendorId')
+  const kind = formData.get('kind')
+  const file = formData.get('file')
+  if (typeof vendorId !== 'string' || !vendorId) {
+    return { ok: false, reason: 'invalid', error: 'Missing vendor id.' }
+  }
+  if (kind !== 'cover' && kind !== 'gallery') {
+    return { ok: false, reason: 'invalid', error: 'Unknown upload kind.' }
+  }
+  if (!(file instanceof File)) {
+    return { ok: false, reason: 'invalid', error: 'No file in upload payload.' }
+  }
+  if (!ADMIN_PHOTO_MIME.has(file.type)) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'Only JPEG, PNG, WebP, or GIF images are allowed.',
+    }
+  }
+  if (file.size > ADMIN_PHOTO_MAX_BYTES) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: `${file.name}: file is over the 25 MB limit (${(file.size / 1024 / 1024).toFixed(1)} MB).`,
+    }
+  }
+
+  const ext = (() => {
+    if (file.type === 'image/jpeg') return 'jpg'
+    if (file.type === 'image/png') return 'png'
+    if (file.type === 'image/webp') return 'webp'
+    if (file.type === 'image/gif') return 'gif'
+    return 'bin'
+  })()
+  const path = `${vendorId}/storefront/${kind}/${Date.now()}.${ext}`
+  const admin = createSupabaseAdminClient()
+  const buf = Buffer.from(await file.arrayBuffer())
+  const upload = await admin.storage
+    .from('vendor-portfolios')
+    .upload(path, buf, { contentType: file.type, upsert: false })
+  if (upload.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] photo upload failed: ${upload.error.message}`,
+    }
+  }
+  const publicUrl = admin.storage.from('vendor-portfolios').getPublicUrl(path)
+  return { ok: true, url: publicUrl.data.publicUrl, path }
+}
+
+export async function adminCreateVendorVideoUploadUrl(input: {
+  vendorId: string
+  filename: string
+  mimeType: string
+  sizeBytes: number
+}): Promise<AdminVideoUploadUrlResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  if (!input.vendorId) {
+    return { ok: false, reason: 'invalid', error: 'Missing vendor id.' }
+  }
+  if (!ADMIN_VIDEO_MIME.has(input.mimeType)) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'Only MP4, WebM, or MOV video files are allowed.',
+    }
+  }
+  if (!Number.isFinite(input.sizeBytes) || input.sizeBytes <= 0) {
+    return { ok: false, reason: 'invalid', error: 'Missing file size.' }
+  }
+  if (input.sizeBytes > ADMIN_VIDEO_MAX_BYTES) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: `${input.filename}: video is over the 500 MB limit (${(input.sizeBytes / 1024 / 1024).toFixed(1)} MB).`,
+    }
+  }
+
+  const ext = (() => {
+    if (input.mimeType === 'video/mp4') return 'mp4'
+    if (input.mimeType === 'video/webm') return 'webm'
+    if (input.mimeType === 'video/quicktime') return 'mov'
+    return 'bin'
+  })()
+  const path = `${input.vendorId}/storefront/video/${Date.now()}.${ext}`
+  const admin = createSupabaseAdminClient()
+  const signed = await admin.storage
+    .from('vendor-portfolios')
+    .createSignedUploadUrl(path)
+  if (signed.error || !signed.data) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] signed upload URL failed: ${signed.error?.message ?? 'unknown'}`,
+    }
+  }
+  const publicUrl = admin.storage.from('vendor-portfolios').getPublicUrl(path)
+  return {
+    ok: true,
+    uploadUrl: signed.data.signedUrl,
+    token: signed.data.token,
+    publicUrl: publicUrl.data.publicUrl,
+    path,
+  }
+}
+
 export async function reactivateVendor(
   vendorId: string
 ): Promise<ActionResult> {

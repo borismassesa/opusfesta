@@ -225,10 +225,31 @@ function readDraft(): OnboardingDraft {
   }
 }
 
+// Internal broadcast — `useOnboardingDraft` is invoked independently by
+// multiple components (the storefront sidebar, the section editors, the
+// header completion meter) and each call owns its own `useState` copy.
+// Without this event, one component's `update()` only refreshes its own
+// copy: the sidebar keeps showing "needs more work" even after the photos
+// page has marked everything complete. We dispatch a custom event on every
+// write so every instance re-reads from localStorage.
+const DRAFT_CHANGE_EVENT = 'opusfesta:onboarding-draft-changed'
+
 function writeDraft(draft: OnboardingDraft) {
   if (typeof window === 'undefined') return
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
+    // Defer the cross-instance broadcast. `writeDraft` is called from
+    // inside the `setDraft` state updater in `update()` — dispatching
+    // synchronously would call listeners' setState during the calling
+    // component's render/commit phase, which React warns about as a
+    // cross-component setState-in-render. A microtask runs after the
+    // current updater returns but before paint, so the sidebar still
+    // refreshes in the same tick.
+    queueMicrotask(() => {
+      window.dispatchEvent(
+        new CustomEvent(DRAFT_CHANGE_EVENT, { detail: draft }),
+      )
+    })
   } catch {
     // ignore quota / private browsing errors — UX still works in-memory
   }
@@ -241,6 +262,27 @@ export function useOnboardingDraft() {
   useEffect(() => {
     setDraft(readDraft())
     setHydrated(true)
+    // Listen for cross-instance updates so every consumer of the hook
+    // converges on the latest persisted draft. Same-tab updates come
+    // through the custom event; cross-tab updates use the native
+    // `storage` event.
+    const onChange = (event: Event) => {
+      const detail = (event as CustomEvent<OnboardingDraft>).detail
+      if (detail) {
+        setDraft(detail)
+      } else {
+        setDraft(readDraft())
+      }
+    }
+    const onStorage = (event: StorageEvent) => {
+      if (event.key === STORAGE_KEY) setDraft(readDraft())
+    }
+    window.addEventListener(DRAFT_CHANGE_EVENT, onChange)
+    window.addEventListener('storage', onStorage)
+    return () => {
+      window.removeEventListener(DRAFT_CHANGE_EVENT, onChange)
+      window.removeEventListener('storage', onStorage)
+    }
   }, [])
 
   const update = useCallback((patch: Partial<OnboardingDraft>) => {
@@ -253,7 +295,12 @@ export function useOnboardingDraft() {
 
   const reset = useCallback(() => {
     setDraft(EMPTY)
-    if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY)
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(STORAGE_KEY)
+      window.dispatchEvent(
+        new CustomEvent(DRAFT_CHANGE_EVENT, { detail: EMPTY }),
+      )
+    }
   }, [])
 
   return { draft, update, reset, hydrated }

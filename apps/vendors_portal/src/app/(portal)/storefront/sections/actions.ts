@@ -252,11 +252,93 @@ export async function uploadStorefrontPhoto(
   return { ok: true, url: publicUrl.data.publicUrl, path }
 }
 
-// ----- Photos (cover image + gallery) ------------------------------------
+// ----- Video uploads -----------------------------------------------------
+//
+// Videos can't ride server actions: Vercel caps action request bodies at
+// ~1 MB and even a tightly-compressed 30 s wedding reel is 30-50 MB. So we
+// mint a signed *upload* URL pointing at the vendor-portfolios bucket and
+// have the browser PUT the file directly to Supabase Storage. The action
+// itself never touches the bytes.
+//
+// Server-side we still enforce auth (must be a live vendor) and clamp the
+// MIME type to a known-safe whitelist before issuing the URL.
+
+const VIDEO_MIME = new Set(['video/mp4', 'video/webm', 'video/quicktime'])
+const VIDEO_MAX_BYTES = 500 * 1024 * 1024 // 500 MB — matches bucket cap
+
+export type VideoUploadUrlResult =
+  | {
+      ok: true
+      // PUT the file body to `uploadUrl` with `Content-Type: <mimeType>`.
+      uploadUrl: string
+      token: string
+      // After the PUT succeeds the public URL is stable — store this.
+      publicUrl: string
+      path: string
+    }
+  | { ok: false; error: string; reason: 'unauth' | 'invalid' | 'unknown' }
+
+export async function createStorefrontVideoUploadUrl(input: {
+  filename: string
+  mimeType: string
+  sizeBytes: number
+}): Promise<VideoUploadUrlResult> {
+  if (!VIDEO_MIME.has(input.mimeType)) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'Only MP4, WebM, or MOV video files are allowed.',
+    }
+  }
+  if (!Number.isFinite(input.sizeBytes) || input.sizeBytes <= 0) {
+    return { ok: false, reason: 'invalid', error: 'Missing file size.' }
+  }
+  if (input.sizeBytes > VIDEO_MAX_BYTES) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: `${input.filename}: video is over the 500 MB limit (${(input.sizeBytes / 1024 / 1024).toFixed(1)} MB).`,
+    }
+  }
+
+  const guard = await ensureLiveVendor()
+  if (!guard.ok) return { ok: false, reason: 'unauth', error: guard.error }
+
+  const ext = (() => {
+    if (input.mimeType === 'video/mp4') return 'mp4'
+    if (input.mimeType === 'video/webm') return 'webm'
+    if (input.mimeType === 'video/quicktime') return 'mov'
+    return 'bin'
+  })()
+  const path = `${guard.vendorId}/storefront/video/${Date.now()}.${ext}`
+
+  const admin = createSupabaseAdminClient()
+  const signed = await admin.storage
+    .from('vendor-portfolios')
+    .createSignedUploadUrl(path)
+  if (signed.error || !signed.data) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[storefront] signed upload URL failed: ${signed.error?.message ?? 'unknown'}`,
+    }
+  }
+  const publicUrl = admin.storage.from('vendor-portfolios').getPublicUrl(path)
+  return {
+    ok: true,
+    uploadUrl: signed.data.signedUrl,
+    token: signed.data.token,
+    publicUrl: publicUrl.data.publicUrl,
+    path,
+  }
+}
+
+// ----- Photos (cover image + gallery + videos) ---------------------------
 
 export type StorefrontPhotos = {
   coverImage: string | null
   galleryUrls: string[]
+  videoUrls?: string[]
 }
 
 export async function savePhotos(input: StorefrontPhotos): Promise<SaveResult> {
@@ -268,23 +350,133 @@ export async function savePhotos(input: StorefrontPhotos): Promise<SaveResult> {
   const cleanedGallery = (input.galleryUrls ?? [])
     .map((u) => (typeof u === 'string' ? u.trim() : ''))
     .filter((u) => /^https?:\/\//i.test(u))
+  const cleanedVideos = (input.videoUrls ?? [])
+    .map((u) => (typeof u === 'string' ? u.trim() : ''))
+    .filter((u) => /^https?:\/\//i.test(u))
   const cover = input.coverImage?.trim()
   const coverValid = cover && /^https?:\/\//i.test(cover) ? cover : null
 
-  const supabase = await createClerkSupabaseServerClient()
-  const { error } = await supabase
+  // Use the service-role admin client for the UPDATE. `ensureLiveVendor`
+  // has already validated that the authenticated user owns `vendorId`
+  // (it reads via the admin client too), so scoping the UPDATE to that
+  // specific id is safe. The Clerk-authed client falls back to an
+  // unauthenticated client when the 'supabase' JWT template isn't set —
+  // RLS then matches 0 rows and the UPDATE silently no-ops with
+  // error: null, which is the worst possible outcome for a save action.
+  const admin = createSupabaseAdminClient()
+  // Two-step update: try with `video_urls`; if PostgREST reports the column
+  // doesn't exist yet (migration 20260512000010 not applied), drop the
+  // field and retry so vendors can still save photos in environments
+  // where the schema is behind.
+  const baseUpdate: Record<string, unknown> = {
+    cover_image: coverValid,
+    gallery_urls: cleanedGallery.length > 0 ? cleanedGallery : null,
+  }
+  let { data, error } = await admin
     .from('vendors')
     .update({
-      cover_image: coverValid,
-      gallery_urls: cleanedGallery.length > 0 ? cleanedGallery : null,
+      ...baseUpdate,
+      video_urls: cleanedVideos.length > 0 ? cleanedVideos : null,
     })
     .eq('id', guard.vendorId)
+    .select('id')
+  if (error && (error.code === '42703' || error.code === 'PGRST204')) {
+    const retry = await admin
+      .from('vendors')
+      .update(baseUpdate)
+      .eq('id', guard.vendorId)
+      .select('id')
+    error = retry.error
+    data = retry.data
+    if (!error && cleanedVideos.length > 0) {
+      console.warn(
+        '[storefront] video_urls column missing — videos were not persisted. Apply migration 20260512000010.',
+      )
+    }
+  }
   if (error) {
     if (isPermissionError(error)) return permissionResult()
     return unknownResult(error)
   }
+  // Defensive: if the UPDATE matched 0 rows despite no error, that means
+  // the vendor row vanished between the ensureLiveVendor check and this
+  // update — surface it instead of pretending the save worked.
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: '[storefront] save matched no rows — vendor record may have been deleted.',
+    }
+  }
   revalidatePath('/storefront/photos')
   return { ok: true }
+}
+
+// ----- Photos (read for hydration) ---------------------------------------
+
+export type StorefrontPhotosState = {
+  coverImage: string | null
+  galleryUrls: string[]
+  videoUrls: string[]
+}
+
+export type LoadPhotosResult =
+  | { ok: true; data: StorefrontPhotosState }
+  | { ok: false; error: string; reason: 'unauth' | 'unknown' }
+
+export async function loadStorefrontPhotos(): Promise<LoadPhotosResult> {
+  const guard = await ensureLiveVendor()
+  if (!guard.ok)
+    return { ok: false, reason: 'unauth', error: guard.error }
+
+  const admin = createSupabaseAdminClient()
+  // Try the full projection first; fall back without video_urls if the
+  // column hasn't been migrated yet.
+  let cover: string | null = null
+  let gallery: string[] = []
+  let videos: string[] = []
+  const full = await admin
+    .from('vendors')
+    .select('cover_image, gallery_urls, video_urls')
+    .eq('id', guard.vendorId)
+    .maybeSingle<{
+      cover_image: string | null
+      gallery_urls: string[] | null
+      video_urls: string[] | null
+    }>()
+  if (full.error && (full.error.code === '42703' || full.error.code === 'PGRST204')) {
+    const fallback = await admin
+      .from('vendors')
+      .select('cover_image, gallery_urls')
+      .eq('id', guard.vendorId)
+      .maybeSingle<{
+        cover_image: string | null
+        gallery_urls: string[] | null
+      }>()
+    if (fallback.error) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: `[storefront] photos load failed: ${fallback.error.code} ${fallback.error.message}`,
+      }
+    }
+    cover = fallback.data?.cover_image ?? null
+    gallery = fallback.data?.gallery_urls ?? []
+  } else if (full.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[storefront] photos load failed: ${full.error.code} ${full.error.message}`,
+    }
+  } else {
+    cover = full.data?.cover_image ?? null
+    gallery = full.data?.gallery_urls ?? []
+    videos = full.data?.video_urls ?? []
+  }
+  return {
+    ok: true,
+    data: { coverImage: cover, galleryUrls: gallery, videoUrls: videos },
+  }
 }
 
 // ----- Hours, style, personality, markets, booking policies --------------
@@ -299,6 +491,10 @@ export type StorefrontProfileFields = {
   personality?: string | null
   homeMarket?: string | null
   serviceMarkets?: string[]
+  // Languages the vendor speaks with clients. Until now only saveRecognition
+  // wrote this, which left the About page's language picker stuck on local
+  // draft despite a perfectly good vendors.languages column existing.
+  languages?: string[]
   depositPercent?: string | null
   cancellationLevel?: 'flexible' | 'moderate' | 'strict' | null
   reschedulePolicy?: 'one-free' | 'unlimited' | 'none' | null
@@ -321,6 +517,12 @@ export async function saveProfileFields(input: StorefrontProfileFields): Promise
   if (input.personality !== undefined) update.personality = input.personality
   if (input.homeMarket !== undefined) update.home_market = input.homeMarket
   if (input.serviceMarkets !== undefined) update.service_markets = input.serviceMarkets
+  if (input.languages !== undefined) {
+    const cleaned = Array.isArray(input.languages)
+      ? input.languages.filter((l) => typeof l === 'string' && l.trim() !== '')
+      : []
+    update.languages = cleaned.length > 0 ? cleaned : null
+  }
   if (input.depositPercent !== undefined) update.deposit_percent = input.depositPercent
   if (input.cancellationLevel !== undefined) update.cancellation_level = input.cancellationLevel
   if (input.reschedulePolicy !== undefined) update.reschedule_policy = input.reschedulePolicy

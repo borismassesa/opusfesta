@@ -33,19 +33,27 @@ export default function ListingFAQPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveOk, setSaveOk] = useState(false)
 
-  if (!hydrated) return <div className="p-8" aria-hidden />
-
-  const faqs = draft.faqs
+  // Previously this returned `<div p-8 aria-hidden />` until localStorage
+  // hydrated. That created a hydration mismatch because the server
+  // rendered the placeholder div inside <main>, the client expected the
+  // full page structure, and React 16/Next.js flagged the swap. Now we
+  // always render the real structure with whatever `draft` has — empty
+  // arrays until useEffect populates from localStorage — and the
+  // component re-renders cleanly once hydrated.
+  const faqs = hydrated ? draft.faqs : []
 
   const updateFaq = (id: string, patch: Partial<FAQItem>) => {
+    if (!hydrated) return
     update({ faqs: faqs.map((f) => (f.id === id ? { ...f, ...patch } : f)) })
   }
 
   const addFaq = (question?: string) => {
+    if (!hydrated) return
     update({ faqs: [...faqs, newFaq({ question: question ?? '' })] })
   }
 
   const removeFaq = (id: string) => {
+    if (!hydrated) return
     update({ faqs: faqs.filter((f) => f.id !== id) })
   }
 

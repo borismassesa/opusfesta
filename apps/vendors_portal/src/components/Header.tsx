@@ -29,7 +29,11 @@ const SEGMENT_LABELS: Record<string, string> = {
 type PageHeading = { title: string; subtitle: string }
 
 type HeaderProps = {
-  vendorName?: string
+  vendorName: string
+  // Slug for the live public storefront link rendered in the right rail
+  // of the header when viewing /storefront pages. Null when the vendor
+  // hasn't published yet — the link is hidden in that case.
+  vendorSlug: string | null
 }
 
 const PAGE_HEADINGS: Record<string, PageHeading> = {
@@ -101,7 +105,7 @@ function useBookingsHeading(pathname: string): PageHeading | null {
   }
 }
 
-export function Header({ vendorName }: HeaderProps) {
+export function Header({ vendorName, vendorSlug }: HeaderProps) {
   const pathname = usePathname()
   const crumbs = buildCrumbs(pathname)
   const storefrontHeading = useStorefrontHeading(pathname)
@@ -157,14 +161,16 @@ export function Header({ vendorName }: HeaderProps) {
       )}
 
       <div className="flex items-center gap-4 shrink-0">
-        {isStorefront ? (
-          <Link
-            href="#"
+        {isStorefront && vendorSlug ? (
+          <a
+            href={`${(process.env.NEXT_PUBLIC_WEBSITE_URL ?? '').replace(/\/$/, '')}/vendors/${encodeURIComponent(vendorSlug)}`}
+            target="_blank"
+            rel="noreferrer"
             className="hidden sm:inline-flex items-center gap-1.5 border border-gray-200 text-gray-700 text-xs font-semibold px-3 py-1.5 rounded-full hover:bg-white transition-colors"
           >
             View public storefront
             <ExternalLink className="w-3.5 h-3.5" />
-          </Link>
+          </a>
         ) : null}
 
         <button

@@ -9,9 +9,11 @@ import { StorefrontSidebar } from '@/components/storefront/StorefrontSidebar'
 export default function PortalShell({
   children,
   vendorName,
+  vendorSlug,
 }: {
   children: ReactNode
   vendorName: string
+  vendorSlug: string | null
 }) {
   const pathname = usePathname()
   const isStorefront = pathname.startsWith('/storefront')
@@ -19,9 +21,9 @@ export default function PortalShell({
   return (
     <div className="flex h-screen bg-[#FDFDFD] font-sans antialiased text-gray-900">
       <Sidebar />
-      {isStorefront ? <StorefrontSidebar /> : null}
+      {isStorefront ? <StorefrontSidebar vendorSlug={vendorSlug} /> : null}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
-        <Header vendorName={vendorName} />
+        <Header vendorName={vendorName} vendorSlug={vendorSlug} />
         <main className="flex-1 overflow-y-auto overflow-x-hidden">{children}</main>
       </div>
     </div>

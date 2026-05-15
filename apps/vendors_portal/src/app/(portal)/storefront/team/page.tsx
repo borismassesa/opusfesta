@@ -50,19 +50,25 @@ export default function TeamPage() {
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveOk, setSaveOk] = useState(false)
 
-  if (!hydrated) return <div className="p-8" aria-hidden />
-
-  const team = draft.team
+  // Render the full structure even before localStorage hydrates so the
+  // server-rendered <main> matches the client tree (the previous
+  // `<div p-8 aria-hidden />` placeholder created a hydration mismatch).
+  // Mutations are gated on `hydrated` so a click before useEffect runs
+  // can't clobber localStorage with the empty default.
+  const team = hydrated ? draft.team : []
 
   const updateMember = (id: string, patch: Partial<TeamMember>) => {
+    if (!hydrated) return
     update({ team: team.map((m) => (m.id === id ? { ...m, ...patch } : m)) })
   }
 
   const addMember = () => {
+    if (!hydrated) return
     update({ team: [...team, newMember()] })
   }
 
   const removeMember = (id: string) => {
+    if (!hydrated) return
     const removed = team.find((m) => m.id === id)
     if (removed?.avatarUrl) URL.revokeObjectURL(removed.avatarUrl)
     update({ team: team.filter((m) => m.id !== id) })

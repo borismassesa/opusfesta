@@ -140,7 +140,7 @@ function VendorHeader({ vendor, onSave, saved }: { vendor: Vendor; onSave: () =>
 }
 
 // ── Tabs ──────────────────────────────────────────────────
-const VENDOR_TABS = ['Photos', 'About', 'Services', 'Pricing', 'Availability', 'Team', 'FAQ\'s', 'Reviews', 'Location']
+const VENDOR_TABS = ['Photos', 'About', 'Services', 'Pricing', 'Availability', 'Team', 'FAQ\'s', 'Location', 'Reviews']
 
 function VendorTabs({ onPhotos, saved, onSave, active, onActiveChange }: {
   onPhotos: () => void
@@ -2078,11 +2078,34 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
         </label>
 
         <div className="text-xs text-gray-500 space-y-1">
-          <p className="font-semibold underline cursor-pointer">Why use OpusFesta to message vendors?</p>
+          <a
+            href="/why-opusfesta-messaging"
+            target="_blank"
+            rel="noreferrer"
+            className="block font-semibold underline hover:text-[#1A1A1A]"
+          >
+            Why use OpusFesta to message vendors?
+          </a>
           <p>
-            By clicking "Request quote," you accept our{' '}
-            <a href="#" className="underline">Terms of Use</a> and agree to OpusFesta creating an
-            account for you. See our <a href="#" className="underline">Privacy Policy</a>.
+            By clicking &ldquo;Request quote,&rdquo; you accept our{' '}
+            <a
+              href="/terms-of-use"
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:text-[#1A1A1A]"
+            >
+              Terms of Use
+            </a>{' '}
+            and agree to OpusFesta creating an account for you. See our{' '}
+            <a
+              href="/privacy-policy"
+              target="_blank"
+              rel="noreferrer"
+              className="underline hover:text-[#1A1A1A]"
+            >
+              Privacy Policy
+            </a>
+            .
           </p>
         </div>
 
@@ -2288,13 +2311,31 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
     if (vendor.heroMedia.src && vendor.heroMedia.src.trim() !== '') return [vendor.heroMedia.src]
     return []
   })()
-  const hasMedia = images.length > 0 || vendor.heroMedia.type === 'video'
-  const videos = vendor.heroMedia.type === 'video'
-    ? [{ src: vendor.heroMedia.src, poster: vendor.heroMedia.poster ?? images[0] }]
-    : []
+  // Portfolio videos persisted by the vendor portal (uploads + YouTube/
+  // Vimeo embed links) plus a hero video if the vendor set one. We keep
+  // them as a single ordered list so the Videos tab and the bento
+  // gallery both pick everything up.
+  const portfolioVideoSrcs = (vendor.videos ?? []).filter(
+    (s): s is string => typeof s === 'string' && s.trim() !== '',
+  )
+  const videos: Array<{ src: string; poster?: string }> = [
+    ...(vendor.heroMedia.type === 'video'
+      ? [{ src: vendor.heroMedia.src, poster: vendor.heroMedia.poster ?? images[0] }]
+      : []),
+    ...portfolioVideoSrcs.map((src) => ({
+      src,
+      poster: images[0],
+    })),
+  ]
+  const hasMedia = images.length > 0 || videos.length > 0
+  // Videos lead the portfolio order whenever a vendor has uploaded any —
+  // they're the highest-leverage content for converting a couple, and the
+  // bento gallery's first cell is the biggest visual slot on the page.
+  // Photos fill in behind. With zero videos this collapses to the
+  // original photo-only sequence.
   const portfolioItems = [
-    ...images.map((src, index) => ({ kind: 'photo' as const, src, index })),
     ...videos.map((video, index) => ({ kind: 'video' as const, ...video, index })),
+    ...images.map((src, index) => ({ kind: 'photo' as const, src, index })),
   ]
   const galleryTabs: Array<{ key: GalleryTabKey; label: string; count: number }> = [
     { key: 'portfolio', label: 'Portfolio', count: portfolioItems.length },
@@ -2452,78 +2493,84 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                           grid grid-cols-1
                           sm:grid-cols-[2fr_0.95fr_0.95fr] lg:grid-cols-[2.4fr_0.8fr_0.8fr] sm:grid-rows-2 sm:gap-1.5">
 
-            {/* Cell 1 — left, spans 2 rows */}
+            {/* Cell 1 — left, spans 2 rows. Sourced from portfolioItems[0]
+                so the videos-first ordering above automatically promotes a
+                reel into the hero slot when the vendor has uploaded any. */}
+            {portfolioItems[0] && (
             <button
               type="button"
-              onClick={() => openGallery(vendor.heroMedia.type === 'video' ? 'videos' : 'photos')}
+              onClick={() => openGallery(portfolioItems[0].kind === 'video' ? 'videos' : 'photos')}
               className="relative overflow-hidden sm:row-span-2"
               aria-label="Open media"
             >
-              {vendor.heroMedia.type === 'video' ? (
+              {portfolioItems[0].kind === 'video' ? (
                 <>
                   <video
-                    src={vendor.heroMedia.src}
-                    poster={vendor.heroMedia.poster}
-                    autoPlay muted loop playsInline
-                    className="h-full w-full object-cover"
+                    src={portfolioItems[0].src}
+                    poster={(portfolioItems[0] as { poster?: string }).poster}
+                    autoPlay muted loop playsInline preload="metadata"
+                    className="h-full w-full object-cover bg-black"
                   />
                   <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/30 to-transparent" />
-                  <div className="absolute bottom-3 left-3 flex items-center gap-1.5 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#1A1A1A]">
-                    <LayoutGrid size={11} /> Video
-                  </div>
                 </>
               ) : (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={images[0]} alt={vendor.heroMedia.alt} className="h-full w-full object-cover" />
+                <img src={portfolioItems[0].src} alt={vendor.heroMedia.alt} className="h-full w-full object-cover" />
               )}
             </button>
-
-            {/* Cells 2–5: pull from portfolioItems so videos appear too */}
-            {portfolioItems.slice(1, 4).map((item, i) => (
-              <button
-                key={i}
-                type="button"
-                onClick={() => openGallery(item.kind === 'video' ? 'videos' : 'photos')}
-                className="relative hidden overflow-hidden sm:block"
-                aria-label={`Open ${item.kind} ${i + 2}`}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={item.kind === 'video' ? (item as { poster: string }).poster : item.src}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-                {item.kind === 'video' && (
-                  <>
-                    <div className="pointer-events-none absolute inset-0 bg-black/20" />
-                    <div className="absolute bottom-2 left-2 flex items-center gap-1 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-[#1A1A1A]">
-                      <LayoutGrid size={9} /> Video
-                    </div>
-                  </>
-                )}
-              </button>
-            ))}
-
-            {/* Cell 5 — "See all" overlay */}
-            {portfolioItems[4] && (
-              <div className="relative hidden sm:block overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={portfolioItems[4].kind === 'video' ? (portfolioItems[4] as { poster: string }).poster : portfolioItems[4].src}
-                  alt=""
-                  className="h-full w-full object-cover"
-                />
-                <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
-                <button
-                  onClick={() => openGallery('portfolio')}
-                  className="absolute bottom-3 right-3 flex items-center gap-2 rounded-full bg-white/95 px-3 py-2 text-[#1A1A1A] shadow-lg transition hover:bg-white"
-                >
-                  <LayoutGrid size={15} />
-                  <span className="text-sm font-bold">See all</span>
-                  <span className="text-xs font-medium text-gray-500">({portfolioItems.length})</span>
-                </button>
-              </div>
             )}
+
+            {/* Cells 2–5 are always photos. Videos live in the hero cell
+                only — a wall of moving thumbnails competes with itself
+                and washes out the page. If the hero is showing a video,
+                cells 2–5 pull the first 4 photos; if the hero is already
+                a photo, we skip it (it's at images[0]) and use the next
+                four. */}
+            {(() => {
+              const heroIsVideo = portfolioItems[0]?.kind === 'video'
+              const remainingPhotos = heroIsVideo ? images : images.slice(1)
+              return (
+                <>
+                  {remainingPhotos.slice(0, 3).map((src, i) => (
+                    <button
+                      key={`grid-img-${i}-${src}`}
+                      type="button"
+                      onClick={() => openGallery('photos')}
+                      className="relative hidden overflow-hidden sm:block"
+                      aria-label={`Open photo ${i + 2}`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={src}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+
+                  {/* Cell 5 — "See all" overlay over the next photo. */}
+                  {remainingPhotos[3] && (
+                    <div className="relative hidden sm:block overflow-hidden">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={remainingPhotos[3]}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-t from-black/55 via-black/10 to-transparent" />
+                      <button
+                        onClick={() => openGallery('portfolio')}
+                        className="absolute bottom-3 right-3 flex items-center gap-2 rounded-full bg-white/95 px-3 py-2 text-[#1A1A1A] shadow-lg transition hover:bg-white"
+                      >
+                        <LayoutGrid size={15} />
+                        <span className="text-sm font-bold">See all</span>
+                        <span className="text-xs font-medium text-gray-500">({portfolioItems.length})</span>
+                      </button>
+                    </div>
+                  )}
+                </>
+              )
+            })()}
           </div>
           )}
         </div>
@@ -2565,9 +2612,11 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
               <VendorAvailabilitySection vendor={vendor} />
               <VendorTeamSection vendor={vendor} />
               <VendorFaqSection vendor={vendor} />
-              <VendorReviewsSection vendor={vendor} />
               <VendorServiceAreaSection vendor={vendor} />
-              {/* Sentinel: sidebar stops being sticky after Location section ends */}
+              <VendorReviewsSection vendor={vendor} />
+              {/* Sentinel: sidebar stops being sticky after the last
+                  content section ends — Reviews now closes the page so
+                  the sentinel stays here, after Reviews. */}
               <div ref={reviewsSentinelRef} id="vendor-reviews-sentinel" />
             </div>
           </div>
@@ -2705,21 +2754,24 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
                       >
                         {item.kind === 'video' ? (
                           <div className="group relative">
-                            <div className="overflow-hidden">
-                              {/* eslint-disable-next-line @next/next/no-img-element */}
-                              <img
-                                src={item.poster}
-                                alt={`${vendor.name} video preview`}
-                                className="block h-auto w-full transition duration-500 group-hover:scale-[1.02]"
+                            <div className="overflow-hidden bg-black aspect-video">
+                              {/* Auto-play each reel inline (muted, looped).
+                                  Browsers permit autoplay only when muted
+                                  + playsInline are both set, which they are.
+                                  No poster fallback — the user explicitly
+                                  asked for the videos themselves to play,
+                                  not static thumbnails. */}
+                              <video
+                                src={item.src}
+                                autoPlay
+                                muted
+                                loop
+                                playsInline
+                                preload="metadata"
+                                className="block h-full w-full object-cover transition duration-500 group-hover:scale-[1.02]"
                               />
                             </div>
                             <div className="pointer-events-none absolute inset-0 bg-linear-to-t from-black/25 to-transparent" />
-                            <div className="absolute left-4 top-4 rounded-full bg-white/92 px-3 py-1 text-[11px] font-bold uppercase tracking-[0.18em] text-[#1A1A1A]">
-                              Video
-                            </div>
-                            <div className="absolute bottom-4 left-4 flex h-11 w-11 items-center justify-center rounded-full bg-white text-[#1A1A1A] shadow-lg">
-                              <LayoutGrid size={16} />
-                            </div>
                           </div>
                         ) : (
                           <div className="overflow-hidden">

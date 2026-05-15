@@ -46,6 +46,9 @@ type VendorRow = {
   lat?: number | null
   lng?: number | null
   gallery_urls?: string[] | null
+  // Migration 20260512000010 — vendor portfolio videos. Public URLs to
+  // uploads in vendor-portfolios + YouTube/Vimeo embed links.
+  video_urls?: string[] | null
   // Migration 20260503000003 — storefront persistence columns. Each is the
   // canonical source for its field; snapshot is the fallback for vendors
   // that submitted before the column existed. Column names below mirror
@@ -450,6 +453,14 @@ function mapVendorRow(row: VendorRow): Vendor {
       : undefined
   })()
 
+  // --- Videos: portfolio reels persisted by the vendor portal. Public URLs
+  // to uploaded MP4/WebM/MOV in vendor-portfolios plus YouTube/Vimeo embed
+  // links. Mirror the gallery validation — non-strings dropped at the
+  // boundary so the renderer always has a clean list of URLs to work with.
+  const videos = Array.isArray(row.video_urls)
+    ? row.video_urls.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+    : undefined
+
   // --- Capacity: structured column. Validate that both min and max are
   // numeric before exposing — partial entries get hidden so we don't render
   // "10–undefined guests".
@@ -516,6 +527,7 @@ function mapVendorRow(row: VendorRow): Vendor {
       alt: row.business_name ?? row.slug,
     },
     gallery,
+    videos,
     about: row.bio ?? undefined,
     yearsInBusiness:
       typeof row.years_in_business === 'number' ? row.years_in_business : undefined,

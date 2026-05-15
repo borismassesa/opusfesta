@@ -71,6 +71,11 @@ export type Vendor = {
     poster?: string
   }
   gallery?: string[]
+  // Vendor portfolio videos — public URLs to uploaded MP4/WebM/MOV files
+  // (stored in the `vendor-portfolios` Supabase bucket) or YouTube/Vimeo
+  // embed links the vendor pasted in. The public profile renders these
+  // beneath the photo gallery; couples open them inline.
+  videos?: string[]
   availability?: VendorAvailability
   // Extended profile fields (populated by vendors_portal)
   about?: string

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   AlertCircle,
+  ArrowRight,
   Check,
   Facebook,
   Globe,
@@ -30,7 +31,15 @@ import {
   homeMarketForRegion,
 } from '@/lib/onboarding/regions'
 import { saveProfile } from './actions'
+import { saveProfileFields } from '../sections/actions'
+import { getStorefrontSections } from '@/lib/storefront/completion'
 import { profilesEqual, type DbProfile } from './mapping'
+
+// Custom event the About sticky save bar fires after its own save lands.
+// LocationAndCapacityEditor (rendered below this component) listens for
+// it and triggers its own save in response — that's how the single
+// "Save changes" button persists every section on the page in one click.
+export const ABOUT_PAGE_SAVE_EVENT = 'opusfesta:about-page-save'
 
 const DAYS = [
   { key: 'mon', label: 'Monday', short: 'Mon' },
@@ -64,9 +73,6 @@ const BANNER_BY_SOURCE: Record<AboutSource['kind'], string | null> = {
   'no-env':
     'DEV: Vendor backend not connected — Save is disabled. Check Supabase env vars and that migrations are applied to your Supabase project.',
 }
-
-const DRAFT_HINT =
-  'Still on local draft — saves on this device only until onboarding wires Supabase.'
 
 type AboutEditorProps = {
   source: AboutSource
@@ -108,10 +114,36 @@ export default function AboutEditor({
   const homeMarketName = SERVICE_MARKETS.find((m) => m.id === homeMarket)?.name
   const extraMarkets = SERVICE_MARKETS.filter((m) => m.id !== homeMarket)
 
-  const isDirty = useMemo(
-    () => !profilesEqual(profile, savedSnapshot),
-    [profile, savedSnapshot],
-  )
+  // Snapshot of the draft-only fields at last save (or hydration). We need
+  // this so the Save button enables when the vendor changes only
+  // languages / style / hours / etc. — fields that don't live in
+  // `profile`. Without it, "dirty" was driven entirely by profile changes
+  // and the button stayed disabled for draft-only edits.
+  const [draftSnapshot, setDraftSnapshot] = useState(() => snapshotDraft(draft))
+  useEffect(() => {
+    // Re-snapshot once localStorage has hydrated so we don't keep the
+    // EMPTY default as the baseline.
+    if (hydrated) setDraftSnapshot(snapshotDraft(draft))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated])
+
+  const isDirty = useMemo(() => {
+    if (!profilesEqual(profile, savedSnapshot)) return true
+    return !draftsEqual(snapshotDraft(draft), draftSnapshot)
+  }, [profile, savedSnapshot, draft, draftSnapshot])
+
+  // Resolve the next storefront section so the bottom bar's "Next" button
+  // mirrors the flow on every other section page. Same helper the sidebar
+  // uses, so the order stays in sync.
+  const nextHref = useMemo(() => {
+    const sections = getStorefrontSections(draft)
+    const idx = sections.findIndex((s) => s.id === 'about')
+    return idx >= 0 && idx < sections.length - 1 ? sections[idx + 1].href : null
+  }, [draft])
+
+  const onNext = () => {
+    if (nextHref) router.push(nextHref)
+  }
 
   const bioLength = profile.bio.trim().length
   const bioHint =
@@ -148,17 +180,71 @@ export default function AboutEditor({
   }
 
   const handleSave = () => {
-    if (!canEdit || !isDirty) return
+    if (!canEdit) return
     setFeedback(null)
     startTransition(async () => {
-      const result = await saveProfile(profile)
-      if (result.ok) {
-        setSavedSnapshot(profile)
-        setFeedback({ kind: 'success', message: 'Profile saved.' })
-      } else {
-        setFeedback({ kind: 'error', message: result.error })
-        if (result.reason === 'stale') router.refresh()
+      // Two writes in parallel — saveProfile owns the DB-backed
+      // identity fields (bio, contact, location, socials), while
+      // saveProfileFields owns the structured columns the About page
+      // had been keeping on local draft only (hours, style,
+      // personality, languages, service markets). Running them together
+      // means one click persists everything the vendor sees on this
+      // page, so "draft" badges actually clear after Save.
+      const [profileResult, fieldsResult] = await Promise.all([
+        isDirty
+          ? saveProfile(profile)
+          : Promise.resolve({ ok: true as const }),
+        saveProfileFields({
+          hours: draft.hours,
+          style: draft.style || null,
+          personality: draft.personality || null,
+          homeMarket: homeMarket ?? null,
+          serviceMarkets: draft.serviceMarkets,
+          languages: draft.languages,
+        }),
+      ])
+      if (!profileResult.ok) {
+        setFeedback({ kind: 'error', message: profileResult.error })
+        if ('reason' in profileResult && profileResult.reason === 'stale') {
+          router.refresh()
+        }
+        return
       }
+      if (!fieldsResult.ok) {
+        setFeedback({ kind: 'error', message: fieldsResult.error })
+        return
+      }
+      setSavedSnapshot(profile)
+      setDraftSnapshot(snapshotDraft(draft))
+      // Tell the LocationAndCapacityEditor (rendered below this component
+      // by the parent page) to persist its own state. Keeping it as a
+      // sibling event rather than lifting state lets each editor own its
+      // dirty tracking, but a single Save click still writes everything
+      // on the page.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent(ABOUT_PAGE_SAVE_EVENT))
+      }
+      // Mirror the DB-backed profile fields into the onboarding draft
+      // so the storefront sidebar's completion checks (which read from
+      // the draft) reflect the just-saved values. Without this, the
+      // vendor saves a complete bio / contact / socials but the sidebar
+      // keeps showing "needs more work" because draft.bio etc. are
+      // still empty.
+      update({
+        bio: profile.bio,
+        yearsInBusiness: profile.yearsInBusiness,
+        phone: profile.phone,
+        email: profile.email,
+        whatsapp: profile.whatsapp,
+        socials: {
+          website: profile.socialWebsite,
+          instagram: profile.socialInstagram,
+          facebook: profile.socialFacebook,
+          tiktok: profile.socialTiktok,
+          whatsapp: profile.socialWhatsapp,
+        },
+      })
+      setFeedback({ kind: 'success', message: 'Profile saved.' })
     })
   }
 
@@ -320,7 +406,7 @@ export default function AboutEditor({
               </div>
               <div>
                 <FieldLabel>
-                  Languages spoken with clients <DraftBadge />
+                  Languages spoken with clients
                 </FieldLabel>
                 <div className="grid sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-1">
                   {LANGUAGES.map((lang) => (
@@ -337,10 +423,10 @@ export default function AboutEditor({
             </div>
           </Section>
 
-          {/* Style & personality — NOT wireable yet */}
+          {/* Style & personality — persisted to vendors.style /
+              vendors.personality on Save. */}
           <Section
             title="Style & personality"
-            hint={DRAFT_HINT}
             className="lg:col-span-2"
           >
             <div className="grid sm:grid-cols-2 gap-6">
@@ -377,10 +463,10 @@ export default function AboutEditor({
             </div>
           </Section>
 
-          {/* Service area — NOT wireable yet */}
+          {/* Service area — persisted to vendors.home_market /
+              vendors.service_markets on Save. */}
           <Section
             title="Service area"
-            hint={DRAFT_HINT}
             className="lg:col-span-2"
           >
             <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 flex items-center gap-3 mb-5">
@@ -415,10 +501,9 @@ export default function AboutEditor({
             </div>
           </Section>
 
-          {/* Hours (draft) + Contact (wireable via contact_info JSONB) */}
+          {/* Business hours — persisted to vendors.hours on Save. */}
           <Section
             title="Business hours"
-            hint={DRAFT_HINT}
             right={
               <button
                 type="button"
@@ -570,8 +655,8 @@ export default function AboutEditor({
               </span>
             ) : (
               <span className="text-gray-500">
-                Wired fields save to your storefront. Sections marked{' '}
-                <DraftBadge /> are still on local draft.
+                Everything on this page saves to your storefront when you click
+                Save.
               </span>
             )}
             {!canEdit && source.kind === 'live' ? (
@@ -580,19 +665,54 @@ export default function AboutEditor({
               </span>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saveDisabled}
-            className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            {pending ? 'Saving…' : 'Save changes'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saveDisabled}
+              className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {pending ? 'Saving…' : 'Save changes'}
+            </button>
+            {nextHref ? (
+              <button
+                type="button"
+                onClick={onNext}
+                className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
+              >
+                Next
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
   )
+}
+
+// The subset of OnboardingDraft this editor actually saves. We snapshot
+// it on hydration + after every save so the Save button can light up
+// when only these fields change.
+function snapshotDraft(draft: {
+  hours: unknown
+  style: string | null
+  personality: string | null
+  serviceMarkets: string[]
+  languages: string[]
+}) {
+  return JSON.stringify({
+    hours: draft.hours,
+    style: draft.style,
+    personality: draft.personality,
+    serviceMarkets: draft.serviceMarkets,
+    languages: draft.languages,
+  })
+}
+
+function draftsEqual(a: string, b: string): boolean {
+  return a === b
 }
 
 function DraftBadge() {
@@ -619,7 +739,6 @@ function Section({
   className?: string
   children: React.ReactNode
 }) {
-  const isDraftHint = hint === DRAFT_HINT
   return (
     <section
       className={`bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-6 lg:p-7 ${className ?? ''}`}
@@ -631,15 +750,7 @@ function Section({
               {title}
             </h2>
             {hint ? (
-              <p
-                className={
-                  isDraftHint
-                    ? 'text-[11px] text-amber-700 mt-0.5'
-                    : 'text-xs text-gray-500 mt-0.5'
-                }
-              >
-                {hint}
-              </p>
+              <p className="text-xs text-gray-500 mt-0.5">{hint}</p>
             ) : null}
           </div>
           {right ? <div className="shrink-0">{right}</div> : null}

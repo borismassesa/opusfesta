@@ -42,18 +42,21 @@ function validate(profile: DbProfile): string | null {
 }
 
 /**
- * Stage the About-section subset of the vendor's storefront into
- * `vendors.draft_content.about`. Live columns are NOT touched until the vendor
- * hits **Publish** (see apps/vendors_portal/src/app/(portal)/storefront/actions.ts).
+ * Persist the About section directly into the vendor's live columns
+ * (business_name, bio, years_in_business, location, contact_info,
+ * social_links). Every other storefront editor (photos, packages, team,
+ * faq, recognition, services) already writes straight to live, so keeping
+ * About in a draft-then-publish dance was inconsistent and confused
+ * vendors — they hit Save, saw nothing change on the public profile, and
+ * thought saving was broken.
  *
- * The draft content matches the shape of the live-columns patch so publish can
- * apply it directly. Read-before-write preserves any unknown keys in the
- * existing draft (or live JSONB columns when no draft exists) — so other
- * storefront sections' draft work isn't clobbered, and admin/future-schema
- * fields outside this editor's surface aren't silently wiped.
+ * Read-before-write preserves any sibling keys inside the JSONB columns
+ * (location/contact_info/social_links) that this editor doesn't own —
+ * admin-only or future-schema fields aren't silently wiped.
  *
- * RLS (migration 056) limits write access to owner/manager. Staff role
- * → code 42501 → friendly permission message.
+ * Trust boundary: getCurrentVendor validates the Clerk session and
+ * resolves the vendor row via the admin client; the write is scoped to
+ * that vendor id. RLS is defense-in-depth.
  */
 export async function saveProfile(input: DbProfile): Promise<SaveProfileResult> {
   const state = await getCurrentVendor()
@@ -84,9 +87,9 @@ export async function saveProfile(input: DbProfile): Promise<SaveProfileResult> 
   const supabase = await createClerkSupabaseServerClient()
   const current = await supabase
     .from('vendors')
-    .select('business_name, years_in_business, bio, location, contact_info, social_links, draft_content')
+    .select('business_name, years_in_business, bio, location, contact_info, social_links')
     .eq('id', state.vendor.id)
-    .single<VendorRowFromDb & { draft_content: Record<string, unknown> | null }>()
+    .single<VendorRowFromDb>()
 
   if (current.error) {
     console.error('[storefront/about] read-before-write failed:', current.error)
@@ -114,20 +117,15 @@ export async function saveProfile(input: DbProfile): Promise<SaveProfileResult> 
     }
   }
 
-  // Build the same patch shape we'd apply on publish, then stash it under the
-  // 'about' key inside draft_content so other sections' drafts (packages,
-  // services, team, etc.) survive.
-  const aboutPatch = profileToUpdatePatch(input, current.data)
-  const existingDraft = current.data.draft_content ?? {}
-  const nextDraft = { ...existingDraft, about: aboutPatch }
-
-  const { error } = await supabase
+  const livePatch = profileToUpdatePatch(input, current.data)
+  const { data, error } = await supabase
     .from('vendors')
-    .update({ draft_content: nextDraft })
+    .update(livePatch)
     .eq('id', state.vendor.id)
+    .select('id')
 
   if (error) {
-    console.error('[storefront/about] save draft failed:', error)
+    console.error('[storefront/about] save failed:', error)
     if (error.code === '42501' || /permission denied/i.test(error.message)) {
       return {
         ok: false,
@@ -139,13 +137,23 @@ export async function saveProfile(input: DbProfile): Promise<SaveProfileResult> 
       return {
         ok: false,
         reason: 'unknown',
-        error: 'Draft failed validation. Check field shapes.',
+        error: 'Profile failed validation. Check field shapes.',
       }
     }
     return {
       ok: false,
       reason: 'unknown',
-      error: 'Could not save draft. Please try again.',
+      error: 'Could not save profile. Please try again.',
+    }
+  }
+  // Defensive: matching 0 rows means the vendor record vanished between
+  // the existence check and this update — surface it instead of pretending
+  // the save worked. (Same guard as savePhotos.)
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      reason: 'stale',
+      error: 'Vendor record not found — try refreshing the page.',
     }
   }
 
