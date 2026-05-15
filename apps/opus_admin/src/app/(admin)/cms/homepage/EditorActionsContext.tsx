@@ -6,6 +6,9 @@ export type EditorActionsState = {
   hasDraft: boolean
   pending: boolean
   message: string | null
+  // Distinct from `message` so the header can style error/success differently
+  // and so success toasts aren't accidentally cleared while the user reads them.
+  error?: string | null
 }
 
 export type EditorActionsHandlers = {

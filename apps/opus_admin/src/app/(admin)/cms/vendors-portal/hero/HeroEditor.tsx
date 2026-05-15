@@ -22,21 +22,39 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { bind, unbind } = useEditorActions()
 
   const set = <K extends keyof HeroContent>(key: K, value: HeroContent[K]) =>
     setDraft((d) => ({ ...d, [key]: value }))
 
-  const handleSaveDraft = () =>
+  // Server-action invocations all run inside startTransition. Any throw we
+  // don't catch becomes an unhandled rejection in the browser — the admin
+  // sees nothing change and assumes "Save" did its job. Wrap each entry
+  // point so failures surface as visible red text instead.
+  const runAction = (job: () => Promise<void>) =>
     startTransition(async () => {
+      setError(null)
+      try {
+        await job()
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err)
+        setError(`That didn’t go through: ${detail}`)
+        setMessage(null)
+        console.error('[vendors-portal-hero] server action failed:', err)
+      }
+    })
+
+  const handleSaveDraft = () =>
+    runAction(async () => {
       await saveHeroDraft(draft)
       setHasDraft(true)
       setMessage('Draft saved.')
     })
 
   const handlePublish = () =>
-    startTransition(async () => {
+    runAction(async () => {
       await saveHeroDraft(draft)
       await publishHero()
       setHasDraft(false)
@@ -44,7 +62,7 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
     })
 
   const handleDiscard = () =>
-    startTransition(async () => {
+    runAction(async () => {
       await discardHeroDraft()
       setDraft(initial)
       setHasDraft(false)
@@ -53,10 +71,23 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
 
   const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
+    e.target.value = ''
     if (!file) return
+    if (!file.type.startsWith('video/')) {
+      setError(`That file is "${file.type || 'unknown'}" — please pick a video.`)
+      return
+    }
+    const MAX_BYTES = 25 * 1024 * 1024
+    if (file.size > MAX_BYTES) {
+      setError(
+        `Video is ${(file.size / 1024 / 1024).toFixed(1)} MB — the upload limit is 25 MB. ` +
+          'Compress or trim the clip and try again.'
+      )
+      return
+    }
     const fd = new FormData()
     fd.append('file', file)
-    startTransition(async () => {
+    runAction(async () => {
       const { url } = await uploadHeroMedia(fd)
       setDraft((d) => ({ ...d, media_url: url, media_type: 'video' }))
       setMessage('Video uploaded.')
@@ -69,13 +100,14 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
       hasDraft,
       pending,
       message,
+      error,
       onSaveDraft: handleSaveDraft,
       onPublish: handlePublish,
       onDiscard: handleDiscard,
     })
     return () => unbind()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasDraft, pending, message, draft])
+  }, [hasDraft, pending, message, error, draft])
 
   return (
     <div className="space-y-6">
@@ -205,6 +237,9 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
                 hidden
                 onChange={handleUpload}
               />
+              {error && (
+                <p className="text-xs text-red-600 leading-snug">{error}</p>
+              )}
             </div>
           </Field>
         </div>

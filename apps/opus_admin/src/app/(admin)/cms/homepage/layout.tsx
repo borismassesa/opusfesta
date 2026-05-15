@@ -254,10 +254,16 @@ function EditorStatusBadge() {
 function EditorActionButtons() {
   const { bound } = useEditorActions()
   if (!bound) return null
-  const { hasDraft, pending, message, onSaveDraft, onPublish, onDiscard } = bound
+  const { hasDraft, pending, message, error, onSaveDraft, onPublish, onDiscard } = bound
   return (
     <>
-      {message && <span className="text-xs text-gray-500 mr-1">{message}</span>}
+      {error ? (
+        <span className="text-xs text-red-600 font-medium mr-1 max-w-[420px] truncate" title={error}>
+          {error}
+        </span>
+      ) : (
+        message && <span className="text-xs text-gray-500 mr-1">{message}</span>
+      )}
       {hasDraft && (
         <button
           type="button"
