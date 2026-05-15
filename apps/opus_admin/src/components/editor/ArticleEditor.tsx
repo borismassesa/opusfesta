@@ -112,6 +112,21 @@ export default function ArticleEditor({
   // External sync — when the parent replaces `value` with a doc that didn't
   // come from us (e.g. a server-side autosave restoration), update the editor
   // without disturbing the cursor unless the content actually differs.
+  //
+  // The original implementation compared `incoming` only against
+  // `lastEmittedRef`. That missed a case: the parent's autosave handler can
+  // feed back a body the editor has *already* moved past (the user kept
+  // typing during the network round-trip), and `setContent` would reset the
+  // doc and yank the cursor. The result felt like the editor was eating
+  // text — deletes near the top appearing to chew off the end of the
+  // article, highlights reverting after ~1s, typing landing in the wrong
+  // position. Two guards now:
+  //   1. If the editor's *current* JSON already matches what's incoming
+  //      (any legacy↔ProseMirror round-trip differences cancel out), no-op
+  //      and just update the ref so future syncs can still detect changes.
+  //   2. If the editor is focused, the user owns the document — accept the
+  //      ref update so legitimate external changes still come through later,
+  //      but leave the doc alone. The user's keystrokes win.
   const externalSync = useCallback(
     (next: AdviceIdeasBodySection[]) => {
       if (!editor) return
@@ -119,6 +134,10 @@ export default function ArticleEditor({
       if (incoming === lastEmittedRef.current) return
       const nextDoc = legacyToTipTap(next)
       if (JSON.stringify(editor.getJSON()) === JSON.stringify(nextDoc)) {
+        lastEmittedRef.current = incoming
+        return
+      }
+      if (editor.isFocused) {
         lastEmittedRef.current = incoming
         return
       }
@@ -215,6 +234,11 @@ export default function ArticleEditor({
   )
 }
 
+// 25 MB cap — mirrors apps/opus_admin/src/app/api/contribute/drafts/[id]/media
+// and the admin advice media endpoint. Pre-flighting here gives the user
+// instant feedback instead of a slow upload + 413 response.
+const MAX_IMAGE_SIZE_BYTES = 25 * 1024 * 1024
+
 // Custom image-insert button that uses our existing onUploadImage callback
 // instead of the TipTap ImageUploadNode (which assumes a different upload
 // pipeline). Keeps the visual style consistent with the rest of the toolbar.
@@ -227,6 +251,8 @@ function ImageInsertButton({
 }) {
   const fileRef = useRef<HTMLInputElement>(null)
   const selectionRef = useRef<{ from: number; to: number } | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const saveSelection = () => {
     selectionRef.current = {
       from: editor.state.selection.from,
@@ -248,7 +274,7 @@ function ImageInsertButton({
         type="button"
         data-style="ghost"
         aria-label="Insert image"
-        tooltip="Insert image"
+        tooltip={uploading ? 'Uploading image…' : 'Insert image'}
         onMouseDown={(e) => {
           e.preventDefault()
           saveSelection()
@@ -257,6 +283,7 @@ function ImageInsertButton({
           saveSelection()
           fileRef.current?.click()
         }}
+        disabled={uploading}
       >
         <ImagePlusIcon className="tiptap-button-icon" />
       </Button>
@@ -269,6 +296,12 @@ function ImageInsertButton({
           const file = event.target.files?.[0]
           event.currentTarget.value = ''
           if (!file) return
+          setUploadError(null)
+          if (file.size > MAX_IMAGE_SIZE_BYTES) {
+            setUploadError('Images must be 25MB or smaller.')
+            return
+          }
+          setUploading(true)
           try {
             const url = await onUploadImage(file)
             restoreSelection()
@@ -278,10 +311,22 @@ function ImageInsertButton({
               .setImage({ src: url, alt: file.name.replace(/\.[^.]+$/, '') })
               .run()
           } catch (err) {
-            console.error('Image upload failed', err)
+            setUploadError(
+              err instanceof Error ? err.message : 'Image upload failed.'
+            )
+          } finally {
+            setUploading(false)
           }
         }}
       />
+      {uploadError && (
+        <p
+          role="alert"
+          className="absolute mt-1 text-xs font-medium text-rose-700"
+        >
+          {uploadError}
+        </p>
+      )}
     </>
   )
 }

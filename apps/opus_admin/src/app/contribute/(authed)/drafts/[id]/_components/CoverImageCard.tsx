@@ -20,9 +20,11 @@ export default function CoverImageCard({
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState(false)
   const [dragging, setDragging] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   async function upload(file: File) {
     if (readOnly) return
+    setUploadError(null)
     setUploading(true)
     try {
       const form = new FormData()
@@ -31,9 +33,20 @@ export default function CoverImageCard({
         method: 'POST',
         body: form,
       })
-      const payload = (await response.json()) as { url?: string; error?: string }
-      if (!response.ok || !payload.url) throw new Error(payload.error || 'Upload failed.')
+      const payload = (await response.json().catch(() => ({}))) as {
+        url?: string
+        error?: string
+      }
+      if (!response.ok || !payload.url) {
+        throw new Error(payload.error || 'Upload failed.')
+      }
       onChange({ cover_image_url: payload.url })
+    } catch (err) {
+      // Without this branch the rejected promise from `void upload(file)`
+      // would be silently swallowed, so the user sees the dropzone return
+      // to its empty state with no explanation. That was the "authors can't
+      // upload images" symptom for cover uploads.
+      setUploadError(err instanceof Error ? err.message : 'Upload failed.')
     } finally {
       setUploading(false)
     }
@@ -128,6 +141,12 @@ export default function CoverImageCard({
           <span>{uploading ? 'Uploading...' : 'Drag, paste, or'}</span>
           {!uploading && <span className="font-semibold text-[#5B2D8E] underline">browse</span>}
         </button>
+      )}
+
+      {uploadError && (
+        <p role="alert" className="mt-2 text-[11px] font-medium text-rose-700">
+          {uploadError}
+        </p>
       )}
 
       {/* Cover-image guidance — collapsed by default so the rail stays
