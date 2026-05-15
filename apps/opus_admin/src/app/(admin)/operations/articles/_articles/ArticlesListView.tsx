@@ -7,13 +7,19 @@
 'use client'
 
 import { useDeferredValue, useMemo, useState } from 'react'
-import { Newspaper, Search } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight, Newspaper, Search, Star } from 'lucide-react'
 import EmptyState from '../../_shared/EmptyState'
 import ArticlesFilterBar, {
   type ArticleSort,
   type ArticleStatusFilter,
 } from './ArticlesFilterBar'
 import ArticleRow, { type ArticleListEntry } from './ArticleRow'
+
+// Public site renders Editor Picks as the top 5 of the featured pool.
+// Surface the count + a quick link so admins know what's live without
+// jumping to the dedicated front-page screen.
+const FRONT_PAGE_SLOTS = 5
 
 type Props = {
   articles: ArticleListEntry[]
@@ -83,8 +89,21 @@ export default function ArticlesListView({ articles }: Props) {
     setAuthorFilter(null)
   }
 
+  const featuredPoolCount = articles.filter(
+    (a) => a.featured && a.published
+  ).length
+  const pinnedCount = articles.filter(
+    (a) => a.featured && a.featuredRank != null && a.published
+  ).length
+  const slotsFilled = Math.min(featuredPoolCount, FRONT_PAGE_SLOTS)
+
   return (
     <div className="space-y-4">
+      <FrontPageStrip
+        slotsFilled={slotsFilled}
+        pinnedCount={pinnedCount}
+        totalSlots={FRONT_PAGE_SLOTS}
+      />
       <ArticlesFilterBar
         statusFilter={statusFilter}
         categories={categories}
@@ -122,6 +141,8 @@ export default function ArticlesListView({ articles }: Props) {
           <span className="text-right">Actions</span>
         </div>
 
+        {/* Featured pool count is computed once for the FrontPageStrip
+            above; the rendered list is whatever the filters return. */}
         {visible.length === 0 ? (
           <EmptyState
             icon={<Newspaper className="h-5 w-5" />}
@@ -152,5 +173,50 @@ export default function ArticlesListView({ articles }: Props) {
         )}
       </div>
     </div>
+  )
+}
+
+// Top-of-page banner showing what's currently rendered on the public
+// `/advice-and-ideas` Editor Picks row. Counts only published + featured
+// articles (drafts can't appear on the public front even if featured).
+function FrontPageStrip({
+  slotsFilled,
+  pinnedCount,
+  totalSlots,
+}: {
+  slotsFilled: number
+  pinnedCount: number
+  totalSlots: number
+}) {
+  const allEmpty = slotsFilled === 0
+  return (
+    <Link
+      href="/cms/advice-and-ideas/front-page"
+      className="group flex items-center justify-between gap-4 rounded-2xl border border-amber-100 bg-gradient-to-r from-amber-50/80 to-white px-5 py-4 transition-colors hover:border-amber-200 hover:from-amber-50"
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex h-9 w-9 items-center justify-center rounded-full bg-amber-100 text-amber-700">
+          <Star className="h-4 w-4 fill-amber-500 stroke-amber-600" />
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-gray-900">
+            {allEmpty
+              ? 'Nothing on the front page yet'
+              : `${slotsFilled} / ${totalSlots} front-page ${slotsFilled === 1 ? 'slot' : 'slots'} filled`}
+          </p>
+          <p className="text-xs text-gray-600">
+            {allEmpty
+              ? 'Star a published article below to add it to the featured pool.'
+              : pinnedCount > 0
+                ? `${pinnedCount} pinned to a specific slot · drag to reorder`
+                : 'None pinned yet — articles fill slots by recency. Drag to pin order.'}
+          </p>
+        </div>
+      </div>
+      <span className="flex shrink-0 items-center gap-1.5 text-sm font-semibold text-amber-700 group-hover:text-amber-800">
+        Manage front page
+        <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" />
+      </span>
+    </Link>
   )
 }

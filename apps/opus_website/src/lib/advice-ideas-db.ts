@@ -25,6 +25,7 @@ type AdviceIdeasPostRow = {
   author_avatar_url: string | null
   read_time: number | null
   featured: boolean | null
+  featured_rank: number | null
   published_at: string | null
   hero_media_type: string | null
   hero_media_src: string | null
@@ -236,6 +237,7 @@ function mapPost(row: AdviceIdeasPostRow): AdviceIdeasPost {
     authorRole: row.author_role || '',
     authorAvatarUrl: row.author_avatar_url || undefined,
     featured: Boolean(row.featured),
+    featuredRank: typeof row.featured_rank === 'number' ? row.featured_rank : null,
     heroMedia: {
       type: row.hero_media_type === 'video' ? 'video' : 'image',
       src: row.hero_media_src || fallbackImage,
@@ -255,8 +257,8 @@ export async function loadPublishedAdviceIdeasPosts(): Promise<AdviceIdeasPost[]
       .select(
         `id, slug, title, description, excerpt, category, section_id,
          author_name, author_role, author_avatar_url, read_time, featured,
-         published_at, hero_media_type, hero_media_src, hero_media_alt,
-         hero_media_poster, body, seed_comments`
+         featured_rank, published_at, hero_media_type, hero_media_src,
+         hero_media_alt, hero_media_poster, body, seed_comments`
       )
       .eq('published', true)
       .order('published_at', { ascending: true })

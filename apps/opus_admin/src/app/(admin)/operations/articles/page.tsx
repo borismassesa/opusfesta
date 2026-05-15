@@ -21,8 +21,9 @@ export default async function AdvicePostsListPage() {
   const { data, error } = await supabase
     .from('advice_ideas_posts')
     .select(
-      'id, slug, title, category, section_id, published, published_at, read_time, hero_media_type, hero_media_src, hero_media_alt, author_name, updated_at'
+      'id, slug, title, category, section_id, published, published_at, read_time, hero_media_type, hero_media_src, hero_media_alt, author_name, updated_at, featured, featured_rank'
     )
+    .order('featured_rank', { ascending: true, nullsFirst: false })
     .order('featured', { ascending: false })
     .order('published_at', { ascending: false })
 
@@ -44,6 +45,8 @@ export default async function AdvicePostsListPage() {
       | 'hero_media_alt'
       | 'author_name'
       | 'updated_at'
+      | 'featured'
+      | 'featured_rank'
     >
   >
 
@@ -57,6 +60,8 @@ export default async function AdvicePostsListPage() {
     updatedAt: p.updated_at,
     readTime: p.read_time,
     published: p.published,
+    featured: p.featured,
+    featuredRank: p.featured_rank,
     heroSrc: p.hero_media_src || null,
     heroAlt: p.hero_media_alt ?? null,
     heroType: p.hero_media_type,

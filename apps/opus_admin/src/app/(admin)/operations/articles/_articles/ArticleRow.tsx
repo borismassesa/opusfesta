@@ -5,6 +5,7 @@
 // cleanly.
 
 import Link from 'next/link'
+import { Star } from 'lucide-react'
 import StatusPill from '../../_shared/StatusPill'
 import { categoryLabel } from '../../_shared/CategoryBadge'
 import { formatRelativeTime } from '../../_shared/relativeTime'
@@ -21,9 +22,28 @@ export type ArticleListEntry = {
   updatedAt: string
   readTime: number
   published: boolean
+  featured: boolean
+  // 1-based slot on the public front page; null = featured but unranked,
+  // or not featured at all (use `featured` to disambiguate).
+  featuredRank: number | null
   heroSrc: string | null
   heroAlt: string | null
   heroType: 'image' | 'video'
+}
+
+// Pill shown beside the title for any article in the featured pool.
+// Ranked picks (1..5) show the slot number; unranked shows just the
+// star — communicating "in the pool, but no pinned slot yet."
+function FeaturedBadge({ rank }: { rank: number | null }) {
+  return (
+    <span
+      className="inline-flex shrink-0 items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-amber-700 ring-1 ring-amber-200"
+      title={rank ? `Front-page slot #${rank}` : 'In featured pool, no pinned slot'}
+    >
+      <Star className="h-3 w-3 fill-amber-500 stroke-amber-600" />
+      {rank ? `#${rank}` : 'Front'}
+    </span>
+  )
 }
 
 function metaLine(entry: ArticleListEntry): string {
@@ -52,13 +72,16 @@ export default function ArticleRow({ entry }: { entry: ArticleListEntry }) {
       />
 
       <div className="min-w-0">
-        <Link
-          href={`/operations/articles/${entry.id}`}
-          className="block truncate text-sm font-semibold text-gray-900 hover:text-[#7E5896]"
-          title={entry.title || 'Untitled'}
-        >
-          {entry.title || 'Untitled'}
-        </Link>
+        <div className="flex min-w-0 items-center gap-2">
+          <Link
+            href={`/operations/articles/${entry.id}`}
+            className="block min-w-0 truncate text-sm font-semibold text-gray-900 hover:text-[#7E5896]"
+            title={entry.title || 'Untitled'}
+          >
+            {entry.title || 'Untitled'}
+          </Link>
+          {entry.featured && <FeaturedBadge rank={entry.featuredRank} />}
+        </div>
         <p className="mt-0.5 truncate text-xs text-gray-500" title={metaLine(entry)}>
           {metaLine(entry)}
         </p>
@@ -73,6 +96,8 @@ export default function ArticleRow({ entry }: { entry: ArticleListEntry }) {
           id={entry.id}
           slug={entry.slug}
           published={entry.published}
+          featured={entry.featured}
+          featuredRank={entry.featuredRank}
         />
       </div>
     </div>

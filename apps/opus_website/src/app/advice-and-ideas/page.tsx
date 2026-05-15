@@ -117,7 +117,18 @@ export default async function AdviceAndIdeasPage({
     ? posts.filter((p) => matchesQuery(p, query))
     : []
 
-  const featured = posts.filter((p) => p.featured)
+  // Featured pool sorted by explicit slot (1=Trending, 2..5=Editor
+  // Picks) before falling back to recency. The DB query returns posts in
+  // published_at ASC order; reverse first so unranked picks come in
+  // newest-first order, then stable-sort by rank — ranked items move to
+  // the top by rank, the unranked tail keeps its newest-first order.
+  const featured = [...posts.filter((p) => p.featured)]
+    .reverse()
+    .sort((a, b) => {
+      const ra = a.featuredRank ?? Number.POSITIVE_INFINITY
+      const rb = b.featuredRank ?? Number.POSITIVE_INFINITY
+      return ra - rb
+    })
   const remaining = posts.filter((p) => !p.featured)
 
   const editorPicks =
