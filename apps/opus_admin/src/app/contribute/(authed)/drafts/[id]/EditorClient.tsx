@@ -47,6 +47,21 @@ export default function EditorClient({ initialDraft }: { initialDraft: Contribut
     setSaveState('saving')
     setError(null)
     const snapshot = draftRef.current
+    // What we're persisting on disk. If the user keeps typing while this is
+    // in flight, we'll compare against this signature when the response lands
+    // to know whether to clear the dirty flag.
+    const snapshotSignature = JSON.stringify({
+      title: snapshot.title,
+      summary: snapshot.summary,
+      category: snapshot.category,
+      cover_image_url: snapshot.cover_image_url,
+      cover_image_alt: snapshot.cover_image_alt,
+      author_name: snapshot.author_name,
+      author_role: snapshot.author_role,
+      author_avatar_url: snapshot.author_avatar_url,
+      body: snapshot.body,
+      word_count: snapshot.word_count,
+    })
     const payload = {
       title: snapshot.title,
       summary: snapshot.summary,
@@ -69,10 +84,45 @@ export default function EditorClient({ initialDraft }: { initialDraft: Contribut
         })
         const result = (await response.json()) as { draft?: ContributorDraft; error?: string }
         if (!response.ok || !result.draft) throw new Error(result.error || 'Save failed.')
-        dirtyRef.current = false
-        setDraft(result.draft)
+        const savedDraft = result.draft
+        // If the user kept typing during the round-trip, the local state has
+        // moved past what we just persisted. Keep `dirtyRef` true so the next
+        // debounce picks up the newer content. If we cleared it unconditionally,
+        // those in-flight keystrokes would only get saved on the *next* user
+        // edit, which felt like the editor was eating text.
+        const live = draftRef.current
+        const liveSignature = JSON.stringify({
+          title: live.title,
+          summary: live.summary,
+          category: live.category,
+          cover_image_url: live.cover_image_url,
+          cover_image_alt: live.cover_image_alt,
+          author_name: live.author_name,
+          author_role: live.author_role,
+          author_avatar_url: live.author_avatar_url,
+          body: live.body,
+          word_count: live.word_count,
+        })
+        const userKeptTyping = liveSignature !== snapshotSignature
+        if (!userKeptTyping) dirtyRef.current = false
+        // Local state is the source of truth for everything the user types.
+        // Replacing title/summary/body with the server snapshot here would
+        // clobber any edits made during the 1.5s autosave debounce + the
+        // network round-trip — which is what was making the editor look like
+        // it was eating text (top-of-article deletes appearing to remove the
+        // last words, highlights reverting, deletes affecting the wrong
+        // position). Only sync server-owned metadata fields.
+        setDraft((current) => ({
+          ...current,
+          id: savedDraft.id,
+          status: savedDraft.status,
+          updated_at: savedDraft.updated_at,
+          submitted_at: savedDraft.submitted_at,
+          reviewed_at: savedDraft.reviewed_at,
+          review_notes: savedDraft.review_notes,
+        }))
         setSavedAt(new Date())
-        setSaveState('saved')
+        setSaveState(userKeptTyping ? 'saving' : 'saved')
         return true
       } catch (saveError) {
         if (attempt === 2) {

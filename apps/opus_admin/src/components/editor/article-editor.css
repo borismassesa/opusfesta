@@ -97,6 +97,15 @@
   list-style: decimal;
 }
 
+/* Force bullet/number markers to render in the body text color rather than
+ * inheriting an accent / lavender tone from Tailwind v4's preflight or a
+ * stray ::marker selector elsewhere. The published article uses dark gray
+ * dots — matching that here keeps the editor and published view aligned. */
+.article-editor li::marker {
+  color: #1A1A1A;
+  font-weight: 400;
+}
+
 .article-editor li {
   margin: 4px 0;
 }
