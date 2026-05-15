@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { CheckCircle2, Circle, Play, RotateCcw } from 'lucide-react'
 import type { InternTaskRow } from './page'
 
@@ -104,9 +104,26 @@ function Group({
 
 function TaskRow({ task, actions }: { task: InternTaskRow; actions: Actions }) {
   const [pending, start] = useTransition()
+  const [error, setError] = useState<string | null>(null)
   const done = task.status === 'Done'
   const due = formatDueDate(task.due_date)
   const overdue = due.endsWith('overdue')
+
+  // Wraps a server action with explicit error surfacing. Without this
+  // the action's throw bubbles into the transition error boundary and
+  // the user just sees "nothing happened" — including the case where
+  // the row's employee_id doesn't match (the server already records a
+  // critical audit event, but the user deserves feedback too).
+  function run(action: (id: string) => Promise<void>) {
+    setError(null)
+    start(async () => {
+      try {
+        await action(task.id)
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Could not update task.')
+      }
+    })
+  }
 
   return (
     <li className="flex items-start gap-3 px-5 py-3.5">
@@ -140,13 +157,18 @@ function TaskRow({ task, actions }: { task: InternTaskRow; actions: Actions }) {
             {task.description}
           </p>
         )}
+        {error && (
+          <p role="alert" className="mt-1 text-xs text-rose-600">
+            {error}
+          </p>
+        )}
       </div>
       <div className="flex shrink-0 items-center gap-1.5">
         {!done && task.status === 'Todo' && (
           <button
             type="button"
             disabled={pending}
-            onClick={() => start(() => actions.start(task.id))}
+            onClick={() => run(actions.start)}
             className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
           >
             <Play className="h-3 w-3" /> Start
@@ -156,7 +178,7 @@ function TaskRow({ task, actions }: { task: InternTaskRow; actions: Actions }) {
           <button
             type="button"
             disabled={pending}
-            onClick={() => start(() => actions.complete(task.id))}
+            onClick={() => run(actions.complete)}
             className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             <CheckCircle2 className="h-3 w-3" /> Done
@@ -166,7 +188,7 @@ function TaskRow({ task, actions }: { task: InternTaskRow; actions: Actions }) {
           <button
             type="button"
             disabled={pending}
-            onClick={() => start(() => actions.reopen(task.id))}
+            onClick={() => run(actions.reopen)}
             className="inline-flex items-center gap-1 rounded-lg border border-gray-200 px-2.5 py-1 text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50"
           >
             <RotateCcw className="h-3 w-3" /> Reopen

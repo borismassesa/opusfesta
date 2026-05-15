@@ -9,14 +9,18 @@
 --
 -- Access model:
 --   - workforce admins (people-ops) create / edit / reassign tasks
---   - the intern can mark their own tasks done (status update only)
---   - everyone with workforce.read can see them (so a manager can
---     check on their intern's progress)
+--   - everyone with workforce.read can SELECT (managers can see their
+--     intern's progress)
+--   - status updates land via the admin app's server action
+--     (/workforce/my-tasks/actions.ts), which runs as the service role
+--     and enforces an "employee_id matches caller's workforce row" gate
 --
--- RLS belt-and-braces: writes via the service role bypass RLS, the
--- admin app enforces authz in server actions. The user-facing policy
--- is "workforce_reader can SELECT, workforce_admin can mutate" — same
--- as the rest of the module.
+-- RLS is belt-and-braces only. The user-facing policy is
+-- "workforce_reader can SELECT, workforce_admin can mutate" — same as
+-- the rest of the module. If we ever shift mutations onto a user JWT,
+-- a self-update policy keyed on the caller's employee id needs to be
+-- added; today the service-role bypass + actions.ts gate is the
+-- ownership boundary.
 
 CREATE TABLE IF NOT EXISTS intern_tasks (
   id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),

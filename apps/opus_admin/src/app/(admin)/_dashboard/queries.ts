@@ -130,17 +130,35 @@ export type DashboardSnapshot = {
   platformPulse: PlatformPulse | null  // populated only when caller is in Founders
   charts: DashboardCharts
   departmentLane: DepartmentLane | null // gated by caller.department
+  // Number of underlying count/list queries that failed during this
+  // snapshot build. Renders a "values may be inaccurate" banner so a
+  // broken connection doesn't look identical to a healthy quiet day —
+  // see safeCount() below for how this is accumulated.
+  errorCount: number
 }
 
 // Helper — awaits a Supabase head:true count query and returns 0 on
 // error rather than throwing. The dashboard prefers a missing card to
-// a 500 page.
+// a 500 page, BUT silently rendering 0 for every counter when the DB
+// is unreachable would look identical to a healthy quiet day — the
+// worst kind of green dashboard. We track failures via the shared
+// SafeCountTracker so getDashboardSnapshot() can surface a banner.
 type CountResult = { count: number | null; error: { message?: string } | null }
 
-async function safeCount(promise: PromiseLike<CountResult>): Promise<number> {
+class SafeCountTracker {
+  count = 0
+}
+
+async function safeCount(
+  promise: PromiseLike<CountResult>,
+  tracker?: SafeCountTracker,
+): Promise<number> {
   const { count, error } = await promise
   if (error) {
-    console.warn('[dashboard] count query failed:', error.message ?? '(unknown)')
+    // Real query failures are operationally meaningful — error, not
+    // warn. We still return 0 so one bad query doesn't 500 the page.
+    console.error('[dashboard] count query failed:', error.message ?? '(unknown)')
+    if (tracker) tracker.count += 1
     return 0
   }
   return count ?? 0
@@ -315,7 +333,7 @@ async function getDashboardCharts(): Promise<DashboardCharts> {
 // elsewhere on the dashboard: vendors stuck in onboarding, suspended
 // vendors waiting on a decision, inquiries no-one has answered, soon-
 // to-expire invitations. Cheap COUNTs, all parallel.
-async function getPlatformPulse(): Promise<PlatformPulse> {
+async function getPlatformPulse(tracker: SafeCountTracker): Promise<PlatformPulse> {
   const supabase = createSupabaseAdminClient()
   const fourteenDaysAgo = new Date(Date.now() - 14 * 86_400_000).toISOString()
   const sevenDaysAgo = new Date(Date.now() - 7 * 86_400_000).toISOString()
@@ -341,18 +359,21 @@ async function getPlatformPulse(): Promise<PlatformPulse> {
           'admin_review',
         ])
         .lt('updated_at', fourteenDaysAgo),
+      tracker,
     ),
     safeCount(
       supabase
         .from('vendors')
         .select('id', { count: 'exact', head: true })
         .eq('onboarding_status', 'needs_corrections'),
+      tracker,
     ),
     safeCount(
       supabase
         .from('vendors')
         .select('id', { count: 'exact', head: true })
         .eq('onboarding_status', 'suspended'),
+      tracker,
     ),
     safeCount(
       supabase
@@ -360,6 +381,7 @@ async function getPlatformPulse(): Promise<PlatformPulse> {
         .select('id', { count: 'exact', head: true })
         .eq('status', 'pending')
         .lt('created_at', sevenDaysAgo),
+      tracker,
     ),
     safeCount(
       supabase
@@ -367,6 +389,7 @@ async function getPlatformPulse(): Promise<PlatformPulse> {
         .select('id', { count: 'exact', head: true })
         .eq('status', 'pending')
         .lt('expires_at', threeDaysFromNow),
+      tracker,
     ),
   ])
 
@@ -1182,6 +1205,13 @@ function formatTzs(amount: number): string {
 
 export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
   const supabase = createSupabaseAdminClient()
+  // Single tracker for the top-level decision surface (action queue +
+  // headline metrics + Founders' platform pulse). If any of these
+  // counters fail, the snapshot includes a non-zero errorCount and the
+  // page surfaces a banner so 0 doesn't look like "all clear." Lane
+  // builders don't share this tracker — their failures only degrade a
+  // single department's view, not the dashboard-wide read.
+  const tracker = new SafeCountTracker()
 
   // Fire the caller profile lookup in parallel with the count batch
   // below — we'll await it before deciding whether to also fetch
@@ -1208,65 +1238,76 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
         .from('vendors')
         .select('id', { count: 'exact', head: true })
         .in('onboarding_status', ['pending_review', 'admin_review', 'verification_pending']),
+      tracker,
     ),
     safeCount(
       supabase
         .from('vendors')
         .select('id', { count: 'exact', head: true })
         .eq('onboarding_status', 'active'),
+      tracker,
     ),
-    safeCount(supabase.from('vendors').select('id', { count: 'exact', head: true })),
+    safeCount(supabase.from('vendors').select('id', { count: 'exact', head: true }), tracker),
     safeCount(
       supabase
         .from('workforce_invitations')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'pending'),
+      tracker,
     ),
     safeCount(
       supabase
         .from('workforce_employees')
         .select('id', { count: 'exact', head: true })
         .neq('status', 'Resigned'),
+      tracker,
     ),
     safeCount(
       supabase
         .from('workforce_employees')
         .select('id', { count: 'exact', head: true })
         .eq('dashboard_access', true),
+      tracker,
     ),
     safeCount(
       supabase
         .from('vendor_reviews')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'pending'),
+      tracker,
     ),
     safeCount(
       supabase
         .from('workforce_leave_requests')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'Pending'),
+      tracker,
     ),
     safeCount(
-      // Editorial pipeline — author has hit submit (submitted_at not null)
-      // but the piece isn't published or rejected yet.
+      // Editorial pipeline — submitted_at not null AND not in a terminal
+      // state. The `draft` exclusion is belt-and-braces (drafts shouldn't
+      // have submitted_at, but a manually-edited row could).
       supabase
         .from('advice_article_submissions')
         .select('id', { count: 'exact', head: true })
         .not('submitted_at', 'is', null)
         .not('status', 'in', '(published,rejected,draft)'),
+      tracker,
     ),
-    safeCount(supabase.from('inquiries').select('id', { count: 'exact', head: true })),
+    safeCount(supabase.from('inquiries').select('id', { count: 'exact', head: true }), tracker),
     safeCount(
       supabase
         .from('inquiries')
         .select('id', { count: 'exact', head: true })
         .gte('created_at', new Date(Date.now() - 7 * 86_400_000).toISOString()),
+      tracker,
     ),
     safeCount(
       supabase
         .from('inquiries')
         .select('id', { count: 'exact', head: true })
         .eq('status', 'pending'),
+      tracker,
     ),
   ])
 
@@ -1370,7 +1411,7 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
   // caller's role permissions allow.
   const [caller, charts] = await Promise.all([callerPromise, getDashboardCharts()])
   const [platformPulse, departmentLane] = await Promise.all([
-    caller.department === 'Founders' ? getPlatformPulse() : Promise.resolve(null),
+    caller.department === 'Founders' ? getPlatformPulse(tracker) : Promise.resolve(null),
     getDepartmentLane(caller.department, caller.employeeId),
   ])
 
@@ -1396,5 +1437,6 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
     platformPulse,
     charts,
     departmentLane,
+    errorCount: tracker.count,
   }
 }

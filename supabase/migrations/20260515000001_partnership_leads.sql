@@ -3,8 +3,9 @@
 -- Tracks incoming partnership opportunities: brand sponsorships,
 -- agency collaborations, vendor co-marketing, influencer outreach. The
 -- Marketing dashboard lane reads "leads without follow-up in N days"
--- off this table; the /operations/partnerships page is a basic list
--- view (Phase 2 — full CRUD lands later).
+-- off this table; the /operations/partnerships page renders the list
+-- with inline status edits + a "New lead" form. Assignment, follow-up
+-- reminders and an inbound web form are still to come.
 --
 -- Access model: admin-only via RLS. The admin app reads/writes through
 -- the service role key (bypasses RLS); these policies are belt-and-

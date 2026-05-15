@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { auth, clerkClient, currentUser } from '@clerk/nextjs/server'
 import type { User } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient, hasSupabaseAdminConfig } from '@/lib/supabase'
@@ -126,48 +127,54 @@ async function syncClerkRoleIfStale(
   }
 }
 
-export async function getAdminAccessRole(): Promise<AdminAccessRole | null> {
-  const { userId, sessionClaims } = await auth()
-  if (!userId) return null
+// Both wrapped in React.cache so a single request resolves Clerk +
+// admin_whitelist exactly once even when invoked from layout, page,
+// and downstream server actions. Clerk's currentUser() is the
+// expensive call here.
+export const getAdminAccessRole = cache(
+  async (): Promise<AdminAccessRole | null> => {
+    const { userId, sessionClaims } = await auth()
+    if (!userId) return null
 
-  const user = await currentUser()
-  const email = (
-    user?.primaryEmailAddress?.emailAddress ||
-    user?.emailAddresses?.[0]?.emailAddress ||
-    readClaimEmail(sessionClaims) ||
-    ''
-  )
-    .trim()
-    .toLowerCase()
+    const user = await currentUser()
+    const email = (
+      user?.primaryEmailAddress?.emailAddress ||
+      user?.emailAddresses?.[0]?.emailAddress ||
+      readClaimEmail(sessionClaims) ||
+      ''
+    )
+      .trim()
+      .toLowerCase()
 
-  // admin_whitelist is the source of truth. Check it first so admins added
-  // via SQL/admin UI are recognized even when Clerk publicMetadata still
-  // says some non-admin role from a prior contributor-invite acceptance.
-  if (email) {
-    const lookup = await readWhitelistRole(email)
-    if (lookup.kind === 'role') {
-      await syncClerkRoleIfStale(userId, user, lookup.role)
-      return lookup.role
+    // admin_whitelist is the source of truth. Check it first so admins added
+    // via SQL/admin UI are recognized even when Clerk publicMetadata still
+    // says some non-admin role from a prior contributor-invite acceptance.
+    if (email) {
+      const lookup = await readWhitelistRole(email)
+      if (lookup.kind === 'role') {
+        await syncClerkRoleIfStale(userId, user, lookup.role)
+        return lookup.role
+      }
+      if (lookup.kind === 'denied') {
+        // Disabled in the whitelist — deny access without falling through
+        // to Clerk metadata, which may still be cached from before the
+        // disable and would otherwise re-grant the user dashboard access.
+        return null
+      }
     }
-    if (lookup.kind === 'denied') {
-      // Disabled in the whitelist — deny access without falling through
-      // to Clerk metadata, which may still be cached from before the
-      // disable and would otherwise re-grant the user dashboard access.
-      return null
-    }
-  }
 
-  const claimRole = readClaimRole(sessionClaims)
-  if (claimRole) return claimRole
+    const claimRole = readClaimRole(sessionClaims)
+    if (claimRole) return claimRole
 
-  return (
-    readMetadataRole(user?.publicMetadata) ||
-    readMetadataRole(user?.privateMetadata) ||
-    readMetadataRole(user?.unsafeMetadata)
-  )
-}
+    return (
+      readMetadataRole(user?.publicMetadata) ||
+      readMetadataRole(user?.privateMetadata) ||
+      readMetadataRole(user?.unsafeMetadata)
+    )
+  },
+)
 
-export async function getCallerEmail(): Promise<string | null> {
+export const getCallerEmail = cache(async (): Promise<string | null> => {
   const { userId, sessionClaims } = await auth()
   if (!userId) return null
   const user = await currentUser()
@@ -176,7 +183,7 @@ export async function getCallerEmail(): Promise<string | null> {
     user?.emailAddresses?.[0]?.emailAddress ||
     readClaimEmail(sessionClaims)
   return email ? email.trim().toLowerCase() : null
-}
+})
 
 export async function requireAdminRole(
   roles: readonly AdminAccessRole[]
@@ -247,44 +254,50 @@ const ALL_PERMISSION_KEYS: readonly PermissionKey[] = [
   'platform.admin',
 ] as const
 
-export async function getCallerPermissions(): Promise<Set<PermissionKey>> {
-  const role = await getAdminAccessRole()
-  // Owners always have everything — keeps founders unblocked even before
-  // they're attached to a workforce role.
-  if (role === 'owner') return new Set(ALL_PERMISSION_KEYS)
-  // No dashboard access at all → empty set.
-  if (!role) return new Set()
+// Wrapped in React.cache so that the layout's permission lookup and
+// page.tsx's permission lookup on the same request resolve via one
+// chain of Clerk + Supabase calls. Without this, the dashboard fires
+// 4–6 sequential round-trips twice per render.
+export const getCallerPermissions = cache(
+  async (): Promise<Set<PermissionKey>> => {
+    const role = await getAdminAccessRole()
+    // Owners always have everything — keeps founders unblocked even before
+    // they're attached to a workforce role.
+    if (role === 'owner') return new Set(ALL_PERMISSION_KEYS)
+    // No dashboard access at all → empty set.
+    if (!role) return new Set()
 
-  if (!hasSupabaseAdminConfig()) {
-    console.warn('[admin-auth] permission lookup unavailable: Supabase admin env is missing')
-    return new Set()
-  }
-  const email = await getCallerEmail()
-  if (!email) return new Set()
+    if (!hasSupabaseAdminConfig()) {
+      console.warn('[admin-auth] permission lookup unavailable: Supabase admin env is missing')
+      return new Set()
+    }
+    const email = await getCallerEmail()
+    if (!email) return new Set()
 
-  const supabase = createSupabaseAdminClient()
-  const { data: employee, error: employeeError } = await supabase
-    .from('workforce_employees')
-    .select('id')
-    .ilike('email', email)
-    .maybeSingle<{ id: string }>()
-  if (employeeError) {
-    console.error('[admin-auth] permission lookup employee error', employeeError)
-    return fallbackRolePermissions(role)
-  }
-  if (!employee) return fallbackRolePermissions(role)
+    const supabase = createSupabaseAdminClient()
+    const { data: employee, error: employeeError } = await supabase
+      .from('workforce_employees')
+      .select('id')
+      .ilike('email', email)
+      .maybeSingle<{ id: string }>()
+    if (employeeError) {
+      console.error('[admin-auth] permission lookup employee error', employeeError)
+      return fallbackRolePermissions(role)
+    }
+    if (!employee) return fallbackRolePermissions(role)
 
-  // Single SQL trip via the permission helper added in
-  // 20260514213347_workforce_dashboard_access.sql.
-  const { data, error } = await supabase
-    .rpc('workforce_permissions_for_employee', { p_employee_id: employee.id })
-    .returns<string[]>()
-  if (error) {
-    console.error('[admin-auth] workforce_permissions_for_employee error', error)
-    return fallbackRolePermissions(role)
-  }
-  return new Set(Array.isArray(data) ? data : [])
-}
+    // Single SQL trip via the permission helper added in
+    // 20260514213347_workforce_dashboard_access.sql.
+    const { data, error } = await supabase
+      .rpc('workforce_permissions_for_employee', { p_employee_id: employee.id })
+      .returns<string[]>()
+    if (error) {
+      console.error('[admin-auth] workforce_permissions_for_employee error', error)
+      return fallbackRolePermissions(role)
+    }
+    return new Set(Array.isArray(data) ? data : [])
+  },
+)
 
 // Best-effort fallback for the legacy admin_whitelist roles when there's
 // no matching workforce employee record yet. Mirrors what the system

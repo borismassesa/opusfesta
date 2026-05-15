@@ -1,5 +1,6 @@
 import { getCallerPermissions } from '@/lib/admin-auth'
 import DashboardHeading from './_dashboard/DashboardHeading'
+import DashboardErrorBanner from './_dashboard/DashboardErrorBanner'
 import ActionQueue from './_dashboard/ActionQueue'
 import DepartmentLane from './_dashboard/DepartmentLane'
 import MetricStrip from './_dashboard/MetricStrip'
@@ -44,6 +45,11 @@ export default async function DashboardPage() {
       <DashboardHeading subtitle={buildSubtitle(snapshot.caller.department)} />
 
       <div className="mx-auto max-w-[1400px] space-y-8">
+        {/* Soft "values may be off" banner when one or more counter
+            queries failed during snapshot build. Without it, broken
+            DB = green dashboard. */}
+        <DashboardErrorBanner errorCount={snapshot.errorCount} />
+
         {/* KPI strip at the top — the at-a-glance numbers anchor the page
             so the rest of the dashboard reads as supporting detail. */}
         <MetricStrip metrics={snapshot.headline} granted={permissions} />

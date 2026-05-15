@@ -6,8 +6,8 @@ import { createSupabaseAdminClient } from '@/lib/supabase'
 import { recordAuditEvent } from '@/lib/audit-log'
 
 // Server actions for the "My tasks" page. Each is scoped to the
-// caller's own employee row — admins editing other people's tasks
-// have a separate flow (Phase 4 / not in this branch).
+// caller's own employee row — admin-side editing of other people's
+// tasks is not implemented yet.
 //
 // Authz: we resolve the caller's workforce_employees row by email
 // and only permit mutations where the task's employee_id matches.

@@ -5,13 +5,10 @@ import StatusCell from './StatusCell'
 
 export const dynamic = 'force-dynamic'
 
-// Partnership leads list view. Read-only for Phase 2 — the Marketing
-// dashboard lane links here, and admins can see what's in the pipeline.
-// Create / update flows land in Phase 3 (with assignment, follow-up,
-// and an inbound web form).
-//
-// Permission: vendor.read covers anyone in Marketing & Partnership;
-// they already have it for vendor work.
+// Partnership leads list view. Anyone with vendor.read can see the
+// pipeline; vendor.moderate unlocks the "New lead" CTA in the header
+// and the inline status dropdown. Assignment, follow-up reminders,
+// and an inbound web form are still to come.
 
 type LeadRow = {
   id: string
@@ -63,8 +60,8 @@ export default async function PartnershipLeadsPage() {
         <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
           {rows.length === 0 ? (
             <p className="px-6 py-12 text-center text-sm text-gray-500">
-              No partnership leads yet. Once the inbound form is wired up
-              (Phase 3), new leads land here automatically.
+              No partnership leads yet. Click <span className="font-semibold">New lead</span>{' '}
+              in the header to add the first one.
             </p>
           ) : (
             <table className="w-full text-sm">
