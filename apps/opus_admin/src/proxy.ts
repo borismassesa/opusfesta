@@ -5,6 +5,11 @@ import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
+  // Workforce invitation landing page renders before sign-in: if the
+  // visitor is unauthenticated it bounces to /sign-up itself, preserving
+  // the token in redirect_url. Routing it through Clerk's default redirect
+  // would drop the token and break the acceptance flow.
+  '/accept-invite(.*)',
   '/contribute/invite(.*)',
   '/api/webhooks/(.*)',
 ])

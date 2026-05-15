@@ -18,6 +18,7 @@ import {
   Gift,
   Globe,
   Globe2,
+  Handshake,
   Heart,
   HelpCircle,
   History,
@@ -62,12 +63,19 @@ type NavItem = {
   // sidebar entry covers a group of routes that don't share a URL prefix
   // (e.g. Articles owns /operations/articles and /operations/authors).
   activePaths?: string[];
+  // Permission required to see this item. Items without a permission
+  // (Dashboard, Inbox, Help) stay visible to everyone in the dashboard.
+  // The whole section drops out if all its items are filtered.
+  requiredPermission?: string;
 };
 type NavSection = {
   id: string;
   label: string;
   icon: LucideIcon;
   items: NavItem[];
+  // Permission required at section level — collapses the section header
+  // entirely. Use when the whole module is gated (e.g. Insights).
+  requiredPermission?: string;
 };
 
 const topItems: NavItem[] = [
@@ -80,23 +88,25 @@ const sections: NavSection[] = [
     id: "website-cms",
     label: "Website CMS",
     icon: Globe,
+    requiredPermission: "cms.read",
     items: [
-      { icon: Home, label: "Homepage", href: "/cms/homepage" },
-      { icon: Wrench, label: "Planning Tools", href: "/cms/planning-tools" },
-      { icon: Store, label: "Vendors Marketplace", href: "/cms/vendors" },
-      { icon: UserCheck, label: "Guest & RSVPs", href: "/cms/guests" },
-      { icon: Globe2, label: "Wedding Website", href: "/cms/wedding-websites" },
-      { icon: Lightbulb, label: "Ideas & Advice", href: "/cms/advice-and-ideas" },
-      { icon: Gem, label: "Attire & Rings", href: "/cms/attire-and-rings" },
-      { icon: Gift, label: "Registry", href: "/cms/registry" },
+      { icon: Home, label: "Homepage", href: "/cms/homepage", requiredPermission: "cms.read" },
+      { icon: Wrench, label: "Planning Tools", href: "/cms/planning-tools", requiredPermission: "cms.read" },
+      { icon: Store, label: "Vendors Marketplace", href: "/cms/vendors", requiredPermission: "cms.read" },
+      { icon: UserCheck, label: "Guest & RSVPs", href: "/cms/guests", requiredPermission: "cms.read" },
+      { icon: Globe2, label: "Wedding Website", href: "/cms/wedding-websites", requiredPermission: "cms.read" },
+      { icon: Lightbulb, label: "Ideas & Advice", href: "/cms/advice-and-ideas", requiredPermission: "cms.read" },
+      { icon: Gem, label: "Attire & Rings", href: "/cms/attire-and-rings", requiredPermission: "cms.read" },
+      { icon: Gift, label: "Registry", href: "/cms/registry", requiredPermission: "cms.read" },
     ],
   },
   {
     id: "vendors-portal-cms",
     label: "Vendors Portal CMS",
     icon: Store,
+    requiredPermission: "cms.read",
     items: [
-      { icon: Home, label: "Homepage", href: "/cms/vendors-portal" },
+      { icon: Home, label: "Homepage", href: "/cms/vendors-portal", requiredPermission: "cms.read" },
     ],
   },
   {
@@ -104,54 +114,61 @@ const sections: NavSection[] = [
     label: "Operations",
     icon: Briefcase,
     items: [
-      { icon: CalendarCheck, label: "Bookings", href: "/operations/bookings" },
-      { icon: Heart, label: "Clients", href: "/operations/clients" },
-      { icon: Building2, label: "Vendor Accounts", href: "/operations/vendors" },
-      { icon: Star, label: "Reviews & Moderation", href: "/operations/reviews" },
-      { icon: Calendar, label: "Calendar", href: "/operations/calendar" },
+      { icon: CalendarCheck, label: "Bookings", href: "/operations/bookings", requiredPermission: "bookings.read" },
+      { icon: Heart, label: "Clients", href: "/operations/clients", requiredPermission: "bookings.read" },
+      { icon: Building2, label: "Vendor Accounts", href: "/operations/vendors", requiredPermission: "vendor.read" },
+      { icon: Handshake, label: "Partnerships", href: "/operations/partnerships", requiredPermission: "vendor.read" },
+      { icon: Star, label: "Reviews & Moderation", href: "/operations/reviews", requiredPermission: "vendor.moderate" },
+      { icon: Calendar, label: "Calendar", href: "/operations/calendar", requiredPermission: "bookings.read" },
       {
         icon: Newspaper,
         label: "Articles",
         href: "/operations/articles",
         activePaths: ["/operations/authors", "/operations/articles/submissions"],
+        requiredPermission: "cms.write",
       },
-      { icon: ShieldCheck, label: "Admin Team", href: "/operations/admins" },
     ],
   },
   {
     id: "finance",
     label: "Finance",
     icon: Landmark,
+    // Section visible to anyone with finance.read OR workforce.payroll
+    // (payroll lives here even though its permission lives in the workforce
+    // module). The per-item gates still apply below.
+    requiredPermission: undefined,
     items: [
-      { icon: Receipt, label: "Invoices", href: "/finance/invoices" },
-      { icon: CreditCard, label: "Payments", href: "/finance/payments" },
-      { icon: Wallet, label: "Vendor Payouts", href: "/finance/payouts" },
-      { icon: RefreshCw, label: "Refunds", href: "/finance/refunds" },
-      { icon: FileText, label: "Tax & VAT", href: "/finance/tax" },
-      { icon: Smartphone, label: "M-Pesa Reconciliation", href: "/finance/mpesa" },
+      { icon: Receipt, label: "Invoices", href: "/finance/invoices", requiredPermission: "finance.read" },
+      { icon: CreditCard, label: "Payments", href: "/finance/payments", requiredPermission: "finance.read" },
+      { icon: Wallet, label: "Payroll", href: "/finance/payroll", requiredPermission: "workforce.payroll" },
+      { icon: Wallet, label: "Vendor Payouts", href: "/finance/payouts", requiredPermission: "finance.write" },
+      { icon: RefreshCw, label: "Refunds", href: "/finance/refunds", requiredPermission: "finance.write" },
+      { icon: FileText, label: "Tax & VAT", href: "/finance/tax", requiredPermission: "finance.read" },
+      { icon: Smartphone, label: "M-Pesa Reconciliation", href: "/finance/mpesa", requiredPermission: "finance.read" },
     ],
   },
   {
     id: "workforce",
     label: "Workforce",
     icon: Users,
+    requiredPermission: "workforce.read",
     items: [
-      { icon: UserCog, label: "Employees", href: "/workforce/employees" },
-      { icon: ClipboardList, label: "Schedule", href: "/workforce/schedule" },
-      { icon: Wallet, label: "Payroll", href: "/workforce/payroll" },
-      { icon: Plane, label: "Leave & Attendance", href: "/workforce/leave" },
-      { icon: Shield, label: "Roles & Permissions", href: "/workforce/roles" },
-      { icon: UserPlus, label: "Recruitment", href: "/workforce/recruitment" },
+      { icon: UserCog, label: "Employees", href: "/workforce/employees", requiredPermission: "workforce.read" },
+      { icon: ClipboardList, label: "Schedule", href: "/workforce/schedule", requiredPermission: "workforce.read" },
+      { icon: Plane, label: "Leave & Attendance", href: "/workforce/leave", requiredPermission: "workforce.read" },
+      { icon: Shield, label: "Roles", href: "/workforce/roles", requiredPermission: "workforce.write" },
+      { icon: UserPlus, label: "Recruitment", href: "/workforce/recruitment", requiredPermission: "workforce.write" },
     ],
   },
   {
     id: "insights",
     label: "Insights",
     icon: BarChart3,
+    requiredPermission: "insights.read",
     items: [
-      { icon: TrendingUp, label: "Analytics", href: "/insights/analytics" },
-      { icon: History, label: "Activity Log", href: "/insights/activity" },
-      { icon: ShieldCheck, label: "Audit Log", href: "/insights/audit" },
+      { icon: TrendingUp, label: "Analytics", href: "/insights/analytics", requiredPermission: "insights.read" },
+      { icon: History, label: "Activity Log", href: "/insights/activity", requiredPermission: "insights.read" },
+      { icon: ShieldCheck, label: "Audit Log", href: "/insights/audit", requiredPermission: "insights.read" },
     ],
   },
 ];
@@ -177,9 +194,27 @@ function isSectionActive(pathname: string, section: NavSection) {
   return section.items.some((i) => isItemActive(pathname, i))
 }
 
-export function Sidebar() {
+export function Sidebar({ permissions }: { permissions: string[] }) {
   const pathname = usePathname();
-  const initialSection = sections.find((s) => isSectionActive(pathname, s))?.id ?? "website-cms";
+  // Filter sections + items by permission. An item without a
+  // requiredPermission is always visible (e.g. Dashboard, Inbox); a
+  // section with a requiredPermission is hidden entirely if the caller
+  // doesn't have it, and any section that ends up with zero visible
+  // items is dropped too.
+  const permissionSet = new Set(permissions);
+  const visibleSections = sections
+    .filter((section) => !section.requiredPermission || permissionSet.has(section.requiredPermission))
+    .map((section) => ({
+      ...section,
+      items: section.items.filter(
+        (item) => !item.requiredPermission || permissionSet.has(item.requiredPermission),
+      ),
+    }))
+    .filter((section) => section.items.length > 0);
+
+  const initialSection = visibleSections.find((s) => isSectionActive(pathname, s))?.id
+    ?? visibleSections[0]?.id
+    ?? "";
   const [openSection, setOpenSection] = useState<string>(initialSection);
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState(false);
@@ -300,7 +335,7 @@ export function Sidebar() {
         </nav>
 
         {/* Sections */}
-        {sections.map((section) => {
+        {visibleSections.map((section) => {
           const SectionIcon = section.icon;
           const isOpen = openSection === section.id;
           const isActive = isSectionActive(pathname, section);

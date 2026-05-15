@@ -10,3 +10,15 @@
   60% { transform: translateX(-4px); }
   80% { transform: translateX(4px); }
 }
+
+/* Hide overflow scrollbars while keeping scroll behavior. Used on the
+   workforce tables (`overflow-x-auto` containers) so a stray horizontal
+   scrollbar doesn't sit beneath every list — content still scrolls via
+   trackpad / shift+wheel / arrow keys. */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE / legacy Edge */
+  scrollbar-width: none;    /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;            /* Safari / Chrome */
+}

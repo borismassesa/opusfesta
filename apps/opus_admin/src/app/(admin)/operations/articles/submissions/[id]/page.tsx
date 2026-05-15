@@ -1,17 +1,14 @@
-import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Pencil } from 'lucide-react'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
   type AdviceArticleSubmissionRow,
 } from '@/lib/advice-submissions'
 import type { AdviceIdeasBodySection, AdviceIdeasBlock } from '@/lib/cms/advice-ideas'
-import StatusPill, {
-  type StatusVariant,
-} from '@/app/(admin)/operations/_shared/StatusPill'
+import type { StatusVariant } from '@/app/(admin)/operations/_shared/StatusPill'
 import { formatRelativeTime } from '@/app/(admin)/operations/_shared/relativeTime'
 import ReviewActions from './ReviewActions'
+import SubmissionReviewHeader from './SubmissionReviewHeader'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,31 +48,12 @@ export default async function ArticleSubmissionReviewPage({
 
   return (
     <div className="bg-white pb-24">
-      <div className="border-b border-gray-200 bg-white">
-        <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-between gap-4 px-8 py-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <Link
-              href="/operations/articles/submissions"
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-950"
-            >
-              <ArrowLeft className="h-4 w-4" />
-              Submissions
-            </Link>
-            <span className="h-5 w-px bg-gray-200" aria-hidden />
-            <StatusPill variant={pill.variant} label={pill.label} />
-            <span className="truncate text-sm text-gray-500">
-              Submitted {formatRelativeTime(submitted)}
-            </span>
-          </div>
-          <Link
-            href={`/operations/articles/submissions/${id}/edit`}
-            className="inline-flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Open editor
-          </Link>
-        </div>
-      </div>
+      <SubmissionReviewHeader
+        pillVariant={pill.variant}
+        pillLabel={pill.label}
+        submittedRelative={formatRelativeTime(submitted)}
+        editorHref={`/operations/articles/submissions/${id}/edit`}
+      />
 
       <div className="mx-auto grid max-w-[1280px] grid-cols-[minmax(0,1fr)_320px] gap-10 px-8 py-10 max-lg:grid-cols-1">
         <article className="min-w-0 rounded-2xl border border-gray-100 bg-white p-10 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] sm:p-14">

@@ -62,16 +62,9 @@ export default async function AdvicePostsListPage() {
     heroType: p.hero_media_type,
   }))
 
-  const publishedCount = entries.filter((e) => e.published).length
-  const draftCount = entries.length - publishedCount
-  const subtitle =
-    entries.length === 0
-      ? 'No articles yet'
-      : `${publishedCount} published · ${draftCount} draft${draftCount === 1 ? '' : 's'}`
-
   return (
     <div className="pb-12">
-      <SetArticlesHeading title="Articles" subtitle={subtitle} />
+      <SetArticlesHeading title="Articles" />
       <HeaderActionsSlot>
         <Link
           href="/operations/articles/new"
