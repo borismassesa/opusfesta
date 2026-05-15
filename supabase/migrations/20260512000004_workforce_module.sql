@@ -18,8 +18,11 @@
 -- RLS policies below are belt-and-braces: if anyone ever hits these
 -- tables with a user JWT, only owner/admin users can read or write.
 --
--- Seed data mirrors the original `_lib/data.ts` fixtures one-for-one,
--- so the UI looks identical the moment this migration lands.
+-- Seed data scope: payroll runs + system roles only (foundational rows
+-- the Payroll and Roles & Permissions pages need to render). The original
+-- 18 employees / 5 open jobs / candidates / shifts / leave / attendance
+-- fixtures were removed on 2026-05-14 — the workforce module now ships
+-- empty so admins populate it themselves via the UI.
 
 -- =============================================================================
 -- Helper: who counts as a workforce admin
@@ -334,117 +337,12 @@ BEGIN
 END $$;
 
 -- =============================================================================
--- Seed data — mirrors the original fixtures one-for-one
+-- Seed data — foundational rows only (payroll runs, system roles)
 -- =============================================================================
-
--- Employees (insert; managers wired in a second pass once IDs exist).
-INSERT INTO workforce_employees
-  (employee_code, full_name, email, phone, job_title, department, employment_type, status, location, start_date, salary_tzs, leave_balance_days, avatar_color)
-VALUES
-  ('OF-001', 'Asha Mwangi',          'asha.mwangi@opusfesta.com',     '+255 712 884 011', 'Head of Operations',           'Operations',     'Permanent', 'Active',     'Dar es Salaam', '2022-03-14',  9800000, 14, '#F0DFF6'),
-  ('OF-002', 'Boniface Lema',        'boniface.lema@opusfesta.com',   '+255 754 220 198', 'Vendor Success Lead',          'Vendor Success', 'Permanent', 'Active',     'Dar es Salaam', '2022-08-01',  6400000,  9, '#FFF3D9'),
-  ('OF-003', 'Catherine Njau',       'catherine.njau@opusfesta.com',  '+255 689 451 700', 'Senior Product Designer',      'Design',         'Permanent', 'Active',     'Remote',        '2023-01-09',  7200000, 21, '#E5F2FB'),
-  ('OF-004', 'Daniel Okello',        'daniel.okello@opusfesta.com',   '+255 776 003 122', 'Head of Product',              'Product',        'Permanent', 'Active',     'Dar es Salaam', '2021-11-21', 11500000,  6, '#FCE8F0'),
-  ('OF-005', 'Esther Kimaro',        'esther.kimaro@opusfesta.com',   '+255 783 666 902', 'Studio Coordinator',           'Studio',         'Contract',  'On Leave',   'Arusha',        '2023-06-30',  4100000,  0, '#DDF6E3'),
-  ('OF-006', 'Faraja Mtui',          'faraja.mtui@opusfesta.com',     '+255 715 224 850', 'Full-Stack Engineer',          'Engineering',    'Permanent', 'Active',     'Remote',        '2023-04-04',  8300000, 11, '#FFE3D1'),
-  ('OF-007', 'Grace Pallangyo',      'grace.pallangyo@opusfesta.com', '+255 769 887 412', 'Marketing Manager',            'Marketing',      'Permanent', 'Active',     'Dar es Salaam', '2022-05-18',  6900000,  8, '#E4E0FB'),
-  ('OF-008', 'Hassan Idris',         'hassan.idris@opusfesta.com',    '+255 742 553 990', 'Engineering Lead',             'Engineering',    'Permanent', 'Active',     'Dar es Salaam', '2021-09-13', 12400000, 18, '#D6F0EE'),
-  ('OF-009', 'Imani Kileo',          'imani.kileo@opusfesta.com',     '+255 718 114 002', 'Finance Analyst',              'Finance',        'Permanent', 'Active',     'Dar es Salaam', '2024-02-12',  5200000, 19, '#F0DFF6'),
-  ('OF-010', 'Joyce Mbise',          'joyce.mbise@opusfesta.com',     '+255 758 660 211', 'People Operations Partner',    'People',         'Permanent', 'Active',     'Dar es Salaam', '2023-09-05',  5900000, 16, '#FFF3D9'),
-  ('OF-011', 'Kelvin Massawe',       'kelvin.massawe@opusfesta.com',  '+255 762 887 553', 'Junior Product Designer',      'Design',         'Probation', 'Onboarding', 'Dar es Salaam', '2026-04-22',  3400000,  2, '#E5F2FB'),
-  ('OF-012', 'Lulu Shayo',           'lulu.shayo@opusfesta.com',      '+255 719 446 088', 'Vendor Onboarding Specialist', 'Vendor Success', 'Contract',  'Active',     'Zanzibar',      '2024-07-01',  3800000, 12, '#FCE8F0'),
-  ('OF-013', 'Mussa Kazimoto',       'mussa.kazimoto@opusfesta.com',  '+255 766 339 124', 'Backend Engineer',             'Engineering',    'Permanent', 'Active',     'Remote',        '2024-01-15',  7800000, 13, '#DDF6E3'),
-  ('OF-014', 'Naomi Komba',          'naomi.komba@opusfesta.com',     '+255 745 003 781', 'Content Marketing Editor',     'Marketing',      'Permanent', 'Active',     'Dar es Salaam', '2023-11-02',  4600000, 15, '#FFE3D1'),
-  ('OF-015', 'Omary Mwakalindile',   'omary.m@opusfesta.com',         '+255 783 220 919', 'Production Intern',            'Studio',         'Intern',    'Onboarding', 'Arusha',        '2026-05-04',   900000,  0, '#E4E0FB'),
-  ('OF-016', 'Paulina Reuben',       'paulina.reuben@opusfesta.com',  '+255 712 003 884', 'Senior Backend Engineer',      'Engineering',    'Permanent', 'Active',     'Dar es Salaam', '2022-02-28',  9200000,  7, '#D6F0EE'),
-  ('OF-017', 'Queen Sanga',          'queen.sanga@opusfesta.com',     '+255 758 117 884', 'Customer Success Associate',   'Operations',     'Permanent', 'Active',     'Dar es Salaam', '2024-03-25',  3900000, 10, '#F0DFF6'),
-  ('OF-018', 'Rajab Mwinyi',         'rajab.mwinyi@opusfesta.com',    '+255 769 442 003', 'Studio Photographer',          'Studio',         'Contract',  'Resigned',   'Zanzibar',      '2022-01-18',  4800000,  0, '#FFF3D9')
-ON CONFLICT (employee_code) DO NOTHING;
-
--- Manager links — second pass, once the rows exist.
-UPDATE workforce_employees e
-SET manager_id = m.id
-FROM workforce_employees m
-WHERE m.employee_code = CASE e.employee_code
-  WHEN 'OF-002' THEN 'OF-001'
-  WHEN 'OF-003' THEN 'OF-004'
-  WHEN 'OF-005' THEN 'OF-001'
-  WHEN 'OF-006' THEN 'OF-008'
-  WHEN 'OF-008' THEN 'OF-004'
-  WHEN 'OF-010' THEN 'OF-001'
-  WHEN 'OF-011' THEN 'OF-003'
-  WHEN 'OF-012' THEN 'OF-002'
-  WHEN 'OF-013' THEN 'OF-008'
-  WHEN 'OF-014' THEN 'OF-007'
-  WHEN 'OF-015' THEN 'OF-005'
-  WHEN 'OF-016' THEN 'OF-008'
-  WHEN 'OF-017' THEN 'OF-001'
-  WHEN 'OF-018' THEN 'OF-005'
-END
-AND e.manager_id IS NULL;
-
--- Shifts (helper view inline so we can SELECT by code)
-INSERT INTO workforce_shifts (employee_id, weekday, shift_type, start_time, end_time, note)
-SELECT e.id, s.weekday, s.shift_type, s.start_time, s.end_time, s.note FROM (VALUES
-  ('OF-001', 1, 'Full day', '08:30'::time, '17:30'::time, NULL),
-  ('OF-001', 2, 'Full day', '08:30'::time, '17:30'::time, NULL),
-  ('OF-001', 3, 'Remote',   '09:00'::time, '17:00'::time, NULL),
-  ('OF-001', 4, 'Full day', '08:30'::time, '17:30'::time, NULL),
-  ('OF-001', 5, 'Half day', '08:30'::time, '13:00'::time, NULL),
-  ('OF-001', 6, 'Off',      NULL, NULL, NULL),
-  ('OF-001', 7, 'Off',      NULL, NULL, NULL),
-  ('OF-002', 1, 'Full day', '09:00'::time, '18:00'::time, NULL),
-  ('OF-002', 2, 'Full day', '09:00'::time, '18:00'::time, NULL),
-  ('OF-002', 3, 'Full day', '09:00'::time, '18:00'::time, NULL),
-  ('OF-002', 4, 'On-call',  NULL, NULL, 'Vendor escalations'),
-  ('OF-002', 5, 'Full day', '09:00'::time, '18:00'::time, NULL),
-  ('OF-002', 6, 'Off',      NULL, NULL, NULL),
-  ('OF-002', 7, 'Off',      NULL, NULL, NULL),
-  ('OF-003', 1, 'Remote',   '10:00'::time, '18:00'::time, NULL),
-  ('OF-003', 2, 'Remote',   '10:00'::time, '18:00'::time, NULL),
-  ('OF-003', 3, 'Remote',   '10:00'::time, '18:00'::time, NULL),
-  ('OF-003', 4, 'Remote',   '10:00'::time, '18:00'::time, NULL),
-  ('OF-003', 5, 'Off',      NULL, NULL, NULL),
-  ('OF-003', 6, 'Off',      NULL, NULL, NULL),
-  ('OF-003', 7, 'Off',      NULL, NULL, NULL),
-  ('OF-005', 1, 'Off',      NULL, NULL, 'On leave'),
-  ('OF-005', 2, 'Off',      NULL, NULL, 'On leave'),
-  ('OF-005', 3, 'Off',      NULL, NULL, 'On leave'),
-  ('OF-005', 4, 'Off',      NULL, NULL, 'On leave'),
-  ('OF-005', 5, 'Off',      NULL, NULL, 'On leave'),
-  ('OF-005', 6, 'Off',      NULL, NULL, NULL),
-  ('OF-005', 7, 'Off',      NULL, NULL, NULL),
-  ('OF-006', 1, 'Remote',   '09:30'::time, '17:30'::time, NULL),
-  ('OF-006', 2, 'Remote',   '09:30'::time, '17:30'::time, NULL),
-  ('OF-006', 3, 'Full day', '09:30'::time, '17:30'::time, NULL),
-  ('OF-006', 4, 'Remote',   '09:30'::time, '17:30'::time, NULL),
-  ('OF-006', 5, 'Remote',   '09:30'::time, '15:00'::time, NULL),
-  ('OF-006', 6, 'Off',      NULL, NULL, NULL),
-  ('OF-006', 7, 'Off',      NULL, NULL, NULL),
-  ('OF-008', 1, 'Full day', '08:00'::time, '17:00'::time, NULL),
-  ('OF-008', 2, 'Full day', '08:00'::time, '17:00'::time, NULL),
-  ('OF-008', 3, 'Full day', '08:00'::time, '17:00'::time, NULL),
-  ('OF-008', 4, 'Full day', '08:00'::time, '17:00'::time, NULL),
-  ('OF-008', 5, 'Full day', '08:00'::time, '17:00'::time, NULL),
-  ('OF-008', 6, 'On-call',  NULL, NULL, 'Production rotation'),
-  ('OF-008', 7, 'Off',      NULL, NULL, NULL),
-  ('OF-010', 1, 'Full day', '08:30'::time, '17:30'::time, NULL),
-  ('OF-010', 2, 'Full day', '08:30'::time, '17:30'::time, NULL),
-  ('OF-010', 3, 'Half day', '08:30'::time, '13:00'::time, NULL),
-  ('OF-010', 4, 'Full day', '08:30'::time, '17:30'::time, NULL),
-  ('OF-010', 5, 'Full day', '08:30'::time, '17:30'::time, NULL),
-  ('OF-010', 6, 'Off',      NULL, NULL, NULL),
-  ('OF-010', 7, 'Off',      NULL, NULL, NULL),
-  ('OF-012', 1, 'Full day', '09:00'::time, '18:00'::time, NULL),
-  ('OF-012', 2, 'Full day', '09:00'::time, '18:00'::time, NULL),
-  ('OF-012', 3, 'Off',      NULL, NULL, NULL),
-  ('OF-012', 4, 'Full day', '09:00'::time, '18:00'::time, NULL),
-  ('OF-012', 5, 'Full day', '09:00'::time, '18:00'::time, NULL),
-  ('OF-012', 6, 'Half day', '09:00'::time, '13:00'::time, NULL),
-  ('OF-012', 7, 'Off',      NULL, NULL, NULL)
-) AS s(emp_code, weekday, shift_type, start_time, end_time, note)
-JOIN workforce_employees e ON e.employee_code = s.emp_code
-ON CONFLICT (employee_id, weekday) DO NOTHING;
+-- The original employee / job / candidate / shift / leave / attendance
+-- fixtures were removed on 2026-05-14 so the module ships empty. See
+-- 20260514000001_workforce_remove_seed_fixtures.sql for the live-DB
+-- delete; this file is the source of truth for fresh setups.
 
 -- Payroll runs
 INSERT INTO workforce_payroll_runs
@@ -455,43 +353,6 @@ VALUES
   ('March 2026',    '2026-03-28', 'Paid',      15,  96300000, 17200000,  9630000, 69470000),
   ('February 2026', '2026-02-28', 'Paid',      15,  95900000, 17100000,  9590000, 69210000)
 ON CONFLICT (period) DO NOTHING;
-
--- Leave requests
-INSERT INTO workforce_leave_requests
-  (employee_id, leave_type, start_date, end_date, days, status, reason, submitted_at)
-SELECT e.id, r.leave_type, r.start_date::date, r.end_date::date, r.days, r.status, r.reason, r.submitted_at::timestamptz
-FROM (VALUES
-  ('OF-005', 'Maternity',     '2026-04-20', '2026-07-20', 90, 'Approved', 'Maternity leave — first child.',     '2026-03-02'),
-  ('OF-006', 'Annual',        '2026-05-18', '2026-05-22',  5, 'Pending',  'Family wedding in Mwanza.',          '2026-05-08'),
-  ('OF-013', 'Sick',          '2026-05-12', '2026-05-13',  2, 'Approved', 'Flu — doctor''s note attached.',     '2026-05-12'),
-  ('OF-002', 'Annual',        '2026-06-02', '2026-06-09',  7, 'Pending',  'Vacation with family — Zanzibar.',   '2026-05-10'),
-  ('OF-009', 'Compassionate', '2026-04-30', '2026-05-04',  4, 'Approved', 'Bereavement.',                       '2026-04-29'),
-  ('OF-014', 'Annual',        '2026-05-15', '2026-05-15',  1, 'Rejected', 'Personal matter.',                   '2026-05-09'),
-  ('OF-017', 'Sick',          '2026-05-11', '2026-05-11',  1, 'Approved', 'Migraine.',                          '2026-05-11')
-) AS r(emp_code, leave_type, start_date, end_date, days, status, reason, submitted_at)
-JOIN workforce_employees e ON e.employee_code = r.emp_code
-ON CONFLICT DO NOTHING;
-
--- Attendance for today (2026-05-12)
-INSERT INTO workforce_attendance
-  (employee_id, work_date, clock_in, clock_out, status, worked_hours)
-SELECT e.id, a.work_date::date, a.clock_in, a.clock_out, a.status, a.worked_hours
-FROM (VALUES
-  ('OF-001', '2026-05-12', '08:24'::time, NULL::time, 'Present', 4.6),
-  ('OF-002', '2026-05-12', '09:02'::time, NULL::time, 'Late',    4.0),
-  ('OF-003', '2026-05-12', '10:11'::time, NULL::time, 'Remote',  2.8),
-  ('OF-005', '2026-05-12', NULL::time,    NULL::time, 'Leave',   0.0),
-  ('OF-006', '2026-05-12', '09:48'::time, NULL::time, 'Remote',  3.2),
-  ('OF-008', '2026-05-12', '07:56'::time, NULL::time, 'Present', 5.0),
-  ('OF-010', '2026-05-12', '08:31'::time, NULL::time, 'Present', 4.5),
-  ('OF-012', '2026-05-12', '09:05'::time, NULL::time, 'Late',    4.0),
-  ('OF-013', '2026-05-12', NULL::time,    NULL::time, 'Leave',   0.0),
-  ('OF-014', '2026-05-12', '08:55'::time, NULL::time, 'Present', 4.1),
-  ('OF-016', '2026-05-12', '08:15'::time, NULL::time, 'Present', 4.8),
-  ('OF-017', '2026-05-12', NULL::time,    NULL::time, 'Leave',   0.0)
-) AS a(emp_code, work_date, clock_in, clock_out, status, worked_hours)
-JOIN workforce_employees e ON e.employee_code = a.emp_code
-ON CONFLICT (employee_id, work_date) DO NOTHING;
 
 -- Roles (full permission key list embedded so the matrix renders the
 -- same content out of the box; admins can edit later via the UI).
@@ -511,38 +372,6 @@ INSERT INTO workforce_roles (slug, name, description, permission_keys, members_c
   ('viewer',         'Viewer',         'Read-only access for analysts and audits.',
     ARRAY['cms.read','vendor.read','bookings.read','finance.read','workforce.read','insights.read'], 4, true)
 ON CONFLICT (slug) DO NOTHING;
-
--- Jobs + candidates
-INSERT INTO workforce_jobs
-  (slug, title, department, location, employment_type, status, opened_at,
-   posted_salary_min_tzs, posted_salary_max_tzs, hiring_manager)
-VALUES
-  ('senior-fullstack-engineer',   'Senior Full-Stack Engineer',     'Engineering',    'Remote',         'Permanent', 'Open',    '2026-03-19',  9000000, 12000000, 'Hassan Idris'),
-  ('vendor-onboarding-specialist','Vendor Onboarding Specialist',   'Vendor Success', 'Dar es Salaam',  'Permanent', 'Open',    '2026-04-01',  3500000,  4500000, 'Boniface Lema'),
-  ('studio-production-lead',      'Studio Production Lead',         'Studio',         'Arusha',         'Permanent', 'Open',    '2026-04-15',  5500000,  7500000, 'Asha Mwangi'),
-  ('finance-analyst-tax',         'Finance Analyst (Tax Focus)',    'Finance',        'Dar es Salaam',  'Permanent', 'On hold', '2026-02-08',  4500000,  6500000, 'Imani Kileo'),
-  ('lifecycle-marketing',         'Lifecycle Marketing Specialist', 'Marketing',      'Remote',         'Contract',  'Open',    '2026-04-29',  3500000,  5000000, 'Grace Pallangyo')
-ON CONFLICT (slug) DO NOTHING;
-
-INSERT INTO workforce_candidates (job_id, full_name, email, stage, source, rating, applied_at)
-SELECT j.id, c.full_name, c.email, c.stage, c.source, c.rating::smallint, c.applied_at::date
-FROM (VALUES
-  ('senior-fullstack-engineer',   'Amani Munisi',       'a.munisi@example.com', 'Interview', 'LinkedIn',        4, '2026-04-12'),
-  ('senior-fullstack-engineer',   'Tatu Mwalimu',       'tatu.m@example.com',   'Screening', 'Referral',        5, '2026-04-21'),
-  ('senior-fullstack-engineer',   'Brian Yusuf',        'brian.y@example.com',  'Applied',   'Careers Page',    3, '2026-05-02'),
-  ('senior-fullstack-engineer',   'Hawa Said',          'hawa.s@example.com',   'Offer',     'LinkedIn',        5, '2026-03-25'),
-  ('senior-fullstack-engineer',   'Joel Kassim',        'joel.k@example.com',   'Rejected',  'Direct',          2, '2026-04-04'),
-  ('vendor-onboarding-specialist','Ramla Hamisi',       'ramla.h@example.com',  'Interview', 'Brighter Monday', 4, '2026-04-25'),
-  ('vendor-onboarding-specialist','Salim Bakari',       'salim.b@example.com',  'Applied',   'Careers Page',    3, '2026-05-01'),
-  ('vendor-onboarding-specialist','Pendo Mwita',        'pendo.m@example.com',  'Screening', 'Referral',        4, '2026-04-28'),
-  ('studio-production-lead',      'Frank Mlay',         'frank.m@example.com',  'Hired',     'Referral',        5, '2026-04-20'),
-  ('studio-production-lead',      'Ester Mwakipesile',  'ester.m@example.com',  'Rejected',  'LinkedIn',        2, '2026-04-22'),
-  ('finance-analyst-tax',         'Maua Khamis',        'maua.k@example.com',   'Interview', 'LinkedIn',        4, '2026-03-10'),
-  ('lifecycle-marketing',         'Daudi Mosi',         'daudi.m@example.com',  'Applied',   'Careers Page',    3, '2026-05-06'),
-  ('lifecycle-marketing',         'Neema Sembe',        'neema.s@example.com',  'Screening', 'Direct',          4, '2026-05-04')
-) AS c(job_slug, full_name, email, stage, source, rating, applied_at)
-JOIN workforce_jobs j ON j.slug = c.job_slug
-ON CONFLICT (job_id, email) DO NOTHING;
 
 COMMENT ON TABLE workforce_employees      IS 'Workforce module — employee directory. RLS: admin-only.';
 COMMENT ON TABLE workforce_shifts         IS 'Workforce module — weekly shift roster. RLS: admin-only.';

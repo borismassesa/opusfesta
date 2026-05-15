@@ -14,11 +14,11 @@ import {
   Wallet,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import Avatar from '../_components/Avatar'
-import StatusPill from '../_components/StatusPill'
-import Kpi, { KpiRow } from '../_components/Kpi'
-import { formatTzs, formatTzsCompact } from '../_lib/format'
-import type { Employee, PayrollRun, PayrollStatus } from '../_lib/data'
+import Avatar from '../../workforce/_components/Avatar'
+import StatusPill from '../../workforce/_components/StatusPill'
+import Kpi, { KpiRow } from '../../workforce/_components/Kpi'
+import { formatTzs, formatTzsCompact } from '../../workforce/_lib/format'
+import type { Employee, PayrollRun, PayrollStatus } from '../../workforce/_lib/data'
 import { recomputePayrollRun, setPayrollStatus, startPayrollRun } from './actions'
 
 const STATUS_TONE: Record<PayrollStatus, 'gray' | 'amber' | 'blue' | 'green'> = {
@@ -326,8 +326,8 @@ function Timeline({ status }: { status: PayrollStatus }) {
 
 function PayrollBreakdown({ run, lines }: { run: PayrollRun; lines: EmpLine[] }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+    <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 px-5 py-4">
         <div>
           <h3 className="text-sm font-semibold text-gray-900">Line items — {run.period}</h3>
           <p className="text-xs text-gray-500">{lines.length} employees · TZS gross / deductions / net</p>
@@ -342,7 +342,7 @@ function PayrollBreakdown({ run, lines }: { run: PayrollRun; lines: EmpLine[] })
       </div>
       <div
         role="row"
-        className="grid grid-cols-[minmax(0,2fr)_120px_120px_120px_140px] items-center gap-3 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500"
+        className="grid min-w-[680px] grid-cols-[minmax(0,2fr)_120px_120px_120px_140px] items-center gap-3 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500"
       >
         <span>Employee</span>
         <span className="text-right">Gross</span>
@@ -354,10 +354,10 @@ function PayrollBreakdown({ run, lines }: { run: PayrollRun; lines: EmpLine[] })
         <div
           key={l.employee.id}
           role="row"
-          className="grid grid-cols-[minmax(0,2fr)_120px_120px_120px_140px] items-center gap-3 border-b border-gray-100 px-5 py-3 last:border-b-0"
+          className="grid min-w-[680px] grid-cols-[minmax(0,2fr)_120px_120px_120px_140px] items-center gap-3 border-b border-gray-100 px-5 py-3 last:border-b-0"
         >
           <div className="flex min-w-0 items-center gap-3">
-            <Avatar name={l.employee.name} color={l.employee.avatarColor} size="sm" />
+            <Avatar name={l.employee.name} color={l.employee.avatarColor} src={l.employee.avatarUrl} size="sm" />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-gray-900">{l.employee.name}</p>
               <p className="truncate text-xs text-gray-500">{l.employee.jobTitle}</p>

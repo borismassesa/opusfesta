@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { requireAdminRole } from '@/lib/admin-auth'
+import { requirePermission } from '@/lib/admin-auth'
 import type { LeaveStatus, LeaveType } from '../_lib/types'
 
 const LEAVE_TYPES = new Set<LeaveType>([
@@ -29,7 +29,7 @@ export type SubmitLeaveInput = {
 }
 
 export async function submitLeaveRequest(input: SubmitLeaveInput): Promise<{ id: string }> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
 
   if (!LEAVE_TYPES.has(input.type)) throw new Error('Pick a known leave type.')
   if (new Date(input.endDate) < new Date(input.startDate)) {
@@ -60,7 +60,7 @@ export async function submitLeaveRequest(input: SubmitLeaveInput): Promise<{ id:
 }
 
 export async function decideLeaveRequest(id: string, decision: Extract<LeaveStatus, 'Approved' | 'Rejected'>): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
 
   const supabase = createSupabaseAdminClient()
   // Read the request — we need employee_id + day count for the balance update.
@@ -101,7 +101,7 @@ export async function decideLeaveRequest(id: string, decision: Extract<LeaveStat
 }
 
 export async function cancelLeaveRequest(id: string): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('workforce_leave_requests')
@@ -123,7 +123,7 @@ export type UpsertAttendanceInput = {
 }
 
 export async function upsertAttendance(input: UpsertAttendanceInput): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('workforce_attendance')

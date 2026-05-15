@@ -161,7 +161,7 @@ export default function ScheduleClient({
         </div>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+      <div className="overflow-x-auto no-scrollbar rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
         <div className="grid min-w-[1080px] grid-cols-[minmax(0,260px)_repeat(7,minmax(0,1fr))] gap-px bg-gray-100">
           <div className="bg-gray-50/60 px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500">Employee</div>
           {DAY_LABELS.map((d, i) => (
@@ -221,7 +221,7 @@ function RosterRow({
   return (
     <>
       <div className="flex items-center gap-3 bg-white px-4 py-3">
-        <Avatar name={employee.name} color={employee.avatarColor} />
+        <Avatar name={employee.name} color={employee.avatarColor} src={employee.avatarUrl} />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-gray-900">{employee.name}</p>
           <p className="truncate text-xs text-gray-500">{employee.jobTitle}</p>
@@ -452,7 +452,7 @@ function ShiftEditor({
               type="button"
               onClick={submit}
               disabled={pending}
-              className="rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0] disabled:opacity-50"
+              className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
             >
               {pending ? 'Saving…' : 'Save'}
             </button>

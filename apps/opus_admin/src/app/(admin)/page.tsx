@@ -1,55 +1,91 @@
-'use client'
+import { getCallerPermissions } from '@/lib/admin-auth'
+import DashboardHeading from './_dashboard/DashboardHeading'
+import ActionQueue from './_dashboard/ActionQueue'
+import DepartmentLane from './_dashboard/DepartmentLane'
+import MetricStrip from './_dashboard/MetricStrip'
+import ChartGrid from './_dashboard/ChartGrid'
+import PlatformPulse from './_dashboard/PlatformPulse'
+import RecentActivity from './_dashboard/RecentActivity'
+import QuickActions from './_dashboard/QuickActions'
+import { getDashboardSnapshot } from './_dashboard/queries'
 
-import dynamic from 'next/dynamic'
-import { StatCard } from '@/components/StatCard'
-import { SchedulePanel } from '@/components/SchedulePanel'
+export const dynamic = 'force-dynamic'
 
-const KPIChart = dynamic(() => import('@/components/KPIChart').then(m => m.KPIChart), { ssr: false })
-const TimeWorkedChart = dynamic(() => import('@/components/TimeWorkedChart').then(m => m.TimeWorkedChart), { ssr: false })
-const EmploymentStatus = dynamic(() => import('@/components/EmploymentStatus').then(m => m.EmploymentStatus), { ssr: false })
-const DepartmentPieChart = dynamic(() => import('@/components/DepartmentPieChart').then(m => m.DepartmentPieChart), { ssr: false })
-const SkillRadarChart = dynamic(() => import('@/components/SkillRadarChart').then(m => m.SkillRadarChart), { ssr: false })
-const SalaryBarChart = dynamic(() => import('@/components/SalaryBarChart').then(m => m.SalaryBarChart), { ssr: false })
+// Soft-flavours the dashboard subtitle by department. Founders see the
+// platform-wide framing; departmental folks see "you're seeing your
+// team's view" so it's clear why the action queue / metrics are biased
+// to their work.
+function buildSubtitle(department: string | null): string {
+  if (!department) return "Here's what's happening across OpusFesta today."
+  if (department === 'Founders') {
+    return "Platform-wide view — every department, every queue."
+  }
+  return `Your view as ${department} · everything you can act on right now.`
+}
 
-export default function DashboardPage() {
+// Admin dashboard. Server component that pulls a single snapshot of
+// counts + recent activity in one round trip, then composes the four
+// sections — each gated by the caller's permission set so a finance-only
+// viewer (for example) doesn't see vendor moderation cards.
+//
+// Personalised "Welcome, <name>" lives in <DashboardHeading /> (client)
+// because it needs Clerk's useUser hook. The component renders nothing
+// visible — it just pushes into the global PageHeading context that
+// drives the admin Header.
+
+export default async function DashboardPage() {
+  const [snapshot, permissions] = await Promise.all([
+    getDashboardSnapshot(),
+    getCallerPermissions(),
+  ])
+
   return (
-    <div className="p-8 pb-12">
-      <div className="max-w-[1400px] mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 auto-rows-min">
-        <div className="col-span-1 lg:col-span-3">
-          <StatCard title="Total Employee" value="218" trend="+6%" />
-        </div>
-        <div className="col-span-1 lg:col-span-3">
-          <StatCard title="New Employee" value="48" trend="+6%" />
-        </div>
-        <div className="col-span-1 lg:col-span-3">
-          <StatCard title="Resigned Employee" value="16" trend="+2%" />
+    <div className="px-8 py-8">
+      <DashboardHeading subtitle={buildSubtitle(snapshot.caller.department)} />
+
+      <div className="mx-auto max-w-[1400px] space-y-8">
+        {/* KPI strip at the top — the at-a-glance numbers anchor the page
+            so the rest of the dashboard reads as supporting detail. */}
+        <MetricStrip metrics={snapshot.headline} granted={permissions} />
+
+        {/* Trends (charts) take the left, prominent column. Needs your
+            attention sits on the right as a compact action list — the
+            two flow as a hero band: numbers up top, charts in the middle,
+            decisions waiting at hand. */}
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+          <ChartGrid
+            charts={snapshot.charts}
+            granted={permissions}
+            department={snapshot.caller.department}
+          />
+          <ActionQueue
+            counts={snapshot.actionQueue}
+            granted={permissions}
+            variant="list"
+          />
         </div>
 
-        <div className="col-span-1 lg:col-span-3 lg:row-span-2 flex min-h-[500px]">
-          <SchedulePanel />
-        </div>
+        {/* Department-flavoured "decisions for today" band. Renders
+            nothing for Founders (they get PlatformPulse instead) or
+            callers without a matching workforce_employees row. */}
+        {snapshot.departmentLane && (
+          <DepartmentLane lane={snapshot.departmentLane} />
+        )}
 
-        <div className="col-span-1 lg:col-span-9 flex min-h-[380px]">
-          <div className="flex-1 w-full">
-            <KPIChart />
-          </div>
-        </div>
+        {/* Founders-only pulse band — surfaces the cross-departmental
+            "stuck" items no single owner pursues by default. The query
+            layer returns null for non-Founders, so this just doesn't
+            render for everyone else. */}
+        {snapshot.platformPulse && (
+          <PlatformPulse pulse={snapshot.platformPulse} />
+        )}
 
-        <div className="col-span-1 lg:col-span-6 flex min-h-[300px]">
-          <TimeWorkedChart />
-        </div>
-        <div className="col-span-1 lg:col-span-6 flex min-h-[300px]">
-          <EmploymentStatus />
-        </div>
-
-        <div className="col-span-1 lg:col-span-4 flex min-h-[350px]">
-          <DepartmentPieChart />
-        </div>
-        <div className="col-span-1 lg:col-span-4 flex min-h-[350px]">
-          <SalaryBarChart />
-        </div>
-        <div className="col-span-1 lg:col-span-4 flex min-h-[350px]">
-          <SkillRadarChart />
+        {/* Two-column layout below the hero — activity on the left
+            (the bigger surface, since the feed grows over time), quick
+            actions on the right as a stable shortcut rail. */}
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)]">
+          <RecentActivity items={snapshot.activity} />
+          <QuickActions granted={permissions} />
         </div>
       </div>
     </div>

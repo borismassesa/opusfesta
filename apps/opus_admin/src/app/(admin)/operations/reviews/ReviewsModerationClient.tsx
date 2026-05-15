@@ -60,9 +60,7 @@ export default function ReviewsModerationClient({
   const activeTab = FILTER_TABS.find((t) => t.id === filter)
   useSetPageHeading({
     title: 'Reviews & moderation',
-    subtitle: `${counts[filter]} ${activeTab?.label.toLowerCase() ?? 'reviews'}${
-      activeTab?.description ? ' · ' + activeTab.description : ''
-    }`,
+    subtitle: activeTab?.description,
   })
 
   const writeFilter = (next: Filter) => {

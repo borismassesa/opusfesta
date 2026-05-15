@@ -82,7 +82,7 @@ export default function LeaveClient({
         <Kpi label="Late arrivals" value={String(late)} deltaTone={late > 0 ? 'negative' : 'positive'} delta={late > 0 ? `${late} today` : '0 today'} icon={<Clock4 className="h-4 w-4" />} />
       </KpiRow>
 
-      <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-white p-1.5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-100 bg-white p-1.5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
         <TabButton current={tab} value="requests" onSelect={setTab} count={requests.length}>
           Requests
         </TabButton>
@@ -225,17 +225,17 @@ function RequestsTable({
         <button
           type="button"
           onClick={() => setSubmitting(true)}
-          className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-3 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0]"
+          className="ml-auto inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
         >
           <Plus className="h-4 w-4" />
           New request
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+      <div className="overflow-x-auto no-scrollbar rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
         <div
           role="row"
-          className="grid grid-cols-[minmax(0,1.6fr)_120px_minmax(0,1fr)_90px_minmax(0,1.4fr)_120px_140px] items-center gap-3 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500"
+          className="grid min-w-[960px] grid-cols-[minmax(0,1.6fr)_120px_minmax(0,1fr)_90px_minmax(0,1.4fr)_120px_140px] items-center gap-3 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500"
         >
           <span>Employee</span>
           <span>Type</span>
@@ -255,10 +255,10 @@ function RequestsTable({
               <div
                 key={r.id}
                 role="row"
-                className="grid grid-cols-[minmax(0,1.6fr)_120px_minmax(0,1fr)_90px_minmax(0,1.4fr)_120px_140px] items-center gap-3 border-b border-gray-100 px-5 py-3 last:border-b-0"
+                className="grid min-w-[960px] grid-cols-[minmax(0,1.6fr)_120px_minmax(0,1fr)_90px_minmax(0,1.4fr)_120px_140px] items-center gap-3 border-b border-gray-100 px-5 py-3 last:border-b-0"
               >
                 <div className="flex min-w-0 items-center gap-3">
-                  <Avatar name={emp.name} color={emp.avatarColor} size="sm" />
+                  <Avatar name={emp.name} color={emp.avatarColor} src={emp.avatarUrl} size="sm" />
                   <div className="min-w-0">
                     <p className="truncate text-sm font-semibold text-gray-900">{emp.name}</p>
                     <p className="truncate text-xs text-gray-500">{emp.jobTitle}</p>
@@ -398,7 +398,7 @@ function LeaveRequestDialog({
         <div className="mt-4 space-y-4">
           {employee && (
             <div className="flex items-center gap-3 rounded-xl bg-gray-50 p-3">
-              <Avatar name={employee.name} color={employee.avatarColor} />
+              <Avatar name={employee.name} color={employee.avatarColor} src={employee.avatarUrl} />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-gray-900">{employee.name}</p>
                 <p className="truncate text-xs text-gray-500">{employee.jobTitle} · {employee.department}</p>
@@ -448,7 +448,7 @@ function LeaveRequestDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0]"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
           >
             Close
           </button>
@@ -623,7 +623,7 @@ function SubmitLeaveDialog({
             type="button"
             onClick={submit}
             disabled={pending || !employeeId || !reason}
-            className="rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0] disabled:opacity-50"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             {pending ? 'Submitting…' : 'Submit request'}
           </button>
@@ -674,14 +674,14 @@ function AttendanceTable({
   }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+    <div className="overflow-x-auto no-scrollbar rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
       <div className="border-b border-gray-100 px-5 py-4">
         <h3 className="text-sm font-semibold text-gray-900">Today · 12 May 2026</h3>
         <p className="text-xs text-gray-500">Real-time clock-in / clock-out — pulled from the office Wi-Fi gateway and the remote check-in app.</p>
       </div>
       <div
         role="row"
-        className="grid grid-cols-[minmax(0,1.6fr)_120px_120px_120px_120px_minmax(0,140px)] items-center gap-3 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500"
+        className="grid min-w-[820px] grid-cols-[minmax(0,1.6fr)_120px_120px_120px_120px_minmax(0,140px)] items-center gap-3 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500"
       >
         <span>Employee</span>
         <span>Status</span>
@@ -697,10 +697,10 @@ function AttendanceTable({
           <div
             key={a.employeeId}
             role="row"
-            className="grid grid-cols-[minmax(0,1.6fr)_120px_120px_120px_120px_minmax(0,140px)] items-center gap-3 border-b border-gray-100 px-5 py-3 last:border-b-0"
+            className="grid min-w-[820px] grid-cols-[minmax(0,1.6fr)_120px_120px_120px_120px_minmax(0,140px)] items-center gap-3 border-b border-gray-100 px-5 py-3 last:border-b-0"
           >
             <div className="flex min-w-0 items-center gap-3">
-              <Avatar name={emp.name} color={emp.avatarColor} size="sm" />
+              <Avatar name={emp.name} color={emp.avatarColor} src={emp.avatarUrl} size="sm" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-gray-900">{emp.name}</p>
                 <p className="truncate text-xs text-gray-500">{emp.department}</p>
@@ -738,10 +738,10 @@ function AttendanceTable({
 
 function BalancesTable({ employees }: { employees: Employee[] }) {
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+    <div className="overflow-x-auto no-scrollbar rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
       <div
         role="row"
-        className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_140px_minmax(0,160px)] items-center gap-3 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500"
+        className="grid min-w-[640px] grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_140px_minmax(0,160px)] items-center gap-3 border-b border-gray-100 bg-gray-50/60 px-5 py-3 text-[11px] font-bold uppercase tracking-wider text-gray-500"
       >
         <span>Employee</span>
         <span>Department</span>
@@ -756,10 +756,10 @@ function BalancesTable({ employees }: { employees: Employee[] }) {
           <div
             key={e.id}
             role="row"
-            className="grid grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_140px_minmax(0,160px)] items-center gap-3 border-b border-gray-100 px-5 py-3 last:border-b-0"
+            className="grid min-w-[640px] grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_140px_minmax(0,160px)] items-center gap-3 border-b border-gray-100 px-5 py-3 last:border-b-0"
           >
             <div className="flex min-w-0 items-center gap-3">
-              <Avatar name={e.name} color={e.avatarColor} size="sm" />
+              <Avatar name={e.name} color={e.avatarColor} src={e.avatarUrl} size="sm" />
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-gray-900">{e.name}</p>
                 <p className="truncate text-xs text-gray-500">{e.jobTitle}</p>

@@ -18,13 +18,9 @@ export default async function LeavePage() {
     getLeaveRequests(),
     getAttendance(today),
   ])
-  const pending = requests.filter((r) => r.status === 'Pending').length
-  const subtitle = pending > 0
-    ? `${pending} leave request${pending === 1 ? '' : 's'} waiting for approval`
-    : 'No pending approvals'
   return (
     <>
-      <WorkforceHeading title="Leave & Attendance" subtitle={subtitle} />
+      <WorkforceHeading title="Leave & Attendance" />
       <LeaveClient
         employees={employees}
         requests={requests}

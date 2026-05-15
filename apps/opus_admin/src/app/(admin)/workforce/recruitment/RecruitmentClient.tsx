@@ -15,6 +15,7 @@ import {
   X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { HeaderActionsSlot } from '@/components/HeaderPortals'
 import Avatar from '../_components/Avatar'
 import StatusPill from '../_components/StatusPill'
 import Kpi, { KpiRow } from '../_components/Kpi'
@@ -116,6 +117,20 @@ export default function RecruitmentClient({ jobs }: { jobs: Job[] }) {
 
   return (
     <div className="space-y-6">
+      {/* Page-level CTA portals into the global admin Header so the
+          recruitment toolbar stays focused on filtering/selecting jobs.
+          Mirrors the pattern used on Employees (Export / Add employee). */}
+      <HeaderActionsSlot>
+        <button
+          type="button"
+          onClick={() => setCreating(true)}
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
+        >
+          <Plus className="h-4 w-4" />
+          New job
+        </button>
+      </HeaderActionsSlot>
+
       <KpiRow>
         <Kpi label="Open roles" value={String(open)} delta={`${jobs.length - open} other`} deltaTone="neutral" icon={<Briefcase className="h-4 w-4" />} />
         <Kpi label="Active candidates" value={String(totalCandidates)} hint="across all pipelines" icon={<UserPlus className="h-4 w-4" />} />
@@ -125,17 +140,7 @@ export default function RecruitmentClient({ jobs }: { jobs: Job[] }) {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)]">
         <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Open roles</h3>
-            <button
-              type="button"
-              onClick={() => setCreating(true)}
-              className="inline-flex items-center gap-1 rounded-md bg-[#C9A0DC] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[#b97fd0]"
-            >
-              <Plus className="h-3 w-3" />
-              New job
-            </button>
-          </div>
+          <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500">Open roles</h3>
           <div className="space-y-2">
             {jobs.map((j) => (
               <JobCard
@@ -279,7 +284,7 @@ function JobDetail({
             <button
               type="button"
               onClick={onAddCandidate}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-3 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0]"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
             >
               <Mail className="h-4 w-4" />
               Add candidate
@@ -296,7 +301,7 @@ function JobDetail({
         </dl>
       </div>
 
-      <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+      <div className="overflow-x-auto no-scrollbar rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
         <div className="flex min-w-[920px] gap-3">
           {stages.map((s) => {
             const candidates = grouped.get(s) ?? []
@@ -624,7 +629,7 @@ function NewJobDialog({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={submit}
             disabled={pending || !title || !hiringManager || !minSalary || !maxSalary}
-            className="rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0] disabled:opacity-50"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             {pending ? 'Creating…' : 'Create job'}
           </button>
@@ -777,7 +782,7 @@ function AddCandidateDialog({
             type="button"
             onClick={submit}
             disabled={pending || !name || !email}
-            className="rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0] disabled:opacity-50"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             {pending ? 'Adding…' : 'Add candidate'}
           </button>

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { requireAdminRole } from '@/lib/admin-auth'
+import { requirePermission } from '@/lib/admin-auth'
 import type {
   Candidate,
   Department,
@@ -43,7 +43,7 @@ export type CreateJobInput = {
 }
 
 export async function createJob(input: CreateJobInput): Promise<{ id: string }> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
   const title = input.title.trim()
   if (title.length < 3) throw new Error('Job title is required.')
   if (input.postedSalaryMaxTzs < input.postedSalaryMinTzs) {
@@ -78,7 +78,7 @@ export async function createJob(input: CreateJobInput): Promise<{ id: string }> 
 }
 
 export async function setJobStatus(id: string, status: JobStatus): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
   if (!STATUSES.has(status)) throw new Error('Unknown job status.')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase.from('workforce_jobs').update({ status }).eq('id', id)
@@ -93,7 +93,7 @@ export async function addCandidate(input: {
   source: Candidate['source']
   rating?: number
 }): Promise<{ id: string }> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
   const name = input.name.trim()
   const email = input.email.trim().toLowerCase()
   if (name.length < 2) throw new Error('Candidate name is required.')
@@ -124,7 +124,7 @@ export async function addCandidate(input: {
 }
 
 export async function moveCandidate(id: string, stage: JobStage): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
   if (!STAGES.has(stage)) throw new Error('Unknown stage.')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase.from('workforce_candidates').update({ stage }).eq('id', id)
@@ -133,7 +133,7 @@ export async function moveCandidate(id: string, stage: JobStage): Promise<void> 
 }
 
 export async function rateCandidate(id: string, rating: number): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
   if (rating < 1 || rating > 5) throw new Error('Rating must be 1–5.')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase

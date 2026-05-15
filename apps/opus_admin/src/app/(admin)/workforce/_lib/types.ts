@@ -2,20 +2,25 @@
 // truth for these shapes; the client components consume the mapped
 // versions returned by queries.ts.
 
+// OpusFesta org structure — nine departments. Mirrored on
+// workforce_employees.department CHECK constraint
+// (see migration 20260514231512_workforce_departments_v3_add_hr.sql).
 export type Department =
   | 'Operations'
-  | 'Engineering'
-  | 'Product'
-  | 'Design'
-  | 'Marketing'
-  | 'Vendor Success'
-  | 'Finance'
-  | 'People'
-  | 'Studio'
+  | 'Technology'
+  | 'Content, Brand and Social Media'
+  | 'Marketing and Partnership'
+  | 'UI/UX Design'
+  | 'Finance and Accountings'
+  | 'HR'
+  | 'Interns'
+  | 'Founders'
 
 export type EmploymentType = 'Permanent' | 'Contract' | 'Probation' | 'Intern'
 export type EmployeeStatus = 'Active' | 'On Leave' | 'Onboarding' | 'Resigned'
 export type Location = 'Dar es Salaam' | 'Arusha' | 'Zanzibar' | 'Remote'
+
+export type DashboardAccessState = 'none' | 'invited' | 'active' | 'revoked'
 
 export type Employee = {
   id: string
@@ -33,6 +38,21 @@ export type Employee = {
   salaryTzs: number
   leaveBalanceDays: number
   avatarColor: string
+  // Profile picture URL. Populated from Clerk's user.imageUrl when the
+  // employee accepts their invitation (or when we link an existing Clerk
+  // account). Null until then — the Avatar component falls back to the
+  // initials-on-coloured-circle look.
+  avatarUrl: string | null
+  // Dashboard access (RBAC). When dashboardAccess is true, the employee
+  // can sign in to the admin app; the role assigned via dashboardRoleId
+  // determines which permissions they get. invitedAt is set the first
+  // time we send them a Clerk invitation; lastDashboardLogin is updated
+  // when they successfully accept it (or sign in afterwards).
+  dashboardAccess: boolean
+  dashboardRoleId: string | null
+  invitedAt: string | null
+  lastDashboardLogin: string | null
+  clerkUserId: string | null
 }
 
 export type ShiftType = 'Full day' | 'Half day' | 'On-call' | 'Remote' | 'Off'
@@ -181,13 +201,13 @@ export const JOB_STAGES: JobStage[] = [
 ]
 
 export const DEPARTMENTS: Department[] = [
+  'Founders',
   'Operations',
-  'Engineering',
-  'Product',
-  'Design',
-  'Marketing',
-  'Vendor Success',
-  'Finance',
-  'People',
-  'Studio',
+  'Technology',
+  'Content, Brand and Social Media',
+  'Marketing and Partnership',
+  'UI/UX Design',
+  'Finance and Accountings',
+  'HR',
+  'Interns',
 ]

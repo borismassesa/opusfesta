@@ -95,13 +95,9 @@ export default async function AuthorsListPage() {
       expiresAt: i.expires_at,
     }))
 
-  const subtitle = `${authorEntries.length} active · ${inviteEntries.length} pending invite${
-    inviteEntries.length === 1 ? '' : 's'
-  } · bios appear on each Author Card`
-
   return (
     <div className="pb-12">
-      <AuthorsHeader title="Authors" subtitle={subtitle} />
+      <AuthorsHeader title="Authors" subtitle="Bios appear on each Author Card" />
       <ArticleNavTabs />
       <div className="mx-auto max-w-[1200px] px-8 pt-8">
         <AuthorsListView authors={authorEntries} invites={inviteEntries} />

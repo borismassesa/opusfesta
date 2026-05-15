@@ -12,7 +12,6 @@ import SetArticlesHeading from '../SetArticlesHeading'
 import ArticleNavTabs from '../ArticleNavTabs'
 import SubmissionsListView from './_submissions/SubmissionsListView'
 import type { SubmissionListEntry } from './_submissions/SubmissionRow'
-import { formatDaysOldest } from '../../_shared/relativeTime'
 import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -63,8 +62,11 @@ export default async function ArticleSubmissionsPage() {
     sourcePostId: r.source_post_id,
   }))
 
+  // Used by the "Review next" CTA in the header — fast-forwards reviewers
+  // to the oldest pending submission. Stats themselves don't appear in
+  // the subtitle anymore (the table below shows them); we still need the
+  // oldest-pending lookup for the CTA href.
   const pending = entries.filter((e) => e.status === 'pending' || e.status === 'submitted')
-  const revisions = entries.filter((e) => e.status === 'revisions' || e.status === 'changes_requested')
   const oldestPending = pending
     .slice()
     .sort(
@@ -72,26 +74,6 @@ export default async function ArticleSubmissionsPage() {
         new Date(a.submittedAt ?? a.updatedAt).getTime() -
         new Date(b.submittedAt ?? b.updatedAt).getTime()
     )[0]
-  const oldestDays = formatDaysOldest(
-    oldestPending?.submittedAt ?? oldestPending?.updatedAt ?? null
-  )
-
-  const subtitleParts: string[] = []
-  if (pending.length > 0) {
-    subtitleParts.push(
-      `${pending.length} awaiting review`
-    )
-  }
-  if (revisions.length > 0) {
-    subtitleParts.push(`${revisions.length} in revision`)
-  }
-  if (oldestPending && oldestDays != null) {
-    subtitleParts.push(
-      `oldest waiting ${oldestDays} day${oldestDays === 1 ? '' : 's'}`
-    )
-  }
-  const subtitle =
-    subtitleParts.length > 0 ? subtitleParts.join(' · ') : 'Queue is empty'
 
   const reviewNextHref = oldestPending
     ? `/operations/articles/submissions/${oldestPending.id}`
@@ -99,7 +81,7 @@ export default async function ArticleSubmissionsPage() {
 
   return (
     <div className="pb-12">
-      <SetArticlesHeading title="Submissions" subtitle={subtitle} />
+      <SetArticlesHeading title="Submissions" />
       <HeaderActionsSlot>
         {reviewNextHref ? (
           <Link

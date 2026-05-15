@@ -2,7 +2,11 @@
 
 import { revalidatePath } from 'next/cache'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { requireAdminRole } from '@/lib/admin-auth'
+import { getCallerEmail, requirePermission } from '@/lib/admin-auth'
+import {
+  inviteEmployee as inviteEmployeeViaClerk,
+  revokeInvitation as revokeWorkforceInvitation,
+} from '@/lib/workforce-invitations'
 import type {
   Department,
   EmployeeStatus,
@@ -11,15 +15,14 @@ import type {
 } from '../_lib/types'
 
 const DEPARTMENTS = new Set<Department>([
+  'Founders',
   'Operations',
-  'Engineering',
-  'Product',
-  'Design',
-  'Marketing',
-  'Vendor Success',
-  'Finance',
-  'People',
-  'Studio',
+  'Technology',
+  'Content, Brand and Social Media',
+  'Marketing and Partnership',
+  'UI/UX Design',
+  'Finance and Accountings',
+  'Interns',
 ])
 
 const EMPLOYMENT_TYPES = new Set<EmploymentType>([
@@ -102,7 +105,7 @@ async function nextEmployeeCode(): Promise<string> {
 }
 
 export async function createEmployee(input: CreateEmployeeInput): Promise<{ id: string; employeeCode: string }> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
 
   const fullName = input.fullName.trim()
   const email = normalizeEmail(input.email)
@@ -171,7 +174,7 @@ export type UpdateEmployeeInput = Partial<{
 }>
 
 export async function updateEmployee(id: string, input: UpdateEmployeeInput): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
 
   const patch: Record<string, unknown> = {}
   if (input.fullName !== undefined) patch.full_name = input.fullName.trim()
@@ -213,7 +216,7 @@ export async function updateEmployee(id: string, input: UpdateEmployeeInput): Pr
 
   revalidatePath('/workforce/employees')
   revalidatePath('/workforce/schedule')
-  revalidatePath('/workforce/payroll')
+  revalidatePath('/finance/payroll')
 }
 
 export async function setEmployeeStatus(id: string, status: EmployeeStatus): Promise<void> {
@@ -221,10 +224,222 @@ export async function setEmployeeStatus(id: string, status: EmployeeStatus): Pro
 }
 
 export async function deleteEmployee(id: string): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase.from('workforce_employees').delete().eq('id', id)
   if (error) throw error
   revalidatePath('/workforce/employees')
   revalidatePath('/workforce/schedule')
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard access (RBAC + invitations)
+// ---------------------------------------------------------------------------
+// Granting access is a two-step gesture: assign the role on the row,
+// then send a Clerk invitation. The actual `dashboard_access` flag only
+// flips to true after the invitee accepts (acceptInvitation in
+// workforce-invitations.ts), which is when the trigger mirrors them
+// into admin_whitelist and they can sign in.
+
+async function getCallerWhitelistId(): Promise<string | null> {
+  const email = await getCallerEmail()
+  if (!email) return null
+  const supabase = createSupabaseAdminClient()
+  const { data } = await supabase
+    .from('admin_whitelist')
+    .select('id')
+    .ilike('email', email)
+    .maybeSingle<{ id: string }>()
+  return data?.id ?? null
+}
+
+export type GrantDashboardAccessResult = {
+  invitationId: string
+  emailSent: boolean
+  emailReason?: string
+}
+
+export async function grantDashboardAccess(
+  employeeId: string,
+  roleId: string,
+): Promise<GrantDashboardAccessResult> {
+  // Granting dashboard access is a privileged operation — it determines
+  // who can sign in and what they can do. Only owners can do it.
+  await requirePermission('platform.admin')
+
+  const invitedById = await getCallerWhitelistId()
+  const result = await inviteEmployeeViaClerk({ employeeId, roleId, invitedById })
+
+  revalidatePath('/workforce/employees')
+  revalidatePath('/workforce/roles')
+  return {
+    invitationId: result.invitationId,
+    emailSent: result.emailSent,
+    emailReason: result.emailReason,
+  }
+}
+
+async function fetchEmployeeAccessSnapshot(employeeId: string): Promise<{
+  id: string
+  email: string
+  fullName: string
+  hasAccess: boolean
+  currentRoleSlug: string | null
+} | null> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_employees')
+    .select(
+      'id, email, full_name, dashboard_access, dashboard_role_id, workforce_roles(slug)',
+    )
+    .eq('id', employeeId)
+    .maybeSingle<{
+      id: string
+      email: string
+      full_name: string
+      dashboard_access: boolean
+      dashboard_role_id: string | null
+      workforce_roles: { slug: string } | null
+    }>()
+  if (error) throw error
+  if (!data) return null
+  return {
+    id: data.id,
+    email: data.email,
+    fullName: data.full_name,
+    hasAccess: data.dashboard_access,
+    currentRoleSlug: data.workforce_roles?.slug ?? null,
+  }
+}
+
+async function assertOtherActiveOwnerExists(excludeEmployeeId: string): Promise<void> {
+  // "Owner" is defined by the linked workforce_role slug, mirrored into
+  // admin_whitelist.role by the sync trigger. Count active owners other
+  // than the row we're about to mutate.
+  const supabase = createSupabaseAdminClient()
+  const { count, error } = await supabase
+    .from('workforce_employees')
+    .select('id, workforce_roles!inner(slug)', { count: 'exact', head: true })
+    .eq('dashboard_access', true)
+    .eq('workforce_roles.slug', 'owner')
+    .neq('id', excludeEmployeeId)
+  if (error) throw error
+  if (!count || count < 1) {
+    throw new Error(
+      'There must be at least one active owner. Promote another teammate to Owner first.',
+    )
+  }
+}
+
+async function assertNotSelf(employeeId: string, errorMessage: string): Promise<void> {
+  const supabase = createSupabaseAdminClient()
+  const callerEmail = await getCallerEmail()
+  if (!callerEmail) return
+  const { data } = await supabase
+    .from('workforce_employees')
+    .select('email')
+    .eq('id', employeeId)
+    .maybeSingle<{ email: string }>()
+  if (data && data.email.toLowerCase() === callerEmail.toLowerCase()) {
+    throw new Error(errorMessage)
+  }
+}
+
+// Change an existing dashboard member's primary role. Unlike grant (which
+// goes through the Clerk-invitation flow), this is a direct UPDATE — the
+// trigger then mirrors the new role slug onto admin_whitelist.
+export async function setDashboardRole(
+  employeeId: string,
+  roleId: string,
+): Promise<void> {
+  await requirePermission('platform.admin')
+
+  const snapshot = await fetchEmployeeAccessSnapshot(employeeId)
+  if (!snapshot) throw new Error('Employee not found.')
+  if (!snapshot.hasAccess) {
+    throw new Error(
+      'This person doesn’t have dashboard access yet. Use "Grant access" to send an invitation.',
+    )
+  }
+
+  const supabase = createSupabaseAdminClient()
+  const { data: nextRole, error: roleError } = await supabase
+    .from('workforce_roles')
+    .select('slug')
+    .eq('id', roleId)
+    .maybeSingle<{ slug: string }>()
+  if (roleError) throw roleError
+  if (!nextRole) throw new Error('Role not found.')
+
+  // Demoting the last active owner would lock the team out of admin
+  // management. Promotions and lateral moves don't need this guard.
+  if (snapshot.currentRoleSlug === 'owner' && nextRole.slug !== 'owner') {
+    await assertOtherActiveOwnerExists(employeeId)
+  }
+
+  const { error } = await supabase
+    .from('workforce_employees')
+    .update({ dashboard_role_id: roleId })
+    .eq('id', employeeId)
+  if (error) throw error
+
+  revalidatePath('/workforce/employees')
+  revalidatePath('/workforce/roles')
+}
+
+export async function revokeDashboardAccess(employeeId: string): Promise<void> {
+  await requirePermission('platform.admin')
+
+  const snapshot = await fetchEmployeeAccessSnapshot(employeeId)
+  if (!snapshot) throw new Error('Employee not found.')
+  if (!snapshot.hasAccess) return // already revoked — idempotent
+
+  // Protect the team from lockout: revoking the last active owner is
+  // disallowed, and you can't revoke your own access (you'd be unable
+  // to un-revoke yourself afterwards).
+  if (snapshot.currentRoleSlug === 'owner') {
+    await assertOtherActiveOwnerExists(employeeId)
+  }
+  await assertNotSelf(
+    employeeId,
+    'You can’t revoke your own access. Ask another owner to do it.',
+  )
+
+  const supabase = createSupabaseAdminClient()
+  // Drop access on the employee row → trigger removes them from
+  // admin_whitelist → next request rejects them at getAdminAccessRole.
+  const { data: employee, error: employeeError } = await supabase
+    .from('workforce_employees')
+    .update({
+      dashboard_access: false,
+      dashboard_role_id: null,
+    })
+    .eq('id', employeeId)
+    .select('id')
+    .maybeSingle<{ id: string }>()
+  if (employeeError) throw employeeError
+  if (!employee) throw new Error('Employee not found.')
+
+  // Revoke any still-pending invitations so a stale email link can't
+  // re-grant access after the fact.
+  const { data: pending } = await supabase
+    .from('workforce_invitations')
+    .select('id')
+    .eq('employee_id', employeeId)
+    .eq('status', 'pending')
+    .returns<Array<{ id: string }>>()
+
+  for (const row of pending ?? []) {
+    await revokeWorkforceInvitation(row.id).catch((err) => {
+      console.warn('[workforce] could not revoke pending invite during access revoke', err)
+    })
+  }
+
+  revalidatePath('/workforce/employees')
+  revalidatePath('/workforce/roles')
+}
+
+export async function resendInvitation(employeeId: string, roleId: string): Promise<GrantDashboardAccessResult> {
+  // Same gating as grant — re-issuing an invite is functionally a re-grant.
+  return grantDashboardAccess(employeeId, roleId)
 }

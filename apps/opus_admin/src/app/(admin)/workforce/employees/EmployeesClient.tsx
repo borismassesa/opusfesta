@@ -16,7 +16,13 @@ import {
   UserPlus,
   X,
 } from 'lucide-react'
-import { createEmployee, deleteEmployee, updateEmployee } from './actions'
+import {
+  createEmployee,
+  deleteEmployee,
+  grantDashboardAccess,
+  revokeDashboardAccess,
+  updateEmployee,
+} from './actions'
 import { cn } from '@/lib/utils'
 import { HeaderActionsSlot } from '@/components/HeaderPortals'
 import Avatar from '../_components/Avatar'
@@ -29,6 +35,7 @@ import {
   EmploymentType,
   Location,
 } from '../_lib/data'
+import type { WorkforceRole } from '../_lib/types'
 import { formatDate, formatTzs, formatTzsCompact, tenureLabel } from '../_lib/format'
 
 const STATUS_TONE: Record<EmployeeStatus, 'green' | 'amber' | 'purple' | 'gray'> = {
@@ -56,16 +63,20 @@ const LOCATIONS: Location[] = ['Dar es Salaam', 'Arusha', 'Zanzibar', 'Remote']
 // (type + tenure) cluster together, with Status acting as the trailing
 // "current state" cell before the action icons.
 const ROW_GRID =
-  'grid grid-cols-[minmax(0,2.4fr)_minmax(0,1.7fr)_110px_minmax(140px,1fr)_120px_72px] items-center gap-5'
+  'grid min-w-[920px] grid-cols-[minmax(0,2.4fr)_minmax(0,1.7fr)_110px_minmax(140px,1fr)_120px_72px] items-center gap-5'
 
 export default function EmployeesClient({
   employees,
   departments,
   openJobs,
+  roles,
+  callerIsOwner,
 }: {
   employees: Employee[]
   departments: Department[]
   openJobs: number
+  roles: WorkforceRole[]
+  callerIsOwner: boolean
 }) {
   const [search, setSearch] = useState('')
   const [department, setDepartment] = useState<Department | 'All'>('All')
@@ -166,7 +177,7 @@ export default function EmployeesClient({
         <button
           type="button"
           onClick={() => setShowAdd(true)}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#b97fd0]"
+          className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-700"
         >
           <Plus className="h-4 w-4" />
           Add employee
@@ -257,7 +268,7 @@ export default function EmployeesClient({
       </div>
 
       {view === 'list' ? (
-        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+        <div className="overflow-x-auto no-scrollbar rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
           <div
             role="row"
             className={cn(
@@ -316,6 +327,8 @@ export default function EmployeesClient({
         <EmployeeFormDialog
           mode="create"
           departments={departments}
+          roles={roles}
+          callerIsOwner={callerIsOwner}
           onClose={() => setShowAdd(false)}
         />
       )}
@@ -324,6 +337,8 @@ export default function EmployeesClient({
           mode="edit"
           employee={editing}
           departments={departments}
+          roles={roles}
+          callerIsOwner={callerIsOwner}
           onClose={() => setEditing(null)}
         />
       )}
@@ -358,7 +373,7 @@ function EmployeeRow({
       onClick={onOpen}
     >
       <div className="flex min-w-0 items-center gap-3">
-        <Avatar name={employee.name} color={employee.avatarColor} size="sm" />
+        <Avatar name={employee.name} color={employee.avatarColor} src={employee.avatarUrl} size="sm" />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold text-gray-950">{employee.name}</p>
           <p className="truncate text-xs text-gray-500">{employee.email}</p>
@@ -375,8 +390,13 @@ function EmployeeRow({
         <p className="truncate text-sm text-gray-700 tabular-nums">{formatDate(employee.startDate)}</p>
         <p className="truncate text-[11px] text-gray-400">{tenureLabel(employee.startDate)}</p>
       </div>
-      <div>
+      <div className="flex flex-col items-start gap-1">
         <StatusPill tone={STATUS_TONE[employee.status]} label={employee.status} />
+        {employee.dashboardAccess ? (
+          <StatusPill tone="purple" label="Dashboard" />
+        ) : employee.invitedAt ? (
+          <StatusPill tone="amber" label="Invited" />
+        ) : null}
       </div>
       <div
         className="flex items-center justify-end gap-0.5"
@@ -429,13 +449,19 @@ function EmployeeCard({
       }}
       className="group relative cursor-pointer rounded-2xl border border-gray-100 bg-white p-5 text-left shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] transition-shadow hover:shadow-md"
     >
-      <div className="flex items-start justify-between">
-        <Avatar name={employee.name} color={employee.avatarColor} size="lg" />
-        <StatusPill tone={STATUS_TONE[employee.status]} label={employee.status} />
+      <div className="flex items-center gap-3 pr-16">
+        <Avatar name={employee.name} color={employee.avatarColor} src={employee.avatarUrl} size="lg" />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-gray-950">{employee.name}</p>
+          <p className="truncate text-xs text-gray-500">{employee.jobTitle}</p>
+        </div>
       </div>
-      <p className="mt-3 text-sm font-semibold text-gray-950">{employee.name}</p>
-      <p className="text-xs text-gray-500">{employee.jobTitle}</p>
-      <div className="mt-3 flex flex-wrap gap-1.5">
+      <StatusPill
+        tone={STATUS_TONE[employee.status]}
+        label={employee.status}
+        className="absolute right-5 top-5"
+      />
+      <div className="mt-4 flex flex-wrap gap-1.5">
         <StatusPill tone={TYPE_TONE[employee.employmentType]} label={employee.employmentType} />
         <StatusPill tone="gray" label={employee.department} />
       </div>
@@ -519,7 +545,7 @@ function FilterPill({
 function EmptyState() {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-14 text-center">
-      <span className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-[#F0DFF6] text-[#7E5896]">
+      <span className="mb-3 inline-flex h-11 w-11 items-center justify-center rounded-full bg-gray-100 text-gray-700">
         <Users className="h-5 w-5" />
       </span>
       <p className="text-sm font-semibold text-gray-900">No employees match these filters</p>
@@ -564,7 +590,7 @@ function EmployeeDrawer({
       <div className="flex h-full w-full max-w-md flex-col overflow-y-auto bg-white shadow-xl">
         <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
           <div className="flex items-center gap-3">
-            <Avatar name={employee.name} color={employee.avatarColor} size="lg" />
+            <Avatar name={employee.name} color={employee.avatarColor} src={employee.avatarUrl} size="lg" />
             <div>
               <p className="text-base font-semibold text-gray-900">{employee.name}</p>
               <p className="text-sm text-gray-500">{employee.jobTitle}</p>
@@ -606,11 +632,30 @@ function EmployeeDrawer({
             <Detail label="Leave balance" value={`${employee.leaveBalanceDays} days`} />
           </Section>
 
+          <Section title="Dashboard access">
+            <Detail
+              label="Status"
+              value={
+                employee.dashboardAccess
+                  ? 'Active — can sign in'
+                  : employee.invitedAt
+                    ? 'Invitation pending'
+                    : 'No access'
+              }
+            />
+            {employee.invitedAt && (
+              <Detail label="Invited" value={formatDate(employee.invitedAt)} />
+            )}
+            {employee.lastDashboardLogin && (
+              <Detail label="Last sign-in" value={formatDate(employee.lastDashboardLogin)} />
+            )}
+          </Section>
+
           <div className="flex flex-col gap-2 pt-2 sm:flex-row">
             <button
               type="button"
               onClick={onEdit}
-              className="flex-1 rounded-lg bg-[#C9A0DC] px-3 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0]"
+              className="flex-1 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
             >
               Edit details
             </button>
@@ -664,27 +709,50 @@ function Detail({
 // ---------------------------------------------------------------------------
 
 type FormDialogProps =
-  | { mode: 'create'; departments: Department[]; onClose: () => void; employee?: never }
-  | { mode: 'edit'; departments: Department[]; onClose: () => void; employee: Employee }
+  | {
+      mode: 'create'
+      departments: Department[]
+      roles: WorkforceRole[]
+      callerIsOwner: boolean
+      onClose: () => void
+      employee?: never
+    }
+  | {
+      mode: 'edit'
+      departments: Department[]
+      roles: WorkforceRole[]
+      callerIsOwner: boolean
+      onClose: () => void
+      employee: Employee
+    }
 
 function EmployeeFormDialog(props: FormDialogProps) {
   const isEdit = props.mode === 'edit'
   const seed = isEdit ? props.employee : null
-  const { departments, onClose } = props
+  const { departments, roles, callerIsOwner, onClose } = props
 
   const [fullName, setFullName] = useState(seed?.name ?? '')
   const [email, setEmail] = useState(seed?.email ?? '')
   const [phone, setPhone] = useState(seed?.phone ?? '')
   const [jobTitle, setJobTitle] = useState(seed?.jobTitle ?? '')
-  const [department, setDepartment] = useState<Department>(seed?.department ?? departments[0] ?? 'Operations')
+  const [department, setDepartment] = useState<Department>(seed?.department ?? departments[0] ?? 'Founders')
   const [employmentType, setEmploymentType] = useState<EmploymentType>(seed?.employmentType ?? 'Permanent')
   const [status, setStatus] = useState<EmployeeStatus>(seed?.status ?? 'Onboarding')
   const [location, setLocation] = useState<Location>(seed?.location ?? 'Dar es Salaam')
   const [startDate, setStartDate] = useState(seed?.startDate ?? new Date().toISOString().slice(0, 10))
   const [salaryTzs, setSalaryTzs] = useState(seed ? String(seed.salaryTzs) : '')
   const [leaveBalance, setLeaveBalance] = useState(seed ? String(seed.leaveBalanceDays) : '21')
+  // Dashboard access state. On create: ticking the toggle queues an
+  // invitation to be sent right after the employee row is created.
+  // On edit: the toggle reflects the current grant; flipping it triggers
+  // grantDashboardAccess (sends a fresh invite) or revokeDashboardAccess.
+  const initialGrant = seed?.dashboardAccess ?? false
+  const initialRoleId = seed?.dashboardRoleId ?? roles[0]?.id ?? ''
+  const [grantAccess, setGrantAccess] = useState(initialGrant)
+  const [accessRoleId, setAccessRoleId] = useState(initialRoleId)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [accessNotice, setAccessNotice] = useState<string | null>(null)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -696,10 +764,12 @@ function EmployeeFormDialog(props: FormDialogProps) {
 
   function submit() {
     setError(null)
+    setAccessNotice(null)
     const salary = Number.parseInt(salaryTzs.replace(/[^0-9]/g, ''), 10) || 0
     const leave = Number.parseInt(leaveBalance.replace(/[^0-9]/g, ''), 10) || 0
     startTransition(async () => {
       try {
+        let employeeId: string
         if (isEdit) {
           await updateEmployee(props.employee.id, {
             fullName,
@@ -714,8 +784,9 @@ function EmployeeFormDialog(props: FormDialogProps) {
             salaryTzs: salary,
             leaveBalanceDays: leave,
           })
+          employeeId = props.employee.id
         } else {
-          await createEmployee({
+          const created = await createEmployee({
             fullName,
             email,
             phone: phone || undefined,
@@ -728,7 +799,45 @@ function EmployeeFormDialog(props: FormDialogProps) {
             salaryTzs: salary,
             leaveBalanceDays: leave,
           })
+          employeeId = created.id
         }
+
+        // Reconcile dashboard access. Three branches to handle:
+        //   (1) toggled OFF and was previously ON  → revoke
+        //   (2) toggled ON and (was OFF, or role changed) → re-grant (sends fresh invite)
+        //   (3) unchanged → no-op
+        // grantDashboardAccess always (re-)issues an invitation, so we
+        // only call it when something actually changed to avoid spamming
+        // the invitee with duplicate emails.
+        if (callerIsOwner) {
+          const wasGranted = initialGrant
+          const roleChanged = accessRoleId !== initialRoleId
+          if (!grantAccess && wasGranted) {
+            await revokeDashboardAccess(employeeId)
+          } else if (grantAccess && (!wasGranted || roleChanged)) {
+            if (!accessRoleId) {
+              throw new Error('Pick a role before granting dashboard access.')
+            }
+            const result = await grantDashboardAccess(employeeId, accessRoleId)
+            if (!result.emailSent) {
+              // The "existing Clerk user" path is a feature, not a failure
+              // — the person already has a password, so we just granted
+              // access directly. Tell the admin so they don't expect an
+              // email that won't arrive.
+              if (result.emailReason === 'no_email_needed_existing_user') {
+                setAccessNotice(
+                  `Dashboard access granted. ${email} already has a Clerk account, so no invitation email was sent — they can sign in immediately with their existing password.`
+                )
+                return
+              }
+              setAccessNotice(
+                `Invitation saved, but the email did not send (${result.emailReason ?? 'unknown'}). Send the invite link manually from the pending invitations panel.`
+              )
+              return
+            }
+          }
+        }
+
         onClose()
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not save changes.')
@@ -895,6 +1004,63 @@ function EmployeeFormDialog(props: FormDialogProps) {
               </Field>
             </div>
           </FieldGroup>
+
+          {callerIsOwner && (
+            <FieldGroup title="Dashboard access">
+              <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={grantAccess}
+                    onChange={(e) => setGrantAccess(e.target.checked)}
+                    className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#7E5896] focus:ring-[#C9A0DC]"
+                  />
+                  <span className="text-sm">
+                    <span className="block font-semibold text-gray-900">
+                      Grant access to the admin dashboard
+                    </span>
+                    <span className="mt-0.5 block text-xs text-gray-500">
+                      {seed?.dashboardAccess
+                        ? 'They can sign in today. Untick to revoke access immediately.'
+                        : seed?.invitedAt
+                          ? 'An invitation was sent on ' +
+                            formatDate(seed.invitedAt) +
+                            ' but has not been accepted. Tick to resend.'
+                          : 'A Clerk invitation will be emailed to the address above. They pick their own password — OpusFesta never stores it.'}
+                    </span>
+                  </span>
+                </label>
+
+                {grantAccess && (
+                  <Field label="Role">
+                    <select
+                      value={accessRoleId}
+                      onChange={(e) => setAccessRoleId(e.target.value)}
+                      className={inputClass}
+                    >
+                      {roles.length === 0 && (
+                        <option value="">No roles defined yet — create one in Roles & Permissions</option>
+                      )}
+                      {roles.map((r) => (
+                        <option key={r.id} value={r.id}>
+                          {r.name} {r.isSystem ? '· system' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </Field>
+                )}
+
+                {seed?.lastDashboardLogin && (
+                  <p className="text-[11px] text-gray-500">
+                    Last sign-in: {formatDate(seed.lastDashboardLogin)}
+                  </p>
+                )}
+              </div>
+              {accessNotice && (
+                <p className="mt-2 text-xs font-medium text-amber-700">{accessNotice}</p>
+              )}
+            </FieldGroup>
+          )}
         </div>
 
         {error && (
@@ -916,7 +1082,7 @@ function EmployeeFormDialog(props: FormDialogProps) {
             type="button"
             onClick={submit}
             disabled={pending || !fullName || !email || !jobTitle || !salaryTzs}
-            className="inline-flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0] disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             {pending ? 'Saving…' : isEdit ? 'Save changes' : 'Add employee'}
           </button>

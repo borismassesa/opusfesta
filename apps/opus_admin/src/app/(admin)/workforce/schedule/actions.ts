@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { requireAdminRole } from '@/lib/admin-auth'
+import { requirePermission } from '@/lib/admin-auth'
 import type { ShiftType } from '../_lib/types'
 
 const SHIFT_TYPES = new Set<ShiftType>([
@@ -23,7 +23,7 @@ export type UpsertShiftInput = {
 }
 
 export async function upsertShift(input: UpsertShiftInput): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
 
   if (!SHIFT_TYPES.has(input.type)) throw new Error('Unknown shift type.')
   if (input.weekday < 1 || input.weekday > 7) throw new Error('Weekday must be 1–7.')
@@ -52,7 +52,7 @@ export async function upsertShift(input: UpsertShiftInput): Promise<void> {
 }
 
 export async function clearShift(employeeId: string, weekday: number): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('workforce_shifts')

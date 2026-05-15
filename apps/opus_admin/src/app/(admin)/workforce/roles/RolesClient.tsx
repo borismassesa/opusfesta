@@ -2,47 +2,145 @@
 
 import { useEffect, useMemo, useState, useTransition } from 'react'
 import {
+  BookOpen,
   Check,
+  ChevronDown,
+  Copy,
+  Crown,
+  Eye,
   Lock,
+  Minus,
   Pencil,
+  PenLine,
   Plus,
   Search,
   Shield,
   ShieldCheck,
+  Sparkles,
   Trash2,
-  UserMinus,
+  UserPlus,
   Users,
   X,
+  type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import Avatar from '../_components/Avatar'
 import StatusPill from '../_components/StatusPill'
 import Kpi, { KpiRow } from '../_components/Kpi'
 import type { Employee, Permission, PermissionGroup, WorkforceRole } from '../_lib/data'
-import { createRole, deleteRole, setRoleMembers, updateRolePermissions } from './actions'
+import type { WorkforceInvitationListRow } from '../_lib/queries'
+import AdminTeamSection from './AdminTeamSection'
+import PendingInvitationsSection from './PendingInvitationsSection'
+import {
+  createRole,
+  deleteRole,
+  duplicateRole,
+  setRoleMembers,
+  updateRolePermissions,
+} from './actions'
+
+type Tab = 'people' | 'roles'
+
+// Distinct icon per system role so users build muscle-memory: the
+// Owner row anywhere on the dashboard always wears a Crown, Admin
+// wears ShieldCheck, etc. Custom roles share the Sparkles glyph.
+const SYSTEM_ROLE_ICONS: Record<string, LucideIcon> = {
+  owner: Crown,
+  admin: ShieldCheck,
+  editor: PenLine,
+  viewer: Eye,
+  author: BookOpen,
+}
+
+function getRoleIcon(role: WorkforceRole): LucideIcon {
+  return role.isSystem ? SYSTEM_ROLE_ICONS[role.slug] ?? Shield : Sparkles
+}
+
+type GroupCoverage = 'none' | 'partial' | 'full'
+
+function computeGroupCoverage(
+  groups: [PermissionGroup, Permission[]][],
+  permissionKeys: string[],
+): Map<PermissionGroup, GroupCoverage> {
+  const granted = new Set(permissionKeys)
+  const map = new Map<PermissionGroup, GroupCoverage>()
+  for (const [groupName, items] of groups) {
+    const count = items.filter((p) => granted.has(p.key)).length
+    map.set(
+      groupName,
+      count === 0 ? 'none' : count === items.length ? 'full' : 'partial',
+    )
+  }
+  return map
+}
 
 export default function RolesClient({
   roles,
   permissions,
   employees,
   memberIdsByRole,
+  invitations,
+  callerEmail,
+  callerIsOwner,
 }: {
   roles: WorkforceRole[]
   permissions: Permission[]
   employees: Employee[]
   memberIdsByRole: Record<string, string[]>
+  invitations: WorkforceInvitationListRow[]
+  callerEmail: string | null
+  callerIsOwner: boolean
 }) {
+  const [tab, setTab] = useState<Tab>('people')
   const [selectedId, setSelectedId] = useState<string>(roles[0]?.id ?? '')
   const selected = roles.find((r) => r.id === selectedId) ?? roles[0]
   const [showCreate, setShowCreate] = useState(false)
   const [editing, setEditing] = useState<WorkforceRole | null>(null)
   const [deleting, setDeleting] = useState<WorkforceRole | null>(null)
   const [assigning, setAssigning] = useState<WorkforceRole | null>(null)
+  const [duplicatingId, setDuplicatingId] = useState<string | null>(null)
+  const [duplicateError, setDuplicateError] = useState<string | null>(null)
 
   const employeesById = useMemo(
     () => new Map(employees.map((e) => [e.id, e] as const)),
     [employees],
   )
+
+  // Compute true member counts per role from BOTH sources so the role
+  // catalog reconciles with the People table:
+  //   - workforce_employees.dashboard_role_id (the primary role; what the
+  //     People tab edits)
+  //   - workforce_role_members (extra M2M role assignments)
+  // Dedupe across the two so an employee who has Admin as primary AND is
+  // also in workforce_role_members for Admin counts once.
+  const memberCounts = useMemo(() => {
+    const map = new Map<string, Set<string>>()
+    for (const role of roles) map.set(role.id, new Set())
+    for (const e of employees) {
+      if (e.dashboardAccess && e.dashboardRoleId) {
+        map.get(e.dashboardRoleId)?.add(e.id)
+      }
+    }
+    for (const [roleId, ids] of Object.entries(memberIdsByRole)) {
+      const set = map.get(roleId)
+      if (set) for (const id of ids) set.add(id)
+    }
+    return map
+  }, [roles, employees, memberIdsByRole])
+
+  const membersByRoleId = useMemo(() => {
+    const map = new Map<string, Employee[]>()
+    for (const [roleId, ids] of memberCounts) {
+      const list: Employee[] = []
+      for (const id of ids) {
+        const e = employeesById.get(id)
+        if (e) list.push(e)
+      }
+      list.sort((a, b) => a.name.localeCompare(b.name))
+      map.set(roleId, list)
+    }
+    return map
+  }, [memberCounts, employeesById])
 
   const groups = useMemo(() => {
     const map = new Map<PermissionGroup, Permission[]>()
@@ -54,122 +152,120 @@ export default function RolesClient({
     return Array.from(map.entries())
   }, [permissions])
 
-  const totalMembers = roles.reduce((s, r) => s + r.members, 0)
+  const totalActiveAdmins = employees.filter((e) => e.dashboardAccess).length
+  const ownerCount = employees.filter(
+    (e) =>
+      e.dashboardAccess &&
+      e.dashboardRoleId &&
+      roles.find((r) => r.id === e.dashboardRoleId)?.slug === 'owner',
+  ).length
+  const totalMembers = Array.from(memberCounts.values()).reduce(
+    (s, set) => s + set.size,
+    0,
+  )
   const systemRoles = roles.filter((r) => r.isSystem).length
+
+  function duplicate(role: WorkforceRole) {
+    setDuplicateError(null)
+    setDuplicatingId(role.id)
+    void (async () => {
+      try {
+        const result = await duplicateRole(role.id)
+        setSelectedId(result.id)
+        setTab('roles')
+      } catch (err) {
+        setDuplicateError(err instanceof Error ? err.message : 'Could not duplicate role.')
+      } finally {
+        setDuplicatingId(null)
+      }
+    })()
+  }
 
   return (
     <div className="space-y-6">
       <KpiRow>
-        <Kpi label="Roles" value={String(roles.length)} hint={`${systemRoles} system · ${roles.length - systemRoles} custom`} icon={<Shield className="h-4 w-4" />} />
+        <Kpi label="Dashboard access" value={String(totalActiveAdmins)} hint={`${ownerCount} owner${ownerCount === 1 ? '' : 's'}`} icon={<Lock className="h-4 w-4" />} />
+        <Kpi label="Workforce roles" value={String(roles.length)} hint={`${systemRoles} system · ${roles.length - systemRoles} custom`} icon={<Shield className="h-4 w-4" />} />
         <Kpi label="Members assigned" value={String(totalMembers)} hint="across all roles" icon={<Users className="h-4 w-4" />} />
         <Kpi label="Permissions" value={String(permissions.length)} hint={`${groups.length} groups`} icon={<ShieldCheck className="h-4 w-4" />} />
-        <Kpi label="MFA enforced" value="100%" delta="All admins" deltaTone="positive" icon={<Lock className="h-4 w-4" />} />
       </KpiRow>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,320px)_minmax(0,1fr)]">
-        <div className="space-y-4">
-          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-            <div className="flex items-center justify-between">
-              <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500">All roles</h3>
-              <button
-                type="button"
-                onClick={() => setShowCreate(true)}
-                className="inline-flex items-center gap-1 rounded-md bg-[#C9A0DC] px-2 py-1 text-xs font-semibold text-white hover:bg-[#b97fd0]"
-              >
-                <Plus className="h-3 w-3" />
-                New
-              </button>
-            </div>
-            <div className="mt-3 space-y-1">
-              {roles.map((r) => {
-                const active = r.id === selectedId
-                return (
-                  <button
-                    key={r.id}
-                    type="button"
-                    onClick={() => setSelectedId(r.id)}
-                    className={cn(
-                      'w-full rounded-xl px-3 py-3 text-left transition-colors',
-                      active ? 'bg-[#F0DFF6]' : 'hover:bg-gray-50',
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <p className={cn('text-sm font-semibold', active ? 'text-[#5B2D8E]' : 'text-gray-900')}>{r.name}</p>
-                      {r.isSystem ? (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-                          <Lock className="h-2.5 w-2.5" />
-                          System
-                        </span>
-                      ) : (
-                        <StatusPill tone="purple" label="Custom" />
-                      )}
-                    </div>
-                    <p className="mt-1 line-clamp-2 text-xs text-gray-500">{r.description}</p>
-                    <p className="mt-2 text-[11px] font-semibold uppercase tracking-wider text-gray-400">
-                      {r.members} member{r.members === 1 ? '' : 's'} · {r.permissionKeys.length} permissions
-                    </p>
-                  </button>
-                )
-              })}
-            </div>
-          </div>
+      {/* Two-tab split — "People" handles who can sign in (admin team) and
+          "Roles" defines what each role can do (permission catalog). One
+          URL, shared KPI strip above. The disconnect from the old single-
+          scroll layout (5 admins at top, 0 members at bottom) is gone
+          because both tabs read counts from the same source: workforce_
+          employees.dashboard_role_id + workforce_role_members. */}
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-gray-100 bg-white p-1.5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+        <TabButton current={tab} value="people" onSelect={setTab} count={totalActiveAdmins}>
+          People
+        </TabButton>
+        <TabButton current={tab} value="roles" onSelect={setTab} count={roles.length}>
+          Roles
+        </TabButton>
+      </div>
+
+      {tab === 'people' && (
+        <div className="space-y-8">
+          <AdminTeamSection
+            employees={employees}
+            roles={roles}
+            callerEmail={callerEmail}
+            callerIsOwner={callerIsOwner}
+          />
+          <PendingInvitationsSection
+            invitations={invitations}
+            callerIsOwner={callerIsOwner}
+          />
         </div>
+      )}
+
+      {tab === 'roles' && (
+      <section className="space-y-4">
+        <header className="flex items-start gap-3">
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700">
+            <Shield className="h-5 w-5" />
+          </span>
+          <div>
+            <h2 className="text-lg font-semibold tracking-tight text-gray-900">Workforce roles</h2>
+            <p className="mt-0.5 text-sm text-gray-500">
+              Define the permission bundle for each role. People in the “People” tab pick from these roles. System roles ship locked — duplicate them to make a custom variant.
+            </p>
+          </div>
+        </header>
+
+        {duplicateError && (
+          <p className="rounded-lg border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-medium text-rose-700">
+            {duplicateError}
+          </p>
+        )}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,340px)_minmax(0,1fr)]">
+        <RoleRail
+          roles={roles}
+          selectedId={selectedId}
+          memberCounts={memberCounts}
+          groups={groups}
+          onSelect={setSelectedId}
+          onNewRole={() => setShowCreate(true)}
+        />
 
         {selected && (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-gray-100 bg-white p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-              <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-semibold tracking-tight text-gray-900">{selected.name}</h2>
-                    {selected.isSystem ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-gray-600">
-                        <Lock className="h-2.5 w-2.5" />
-                        System role
-                      </span>
-                    ) : (
-                      <StatusPill tone="purple" label="Custom role" />
-                    )}
-                  </div>
-                  <p className="mt-1 max-w-xl text-sm text-gray-600">{selected.description}</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {!selected.isSystem && (
-                    <button
-                      type="button"
-                      onClick={() => setDeleting(selected)}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      Delete
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => setAssigning(selected)}
-                    className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-                  >
-                    <Users className="h-4 w-4" />
-                    Assign members
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditing(selected)}
-                    disabled={selected.isSystem}
-                    className="inline-flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-3 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0] disabled:cursor-not-allowed disabled:opacity-50"
-                    title={selected.isSystem ? 'System roles are locked' : 'Edit permissions'}
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Edit permissions
-                  </button>
-                </div>
-              </div>
-            </div>
+            <RoleHeroCard
+              role={selected}
+              groups={groups}
+              memberCount={membersByRoleId.get(selected.id)?.length ?? 0}
+              duplicating={duplicatingId === selected.id}
+              onDelete={() => setDeleting(selected)}
+              onDuplicate={() => duplicate(selected)}
+              onAssign={() => setAssigning(selected)}
+              onEdit={() => setEditing(selected)}
+            />
 
             <MembersCard
               role={selected}
-              memberIds={memberIdsByRole[selected.id] ?? []}
-              employeesById={employeesById}
+              members={membersByRoleId.get(selected.id) ?? []}
               onAssign={() => setAssigning(selected)}
             />
 
@@ -177,6 +273,8 @@ export default function RolesClient({
           </div>
         )}
       </div>
+      </section>
+      )}
 
       {showCreate && (
         <RoleFormDialog
@@ -210,28 +308,36 @@ export default function RolesClient({
 
 function MembersCard({
   role,
-  memberIds,
-  employeesById,
+  members,
   onAssign,
 }: {
   role: WorkforceRole
-  memberIds: string[]
-  employeesById: Map<string, Employee>
+  members: Employee[]
   onAssign: () => void
 }) {
-  const members = memberIds
-    .map((id) => employeesById.get(id))
-    .filter((e): e is Employee => Boolean(e))
+  // Up to 6 chip-style avatars in a wrapping row, then "+N more" if the
+  // role is larger. Clicking "Manage" opens the assign dialog. Compact —
+  // not its own scrolling list — because the People tab already owns
+  // the deep view of who holds what.
+  const SHOWN = 6
+  const visible = members.slice(0, SHOWN)
+  const overflow = Math.max(0, members.length - SHOWN)
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-      <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-        <div>
-          <h3 className="text-sm font-semibold text-gray-900">Members</h3>
-          <p className="text-xs text-gray-500">
-            {members.length} {members.length === 1 ? 'person holds' : 'people hold'} the{' '}
-            <span className="font-semibold text-gray-700">{role.name}</span> role.
-          </p>
+    <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-700">
+            <Users className="h-4 w-4" />
+          </span>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Members</h3>
+            <p className="text-xs text-gray-500">
+              {members.length === 0
+                ? 'No-one holds this role yet.'
+                : `${members.length} ${members.length === 1 ? 'person holds' : 'people hold'} the ${role.name} role.`}
+            </p>
+          </div>
         </div>
         <button
           type="button"
@@ -239,37 +345,44 @@ function MembersCard({
           className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
         >
           <Pencil className="h-3.5 w-3.5" />
-          Manage
+          {members.length === 0 ? 'Assign members' : 'Manage'}
         </button>
       </div>
+
       {members.length === 0 ? (
-        <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
-          <span className="mb-3 inline-flex h-10 w-10 items-center justify-center rounded-full bg-[#F0DFF6] text-[#7E5896]">
-            <Users className="h-5 w-5" />
+        <button
+          type="button"
+          onClick={onAssign}
+          className="mt-4 flex w-full items-center gap-3 rounded-xl border border-dashed border-gray-200 bg-gray-50/40 px-4 py-5 text-left transition-colors hover:border-[#C9A0DC] hover:bg-[#F7EAFB]/40"
+        >
+          <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-gray-400">
+            <UserPlus className="h-5 w-5" />
           </span>
-          <p className="text-sm font-semibold text-gray-900">No-one is in this role yet</p>
-          <p className="mt-1 text-sm text-gray-500">Use "Assign members" to add people.</p>
-        </div>
+          <div>
+            <p className="text-sm font-semibold text-gray-800">Add the first member</p>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Pick people from the directory who should pick up this role’s permissions.
+            </p>
+          </div>
+        </button>
       ) : (
-        <ul className="divide-y divide-gray-100">
-          {members.map((m) => (
-            <li
+        <div className="mt-4 flex flex-wrap gap-2">
+          {visible.map((m) => (
+            <span
               key={m.id}
-              className="flex items-center justify-between gap-3 px-5 py-3"
+              className="inline-flex items-center gap-2 rounded-full border border-gray-100 bg-gray-50/60 py-1 pl-1 pr-3"
+              title={`${m.jobTitle} · ${m.department} · ${m.employeeCode}`}
             >
-              <div className="flex min-w-0 items-center gap-3">
-                <Avatar name={m.name} color={m.avatarColor} size="sm" />
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-gray-900">{m.name}</p>
-                  <p className="truncate text-xs text-gray-500">{m.jobTitle} · {m.department}</p>
-                </div>
-              </div>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                {m.employeeCode}
-              </span>
-            </li>
+              <Avatar name={m.name} color={m.avatarColor} src={m.avatarUrl} size="sm" />
+              <span className="text-xs font-semibold text-gray-800">{m.name}</span>
+            </span>
           ))}
-        </ul>
+          {overflow > 0 && (
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-3 py-1 text-xs font-semibold text-gray-600">
+              +{overflow} more
+            </span>
+          )}
+        </div>
       )}
     </div>
   )
@@ -282,77 +395,575 @@ function PermissionMatrix({
   groups: [PermissionGroup, Permission[]][]
   role: WorkforceRole
 }) {
+  // Collapsible categories. Each opens on click; "Expand all" toggles
+  // the whole matrix. Default-collapsed so the viewport isn't dominated
+  // by a wall of permission descriptions — Owners with 14/14 permissions
+  // were producing ~700px of vertical scroll before this redesign.
   const granted = new Set(role.permissionKeys)
+  const total = groups.reduce((s, [, items]) => s + items.length, 0)
+  const [openGroups, setOpenGroups] = useState<Set<PermissionGroup>>(new Set())
+
+  function toggleGroup(name: PermissionGroup) {
+    setOpenGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(name)) next.delete(name)
+      else next.add(name)
+      return next
+    })
+  }
+
+  const allOpen = openGroups.size === groups.length
+  function toggleAll() {
+    setOpenGroups(allOpen ? new Set() : new Set(groups.map(([g]) => g)))
+  }
+
   return (
     <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-      <div className="border-b border-gray-100 px-5 py-4">
-        <h3 className="text-sm font-semibold text-gray-900">Permission matrix</h3>
-        <p className="text-xs text-gray-500">
-          {granted.size} of {groups.reduce((s, [, items]) => s + items.length, 0)} permissions granted.
-          {role.isSystem && ' System roles are read-only.'}
-        </p>
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+        <div className="flex items-center gap-3">
+          <span className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gray-100 text-gray-700">
+            <ShieldCheck className="h-4 w-4" />
+          </span>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Permission matrix</h3>
+            <p className="text-xs text-gray-500">
+              {granted.size} of {total} granted across {groups.length} categories
+              {role.isSystem && ' · system roles are read-only'}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={toggleAll}
+          className="rounded-lg border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+        >
+          {allOpen ? 'Collapse all' : 'Expand all'}
+        </button>
       </div>
-      <div className="divide-y divide-gray-100">
+      <ul className="divide-y divide-gray-100">
         {groups.map(([groupName, items]) => {
           const groupGranted = items.filter((p) => granted.has(p.key)).length
-          const allGranted = groupGranted === items.length
+          const coverage: GroupCoverage =
+            groupGranted === 0
+              ? 'none'
+              : groupGranted === items.length
+                ? 'full'
+                : 'partial'
+          const open = openGroups.has(groupName)
           return (
-            <div key={groupName} className="px-5 py-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500">{groupName}</h4>
-                <span
+            <li key={groupName}>
+              <button
+                type="button"
+                onClick={() => toggleGroup(groupName)}
+                aria-expanded={open}
+                className={cn(
+                  'flex w-full items-center justify-between gap-3 px-5 py-3.5 text-left transition-colors',
+                  open ? 'bg-gray-50/60' : 'hover:bg-gray-50/60',
+                )}
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <CoverageBadge coverage={coverage} />
+                  <span className="text-sm font-semibold text-gray-900">
+                    {groupName}
+                  </span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider',
+                      coverage === 'full'
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : coverage === 'none'
+                          ? 'bg-gray-100 text-gray-500'
+                          : 'bg-amber-50 text-amber-700',
+                    )}
+                  >
+                    {groupGranted} / {items.length}
+                  </span>
+                </div>
+                <ChevronDown
                   className={cn(
-                    'inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-semibold',
-                    allGranted
-                      ? 'bg-emerald-50 text-emerald-700'
-                      : groupGranted === 0
-                        ? 'bg-gray-100 text-gray-500'
-                        : 'bg-amber-50 text-amber-700',
+                    'h-4 w-4 shrink-0 text-gray-400 transition-transform',
+                    open && 'rotate-180',
                   )}
-                >
-                  {groupGranted}/{items.length}
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">
-                {items.map((p) => {
-                  const allowed = granted.has(p.key)
-                  return (
-                    <div
-                      key={p.key}
-                      className={cn(
-                        'flex items-start justify-between gap-3 rounded-xl border px-3 py-3',
-                        allowed
-                          ? 'border-emerald-100 bg-emerald-50/40'
-                          : 'border-gray-100 bg-gray-50/30',
-                      )}
-                    >
-                      <div>
-                        <p
+                />
+              </button>
+              {open && (
+                <div className="border-t border-gray-100 bg-gray-50/30 px-5 py-4">
+                  <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                    {items.map((p) => {
+                      const allowed = granted.has(p.key)
+                      return (
+                        <li
+                          key={p.key}
                           className={cn(
-                            'text-sm font-semibold',
-                            allowed ? 'text-emerald-800' : 'text-gray-500',
+                            'flex items-start justify-between gap-3 rounded-xl border bg-white px-3 py-3',
+                            allowed ? 'border-emerald-100' : 'border-gray-100',
                           )}
                         >
-                          {p.label}
-                        </p>
-                        <p className="mt-0.5 text-xs text-gray-500">{p.description}</p>
-                        <p className="mt-1 font-mono text-[10px] text-gray-400">{p.key}</p>
-                      </div>
-                      <div
-                        className={cn(
-                          'flex h-7 w-7 shrink-0 items-center justify-center rounded-full',
-                          allowed ? 'bg-emerald-500 text-white' : 'border border-gray-200 text-gray-300',
-                        )}
-                      >
-                        {allowed && <Check className="h-4 w-4" />}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
+                          <div className="min-w-0">
+                            <p
+                              className={cn(
+                                'text-sm font-semibold',
+                                allowed ? 'text-gray-900' : 'text-gray-500',
+                              )}
+                            >
+                              {p.label}
+                            </p>
+                            <p className="mt-0.5 text-xs leading-relaxed text-gray-500">
+                              {p.description}
+                            </p>
+                            <p className="mt-1.5 font-mono text-[11px] tracking-tight text-gray-500">
+                              {p.key}
+                            </p>
+                          </div>
+                          <span
+                            className={cn(
+                              'mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full',
+                              allowed
+                                ? 'bg-emerald-500 text-white'
+                                : 'border border-gray-200 text-gray-300',
+                            )}
+                            aria-label={allowed ? 'Granted' : 'Not granted'}
+                          >
+                            {allowed && <Check className="h-3.5 w-3.5" />}
+                          </span>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              )}
+            </li>
           )
         })}
+      </ul>
+    </div>
+  )
+}
+
+function CoverageBadge({ coverage }: { coverage: GroupCoverage }) {
+  if (coverage === 'full') {
+    return (
+      <span
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-emerald-500 text-white"
+        aria-label="All permissions granted"
+      >
+        <Check className="h-3 w-3" />
+      </span>
+    )
+  }
+  if (coverage === 'partial') {
+    return (
+      <span
+        className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700"
+        aria-label="Some permissions granted"
+      >
+        <Minus className="h-3 w-3" />
+      </span>
+    )
+  }
+  return (
+    <span
+      className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-gray-200 text-gray-300"
+      aria-label="No permissions granted"
+    >
+      <Minus className="h-3 w-3" />
+    </span>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Role rail — left column listing all roles with at-a-glance coverage
+// ---------------------------------------------------------------------------
+
+function RoleRail({
+  roles,
+  selectedId,
+  memberCounts,
+  groups,
+  onSelect,
+  onNewRole,
+}: {
+  roles: WorkforceRole[]
+  selectedId: string
+  memberCounts: Map<string, Set<string>>
+  groups: [PermissionGroup, Permission[]][]
+  onSelect: (id: string) => void
+  onNewRole: () => void
+}) {
+  const [filter, setFilter] = useState<'all' | 'system' | 'custom'>('all')
+  const filtered = useMemo(() => {
+    if (filter === 'all') return roles
+    return roles.filter((r) =>
+      filter === 'system' ? r.isSystem : !r.isSystem,
+    )
+  }, [roles, filter])
+
+  return (
+    <div className="space-y-3 lg:sticky lg:top-6 lg:self-start">
+      <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+        <div className="flex items-center justify-between gap-2 px-1 pb-2">
+          <h3 className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            All roles
+          </h3>
+          <button
+            type="button"
+            onClick={onNewRole}
+            className="inline-flex items-center gap-1 rounded-md bg-emerald-600 px-2 py-1 text-xs font-semibold text-white hover:bg-emerald-700"
+          >
+            <Plus className="h-3 w-3" />
+            New role
+          </button>
+        </div>
+        <div className="flex items-center gap-1 rounded-lg bg-gray-50 p-0.5 text-[11px] font-semibold">
+          <FilterChip active={filter === 'all'} onClick={() => setFilter('all')}>
+            All <span className="text-gray-400">· {roles.length}</span>
+          </FilterChip>
+          <FilterChip
+            active={filter === 'system'}
+            onClick={() => setFilter('system')}
+          >
+            System
+            <span className="text-gray-400">
+              {' '}
+              · {roles.filter((r) => r.isSystem).length}
+            </span>
+          </FilterChip>
+          <FilterChip
+            active={filter === 'custom'}
+            onClick={() => setFilter('custom')}
+          >
+            Custom
+            <span className="text-gray-400">
+              {' '}
+              · {roles.filter((r) => !r.isSystem).length}
+            </span>
+          </FilterChip>
+        </div>
+
+        <ul className="mt-2 space-y-1">
+          {filtered.length === 0 ? (
+            <li className="px-3 py-6 text-center text-xs text-gray-400">
+              No roles match this filter.
+            </li>
+          ) : (
+            filtered.map((r) => (
+              <RoleListCard
+                key={r.id}
+                role={r}
+                active={r.id === selectedId}
+                memberCount={memberCounts.get(r.id)?.size ?? 0}
+                groups={groups}
+                onSelect={() => onSelect(r.id)}
+              />
+            ))
+          )}
+        </ul>
+      </div>
+    </div>
+  )
+}
+
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean
+  onClick: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex-1 rounded-md px-2 py-1 transition-colors',
+        active
+          ? 'bg-white text-gray-900 shadow-sm'
+          : 'text-gray-500 hover:text-gray-700',
+      )}
+    >
+      {children}
+    </button>
+  )
+}
+
+function RoleListCard({
+  role,
+  active,
+  memberCount,
+  groups,
+  onSelect,
+}: {
+  role: WorkforceRole
+  active: boolean
+  memberCount: number
+  groups: [PermissionGroup, Permission[]][]
+  onSelect: () => void
+}) {
+  const Icon = getRoleIcon(role)
+  const coverage = useMemo(
+    () => computeGroupCoverage(groups, role.permissionKeys),
+    [groups, role.permissionKeys],
+  )
+  const totalPerms = groups.reduce((s, [, items]) => s + items.length, 0)
+  const grantedPerms = role.permissionKeys.length
+
+  return (
+    <li>
+      <button
+        type="button"
+        onClick={onSelect}
+        aria-pressed={active}
+        className={cn(
+          'group block w-full rounded-xl border border-transparent p-3 text-left transition-all',
+          active
+            ? 'bg-gradient-to-br from-[#F7EAFB] to-white'
+            : 'bg-white hover:bg-gray-50',
+        )}
+      >
+        <div className="flex items-start gap-2.5">
+          <span
+            className={cn(
+              'mt-0.5 inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors',
+              active
+                ? 'bg-[#7E5896] text-white'
+                : 'bg-gray-100 text-gray-700',
+            )}
+          >
+            <Icon className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center justify-between gap-2">
+              <p
+                className={cn(
+                  'truncate text-sm font-semibold',
+                  active ? 'text-[#5B2D8E]' : 'text-gray-900',
+                )}
+              >
+                {role.name}
+              </p>
+              {role.isSystem ? (
+                <span
+                  className="inline-flex items-center gap-0.5 text-[10px] font-bold uppercase tracking-wider text-gray-400"
+                  title="System role — locked to edits, duplicate to customise"
+                >
+                  <Lock className="h-2.5 w-2.5" />
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold uppercase tracking-wider text-[#7E5896]">
+                  Custom
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 line-clamp-2 text-[11px] leading-relaxed text-gray-500">
+              {role.description}
+            </p>
+          </div>
+        </div>
+
+        {/* Permission group coverage row — one dot per category, colour-
+            coded by how much of that category this role has. Lets you
+            compare roles at a glance: "Admin has it all, Finance is just
+            the finance dots, Viewer is light blue everywhere." */}
+        <div className="mt-2.5 flex items-center justify-between gap-2 pl-10">
+          <div className="flex items-center gap-1" title="Permission coverage by category">
+            {groups.map(([name]) => {
+              const c = coverage.get(name) ?? 'none'
+              return (
+                <span
+                  key={name}
+                  className={cn(
+                    'h-1.5 w-1.5 rounded-full',
+                    c === 'full'
+                      ? 'bg-emerald-500'
+                      : c === 'partial'
+                        ? 'bg-amber-400'
+                        : 'bg-gray-200',
+                  )}
+                  aria-label={`${name}: ${c}`}
+                />
+              )
+            })}
+            <span className="ml-1.5 text-[10px] font-semibold tabular-nums text-gray-400">
+              {grantedPerms}/{totalPerms}
+            </span>
+          </div>
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold tabular-nums text-gray-500">
+            <Users className="h-3 w-3 text-gray-400" />
+            {memberCount}
+          </span>
+        </div>
+      </button>
+    </li>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Role hero card — large header at the top of the detail panel
+// ---------------------------------------------------------------------------
+
+function RoleHeroCard({
+  role,
+  groups,
+  memberCount,
+  duplicating,
+  onDelete,
+  onDuplicate,
+  onAssign,
+  onEdit,
+}: {
+  role: WorkforceRole
+  groups: [PermissionGroup, Permission[]][]
+  memberCount: number
+  duplicating: boolean
+  onDelete: () => void
+  onDuplicate: () => void
+  onAssign: () => void
+  onEdit: () => void
+}) {
+  const Icon = getRoleIcon(role)
+  const totalPerms = groups.reduce((s, [, items]) => s + items.length, 0)
+  const grantedPerms = role.permissionKeys.length
+  const coveragePct = totalPerms > 0 ? Math.round((grantedPerms / totalPerms) * 100) : 0
+  const coverage = useMemo(
+    () => computeGroupCoverage(groups, role.permissionKeys),
+    [groups, role.permissionKeys],
+  )
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+      <div className="bg-gradient-to-br from-[#F7EAFB]/60 via-white to-white px-6 pb-5 pt-6">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[#7E5896] text-white shadow-sm">
+              <Icon className="h-6 w-6" />
+            </span>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-2xl font-semibold tracking-tight text-gray-900">
+                  {role.name}
+                </h2>
+                {role.isSystem ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-white">
+                    <Lock className="h-2.5 w-2.5" />
+                    System
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#F0DFF6] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-[#5B2D8E]">
+                    <Sparkles className="h-2.5 w-2.5" />
+                    Custom
+                  </span>
+                )}
+              </div>
+              <p className="mt-1.5 max-w-xl text-sm leading-relaxed text-gray-600">
+                {role.description}
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            {!role.isSystem && (
+              <button
+                type="button"
+                onClick={onDelete}
+                className="inline-flex items-center gap-1.5 rounded-lg border border-rose-200 px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={onDuplicate}
+              disabled={duplicating}
+              title="Clone this role into a new custom role you can edit"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              <Copy className="h-4 w-4" />
+              {duplicating ? 'Duplicating…' : 'Duplicate'}
+            </button>
+            <button
+              type="button"
+              onClick={onAssign}
+              title="Add or remove extra members on top of their primary role"
+              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <Users className="h-4 w-4" />
+              Assign members
+            </button>
+            <button
+              type="button"
+              onClick={onEdit}
+              disabled={role.isSystem}
+              title={
+                role.isSystem
+                  ? 'System roles are locked. Use "Duplicate" to make a custom version.'
+                  : 'Edit which permissions this role grants'
+              }
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit permissions
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats strip — replaces the old "X of Y granted" text line with a
+          progress bar + per-category dots + member count so a glance tells
+          you what this role covers without scrolling to the matrix. */}
+      <div className="grid grid-cols-1 gap-4 border-t border-gray-100 bg-white px-6 py-4 sm:grid-cols-[minmax(0,1fr)_180px]">
+        <div>
+          <div className="flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+              Permissions
+            </p>
+            <p className="text-xs font-semibold text-gray-700">
+              {grantedPerms} of {totalPerms}{' '}
+              <span className="text-gray-400">· {coveragePct}%</span>
+            </p>
+          </div>
+          <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+            <div
+              className="h-full bg-gradient-to-r from-[#7E5896] to-[#C9A0DC]"
+              style={{ width: `${coveragePct}%` }}
+            />
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            {groups.map(([name]) => {
+              const c = coverage.get(name) ?? 'none'
+              return (
+                <span
+                  key={name}
+                  title={`${name}: ${c === 'full' ? 'all granted' : c === 'partial' ? 'partial' : 'none'}`}
+                  className={cn(
+                    'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold',
+                    c === 'full'
+                      ? 'bg-emerald-50 text-emerald-700'
+                      : c === 'partial'
+                        ? 'bg-amber-50 text-amber-700'
+                        : 'bg-gray-100 text-gray-500',
+                  )}
+                >
+                  {name}
+                </span>
+              )
+            })}
+          </div>
+        </div>
+
+        <div className="border-gray-100 sm:border-l sm:pl-6">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+            Members
+          </p>
+          <p className="mt-2 text-2xl font-semibold tracking-tight text-gray-900">
+            {memberCount}
+          </p>
+          <p className="text-xs text-gray-500">
+            {memberCount === 1 ? 'person holds this role' : 'people hold this role'}
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -552,7 +1163,7 @@ function RoleFormDialog(props: RoleFormProps) {
             type="button"
             onClick={submit}
             disabled={pending || (!isEdit && !name) || granted.size === 0}
-            className="rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0] disabled:opacity-50"
+            className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
           >
             {pending ? 'Saving…' : isEdit ? 'Save permissions' : 'Create role'}
           </button>
@@ -768,7 +1379,7 @@ function AssignMembersDialog({
                       >
                         <Check className="h-3.5 w-3.5" />
                       </span>
-                      <Avatar name={e.name} color={e.avatarColor} size="sm" />
+                      <Avatar name={e.name} color={e.avatarColor} src={e.avatarUrl} size="sm" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-gray-900">{e.name}</p>
                         <p className="truncate text-xs text-gray-500">{e.jobTitle} · {e.department}</p>
@@ -816,14 +1427,49 @@ function AssignMembersDialog({
               type="button"
               onClick={submit}
               disabled={pending || delta === 0}
-              className="inline-flex items-center gap-1.5 rounded-lg bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-white hover:bg-[#b97fd0] disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
             >
-              <UserMinus className="hidden h-4 w-4" />
               {pending ? 'Saving…' : 'Update members'}
             </button>
           </div>
         </div>
       </div>
     </div>
+  )
+}
+
+function TabButton({
+  current,
+  value,
+  onSelect,
+  count,
+  children,
+}: {
+  current: Tab
+  value: Tab
+  onSelect: (v: Tab) => void
+  count: number
+  children: React.ReactNode
+}) {
+  const active = current === value
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(value)}
+      className={cn(
+        'flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-colors',
+        active ? 'bg-[#F0DFF6] text-[#5B2D8E]' : 'text-gray-500 hover:bg-gray-50',
+      )}
+    >
+      {children}
+      <span
+        className={cn(
+          'inline-flex h-5 min-w-[20px] items-center justify-center rounded-full px-1.5 text-[10px] font-bold',
+          active ? 'bg-[#7E5896] text-white' : 'bg-gray-100 text-gray-500',
+        )}
+      >
+        {count}
+      </span>
+    </button>
   )
 }

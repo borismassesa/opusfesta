@@ -8,7 +8,7 @@ const TONE_CLASSES: Record<Tone, string> = {
   green: 'bg-emerald-50 text-emerald-700',
   amber: 'bg-amber-50 text-amber-700',
   rose: 'bg-rose-50 text-rose-700',
-  purple: 'bg-[#F0DFF6] text-[#7E5896]',
+  purple: 'bg-gray-100 text-gray-700',
   blue: 'bg-[#E5F2FB] text-[#1F5D8C]',
   gray: 'bg-gray-100 text-gray-600',
 }

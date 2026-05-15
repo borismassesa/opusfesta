@@ -16,7 +16,7 @@ export default function Kpi({ label, value, delta, deltaTone = 'positive', hint,
       <div className="flex items-center justify-between gap-3">
         <div className="text-[12px] font-medium text-gray-500">{label}</div>
         {icon && (
-          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-[#F0DFF6] text-[#7E5896]">
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-gray-700">
             {icon}
           </span>
         )}

@@ -2,8 +2,8 @@
 
 import { revalidatePath } from 'next/cache'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { requireAdminRole } from '@/lib/admin-auth'
-import type { PayrollStatus } from '../_lib/types'
+import { requirePermission } from '@/lib/admin-auth'
+import type { PayrollStatus } from '../../workforce/_lib/types'
 
 // PAYE/NSSF rates — illustrative; the real engine will live in
 // `lib/payroll`. Keeping the rates here as a single source so the
@@ -56,7 +56,7 @@ function periodFromDate(date: Date): { period: string; payDate: string } {
 }
 
 export async function startPayrollRun(input?: { period?: string; payDate?: string }): Promise<{ id: string }> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.payroll')
 
   const supabase = createSupabaseAdminClient()
   const matrix = await computeMatrixFromActiveEmployees()
@@ -84,12 +84,12 @@ export async function startPayrollRun(input?: { period?: string; payDate?: strin
     .single<{ id: string }>()
 
   if (error) throw error
-  revalidatePath('/workforce/payroll')
+  revalidatePath('/finance/payroll')
   return { id: data.id }
 }
 
 export async function setPayrollStatus(id: string, status: PayrollStatus): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.payroll')
 
   const patch: Record<string, unknown> = { status }
   if (status === 'Approved') patch.approved_at = new Date().toISOString()
@@ -99,11 +99,11 @@ export async function setPayrollStatus(id: string, status: PayrollStatus): Promi
   const { error } = await supabase.from('workforce_payroll_runs').update(patch).eq('id', id)
   if (error) throw error
 
-  revalidatePath('/workforce/payroll')
+  revalidatePath('/finance/payroll')
 }
 
 export async function recomputePayrollRun(id: string): Promise<void> {
-  await requireAdminRole(['owner', 'admin'])
+  await requirePermission('workforce.payroll')
 
   const supabase = createSupabaseAdminClient()
   const { data: existing, error: fetchError } = await supabase
@@ -129,5 +129,5 @@ export async function recomputePayrollRun(id: string): Promise<void> {
     .eq('id', id)
   if (error) throw error
 
-  revalidatePath('/workforce/payroll')
+  revalidatePath('/finance/payroll')
 }
