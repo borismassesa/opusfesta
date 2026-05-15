@@ -15,3 +15,8 @@ ALTER TABLE inquiries
 
 ALTER TABLE inquiries
   ADD COLUMN IF NOT EXISTS vendor_name TEXT;
+
+-- Ensure at least one vendor reference is always present.
+ALTER TABLE inquiries
+  ADD CONSTRAINT inquiries_vendor_ref_check
+  CHECK (vendor_id IS NOT NULL OR vendor_slug IS NOT NULL);

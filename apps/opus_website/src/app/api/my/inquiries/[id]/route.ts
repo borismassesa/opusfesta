@@ -1,26 +1,26 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
-function isValidEmail(e: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
-}
-
-function getValidatedEmail(request: NextRequest, fromBody?: unknown) {
-  const bodyEmail = typeof fromBody === 'string' ? fromBody : ''
-  const queryEmail = request.nextUrl.searchParams.get('email')?.trim().toLowerCase() ?? ''
-  const email = (bodyEmail.trim().toLowerCase() || queryEmail)
-  return isValidEmail(email) ? email : null
+async function getAuthenticatedEmail(): Promise<string | null> {
+  const { userId } = await auth()
+  if (!userId) return null
+  const user = await currentUser()
+  const email = user?.emailAddresses.find(
+    (e) => e.id === user.primaryEmailAddressId
+  )?.emailAddress || user?.emailAddresses[0]?.emailAddress
+  return email?.toLowerCase() || null
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const email = getValidatedEmail(request)
+  const email = await getAuthenticatedEmail()
 
   if (!email) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const supabase = createSupabaseServerClient()
@@ -34,7 +34,12 @@ export async function GET(
     .eq('email', email)
     .maybeSingle()
 
-  if (inquiryErr || !inquiry) {
+  if (inquiryErr) {
+    console.error('[my/inquiries/[id]] query failed', inquiryErr.code)
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+  }
+
+  if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
@@ -56,6 +61,11 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const email = await getAuthenticatedEmail()
+
+  if (!email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   let body: unknown
   try {
@@ -65,52 +75,57 @@ export async function PATCH(
   }
 
   const payload = body as Record<string, unknown>
-  const email = getValidatedEmail(request, payload.email)
-  if (!email) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
-  }
-
   const nextStatus = payload.status
   if (nextStatus !== 'closed') {
     return NextResponse.json({ error: 'Only status "closed" is supported' }, { status: 400 })
   }
 
   const supabase = createSupabaseServerClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('inquiries')
     .update({ status: 'closed', updated_at: new Date().toISOString() })
     .eq('id', id)
     .eq('email', email)
+    .select('id')
 
   if (error) {
     console.error('[my/inquiries/[id]] update failed', error)
     return NextResponse.json({ error: 'Failed to update inquiry' }, { status: 500 })
   }
 
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
+  }
+
   return NextResponse.json({ success: true })
 }
 
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const email = getValidatedEmail(request)
+  const email = await getAuthenticatedEmail()
 
   if (!email) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const supabase = createSupabaseServerClient()
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('inquiries')
     .delete()
     .eq('id', id)
     .eq('email', email)
+    .select('id')
 
   if (error) {
     console.error('[my/inquiries/[id]] delete failed', error)
     return NextResponse.json({ error: 'Failed to delete inquiry' }, { status: 500 })
+  }
+
+  if (!data || data.length === 0) {
+    return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
   return new NextResponse(null, { status: 204 })

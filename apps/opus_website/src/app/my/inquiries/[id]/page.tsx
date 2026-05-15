@@ -1,5 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { verifyInquiryToken } from '@/lib/inquiry-token'
 import InquiryThread from './InquiryThread'
 
 type InquiryStatus = 'pending' | 'responded' | 'accepted' | 'declined' | 'closed'
@@ -45,18 +47,41 @@ export type InquiryMessage = {
 
 interface Props {
   params: Promise<{ id: string }>
-  searchParams: Promise<{ email?: string }>
+  searchParams: Promise<{ access_token?: string; email?: string }>
 }
 
 export default async function InquiryDetailPage({ params, searchParams }: Readonly<Props>) {
   const { id } = await params
-  const { email } = await searchParams
+  const { access_token, email: emailParam } = await searchParams
 
-  if (!email) {
-    redirect(`/my/inquiries`)
+  let normalizedEmail: string | null = null
+
+  // Try token-based access first (supports unauthenticated access)
+  if (access_token) {
+    const tokenPayload = verifyInquiryToken(access_token)
+    if (tokenPayload && tokenPayload.inquiryId === id) {
+      normalizedEmail = tokenPayload.email.toLowerCase()
+    } else {
+      // Invalid or expired token
+      notFound()
+    }
   }
 
-  const normalizedEmail = email.trim().toLowerCase()
+  // Fall back to authenticated Clerk user
+  if (!normalizedEmail) {
+    const { userId } = await auth()
+    if (!userId) {
+      redirect('/sign-in')
+    }
+
+    const clerkUser = await currentUser().catch(() => null)
+    const email = clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase()
+    if (!email) {
+      redirect('/my/inquiries')
+    }
+    normalizedEmail = email
+  }
+
   const supabase = createSupabaseServerClient()
 
   const { data: inquiry, error: inquiryErr } = await supabase
@@ -68,15 +93,22 @@ export default async function InquiryDetailPage({ params, searchParams }: Readon
     .eq('email', normalizedEmail)
     .maybeSingle()
 
-  if (inquiryErr || !inquiry) {
+  if (inquiryErr) {
+    console.error('[inquiry-detail] query failed', inquiryErr.code)
     notFound()
   }
 
-  const { data: messages } = await supabase
+  if (!inquiry) {
+    notFound()
+  }
+
+  const { data: messages, error: messagesErr } = await supabase
     .from('inquiry_messages')
     .select('id, sender_type, sender_name, content, created_at, read_at')
     .eq('inquiry_id', id)
     .order('created_at', { ascending: true })
+
+  if (messagesErr) console.error('[inquiry-detail] messages query failed', messagesErr.code)
 
   return (
     <InquiryThread

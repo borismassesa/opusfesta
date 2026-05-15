@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
+import { createBookingFromInquiry } from '@/lib/booking-from-inquiry'
 
 type ProposalAction = 'send' | 'accept-counter'
 
@@ -73,14 +74,25 @@ async function sendProposal(
 async function acceptCounter(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   inquiryId: string,
-  counterAmount: number | null | undefined,
+  inquiry: {
+    vendor_id: string
+    user_id: string | null
+    name: string | null
+    email: string | null
+    phone: string | null
+    proposal_event_date: string | null
+    proposal_venue: string | null
+    proposal_package: string | null
+    proposal_invoice_amount: number | null
+    proposal_counter_amount: number | null
+  },
 ) {
   const now = new Date().toISOString()
   const { error } = await supabase
     .from('inquiries')
     .update({
       proposal_status: 'accepted',
-      proposal_invoice_amount: counterAmount ?? undefined,
+      proposal_invoice_amount: inquiry.proposal_counter_amount ?? inquiry.proposal_invoice_amount,
       proposal_accepted_at: now,
       status: 'accepted',
       updated_at: now,
@@ -91,6 +103,21 @@ async function acceptCounter(
     console.error('[vendor/inquiries/proposal] accept counter failed', error)
     return NextResponse.json({ error: 'Failed to accept counter' }, { status: 500 })
   }
+
+  await createBookingFromInquiry(supabase, {
+    id: inquiryId,
+    vendor_id: inquiry.vendor_id,
+    user_id: inquiry.user_id,
+    name: inquiry.name,
+    email: inquiry.email,
+    phone: inquiry.phone,
+    proposal_event_date: inquiry.proposal_event_date,
+    proposal_venue: inquiry.proposal_venue,
+    proposal_package: inquiry.proposal_package,
+    // Use the counter amount since that's what was accepted
+    proposal_invoice_amount: inquiry.proposal_counter_amount ?? inquiry.proposal_invoice_amount,
+    proposal_counter_amount: null,
+  })
 
   return NextResponse.json({ success: true })
 }
@@ -120,13 +147,30 @@ export async function PATCH(
   }
 
   const supabase = createSupabaseAdminClient()
-  const { data: inquiry } = await supabase
+  const { data: inquiry, error: inquiryErr } = await supabase
     .from('inquiries')
-    .select('id, vendor_id, proposal_status, proposal_counter_amount')
+    .select('id, vendor_id, user_id, name, email, phone, proposal_status, proposal_event_date, proposal_venue, proposal_package, proposal_invoice_amount, proposal_counter_amount')
     .eq('id', id)
     .eq('vendor_id', state.vendor.id)
-    .maybeSingle()
+    .maybeSingle<{
+      id: string
+      vendor_id: string
+      user_id: string | null
+      name: string | null
+      email: string | null
+      phone: string | null
+      proposal_status: string | null
+      proposal_event_date: string | null
+      proposal_venue: string | null
+      proposal_package: string | null
+      proposal_invoice_amount: number | null
+      proposal_counter_amount: number | null
+    }>()
 
+  if (inquiryErr) {
+    console.error('[vendor/inquiries/proposal] lookup failed', inquiryErr.code)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
   if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
@@ -139,5 +183,5 @@ export async function PATCH(
     return NextResponse.json({ error: 'No client counter to accept' }, { status: 400 })
   }
 
-  return acceptCounter(supabase, id, inquiry.proposal_counter_amount)
+  return acceptCounter(supabase, id, inquiry)
 }

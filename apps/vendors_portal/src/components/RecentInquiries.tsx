@@ -44,13 +44,19 @@ export function RecentInquiries({ rows }: { rows: InquiryRow[] }) {
               href={`/leads/${row.id}`}
               className="flex items-center gap-4 px-6 py-4 hover:bg-gray-50 transition-colors"
             >
-              <Image
-                src={row.avatarUrl}
-                alt={row.couple}
-                width={44}
-                height={44}
-                className="w-11 h-11 rounded-full object-cover shrink-0"
-              />
+              {row.avatarUrl ? (
+                <Image
+                  src={row.avatarUrl}
+                  alt={row.couple}
+                  width={44}
+                  height={44}
+                  className="w-11 h-11 rounded-full object-cover shrink-0"
+                />
+              ) : (
+                <span className="w-11 h-11 rounded-full bg-gray-200 flex items-center justify-center text-sm font-bold text-gray-600 shrink-0">
+                  {row.couple[0] ?? '?'}
+                </span>
+              )}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <p className="font-semibold text-gray-900 text-sm truncate">

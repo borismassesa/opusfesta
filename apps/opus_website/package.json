@@ -11,6 +11,7 @@
     "clean": "rm -rf .next"
   },
   "dependencies": {
+    "@clerk/nextjs": "^7.3.2",
     "@supabase/supabase-js": "^2.89.0",
     "@types/leaflet": "^1.9.21",
     "leaflet": "^1.9.4",
@@ -20,7 +21,10 @@
     "next": "16.1.1",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "react-leaflet": "^5.0.0"
+    "react-leaflet": "^5.0.0",
+    "resend": "^6.12.3",
+    "sonner": "^2.0.7",
+    "svix": "^1.92.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.14",

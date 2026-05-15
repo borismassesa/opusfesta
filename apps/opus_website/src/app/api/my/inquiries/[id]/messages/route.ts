@@ -1,19 +1,23 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
-function isValidEmail(e: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+async function getAuthenticatedEmail(): Promise<string | null> {
+  const { userId } = await auth()
+  if (!userId) return null
+  const clerkUser = await currentUser().catch(() => null)
+  return clerkUser?.emailAddresses?.[0]?.emailAddress?.trim().toLowerCase() ?? null
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
-  const email = request.nextUrl.searchParams.get('email')?.trim().toLowerCase() ?? ''
+  const email = await getAuthenticatedEmail()
 
-  if (!isValidEmail(email)) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
+  if (!email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   const supabase = createSupabaseServerClient()
@@ -25,7 +29,12 @@ export async function GET(
     .eq('email', email)
     .maybeSingle()
 
-  if (inquiryErr || !inquiry) {
+  if (inquiryErr) {
+    console.error('[my/inquiries/messages] query failed', inquiryErr)
+    return NextResponse.json({ error: 'Database error' }, { status: 500 })
+  }
+
+  if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 
@@ -48,6 +57,11 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params
+  const email = await getAuthenticatedEmail()
+
+  if (!email) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
 
   let body: unknown
   try {
@@ -56,11 +70,8 @@ export async function POST(
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { email, content } = body as Record<string, unknown>
+  const { content } = body as Record<string, unknown>
 
-  if (!email || typeof email !== 'string' || !isValidEmail(email.trim())) {
-    return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
-  }
   if (!content || typeof content !== 'string' || !content.trim()) {
     return NextResponse.json({ error: 'Message content is required' }, { status: 400 })
   }
@@ -71,10 +82,15 @@ export async function POST(
     .from('inquiries')
     .select('id, name, email')
     .eq('id', id)
-    .eq('email', email.trim().toLowerCase())
+    .eq('email', email)
     .maybeSingle()
 
-  if (lookupErr || !inquiry) {
+  if (lookupErr) {
+    console.error('[my/inquiries/messages] lookup failed', lookupErr)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+  }
+
+  if (!inquiry) {
     return NextResponse.json({ error: 'Inquiry not found' }, { status: 404 })
   }
 

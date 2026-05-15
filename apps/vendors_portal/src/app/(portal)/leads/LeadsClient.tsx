@@ -715,7 +715,9 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
       updateLocalStatus(selectedRow.id, 'replied')
       setReplyText('')
       setReplyOpen(false)
-    } catch { /* keep open */ } finally { setSending(false) }
+    } catch (err) {
+      console.error('[leads] send reply failed', err)
+    } finally { setSending(false) }
   }
 
   async function handleClose() {
@@ -724,7 +726,9 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     try {
       await patchInquiryRequest(selectedRow.id, { status: 'closed' })
       updateLocalStatus(selectedRow.id, 'closed')
-    } catch { /* silent */ } finally { setActionLoading(false) }
+    } catch (err) {
+      console.error('[leads] close failed', err)
+    } finally { setActionLoading(false) }
   }
 
   async function handleDecline() {
@@ -738,7 +742,9 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
       updateLocalStatus(selectedRow.id, 'declined')
       setDeclineOpen(false)
       setDeclineReason('')
-    } catch { /* keep open */ } finally { setActionLoading(false) }
+    } catch (err) {
+      console.error('[leads] decline failed', err)
+    } finally { setActionLoading(false) }
   }
 
   async function handleSendProposal() {
@@ -782,8 +788,8 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
         proposal_accepted_at: null,
       })
       setProposalOpen(false)
-    } catch {
-      // Keep panel open so the vendor can retry.
+    } catch (err) {
+      console.error('[leads] send proposal failed', err)
     } finally {
       setProposalSending(false)
     }
@@ -809,8 +815,8 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
         proposal_accepted_at: new Date().toISOString(),
       })
       updateLocalStatus(selectedRow.id, 'booked')
-    } catch {
-      // Silent for now.
+    } catch (err) {
+      console.error('[leads] accept counter failed', err)
     } finally {
       setProposalActionLoading(false)
     }
@@ -822,7 +828,9 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     try {
       await patchInquiryRequest(selectedRow.id, { status: mapUiStatusToDbStatus(status) })
       updateLocalStatus(selectedRow.id, status)
-    } catch { /* silent */ } finally { setActionLoading(false) }
+    } catch (err) {
+      console.error('[leads] status change failed', err)
+    } finally { setActionLoading(false) }
   }
 
   return {
@@ -945,13 +953,17 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
                           selected === row.id ? 'bg-[#FCF7FF]' : 'hover:bg-gray-50',
                         )}
                       >
-                        <Image
-                          src={row.avatarUrl}
-                          alt={row.couple}
-                          width={40}
-                          height={40}
-                          className="w-10 h-10 rounded-full object-cover shrink-0"
-                        />
+                        {row.avatarUrl ? (
+                          <Image
+                            src={row.avatarUrl}
+                            alt={row.couple}
+                            width={40}
+                            height={40}
+                            className="w-10 h-10 rounded-full object-cover shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-gray-100 shrink-0" />
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-1">
                             <p className="text-sm font-semibold text-gray-900 truncate">
@@ -976,13 +988,17 @@ export default function LeadsClient({ inquiries: initialInquiries, source, vendo
               {selectedRow ? (
                 <>
                   <div className="flex items-start gap-4">
-                    <Image
-                      src={selectedRow.avatarUrl}
-                      alt={selectedRow.couple}
-                      width={56}
-                      height={56}
-                      className="w-14 h-14 rounded-full object-cover"
-                    />
+                    {selectedRow.avatarUrl ? (
+                      <Image
+                        src={selectedRow.avatarUrl}
+                        alt={selectedRow.couple}
+                        width={56}
+                        height={56}
+                        className="w-14 h-14 rounded-full object-cover"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 rounded-full bg-gray-100 shrink-0" />
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h2 className="text-xl font-semibold text-gray-900">
