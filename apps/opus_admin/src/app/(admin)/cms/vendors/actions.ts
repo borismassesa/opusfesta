@@ -53,22 +53,3 @@ export async function deleteVendor(id: string): Promise<void> {
   await revalidateWebsite()
 }
 
-export async function uploadVendorMedia(formData: FormData): Promise<{ url: string; type: 'image' | 'video' }> {
-  const file = formData.get('file') as File | null
-  const vendorId = formData.get('vendorId') as string | null
-  if (!file) throw new Error('No file provided')
-
-  const supabase = createSupabaseAdminClient()
-  const ext = file.name.split('.').pop() ?? 'bin'
-  const folder = vendorId ? `vendors/${vendorId}` : 'vendors/_orphan'
-  const path = `${folder}/${Date.now()}-${crypto.randomUUID()}.${ext}`
-
-  const { error: uploadErr } = await supabase.storage
-    .from('website-media')
-    .upload(path, file, { contentType: file.type, upsert: false })
-  if (uploadErr) throw uploadErr
-
-  const { data } = supabase.storage.from('website-media').getPublicUrl(path)
-  const type: 'image' | 'video' = file.type.startsWith('video') ? 'video' : 'image'
-  return { url: data.publicUrl, type }
-}

@@ -3,14 +3,10 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { Pause, Play, Upload } from 'lucide-react'
 import type { HeroContent } from '@/lib/cms/hero'
+import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
-import {
-  discardHeroDraft,
-  publishHero,
-  saveHeroDraft,
-  uploadHeroMedia,
-} from './actions'
+import { discardHeroDraft, publishHero, saveHeroDraft } from './actions'
 
 type Props = {
   initial: HeroContent
@@ -78,20 +74,8 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
       setError(`That file is "${file.type || 'unknown'}" — please pick a video.`)
       return
     }
-    // Server actions cap request bodies at 25MB (next.config.ts). Larger
-    // wedding clips need the signed-URL path — but most hero loops fit.
-    const MAX_BYTES = 25 * 1024 * 1024
-    if (file.size > MAX_BYTES) {
-      setError(
-        `Video is ${(file.size / 1024 / 1024).toFixed(1)} MB — the upload limit is 25 MB. ` +
-          'Compress or trim the clip and try again.'
-      )
-      return
-    }
-    const fd = new FormData()
-    fd.append('file', file)
     runAction(async () => {
-      const { url } = await uploadHeroMedia(fd)
+      const { url } = await uploadCmsMedia(file, 'homepage/hero', 'video')
       setDraft((d) => ({ ...d, media_url: url, media_type: 'video' }))
       setMessage('Video uploaded.')
     })

@@ -53,19 +53,3 @@ export async function discardBusinessDraft(): Promise<void> {
   revalidatePath('/cms/homepage/business')
 }
 
-export async function uploadBusinessMedia(formData: FormData): Promise<{ url: string }> {
-  const file = formData.get('file') as File | null
-  if (!file) throw new Error('No file provided')
-
-  const supabase = createSupabaseAdminClient()
-  const ext = file.name.split('.').pop() ?? 'bin'
-  const path = `homepage/business/${Date.now()}-${crypto.randomUUID()}.${ext}`
-
-  const { error: uploadErr } = await supabase.storage
-    .from('website-media')
-    .upload(path, file, { contentType: file.type, upsert: false })
-  if (uploadErr) throw uploadErr
-
-  const { data } = supabase.storage.from('website-media').getPublicUrl(path)
-  return { url: data.publicUrl }
-}

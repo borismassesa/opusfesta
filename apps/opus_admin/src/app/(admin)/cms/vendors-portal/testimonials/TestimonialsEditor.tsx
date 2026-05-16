@@ -8,13 +8,13 @@ import type {
   TestimonialRole,
   TestimonialsContent,
 } from '@/lib/cms/testimonials'
+import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardTestimonialsDraft,
   publishTestimonials,
   saveTestimonialsDraft,
-  uploadTestimonialAvatar,
 } from './actions'
 
 type Props = { initial: TestimonialsContent; hasDraft: boolean }
@@ -153,12 +153,15 @@ export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft 
                   onMoveUp={() => moveItem(item.id, -1)}
                   onMoveDown={() => moveItem(item.id, 1)}
                   onUpload={(file) => {
-                    const fd = new FormData()
-                    fd.append('file', file)
                     startTransition(async () => {
-                      const { url } = await uploadTestimonialAvatar(fd)
-                      updateItem(item.id, { image_url: url })
-                      setMessage('Avatar uploaded.')
+                      try {
+                        const { url } = await uploadCmsMedia(file, 'vendors-portal/testimonials', 'image')
+                        updateItem(item.id, { image_url: url })
+                        setMessage('Avatar uploaded.')
+                      } catch (err) {
+                        const detail = err instanceof Error ? err.message : String(err)
+                        setMessage(`Upload failed: ${detail}`)
+                      }
                     })
                   }}
                 />

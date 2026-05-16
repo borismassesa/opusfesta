@@ -17,13 +17,13 @@ import type {
   FeaturePill,
   FeaturesContent,
 } from '@/lib/cms/features'
+import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardFeaturesDraft,
   publishFeatures,
   saveFeaturesDraft,
-  uploadFeaturesMedia,
 } from './actions'
 
 type Props = { initial: FeaturesContent; hasDraft: boolean }
@@ -183,12 +183,15 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
   const uploadFor =
     (cb: (item: FeatureMediaItem) => void) =>
     (file: File) => {
-      const fd = new FormData()
-      fd.append('file', file)
       startTransition(async () => {
-        const { url, type } = await uploadFeaturesMedia(fd)
-        cb({ url, type })
-        setMessage('Media uploaded.')
+        try {
+          const { url, type } = await uploadCmsMedia(file, 'homepage/features', 'media')
+          cb({ url, type })
+          setMessage('Media uploaded.')
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : String(err)
+          setMessage(`Upload failed: ${detail}`)
+        }
       })
     }
 

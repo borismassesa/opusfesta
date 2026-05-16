@@ -53,20 +53,3 @@ export async function discardFeaturesDraft(): Promise<void> {
   revalidatePath('/cms/vendors-portal/features')
 }
 
-export async function uploadFeaturesMedia(formData: FormData): Promise<{ url: string; type: 'video' | 'image' }> {
-  const file = formData.get('file') as File | null
-  if (!file) throw new Error('No file provided')
-
-  const supabase = createSupabaseAdminClient()
-  const ext = file.name.split('.').pop() ?? 'bin'
-  const path = `vendors-portal/features/${Date.now()}-${crypto.randomUUID()}.${ext}`
-
-  const { error: uploadErr } = await supabase.storage
-    .from('website-media')
-    .upload(path, file, { contentType: file.type, upsert: false })
-  if (uploadErr) throw uploadErr
-
-  const { data } = supabase.storage.from('website-media').getPublicUrl(path)
-  const type: 'video' | 'image' = file.type.startsWith('video') ? 'video' : 'image'
-  return { url: data.publicUrl, type }
-}

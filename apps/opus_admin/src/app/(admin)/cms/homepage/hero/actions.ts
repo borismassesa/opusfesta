@@ -51,21 +51,3 @@ export async function discardHeroDraft(): Promise<void> {
   if (error) throw error
   revalidatePath('/cms/homepage/hero')
 }
-
-export async function uploadHeroMedia(formData: FormData): Promise<{ url: string; type: 'video' | 'image' }> {
-  const file = formData.get('file') as File | null
-  if (!file) throw new Error('No file provided')
-
-  const supabase = createSupabaseAdminClient()
-  const ext = file.name.split('.').pop() ?? 'bin'
-  const path = `homepage/hero/${Date.now()}-${crypto.randomUUID()}.${ext}`
-
-  const { error: uploadErr } = await supabase.storage
-    .from('website-media')
-    .upload(path, file, { contentType: file.type, upsert: false })
-  if (uploadErr) throw uploadErr
-
-  const { data } = supabase.storage.from('website-media').getPublicUrl(path)
-  const type: 'video' | 'image' = file.type.startsWith('video') ? 'video' : 'image'
-  return { url: data.publicUrl, type }
-}

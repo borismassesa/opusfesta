@@ -10,13 +10,13 @@ import type {
   WebsiteTheme,
 } from '@/lib/cms/do-more'
 import { WEBSITE_THEME_OPTIONS } from '@/lib/cms/do-more'
+import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardDoMoreDraft,
   publishDoMore,
   saveDoMoreDraft,
-  uploadGuestAvatar,
 } from './actions'
 
 type Props = { initial: DoMoreContent; hasDraft: boolean }
@@ -331,12 +331,15 @@ export default function DoMoreEditor({ initial, hasDraft: initialHasDraft }: Pro
                   onMoveUp={() => moveGuest(g.id, -1)}
                   onMoveDown={() => moveGuest(g.id, 1)}
                   onUpload={(file) => {
-                    const fd = new FormData()
-                    fd.append('file', file)
                     startTransition(async () => {
-                      const { url } = await uploadGuestAvatar(fd)
-                      updateGuest(g.id, { image_url: url })
-                      setMessage('Avatar uploaded.')
+                      try {
+                        const { url } = await uploadCmsMedia(file, 'vendors-portal/do-more', 'image')
+                        updateGuest(g.id, { image_url: url })
+                        setMessage('Avatar uploaded.')
+                      } catch (err) {
+                        const detail = err instanceof Error ? err.message : String(err)
+                        setMessage(`Upload failed: ${detail}`)
+                      }
                     })
                   }}
                 />

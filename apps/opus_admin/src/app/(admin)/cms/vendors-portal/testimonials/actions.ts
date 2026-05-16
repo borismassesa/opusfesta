@@ -53,19 +53,3 @@ export async function discardTestimonialsDraft(): Promise<void> {
   revalidatePath('/cms/vendors-portal/testimonials')
 }
 
-export async function uploadTestimonialAvatar(formData: FormData): Promise<{ url: string }> {
-  const file = formData.get('file') as File | null
-  if (!file) throw new Error('No file provided')
-
-  const supabase = createSupabaseAdminClient()
-  const ext = file.name.split('.').pop() ?? 'bin'
-  const path = `vendors-portal/testimonials/${Date.now()}-${crypto.randomUUID()}.${ext}`
-
-  const { error: uploadErr } = await supabase.storage
-    .from('website-media')
-    .upload(path, file, { contentType: file.type, upsert: false })
-  if (uploadErr) throw uploadErr
-
-  const { data } = supabase.storage.from('website-media').getPublicUrl(path)
-  return { url: data.publicUrl }
-}
