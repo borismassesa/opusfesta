@@ -24,7 +24,8 @@ const TANZANIA_CITIES = [
 
 type Errors = Partial<Record<'fullName' | 'phone' | 'streetLine', string>>
 
-const PHONE_RE = /^\+?[\d\s().-]{9,}$/
+// Phone must contain at least 9 digits and may include + and common separators.
+const PHONE_RE = /^\+?(?:[\d](?:[\s().-]?)){9,}$/
 
 export default function AddressPage() {
   const router = useRouter()

@@ -71,10 +71,22 @@ function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
 }
 
-const PHONE_RE = /^\+?[\d\s().-]{9,}$/
+// Phone must contain at least 9 digits (Tanzania mobile numbers are 9 after the
+// country code) and may include + and common separators.
+const PHONE_RE = /^\+?(?:[\d](?:[\s().-]?)){9,}$/
 const CARD_NUMBER_RE = /^\d{13,19}$/
 const EXPIRY_RE = /^(0[1-9]|1[0-2])\/\d{2}$/
 const CVV_RE = /^\d{3,4}$/
+
+function isExpiryInPast(value: string): boolean {
+  const m = value.match(EXPIRY_RE)
+  if (!m) return false
+  const month = Number(m[1])
+  const year = 2000 + Number(value.slice(3, 5))
+  const now = new Date()
+  const expiryEnd = new Date(year, month, 0, 23, 59, 59) // last second of the expiry month
+  return expiryEnd.getTime() < now.getTime()
+}
 
 type Errors = Partial<
   Record<
@@ -162,6 +174,7 @@ export default function CheckoutPage() {
       if (!CARD_NUMBER_RE.test(cardNumber.replace(/\s/g, '')))
         e.cardNumber = 'Enter a 13–19 digit card number.'
       if (!EXPIRY_RE.test(cardExpiry)) e.cardExpiry = 'Use MM/YY format.'
+      else if (isExpiryInPast(cardExpiry)) e.cardExpiry = 'This card has expired.'
       if (!CVV_RE.test(cardCvv)) e.cardCvv = '3 or 4 digits.'
     } else if (selected === 'new-mobile') {
       if (!PHONE_RE.test(mobilePhone.trim())) e.mobilePhone = 'Enter a valid phone number.'
@@ -181,27 +194,33 @@ export default function CheckoutPage() {
     if (Object.keys(e).length > 0) return
     if (!hydrated || !hydrated.address) return
     setSubmitting(true)
-    const ref = generateOrderRef()
-    const items: StoredCartItem[] = hydrated.items.map((i) => ({
-      category: i.product.category.slug,
-      id: i.product.id,
-      size: i.size,
-      color: i.color,
-      quantity: i.quantity,
-    }))
-    setLastOrder({
-      ref,
-      paidAt: new Date().toISOString(),
-      paymentLabel: paymentLabel(),
-      items,
-      subtotal,
-      vat,
-      delivery: 0,
-      total,
-      address: hydrated.address,
-    })
-    clearCart()
-    router.push('/attire-and-rings/confirmation')
+    try {
+      const ref = generateOrderRef()
+      const items: StoredCartItem[] = hydrated.items.map((i) => ({
+        category: i.product.category.slug,
+        id: i.product.id,
+        size: i.size,
+        color: i.color,
+        quantity: i.quantity,
+      }))
+      setLastOrder({
+        ref,
+        paidAt: new Date().toISOString(),
+        paymentLabel: paymentLabel(),
+        items,
+        subtotal,
+        vat,
+        delivery: 0,
+        total,
+        address: hydrated.address,
+      })
+      clearCart()
+      router.push('/attire-and-rings/confirmation')
+    } finally {
+      // If the router.push throws or is otherwise interrupted we don't want
+      // the button stuck in its disabled state.
+      setSubmitting(false)
+    }
   }
 
   // Server-side render and first client tick both render the same skeleton so

@@ -37,6 +37,11 @@ export default function ConfirmationPage() {
         <div className="max-w-7xl mx-auto px-4 lg:px-8">
           <CheckoutStepper current="confirmation" />
 
+          {!hydrated ? (
+            <div className="max-w-3xl mx-auto py-14 text-center text-sm text-gray-400">
+              Loading your order…
+            </div>
+          ) : (
           <div className="max-w-3xl mx-auto">
             <div className="bg-white rounded-2xl border border-gray-200 p-8 md:p-10 text-center mb-6">
               <div className="inline-flex w-16 h-16 rounded-full bg-emerald-100 items-center justify-center mb-4">
@@ -150,6 +155,7 @@ export default function ConfirmationPage() {
               </Link>
             </div>
           </div>
+          )}
         </div>
       </main>
       <Footer />
