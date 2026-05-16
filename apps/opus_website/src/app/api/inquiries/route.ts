@@ -84,6 +84,18 @@ async function resolveVendorNotificationTarget(supabase: ReturnType<typeof creat
 }
 
 export async function POST(request: Request) {
+  try {
+    return await handleInquiryRequest(request)
+  } catch (err) {
+    console.error('[inquiries] unhandled error', err)
+    return NextResponse.json(
+      { error: 'Unable to send your request. Please try again.' },
+      { status: 500 },
+    )
+  }
+}
+
+async function handleInquiryRequest(request: Request) {
   let body: unknown
   try {
     body = await request.json()
@@ -217,8 +229,15 @@ export async function POST(request: Request) {
   }
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006'
-  const accessToken = generateInquiryToken(data.id, (email as string).trim().toLowerCase())
-  const inquiryUrl = `${appUrl.replace(/\/$/, '')}/my/inquiries/${data.id}?access_token=${accessToken}`
+  let accessToken: string | null = null
+  try {
+    accessToken = generateInquiryToken(data.id, (email as string).trim().toLowerCase())
+  } catch (tokenErr) {
+    console.error('[inquiries] token generation failed', tokenErr)
+  }
+  const inquiryUrl = accessToken
+    ? `${appUrl.replace(/\/$/, '')}/my/inquiries/${data.id}?access_token=${accessToken}`
+    : `${appUrl.replace(/\/$/, '')}/my/inquiries/${data.id}`
 
   try {
     const clientEmailPayload = buildInquiryClientConfirmationEmail({

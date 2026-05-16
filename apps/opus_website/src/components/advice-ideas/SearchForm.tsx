@@ -15,9 +15,13 @@ import { Search, X } from 'lucide-react'
 export default function SearchForm({
   action,
   iconOnly = false,
+  placeholder = 'Search articles and inspiration',
+  ariaLabel = 'Search articles',
 }: {
   action?: string
   iconOnly?: boolean
+  placeholder?: string
+  ariaLabel?: string
 } = {}) {
   const router = useRouter()
   const pathname = usePathname()
@@ -54,8 +58,8 @@ export default function SearchForm({
           type="search"
           value={value}
           onChange={(e) => setValue(e.target.value)}
-          placeholder="Search articles and inspiration"
-          aria-label="Search articles"
+          placeholder={placeholder}
+          aria-label={ariaLabel}
           className={`h-full w-full min-w-0 appearance-none bg-transparent text-[14px] text-slate-900 outline-none placeholder:text-slate-400 [&::-ms-clear]:hidden [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none ${iconOnly ? 'pl-5 pr-2' : 'pr-2'}`}
         />
         {value && (
