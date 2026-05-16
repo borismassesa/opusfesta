@@ -2,8 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Heart, Share2, Star, MapPin, Store, Truck, ChevronDown, Check, ShieldCheck, Calendar } from 'lucide-react'
 import type { Product } from '@/lib/bridal-products'
+import { addToCart } from '@/lib/cart-storage'
 import ExpandableText from './ExpandableText'
 
 function formatTzs(n: number): string {
@@ -13,6 +15,7 @@ function formatTzs(n: number): string {
 type DeliveryOption = { id: 'standard' | 'express' | 'pickup'; label: string; fee: number; eta: string }
 
 export default function PdpHero({ product }: { product: Product }) {
+  const router = useRouter()
   const baseDelivery = product.freeDelivery ? 0 : 12_000
   const deliveryOptions: DeliveryOption[] = [
     { id: 'standard', label: 'Standard', fee: baseDelivery, eta: '7–14 days' },
@@ -29,6 +32,19 @@ export default function PdpHero({ product }: { product: Product }) {
   const [delivery, setDelivery] = useState<DeliveryOption>(deliveryOptions[0])
 
   const lineTotal = product.priceTzs * qty + delivery.fee
+
+  const handleAddToCart = (destination: '/attire-and-rings/cart' | '/attire-and-rings/address') => {
+    addToCart({
+      category: product.category.slug,
+      id: product.id,
+      size,
+      color,
+      quantity: qty,
+    })
+    router.push(destination)
+  }
+
+  const vendorSearchHref = `/vendors?search=${encodeURIComponent(product.vendor.name)}`
 
   return (
     <section className="max-w-7xl mx-auto px-2 lg:px-2 py-6 grid grid-cols-1 lg:grid-cols-12 gap-6 lg:gap-8 items-start">
@@ -91,7 +107,7 @@ export default function PdpHero({ product }: { product: Product }) {
             </p>
           </div>
           <Link
-            href="/vendors"
+            href={vendorSearchHref}
             className="shrink-0 h-9 px-4 inline-flex items-center rounded-full border border-gray-300 bg-white text-sm font-semibold text-gray-900 hover:bg-gray-50 transition"
           >
             Visit Store
@@ -102,7 +118,7 @@ export default function PdpHero({ product }: { product: Product }) {
       {/* MIDDLE — product details */}
       <div className="lg:col-span-4">
         <Link
-          href="/vendors"
+          href={vendorSearchHref}
           className="inline-block text-xs uppercase tracking-[0.18em] text-gray-500 font-semibold mb-2 hover:text-gray-900 transition-colors"
         >
           {product.vendor.name}
@@ -259,7 +275,7 @@ export default function PdpHero({ product }: { product: Product }) {
 
           <p className="text-sm mb-3 inline-flex items-center gap-1.5">
             <MapPin size={14} className="text-gray-700" />
-            <Link href="/vendors" className="text-[#1c4dac] hover:underline font-medium">
+            <Link href="/attire-and-rings/address" className="text-[#1c4dac] hover:underline font-medium">
               Deliver to {product.vendor.location}
             </Link>
           </p>
@@ -285,25 +301,27 @@ export default function PdpHero({ product }: { product: Product }) {
           </div>
 
           {/* CTAs */}
-          <Link
-            href="/attire-and-rings/cart"
+          <button
+            type="button"
+            onClick={() => handleAddToCart('/attire-and-rings/cart')}
             className="w-full h-10 inline-flex items-center justify-center bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] font-semibold rounded-full mb-2 transition-colors"
           >
             Add to cart
-          </Link>
-          <Link
-            href="/attire-and-rings/address"
+          </button>
+          <button
+            type="button"
+            onClick={() => handleAddToCart('/attire-and-rings/address')}
             className="w-full h-10 inline-flex items-center justify-center bg-gray-900 hover:bg-gray-800 text-white font-semibold rounded-full mb-5 transition-colors"
           >
             Buy Now
-          </Link>
+          </button>
 
           {/* Info rows */}
           <dl className="text-[13px] space-y-1.5 mb-3">
             <div className="grid grid-cols-[88px_1fr] gap-2">
               <dt className="text-gray-600">Ships from</dt>
               <dd>
-                <Link href="/vendors" className="text-[#1c4dac] hover:underline">
+                <Link href={vendorSearchHref} className="text-[#1c4dac] hover:underline">
                   {product.vendor.location}
                 </Link>
               </dd>
@@ -311,7 +329,7 @@ export default function PdpHero({ product }: { product: Product }) {
             <div className="grid grid-cols-[88px_1fr] gap-2">
               <dt className="text-gray-600">Sold by</dt>
               <dd>
-                <Link href="/vendors" className="text-[#1c4dac] hover:underline">
+                <Link href={vendorSearchHref} className="text-[#1c4dac] hover:underline">
                   {product.vendor.name}
                 </Link>
               </dd>

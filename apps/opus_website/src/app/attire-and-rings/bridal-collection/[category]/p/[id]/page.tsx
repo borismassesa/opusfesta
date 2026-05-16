@@ -227,13 +227,13 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
                 </p>
                 <div className="flex flex-wrap gap-3">
                   <Link
-                    href="/vendors"
+                    href={`/vendors?search=${encodeURIComponent(product.vendor.name)}`}
                     className="h-11 bg-gray-900 text-white text-sm font-semibold rounded-full hover:bg-gray-800 transition inline-flex items-center px-6"
                   >
                     Visit boutique
                   </Link>
                   <Link
-                    href="/vendors"
+                    href={`/vendors?search=${encodeURIComponent(product.vendor.name)}&contact=1`}
                     className="h-11 bg-white text-gray-900 text-sm font-semibold rounded-full border border-gray-300 hover:bg-gray-50 transition inline-flex items-center px-6"
                   >
                     Message vendor

@@ -1,30 +1,52 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Check, Clock, Trash2, ChevronDown, ShieldCheck } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import CheckoutStepper from '@/components/attire-and-rings/CheckoutStepper'
 import { generateProduct, type Product } from '@/lib/bridal-products'
+import { getCart, setCart, type StoredCartItem } from '@/lib/cart-storage'
 
 type CartItem = {
   product: Product
   size: string
+  color: string
   quantity: number
   selected: boolean
 }
 
-const DEMO_REFS: { category: string; id: number; size: string }[] = [
-  { category: 'wedding-dresses', id: 0, size: 'M' },
-  { category: 'engagement-rings', id: 2, size: '7' },
-  { category: 'bridal-shoes', id: 4, size: '38' },
-]
+function hydrate(stored: StoredCartItem[]): CartItem[] {
+  return stored.flatMap((s) => {
+    const product = generateProduct(s.category, s.id)
+    if (!product) return []
+    return [
+      {
+        product,
+        size: s.size,
+        color: s.color,
+        quantity: s.quantity,
+        selected: s.selected ?? true,
+      },
+    ]
+  })
+}
 
-const INITIAL_ITEMS: CartItem[] = DEMO_REFS.flatMap((r) => {
-  const p = generateProduct(r.category, r.id)
-  return p ? [{ product: p, size: r.size, quantity: 1, selected: true }] : []
-})
+function toStored(items: CartItem[]): StoredCartItem[] {
+  return items.map((i) => ({
+    category: i.product.category.slug,
+    id: i.product.id,
+    size: i.size,
+    color: i.color,
+    quantity: i.quantity,
+    selected: i.selected,
+  }))
+}
+
+function itemKey(i: CartItem): string {
+  return `${i.product.category.slug}:${i.product.id}:${i.size}:${i.color}`
+}
 
 function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
@@ -63,7 +85,7 @@ function CartRow({
   onQty: (q: number) => void
   onRemove: () => void
 }) {
-  const { product, size, quantity, selected } = item
+  const { product, size, color, quantity, selected } = item
   return (
     <div className="flex items-center gap-4 py-5">
       <div className="relative w-24 h-24 shrink-0 rounded-xl overflow-hidden bg-gray-100">
@@ -74,7 +96,9 @@ function CartRow({
           aria-label={selected ? 'Deselect item' : 'Select item'}
           aria-pressed={selected}
           className={`absolute top-2 left-2 w-6 h-6 rounded-md flex items-center justify-center transition-colors ${
-            selected ? 'bg-gray-900 text-white' : 'bg-white text-transparent border border-gray-300 hover:border-gray-500'
+            selected
+              ? 'bg-gray-900 text-white'
+              : 'bg-white text-transparent border border-gray-300 hover:border-gray-500'
           }`}
         >
           {selected && <Check size={14} />}
@@ -88,7 +112,9 @@ function CartRow({
         >
           {product.name}
         </Link>
-        <p className="text-xs text-gray-600 mt-0.5">Size: {size}</p>
+        <p className="text-xs text-gray-600 mt-0.5">
+          Size: {size} · Colour: {color}
+        </p>
         <p className="text-xs text-gray-500 mt-2 inline-flex items-center gap-1">
           <Clock size={12} /> 30-day exchange available
         </p>
@@ -127,15 +153,31 @@ function CartRow({
 }
 
 export default function CartPage() {
-  const [items, setItems] = useState<CartItem[]>(INITIAL_ITEMS)
+  const [items, setItems] = useState<CartItem[]>([])
+  const [hydrated, setHydrated] = useState(false)
   const [coupon, setCoupon] = useState('')
   const [couponMessage, setCouponMessage] = useState<string | null>(null)
 
-  const removeItem = (id: number) => setItems((prev) => prev.filter((i) => i.product.id !== id))
-  const updateQty = (id: number, qty: number) =>
-    setItems((prev) => prev.map((i) => (i.product.id === id ? { ...i, quantity: qty } : i)))
-  const toggleSelect = (id: number) =>
-    setItems((prev) => prev.map((i) => (i.product.id === id ? { ...i, selected: !i.selected } : i)))
+  // Hydrate from localStorage on mount
+  useEffect(() => {
+    const sync = () => setItems(hydrate(getCart()))
+    sync()
+    setHydrated(true)
+    window.addEventListener('opusfesta:cart-changed', sync)
+    return () => window.removeEventListener('opusfesta:cart-changed', sync)
+  }, [])
+
+  // Persist any changes back to storage (skipped until first hydration finishes)
+  const persist = (next: CartItem[]) => {
+    setItems(next)
+    setCart(toStored(next))
+  }
+
+  const removeItem = (key: string) => persist(items.filter((i) => itemKey(i) !== key))
+  const updateQty = (key: string, qty: number) =>
+    persist(items.map((i) => (itemKey(i) === key ? { ...i, quantity: qty } : i)))
+  const toggleSelect = (key: string) =>
+    persist(items.map((i) => (itemKey(i) === key ? { ...i, selected: !i.selected } : i)))
 
   const selectedItems = items.filter((i) => i.selected)
   const subtotal = selectedItems.reduce((s, i) => s + i.product.priceTzs * i.quantity, 0)
@@ -174,11 +216,13 @@ export default function CartPage() {
               </div>
 
               <div className="rounded-2xl bg-white border border-gray-200 px-5">
-                {items.length === 0 ? (
+                {!hydrated ? (
+                  <div className="py-14 text-center text-sm text-gray-400">Loading your cart…</div>
+                ) : items.length === 0 ? (
                   <div className="py-14 text-center">
                     <p className="text-sm font-semibold text-gray-700">Your cart is empty.</p>
                     <p className="text-xs text-gray-500 mt-1">
-                      Saved pieces from your wishlist will move here when you check out.
+                      Add a piece from the collection to see it here.
                     </p>
                     <Link
                       href="/attire-and-rings/bridal-collection"
@@ -189,24 +233,25 @@ export default function CartPage() {
                   </div>
                 ) : (
                   <div className="divide-y divide-gray-100">
-                    {items.map((item) => (
-                      <CartRow
-                        key={item.product.id}
-                        item={item}
-                        onToggle={() => toggleSelect(item.product.id)}
-                        onQty={(q) => updateQty(item.product.id, q)}
-                        onRemove={() => removeItem(item.product.id)}
-                      />
-                    ))}
+                    {items.map((item) => {
+                      const key = itemKey(item)
+                      return (
+                        <CartRow
+                          key={key}
+                          item={item}
+                          onToggle={() => toggleSelect(key)}
+                          onQty={(q) => updateQty(key, q)}
+                          onRemove={() => removeItem(key)}
+                        />
+                      )
+                    })}
                   </div>
                 )}
               </div>
-
             </section>
 
             {/* RIGHT — Sidebar */}
             <aside className="space-y-5">
-              {/* Apply Coupon */}
               <div className="rounded-2xl bg-white border border-gray-200 p-5">
                 <h2 className="text-lg font-bold text-gray-900 mb-1">Apply Coupon</h2>
                 <p className="text-sm text-gray-600 mb-4">Using a promo code?</p>
@@ -229,12 +274,9 @@ export default function CartPage() {
                     Apply
                   </button>
                 </div>
-                {couponMessage && (
-                  <p className="mt-2 text-xs text-gray-500">{couponMessage}</p>
-                )}
+                {couponMessage && <p className="mt-2 text-xs text-gray-500">{couponMessage}</p>}
               </div>
 
-              {/* Price Details */}
               <div className="rounded-2xl bg-white border border-gray-200 p-5">
                 <h2 className="text-lg font-bold text-gray-900 mb-4">Price Details</h2>
                 <dl className="space-y-3 text-sm">
