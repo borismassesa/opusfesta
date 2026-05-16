@@ -3,13 +3,13 @@
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { Upload } from 'lucide-react'
 import type { CtaContent } from '@/lib/cms/cta'
+import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardCtaDraft,
   publishCta,
   saveCtaDraft,
-  uploadCtaBackground,
 } from './actions'
 
 type Props = { initial: CtaContent; hasDraft: boolean }
@@ -39,12 +39,15 @@ export default function CtaEditor({ initial, hasDraft: initialHasDraft }: Props)
     setDraft((d) => ({ ...d, [key]: value }))
 
   const handleUpload = (file: File) => {
-    const fd = new FormData()
-    fd.append('file', file)
     startTransition(async () => {
-      const { url } = await uploadCtaBackground(fd)
-      setField('background_image_url', url)
-      setMessage('Background uploaded.')
+      try {
+        const { url } = await uploadCmsMedia(file, 'vendors-portal/cta', 'image')
+        setField('background_image_url', url)
+        setMessage('Background uploaded.')
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err)
+        setMessage(`Upload failed: ${detail}`)
+      }
     })
   }
 

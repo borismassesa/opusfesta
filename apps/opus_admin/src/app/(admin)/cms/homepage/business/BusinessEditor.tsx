@@ -20,13 +20,13 @@ import type {
   UpcomingBooking,
   VendorShowcase,
 } from '@/lib/cms/business'
+import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardBusinessDraft,
   publishBusiness,
   saveBusinessDraft,
-  uploadBusinessMedia,
 } from './actions'
 
 type Props = { initial: BusinessContent; hasDraft: boolean }
@@ -198,12 +198,15 @@ export default function BusinessEditor({ initial, hasDraft: initialHasDraft }: P
   const uploadFor =
     (cb: (url: string) => void) =>
     (file: File) => {
-      const fd = new FormData()
-      fd.append('file', file)
       startTransition(async () => {
-        const { url } = await uploadBusinessMedia(fd)
-        cb(url)
-        setMessage('Image uploaded.')
+        try {
+          const { url } = await uploadCmsMedia(file, 'homepage/business', 'image')
+          cb(url)
+          setMessage('Image uploaded.')
+        } catch (err) {
+          const detail = err instanceof Error ? err.message : String(err)
+          setMessage(`Upload failed: ${detail}`)
+        }
       })
     }
 

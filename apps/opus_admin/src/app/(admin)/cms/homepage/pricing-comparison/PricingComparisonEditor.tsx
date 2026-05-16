@@ -9,13 +9,13 @@ import type {
   PricingComparisonContent,
 } from '@/lib/cms/pricing-comparison'
 import { FEATURE_ICON_OPTIONS, getFeatureIcon } from '@/lib/cms/pricing-comparison-icons'
+import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardPricingComparisonDraft,
   publishPricingComparison,
   savePricingComparisonDraft,
-  uploadPricingMedia,
 } from './actions'
 
 type Props = {
@@ -150,12 +150,15 @@ export default function PricingComparisonEditor({
   }, [hasDraft, pending, message, draft])
 
   const uploadFor = (target: 'couple_image_url' | 'promo_image_url') => (file: File) => {
-    const fd = new FormData()
-    fd.append('file', file)
     startTransition(async () => {
-      const { url } = await uploadPricingMedia(fd)
-      setField(target, url)
-      setMessage('Image uploaded.')
+      try {
+        const { url } = await uploadCmsMedia(file, 'homepage/pricing-comparison', 'image')
+        setField(target, url)
+        setMessage('Image uploaded.')
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err)
+        setMessage(`Upload failed: ${detail}`)
+      }
     })
   }
 

@@ -18,8 +18,9 @@ import {
   type VendorHeroMedia,
   type VendorRecord,
 } from '@/lib/cms/vendors'
+import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
-import { deleteVendor, upsertVendor, uploadVendorMedia } from '../actions'
+import { deleteVendor, upsertVendor } from '../actions'
 
 type Props = {
   initial: VendorRecord
@@ -98,12 +99,10 @@ export default function VendorEditor({ initial, categories, isNew }: Props) {
   }
 
   const handleUpload = (file: File, target: 'hero' | 'gallery') => {
-    const fd = new FormData()
-    fd.append('file', file)
-    if (vendor.id) fd.append('vendorId', vendor.id)
+    const prefix = vendor.id ? `vendors/${vendor.id}` : 'vendors/_orphan'
     startTransition(async () => {
       try {
-        const { url, type } = await uploadVendorMedia(fd)
+        const { url, type } = await uploadCmsMedia(file, prefix, 'media')
         if (target === 'hero') {
           setHero({ src: url, type: type === 'video' ? 'video' : 'image' })
         } else {
