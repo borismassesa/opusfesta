@@ -1,13 +1,18 @@
 'use server'
 
+import { requireAdminRole, type AdminAccessRole } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 
-// Vercel's serverless request-body cap (~4.5 MB) rejects larger payloads
-// before the function runs and the browser surfaces the rejection as a
-// generic "An unexpected response was received from the server." So every
-// CMS image/video upload mints a signed Supabase Storage URL and the
-// browser PUTs the file straight to Storage — same mechanism the vendor
-// portfolio admin (`adminCreateVendorVideoUploadUrl`) already uses.
+// Vercel's serverless request-body cap (~4.5 MB at the time of writing)
+// rejects larger payloads before the function runs and the browser surfaces
+// the rejection as a generic "An unexpected response was received from the
+// server." So every CMS image/video upload mints a signed Supabase Storage
+// URL and the browser PUTs the file straight to Storage — same mechanism
+// the vendor portfolio admin (`adminCreateVendorVideoUploadUrl`) uses, and
+// like that helper this one gates on `requireAdminRole` because Server
+// Actions are reachable as RPC endpoints regardless of route layout.
+
+const CMS_UPLOAD_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 
 const IMAGE_MIME = new Set([
   'image/jpeg',
@@ -41,6 +46,7 @@ export async function createCmsMediaUploadUrl(input: {
   sizeBytes: number
   kind: 'image' | 'video' | 'media'
 }): Promise<CmsMediaUploadUrlResult> {
+  await requireAdminRole(CMS_UPLOAD_ROLES)
   const isImage = IMAGE_MIME.has(input.mimeType)
   const isVideo = VIDEO_MIME.has(input.mimeType)
   if (input.kind === 'image' && !isImage) {
@@ -72,6 +78,12 @@ export async function createCmsMediaUploadUrl(input: {
     .from('website-media')
     .createSignedUploadUrl(path)
   if (signed.error || !signed.data) {
+    console.error('[cms-upload] createSignedUploadUrl failed', {
+      path,
+      mime: input.mimeType,
+      size: input.sizeBytes,
+      err: signed.error?.message,
+    })
     return {
       ok: false,
       error: `Signed upload URL failed: ${signed.error?.message ?? 'unknown'}`,

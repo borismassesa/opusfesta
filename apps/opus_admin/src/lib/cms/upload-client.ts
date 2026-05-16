@@ -4,8 +4,9 @@ import { createCmsMediaUploadUrl } from './upload-media'
 
 export type UploadedMedia = { url: string; type: 'image' | 'video' }
 
-// Mint a signed Storage URL on the server, then PUT the file straight to
-// Supabase. See upload-media.ts for the why (Vercel body cap).
+// Why this PUTs directly to Supabase instead of POSTing the file to a Server
+// Action: see upload-media.ts (Vercel body cap). Failures are logged here so
+// each editor's catch block only has to worry about user-facing messaging.
 export async function uploadCmsMedia(
   file: File,
   pathPrefix: string,
@@ -18,7 +19,16 @@ export async function uploadCmsMedia(
     sizeBytes: file.size,
     kind,
   })
-  if (!minted.ok) throw new Error(minted.error)
+  if (!minted.ok) {
+    console.error('[cms-upload] mint failed', {
+      pathPrefix,
+      filename: file.name,
+      mime: file.type,
+      size: file.size,
+      err: minted.error,
+    })
+    throw new Error(minted.error)
+  }
 
   const put = await fetch(minted.uploadUrl, {
     method: 'PUT',
@@ -27,6 +37,12 @@ export async function uploadCmsMedia(
   })
   if (!put.ok) {
     const body = await put.text().catch(() => '')
+    console.error('[cms-upload] storage PUT rejected', {
+      pathPrefix,
+      filename: file.name,
+      status: put.status,
+      body: body.slice(0, 200),
+    })
     throw new Error(
       `Storage rejected upload (${put.status}${body ? `: ${body.slice(0, 120)}` : ''})`,
     )

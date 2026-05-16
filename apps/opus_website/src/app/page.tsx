@@ -12,10 +12,10 @@ import Faq from '@/components/faq'
 import Cta from '@/components/cta'
 import Footer from '@/components/footer'
 
-// Every section here loads from website_page_sections via Supabase. Without
-// this, Next bakes the homepage at build time and the admin's "Publish" never
-// shows up on opusfesta.com until the next deploy. Other CMS-driven routes
-// (/vendors, /advice-and-ideas, /my/*) already opt out the same way.
+// Most sections here load from website_page_sections via Supabase. Without
+// this, Next prerenders the homepage at build time and the admin's "Publish"
+// doesn't show up on opusfesta.com until the next deploy. Other CMS-driven
+// routes (/vendors, /advice-and-ideas, /my/*) already opt out the same way.
 export const dynamic = 'force-dynamic'
 
 export default function Home() {
