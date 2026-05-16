@@ -1,14 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { MapPin, Home, Store, Check } from 'lucide-react'
+import { MapPin, Home, Store, Check, AlertCircle } from 'lucide-react'
 import Navbar from '@/components/navbar'
 import Footer from '@/components/footer'
 import CheckoutStepper from '@/components/attire-and-rings/CheckoutStepper'
-
-type FulfilmentMode = 'delivery' | 'fitting' | 'pickup'
+import { getAddress, setAddress as persistAddress, type FulfilmentMode } from '@/lib/cart-storage'
 
 const TANZANIA_CITIES = [
   'Dar es Salaam',
@@ -23,6 +22,10 @@ const TANZANIA_CITIES = [
   'Iringa',
 ]
 
+type Errors = Partial<Record<'fullName' | 'phone' | 'streetLine', string>>
+
+const PHONE_RE = /^\+?[\d\s().-]{9,}$/
+
 export default function AddressPage() {
   const router = useRouter()
   const [mode, setMode] = useState<FulfilmentMode>('delivery')
@@ -34,10 +37,56 @@ export default function AddressPage() {
   const [neighbourhood, setNeighbourhood] = useState('')
   const [notes, setNotes] = useState('')
   const [saveAsDefault, setSaveAsDefault] = useState(true)
+  const [errors, setErrors] = useState<Errors>({})
+
+  // Hydrate from storage on mount so the user comes back to their last entry
+  useEffect(() => {
+    const stored = getAddress()
+    if (stored) {
+      setMode(stored.mode)
+      setFullName(stored.fullName)
+      setPhone(stored.phone)
+      setCity(stored.city)
+      setStreetLine(stored.streetLine)
+      setNeighbourhood(stored.neighbourhood)
+      setNotes(stored.notes)
+    }
+  }, [])
+
+  const validate = (): Errors => {
+    const e: Errors = {}
+    if (!fullName.trim()) e.fullName = 'Please enter your full name.'
+    if (!PHONE_RE.test(phone.trim())) e.phone = 'Enter a valid phone number.'
+    if (!streetLine.trim())
+      e.streetLine =
+        mode === 'delivery' ? 'Please enter your street address.' : 'Please name the pickup or fitting location.'
+    return e
+  }
 
   const handleContinue = () => {
+    const e = validate()
+    setErrors(e)
+    if (Object.keys(e).length > 0) return
+    persistAddress({
+      mode,
+      fullName: fullName.trim(),
+      phone: phone.trim(),
+      city,
+      streetLine: streetLine.trim(),
+      neighbourhood: neighbourhood.trim(),
+      notes: notes.trim(),
+    })
     router.push('/attire-and-rings/checkout')
   }
+
+  // Clear individual error as the user types
+  const clearError = (key: keyof Errors) =>
+    setErrors((prev) => {
+      if (!prev[key]) return prev
+      const next = { ...prev }
+      delete next[key]
+      return next
+    })
 
   return (
     <>
@@ -53,7 +102,6 @@ export default function AddressPage() {
           <CheckoutStepper current="address" />
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 lg:gap-8">
-            {/* LEFT — Address form */}
             <section className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
               <h1 className="text-2xl font-bold text-gray-900 mb-1">Where should we send it?</h1>
               <p className="text-sm text-gray-600 mb-6">
@@ -92,10 +140,19 @@ export default function AddressPage() {
                   <input
                     type="text"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => {
+                      setFullName(e.target.value)
+                      clearError('fullName')
+                    }}
                     placeholder="Mary Mwakasege"
-                    className="w-full h-11 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:border-gray-500"
+                    aria-invalid={Boolean(errors.fullName)}
+                    className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
+                      errors.fullName
+                        ? 'border-red-500 focus:border-red-600'
+                        : 'border-gray-300 focus:border-gray-500'
+                    }`}
                   />
+                  {errors.fullName && <FieldError>{errors.fullName}</FieldError>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-1.5">
@@ -104,11 +161,20 @@ export default function AddressPage() {
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPhone(e.target.value)
+                      clearError('phone')
+                    }}
                     placeholder="+255 7xx xxx xxx"
                     inputMode="tel"
-                    className="w-full h-11 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:border-gray-500"
+                    aria-invalid={Boolean(errors.phone)}
+                    className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
+                      errors.phone
+                        ? 'border-red-500 focus:border-red-600'
+                        : 'border-gray-300 focus:border-gray-500'
+                    }`}
                   />
+                  {errors.phone && <FieldError>{errors.phone}</FieldError>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-900 mb-1.5">
@@ -144,14 +210,23 @@ export default function AddressPage() {
                   <input
                     type="text"
                     value={streetLine}
-                    onChange={(e) => setStreetLine(e.target.value)}
+                    onChange={(e) => {
+                      setStreetLine(e.target.value)
+                      clearError('streetLine')
+                    }}
                     placeholder={
                       mode === 'delivery'
                         ? 'House number, street, building name…'
                         : 'Boutique or pickup point name'
                     }
-                    className="w-full h-11 rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:border-gray-500"
+                    aria-invalid={Boolean(errors.streetLine)}
+                    className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
+                      errors.streetLine
+                        ? 'border-red-500 focus:border-red-600'
+                        : 'border-gray-300 focus:border-gray-500'
+                    }`}
                   />
+                  {errors.streetLine && <FieldError>{errors.streetLine}</FieldError>}
                 </div>
                 <div className="sm:col-span-2">
                   <label className="block text-sm font-medium text-gray-900 mb-1.5">
@@ -186,7 +261,6 @@ export default function AddressPage() {
               </button>
             </section>
 
-            {/* RIGHT — Sidebar */}
             <aside className="space-y-5">
               <div className="rounded-2xl bg-white border border-gray-200 p-5">
                 <h2 className="text-base font-bold text-gray-900 mb-3">What to expect</h2>
@@ -219,6 +293,15 @@ export default function AddressPage() {
       </main>
       <Footer />
     </>
+  )
+}
+
+function FieldError({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mt-1.5 text-xs text-red-600 inline-flex items-center gap-1">
+      <AlertCircle size={12} />
+      {children}
+    </p>
   )
 }
 

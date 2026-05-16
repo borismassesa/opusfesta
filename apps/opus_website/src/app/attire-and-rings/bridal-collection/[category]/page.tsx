@@ -115,7 +115,14 @@ export default async function BridalCategoryPage({ params }: { params: Params })
     .filter((c): c is BridalCategory => Boolean(c))
 
   const allCats = BRIDAL_CATEGORIES.filter((c) => c.slug !== cat.slug)
-  const moreCats = allCats.slice(0, 8)
+  // De-dupe the three Related Categories rows by drawing each from a distinct
+  // window of allCats. With 14 sibling categories this gives row2 (0–7) and
+  // row3 (6–13) only two items of overlap; the first row stays bespoke to the
+  // current category's `related` whitelist (falls back to allCats[0..3]).
+  const rowOne =
+    relatedCats.length > 0 ? relatedCats : allCats.slice(0, 4)
+  const rowTwo = allCats.slice(0, 8)
+  const rowThree = allCats.length > 8 ? allCats.slice(Math.max(0, allCats.length - 8)) : allCats.slice(0, 8)
 
   const batch1 = listProducts(cat.slug, 20, 0)
   const batch2 = listProducts(cat.slug, 16, 20)
@@ -171,7 +178,7 @@ export default async function BridalCategoryPage({ params }: { params: Params })
           </div>
         </section>
 
-        <RelatedRow items={relatedCats.length ? relatedCats : moreCats.slice(0, 4)} />
+        <RelatedRow items={rowOne} />
 
         <section className="max-w-7xl mx-auto px-4 lg:px-8 pt-2 pb-10">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-8">
@@ -181,7 +188,7 @@ export default async function BridalCategoryPage({ params }: { params: Params })
           </div>
         </section>
 
-        <RelatedRow items={moreCats.slice(0, 8)} />
+        <RelatedRow items={rowTwo} />
 
         <section className="max-w-7xl mx-auto px-4 lg:px-8 pt-2 pb-12">
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-x-4 gap-y-8">
@@ -196,7 +203,7 @@ export default async function BridalCategoryPage({ params }: { params: Params })
           </div>
         </section>
 
-        <RelatedRow items={moreCats.slice(0, 8)} />
+        <RelatedRow items={rowThree} />
       </main>
 
       <Footer />
