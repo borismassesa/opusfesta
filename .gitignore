@@ -127,3 +127,9 @@ prisma/migrations/
 # Git backups from nested repos
 **/.git.bak/
 .vercel
+
+# Local Claude Code state
+.claude/scheduled_tasks.lock
+
+# Design source / reference folder (not part of the marketplace app)
+apps/opusfesta (1)/

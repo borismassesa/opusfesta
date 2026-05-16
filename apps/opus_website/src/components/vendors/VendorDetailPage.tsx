@@ -1878,22 +1878,29 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
             : '',
         }),
       })
-      const json = await res.json()
+      const text = await res.text()
+      let json: { id?: string; accessToken?: string; error?: string } = {}
+      try { json = text ? JSON.parse(text) : {} } catch { /* non-JSON response */ }
+
       if (!res.ok) {
-        const message = json.error ?? 'Something went wrong. Please try again.'
+        const message = json.error
+          ?? (res.status >= 500
+            ? 'Server error. Please try again in a moment.'
+            : 'Something went wrong. Please try again.')
+        console.error('[inquiry] submission failed', { status: res.status, body: text })
         setErrorMsg(message)
         toast.error(message)
         setStatus('error')
       } else {
         setInquiryId(json.id ?? null)
         setAccessToken(json.accessToken ?? null)
-        // Store email so /my/inquiries can auto-populate the search
         if (form.email) {
           try { sessionStorage.setItem('of_inquiry_email', form.email.trim().toLowerCase()) } catch { /* ignore */ }
         }
         setStatus('success')
       }
-    } catch {
+    } catch (err) {
+      console.error('[inquiry] network error', err)
       setErrorMsg('Network error. Please check your connection and try again.')
       toast.error('Network error. Please check your connection and try again.')
       setStatus('error')

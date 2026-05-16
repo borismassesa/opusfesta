@@ -1,16 +1,83 @@
 import type { Metadata } from 'next'
-import ComingSoonPage from '@/components/coming-soon/ComingSoonPage'
+import Link from 'next/link'
+import { Suspense } from 'react'
+import Navbar from '@/components/navbar'
+import { Hero } from '@/components/attire-and-rings/Hero'
+import { CategoriesGrid, lovedCategories } from '@/components/attire-and-rings/CategoriesGrid'
+import { GiftSection } from '@/components/attire-and-rings/GiftSection'
+import { PillCategories } from '@/components/attire-and-rings/PillCategories'
+import { DealsSection } from '@/components/attire-and-rings/DealsSection'
+import { EditorsPicks } from '@/components/attire-and-rings/EditorsPicks'
+import { StandoutStyles } from '@/components/attire-and-rings/StandoutStyles'
+import { LocalShops } from '@/components/attire-and-rings/LocalShops'
+import { BlogSection } from '@/components/attire-and-rings/BlogSection'
+import { InfoSection } from '@/components/attire-and-rings/InfoSection'
+import SearchForm from '@/components/advice-ideas/SearchForm'
+import Footer from '@/components/footer'
 
 export const metadata: Metadata = {
-  title: 'Attire & Rings — Coming Soon | OpusFesta',
-  description: 'This section is not available yet.',
+  title: 'Attire & Rings | OpusFesta',
+  description:
+    'Discover trending wedding attire & rings on OpusFesta — curated dresses, suits, engagement rings, wedding bands, and accessories.',
 }
 
-export default function AttireAndRingsComingSoonPage() {
+const attireTopics = [
+  { id: 'attire-categories', label: 'Wedding Dresses' },
+  { id: 'attire-categories', label: 'Groom Suits' },
+  { id: 'attire-categories', label: 'Engagement Rings' },
+  { id: 'attire-categories', label: 'Wedding Bands' },
+  { id: 'accessories', label: 'Bridal Accessories' },
+  { id: 'attire-categories', label: 'Bridesmaid Dresses' },
+]
+
+export default function AttireAndRingsPage() {
   return (
-    <ComingSoonPage
-      words={['NOT', 'FITTED', 'YET.', 'COME BACK WHEN', 'THE ATELIER OPENS']}
-      ariaLabel="Not fitted yet. Come back when the atelier opens."
-    />
+    <>
+      <Navbar />
+      <div className="sticky top-0 z-30 bg-black text-white">
+        <div className="mx-auto max-w-7xl px-4 py-3 flex flex-col gap-3 md:flex-row md:items-center md:justify-between md:gap-8">
+          <nav aria-label="Browse attire and rings" className="min-w-0 md:flex-1">
+            <ul className="hide-scrollbar flex gap-6 overflow-x-auto pr-6 text-sm md:pr-4">
+              {attireTopics.map((t, i) => (
+                <li key={`${t.label}-${i}`} className="shrink-0">
+                  <Link
+                    href={`#${t.id}`}
+                    className="whitespace-nowrap font-medium text-white/80 transition-colors hover:text-[var(--accent)]"
+                  >
+                    {t.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </nav>
+          <div className="shrink-0">
+            <Suspense fallback={null}>
+              <SearchForm placeholder="Search attire and rings" ariaLabel="Search attire and rings" />
+            </Suspense>
+          </div>
+        </div>
+      </div>
+
+      <main>
+        <Hero />
+        <section id="attire-categories">
+          <CategoriesGrid title="Discover trending wedding attire & rings" />
+        </section>
+        <GiftSection />
+        <section id="accessories">
+          <PillCategories />
+        </section>
+        <CategoriesGrid title="Shop our most-loved categories" categories={lovedCategories} />
+        <DealsSection />
+        <section id="editor-picks">
+          <EditorsPicks />
+        </section>
+        <StandoutStyles />
+        <LocalShops />
+        <BlogSection />
+        <InfoSection />
+      </main>
+      <Footer />
+    </>
   )
 }

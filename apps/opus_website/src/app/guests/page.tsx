@@ -1,16 +1,12 @@
 import type { Metadata } from 'next'
-import ComingSoonPage from '@/components/coming-soon/ComingSoonPage'
+import GuestsLandingClient from './GuestsLandingClient'
 
 export const metadata: Metadata = {
-  title: 'Guests & RSVPs — Coming Soon | OpusFesta',
-  description: 'This section is not available yet.',
+  title: 'Wedding Invitations & RSVPs | OpusFesta',
+  description:
+    'Wedding invitations, save the dates, RSVPs and thank yous designed for Tanzanian weddings. Bilingual wording, free wedding website, free guest list.',
 }
 
-export default function GuestsComingSoonPage() {
-  return (
-    <ComingSoonPage
-      words={['NOT', 'LISTED', 'YET.', 'COME BACK WHEN', 'THE INVITES GO OUT']}
-      ariaLabel="Not listed yet. Come back when the invites go out."
-    />
-  )
+export default function GuestsLandingPage() {
+  return <GuestsLandingClient />
 }
