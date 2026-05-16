@@ -73,7 +73,7 @@ export function generateStaticParams() {
 export default async function ProductDetailPage({ params }: { params: Params }) {
   const { category, id } = await params
   const productId = Number(id)
-  if (!Number.isFinite(productId)) notFound()
+  if (!Number.isFinite(productId) || productId < 0 || !Number.isInteger(productId)) notFound()
   const product = generateProduct(category, productId)
   if (!product) notFound()
 
