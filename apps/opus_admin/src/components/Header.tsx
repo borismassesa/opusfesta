@@ -1,6 +1,7 @@
 'use client'
 
-import { Bell, HelpCircle, Search, X } from "lucide-react";
+import Link from "next/link";
+import { Bell, ChevronLeft, HelpCircle, Search, X } from "lucide-react";
 import { UserButton } from "@clerk/nextjs";
 import { usePageHeading } from "./PageHeading";
 import { usePageSearch } from "./PageSearch";
@@ -23,19 +24,53 @@ export function Header() {
   return (
     <header className="flex items-center justify-between gap-6 pt-4 pb-3 px-8 bg-gray-50/50 relative z-10 w-full shrink-0">
       <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
-          {heading?.title && (
-            <h1 className="text-xl font-semibold text-gray-900 tracking-tight truncate">
-              {heading.title}
-            </h1>
-          )}
-          {/* Page-specific badge slot (e.g. vendor onboarding status pill). */}
-          <div id={BADGE_SLOT_ID} className="contents" />
-        </div>
-        {heading?.subtitle && (
-          <p className="mt-0.5 text-sm text-gray-500 truncate">
-            {heading.subtitle}
-          </p>
+        {heading?.back ? (
+          // Back-link mode: detail pages (e.g. an employee profile) use
+          // this so the global header points back to the parent list
+          // rather than echoing the row identity, which already sits in
+          // the page body. Two variants:
+          //   - { href }    → a true Next.js navigation (route segments)
+          //   - { onClick } → client-state reset on the same URL (eg.
+          //                   Approvals' dashboard / list / form views
+          //                   all live under /approvals; an href would
+          //                   be a no-op)
+          <div className="flex items-center gap-2 min-w-0">
+            {'onClick' in heading.back ? (
+              <button
+                type="button"
+                onClick={heading.back.onClick}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:text-[#5B2D8E] transition-colors truncate"
+              >
+                <ChevronLeft className="w-4 h-4 shrink-0" />
+                {heading.back.label}
+              </button>
+            ) : (
+              <Link
+                href={heading.back.href}
+                className="inline-flex items-center gap-1 text-sm font-semibold text-gray-700 hover:text-[#5B2D8E] transition-colors truncate"
+              >
+                <ChevronLeft className="w-4 h-4 shrink-0" />
+                {heading.back.label}
+              </Link>
+            )}
+            <div id={BADGE_SLOT_ID} className="contents" />
+          </div>
+        ) : (
+          <>
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              {heading?.title && (
+                <h1 className="text-xl font-semibold text-gray-900 tracking-tight truncate">
+                  {heading.title}
+                </h1>
+              )}
+              <div id={BADGE_SLOT_ID} className="contents" />
+            </div>
+            {heading?.subtitle && (
+              <p className="mt-0.5 text-sm text-gray-500 truncate">
+                {heading.subtitle}
+              </p>
+            )}
+          </>
         )}
       </div>
 

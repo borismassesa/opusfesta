@@ -2,19 +2,19 @@
 // truth for these shapes; the client components consume the mapped
 // versions returned by queries.ts.
 
-// OpusFesta org structure — nine departments. Mirrored on
+// OpusFesta org structure — nine canonical departments. Mirrored on
 // workforce_employees.department CHECK constraint
-// (see migration 20260514231512_workforce_departments_v3_add_hr.sql).
+// (see migration 20260518000001_workforce_departments_v4_canonical.sql).
 export type Department =
-  | 'Operations'
   | 'Technology'
+  | 'Marketing & Partnership'
   | 'Content, Brand and Social Media'
-  | 'Marketing and Partnership'
-  | 'UI/UX Design'
-  | 'Finance and Accountings'
-  | 'HR'
-  | 'Interns'
+  | 'Finance & Accountings'
+  | 'UI & UX Design'
+  | 'Operations'
+  | 'Studio'
   | 'Founders'
+  | 'HR'
 
 export type EmploymentType = 'Permanent' | 'Contract' | 'Probation' | 'Intern'
 export type EmployeeStatus = 'Active' | 'On Leave' | 'Onboarding' | 'Resigned'
@@ -31,6 +31,8 @@ export type Employee = {
   jobTitle: string
   department: Department
   manager: string | null
+  managerId: string | null
+  notes: string | null
   employmentType: EmploymentType
   status: EmployeeStatus
   location: Location
@@ -112,6 +114,52 @@ export type WorkforceAttendance = {
   workedHours: number
 }
 
+// --- Time clock (event log) ---
+
+export type PunchType = 'in' | 'out'
+export type PunchSource = 'web' | 'kiosk' | 'admin_manual' | 'auto_close'
+
+export type TimePunch = {
+  id: string
+  employeeId: string
+  punchAt: string // ISO timestamp
+  type: PunchType
+  source: PunchSource
+  note: string | null
+  locationLabel: string | null
+  createdByClerkId: string | null
+}
+
+// One employee's clocking state right now.
+export type TimeClockStatus = {
+  employeeId: string
+  isClockedIn: boolean
+  sinceIso: string | null // ISO timestamp of the open clock-in, if any
+  lastPunch: TimePunch | null
+}
+
+// Day rollup derived from a sequence of punches. workedMinutes counts
+// completed in→out intervals. If the day ended with an unmatched 'in'
+// the open interval contributes 0 to workedMinutes (we don't extrapolate
+// to "now"); the caller can layer that on for the live display.
+export type TimeDaySummary = {
+  date: string // YYYY-MM-DD
+  punches: TimePunch[]
+  firstInIso: string | null
+  lastOutIso: string | null
+  workedMinutes: number
+  openShift: boolean // last punch of the day was 'in' with no matching out
+}
+
+export type CurrentlyClockedEmployee = {
+  employeeId: string
+  employeeName: string
+  employeeCode: string
+  avatarUrl: string | null
+  avatarColor: string
+  sinceIso: string
+}
+
 export type PermissionGroup =
   | 'Website CMS'
   | 'Vendors'
@@ -155,6 +203,91 @@ export type Candidate = {
   appliedAt: string
   source: 'LinkedIn' | 'Referral' | 'Careers Page' | 'Direct' | 'Brighter Monday'
   rating: 1 | 2 | 3 | 4 | 5
+}
+
+// -----------------------------------------------------------------------------
+// Employee records — resume / skills / certifications / badges / docs.
+// Mirrors workforce_employee_{resume_entries,skills,certifications,badges,documents}
+// rows (see migration 20260517000002).
+// -----------------------------------------------------------------------------
+
+export type ResumeEntryType = 'experience' | 'education' | 'project'
+
+// Attachment metadata shared by every record type that can hold a file.
+// `storagePath` is the object key in the `employees` Supabase bucket;
+// the UI generates a signed URL on demand via getAttachmentUrl().
+export type RecordAttachment = {
+  storagePath: string
+  fileName: string | null
+  fileSizeBytes: number | null
+  mimeType: string | null
+}
+
+export type ResumeEntry = {
+  id: string
+  employeeId: string
+  entryType: ResumeEntryType
+  title: string
+  organization: string | null
+  location: string | null
+  startDate: string
+  endDate: string | null
+  description: string | null
+  attachment: RecordAttachment | null
+}
+
+export type SkillCategory = 'language' | 'soft' | 'technical' | 'other'
+export type SkillLevel = 'Beginner' | 'Intermediate' | 'Advanced' | 'Expert'
+
+export type EmployeeSkill = {
+  id: string
+  employeeId: string
+  category: SkillCategory
+  name: string
+  level: SkillLevel
+  proficiencyPercent: number
+}
+
+export type Certification = {
+  id: string
+  employeeId: string
+  name: string
+  issuingBody: string | null
+  issuedDate: string | null
+  expiresDate: string | null
+  credentialId: string | null
+  notes: string | null
+  attachment: RecordAttachment | null
+}
+
+export type EmployeeBadge = {
+  id: string
+  employeeId: string
+  badgeKind: string
+  name: string
+  description: string | null
+  awardedAt: string
+  awardedBy: string | null
+  colorToken: string | null
+  attachment: RecordAttachment | null
+}
+
+export type DocumentStatus = 'pending' | 'sent' | 'signed' | 'approved' | 'rejected'
+
+export type EmployeeDocument = {
+  id: string
+  employeeId: string
+  docType: string
+  docLabel: string
+  status: DocumentStatus
+  required: boolean
+  sentAt: string | null
+  signedAt: string | null
+  reviewedAt: string | null
+  reviewedBy: string | null
+  rejectionReason: string | null
+  notes: string | null
+  attachment: RecordAttachment | null
 }
 
 export type Job = {
@@ -201,13 +334,13 @@ export const JOB_STAGES: JobStage[] = [
 ]
 
 export const DEPARTMENTS: Department[] = [
-  'Founders',
-  'Operations',
   'Technology',
+  'Marketing & Partnership',
   'Content, Brand and Social Media',
-  'Marketing and Partnership',
-  'UI/UX Design',
-  'Finance and Accountings',
+  'Finance & Accountings',
+  'UI & UX Design',
+  'Operations',
+  'Studio',
+  'Founders',
   'HR',
-  'Interns',
 ]

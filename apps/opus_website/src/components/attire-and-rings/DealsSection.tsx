@@ -1,21 +1,17 @@
 import { Star, ChevronLeft, ChevronRight } from 'lucide-react'
+import { loadAttireDealsContent } from '@/lib/cms/attire-deals'
 
-const deals = [
-  { id: 1, name: 'Vintage Gold Wedding Band...', rating: '5.0', price: 'CA$499.98', oldPrice: 'CA$760.89', discount: '35% off', text: 'Biggest sale in 60+ days', img: 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?auto=format&fit=crop&w=600&q=80' },
-  { id: 2, name: "Custom Engraved Men's...", rating: '4.8', price: 'CA$156.64', oldPrice: 'CA$208.86', discount: '25% off', text: 'Biggest sale in 60+ days', img: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=600&q=80' },
-  { id: 3, name: 'Bohemian Lace Wedding Dress...', rating: '4.8', price: 'CA$495.58', oldPrice: 'CA$661.11', discount: '25% off', text: 'Biggest sale in 60+ days', img: 'https://images.unsplash.com/photo-1595777457583-95e059d581b8?auto=format&fit=crop&w=600&q=80' },
-  { id: 4, name: 'Classic Navy Blue Suit...', rating: '4.9', price: 'CA$265.50', oldPrice: 'CA$410.83', discount: '40% off', text: 'Biggest sale in 60+ days', img: 'https://images.unsplash.com/photo-1593030761757-71fae45fa0e7?auto=format&fit=crop&w=600&q=80' },
-]
+export async function DealsSection() {
+  const content = await loadAttireDealsContent()
 
-export function DealsSection() {
   return (
     <div className="max-w-7xl mx-auto px-4 lg:px-8 py-12 w-full bg-[#faeddf]/40 my-8">
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <h2 className="text-2xl font-serif font-medium text-gray-900">Today&apos;s big deals</h2>
+          <h2 className="text-2xl font-serif font-medium text-gray-900">{content.heading}</h2>
           <div className="flex items-center gap-1 text-gray-600 bg-white px-3 py-1 rounded-full text-sm font-medium shadow-sm border border-gray-100">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
-            Fresh deals in 18:22:54
+            Fresh deals daily
           </div>
         </div>
         <div className="hidden md:flex gap-2">
@@ -29,9 +25,10 @@ export function DealsSection() {
       </div>
 
       <div className="flex -mx-4 px-4 lg:mx-0 lg:px-0 overflow-x-auto gap-4 snap-x hide-scrollbar">
-        {deals.map((deal) => (
+        {content.items.map((deal) => (
           <div key={deal.id} className="flex-none w-64 md:w-72 snap-start group cursor-pointer bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow overflow-hidden border border-gray-100 flex flex-col">
             <div className="aspect-[4/3] bg-gray-100 overflow-hidden">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={deal.img} alt={deal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
             </div>
             <div className="p-4 flex flex-col flex-grow">
@@ -43,12 +40,12 @@ export function DealsSection() {
               </div>
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="font-bold text-lg text-gray-900">{deal.price}</span>
-                <span className="text-sm text-gray-500 line-through">{deal.oldPrice}</span>
+                <span className="text-sm text-gray-500 line-through">{deal.old_price}</span>
                 <span className="bg-green-100 text-green-800 text-xs font-bold px-1.5 py-0.5 rounded ml-auto">
                   {deal.discount}
                 </span>
               </div>
-              <p className="text-xs text-gray-600 mt-auto">{deal.text}</p>
+              <p className="text-xs text-gray-600 mt-auto">{deal.badge_text}</p>
             </div>
           </div>
         ))}

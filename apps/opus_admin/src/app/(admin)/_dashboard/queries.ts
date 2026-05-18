@@ -263,11 +263,11 @@ const DEPARTMENT_COLOR: Record<string, string> = {
   Operations: '#0ea5e9',
   Technology: '#10b981',
   'Content, Brand and Social Media': '#f59e0b',
-  'Marketing and Partnership': '#ec4899',
-  'UI/UX Design': '#a855f7',
-  'Finance and Accountings': '#0284c7',
+  'Marketing & Partnership': '#ec4899',
+  'UI & UX Design': '#a855f7',
+  'Finance & Accountings': '#0284c7',
   HR: '#14b8a6',
-  Interns: '#94a3b8',
+  Studio: '#A84F66',
 }
 
 async function getDashboardCharts(): Promise<DashboardCharts> {
@@ -749,7 +749,7 @@ async function buildMarketingLane(supabase: ReturnType<typeof createSupabaseAdmi
   }))
 
   return {
-    department: 'Marketing and Partnership',
+    department: 'Marketing & Partnership',
     title: 'Marketing — pipeline & traction',
     cards: [
       {
@@ -833,7 +833,7 @@ async function buildDesignLane(supabase: ReturnType<typeof createSupabaseAdminCl
   }))
 
   return {
-    department: 'UI/UX Design',
+    department: 'UI & UX Design',
     title: 'Curation — review recent vendor updates',
     cards: [
       {
@@ -908,7 +908,7 @@ async function buildFinanceLane(supabase: ReturnType<typeof createSupabaseAdminC
       }
 
   return {
-    department: 'Finance and Accountings',
+    department: 'Finance & Accountings',
     title: 'Finance — money decisions',
     cards: [
       payrollCard,
@@ -1007,158 +1007,13 @@ async function buildHrLane(supabase: ReturnType<typeof createSupabaseAdminClient
   }
 }
 
-async function buildInternsLane(
-  supabase: ReturnType<typeof createSupabaseAdminClient>,
-  employeeId: string | null,
-): Promise<DepartmentLane> {
-  const today = new Date().toISOString().slice(0, 10)
-  const sevenDaysAgo = new Date(Date.now() - 7 * DAY).toISOString()
-
-  // Pull my-task stats only when we can identify the caller's
-  // employee row. If they don't have one yet (no matching email in
-  // workforce_employees), we fall back to the orientation-only lane.
-  const myStatsPromise = employeeId
-    ? Promise.all([
-        safeCount(
-          supabase
-            .from('intern_tasks')
-            .select('id', { count: 'exact', head: true })
-            .eq('employee_id', employeeId)
-            .eq('status', 'Todo'),
-        ),
-        safeCount(
-          supabase
-            .from('intern_tasks')
-            .select('id', { count: 'exact', head: true })
-            .eq('employee_id', employeeId)
-            .eq('status', 'Todo')
-            .lte('due_date', today)
-            .not('due_date', 'is', null),
-        ),
-        safeCount(
-          supabase
-            .from('intern_tasks')
-            .select('id', { count: 'exact', head: true })
-            .eq('employee_id', employeeId)
-            .eq('status', 'Done')
-            .gte('completed_at', sevenDaysAgo),
-        ),
-        supabase
-          .from('intern_tasks')
-          .select('id, title, category, due_date, status')
-          .eq('employee_id', employeeId)
-          .in('status', ['Todo', 'In Progress'])
-          .order('due_date', { ascending: true, nullsFirst: false })
-          .limit(5),
-      ])
-    : Promise.resolve(null)
-
-  const [activeVendors, totalEmployees, myStats] = await Promise.all([
-    safeCount(
-      supabase
-        .from('vendors')
-        .select('id', { count: 'exact', head: true })
-        .eq('onboarding_status', 'active'),
-    ),
-    safeCount(
-      supabase
-        .from('workforce_employees')
-        .select('id', { count: 'exact', head: true })
-        .neq('status', 'Resigned'),
-    ),
-    myStatsPromise,
-  ])
-
-  // Without a recognized employee row, fall back to the orientation
-  // lane so the dashboard isn't blank for interns who aren't onboarded
-  // yet in workforce_employees.
-  if (!myStats) {
-    return {
-      department: 'Interns',
-      title: 'Orientation — get to know OpusFesta',
-      cards: [
-        {
-          tone: 'green',
-          label: 'Active vendors',
-          count: activeVendors,
-          hint: 'Live on the marketplace',
-          href: '/operations/vendors',
-        },
-        {
-          tone: 'blue',
-          label: 'Teammates',
-          count: totalEmployees,
-          hint: 'Across all departments',
-          href: '/workforce/employees',
-        },
-      ],
-    }
-  }
-
-  const [openTasks, dueToday, doneThisWeek, upcomingRes] = myStats
-  const upcoming = (upcomingRes.data as Array<{
-    id: string
-    title: string
-    category: string
-    due_date: string | null
-    status: string
-  }> | null) ?? []
-
-  return {
-    department: 'Interns',
-    title: 'My week — onboarding & tasks',
-    cards: [
-      {
-        tone: dueToday > 0 ? 'amber' : openTasks > 0 ? 'blue' : 'gray',
-        label: 'Open tasks',
-        count: openTasks,
-        hint: dueToday > 0 ? `${dueToday} due today` : 'On track',
-        href: '/workforce/my-tasks',
-      },
-      {
-        tone: 'green',
-        label: 'Done this week',
-        count: doneThisWeek,
-        hint: 'Last 7 days',
-        href: '/workforce/my-tasks',
-      },
-      {
-        tone: 'gray',
-        label: 'Active marketplace',
-        count: activeVendors,
-        hint: 'Vendors live · explore one',
-        href: '/operations/vendors',
-      },
-    ],
-    list: upcoming.length > 0
-      ? {
-          title: 'Up next',
-          items: upcoming.map((t) => ({
-            primary: t.title,
-            secondary: t.category,
-            meta: t.due_date
-              ? new Date(t.due_date).toLocaleDateString(undefined, {
-                  month: 'short',
-                  day: 'numeric',
-                })
-              : t.status,
-            href: '/workforce/my-tasks',
-          })),
-        }
-      : undefined,
-  }
-}
-
 // Dispatcher — pick a builder based on department. Returns null for
 // Founders (they get PlatformPulse instead) and null when there's no
 // department (legacy admins without a workforce_employees row).
-//
-// employeeId is forwarded only to the Interns lane right now (it
-// keys "my tasks" off the caller's workforce row). Other lanes are
-// org-wide and don't need it.
+// Studio currently has no dedicated lane and falls through to the
+// default (no lane); the page still renders cleanly.
 async function getDepartmentLane(
   department: Department | null,
-  employeeId: string | null,
 ): Promise<DepartmentLane | null> {
   if (!department) return null
   if (department === 'Founders') return null
@@ -1170,16 +1025,14 @@ async function getDepartmentLane(
       return buildTechnologyLane(supabase)
     case 'Content, Brand and Social Media':
       return buildContentLane(supabase)
-    case 'Marketing and Partnership':
+    case 'Marketing & Partnership':
       return buildMarketingLane(supabase)
-    case 'UI/UX Design':
+    case 'UI & UX Design':
       return buildDesignLane(supabase)
-    case 'Finance and Accountings':
+    case 'Finance & Accountings':
       return buildFinanceLane(supabase)
     case 'HR':
       return buildHrLane(supabase)
-    case 'Interns':
-      return buildInternsLane(supabase, employeeId)
     default:
       return null
   }
@@ -1412,7 +1265,7 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
   const [caller, charts] = await Promise.all([callerPromise, getDashboardCharts()])
   const [platformPulse, departmentLane] = await Promise.all([
     caller.department === 'Founders' ? getPlatformPulse(tracker) : Promise.resolve(null),
-    getDepartmentLane(caller.department, caller.employeeId),
+    getDepartmentLane(caller.department),
   ])
 
   return {

@@ -15,14 +15,15 @@ import type {
 } from '../_lib/types'
 
 const DEPARTMENTS = new Set<Department>([
-  'Founders',
-  'Operations',
   'Technology',
+  'Marketing & Partnership',
   'Content, Brand and Social Media',
-  'Marketing and Partnership',
-  'UI/UX Design',
-  'Finance and Accountings',
-  'Interns',
+  'Finance & Accountings',
+  'UI & UX Design',
+  'Operations',
+  'Studio',
+  'Founders',
+  'HR',
 ])
 
 const EMPLOYMENT_TYPES = new Set<EmploymentType>([
@@ -70,6 +71,7 @@ export type CreateEmployeeInput = {
   salaryTzs: number
   leaveBalanceDays?: number
   managerId?: string | null
+  notes?: string | null
 }
 
 function assertOrThrow(
@@ -142,6 +144,7 @@ export async function createEmployee(input: CreateEmployeeInput): Promise<{ id: 
       salary_tzs: Math.round(input.salaryTzs),
       leave_balance_days: input.leaveBalanceDays ?? 0,
       avatar_color: pickAvatarColor(email),
+      notes: input.notes?.trim() || null,
     })
     .select('id, employee_code')
     .single<{ id: string; employee_code: string }>()
@@ -171,6 +174,7 @@ export type UpdateEmployeeInput = Partial<{
   salaryTzs: number
   leaveBalanceDays: number
   managerId: string | null
+  notes: string | null
 }>
 
 export async function updateEmployee(id: string, input: UpdateEmployeeInput): Promise<void> {
@@ -206,7 +210,18 @@ export async function updateEmployee(id: string, input: UpdateEmployeeInput): Pr
     assertOrThrow(input.leaveBalanceDays >= 0, 'Leave balance must be ≥ 0.')
     patch.leave_balance_days = input.leaveBalanceDays
   }
-  if (input.managerId !== undefined) patch.manager_id = input.managerId
+  if (input.managerId !== undefined) {
+    // Self-reference would create a cycle. The DB CHECK / FK would
+    // catch this, but a friendlier error here saves the round-trip.
+    if (input.managerId === id) {
+      throw new Error('An employee can’t be their own manager.')
+    }
+    patch.manager_id = input.managerId
+  }
+  if (input.notes !== undefined) {
+    const trimmed = input.notes?.trim() ?? null
+    patch.notes = trimmed && trimmed.length > 0 ? trimmed : null
+  }
 
   if (Object.keys(patch).length === 0) return
 
