@@ -14,6 +14,22 @@ const ADMIN_ACCESS_ROLES: AdminAccessRole[] = [
   'viewer',
 ]
 
+// Roles that can ONLY be granted via `admin_whitelist`. The Clerk
+// claims/metadata fallback is intentionally non-authoritative for these
+// — letting an `owner` or `admin` role come through publicMetadata would
+// silently re-grant elevated access to a user whose whitelist row was
+// removed (the row was the source of truth; the metadata copy can be
+// stale or set manually in Clerk's dashboard).
+//
+// 2026-05-17 audit: `bmmassesa@gmail.com` had `publicMetadata.role='owner'`
+// despite no whitelist row, so they had owner access via the fallback path.
+// This filter closes that hole — they now fall back to no role (deny).
+const ELEVATED_ROLES: readonly AdminAccessRole[] = ['owner', 'admin']
+
+function isElevatedRole(role: AdminAccessRole): boolean {
+  return ELEVATED_ROLES.includes(role)
+}
+
 // Roles that are allowed to load the admin dashboard (everything under
 // `(admin)/`). Authors write articles via /contribute and shouldn't see the
 // admin shell — see comment in operations/articles/actions.ts.
@@ -163,16 +179,53 @@ export const getAdminAccessRole = cache(
       }
     }
 
+    // Fallback path: Clerk session claims / publicMetadata. These exist
+    // primarily for the /contribute invite flow which sets editor/author
+    // metadata in Clerk without writing to admin_whitelist. We do NOT
+    // accept elevated roles (owner/admin) from this path — see comment on
+    // ELEVATED_ROLES for the why.
     const claimRole = readClaimRole(sessionClaims)
-    if (claimRole) return claimRole
+    if (claimRole) {
+      if (!isElevatedRole(claimRole)) return claimRole
+      logRejectedElevatedFallback('session_claims', claimRole, email, userId)
+    }
 
-    return (
+    const metadataRole =
       readMetadataRole(user?.publicMetadata) ||
       readMetadataRole(user?.privateMetadata) ||
       readMetadataRole(user?.unsafeMetadata)
-    )
+    if (metadataRole) {
+      if (!isElevatedRole(metadataRole)) return metadataRole
+      logRejectedElevatedFallback('clerk_metadata', metadataRole, email, userId)
+    }
+
+    return null
   },
 )
+
+function logRejectedElevatedFallback(
+  source: 'session_claims' | 'clerk_metadata',
+  role: AdminAccessRole,
+  email: string,
+  clerkUserId: string,
+): void {
+  console.warn(
+    `[admin-auth] rejecting elevated role from ${source} fallback — not in admin_whitelist`,
+    { email, clerkUserId, role },
+  )
+  // Fire-and-forget audit write. Surfaces as a critical event in
+  // /insights/audit so an unexpected elevated-role-in-metadata is visible
+  // even though access was correctly denied.
+  void recordAuditEvent({
+    eventType: 'auth.elevated_role_rejected',
+    severity: 'critical',
+    message: `Rejected elevated role '${role}' from ${source} for ${email || 'unknown caller'} (no admin_whitelist row)`,
+    actorEmail: email || null,
+    actorClerkId: clerkUserId,
+    metadata: { source, role },
+    resolveActor: false,
+  })
+}
 
 export const getCallerEmail = cache(async (): Promise<string | null> => {
   const { userId, sessionClaims } = await auth()
