@@ -12,7 +12,9 @@ import {
   ChevronDown,
   ChevronRight,
   ClipboardList,
+  Clock,
   CreditCard,
+  FileCheck2,
   FileText,
   Gem,
   Gift,
@@ -67,6 +69,12 @@ type NavItem = {
   // (Dashboard, Inbox, Help) stay visible to everyone in the dashboard.
   // The whole section drops out if all its items are filtered.
   requiredPermission?: string;
+  // Permission OR-set — visible if the caller has ANY of these.
+  // Use when an item is relevant to multiple roles that don't share
+  // a single key (e.g. Approvals is for finance + HR + ops, gated
+  // on finance.read OR workforce.read). Combined with
+  // requiredPermission additively (both must pass when both set).
+  requiredAnyPermission?: string[];
 };
 type NavSection = {
   id: string;
@@ -81,6 +89,7 @@ type NavSection = {
 const topItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
   { icon: Inbox, label: "Inbox", href: "/inbox", badge: "12" },
+  { icon: Clock, label: "My time clock", href: "/me/timeclock" },
 ];
 
 const sections: NavSection[] = [
@@ -130,6 +139,23 @@ const sections: NavSection[] = [
     ],
   },
   {
+    id: "approvals",
+    label: "Approvals",
+    icon: ClipboardList,
+    items: [
+      {
+        icon: FileCheck2,
+        label: "Approvals",
+        href: "/approvals",
+        // Visible to anyone who'd plausibly be an approver: finance,
+        // HR/people-ops, owner, admin, viewer (read-only audit). Hides
+        // the page from Content Editor + Vendor Success, who don't act
+        // on travel/payments/procurement/etc.
+        requiredAnyPermission: ["finance.read", "workforce.read"],
+      },
+    ],
+  },
+  {
     id: "finance",
     label: "Finance",
     icon: Landmark,
@@ -140,6 +166,7 @@ const sections: NavSection[] = [
     items: [
       { icon: Receipt, label: "Invoices", href: "/finance/invoices", requiredPermission: "finance.read" },
       { icon: CreditCard, label: "Payments", href: "/finance/payments", requiredPermission: "finance.read" },
+      { icon: Receipt, label: "Expenses", href: "/finance/expenses", requiredPermission: "finance.read" },
       { icon: Wallet, label: "Payroll", href: "/finance/payroll", requiredPermission: "workforce.payroll" },
       { icon: Wallet, label: "Vendor Payouts", href: "/finance/payouts", requiredPermission: "finance.write" },
       { icon: RefreshCw, label: "Refunds", href: "/finance/refunds", requiredPermission: "finance.write" },
@@ -156,6 +183,7 @@ const sections: NavSection[] = [
       { icon: UserCog, label: "Employees", href: "/workforce/employees", requiredPermission: "workforce.read" },
       { icon: ClipboardList, label: "Schedule", href: "/workforce/schedule", requiredPermission: "workforce.read" },
       { icon: Plane, label: "Leave & Attendance", href: "/workforce/leave", requiredPermission: "workforce.read" },
+      { icon: Clock, label: "Timesheets", href: "/workforce/timesheets", requiredPermission: "workforce.read" },
       { icon: Shield, label: "Roles", href: "/workforce/roles", requiredPermission: "workforce.write" },
       { icon: UserPlus, label: "Recruitment", href: "/workforce/recruitment", requiredPermission: "workforce.write" },
     ],
@@ -202,19 +230,30 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
   // doesn't have it, and any section that ends up with zero visible
   // items is dropped too.
   const permissionSet = new Set(permissions);
+  const itemVisible = (item: NavItem) => {
+    if (item.requiredPermission && !permissionSet.has(item.requiredPermission)) return false
+    if (
+      item.requiredAnyPermission &&
+      !item.requiredAnyPermission.some((p) => permissionSet.has(p))
+    ) {
+      return false
+    }
+    return true
+  }
   const visibleSections = sections
     .filter((section) => !section.requiredPermission || permissionSet.has(section.requiredPermission))
     .map((section) => ({
       ...section,
-      items: section.items.filter(
-        (item) => !item.requiredPermission || permissionSet.has(item.requiredPermission),
-      ),
+      items: section.items.filter(itemVisible),
     }))
     .filter((section) => section.items.length > 0);
 
-  const initialSection = visibleSections.find((s) => isSectionActive(pathname, s))?.id
-    ?? visibleSections[0]?.id
-    ?? "";
+  // Only auto-open the section that owns the active route. For top-level
+  // routes that aren't inside any section (Dashboard `/`, Inbox `/inbox`,
+  // Help, Settings, etc.), leave every section collapsed so the sidebar
+  // doesn't misleadingly expand "Website CMS" just because it happens
+  // to sit first in the list.
+  const initialSection = visibleSections.find((s) => isSectionActive(pathname, s))?.id ?? "";
   const [openSection, setOpenSection] = useState<string>(initialSection);
   const [search, setSearch] = useState("");
   const [collapsed, setCollapsed] = useState(false);

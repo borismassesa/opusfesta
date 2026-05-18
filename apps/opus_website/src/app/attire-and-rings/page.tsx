@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { Suspense } from 'react'
 import Navbar from '@/components/navbar'
 import { Hero } from '@/components/attire-and-rings/Hero'
-import { CategoriesGrid, lovedCategories } from '@/components/attire-and-rings/CategoriesGrid'
+import { CategoriesGrid } from '@/components/attire-and-rings/CategoriesGrid'
 import { GiftSection } from '@/components/attire-and-rings/GiftSection'
 import { PillCategories } from '@/components/attire-and-rings/PillCategories'
 import { DealsSection } from '@/components/attire-and-rings/DealsSection'
@@ -14,6 +14,8 @@ import { BlogSection } from '@/components/attire-and-rings/BlogSection'
 import { InfoSection } from '@/components/attire-and-rings/InfoSection'
 import SearchForm from '@/components/advice-ideas/SearchForm'
 import Footer from '@/components/footer'
+
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Attire & Rings | OpusFesta',
@@ -61,13 +63,13 @@ export default function AttireAndRingsPage() {
       <main>
         <Hero />
         <section id="attire-categories">
-          <CategoriesGrid title="Discover trending wedding attire & rings" />
+          <CategoriesGrid variant="trending" />
         </section>
         <GiftSection />
         <section id="accessories">
           <PillCategories />
         </section>
-        <CategoriesGrid title="Shop our most-loved categories" categories={lovedCategories} />
+        <CategoriesGrid variant="loved" />
         <DealsSection />
         <section id="editor-picks">
           <EditorsPicks />

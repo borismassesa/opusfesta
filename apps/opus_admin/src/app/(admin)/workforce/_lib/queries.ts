@@ -9,6 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import type {
   Candidate,
+  CurrentlyClockedEmployee,
   Department,
   Employee,
   EmployeeStatus,
@@ -21,7 +22,12 @@ import type {
   Location,
   PayrollRun,
   PayrollStatus,
+  PunchSource,
+  PunchType,
   ShiftType,
+  TimeClockStatus,
+  TimeDaySummary,
+  TimePunch,
   WorkforceShift,
   WorkforceAttendance,
   WorkforceRole,
@@ -65,6 +71,8 @@ function mapEmployee(row: EmployeeRow, managerName: string | null): Employee {
     jobTitle: row.job_title,
     department: row.department,
     manager: managerName,
+    managerId: row.manager_id,
+    notes: row.notes,
     employmentType: row.employment_type,
     status: row.status,
     location: row.location,
@@ -229,6 +237,102 @@ export async function getEmployeeById(id: string): Promise<Employee | null> {
     managerName = m?.full_name ?? null
   }
   return mapEmployee(data, managerName)
+}
+
+// Companion helper to getEmployeeById that also returns the raw manager_id
+// — the public Employee shape only exposes the manager *name* (so list
+// rows can render without an extra join), but the detail page's org
+// chart needs the id to pull the manager's avatar/role card.
+export async function getEmployeeWithManagerId(
+  id: string,
+): Promise<{ employee: Employee; managerId: string | null } | null> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_employees')
+    .select(EMPLOYEE_COLUMNS)
+    .eq('id', id)
+    .maybeSingle<EmployeeRow>()
+  if (error) throw new Error(`[workforce] getEmployeeWithManagerId: ${error.message}`)
+  if (!data) return null
+  let managerName: string | null = null
+  if (data.manager_id) {
+    const { data: m } = await supabase
+      .from('workforce_employees')
+      .select('full_name')
+      .eq('id', data.manager_id)
+      .maybeSingle<{ full_name: string }>()
+    managerName = m?.full_name ?? null
+  }
+  return {
+    employee: mapEmployee(data, managerName),
+    managerId: data.manager_id,
+  }
+}
+
+// Minimal employee shape for org-chart cards on the detail page —
+// avoids hauling the full row (and its avatar resync) every time
+// we want to show a name + role + photo.
+export type EmployeeOrgNode = {
+  id: string
+  name: string
+  jobTitle: string
+  avatarColor: string
+  avatarUrl: string | null
+}
+
+type OrgNodeRow = {
+  id: string
+  full_name: string
+  job_title: string
+  avatar_color: string
+  avatar_url: string | null
+}
+
+function toOrgNode(row: OrgNodeRow): EmployeeOrgNode {
+  return {
+    id: row.id,
+    name: row.full_name,
+    jobTitle: row.job_title,
+    avatarColor: row.avatar_color,
+    avatarUrl: row.avatar_url,
+  }
+}
+
+export async function getEmployeeOrgContext(
+  employeeId: string,
+  managerId: string | null,
+): Promise<{ manager: EmployeeOrgNode | null; reports: EmployeeOrgNode[] }> {
+  const supabase = createSupabaseAdminClient()
+
+  const managerPromise = managerId
+    ? supabase
+        .from('workforce_employees')
+        .select('id, full_name, job_title, avatar_color, avatar_url')
+        .eq('id', managerId)
+        .maybeSingle<OrgNodeRow>()
+        .then((res) => {
+          if (res.error) {
+            throw new Error(`[workforce] getEmployeeOrgContext manager: ${res.error.message}`)
+          }
+          return res.data ? toOrgNode(res.data) : null
+        })
+    : Promise.resolve<EmployeeOrgNode | null>(null)
+
+  const reportsPromise = supabase
+    .from('workforce_employees')
+    .select('id, full_name, job_title, avatar_color, avatar_url')
+    .eq('manager_id', employeeId)
+    .order('full_name', { ascending: true })
+    .returns<OrgNodeRow[]>()
+    .then((res) => {
+      if (res.error) {
+        throw new Error(`[workforce] getEmployeeOrgContext reports: ${res.error.message}`)
+      }
+      return (res.data ?? []).map(toOrgNode)
+    })
+
+  const [manager, reports] = await Promise.all([managerPromise, reportsPromise])
+  return { manager, reports }
 }
 
 // --- Schedule ---
@@ -571,4 +675,222 @@ export async function getOpenJobsCount(): Promise<number> {
     .eq('status', 'Open')
   if (error) throw new Error(`[workforce] getOpenJobsCount: ${error.message}`)
   return count ?? 0
+}
+
+// ---------------------------------------------------------------------------
+// Time clock — event-log queries
+// ---------------------------------------------------------------------------
+// All times are stored as timestamptz. The DB returns ISO strings; we keep
+// them as ISO and let the client format in the viewer's timezone.
+
+type TimePunchRow = {
+  id: string
+  employee_id: string
+  punch_at: string
+  punch_type: PunchType
+  source: PunchSource
+  note: string | null
+  location_label: string | null
+  created_by_clerk_id: string | null
+}
+
+const TIME_PUNCH_COLUMNS =
+  'id, employee_id, punch_at, punch_type, source, note, location_label, created_by_clerk_id'
+
+function mapPunch(row: TimePunchRow): TimePunch {
+  return {
+    id: row.id,
+    employeeId: row.employee_id,
+    punchAt: row.punch_at,
+    type: row.punch_type,
+    source: row.source,
+    note: row.note,
+    locationLabel: row.location_label,
+    createdByClerkId: row.created_by_clerk_id,
+  }
+}
+
+// Look up the workforce_employees row for the Clerk user that's currently
+// signed in. Returns null if there's no matching record (e.g. an admin
+// added via admin_whitelist who isn't also in the employee directory).
+// Matches on clerk_user_id first (set on invite acceptance) and falls
+// back to email so newly-added admins work before the link is established.
+export async function getCurrentEmployee(
+  clerkUserId: string,
+  email: string | null,
+): Promise<Employee | null> {
+  const supabase = createSupabaseAdminClient()
+
+  const { data: byClerk, error: clerkError } = await supabase
+    .from('workforce_employees')
+    .select(EMPLOYEE_COLUMNS)
+    .eq('clerk_user_id', clerkUserId)
+    .maybeSingle<EmployeeRow>()
+  if (clerkError) throw new Error(`[workforce] getCurrentEmployee(clerk): ${clerkError.message}`)
+  if (byClerk) return mapEmployee(byClerk, null)
+
+  if (!email) return null
+  const { data: byEmail, error: emailError } = await supabase
+    .from('workforce_employees')
+    .select(EMPLOYEE_COLUMNS)
+    .ilike('email', email)
+    .maybeSingle<EmployeeRow>()
+  if (emailError) throw new Error(`[workforce] getCurrentEmployee(email): ${emailError.message}`)
+  return byEmail ? mapEmployee(byEmail, null) : null
+}
+
+// Punches for one employee in a date range (inclusive on both ends, in
+// the IANA timezone of the caller). The range is interpreted as
+// [start 00:00:00, end+1 00:00:00) in the given tz.
+export async function getPunchesForEmployee(
+  employeeId: string,
+  rangeStartIso: string,
+  rangeEndIsoExclusive: string,
+): Promise<TimePunch[]> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_time_punches')
+    .select(TIME_PUNCH_COLUMNS)
+    .eq('employee_id', employeeId)
+    .gte('punch_at', rangeStartIso)
+    .lt('punch_at', rangeEndIsoExclusive)
+    .order('punch_at', { ascending: true })
+    .returns<TimePunchRow[]>()
+  if (error) throw new Error(`[workforce] getPunchesForEmployee: ${error.message}`)
+  return (data ?? []).map(mapPunch)
+}
+
+// Punches for many employees in a date range — used by the admin grid.
+export async function getPunchesForRange(
+  rangeStartIso: string,
+  rangeEndIsoExclusive: string,
+): Promise<TimePunch[]> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_time_punches')
+    .select(TIME_PUNCH_COLUMNS)
+    .gte('punch_at', rangeStartIso)
+    .lt('punch_at', rangeEndIsoExclusive)
+    .order('punch_at', { ascending: true })
+    .returns<TimePunchRow[]>()
+  if (error) throw new Error(`[workforce] getPunchesForRange: ${error.message}`)
+  return (data ?? []).map(mapPunch)
+}
+
+// Current clock state for one employee. Returns isClockedIn=false if the
+// employee has never punched.
+export async function getTimeClockStatus(employeeId: string): Promise<TimeClockStatus> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_time_punches')
+    .select(TIME_PUNCH_COLUMNS)
+    .eq('employee_id', employeeId)
+    .order('punch_at', { ascending: false })
+    .limit(1)
+    .returns<TimePunchRow[]>()
+  if (error) throw new Error(`[workforce] getTimeClockStatus: ${error.message}`)
+  const last = (data ?? [])[0]
+  if (!last) return { employeeId, isClockedIn: false, sinceIso: null, lastPunch: null }
+  const lastPunch = mapPunch(last)
+  return {
+    employeeId,
+    isClockedIn: lastPunch.type === 'in',
+    sinceIso: lastPunch.type === 'in' ? lastPunch.punchAt : null,
+    lastPunch,
+  }
+}
+
+// Everyone whose most-recent punch is 'in'. Uses DISTINCT ON to pick the
+// latest punch per employee in a single round-trip, then joins to the
+// employee directory for display.
+export async function getCurrentlyClockedEmployees(): Promise<CurrentlyClockedEmployee[]> {
+  const supabase = createSupabaseAdminClient()
+
+  // Pull the latest punch per employee via the workforce_last_punch
+  // function. Simpler than a window query and uses the (employee_id,
+  // punch_at DESC) index.
+  const { data: emps, error: empsErr } = await supabase
+    .from('workforce_employees')
+    .select('id, full_name, employee_code, avatar_url, avatar_color')
+    .order('full_name', { ascending: true })
+    .returns<Array<{ id: string; full_name: string; employee_code: string; avatar_url: string | null; avatar_color: string }>>()
+  if (empsErr) throw new Error(`[workforce] getCurrentlyClockedEmployees: ${empsErr.message}`)
+
+  const out: CurrentlyClockedEmployee[] = []
+  await Promise.all(
+    (emps ?? []).map(async (e) => {
+      const { data: last, error: lastErr } = await supabase
+        .from('workforce_time_punches')
+        .select('punch_at, punch_type')
+        .eq('employee_id', e.id)
+        .order('punch_at', { ascending: false })
+        .limit(1)
+        .returns<Array<{ punch_at: string; punch_type: PunchType }>>()
+      if (lastErr) return
+      const lp = (last ?? [])[0]
+      if (!lp || lp.punch_type !== 'in') return
+      out.push({
+        employeeId: e.id,
+        employeeName: e.full_name,
+        employeeCode: e.employee_code,
+        avatarUrl: e.avatar_url,
+        avatarColor: e.avatar_color,
+        sinceIso: lp.punch_at,
+      })
+    }),
+  )
+  return out.sort((a, b) => a.sinceIso.localeCompare(b.sinceIso))
+}
+
+// Group a flat punch list into per-day summaries in the given timezone.
+// Open shifts (last 'in' with no matching 'out' on that day) contribute
+// 0 to workedMinutes — callers can add the live "since" interval if they
+// want a running total. Days with zero punches are not emitted.
+export function summarizePunchesByDay(
+  punches: TimePunch[],
+  timeZone: string,
+): TimeDaySummary[] {
+  if (punches.length === 0) return []
+  const fmt = new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  })
+  const groups = new Map<string, TimePunch[]>()
+  for (const p of punches) {
+    const day = fmt.format(new Date(p.punchAt))
+    const arr = groups.get(day)
+    if (arr) arr.push(p)
+    else groups.set(day, [p])
+  }
+
+  const out: TimeDaySummary[] = []
+  for (const [day, dayPunches] of groups) {
+    let workedMs = 0
+    let openInIso: string | null = null
+    let lastOutIso: string | null = null
+    let firstInIso: string | null = null
+    for (const p of dayPunches) {
+      if (p.type === 'in') {
+        if (firstInIso === null) firstInIso = p.punchAt
+        openInIso = p.punchAt
+      } else {
+        if (openInIso) {
+          workedMs += new Date(p.punchAt).getTime() - new Date(openInIso).getTime()
+          openInIso = null
+        }
+        lastOutIso = p.punchAt
+      }
+    }
+    out.push({
+      date: day,
+      punches: dayPunches,
+      firstInIso,
+      lastOutIso,
+      workedMinutes: Math.max(0, Math.round(workedMs / 60000)),
+      openShift: openInIso !== null,
+    })
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date))
 }

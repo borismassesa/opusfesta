@@ -32,15 +32,15 @@ const DEFAULT_SLANT: Card['id'][] = ['inquiries', 'pipeline']
 // Map every department to up to 2 chart IDs. Missing entries fall back
 // to DEFAULT_SLANT. Empty arrays mean "no trends panel for this dept".
 const DEPARTMENT_SLANT: Record<Department, Card['id'][]> = {
-  Founders: ['inquiries', 'pipeline'],
-  Operations: ['inquiries', 'pipeline'],
   Technology: ['pipeline'],
+  'Marketing & Partnership': ['signups', 'team'],
   'Content, Brand and Social Media': ['inquiries'],
-  'Marketing and Partnership': ['signups', 'team'],
-  'UI/UX Design': ['pipeline'],
-  'Finance and Accountings': ['team'],
+  'Finance & Accountings': ['team'],
+  'UI & UX Design': ['pipeline'],
+  Operations: ['inquiries', 'pipeline'],
+  Studio: [],
+  Founders: ['inquiries', 'pipeline'],
   HR: ['team'],
-  Interns: [],
 }
 
 export default function ChartGrid({
