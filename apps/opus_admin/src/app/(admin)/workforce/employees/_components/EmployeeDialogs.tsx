@@ -106,7 +106,7 @@ export function EmployeeFormDialog(props: FormDialogProps) {
       try {
         let employeeId: string
         if (isEdit) {
-          await updateEmployee(props.employee.id, {
+          const result = await updateEmployee(props.employee.id, {
             fullName,
             email,
             phone: phone || null,
@@ -121,9 +121,13 @@ export function EmployeeFormDialog(props: FormDialogProps) {
             managerId: managerId || null,
             notes: notes.trim() || null,
           })
+          if (!result.ok) {
+            setError(result.error)
+            return
+          }
           employeeId = props.employee.id
         } else {
-          const created = await createEmployee({
+          const result = await createEmployee({
             fullName,
             email,
             phone: phone || undefined,
@@ -138,7 +142,11 @@ export function EmployeeFormDialog(props: FormDialogProps) {
             managerId: managerId || null,
             notes: notes.trim() || null,
           })
-          employeeId = created.id
+          if (!result.ok) {
+            setError(result.error)
+            return
+          }
+          employeeId = result.id
         }
 
         if (callerIsOwner) {

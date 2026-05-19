@@ -74,13 +74,6 @@ export type CreateEmployeeInput = {
   notes?: string | null
 }
 
-function assertOrThrow(
-  condition: unknown,
-  message: string,
-): asserts condition {
-  if (!condition) throw new Error(message)
-}
-
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase()
 }
@@ -106,23 +99,31 @@ async function nextEmployeeCode(): Promise<string> {
   return `OF-${String(next).padStart(3, '0')}`
 }
 
-export async function createEmployee(input: CreateEmployeeInput): Promise<{ id: string; employeeCode: string }> {
+// Result types let user-facing errors survive Next.js's production
+// obfuscation of thrown server-action errors — a thrown Error becomes
+// the generic "An error occurred in the Server Components render"
+// message client-side, which hides the actual cause from the user.
+export type CreateEmployeeResult =
+  | { ok: true; id: string; employeeCode: string }
+  | { ok: false; error: string }
+
+export async function createEmployee(input: CreateEmployeeInput): Promise<CreateEmployeeResult> {
   await requirePermission('workforce.write')
 
   const fullName = input.fullName.trim()
   const email = normalizeEmail(input.email)
   const jobTitle = input.jobTitle.trim()
 
-  assertOrThrow(fullName.length > 1, 'Full name is required.')
-  assertOrThrow(email.includes('@'), 'A valid email address is required.')
-  assertOrThrow(jobTitle.length > 1, 'Job title is required.')
-  assertOrThrow(DEPARTMENTS.has(input.department), 'Pick a known department.')
-  assertOrThrow(EMPLOYMENT_TYPES.has(input.employmentType), 'Pick a known employment type.')
-  assertOrThrow(LOCATIONS.has(input.location), 'Pick a known location.')
-  assertOrThrow(input.salaryTzs >= 0, 'Salary must be ≥ 0.')
+  if (fullName.length <= 1) return { ok: false, error: 'Full name is required.' }
+  if (!email.includes('@')) return { ok: false, error: 'A valid email address is required.' }
+  if (jobTitle.length <= 1) return { ok: false, error: 'Job title is required.' }
+  if (!DEPARTMENTS.has(input.department)) return { ok: false, error: 'Pick a known department.' }
+  if (!EMPLOYMENT_TYPES.has(input.employmentType)) return { ok: false, error: 'Pick a known employment type.' }
+  if (!LOCATIONS.has(input.location)) return { ok: false, error: 'Pick a known location.' }
+  if (input.salaryTzs < 0) return { ok: false, error: 'Salary must be ≥ 0.' }
 
   const status = input.status ?? 'Onboarding'
-  assertOrThrow(STATUSES.has(status), 'Pick a known status.')
+  if (!STATUSES.has(status)) return { ok: false, error: 'Pick a known status.' }
 
   const supabase = createSupabaseAdminClient()
   const employeeCode = await nextEmployeeCode()
@@ -151,14 +152,15 @@ export async function createEmployee(input: CreateEmployeeInput): Promise<{ id: 
 
   if (error) {
     if ((error as { code?: string }).code === '23505') {
-      throw new Error(`${email} is already an employee.`)
+      return { ok: false, error: `${email} is already an employee.` }
     }
-    throw error
+    console.error('[workforce] createEmployee insert failed', error)
+    return { ok: false, error: error.message || 'Could not save this employee.' }
   }
 
   revalidatePath('/workforce/employees')
   revalidatePath('/workforce/schedule')
-  return { id: data.id, employeeCode: data.employee_code }
+  return { ok: true, id: data.id, employeeCode: data.employee_code }
 }
 
 export type UpdateEmployeeInput = Partial<{
@@ -177,7 +179,9 @@ export type UpdateEmployeeInput = Partial<{
   notes: string | null
 }>
 
-export async function updateEmployee(id: string, input: UpdateEmployeeInput): Promise<void> {
+export type UpdateEmployeeResult = { ok: true } | { ok: false; error: string }
+
+export async function updateEmployee(id: string, input: UpdateEmployeeInput): Promise<UpdateEmployeeResult> {
   await requirePermission('workforce.write')
 
   const patch: Record<string, unknown> = {}
@@ -186,35 +190,35 @@ export async function updateEmployee(id: string, input: UpdateEmployeeInput): Pr
   if (input.phone !== undefined) patch.phone = input.phone?.trim() || null
   if (input.jobTitle !== undefined) patch.job_title = input.jobTitle.trim()
   if (input.department !== undefined) {
-    assertOrThrow(DEPARTMENTS.has(input.department), 'Pick a known department.')
+    if (!DEPARTMENTS.has(input.department)) return { ok: false, error: 'Pick a known department.' }
     patch.department = input.department
   }
   if (input.employmentType !== undefined) {
-    assertOrThrow(EMPLOYMENT_TYPES.has(input.employmentType), 'Pick a known employment type.')
+    if (!EMPLOYMENT_TYPES.has(input.employmentType)) return { ok: false, error: 'Pick a known employment type.' }
     patch.employment_type = input.employmentType
   }
   if (input.status !== undefined) {
-    assertOrThrow(STATUSES.has(input.status), 'Pick a known status.')
+    if (!STATUSES.has(input.status)) return { ok: false, error: 'Pick a known status.' }
     patch.status = input.status
   }
   if (input.location !== undefined) {
-    assertOrThrow(LOCATIONS.has(input.location), 'Pick a known location.')
+    if (!LOCATIONS.has(input.location)) return { ok: false, error: 'Pick a known location.' }
     patch.location = input.location
   }
   if (input.startDate !== undefined) patch.start_date = input.startDate
   if (input.salaryTzs !== undefined) {
-    assertOrThrow(input.salaryTzs >= 0, 'Salary must be ≥ 0.')
+    if (input.salaryTzs < 0) return { ok: false, error: 'Salary must be ≥ 0.' }
     patch.salary_tzs = Math.round(input.salaryTzs)
   }
   if (input.leaveBalanceDays !== undefined) {
-    assertOrThrow(input.leaveBalanceDays >= 0, 'Leave balance must be ≥ 0.')
+    if (input.leaveBalanceDays < 0) return { ok: false, error: 'Leave balance must be ≥ 0.' }
     patch.leave_balance_days = input.leaveBalanceDays
   }
   if (input.managerId !== undefined) {
     // Self-reference would create a cycle. The DB CHECK / FK would
     // catch this, but a friendlier error here saves the round-trip.
     if (input.managerId === id) {
-      throw new Error('An employee can’t be their own manager.')
+      return { ok: false, error: 'An employee can’t be their own manager.' }
     }
     patch.manager_id = input.managerId
   }
@@ -223,19 +227,26 @@ export async function updateEmployee(id: string, input: UpdateEmployeeInput): Pr
     patch.notes = trimmed && trimmed.length > 0 ? trimmed : null
   }
 
-  if (Object.keys(patch).length === 0) return
+  if (Object.keys(patch).length === 0) return { ok: true }
 
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase.from('workforce_employees').update(patch).eq('id', id)
-  if (error) throw error
+  if (error) {
+    if ((error as { code?: string }).code === '23505') {
+      return { ok: false, error: 'That email is already used by another employee.' }
+    }
+    console.error('[workforce] updateEmployee failed', error)
+    return { ok: false, error: error.message || 'Could not save changes.' }
+  }
 
   revalidatePath('/workforce/employees')
   revalidatePath('/workforce/schedule')
   revalidatePath('/finance/payroll')
+  return { ok: true }
 }
 
-export async function setEmployeeStatus(id: string, status: EmployeeStatus): Promise<void> {
-  await updateEmployee(id, { status })
+export async function setEmployeeStatus(id: string, status: EmployeeStatus): Promise<UpdateEmployeeResult> {
+  return updateEmployee(id, { status })
 }
 
 export async function deleteEmployee(id: string): Promise<void> {
