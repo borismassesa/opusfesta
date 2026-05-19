@@ -4,10 +4,8 @@ import { auth } from '@clerk/nextjs/server'
 import { revalidatePath } from 'next/cache'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { requirePermission } from '@/lib/admin-auth'
-import {
-  getPunchesForRange,
-  summarizePunchesByDay,
-} from '../_lib/queries'
+import { getPunchesForRange } from '../_lib/queries'
+import { summarizePunchesByDay } from '../_lib/time-summary'
 
 const TZ = 'Africa/Dar_es_Salaam'
 

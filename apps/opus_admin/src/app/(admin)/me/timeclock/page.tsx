@@ -5,8 +5,8 @@ import {
   getCurrentEmployee,
   getPunchesForEmployee,
   getTimeClockStatus,
-  summarizePunchesByDay,
 } from '../../workforce/_lib/queries'
+import { summarizePunchesByDay } from '../../workforce/_lib/time-summary'
 import TimeclockClient from './TimeclockClient'
 
 export const dynamic = 'force-dynamic'
