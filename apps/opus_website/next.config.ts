@@ -21,10 +21,14 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // Old Invitations routes (formerly nested under /guests) — permanent 308s.
-      // /my/guests is a separate user-dashboard route and is NOT redirected.
+      // /my/guests is a separate user-dashboard route and is NOT redirected — Next.js
+      // redirect `source` matches the full path, not a prefix of a different one.
+      // Order matters: most specific first, catch-all last.
       { source: '/guests/invitations', destination: '/invitations/catalog', permanent: true },
       { source: '/guests/invitations/:path*', destination: '/invitations/catalog/:path*', permanent: true },
       { source: '/guests', destination: '/invitations', permanent: true },
+      // Catch-all for any other bookmarked /guests/* URL — send to invitations landing.
+      { source: '/guests/:path*', destination: '/invitations', permanent: true },
     ]
   },
 }

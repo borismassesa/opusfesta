@@ -2,7 +2,8 @@
 
 import { useMemo } from 'react'
 import { filterProductsByCategory, type InvitationCategory } from '@/data/invitations-categories'
-import InvitationsCatalogClient, { PRODUCTS } from '../catalog/InvitationsCatalogClient'
+import { PRODUCTS } from '@/data/invitations-products'
+import InvitationsCatalogClient from '../catalog/InvitationsCatalogClient'
 
 export default function InvitationsCategoryClient({ category }: { category: InvitationCategory }) {
   const filtered = useMemo(

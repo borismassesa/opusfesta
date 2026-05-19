@@ -22,6 +22,6 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 export default async function ProductDetailPage({ params }: { params: Promise<Params> }) {
   const { id } = await params
   const product = findProductById(id)
-  if (!product) notFound()
+  if (!product) return notFound()
   return <ProductDetailClient product={product} />
 }

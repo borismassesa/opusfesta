@@ -22,6 +22,6 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 export default async function InvitationsCategoryPage({ params }: { params: Promise<Params> }) {
   const { category } = await params
   const cat = findCategory(category)
-  if (!cat) notFound()
+  if (!cat) return notFound()
   return <InvitationsCategoryClient category={cat} />
 }
