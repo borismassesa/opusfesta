@@ -18,6 +18,15 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'lh3.googleusercontent.com' },
     ],
   },
+  async redirects() {
+    return [
+      // Old Invitations routes (formerly nested under /guests) — permanent 308s.
+      // /my/guests is a separate user-dashboard route and is NOT redirected.
+      { source: '/guests/invitations', destination: '/invitations/catalog', permanent: true },
+      { source: '/guests/invitations/:path*', destination: '/invitations/catalog/:path*', permanent: true },
+      { source: '/guests', destination: '/invitations', permanent: true },
+    ]
+  },
 }
 
 export default nextConfig
