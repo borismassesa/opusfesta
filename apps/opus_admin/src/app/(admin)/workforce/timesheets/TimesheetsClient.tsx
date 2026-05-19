@@ -15,7 +15,7 @@ import {
   CircleDot,
 } from 'lucide-react'
 import Avatar from '../_components/Avatar'
-import { summarizePunchesByDay } from '../_lib/queries'
+import { summarizePunchesByDay } from '../_lib/time-summary'
 import type {
   CurrentlyClockedEmployee,
   EmployeeStatus,
