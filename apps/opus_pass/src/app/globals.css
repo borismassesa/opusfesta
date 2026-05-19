@@ -1,0 +1,76 @@
+@import 'tailwindcss';
+
+:root {
+  --accent: #C9A0DC;
+  --accent-hover: #b97fd0;
+  --on-accent: #1A1A1A;
+}
+
+/* Tailwind utility for on-accent text */
+.text-on-accent { color: var(--on-accent); }
+
+html,
+body {
+  background-color: #ffffff;
+  width: 100%;
+  max-width: 100%;
+  /* `clip` (vs `hidden`) prevents body from becoming a sticky containing block,
+     so `position: sticky` on descendants works against the actual viewport. */
+  overflow-x: clip;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+body {
+  position: relative;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+}
+
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-33.333%);
+  }
+}
+
+.animate-marquee {
+  animation: marquee 30s linear infinite;
+}
+
+.hide-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Leaflet vendor map popup — flush image edges */
+.vendor-map-popup .leaflet-popup-content-wrapper {
+  padding: 0;
+  overflow: hidden;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.14);
+}
+.vendor-map-popup .leaflet-popup-content {
+  margin: 0;
+  line-height: 1;
+}
+
+/* Accessibility: disable all motion for users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

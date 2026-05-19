@@ -37,6 +37,13 @@
       "port": 3003,
       "autoPort": true,
       "cwd": "apps/vendors_portal"
+    },
+    {
+      "name": "opus_pass",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "--port", "3008"],
+      "port": 3008,
+      "cwd": "apps/opus_pass"
     }
   ]
 }
