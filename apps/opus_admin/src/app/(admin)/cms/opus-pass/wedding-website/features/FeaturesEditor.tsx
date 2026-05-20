@@ -1,0 +1,377 @@
+'use client'
+
+import { useEffect, useState, useTransition } from 'react'
+import { Plus, Trash2 } from 'lucide-react'
+import {
+  OPUS_PASS_WEBSITES_FEATURE_ICONS,
+  OPUS_PASS_WEBSITES_FEATURE_VISUALS,
+  type OpusPassWebsitesFeatureItem,
+  type OpusPassWebsitesFeaturesContent,
+} from '@/lib/cms/opus-pass-websites-features'
+import { CollapsibleCard } from '@/components/cms/CollapsibleCard'
+import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
+import { useEditorActions } from '../EditorActionsContext'
+import {
+  discardOpusPassWebsitesFeaturesDraft,
+  publishOpusPassWebsitesFeatures,
+  saveOpusPassWebsitesFeaturesDraft,
+} from './actions'
+
+type Props = {
+  initial: OpusPassWebsitesFeaturesContent
+  hasDraft: boolean
+}
+
+const inputCls =
+  'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</span>
+      {children}
+    </label>
+  )
+}
+
+function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <fieldset className="border border-gray-200 rounded-lg p-3 pt-2 space-y-3">
+      <legend className="px-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">{label}</legend>
+      {children}
+    </fieldset>
+  )
+}
+
+function randomId(): string {
+  return `feat-${Math.random().toString(36).slice(2, 9)}`
+}
+
+export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: Props) {
+  const [draft, setDraft] = useState<OpusPassWebsitesFeaturesContent>(initial)
+  const [hasDraft, setHasDraft] = useState(initialHasDraft)
+  const [pending, startTransition] = useTransition()
+  const [message, setMessage] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const { bind, unbind } = useEditorActions()
+
+  const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0]))
+  const toggleExpanded = (idx: number) =>
+    setExpanded((s) => {
+      const next = new Set(s)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
+
+  const setField = <K extends keyof OpusPassWebsitesFeaturesContent>(
+    key: K,
+    value: OpusPassWebsitesFeaturesContent[K],
+  ) => setDraft((d) => ({ ...d, [key]: value }))
+
+  const setItem = (idx: number, patch: Partial<OpusPassWebsitesFeatureItem>) =>
+    setDraft((d) => ({
+      ...d,
+      items: d.items.map((item, i) => (i === idx ? { ...item, ...patch } : item)),
+    }))
+
+  const addItem = () =>
+    setDraft((d) => ({
+      ...d,
+      items: [
+        ...d.items,
+        {
+          id: randomId(),
+          icon: 'sparkles',
+          title: '',
+          body: '',
+          cta_label: '',
+          cta_href: '',
+          visual: 'laptop',
+          image_url: '',
+        },
+      ],
+    }))
+
+  const removeItem = (idx: number) =>
+    setDraft((d) => ({ ...d, items: d.items.filter((_, i) => i !== idx) }))
+
+  const moveItem = (idx: number, delta: number) =>
+    setDraft((d) => {
+      const next = [...d.items]
+      const target = idx + delta
+      if (target < 0 || target >= next.length) return d
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return { ...d, items: next }
+    })
+
+  const runAction = (job: () => Promise<void>) =>
+    startTransition(async () => {
+      setError(null)
+      try {
+        await job()
+      } catch (err) {
+        setError(`That didn't go through: ${err instanceof Error ? err.message : String(err)}`)
+        setMessage(null)
+      }
+    })
+
+  const handleSaveDraft = () =>
+    runAction(async () => {
+      await saveOpusPassWebsitesFeaturesDraft(draft)
+      setHasDraft(true)
+      setMessage('Draft saved.')
+    })
+
+  const handlePublish = () =>
+    runAction(async () => {
+      await saveOpusPassWebsitesFeaturesDraft(draft)
+      await publishOpusPassWebsitesFeatures()
+      setHasDraft(false)
+      setMessage('Published — changes are live.')
+    })
+
+  const handleDiscard = () =>
+    runAction(async () => {
+      await discardOpusPassWebsitesFeaturesDraft()
+      setDraft(initial)
+      setHasDraft(false)
+      setMessage('Draft discarded.')
+    })
+
+  useEffect(() => {
+    bind({
+      hasDraft,
+      pending,
+      message,
+      error,
+      onSaveDraft: handleSaveDraft,
+      onPublish: handlePublish,
+      onDiscard: handleDiscard,
+    })
+    return () => unbind()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hasDraft, pending, message, error, draft])
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start pb-12">
+      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] space-y-5">
+        <h3 className="text-[15px] font-semibold text-gray-900">Features</h3>
+
+        <FieldGroup label="Section header">
+          <Field label="Heading">
+            <input
+              type="text"
+              value={draft.heading}
+              onChange={(e) => setField('heading', e.target.value)}
+              placeholder="Create your free website"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Description">
+            <textarea
+              rows={2}
+              value={draft.description}
+              onChange={(e) => setField('description', e.target.value)}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Card background colour (hex)">
+            <div className="flex items-center gap-2">
+              <input
+                type="color"
+                value={draft.background_color}
+                onChange={(e) => setField('background_color', e.target.value)}
+                className="w-10 h-10 rounded border border-gray-200 p-0 overflow-hidden cursor-pointer"
+              />
+              <input
+                type="text"
+                value={draft.background_color}
+                onChange={(e) => setField('background_color', e.target.value)}
+                placeholder="#FCE9C2"
+                className={`${inputCls} flex-1 font-mono text-[12px]`}
+              />
+              <button
+                type="button"
+                onClick={() => setField('background_color', '#FCE9C2')}
+                className="p-1 text-gray-400 hover:text-gray-700 shrink-0"
+                title="Reset to default (#FCE9C2)"
+                aria-label="Reset background colour"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </Field>
+        </FieldGroup>
+
+        <div className="space-y-3">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 px-1">
+            Cards ({draft.items.length})
+          </p>
+          {draft.items.map((item, idx) => (
+            <CollapsibleCard
+              key={item.id}
+              index={idx}
+              title={item.title || 'New card'}
+              collapsed={!expanded.has(idx)}
+              onToggle={() => toggleExpanded(idx)}
+              onMoveUp={() => moveItem(idx, -1)}
+              onMoveDown={() => moveItem(idx, 1)}
+              onRemove={() => removeItem(idx)}
+              disableMoveUp={idx === 0}
+              disableMoveDown={idx === draft.items.length - 1}
+            >
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Icon">
+                  <select
+                    value={item.icon}
+                    onChange={(e) =>
+                      setItem(idx, { icon: e.target.value as OpusPassWebsitesFeatureItem['icon'] })
+                    }
+                    className={inputCls}
+                  >
+                    {OPUS_PASS_WEBSITES_FEATURE_ICONS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Visual mock">
+                  <select
+                    value={item.visual}
+                    onChange={(e) =>
+                      setItem(idx, { visual: e.target.value as OpusPassWebsitesFeatureItem['visual'] })
+                    }
+                    className={inputCls}
+                  >
+                    {OPUS_PASS_WEBSITES_FEATURE_VISUALS.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <Field label="Title">
+                <input
+                  type="text"
+                  value={item.title}
+                  onChange={(e) => setItem(idx, { title: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <Field label="Body">
+                <textarea
+                  rows={3}
+                  value={item.body}
+                  onChange={(e) => setItem(idx, { body: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="CTA label">
+                  <input
+                    type="text"
+                    value={item.cta_label}
+                    onChange={(e) => setItem(idx, { cta_label: e.target.value })}
+                    className={inputCls}
+                  />
+                </Field>
+                <Field label="CTA destination">
+                  <input
+                    type="text"
+                    value={item.cta_href}
+                    onChange={(e) => setItem(idx, { cta_href: e.target.value })}
+                    className={inputCls}
+                  />
+                </Field>
+              </div>
+              <div className="space-y-1.5">
+                <p className="text-[11px] text-gray-500 leading-relaxed">
+                  Optional — when set, replaces the built-in CSS mock ({item.visual}) inside the card.
+                </p>
+                <ImageUploadField
+                  label="Card image"
+                  value={item.image_url}
+                  onChange={(v) => setItem(idx, { image_url: v })}
+                  pathPrefix="opus-pass/websites/features"
+                  previewAspect="aspect-[4/3]"
+                  previewWidth="max-w-xs"
+                />
+              </div>
+            </CollapsibleCard>
+          ))}
+          <button
+            type="button"
+            onClick={addItem}
+            className="flex items-center gap-2 text-sm font-medium text-[#7E5896] hover:text-[#5d3a78] px-3 py-2 rounded-lg border border-dashed border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add card
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
+          <span className="text-xs text-gray-400">Approximate</span>
+        </div>
+        <FeaturesPreview content={draft} />
+      </div>
+    </div>
+  )
+}
+
+function FeaturesPreview({ content }: { content: OpusPassWebsitesFeaturesContent }) {
+  return (
+    <div>
+      <div className="text-center mb-4">
+        <h2 className="text-base font-serif font-medium text-gray-900 mb-1.5">
+          {content.heading || 'Section heading'}
+        </h2>
+        <p className="text-[10px] text-gray-700 leading-relaxed line-clamp-2">
+          {content.description}
+        </p>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {content.items.slice(0, 3).map((card) => (
+          <div
+            key={card.id}
+            className="rounded-md p-2.5 flex flex-col items-center text-center"
+            style={{ backgroundColor: content.background_color || '#FCE9C2' }}
+          >
+            <div className="w-6 h-6 rounded-full bg-white/70 mb-2" />
+            <p className="text-[10px] font-extrabold text-[#1A1A1A] leading-tight line-clamp-2">
+              {card.title || 'Card title'}
+            </p>
+            <p className="mt-1 text-[8px] text-[#1A1A1A]/75 leading-snug line-clamp-3">
+              {card.body}
+            </p>
+            {card.cta_label && (
+              <span className="mt-1.5 text-[8px] font-bold text-[#1A1A1A] underline">
+                {card.cta_label}
+              </span>
+            )}
+            <div className="mt-2 w-full h-[64px] rounded-sm overflow-hidden bg-white/40 relative">
+              {card.image_url ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={resolveOpusPassAssetUrl(card.image_url)}
+                  alt={card.title}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              ) : (
+                <span className="absolute inset-0 flex items-center justify-center text-[7px] uppercase tracking-[0.14em] text-[#1A1A1A]/40">
+                  {card.visual}
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}

@@ -1,0 +1,1078 @@
+'use client'
+
+import { useEffect, useRef, useState } from 'react'
+import Link from 'next/link'
+import Image from 'next/image'
+import {
+  ArrowRight,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Link as LinkIcon,
+  Sparkles,
+  Star,
+  Users,
+  type LucideIcon,
+} from 'lucide-react'
+import { cn } from '@/lib/utils'
+import type { WebsitesHeroContent } from '@/lib/cms/websites-hero'
+import type {
+  WebsitesDesignsContent,
+  WebsitesDesignItem,
+} from '@/lib/cms/websites-designs'
+import type { WebsitesSellingPointsContent } from '@/lib/cms/websites-selling-points'
+import type {
+  WebsitesFeaturesContent,
+  WebsitesFeatureIcon,
+} from '@/lib/cms/websites-features'
+import type { WebsitesTestimonialsContent } from '@/lib/cms/websites-testimonials'
+import type { WebsitesFaqsContent } from '@/lib/cms/websites-faqs'
+
+type DesignTemplate = WebsitesDesignItem
+
+const FEATURE_ICONS: Record<WebsitesFeatureIcon, LucideIcon> = {
+  sparkles: Sparkles,
+  users: Users,
+  link: LinkIcon,
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  PAGE
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function WebsitesLandingClient({
+  hero,
+  designs,
+  sellingPoints,
+  features,
+  testimonials,
+  faqs,
+}: {
+  hero: WebsitesHeroContent
+  designs: WebsitesDesignsContent
+  sellingPoints: WebsitesSellingPointsContent
+  features: WebsitesFeaturesContent
+  testimonials: WebsitesTestimonialsContent
+  faqs: WebsitesFaqsContent
+}) {
+  return (
+    <div className="bg-white text-[#1A1A1A]">
+      <HeroBanner content={hero} />
+      <DesignsPicker content={designs} />
+      <SellingPoints content={sellingPoints} />
+      <FeatureRow content={features} />
+      <Testimonials content={testimonials} />
+      <FAQs content={faqs} />
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  HERO — sage backdrop with overlapping device mockups (echoes /invitations
+//  flat-lay but swapped for laptop + phone showing live website preview)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function HeroBanner({ content: HERO }: { content: WebsitesHeroContent }) {
+  return (
+    <section className="px-4 sm:px-6 pt-4 sm:pt-6">
+      <div className="mx-auto max-w-7xl">
+        <div
+          className="relative overflow-hidden rounded-md min-h-[260px] sm:min-h-[340px] md:min-h-[420px]"
+          style={{ backgroundColor: HERO.background_color }}
+        >
+          {/* Subtle dot texture, same idiom as /invitations */}
+          <div
+            className="absolute inset-0 opacity-[0.18] pointer-events-none"
+            style={{
+              backgroundImage: 'radial-gradient(circle at 1px 1px, #5C6B4D 0.6px, transparent 0)',
+              backgroundSize: '6px 6px',
+            }}
+          />
+
+          <div className="relative grid grid-cols-1 md:grid-cols-12 items-center gap-6 md:gap-4 p-6 sm:p-10 md:p-14">
+            {/* Copy */}
+            <div className="md:col-span-7 lg:col-span-7">
+              <h1 className="text-[1.8rem] sm:text-[2.2rem] md:text-[2.6rem] lg:text-[2.9rem] font-black uppercase tracking-tighter leading-[1.15] text-[#1A1A1A]">
+                {HERO.headline_line_1}
+                <br />
+                {HERO.headline_line_2}
+              </h1>
+              <p className="mt-6 sm:mt-7 text-[16px] sm:text-[17px] md:text-[18px] lg:text-[19px] text-[#1A1A1A]/80 leading-[1.7]">
+                {HERO.description}
+              </p>
+              <div className="mt-9 sm:mt-10 flex flex-wrap items-center gap-x-5 gap-y-3">
+                <Link
+                  href={HERO.primary_cta_href}
+                  className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
+                >
+                  {HERO.primary_cta_label}
+                </Link>
+                <Link
+                  href={HERO.secondary_cta_href}
+                  className="text-[13px] sm:text-[14px] font-semibold text-[#1A1A1A] underline underline-offset-[6px] decoration-[#1A1A1A]/40 hover:decoration-[#1A1A1A]"
+                >
+                  {HERO.secondary_cta_label} <span aria-hidden>→</span>
+                </Link>
+              </div>
+            </div>
+
+            {/* Right side — uploaded image when set, otherwise the built-in laptop + phone mockup */}
+            <div className="md:col-span-5 lg:col-span-5 relative h-[220px] sm:h-[300px] md:h-[360px]">
+              {HERO.right_image_url ? (
+                <div className="relative h-full w-full overflow-hidden rounded-md shadow-md">
+                  <Image
+                    src={HERO.right_image_url}
+                    alt={HERO.right_image_alt}
+                    fill
+                    sizes="(min-width: 768px) 40vw, 100vw"
+                    className="object-cover"
+                  />
+                </div>
+              ) : (
+                <>
+                  {/* Laptop frame */}
+                  <div className="absolute left-0 top-[10%] w-[88%] aspect-[16/10] rounded-md shadow-xl bg-[#1A1A1A] p-[6px] rotate-[-3deg]">
+                    <div className="relative h-full w-full overflow-hidden rounded-sm bg-white">
+                      <WebsitePreview treatment="botanical-sage" />
+                    </div>
+                  </div>
+                  {/* Phone frame */}
+                  <div className="absolute right-[2%] bottom-[2%] w-[28%] aspect-[9/19] rounded-2xl shadow-xl bg-[#1A1A1A] p-[5px] rotate-[6deg]">
+                    <div className="relative h-full w-full overflow-hidden rounded-[14px] bg-white">
+                      <div className="absolute top-[6px] left-1/2 -translate-x-1/2 w-[36%] h-[10px] bg-[#1A1A1A] rounded-b-md z-10" />
+                      <WebsitePreview treatment="modern-blush" compact />
+                    </div>
+                  </div>
+                  {/* Pearl strip — decorative */}
+                  <div className="absolute right-[6%] top-[2%] hidden md:flex gap-[3px]">
+                    {Array.from({ length: 12 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="block h-1.5 w-1.5 rounded-full bg-gradient-to-br from-white to-[#9FE870]/40 shadow-sm"
+                      />
+                    ))}
+                  </div>
+                  {/* Tiny "site live" sticker */}
+                  <div className="absolute left-[8%] bottom-[2%] hidden sm:flex items-center gap-1.5 bg-white border border-gray-200 rounded-sm px-2.5 py-1 rotate-[-2deg] shadow-sm">
+                    <span className="h-1.5 w-1.5 rounded-full bg-[#9FE870]" />
+                    <p className="text-[9px] uppercase tracking-[0.22em] font-bold text-[#1A1A1A]">Live RSVPs</p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  DESIGNS PICKER — tabbed template grid (echoes The Knot's design picker)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function DesignsPicker({ content }: { content: WebsitesDesignsContent }) {
+  const DESIGN_TABS = content.tabs
+  const DESIGNS = content.designs
+  const [activeTab, setActiveTab] = useState<string>(DESIGN_TABS[0] ?? 'Most Popular')
+  const visible = DESIGNS.filter((d) => d.tags.includes(activeTab))
+
+  return (
+    <section id="designs" className="px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl pt-12 sm:pt-16">
+        <div className="text-center mb-6 sm:mb-8">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-gray-900">
+            {content.heading}
+          </h2>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex items-center justify-center gap-1 sm:gap-2 mb-8 sm:mb-10 overflow-x-auto px-2 [&::-webkit-scrollbar]:hidden">
+          {DESIGN_TABS.map((tab) => (
+            <button
+              key={tab}
+              type="button"
+              onClick={() => setActiveTab(tab)}
+              className={cn(
+                'whitespace-nowrap px-3 sm:px-4 py-2 text-[12px] sm:text-[13px] font-semibold transition-colors',
+                activeTab === tab
+                  ? 'text-[#1A1A1A] border-b-2 border-[#1A1A1A]'
+                  : 'text-gray-500 hover:text-[#1A1A1A] border-b-2 border-transparent',
+              )}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-x-4 sm:gap-x-5 gap-y-8 sm:gap-y-10">
+          {visible.map((d) => {
+            const T = TREATMENTS[d.treatment]
+            const palette = [T.heroBg, T.accent, T.btnBg]
+            return (
+              <Link
+                key={d.id}
+                href="/sign-up"
+                className="group block"
+              >
+                <div className="relative aspect-[3/2] overflow-hidden rounded-md shadow-sm ring-1 ring-black/5">
+                  <WebsitePreview treatment={d.treatment} photo={d.photo} />
+                  {/* "Free" badge — top-right corner */}
+                  <span className="absolute top-3 right-3 z-10 rounded-full bg-white/95 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.18em] text-[#1A1A1A] shadow-sm">
+                    Free
+                  </span>
+                </div>
+
+                {/* Card metadata: name on the left, palette on the right */}
+                <div className="mt-3 flex items-center justify-between gap-3">
+                  <p className="min-w-0 text-[14px] font-semibold text-[#1A1A1A] flex items-center gap-1">
+                    {d.name}
+                    <ArrowRight size={13} className="shrink-0" aria-hidden="true" />
+                  </p>
+                  <div className="flex items-center gap-1 shrink-0">
+                    {palette.map((color, i) => (
+                      <span
+                        key={i}
+                        aria-hidden
+                        className="block h-3 w-3 rounded-full ring-1 ring-black/10"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </Link>
+            )
+          })}
+        </div>
+
+        <div className="mt-8 sm:mt-10 text-center">
+          <Link
+            href="/sign-up"
+            className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] font-extrabold uppercase tracking-[0.12em]"
+          >
+            Explore more designs
+          </Link>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FEATURE ROW — 3 peach cards (echoes /invitations FeatureRow)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FeatureRow({ content }: { content: WebsitesFeaturesContent }) {
+  return (
+    <section className="px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl pt-12 sm:pt-16">
+        <div className="text-center mb-8 sm:mb-10">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-gray-900 mb-4">
+            {content.heading}
+          </h2>
+          <p className="max-w-2xl mx-auto text-sm md:text-base text-gray-700 leading-relaxed">
+            {content.description}
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+          {content.items.map((card) => {
+            const Icon = FEATURE_ICONS[card.icon] ?? Sparkles
+            return (
+              <div
+                key={card.id}
+                className="rounded-md p-6 sm:p-7 flex flex-col items-center text-center"
+                style={{ backgroundColor: content.background_color || '#FCE9C2' }}
+              >
+                <div className="w-11 h-11 rounded-full bg-white/70 flex items-center justify-center mb-4">
+                  <Icon className="text-[#1A1A1A]" size={18} />
+                </div>
+                <h3 className="text-[18px] sm:text-[20px] font-extrabold tracking-tight text-[#1A1A1A]">
+                  {card.title}
+                </h3>
+                <p className="mt-3 text-[13px] text-[#1A1A1A]/75 leading-relaxed max-w-[280px]">
+                  {card.body}
+                </p>
+                <Link
+                  href={card.cta_href}
+                  className="mt-3 text-[13px] font-bold text-[#1A1A1A] underline underline-offset-2 hover:text-[var(--accent-hover)]"
+                >
+                  {card.cta_label}
+                </Link>
+                <div className="mt-7 sm:mt-9 w-full h-[180px] sm:h-[200px]">
+                  {card.image_url ? (
+                    <div className="relative h-full w-full overflow-hidden rounded-md">
+                      <Image
+                        src={card.image_url}
+                        alt={card.title}
+                        fill
+                        sizes="(min-width: 768px) 33vw, 100vw"
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : card.visual === 'laptop' ? (
+                    <FeatureVisualLaptop />
+                  ) : card.visual === 'rsvp' ? (
+                    <FeatureVisualRsvp />
+                  ) : (
+                    <FeatureVisualRegistry />
+                  )}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SELLING POINTS — magazine grid with title/subtitle and generous whitespace
+//  between rows. Each row is a rounded 2-column unit (photo + text panel)
+//  that alternates left/right.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SellingPoints({ content }: { content: WebsitesSellingPointsContent }) {
+  return (
+    <section className="px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl pt-12 sm:pt-20">
+        <div className="text-center mb-12 sm:mb-16 max-w-3xl mx-auto">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-medium text-gray-900 mb-4">
+            {content.heading}
+          </h2>
+          <p className="text-sm md:text-base text-gray-700 leading-relaxed">
+            {content.description}
+          </p>
+        </div>
+
+        <div className="space-y-14 sm:space-y-20 md:space-y-24">
+          {content.items.map((block, idx) => {
+            const reverse = idx % 2 === 1
+            return (
+              <div
+                key={block.id}
+                className="grid grid-cols-1 md:grid-cols-2 overflow-hidden rounded-2xl bg-white ring-1 ring-gray-100"
+              >
+                {/* Photo cell */}
+                <div
+                  className={cn(
+                    'relative aspect-[4/3] md:aspect-auto md:min-h-[440px]',
+                    reverse && 'md:order-2',
+                  )}
+                >
+                  <Image
+                    src={block.image}
+                    alt=""
+                    fill
+                    sizes="(min-width: 768px) 50vw, 100vw"
+                    className="object-cover"
+                  />
+                </div>
+
+                {/* Text cell */}
+                <div
+                  className={cn(
+                    'flex flex-col justify-center px-6 py-10 sm:px-10 sm:py-14 md:px-14 md:py-16 lg:px-16',
+                    reverse && 'md:order-1',
+                  )}
+                >
+                  <h3 className="text-3xl md:text-4xl lg:text-[40px] font-bold tracking-tight leading-[1.15] text-gray-900 max-w-md">
+                    {block.headline}
+                  </h3>
+                  <p className="mt-5 text-[15px] sm:text-base text-gray-700 leading-relaxed max-w-md">
+                    {block.body}
+                  </p>
+                  <div className="mt-7">
+                    <Link
+                      href={block.cta_href}
+                      className="inline-flex items-center rounded-full bg-[#1A1A1A] hover:bg-black text-white px-6 py-3 text-[14px] font-semibold"
+                    >
+                      {block.cta_label}
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  TESTIMONIALS — brutalist OpusFesta carousel: huge uppercase title +
+//  prev/next arrow controls on the left, scrolling dark/purple cards on the right.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function Testimonials({ content }: { content: WebsitesTestimonialsContent }) {
+  const TESTIMONIALS = content.items
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [progress, setProgress] = useState(0)
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const update = () => {
+      const max = el.scrollWidth - el.clientWidth
+      setProgress(max > 0 ? (el.scrollLeft / max) * 100 : 0)
+    }
+    update()
+    el.addEventListener('scroll', update, { passive: true })
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => {
+      el.removeEventListener('scroll', update)
+      ro.disconnect()
+    }
+  }, [])
+
+  const pageSize = (el: HTMLDivElement) => {
+    const gap = parseFloat(getComputedStyle(el).columnGap || '0') || 0
+    return Math.min(el.clientWidth, 380 + gap)
+  }
+
+  const scrollNext = () => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollBy({ left: pageSize(el), behavior: 'smooth' })
+  }
+
+  const scrollPrev = () => {
+    const el = scrollRef.current
+    if (!el) return
+    el.scrollBy({ left: -pageSize(el), behavior: 'smooth' })
+  }
+
+  const atStart = progress < 1
+  const atEnd = progress > 99
+
+  return (
+    <section className="px-4 sm:px-6 pt-24 sm:pt-32 md:pt-40">
+      <div className="mx-auto max-w-7xl">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] gap-10 lg:gap-12 items-start">
+          {/* Title + arrow controls */}
+          <div className="lg:pt-2">
+            <h2 className="text-5xl sm:text-6xl md:text-[5rem] lg:text-[4.75rem] xl:text-[5.5rem] font-bold uppercase tracking-tight leading-[0.95] text-[#1A1A1A]">
+              {content.heading}
+            </h2>
+            <div className="mt-8 sm:mt-10 flex items-center gap-3">
+              <button
+                type="button"
+                onClick={scrollPrev}
+                aria-label="Previous testimonial"
+                disabled={atStart}
+                className={cn(
+                  'grid h-12 w-12 place-items-center rounded-full transition-colors',
+                  atStart
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-[#1A1A1A] text-white hover:bg-black',
+                )}
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={scrollNext}
+                aria-label="Next testimonial"
+                disabled={atEnd}
+                className={cn(
+                  'grid h-12 w-12 place-items-center rounded-full transition-colors',
+                  atEnd
+                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    : 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)]',
+                )}
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Carousel — overflows the container on the right for a peek effect */}
+          <div className="-mr-4 sm:-mr-6 overflow-hidden">
+            <div
+              ref={scrollRef}
+              className="flex gap-4 sm:gap-5 overflow-x-auto snap-x snap-mandatory pb-4 [&::-webkit-scrollbar]:hidden"
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
+            >
+              {TESTIMONIALS.map((t) => (
+                <TestimonialCard key={t.id} t={t} />
+              ))}
+              {/* Spacer so the last card scrolls fully into view */}
+              <div aria-hidden className="shrink-0 w-1 sm:w-3" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function TestimonialCard({
+  t,
+}: {
+  t: WebsitesTestimonialsContent['items'][number]
+}) {
+  const isDark = t.variant === 'dark'
+  return (
+    <article
+      className={cn(
+        'snap-start shrink-0 w-[300px] sm:w-[360px] rounded-2xl p-6 sm:p-7 flex flex-col min-h-[320px] sm:min-h-[340px]',
+        isDark ? 'bg-[#1A1A1A] text-white' : 'bg-[var(--accent)] text-[#1A1A1A]',
+      )}
+    >
+      {/* Stars */}
+      <div className="flex items-center gap-0.5 text-amber-400 mb-5">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star
+            key={i}
+            size={18}
+            className={i < t.rating ? 'fill-current' : 'fill-transparent'}
+            strokeWidth={i < t.rating ? 0 : 1.5}
+          />
+        ))}
+      </div>
+
+      {/* Quote */}
+      <p className="text-[15px] sm:text-base font-semibold leading-snug flex-1">
+        &ldquo;{t.quote}&rdquo;
+      </p>
+
+      {/* Divider */}
+      <div className={cn('mt-6 h-px', isDark ? 'bg-white/15' : 'bg-black/15')} />
+
+      {/* Footer: avatar + name + location + role pill */}
+      <div className="mt-5 flex items-center gap-3">
+        <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0">
+          <Image src={t.avatar} alt="" fill sizes="40px" className="object-cover" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-bold leading-tight truncate">{t.name}</p>
+          <p
+            className={cn(
+              'text-xs mt-0.5 truncate',
+              isDark ? 'text-white/55' : 'text-[#1A1A1A]/60',
+            )}
+          >
+            {t.location}
+          </p>
+        </div>
+        <span
+          className={cn(
+            'shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold',
+            isDark
+              ? 'bg-[var(--accent)] text-[var(--on-accent)]'
+              : 'bg-white text-[#1A1A1A]',
+          )}
+        >
+          {t.role}
+        </span>
+      </div>
+    </article>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FAQS — accordion (identical pattern to /invitations FAQs)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FAQs({ content }: { content: WebsitesFaqsContent }) {
+  return (
+    <section className="px-4 sm:px-6 pb-20 sm:pb-28">
+      <div className="mx-auto max-w-4xl pt-24 sm:pt-32 md:pt-40">
+        <div className="text-center mb-8 sm:mb-10">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-gray-900 mb-4">
+            {content.heading}
+          </h2>
+          <p className="max-w-2xl mx-auto text-sm md:text-base text-gray-700 leading-relaxed">
+            {content.description}
+          </p>
+        </div>
+        <div className="border-y border-gray-200">
+          {content.items.map((item) => (
+            <FAQItem key={item.id} q={item.question} a={item.answer} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function FAQItem({ q, a }: { q: string; a: string }) {
+  const [open, setOpen] = useState(false)
+  return (
+    <div className="border-b border-gray-200 last:border-b-0">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center justify-between gap-4 py-5 sm:py-6 text-left"
+      >
+        <span className="text-[15px] sm:text-[17px] font-medium text-gray-900">{q}</span>
+        <ChevronDown
+          className={cn(
+            'h-5 w-5 text-gray-600 shrink-0 transition-transform duration-200',
+            open && 'rotate-180',
+          )}
+          aria-hidden="true"
+        />
+      </button>
+      {open && (
+        <p className="pb-5 sm:pb-6 pr-12 text-[14px] sm:text-[15px] text-gray-700 leading-relaxed">
+          {a}
+        </p>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SHARED — Section divider
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SectionDivider() {
+  return (
+    <div className="px-4 sm:px-6">
+      <div className="mx-auto max-w-7xl">
+        <div className="border-t border-gray-200 mt-12 sm:mt-16" />
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  VISUAL PRIMITIVES — purely CSS website mockups so we don't depend on
+//  uploaded screenshots. Each treatment maps to a colour-and-type combo.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function WebsitePreview({
+  treatment,
+  photo,
+  compact = false,
+}: {
+  treatment: DesignTemplate['treatment']
+  photo?: string
+  compact?: boolean
+}) {
+  const T = TREATMENTS[treatment]
+  const onPhoto = Boolean(photo)
+  return (
+    <div
+      className="relative h-full w-full overflow-hidden"
+      style={{ backgroundColor: T.bg }}
+    >
+      {/* Hero band — real couple photo when provided, otherwise the motif */}
+      <div
+        className="absolute inset-x-0 top-0 h-[58%] overflow-hidden"
+        style={{ backgroundColor: T.heroBg }}
+      >
+        {onPhoto ? (
+          <>
+            <Image
+              src={photo!}
+              alt=""
+              fill
+              sizes="(min-width: 768px) 33vw, 50vw"
+              className="object-cover"
+            />
+            {/* Subtle vignette so the names overlay is always legible */}
+            <div
+              aria-hidden
+              className="absolute inset-0"
+              style={{
+                background:
+                  'linear-gradient(180deg, rgba(0,0,0,0.10) 0%, rgba(0,0,0,0.18) 40%, rgba(0,0,0,0.45) 100%)',
+              }}
+            />
+          </>
+        ) : (
+          <>
+            {/* Decorative motif */}
+            <div className="absolute inset-0 flex items-center justify-center">
+              <T.Motif color={T.motif} />
+            </div>
+            {/* Couple silhouette card */}
+            {!compact && (
+              <div
+                className="absolute left-[6%] top-[18%] w-[28%] aspect-square rounded-full overflow-hidden ring-2 shadow-sm"
+                style={{ borderColor: T.accent }}
+              >
+                <div className="h-full w-full" style={{ backgroundColor: T.accent, opacity: 0.4 }} />
+              </div>
+            )}
+          </>
+        )}
+      </div>
+
+      {/* Names — sit over the photo with white text + shadow for legibility */}
+      <div
+        className={cn(
+          'absolute left-0 right-0 text-center',
+          compact ? 'top-[22%]' : 'top-[28%]',
+        )}
+      >
+        <p
+          className={cn(
+            'font-serif leading-tight',
+            compact ? 'text-[10px]' : 'text-[13px] sm:text-[15px]',
+          )}
+          style={{
+            color: onPhoto ? '#FFFFFF' : T.fg,
+            fontStyle: T.italic ? 'italic' : 'normal',
+            textShadow: onPhoto ? '0 1px 3px rgba(0,0,0,0.45)' : undefined,
+          }}
+        >
+          Neema &amp; Amani
+        </p>
+        <p
+          className={cn(
+            'mt-0.5 uppercase tracking-[0.22em]',
+            compact ? 'text-[5px]' : 'text-[7px] sm:text-[8px]',
+          )}
+          style={{
+            color: onPhoto ? 'rgba(255,255,255,0.92)' : T.fg,
+            opacity: onPhoto ? 1 : 0.65,
+            textShadow: onPhoto ? '0 1px 2px rgba(0,0,0,0.45)' : undefined,
+          }}
+        >
+          22 · 08 · 2026 · Bagamoyo
+        </p>
+      </div>
+
+      {/* Nav row */}
+      <div
+        className={cn(
+          'absolute left-0 right-0 flex justify-center gap-3',
+          compact ? 'bottom-[34%]' : 'bottom-[36%]',
+        )}
+      >
+        {['Our Story', 'RSVP', 'Travel', 'Registry'].map((l) => (
+          <span
+            key={l}
+            className={cn('uppercase tracking-[0.18em] font-bold', compact ? 'text-[4px]' : 'text-[6px] sm:text-[7px]')}
+            style={{ color: T.fg }}
+          >
+            {l}
+          </span>
+        ))}
+      </div>
+
+      {/* CTA pill */}
+      <div className="absolute left-1/2 -translate-x-1/2 bottom-[16%]">
+        <span
+          className={cn(
+            'inline-block uppercase font-bold tracking-[0.18em] rounded-full',
+            compact ? 'text-[5px] px-2 py-[3px]' : 'text-[7px] sm:text-[8px] px-3 py-1',
+          )}
+          style={{ backgroundColor: T.btnBg, color: T.btnFg }}
+        >
+          RSVP
+        </span>
+      </div>
+
+      {/* Bottom strip */}
+      <div
+        className="absolute inset-x-0 bottom-0 h-[6%]"
+        style={{ backgroundColor: T.accent, opacity: 0.4 }}
+      />
+    </div>
+  )
+}
+
+type Treatment = {
+  bg: string
+  heroBg: string
+  fg: string
+  accent: string
+  motif: string
+  btnBg: string
+  btnFg: string
+  italic?: boolean
+  Motif: (props: { color: string }) => React.ReactElement
+}
+
+const TREATMENTS: Record<DesignTemplate['treatment'], Treatment> = {
+  'floral-cream': {
+    bg: '#FBF7EF',
+    heroBg: '#F5E6D3',
+    fg: '#1A1A1A',
+    accent: '#C49A6C',
+    motif: '#C49A6C',
+    btnBg: '#1A1A1A',
+    btnFg: '#FFFFFF',
+    italic: true,
+    Motif: FlowerMotif,
+  },
+  'botanical-sage': {
+    bg: '#F1EFE8',
+    heroBg: '#D6E0CC',
+    fg: '#2F3B2A',
+    accent: '#5C6B4D',
+    motif: '#5C6B4D',
+    btnBg: '#2F3B2A',
+    btnFg: '#FFFFFF',
+    italic: true,
+    Motif: LeafMotif,
+  },
+  'modern-blush': {
+    bg: '#FFFFFF',
+    heroBg: '#FAE6E9',
+    fg: '#1A1A1A',
+    accent: '#C9A0DC',
+    motif: '#C9A0DC',
+    btnBg: '#1A1A1A',
+    btnFg: '#FFFFFF',
+    Motif: BlockMotif,
+  },
+  'classic-serif': {
+    bg: '#F8F4ED',
+    heroBg: '#FFFFFF',
+    fg: '#1A1A1A',
+    accent: '#7A1F2B',
+    motif: '#7A1F2B',
+    btnBg: '#7A1F2B',
+    btnFg: '#FFFFFF',
+    italic: true,
+    Motif: MonogramMotif,
+  },
+  'coastal-blue': {
+    bg: '#F2F6F8',
+    heroBg: '#CADFE6',
+    fg: '#1B3A47',
+    accent: '#4F7E94',
+    motif: '#4F7E94',
+    btnBg: '#1B3A47',
+    btnFg: '#FFFFFF',
+    italic: true,
+    Motif: WaveMotif,
+  },
+  'minimal-cream': {
+    bg: '#FFFFFF',
+    heroBg: '#F2EDE3',
+    fg: '#1A1A1A',
+    accent: '#1A1A1A',
+    motif: '#1A1A1A',
+    btnBg: '#1A1A1A',
+    btnFg: '#FFFFFF',
+    Motif: BarMotif,
+  },
+  'twilight-navy': {
+    bg: '#0F1A30',
+    heroBg: '#172846',
+    fg: '#F4E9C6',
+    accent: '#E8D9A7',
+    motif: '#E8D9A7',
+    btnBg: '#E8D9A7',
+    btnFg: '#0F1A30',
+    italic: true,
+    Motif: StarMotif,
+  },
+  'rose-garden': {
+    bg: '#FBF1F2',
+    heroBg: '#F2C8CB',
+    fg: '#5A2A35',
+    accent: '#A04450',
+    motif: '#A04450',
+    btnBg: '#5A2A35',
+    btnFg: '#FFFFFF',
+    italic: true,
+    Motif: RoseMotif,
+  },
+}
+
+function FlowerMotif({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className="h-[55%] w-[55%] opacity-50" aria-hidden="true">
+      {Array.from({ length: 6 }).map((_, i) => (
+        <ellipse
+          key={i}
+          cx="50"
+          cy="30"
+          rx="6"
+          ry="14"
+          fill={color}
+          transform={`rotate(${(360 / 6) * i} 50 50)`}
+        />
+      ))}
+      <circle cx="50" cy="50" r="5" fill={color} />
+    </svg>
+  )
+}
+
+function LeafMotif({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className="h-[60%] w-[60%] opacity-50" aria-hidden="true">
+      <path
+        d="M50 10 Q70 30 70 50 Q70 70 50 90 Q30 70 30 50 Q30 30 50 10 Z"
+        fill={color}
+      />
+      <path d="M50 10 L50 90" stroke="#fff" strokeWidth="1.5" opacity="0.5" />
+    </svg>
+  )
+}
+
+function BlockMotif({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className="h-[55%] w-[55%] opacity-40" aria-hidden="true">
+      <rect x="20" y="20" width="60" height="60" stroke={color} strokeWidth="2" fill="none" />
+      <rect x="32" y="32" width="36" height="36" stroke={color} strokeWidth="1" fill="none" />
+    </svg>
+  )
+}
+
+function MonogramMotif({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className="h-[55%] w-[55%] opacity-50" aria-hidden="true">
+      <text
+        x="50"
+        y="62"
+        textAnchor="middle"
+        fontFamily="serif"
+        fontStyle="italic"
+        fontSize="48"
+        fill={color}
+      >
+        N&amp;A
+      </text>
+    </svg>
+  )
+}
+
+function WaveMotif({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className="h-[55%] w-[55%] opacity-50" aria-hidden="true">
+      {[20, 40, 60].map((y) => (
+        <path
+          key={y}
+          d={`M0 ${y} Q25 ${y - 10} 50 ${y} T100 ${y}`}
+          stroke={color}
+          strokeWidth="1.5"
+          fill="none"
+        />
+      ))}
+    </svg>
+  )
+}
+
+function BarMotif({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className="h-[45%] w-[45%] opacity-40" aria-hidden="true">
+      <line x1="10" y1="50" x2="90" y2="50" stroke={color} strokeWidth="1.5" />
+      <line x1="40" y1="30" x2="60" y2="30" stroke={color} strokeWidth="1" />
+      <line x1="40" y1="70" x2="60" y2="70" stroke={color} strokeWidth="1" />
+    </svg>
+  )
+}
+
+function StarMotif({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className="h-[60%] w-[60%] opacity-60" aria-hidden="true">
+      {[
+        [25, 25, 1.5],
+        [70, 18, 2.5],
+        [50, 45, 1],
+        [80, 60, 1.8],
+        [20, 65, 1.2],
+        [60, 75, 2],
+      ].map(([cx, cy, r], i) => (
+        <circle key={i} cx={cx} cy={cy} r={r} fill={color} />
+      ))}
+    </svg>
+  )
+}
+
+function RoseMotif({ color }: { color: string }) {
+  return (
+    <svg viewBox="0 0 100 100" className="h-[55%] w-[55%] opacity-50" aria-hidden="true">
+      <circle cx="50" cy="50" r="22" fill={color} opacity="0.3" />
+      <circle cx="50" cy="50" r="14" fill={color} opacity="0.4" />
+      <circle cx="50" cy="50" r="7" fill={color} opacity="0.6" />
+      <path
+        d="M28 70 Q40 80 50 70"
+        stroke={color}
+        strokeWidth="1.5"
+        fill="none"
+      />
+    </svg>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FEATURE CARD VISUALS — small CSS mocks that sit inside the peach cards
+// ─────────────────────────────────────────────────────────────────────────────
+
+function FeatureVisualLaptop() {
+  return (
+    <div className="relative h-full w-full flex items-center justify-center">
+      <div className="relative w-[78%] aspect-[16/10] rounded-md bg-[#1A1A1A] p-[4px] shadow-md">
+        <div className="relative h-full w-full overflow-hidden rounded-sm bg-white">
+          <WebsitePreview treatment="floral-cream" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FeatureVisualRsvp() {
+  return (
+    <div className="relative h-full w-full flex items-center justify-center">
+      <div className="relative w-[58%] bg-white rounded-md shadow-md p-3.5 ring-1 ring-black/5">
+        <p className="text-[8px] uppercase tracking-[0.22em] font-bold text-gray-500">
+          RSVP
+        </p>
+        <p className="font-serif italic text-[12px] text-[#1A1A1A] mt-1">
+          Neema &amp; Amani
+        </p>
+        <div className="mt-2.5 space-y-1.5">
+          {['Maria K. · Joyful yes', 'James M. · Joyful yes', 'Faith L. · Maybe', 'Daniel W. · Joyful yes'].map(
+            (line, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span
+                  className="h-1.5 w-1.5 rounded-full"
+                  style={{
+                    backgroundColor: line.includes('Maybe') ? '#E8B547' : '#9FE870',
+                  }}
+                />
+                <span className="text-[9px] text-[#1A1A1A]">{line}</span>
+              </div>
+            ),
+          )}
+        </div>
+        <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-[8px] uppercase tracking-[0.18em] font-bold">
+          <span className="text-gray-500">42 attending</span>
+          <span className="text-[#9FE870]">+3 today</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FeatureVisualRegistry() {
+  const items = [
+    { color: '#9FE870', label: 'M' },
+    { color: '#C9A0DC', label: 'A' },
+    { color: '#F5E6D3', label: 'Z' },
+    { color: '#FAE6E9', label: 'TG' },
+    { color: '#CADFE6', label: 'AM' },
+    { color: '#E8D9A7', label: 'WS' },
+  ]
+  return (
+    <div className="relative h-full w-full flex items-center justify-center">
+      <div className="grid grid-cols-3 gap-2">
+        {items.map((it) => (
+          <div
+            key={it.label}
+            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center font-bold text-[11px] text-[#1A1A1A] shadow-sm ring-1 ring-black/5"
+            style={{ backgroundColor: it.color }}
+          >
+            {it.label}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
