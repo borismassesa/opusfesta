@@ -22,9 +22,11 @@ export default async function OpusPassWebsitesFeaturesEditorPage() {
   const initial: OpusPassWebsitesFeaturesContent = {
     heading: stored?.heading ?? OPUS_PASS_WEBSITES_FEATURES_FALLBACK.heading,
     description: stored?.description ?? OPUS_PASS_WEBSITES_FEATURES_FALLBACK.description,
+    background_color:
+      stored?.background_color ?? OPUS_PASS_WEBSITES_FEATURES_FALLBACK.background_color,
     items:
       stored?.items && Array.isArray(stored.items) && stored.items.length > 0
-        ? stored.items
+        ? stored.items.map((it) => ({ ...it, image_url: it.image_url ?? '' }))
         : OPUS_PASS_WEBSITES_FEATURES_FALLBACK.items,
   }
   const hasDraft = !!row?.draft_content

@@ -86,7 +86,7 @@ export async function loadWebsitesFeaturesContent(): Promise<WebsitesFeaturesCon
           stored.background_color ?? WEBSITES_FEATURES_FALLBACK.background_color,
         items:
           stored.items && Array.isArray(stored.items) && stored.items.length > 0
-            ? stored.items.map((it) => ({ image_url: '', ...it }))
+            ? stored.items.map((it) => ({ ...it, image_url: it.image_url ?? '' }))
             : WEBSITES_FEATURES_FALLBACK.items,
       }
     }
