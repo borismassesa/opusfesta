@@ -162,8 +162,11 @@ export const INVITATION_CATEGORIES: InvitationCategory[] = [
   },
 ]
 
-export function findCategory(slug: string): InvitationCategory | undefined {
-  return INVITATION_CATEGORIES.find((c) => c.slug === slug)
+export function findCategory(
+  categories: InvitationCategory[],
+  slug: string,
+): InvitationCategory | undefined {
+  return categories.find((c) => c.slug === slug)
 }
 
 /**
@@ -171,10 +174,11 @@ export function findCategory(slug: string): InvitationCategory | undefined {
  * given category's `productMatchers` (case-insensitive substring match).
  */
 export function filterProductsByCategory<T extends { category: string }>(
+  categories: InvitationCategory[],
   products: T[],
   slug: string,
 ): T[] {
-  const cat = findCategory(slug)
+  const cat = findCategory(categories, slug)
   if (!cat) return []
   return products.filter((p) =>
     cat.productMatchers.some((m) => p.category.toLowerCase().includes(m.toLowerCase())),

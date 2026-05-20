@@ -45,6 +45,19 @@ svg {
   animation: marquee 30s linear infinite;
 }
 
+@keyframes marquee-vertical {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-33.333%);
+  }
+}
+
+.animate-marquee-vertical {
+  animation: marquee-vertical 40s linear infinite;
+}
+
 .hide-scrollbar {
   scrollbar-width: none;
   -ms-overflow-style: none;

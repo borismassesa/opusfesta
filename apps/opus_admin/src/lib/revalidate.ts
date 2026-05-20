@@ -64,3 +64,14 @@ export async function revalidateVendorsPortal(...paths: string[]): Promise<void>
     paths.length ? paths : ['/']
   )
 }
+
+export async function revalidateOpusPass(...paths: string[]): Promise<void> {
+  await revalidateTarget(
+    {
+      label: 'opus_pass',
+      url: process.env.NEXT_PUBLIC_OPUS_PASS_URL,
+      secret: process.env.OPUS_PASS_REVALIDATE_SECRET,
+    },
+    paths.length ? paths : ['/']
+  )
+}

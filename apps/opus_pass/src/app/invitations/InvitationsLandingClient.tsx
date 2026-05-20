@@ -7,68 +7,69 @@ import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Heart, Play } from 
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { ProductInfo, type Product } from '@/components/guests/productInfo'
-import { INVITATION_CATEGORIES } from '@/data/invitations-categories'
-
-// Editorial product fixtures — one per image cell in the EditorsPicks grid (4 rows × 3 cards)
-const EDITORIAL_PRODUCTS: Product[] = [
-  // Row 1 — Save the dates worth saving
-  { id: 'e1',  category: 'Save the Dates',         name: 'Two of Us Photo Save the Date Cards',     priceWas: 195000, priceNow: 117000, swatches: ['#1A1A1A','#F5EFE3','#7A1F2B','#A6B89A'] },
-  { id: 'e2',  category: 'Save the Dates',         name: 'Authentic Portrait Video Save the Date',  priceWas: 215000, priceNow: 129000, swatches: ['#1A1A1A','#7A1F2B','#F5EFE3','#C8A35C'] },
-  { id: 'e3',  category: 'Save the Dates',         name: 'Modern Suite Save the Date Set',                            priceNow: 145000, swatches: ['#F5EFE3','#1A1A1A','#A6B89A','#7A1F2B'] },
-
-  // Row 2 — Invite & RSVPs for every wedding style
-  { id: 'e4',  category: 'Wedding Invitations',    name: 'Botanical Frame Invitation Suite',        priceWas: 198000, priceNow: 119000, swatches: ['#A6B89A','#F5DCE2','#FBF7F2','#1A1A1A','#7A1F2B'] },
-  { id: 'e5',  category: 'Wedding Invitations',    name: 'Navy & Gold Editorial Invitations',       priceWas: 225000, priceNow: 135000, swatches: ['#1E2D54','#E8D9A7','#F5EFE3','#C8A35C'] },
-  { id: 'e6',  category: 'Wedding Invitations',    name: 'Arch Script Bagamoyo Invitations',                          priceNow: 132000, swatches: ['#7A1F2B','#F5EFE3','#A6B89A'] },
-
-  // Row 3 — Matching suites and day-of paper
-  { id: 'e7',  category: 'Reception Cards',        name: 'Sage Panel Reception Suite',              priceWas: 168000, priceNow: 101000, swatches: ['#A6B89A','#FBF7F2','#5C6B4D'] },
-  { id: 'e8',  category: 'Day-of Paper Set',       name: 'Botanical Day-of Paper Bundle',                             priceNow: 155000, swatches: ['#A6B89A','#F5DCE2','#FBF7F2','#7A1F2B'] },
-  { id: 'e9',  category: 'Menu Cards',             name: 'Karibu Reception Menu Cards',             priceWas: 89000,  priceNow: 53000,  swatches: ['#7A1F2B','#F5EFE3','#A6B89A','#C8A35C'] },
-
-  // Row 4 — Premium quality, perfectly priced
-  { id: 'e10', category: 'Wedding Invitations',    name: 'Heritage Crown Karibu Invitations',       priceWas: 245000, priceNow: 147000, swatches: ['#7A1F2B','#C8A35C','#F5EFE3','#1A1A1A'] },
-  { id: 'e11', category: 'Save the Dates',         name: 'Ring Detail Foil Save the Date',          priceWas: 185000, priceNow: 111000, swatches: ['#C8A35C','#F5EFE3','#1A1A1A'] },
-  { id: 'e12', category: 'Foil & Letterpress',     name: 'Modern Block Foil Invitations',                             priceNow: 198000, swatches: ['#1A1A1A','#FBF7F2','#E8D9A7','#C8A35C'] },
-]
+import type { InvitationCategoryCms } from '@/lib/cms/invitations-categories'
+import type { InvitationsHeroContent } from '@/lib/cms/invitations-hero'
+import type { InvitationsCategoriesContent } from '@/lib/cms/invitations-categories'
+import type { InvitationsFeaturesContent, InvitationsFeatureCard } from '@/lib/cms/invitations-features'
+import type { InvitationsFeaturedSuiteContent } from '@/lib/cms/invitations-featured-suite'
+import type { InvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
+import type {
+  InvitationsEditorsPicksContent,
+  InvitationsEditorsPicksPick,
+  InvitationsEditorsPicksTreatment,
+} from '@/lib/cms/invitations-editors-picks'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PAGE
 // ─────────────────────────────────────────────────────────────────────────────
 
-export default function InvitationsLandingClient() {
+export default function InvitationsLandingClient({
+  hero,
+  categories,
+  features,
+  featuredSuite,
+  faqs,
+  editorsPicks,
+}: {
+  hero: InvitationsHeroContent
+  categories: InvitationsCategoriesContent
+  features: InvitationsFeaturesContent
+  featuredSuite: InvitationsFeaturedSuiteContent
+  faqs: InvitationsFaqsContent
+  editorsPicks: InvitationsEditorsPicksContent
+}) {
   return (
     <div className="bg-white text-[#1A1A1A]">
-      <HeroBanner />
+      <HeroBanner hero={hero} />
       <section className="px-4 sm:px-6">
         <div className="mx-auto max-w-7xl pt-10 sm:pt-14">
           <div className="text-center mb-8 sm:mb-10">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-gray-900 mb-4">
-              Invitations for Every Moment
+              {categories.heading}
             </h2>
             <p className="max-w-2xl mx-auto text-sm md:text-base text-gray-700 leading-relaxed">
-              Pick one design once, and every card across your day matches your suite. No mixing fonts, no clashing palettes, no last-minute hunt for matching paper.
+              {categories.description}
             </p>
           </div>
-          <ShopByCategory />
+          <ShopByCategory categories={categories.categories} />
         </div>
       </section>
       <SectionDivider />
-      <EditorsPicks />
+      <EditorsPicks rows={editorsPicks.rows} />
       <SectionDivider />
       <section className="px-4 sm:px-6">
         <div className="mx-auto max-w-7xl pt-10 sm:pt-14">
           <div className="text-center mb-8 sm:mb-10">
             <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-gray-900">
-              Wedding stationery made easy, from invite to seat
+              {features.heading}
             </h2>
           </div>
-          <FeatureRow />
+          <FeatureRow cards={features.cards} />
         </div>
       </section>
       <SectionDivider />
-      <FeaturedSuite />
-      <FAQs />
+      <FeaturedSuite content={featuredSuite} />
+      <FAQs content={faqs} />
     </div>
   )
 }
@@ -77,11 +78,14 @@ export default function InvitationsLandingClient() {
 //  HERO BANNER
 // ─────────────────────────────────────────────────────────────────────────────
 
-function HeroBanner() {
+function HeroBanner({ hero }: { hero: InvitationsHeroContent }) {
   return (
     <section className="px-4 sm:px-6 pt-4 sm:pt-6">
       <div className="mx-auto max-w-7xl">
-        <div className="relative overflow-hidden rounded-md bg-[#FAE6E9] min-h-[260px] sm:min-h-[340px] md:min-h-[400px]">
+        <div
+          className="relative overflow-hidden rounded-md min-h-[260px] sm:min-h-[340px] md:min-h-[400px]"
+          style={{ backgroundColor: hero.background_color || '#FAE6E9' }}
+        >
           {/* Linen-y texture using subtle radial dots */}
           <div className="absolute inset-0 opacity-[0.18] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #B7A88E 0.6px, transparent 0)', backgroundSize: '6px 6px' }} />
 
@@ -89,62 +93,76 @@ function HeroBanner() {
             {/* Copy */}
             <div className="md:col-span-7 lg:col-span-7">
               <h1 className="text-[1.8rem] sm:text-[2.2rem] md:text-[2.6rem] lg:text-[2.9rem] font-black uppercase tracking-tighter leading-[1.15] text-[#1A1A1A]">
-                Invites worth saving.<br />RSVPs worth tracking.
+                {hero.headline_line_1}<br />{hero.headline_line_2}
               </h1>
               <p className="mt-6 sm:mt-7 text-[16px] sm:text-[17px] md:text-[18px] lg:text-[19px] text-[#1A1A1A]/80 leading-[1.7]">
-                Designer-worthy digital invitations that won&rsquo;t break your budget. Premium, personalised designs for every wedding moment, customisable in Swahili and English. <strong className="text-[#1A1A1A] font-bold">FREE</strong> matching website with bilingual RSVP page included.
+                {hero.description}
               </p>
               <div className="mt-9 sm:mt-10 flex flex-wrap items-center gap-x-5 gap-y-3">
                 <Link
-                  href="/invitations/catalog"
+                  href={hero.primary_cta_href}
                   className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
                 >
-                  Browse all designs
+                  {hero.primary_cta_label}
                 </Link>
                 <Link
-                  href="/invitations/catalog"
+                  href={hero.secondary_cta_href}
                   className="text-[13px] sm:text-[14px] font-semibold text-[#1A1A1A] underline underline-offset-[6px] decoration-[#1A1A1A]/40 hover:decoration-[#1A1A1A]"
                 >
-                  See pricing <span aria-hidden>→</span>
+                  {hero.secondary_cta_label} <span aria-hidden>→</span>
                 </Link>
               </div>
             </div>
 
-            {/* Flat-lay-style arrangement (CSS) */}
+            {/* Right side — uploaded image if present, otherwise the built-in flat-lay */}
             <div className="md:col-span-5 lg:col-span-5 relative h-[200px] sm:h-[280px] md:h-[340px]">
-              {/* Pearls — decorative diagonal */}
-              <div className="absolute top-0 left-0 right-0 h-2 hidden md:block">
-                <div className="flex gap-[3px]">
-                  {Array.from({ length: 80 }).map((_, i) => (
-                    <span key={i} className="block h-2 w-2 rounded-full bg-gradient-to-br from-white to-[#E8D9A7]/60 shadow-sm" />
-                  ))}
+              {hero.right_image_url ? (
+                <div className="relative h-full w-full overflow-hidden rounded-md shadow-md">
+                  <Image
+                    src={hero.right_image_url}
+                    alt={hero.right_image_alt}
+                    fill
+                    sizes="(min-width: 768px) 40vw, 100vw"
+                    className="object-cover"
+                  />
                 </div>
-              </div>
+              ) : (
+                <>
+                  {/* Pearls — decorative diagonal */}
+                  <div className="absolute top-0 left-0 right-0 h-2 hidden md:block">
+                    <div className="flex gap-[3px]">
+                      {Array.from({ length: 80 }).map((_, i) => (
+                        <span key={i} className="block h-2 w-2 rounded-full bg-gradient-to-br from-white to-[#E8D9A7]/60 shadow-sm" />
+                      ))}
+                    </div>
+                  </div>
 
-              {/* Couple portrait */}
-              <div className="absolute right-[8%] top-[6%] w-[28%] aspect-[3/4] overflow-hidden rounded-sm shadow-md rotate-[-4deg] bg-white">
-                <Image src="/assets/images/cutesy_couple.jpg" alt="" fill sizes="200px" className="object-cover" />
-              </div>
+                  {/* Couple portrait */}
+                  <div className="absolute right-[8%] top-[6%] w-[28%] aspect-[3/4] overflow-hidden rounded-sm shadow-md rotate-[-4deg] bg-white">
+                    <Image src="/assets/images/cutesy_couple.jpg" alt="" fill sizes="200px" className="object-cover" />
+                  </div>
 
-              {/* Invitation: Modern block */}
-              <div className="absolute left-0 top-[30%] w-[34%] aspect-[3/4] shadow-md rotate-[-3deg]">
-                <div className="absolute inset-0"><InvitationVisual treatment="modern-block" /></div>
-              </div>
+                  {/* Invitation: Modern block */}
+                  <div className="absolute left-0 top-[30%] w-[34%] aspect-[3/4] shadow-md rotate-[-3deg]">
+                    <div className="absolute inset-0"><InvitationVisual treatment="modern-block" /></div>
+                  </div>
 
-              {/* Invitation: Floral border */}
-              <div className="absolute left-[28%] top-[15%] w-[30%] aspect-[3/4] shadow-md rotate-[2deg]">
-                <div className="absolute inset-0"><InvitationVisual treatment="floral-border" /></div>
-              </div>
+                  {/* Invitation: Floral border */}
+                  <div className="absolute left-[28%] top-[15%] w-[30%] aspect-[3/4] shadow-md rotate-[2deg]">
+                    <div className="absolute inset-0"><InvitationVisual treatment="floral-border" /></div>
+                  </div>
 
-              {/* Invitation: Navy gold */}
-              <div className="absolute right-[2%] top-[55%] w-[32%] aspect-[3/4] shadow-md rotate-[5deg]">
-                <div className="absolute inset-0"><InvitationVisual treatment="navy-gold" /></div>
-              </div>
+                  {/* Invitation: Navy gold */}
+                  <div className="absolute right-[2%] top-[55%] w-[32%] aspect-[3/4] shadow-md rotate-[5deg]">
+                    <div className="absolute inset-0"><InvitationVisual treatment="navy-gold" /></div>
+                  </div>
 
-              {/* Small stationery label sticker */}
-              <div className="absolute right-[42%] bottom-[2%] hidden sm:block bg-white border border-gray-200 rounded-sm px-3 py-1 rotate-[-2deg] shadow-sm">
-                <p className="text-[9px] uppercase tracking-[0.22em] font-bold text-[#1A1A1A]">Bagamoyo Modern</p>
-              </div>
+                  {/* Small stationery label sticker */}
+                  <div className="absolute right-[42%] bottom-[2%] hidden sm:block bg-white border border-gray-200 rounded-sm px-3 py-1 rotate-[-2deg] shadow-sm">
+                    <p className="text-[9px] uppercase tracking-[0.22em] font-bold text-[#1A1A1A]">Bagamoyo Modern</p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -184,42 +202,37 @@ function SectionDivider() {
 //  3 PEACH FEATURE CARDS
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FeatureRow() {
-  const cards = [
-    {
-      title: 'Free guest list, free RSVPs',
-      body: "Track every yes, every plus-one, every dietary need. Free with every OpusFesta wedding.",
-      cta: 'Open my guest list',
-      href: '/my/guests',
-      visual: <FeatureVisualInvitations />,
-    },
-    {
-      title: 'Free matching website',
-      body: 'Pick an invitation, get a wedding website to match — bilingual RSVP form built in, ready to share.',
-      cta: 'Find your match',
-      href: '/my/planning',
-      visual: <FeatureVisualPhone />,
-    },
-    {
-      title: 'Easy guest addressing',
-      body: 'Save addresses against names. We pull them onto envelopes when you order — handwritten or printed.',
-      cta: 'Get started',
-      href: '/my/guests',
-      visual: <FeatureVisualEnvelope />,
-    },
-  ]
+function renderFeatureVisual(card: InvitationsFeatureCard) {
+  if (card.image_url) {
+    return (
+      <div className="relative h-full w-full overflow-hidden rounded-md">
+        <Image
+          src={card.image_url}
+          alt={card.title}
+          fill
+          sizes="(min-width: 768px) 33vw, 100vw"
+          className="object-cover"
+        />
+      </div>
+    )
+  }
+  if (card.visual === 'phone') return <FeatureVisualPhone />
+  if (card.visual === 'envelope') return <FeatureVisualEnvelope />
+  return <FeatureVisualInvitations />
+}
 
+function FeatureRow({ cards }: { cards: InvitationsFeatureCard[] }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
       {cards.map((c) => (
-        <div key={c.title} className="bg-[#FCE9C2] rounded-md p-6 sm:p-7 flex flex-col items-center text-center">
+        <div key={c.id} className="bg-[#FCE9C2] rounded-md p-6 sm:p-7 flex flex-col items-center text-center">
           <h3 className="text-[18px] sm:text-[20px] font-extrabold tracking-tight text-[#1A1A1A]">{c.title}</h3>
           <p className="mt-3 text-[13px] text-[#1A1A1A]/75 leading-relaxed max-w-[280px]">{c.body}</p>
-          <Link href={c.href} className="mt-3 text-[13px] font-bold text-[#1A1A1A] underline underline-offset-2 hover:text-[var(--accent-hover)]">
-            {c.cta}
+          <Link href={c.cta_href} className="mt-3 text-[13px] font-bold text-[#1A1A1A] underline underline-offset-2 hover:text-[var(--accent-hover)]">
+            {c.cta_label}
           </Link>
           <div className="mt-7 sm:mt-9 w-full h-[180px] sm:h-[200px]">
-            {c.visual}
+            {renderFeatureVisual(c)}
           </div>
         </div>
       ))}
@@ -298,7 +311,7 @@ function FeatureVisualEnvelope() {
 // SHOP_BY_CATEGORY now lives in /src/data/invitations-categories.ts so the dynamic
 // /invitations/[category] route can reuse the same slug + matcher data.
 
-function ShopByCategory() {
+function ShopByCategory({ categories }: { categories: InvitationCategoryCms[] }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [progress, setProgress] = useState(0)
 
@@ -346,7 +359,7 @@ function ShopByCategory() {
         className="flex gap-5 sm:gap-6 md:gap-8 overflow-x-auto pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
       >
-        {INVITATION_CATEGORIES.map((cat) => (
+        {categories.map((cat) => (
           <Link
             key={cat.slug}
             href={`/invitations/${cat.slug}`}
@@ -399,7 +412,7 @@ function ShopByCategory() {
 //  FEATURED SUITE — celebrity-couple editorial spread (copy + flat-lay)
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FeaturedSuite() {
+function FeaturedSuite({ content }: { content: InvitationsFeaturedSuiteContent }) {
   return (
     <section className="px-4 sm:px-6 pb-20 sm:pb-28 md:pb-32">
       <div className="mx-auto max-w-7xl pt-16 sm:pt-20 md:pt-24">
@@ -407,7 +420,7 @@ function FeaturedSuite() {
           {/* Photo — left on desktop, top on mobile */}
           <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[520px]">
             <Image
-              src="/assets/images/couples_together.jpg"
+              src={content.image_url}
               alt=""
               fill
               sizes="(min-width: 768px) 50vw, 100vw"
@@ -431,36 +444,39 @@ function FeaturedSuite() {
             </span>
 
             <h2 className="text-[2rem] sm:text-[2.6rem] md:text-5xl lg:text-[3.2rem] font-black uppercase tracking-tighter leading-[1] text-[#1A1A1A]">
-              From Save the Date<br />
-              to Thank You
+              {content.headline_line_1}<br />
+              {content.headline_line_2}
             </h2>
 
             <p className="mt-6 text-[15px] sm:text-[16px] text-[#1A1A1A]/75 leading-relaxed max-w-md">
-              Customise the designs with your names, date, and colours. Send to every guest in seconds by WhatsApp or SMS, and watch RSVPs land in real time. Optional paper prints for elders &amp; VIPs.
+              {content.body}
             </p>
 
             <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
               <Link
-                href="/invitations/catalog"
+                href={content.primary_cta_href}
                 className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.12em]"
               >
-                Start designing
+                {content.primary_cta_label}
               </Link>
               <Link
-                href="/invitations/catalog"
+                href={content.secondary_cta_href}
                 className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#1A1A1A] underline underline-offset-[6px] decoration-[#1A1A1A]/40 hover:decoration-[#1A1A1A]"
               >
-                See how it works <span aria-hidden>→</span>
+                {content.secondary_cta_label} <span aria-hidden>→</span>
               </Link>
             </div>
 
             {/* Trust strip */}
             <div className="mt-8 pt-6 border-t border-[#1A1A1A]/10 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] text-[#1A1A1A]/60">
-              <span>Share via WhatsApp &amp; SMS</span>
-              <span aria-hidden className="text-[#1A1A1A]/25">·</span>
-              <span>Live RSVP tracking</span>
-              <span aria-hidden className="text-[#1A1A1A]/25">·</span>
-              <span>Pay with M-Pesa or Airtel</span>
+              {content.trust_strip.map((item, i) => (
+                <span key={i} className="flex items-center gap-x-5">
+                  <span>{item}</span>
+                  {i < content.trust_strip.length - 1 && (
+                    <span aria-hidden className="text-[#1A1A1A]/25">·</span>
+                  )}
+                </span>
+              ))}
             </div>
           </div>
         </div>
@@ -473,162 +489,90 @@ function FeaturedSuite() {
 //  EDITORS' PICKS — 4 editorial rows; alternating title + 3 picks per row
 // ─────────────────────────────────────────────────────────────────────────────
 
-type EditorialPick = {
-  product: Product
-  picture: React.ReactNode
-  overlay?: React.ReactNode
-  background?: string
-  badge?: string
+function PickVisual({ pick }: { pick: InvitationsEditorsPicksPick }) {
+  if (pick.media_url && pick.media_type === 'video') {
+    return (
+      <video
+        src={pick.media_url}
+        autoPlay
+        loop
+        muted
+        playsInline
+        aria-hidden="true"
+        className="absolute inset-0 w-full h-full object-cover"
+      />
+    )
+  }
+  if (pick.media_url) {
+    return (
+      <Image
+        src={pick.media_url}
+        alt={pick.name}
+        fill
+        sizes="(min-width: 768px) 25vw, 50vw"
+        className="object-cover"
+      />
+    )
+  }
+  if (!pick.treatment) return null
+  if (pick.treatment === 'flat-lay-stationery') return <FlatLayStationery />
+  if (pick.treatment === 'menu-card') return <MenuCardVisual />
+  const visual = (
+    <InvitationVisual treatment={pick.treatment as Exclude<InvitationsEditorsPicksTreatment, 'flat-lay-stationery' | 'menu-card'>} />
+  )
+  if (pick.centered) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center">
+        <div className="relative w-[58%] aspect-[3/4] shadow-lg">{visual}</div>
+      </div>
+    )
+  }
+  return visual
 }
 
-function EditorsPicks() {
-  const rows: {
-    title: React.ReactNode
-    align: 'left' | 'right'
-    picks: EditorialPick[]
-  }[] = [
-    {
-      title: <>Save the dates <br className="hidden md:block" />worth saving</>,
-      align: 'left',
-      picks: [
-        {
-          product: EDITORIAL_PRODUCTS[0],
-          overlay: <PlayIcon />,
-          picture: <InvitationVisual treatment="photo-overlay" />,
-        },
-        {
-          product: EDITORIAL_PRODUCTS[1],
-          overlay: <PlayIcon />,
-          picture: (
-            <Image
-              src="/assets/images/authentic_couple.jpg"
-              alt="Authentic couple portrait"
-              fill
-              sizes="(min-width: 768px) 25vw, 50vw"
-              className="object-cover"
-            />
-          ),
-        },
-        {
-          product: EDITORIAL_PRODUCTS[2],
-          background: '#A6A8A2',
-          picture: <FlatLayStationery />,
-        },
-      ],
-    },
-    {
-      title: <>Invite &amp; RSVPs <br className="hidden md:block" />for every wedding style</>,
-      align: 'right',
-      picks: [
-        {
-          product: EDITORIAL_PRODUCTS[3],
-          overlay: <HeartIcon />,
-          picture: <InvitationVisual treatment="floral-border" />,
-        },
-        {
-          product: EDITORIAL_PRODUCTS[4],
-          overlay: <PlayIcon />,
-          picture: <InvitationVisual treatment="navy-gold" />,
-        },
-        {
-          product: EDITORIAL_PRODUCTS[5],
-          background: '#CFE6F1',
-          picture: (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-[58%] aspect-[3/4] shadow-lg">
-                <InvitationVisual treatment="arch-script" />
-              </div>
-            </div>
-          ),
-        },
-      ],
-    },
-    {
-      title: <>Matching suites <br className="hidden md:block" />and day-of paper</>,
-      align: 'left',
-      picks: [
-        {
-          product: EDITORIAL_PRODUCTS[6],
-          overlay: <HeartIcon />,
-          picture: <InvitationVisual treatment="sage-panel" />,
-        },
-        {
-          product: EDITORIAL_PRODUCTS[7],
-          picture: (
-            <Image
-              src="/assets/images/flowers_pinky.jpg"
-              alt="Floral bouquet — matching paper styling"
-              fill
-              sizes="(min-width: 768px) 25vw, 50vw"
-              className="object-cover"
-            />
-          ),
-        },
-        {
-          product: EDITORIAL_PRODUCTS[8],
-          overlay: <PlayIcon />,
-          background: '#F5EFE3',
-          picture: <MenuCardVisual />,
-        },
-      ],
-    },
-    {
-      title: <>Premium quality, <br className="hidden md:block" />perfectly priced</>,
-      align: 'right',
-      picks: [
-        {
-          product: EDITORIAL_PRODUCTS[9],
-          overlay: <HeartIcon />,
-          picture: <InvitationVisual treatment="cultural-red" />,
-        },
-        {
-          product: EDITORIAL_PRODUCTS[10],
-          overlay: <PlayIcon />,
-          picture: (
-            <Image
-              src="/assets/images/hand_rings.jpg"
-              alt="Wedding rings detail"
-              fill
-              sizes="(min-width: 768px) 25vw, 50vw"
-              className="object-cover"
-            />
-          ),
-        },
-        {
-          product: EDITORIAL_PRODUCTS[11],
-          badge: 'Foil & Letterpress',
-          background: '#FBF7F2',
-          picture: (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-[64%] aspect-[3/4] shadow-lg">
-                <InvitationVisual treatment="modern-block" />
-              </div>
-            </div>
-          ),
-        },
-      ],
-    },
-  ]
+function pickToProduct(pick: InvitationsEditorsPicksPick): Product {
+  return {
+    id: pick.id,
+    category: pick.category,
+    name: pick.name,
+    priceWas: pick.price_was,
+    priceNow: pick.price_now,
+    swatches: pick.swatches,
+  }
+}
 
+function EditorsPicks({ rows: cmsRows }: { rows: InvitationsEditorsPicksContent['rows'] }) {
   return (
     <section className="px-4 sm:px-6">
       <div className="mx-auto max-w-7xl pt-10 sm:pt-14 space-y-12 sm:space-y-14 md:space-y-16">
-        {rows.map((row, i) => (
+        {cmsRows.map((row) => (
           <div
-            key={i}
+            key={row.id}
             className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-10"
           >
             {/* Title is always first in DOM order (mobile reads top-to-bottom);
                 on desktop, right-aligned rows move the title to the end via md:order-last */}
             <div className={cn('sm:col-span-2 md:col-span-1', row.align === 'right' && 'md:order-last')}>
-              <EditorialTitleCell title={row.title} align={row.align} />
+              <EditorialTitleCell
+                title={
+                  <>
+                    {row.title_line_1} <br className="hidden md:block" />
+                    {row.title_line_2}
+                  </>
+                }
+                align={row.align}
+              />
             </div>
             {row.picks.map((p) => (
-              <div key={p.product.id} className="flex flex-col">
-                <PickCard overlay={p.overlay} background={p.background} badge={p.badge}>
-                  {p.picture}
+              <div key={p.id} className="flex flex-col">
+                <PickCard
+                  overlay={p.overlay === 'play' ? <PlayIcon /> : p.overlay === 'heart' ? <HeartIcon /> : undefined}
+                  background={p.background}
+                  badge={p.badge}
+                >
+                  <PickVisual pick={p} />
                 </PickCard>
-                <ProductInfo product={p.product} showPromo={false} />
+                <ProductInfo product={pickToProduct(p)} showPromo={false} />
               </div>
             ))}
           </div>
@@ -759,48 +703,21 @@ function FlatLayStationery() {
 //  FAQS — accordion-style frequently asked questions
 // ─────────────────────────────────────────────────────────────────────────────
 
-const FAQ_ITEMS: { q: string; a: string }[] = [
-  {
-    q: 'How do digital wedding invitations work?',
-    a: "Pick a design, customise it with your names and date, and we'll generate a shareable link. Send the link to every guest by WhatsApp, SMS, or email in seconds — each guest gets a private RSVP page that feeds straight into your live dashboard.",
-  },
-  {
-    q: 'Can I see a sample before I commit?',
-    a: "Yes. Customise any design with your real names and date and we'll send you a free standard preview before you commit to a printed order. For digital orders, you can preview the live link with placeholder guest names first.",
-  },
-  {
-    q: "What's included free with every order?",
-    a: "Every order includes a matching wedding website with a bilingual RSVP page, a live guest list dashboard, and one round of free design revisions. No hidden fees — the matching paper suite, RSVP, and guest tracking are all part of the package.",
-  },
-  {
-    q: 'Do you offer paper prints too?',
-    a: 'Yes. Paper prints are available as a premium add-on — most couples opt for digital invites with a smaller print run for elders, VIPs, and head-table seating. Foil and letterpress finishes are also available for special pieces.',
-  },
-  {
-    q: 'What payment methods do you accept?',
-    a: 'M-Pesa, Airtel Money, Tigo Pesa, and major bank cards. You can pay in full or split into two instalments, with the second due before any paper goes to print.',
-  },
-  {
-    q: 'How quickly will my order be ready?',
-    a: 'Digital invitations are ready within 24 hours once you approve the proof. Paper add-ons are printed in Bagamoyo and ship in 3–5 working days anywhere in Tanzania.',
-  },
-]
-
-function FAQs() {
+function FAQs({ content }: { content: InvitationsFaqsContent }) {
   return (
     <section className="px-4 sm:px-6">
       <div className="mx-auto max-w-4xl pt-10 sm:pt-14">
         <div className="text-center mb-8 sm:mb-10">
           <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-gray-900 mb-4">
-            Frequently asked questions
+            {content.heading}
           </h2>
           <p className="max-w-2xl mx-auto text-sm md:text-base text-gray-700 leading-relaxed">
-            Everything you need to know about digital invitations, RSVPs, and paper add-ons.
+            {content.description}
           </p>
         </div>
         <div className="border-y border-gray-200">
-          {FAQ_ITEMS.map((item, i) => (
-            <FAQItem key={i} q={item.q} a={item.a} />
+          {content.items.map((item) => (
+            <FAQItem key={item.id} q={item.question} a={item.answer} />
           ))}
         </div>
       </div>

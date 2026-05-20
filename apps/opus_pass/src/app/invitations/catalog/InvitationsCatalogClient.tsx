@@ -7,6 +7,10 @@ import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { PROMO_CODE, ProductInfo } from '@/components/guests/productInfo'
 import { PRODUCTS, type CatalogProduct } from '@/data/invitations-products'
+import type { InvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-banner'
+import type { InvitationsStyleStripContent } from '@/lib/cms/invitations-style-strip'
+import type { InvitationsExploreStylesContent } from '@/lib/cms/invitations-explore-styles'
+import type { InvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-free-website-promo'
 
 // Re-export the catalog dataset so existing imports of `../catalog/InvitationsCatalogClient`
 // keep resolving. Canonical source now lives in /data/invitations-products.ts so server
@@ -23,11 +27,19 @@ export default function InvitationsCatalogClient({
   products = PRODUCTS,
   title = 'Wedding Invitations',
   subtitle = 'A handpicked edit of digital invitation designs, browse by style.',
+  promoBanner,
+  styleStrip,
+  exploreStyles,
+  freeWebsitePromo,
 }: {
   products?: Product[]
   title?: string
   subtitle?: string
-} = {}) {
+  promoBanner: InvitationsPromoBannerContent
+  styleStrip: InvitationsStyleStripContent
+  exploreStyles: InvitationsExploreStylesContent
+  freeWebsitePromo: InvitationsFreeWebsitePromoContent
+}) {
   const [favourites, setFavourites] = useState<Set<string>>(new Set())
   const toggleFavourite = (id: string) =>
     setFavourites((s) => {
@@ -40,14 +52,17 @@ export default function InvitationsCatalogClient({
   return (
     <div className="bg-[#FAFAF8] text-[#1A1A1A]">
       {/* Sitewide promo banner — replaces the per-card 'With code KARIBU40' line */}
-      <div className="bg-[#FCE9C2] border-b border-[#E8D9A7]/50 py-2.5">
+      <div
+        className="border-b border-[#E8D9A7]/50 py-2.5"
+        style={{ backgroundColor: promoBanner.background_color }}
+      >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 flex items-center justify-center gap-3 text-center flex-wrap">
           <span className="text-[12px] sm:text-[13px] font-bold uppercase tracking-[0.18em] text-[#1A1A1A]">
-            40% off
+            {promoBanner.eyebrow}
           </span>
           <span className="text-[12px] sm:text-[13px] text-[#1A1A1A]/85">
-            wedding paper with code{' '}
-            <strong className="font-bold text-[#1A1A1A]">{PROMO_CODE}</strong>
+            {promoBanner.body}{' '}
+            <strong className="font-bold text-[#1A1A1A]">{promoBanner.promo_code || PROMO_CODE}</strong>
           </span>
         </div>
       </div>
@@ -65,7 +80,7 @@ export default function InvitationsCatalogClient({
       </header>
 
       {/* Style strip */}
-      <CategoryStrip />
+      <CategoryStrip items={styleStrip.items} />
 
       {/* Filter trigger bar + product grid (full-width) */}
       <div className="px-4 sm:px-6">
@@ -83,10 +98,10 @@ export default function InvitationsCatalogClient({
       </div>
 
       {/* Explore other styles */}
-      <ExploreOtherStyles />
+      <ExploreOtherStyles content={exploreStyles} />
 
       {/* Free wedding website promo */}
-      <FreeWebsitePromo />
+      <FreeWebsitePromo content={freeWebsitePromo} />
     </div>
   )
 }
@@ -95,18 +110,9 @@ export default function InvitationsCatalogClient({
 //  CATEGORY STRIP — circular-photo carousel matching /invitations Shop-by-Category
 // ─────────────────────────────────────────────────────────────────────────────
 
-const STYLE_CATEGORIES: { label: string; img: string; alt: string }[] = [
-  { label: 'New Collections',          img: '/assets/images/cutesy_couple.jpg',     alt: 'New collection designs' },
-  { label: 'Florals',                  img: '/assets/images/flowers_pinky.jpg',     alt: 'Floral invitation designs' },
-  { label: 'Plants',                   img: '/assets/images/bride_umbrella.jpg',    alt: 'Botanical plant designs' },
-  { label: 'Watercolor & Botanicals',  img: '/assets/images/bridewithumbrella.jpg', alt: 'Watercolor and botanical designs' },
-  { label: 'Karibu Crest',             img: '/assets/images/churchcouples.jpg',     alt: 'Karibu crest cultural designs' },
-  { label: 'Photos',                   img: '/assets/images/couples_together.jpg',  alt: 'Photo-led invitation designs' },
-  { label: 'Vintage',                  img: '/assets/images/coupleswithpiano.jpg',  alt: 'Vintage style designs' },
-  { label: 'Personalise',              img: '/assets/images/beautiful_bride.jpg',   alt: 'Personalised designs' },
-]
+type StyleStripItem = InvitationsStyleStripContent['items'][number]
 
-function CategoryStrip() {
+function CategoryStrip({ items }: { items: StyleStripItem[] }) {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [progress, setProgress] = useState(0)
 
@@ -153,10 +159,10 @@ function CategoryStrip() {
             className="flex gap-5 sm:gap-6 md:gap-8 overflow-x-auto pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
           >
-            {STYLE_CATEGORIES.map((cat) => (
+            {items.map((cat) => (
               <Link
-                key={cat.label}
-                href="/invitations/catalog"
+                key={cat.id}
+                href={cat.href ?? '/invitations/catalog'}
                 className="group/tile flex flex-col items-center text-center shrink-0 snap-start w-[110px] sm:w-[130px] md:w-[calc((100%-128px)/5)]"
               >
                 <div className="aspect-square w-full overflow-hidden rounded-full bg-white ring-1 ring-gray-200 mb-3 transition-shadow group-hover/tile:shadow-md">
@@ -735,41 +741,23 @@ function Pagination() {
 //  EXPLORE OTHER STYLES
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ExploreOtherStyles() {
-  const cols: { heading: string; items: string[] }[] = [
-    {
-      heading: 'By style',
-      items: ['Modern', 'Classic', 'Rustic', 'Elegant', 'Heritage Karibu', 'Photo-led'],
-    },
-    {
-      heading: 'By colour',
-      items: ['Sage green', 'Navy & gold', 'Blush pink', 'Burgundy', 'Cream & black', 'Coral'],
-    },
-    {
-      heading: 'By moment',
-      items: ['Save the date', 'Invitations', 'RSVP cards', 'Welcome signs', 'Programmes', 'Thank yous'],
-    },
-    {
-      heading: 'For special days',
-      items: ['Engagement party', 'Send-off (Kitchen Party)', 'Hen do', 'Rehearsal dinner', 'Reception'],
-    },
-  ]
+function ExploreOtherStyles({ content }: { content: InvitationsExploreStylesContent }) {
   return (
     <section className="px-4 sm:px-6 mt-16 sm:mt-20 border-t border-gray-200">
       <div className="mx-auto max-w-7xl pt-10 sm:pt-14 pb-10 sm:pb-14">
-        <h2 className="font-serif text-[20px] sm:text-[22px] text-[#1A1A1A]">Explore other styles</h2>
+        <h2 className="font-serif text-[20px] sm:text-[22px] text-[#1A1A1A]">{content.heading}</h2>
         <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-8">
-          {cols.map((c) => (
-            <div key={c.heading}>
+          {content.columns.map((c) => (
+            <div key={c.id}>
               <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-[#1A1A1A]/60">{c.heading}</p>
               <ul className="mt-3 space-y-2">
                 {c.items.map((it) => (
-                  <li key={it}>
+                  <li key={it.id}>
                     <Link
-                      href="/invitations/catalog"
+                      href={it.href || '/invitations/catalog'}
                       className="text-[13px] text-[#1A1A1A]/85 hover:text-[var(--accent-hover)] hover:underline underline-offset-2"
                     >
-                      {it}
+                      {it.label}
                     </Link>
                   </li>
                 ))}
@@ -786,38 +774,47 @@ function ExploreOtherStyles() {
 //  BOTTOM CTA — Free Wedding Website
 // ─────────────────────────────────────────────────────────────────────────────
 
-function FreeWebsitePromo() {
+function FreeWebsitePromo({ content }: { content: InvitationsFreeWebsitePromoContent }) {
   return (
     <section className="px-4 sm:px-6 pb-16 sm:pb-24">
       <div className="mx-auto max-w-7xl">
-        <div className="relative overflow-hidden rounded-md bg-[#F5EFE3] grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 p-8 sm:p-10 md:p-14 items-center">
+        <div
+          className="relative overflow-hidden rounded-md grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-10 p-8 sm:p-10 md:p-14 items-center"
+          style={{ backgroundColor: content.background_color }}
+        >
           <div>
-            <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-[#1A1A1A]/60">Included with every order</p>
+            <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-[#1A1A1A]/60">{content.eyebrow}</p>
             <h2 className="mt-3 font-serif text-[26px] sm:text-[30px] md:text-[36px] leading-tight text-[#1A1A1A]">
-              Get a free wedding website
+              {content.heading}
             </h2>
-            <p className="mt-3 text-[14px] text-[#1A1A1A]/75 max-w-md">
-              Pick any invitation and we&rsquo;ll match it to a bilingual wedding website with a built-in RSVP form, address book, and guest list.
-            </p>
+            <p className="mt-3 text-[14px] text-[#1A1A1A]/75 max-w-md">{content.body}</p>
             <Link
-              href="/my/planning"
+              href={content.cta_href || '/my/planning'}
               className="mt-6 inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-6 py-3 text-[13px] font-extrabold uppercase tracking-[0.12em]"
             >
-              Find your match
+              {content.cta_label}
             </Link>
           </div>
           <div className="relative h-[200px] sm:h-[240px] md:h-[280px]">
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-[60%] aspect-[3/4] shadow-md rotate-[-4deg]">
-                <InvitationVisual treatment="floral-border" />
+            {content.image_url ? (
+              <img
+                src={content.image_url}
+                alt={content.image_alt}
+                className="absolute inset-0 w-full h-full object-cover rounded-md"
+              />
+            ) : (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="relative w-[60%] aspect-[3/4] shadow-md rotate-[-4deg]">
+                  <InvitationVisual treatment="floral-border" />
+                </div>
+                <div className="absolute right-[6%] top-[10%] w-[34%] aspect-[3/4] shadow-md rotate-[6deg]">
+                  <InvitationVisual treatment="navy-gold" />
+                </div>
+                <div className="absolute left-[6%] bottom-[6%] w-[28%] aspect-[3/4] shadow-md rotate-[3deg]">
+                  <InvitationVisual treatment="classic-serif" />
+                </div>
               </div>
-              <div className="absolute right-[6%] top-[10%] w-[34%] aspect-[3/4] shadow-md rotate-[6deg]">
-                <InvitationVisual treatment="navy-gold" />
-              </div>
-              <div className="absolute left-[6%] bottom-[6%] w-[28%] aspect-[3/4] shadow-md rotate-[3deg]">
-                <InvitationVisual treatment="classic-serif" />
-              </div>
-            </div>
+            )}
           </div>
         </div>
       </div>

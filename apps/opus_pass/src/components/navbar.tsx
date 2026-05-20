@@ -6,70 +6,32 @@ import { UserButton, useUser } from '@clerk/nextjs'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import {
-  ADVICE_IDEAS_BASE_PATH,
-  adviceIdeasNavLinks,
-} from '@/lib/advice-ideas'
-import {
   Menu,
   X,
   ChevronDown,
   Heart,
   Users,
-  Camera,
-  Music,
   MapPin,
-  Sparkles,
   MessageCircle,
   ArrowRight,
   CheckCircle2,
-  CreditCard,
   Link as LinkIcon,
-  Shirt,
-  Video,
-  Utensils,
-  Flower2,
   Globe,
-  CalendarCheck,
   BookOpen,
-  Gem,
-  Clock,
-  BarChart2,
-  FileText,
-  Star,
-  Tag,
-  HelpCircle,
-  Building2,
   PenLine,
   Monitor,
   Image,
   Share2,
-  Gift,
-  PartyPopper,
-  ShoppingBag,
 } from 'lucide-react'
 
 type NavLink = { label: string; href?: string; Icon?: LucideIcon; subLinks?: string[] }
 type PhotoGridItem = { label: string; image: string; href?: string }
 
-const attirePhotoGrid: PhotoGridItem[] = [
-  { label: 'Wedding Dresses', image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&w=400&q=80' },
-  { label: 'Engagement Rings', image: 'https://images.unsplash.com/photo-1605100804763-247f67b3557e?auto=format&fit=crop&w=400&q=80' },
-  { label: 'Suits & Tuxedos', image: 'https://images.unsplash.com/photo-1507679799987-c73779587ccf?auto=format&fit=crop&w=400&q=80' },
-  { label: 'Bridesmaid Dresses', image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=400&q=80' },
-]
-
-const planningPhotoGrid: PhotoGridItem[] = [
-  { label: 'Checklist', image: '/assets/images/brideincar.jpg' },
-  { label: 'Budget', image: '/assets/images/hand_rings.jpg' },
-  { label: 'Guest List', image: '/assets/images/mauzo_crew.jpg' },
-  { label: 'Seating Chart', image: '/assets/images/churchcouples.jpg' },
-]
-
 const guestsPhotoGrid: PhotoGridItem[] = [
-  { label: 'Guest List', image: '/assets/images/mauzo_crew.jpg' },
-  { label: 'RSVP Tracking', image: '/assets/images/churchcouples.jpg' },
-  { label: 'Invitations', image: '/assets/images/cutesy_couple.jpg' },
-  { label: 'Seating Plan', image: '/assets/images/couples_together.jpg' },
+  { label: 'Guest List', image: '/assets/images/mauzo_crew.jpg', href: '/guests' },
+  { label: 'RSVP Tracking', image: '/assets/images/churchcouples.jpg', href: '/guests' },
+  { label: 'Invitations', image: '/assets/images/cutesy_couple.jpg', href: '/invitations' },
+  { label: 'Seating Plan', image: '/assets/images/couples_together.jpg', href: '/guests' },
 ]
 
 const websitesPhotoGrid: PhotoGridItem[] = [
@@ -79,15 +41,6 @@ const websitesPhotoGrid: PhotoGridItem[] = [
   { label: 'Travel Info', image: '/assets/images/bride_umbrella.jpg' },
 ]
 
-const vendorPhotoGrid: PhotoGridItem[] = [
-  { label: 'Venues',      image: '/assets/images/churchcouples.jpg',  href: '/vendors/browse?category=venues' },
-  { label: 'Photography', image: '/assets/images/beautiful_bride.jpg', href: '/vendors/browse?category=photographers' },
-  { label: 'Florals',     image: '/assets/images/flowers_pinky.jpg',   href: '/vendors/browse?category=florists' },
-  { label: 'Beauty',      image: '/assets/images/beautyinbride.jpg',   href: '/vendors/browse?category=hair-makeup' },
-]
-
-const adviceIdeasHrefByLabel = new Map(adviceIdeasNavLinks.map((link) => [link.label, link.href]))
-
 const navItems: Array<{
   label: string
   card: { image: string; title: string; description: string; linkText: string; href?: string }
@@ -95,81 +48,6 @@ const navItems: Array<{
   photoGridTitle?: string
   photoGrid?: PhotoGridItem[]
 }> = [
-  {
-    label: 'Planning Tools',
-    card: {
-      image: 'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?auto=format&fit=crop&w=800&q=80',
-      title: 'PLANNING TOOLS',
-      description: 'Everything you need to plan your wedding: checklists, budgets, guest lists and more.',
-      linkText: 'Explore tools',
-      href: '/planning-tools',
-    },
-    columns: [
-      {
-        title: 'Features',
-        links: [
-          { Icon: CheckCircle2, label: 'Wedding Checklist' },
-          { Icon: CreditCard, label: 'Budget Planner' },
-          { Icon: Users, label: 'Guest List Manager' },
-          { Icon: CalendarCheck, label: 'Seating Chart' },
-          { Icon: MessageCircle, label: 'Vendor Manager' },
-        ],
-      },
-      {
-        title: 'Resources',
-        links: [
-          { Icon: Clock, label: 'Planning Timeline' },
-          { Icon: BarChart2, label: 'Budget Breakdown Guide' },
-          { Icon: FileText, label: 'Checklist Templates' },
-        ],
-      },
-    ],
-    photoGridTitle: 'Top Tools',
-    photoGrid: planningPhotoGrid,
-  },
-  {
-    label: 'Vendors',
-    card: {
-      image: 'https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=800&q=80',
-      title: 'FIND VENDORS',
-      description: 'Discover and book verified wedding professionals across Tanzania.',
-      linkText: 'Browse all vendors',
-      href: '/vendors',
-    },
-    columns: [
-      {
-        title: 'Categories',
-        links: [
-          { Icon: MapPin,   label: 'Venues',       href: '/vendors/browse?category=venues' },
-          { Icon: Camera,   label: 'Photographers', href: '/vendors/browse?category=photographers' },
-          { Icon: Video,    label: 'Videographers', href: '/vendors/browse?category=videographers' },
-          { Icon: Flower2,  label: 'Florists',      href: '/vendors/browse?category=florists' },
-          { Icon: Utensils, label: 'Caterers',      href: '/vendors/browse?category=caterers' },
-        ],
-      },
-      {
-        title: 'Services',
-        links: [
-          { Icon: Music,        label: 'DJs & Bands',     href: '/vendors/browse?category=djs-bands' },
-          { Icon: Sparkles,     label: 'Hair & Makeup',   href: '/vendors/browse?category=hair-makeup' },
-          { Icon: Gift,         label: 'Wedding Cakes',   href: '/vendors/browse?category=wedding-cakes' },
-          { Icon: Shirt,        label: 'Bridal Salons',   href: '/vendors/browse?category=bridal-wear' },
-          { Icon: PartyPopper,  label: 'MC & Officiants', href: '/vendors/browse?category=officiant-mc' },
-        ],
-      },
-      {
-        title: 'Resources',
-        links: [
-          { Icon: Star,       label: 'Verified Reviews',       href: '/vendors/browse' },
-          { Icon: Tag,        label: 'Pricing Guide',          href: '/vendors/browse' },
-          { Icon: HelpCircle, label: 'How to Choose a Vendor', href: '/vendors/browse' },
-          { Icon: Building2,  label: 'Vendors by City',        href: '/vendors/browse' },
-        ],
-      },
-    ],
-    photoGridTitle: 'Popular Picks',
-    photoGrid: vendorPhotoGrid,
-  },
   {
     label: 'Invitations',
     card: {
@@ -202,10 +80,40 @@ const navItems: Array<{
     photoGrid: guestsPhotoGrid.map((item) => ({ ...item, href: '/invitations' })),
   },
   {
-    label: 'Websites',
+    label: "Guests & RSVP's",
+    card: {
+      image: '/assets/images/mauzo_crew.jpg',
+      title: 'GUESTS & RSVPS',
+      description: 'Send digital invites by WhatsApp or SMS and watch RSVPs roll in live.',
+      linkText: 'Manage your guests',
+      href: '/guests',
+    },
+    columns: [
+      {
+        title: 'Manage',
+        links: [
+          { Icon: Users, label: 'Guest List Manager', href: '/guests' },
+          { Icon: CheckCircle2, label: 'RSVP Tracking', href: '/guests' },
+          { Icon: Share2, label: 'WhatsApp & SMS Send', href: '/guests' },
+          { Icon: MapPin, label: 'Seating Chart', href: '/guests' },
+        ],
+      },
+      {
+        title: 'Resources',
+        links: [
+          { Icon: BookOpen, label: 'RSVP Wording Ideas', href: '/advice-and-ideas' },
+          { Icon: PenLine, label: 'Guest Etiquette Tips', href: '/advice-and-ideas' },
+        ],
+      },
+    ],
+    photoGridTitle: 'Guest Tools',
+    photoGrid: guestsPhotoGrid,
+  },
+  {
+    label: 'Wedding Website',
     card: {
       image: 'https://images.unsplash.com/photo-1461301214746-1e109215d6d3?auto=format&fit=crop&w=800&q=80',
-      title: 'WEDDING WEBSITES',
+      title: 'WEDDING WEBSITE',
       description: 'Build a beautiful wedding website in minutes and share it with your guests.',
       linkText: 'Create your website',
       href: '/websites',
@@ -232,71 +140,6 @@ const navItems: Array<{
     ],
     photoGridTitle: 'Website Ideas',
     photoGrid: websitesPhotoGrid,
-  },
-  {
-    label: 'Advice & Ideas',
-    card: {
-      image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=800&q=80',
-      title: 'ADVICE & IDEAS',
-      description: 'Browse real weddings, trending themes, and expert advice for every couple.',
-      linkText: 'Get inspired',
-      href: ADVICE_IDEAS_BASE_PATH,
-    },
-    columns: [
-      {
-        title: 'Inspiration',
-        links: [
-          { Icon: Heart, label: 'Real Weddings', href: adviceIdeasHrefByLabel.get('Real Weddings') },
-          { Icon: Sparkles, label: 'Themes & Styles', href: adviceIdeasHrefByLabel.get('Themes & Styles') },
-          { Icon: Camera, label: 'Photo & Video Ideas', href: adviceIdeasHrefByLabel.get('Photo & Video Ideas') },
-          { Icon: MapPin, label: 'Honeymoon Ideas', href: adviceIdeasHrefByLabel.get('Honeymoon Ideas') },
-          { Icon: Globe, label: 'Destination Weddings', href: adviceIdeasHrefByLabel.get('Destination Weddings') },
-        ],
-      },
-      {
-        title: 'Advice',
-        links: [
-          { Icon: CheckCircle2, label: 'Planning Guides', href: adviceIdeasHrefByLabel.get('Planning Guides') },
-          { Icon: MessageCircle, label: 'Etiquette & Wording', href: adviceIdeasHrefByLabel.get('Etiquette & Wording') },
-          { Icon: Users, label: 'For Families & Guests', href: adviceIdeasHrefByLabel.get('For Families & Guests') },
-          { Icon: Gift, label: 'Bridal Shower Ideas', href: adviceIdeasHrefByLabel.get('Bridal Shower Ideas') },
-          { Icon: PartyPopper, label: 'Engagement Party Tips', href: adviceIdeasHrefByLabel.get('Engagement Party Tips') },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Attire & Rings',
-    card: {
-      image: 'https://images.unsplash.com/photo-1515372039744-b8f02a3ae446?auto=format&fit=crop&w=800&q=80',
-      title: 'ATTIRE & RINGS',
-      description: 'Find your perfect look from verified local boutiques across East Africa.',
-      linkText: 'Explore attire',
-      href: '/attire-and-rings',
-    },
-    columns: [
-      {
-        title: 'Attire',
-        links: [
-          { Icon: Heart, label: 'Wedding Dresses' },
-          { Icon: Shirt, label: 'Suits & Tuxedos' },
-          { Icon: Users, label: 'Bridesmaid Dresses' },
-          { Icon: Sparkles, label: 'Mother of the Bride' },
-          { Icon: Star, label: 'Flower Girl & Ring Bearer' },
-        ],
-      },
-      {
-        title: 'Rings & Jewellery',
-        links: [
-          { Icon: Gem, label: 'Engagement Rings' },
-          { Icon: BookOpen, label: 'Wedding Rings' },
-          { Icon: Sparkles, label: 'Wedding Jewellery' },
-          { Icon: ShoppingBag, label: 'Wedding Accessories' },
-        ],
-      },
-    ],
-    photoGridTitle: 'Get Inspired',
-    photoGrid: attirePhotoGrid,
   },
 ]
 
@@ -329,8 +172,8 @@ export default function Navbar() {
       <nav className="relative z-50 mx-auto flex max-w-344 items-center justify-between bg-white px-3 py-3.5 sm:px-4 sm:py-4 lg:px-3 xl:px-2">
         {/* Left: logo + desktop nav */}
         <div className="flex min-w-0 items-center gap-3 sm:gap-6 lg:gap-5">
-          <Link href="/" aria-label="OpusFesta home" className="shrink-0">
-            <Logo className="h-8 w-auto sm:h-10" />
+          <Link href="/" aria-label="OpusPass home" className="shrink-0">
+            <Logo />
           </Link>
 
           <div className="hidden lg:flex gap-1 font-semibold text-[15px]">
@@ -453,35 +296,8 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* Visual support grid / vendor CTA */}
-            {activeItem.label === 'Vendors' ? (
-              <div className="shrink-0 w-[240px] pt-1">
-                <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-4 pb-3 border-b border-gray-200">
-                  For Professionals
-                </h4>
-                <Link
-                  href="/vendors/join"
-                  className="group flex flex-col h-[calc(100%-40px)] min-h-[180px] rounded-2xl overflow-hidden border border-gray-200 hover:border-[#C9A0DC] transition-colors"
-                >
-                  <div className="relative flex-1 overflow-hidden">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="https://images.unsplash.com/photo-1511285560929-80b456fea0bc?auto=format&fit=crop&w=400&q=80"
-                      alt="Join as a vendor"
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/10 to-transparent" />
-                  </div>
-                  <div className="bg-white px-4 py-4 flex items-center justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] font-semibold text-gray-400 mb-0.5">Wedding professional?</p>
-                      <p className="text-[13px] font-bold text-[#1A1A1A]">Join as a vendor</p>
-                    </div>
-                    <ArrowRight size={14} className="shrink-0 text-gray-400 transition-transform group-hover:translate-x-0.5 group-hover:text-[#1A1A1A]" />
-                  </div>
-                </Link>
-              </div>
-            ) : activeItem.photoGrid ? (
+            {/* Visual support grid */}
+            {activeItem.photoGrid ? (
               <div className="shrink-0 w-[240px] pt-1">
                 <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-400 mb-4 pb-3 border-b border-gray-200">
                   {activeItem.photoGridTitle ?? 'Get Inspired'}
@@ -529,8 +345,8 @@ export default function Navbar() {
               Back
             </button>
           ) : (
-            <Link href="/" aria-label="OpusFesta home" onClick={closeMobile}>
-              <Logo className="h-8 w-auto" />
+            <Link href="/" aria-label="OpusPass home" onClick={closeMobile}>
+              <Logo />
             </Link>
           )}
           <button
@@ -670,19 +486,6 @@ export default function Navbar() {
                       </div>
                     ))}
 
-                    {item.label === 'Vendors' && (
-                      <Link
-                        href="/vendors/join"
-                        onClick={closeMobile}
-                        className="mt-2 flex items-center justify-between px-4 py-3.5 rounded-2xl border border-[#C9A0DC] bg-[rgba(201,160,220,0.08)]"
-                      >
-                        <div>
-                          <p className="text-[11px] font-semibold text-gray-500 mb-0.5">Wedding professional?</p>
-                          <p className="text-sm font-bold text-[#1A1A1A]">Join as a vendor</p>
-                        </div>
-                        <ArrowRight size={16} className="text-[#1A1A1A] shrink-0" />
-                      </Link>
-                    )}
                   </div>
                 </>
               )
