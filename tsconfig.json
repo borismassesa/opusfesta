@@ -16,9 +16,10 @@
   "files": [],
   "exclude": ["node_modules", "**/node_modules/**"],
   "references": [
-    { "path": "./apps/website" },
-    { "path": "./apps/admin" },
-    { "path": "./apps/vendor-portal" },
+    { "path": "./apps/opus_website" },
+    { "path": "./apps/opus_admin" },
+    { "path": "./apps/vendors_portal" },
+    { "path": "./apps/opus_pass" },
     { "path": "./packages/lib" }
   ]
 }
