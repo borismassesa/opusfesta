@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -35,6 +35,13 @@ function ChartFrame({
   empty?: boolean
   children: React.ReactNode
 }) {
+  // Recharts' ResponsiveContainer can't measure its parent during SSR, so it
+  // renders at -1×-1 and logs a width/height warning on every server render.
+  // Defer the chart to the client; the fixed-height frame holds the space so
+  // there's no layout shift on hydration.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
       <header className="mb-4 flex items-start justify-between gap-2">
@@ -49,7 +56,7 @@ function ChartFrame({
             <p className="text-xs text-gray-400">No data yet</p>
           </div>
         ) : (
-          children
+          mounted && children
         )}
       </div>
     </div>
