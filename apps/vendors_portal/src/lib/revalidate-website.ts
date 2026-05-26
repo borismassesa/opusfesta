@@ -24,9 +24,13 @@ export async function revalidatePublicVendor(slug: string): Promise<void> {
 
   const endpoint = `${url}/api/revalidate?path=${encodeURIComponent(`/vendors/${slug}`)}`
   try {
+    // This runs in the vendor's publish path, so cap it: a slow/unreachable
+    // opus_website must not hang the Publish button. On timeout we abort, log,
+    // and let the page refresh on its ISR cycle instead.
     const res = await fetch(endpoint, {
       method: 'POST',
       headers: { Authorization: `Bearer ${secret}` },
+      signal: AbortSignal.timeout(3000),
     })
     if (!res.ok) {
       console.error(
