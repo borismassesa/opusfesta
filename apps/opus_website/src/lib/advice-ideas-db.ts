@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import {
   adviceIdeasAuthors,
@@ -249,7 +250,9 @@ function mapPost(row: AdviceIdeasPostRow): AdviceIdeasPost {
   }
 }
 
-export async function loadPublishedAdviceIdeasPosts(): Promise<AdviceIdeasPost[]> {
+// Wrapped in React cache() so generateMetadata + the page render share a
+// single DB read per request (and per ISR regeneration) instead of two.
+export const loadPublishedAdviceIdeasPosts = cache(async (): Promise<AdviceIdeasPost[]> => {
   try {
     const supabase = createSupabaseServerClient()
     const { data, error } = await supabase
@@ -273,7 +276,7 @@ export async function loadPublishedAdviceIdeasPosts(): Promise<AdviceIdeasPost[]
     )
     return adviceIdeasPosts
   }
-}
+})
 
 // Admin-curated picks for the secondary sections on /advice-and-ideas
 // (Loved by Couples, Our Favorites). Editor Picks uses its own
@@ -310,7 +313,7 @@ export async function loadAdviceSectionPickIds(
   }
 }
 
-export async function loadAdviceIdeasAuthors(): Promise<Record<string, AdviceIdeasAuthor>> {
+export const loadAdviceIdeasAuthors = cache(async (): Promise<Record<string, AdviceIdeasAuthor>> => {
   try {
     const supabase = createSupabaseServerClient()
     const { data, error } = await supabase
@@ -343,7 +346,7 @@ export async function loadAdviceIdeasAuthors(): Promise<Record<string, AdviceIde
     )
     return adviceIdeasAuthors
   }
-}
+})
 
 export function getAuthorFromMap(
   authors: Record<string, AdviceIdeasAuthor>,
