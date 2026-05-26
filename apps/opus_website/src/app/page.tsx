@@ -12,11 +12,11 @@ import Faq from '@/components/faq'
 import Cta from '@/components/cta'
 import Footer from '@/components/footer'
 
-// Most sections here load from website_page_sections via Supabase. Without
-// this, Next prerenders the homepage at build time and the admin's "Publish"
-// doesn't show up on opusfesta.com until the next deploy. Other CMS-driven
-// routes (/vendors, /advice-and-ideas, /my/*) already opt out the same way.
-export const dynamic = 'force-dynamic'
+// Sections load from website_page_sections via Supabase (service-role client,
+// no per-request state) so this page is safely cacheable. ISR instead of
+// force-dynamic: served from the CDN and regenerated at most hourly, while the
+// admin's "Publish" flow busts it instantly via POST /api/revalidate?path=/.
+export const revalidate = 3600
 
 export default function Home() {
   return (

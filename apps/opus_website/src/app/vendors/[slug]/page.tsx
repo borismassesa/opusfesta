@@ -4,11 +4,12 @@ import VendorDetailPage from '@/components/vendors/VendorDetailPage'
 import { getVendor } from '@/lib/vendors'
 import { getVendorFromDb } from '@/lib/vendors-db'
 
-// Read the vendor from Supabase on every request so storefront edits made in
-// the vendors_portal show up immediately. Falls back to the hardcoded seed
-// list (apps/opus_website/src/lib/vendors.ts) for slugs not yet in the DB —
-// keeps the legacy demo vendors live during the migration.
-export const dynamic = 'force-dynamic'
+// Read the vendor from Supabase, falling back to the hardcoded seed list
+// (apps/opus_website/src/lib/vendors.ts) for slugs not yet in the DB. ISR
+// (10-min window) instead of force-dynamic: storefront edits from the
+// vendors_portal surface within ~10 minutes instead of re-rendering on every
+// request. (Follow-up: have the portal POST /api/revalidate for instant updates.)
+export const revalidate = 600
 
 async function loadVendor(slug: string) {
   const fromDb = await getVendorFromDb(slug)
