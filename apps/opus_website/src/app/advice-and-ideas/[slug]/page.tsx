@@ -27,7 +27,10 @@ import {
   loadPublishedAdviceIdeasPosts,
 } from '@/lib/advice-ideas-db'
 
-export const dynamic = 'force-dynamic'
+// ISR instead of force-dynamic. Slugs are pre-rendered via generateStaticParams
+// and busted on publish by the admin (POST /api/revalidate matches the
+// article-slug pattern); the window below is just a safety net.
+export const revalidate = 3600
 
 export async function generateStaticParams() {
   const posts = await loadPublishedAdviceIdeasPosts()

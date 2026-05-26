@@ -15,7 +15,9 @@ import { InfoSection } from '@/components/attire-and-rings/InfoSection'
 import SearchForm from '@/components/advice-ideas/SearchForm'
 import Footer from '@/components/footer'
 
-export const dynamic = 'force-dynamic'
+// CMS-driven (website_page_sections, service-role client). ISR instead of
+// force-dynamic; edits surface within the revalidate window.
+export const revalidate = 1800
 
 export const metadata: Metadata = {
   title: 'Attire & Rings | OpusFesta',

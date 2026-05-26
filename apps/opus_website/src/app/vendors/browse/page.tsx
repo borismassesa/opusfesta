@@ -4,11 +4,11 @@ import VendorsBrowsePage from '@/components/vendors/VendorsBrowsePage'
 import PageTransition from '@/components/ui/PageTransition'
 import { loadVendorsFromSupabase } from '@/lib/cms/vendors'
 
-// Browse needs the live vendor list (curated `website_vendors` rows + any
-// marketplace vendors approved through admin review). Force-dynamic so a
-// vendor approved 30 seconds ago shows up on the next page load instead of
-// at the next deploy.
-export const dynamic = 'force-dynamic'
+// Browse needs the vendor list (curated `website_vendors` rows + marketplace
+// vendors approved through admin review). ISR (10-min window) instead of
+// force-dynamic: cached on the CDN, so a newly approved vendor appears within
+// ~10 minutes instead of every request re-rendering at the origin.
+export const revalidate = 600
 
 export const metadata: Metadata = {
   title: 'Browse Wedding Vendors | OpusFesta',
