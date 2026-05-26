@@ -85,13 +85,17 @@ export default function RequestFormView({
   // null and `isNew=true`; the form starts empty and "Save" promotes it.
   request: ApprovalRequest | null
   isNew: boolean
-  // Persist the current draft to the in-memory store. Returns the
-  // saved (or freshly-created) request so the parent can swap in the
-  // canonical reference.
-  onSave: (draft: RequestFormDraft) => ApprovalRequest
+  // Persist the current draft to Supabase. Resolves with the saved (or
+  // freshly-created) request so the parent can swap in the canonical
+  // reference; rejects with an Error the form surfaces.
+  onSave: (draft: RequestFormDraft) => Promise<ApprovalRequest>
   onDiscard: () => void
-  onTransition: (id: string, next: ApprovalStatus, decision?: { kind: DecisionKind; note?: string }) => void
-  onAppendNote: (id: string, body: string) => void
+  onTransition: (
+    id: string,
+    next: ApprovalStatus,
+    decision?: { kind: DecisionKind; note?: string },
+  ) => Promise<ApprovalRequest>
+  onAppendNote: (id: string, body: string) => Promise<void>
 }) {
   const Icon = ICONS[category.iconKey]
 
@@ -140,7 +144,7 @@ export default function RequestFormView({
     setDirty(true)
   }
 
-  function save(): ApprovalRequest | null {
+  async function save(): Promise<ApprovalRequest | null> {
     setError(null)
     const trimmed = subject.trim()
     if (!trimmed) {
@@ -166,14 +170,19 @@ export default function RequestFormView({
         }
       }
     }
-    const saved = onSave({
-      category: category.key,
-      subject: trimmed,
-      fields: values,
-      approvers,
-    })
-    setDirty(false)
-    return saved
+    try {
+      const saved = await onSave({
+        category: category.key,
+        subject: trimmed,
+        fields: values,
+        approvers,
+      })
+      setDirty(false)
+      return saved
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not save the request.')
+      return null
+    }
   }
 
   // ----- Server-action wrappers ----------------------------------------------
@@ -201,19 +210,32 @@ export default function RequestFormView({
   }
 
   async function submit() {
-    const saved = request ?? save()
-    if (!saved) return
-    if (dirty && request) save()
-    onTransition(saved.id, 'Submitted')
+    // Persist the request first (create if new, or flush pending edits),
+    // then move it to Submitted, then fire the notification emails.
+    let current = request ?? (await save())
+    if (!current) return
+    if (request && dirty) {
+      const re = await save()
+      if (!re) return
+      current = re
+    }
+
     setBusy(true)
     setDispatchToast(null)
     try {
+      current = await onTransition(current.id, 'Submitted')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not submit the request.')
+      setBusy(false)
+      return
+    }
+    try {
       const summary = await notifySubmitted({
-        approvalSubject: saved.subject,
+        approvalSubject: current.subject,
         approvalCategory: category.label,
         approvalLink: approvalLink(),
-        submitter: { name: saved.owner, email: saved.ownerEmail },
-        approvers: saved.approvers.map((a) => ({
+        submitter: { name: current.owner, email: current.ownerEmail },
+        approvers: current.approvers.map((a) => ({
           name: a.name,
           email: a.email,
           role: a.role ?? null,
@@ -233,10 +255,16 @@ export default function RequestFormView({
     const nextStatus: ApprovalStatus =
       kind === 'approve' ? 'Approved' : kind === 'refuse' ? 'Refused' : 'To Submit'
 
-    onTransition(request.id, nextStatus, { kind, note: trimmed })
     setDecision(null)
     setBusy(true)
     setDispatchToast(null)
+    try {
+      await onTransition(request.id, nextStatus, { kind, note: trimmed })
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not update the request.')
+      setBusy(false)
+      return
+    }
     try {
       const payload = {
         approvalSubject: request.subject,
@@ -262,11 +290,16 @@ export default function RequestFormView({
     }
   }
 
-  function appendNote() {
+  async function appendNote() {
     if (!request || !noteText.trim()) return
-    onAppendNote(request.id, noteText.trim())
-    setNoteText('')
-    setRightPanel('activity')
+    const body = noteText.trim()
+    try {
+      await onAppendNote(request.id, body)
+      setNoteText('')
+      setRightPanel('activity')
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not add the note.')
+    }
   }
 
   return (
@@ -288,7 +321,13 @@ export default function RequestFormView({
           onApprove={() => setDecision('approve')}
           onRefuse={() => setDecision('refuse')}
           onRequestInfo={() => setDecision('info')}
-          onReopen={() => request && onTransition(request.id, 'To Submit')}
+          onReopen={() => {
+            if (request) {
+              onTransition(request.id, 'To Submit').catch((err) =>
+                setError(err instanceof Error ? err.message : 'Could not reopen the request.'),
+              )
+            }
+          }}
           onLogNote={() => setRightPanel((p) => (p === 'note' ? 'activity' : 'note'))}
           noteActive={rightPanel === 'note'}
         />
@@ -425,7 +464,7 @@ function TopBar({
   isNew: boolean
   dirty: boolean
   status: ApprovalStatus
-  onSave: () => ApprovalRequest | null
+  onSave: () => void
   onDiscard: () => void
 }) {
   // Breadcrumb (back arrow + category name) is rendered by the admin

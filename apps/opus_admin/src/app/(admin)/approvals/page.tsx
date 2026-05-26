@@ -1,6 +1,6 @@
 import { currentUser } from '@clerk/nextjs/server'
 import ApprovalsClient from './ApprovalsClient'
-import { SEED_REQUESTS } from './data'
+import { listApprovalRequests } from './queries'
 import type { ApprovalActor } from './types'
 
 export const dynamic = 'force-dynamic'
@@ -30,10 +30,12 @@ export default async function ApprovalsPage() {
     color: '#10B981',
   }
 
+  const initialRequests = await listApprovalRequests()
+
   // The Approvals page heading is driven by ApprovalsClient (it knows
   // whether we're on the dashboard, a category list, or a single
   // request) so the header can render "← Business Trip" etc. when
   // appropriate. No <WorkforceHeading> here — having two heading
   // setters would race.
-  return <ApprovalsClient actor={actor} initialRequests={SEED_REQUESTS} />
+  return <ApprovalsClient actor={actor} initialRequests={initialRequests} />
 }
