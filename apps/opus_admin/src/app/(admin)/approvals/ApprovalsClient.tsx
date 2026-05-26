@@ -18,10 +18,14 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { CATEGORIES, findCategory } from './data'
+import {
+  addApprovalNote,
+  createApprovalRequest,
+  saveApprovalRequest,
+  transitionApprovalRequest,
+} from './actions'
 import type {
-  ApprovalActivity,
   ApprovalActor,
-  ApprovalApprover,
   ApprovalCategory,
   ApprovalCategoryKey,
   ApprovalRequest,
@@ -111,97 +115,50 @@ export default function ApprovalsClient({
     setView({ kind: 'list', category })
   }
 
-  function saveDraft(draft: RequestFormDraft): ApprovalRequest {
-    const now = new Date().toISOString()
-    const editingId =
-      view.kind === 'request' ? view.requestId : view.kind === 'new' ? null : null
+  // Persist a draft: update when editing an existing request, otherwise
+  // create. Returns the canonical row from the server so the form can swap
+  // in the real id + activity. Throws on failure so the form surfaces it.
+  async function saveDraft(draft: RequestFormDraft): Promise<ApprovalRequest> {
+    const editingId = view.kind === 'request' ? view.requestId : null
 
     if (editingId) {
-      const existing = requests.find((r) => r.id === editingId)
-      if (!existing) throw new Error('Request not found')
-      const updated: ApprovalRequest = {
-        ...existing,
+      const res = await saveApprovalRequest(editingId, {
         subject: draft.subject,
         fields: draft.fields,
         approvers: draft.approvers,
-        updatedAt: now,
-      }
-      setRequests((prev) => prev.map((r) => (r.id === editingId ? updated : r)))
-      return updated
+      })
+      if (!res.ok) throw new Error(res.error)
+      setRequests((prev) => prev.map((r) => (r.id === editingId ? res.request : r)))
+      return res.request
     }
 
-    const created: ApprovalRequest = {
-      id: `apr_${Math.random().toString(36).slice(2, 8)}`,
+    const res = await createApprovalRequest({
       category: draft.category,
       subject: draft.subject,
-      owner: actor.name,
-      ownerEmail: actor.email,
-      ownerInitials: actor.initials,
       fields: draft.fields,
       approvers: draft.approvers,
-      status: 'To Submit',
-      createdAt: now,
-      updatedAt: now,
-      activity: [systemEntry(now, `${actor.name} created this request.`)],
-    }
-    setRequests((prev) => [created, ...prev])
-    setView({ kind: 'request', requestId: created.id })
-    return created
+    })
+    if (!res.ok) throw new Error(res.error)
+    setRequests((prev) => [res.request, ...prev])
+    setView({ kind: 'request', requestId: res.request.id })
+    return res.request
   }
 
-  function transition(id: string, next: ApprovalStatus, decision?: { kind: DecisionKind; note?: string }) {
-    const now = new Date().toISOString()
-    setRequests((prev) =>
-      prev.map((r) => {
-        if (r.id !== id) return r
-        const entries: ApprovalActivity[] = [
-          systemEntry(now, transitionMessage(next, actor.name, decision?.kind)),
-        ]
-        if (decision?.note?.trim()) {
-          entries.push({
-            id: `act_${Math.random().toString(36).slice(2, 8)}`,
-            kind: 'note',
-            at: now,
-            author: actor.name,
-            authorInitials: actor.initials,
-            authorColor: actor.color,
-            body: decision.note.trim(),
-          })
-        }
-        return {
-          ...r,
-          status: next,
-          updatedAt: now,
-          activity: [...r.activity, ...entries],
-        }
-      }),
-    )
+  async function transition(
+    id: string,
+    next: ApprovalStatus,
+    decision?: { kind: DecisionKind; note?: string },
+  ): Promise<ApprovalRequest> {
+    const res = await transitionApprovalRequest(id, next, decision)
+    if (!res.ok) throw new Error(res.error)
+    setRequests((prev) => prev.map((r) => (r.id === id ? res.request : r)))
+    return res.request
   }
 
-  function appendNote(id: string, body: string) {
-    const now = new Date().toISOString()
-    setRequests((prev) =>
-      prev.map((r) =>
-        r.id !== id
-          ? r
-          : {
-              ...r,
-              updatedAt: now,
-              activity: [
-                ...r.activity,
-                {
-                  id: `act_${Math.random().toString(36).slice(2, 8)}`,
-                  kind: 'note' as const,
-                  at: now,
-                  author: actor.name,
-                  authorInitials: actor.initials,
-                  authorColor: actor.color,
-                  body,
-                },
-              ],
-            },
-      ),
-    )
+  async function appendNote(id: string, body: string): Promise<void> {
+    const res = await addApprovalNote(id, body)
+    if (!res.ok) throw new Error(res.error)
+    setRequests((prev) => prev.map((r) => (r.id === id ? res.request : r)))
   }
 
   function discardCurrent() {
@@ -512,33 +469,3 @@ function summariseFields(r: ApprovalRequest, cat: ApprovalCategory): string {
   return parts.join(' · ')
 }
 
-function systemEntry(at: string, body: string): ApprovalActivity {
-  return {
-    id: `act_${Math.random().toString(36).slice(2, 8)}`,
-    kind: 'system',
-    at,
-    author: 'System',
-    authorInitials: 'SY',
-    authorColor: '#94A3B8',
-    body,
-  }
-}
-
-function transitionMessage(next: ApprovalStatus, actorName: string, decisionKind?: DecisionKind): string {
-  // Info-request transitions land back on To Submit but read very
-  // differently from a plain reopen — give the activity feed the
-  // sharper description.
-  if (next === 'To Submit' && decisionKind === 'info') {
-    return `${actorName} requested more information.`
-  }
-  switch (next) {
-    case 'Submitted':
-      return `${actorName} submitted this for approval.`
-    case 'Approved':
-      return `${actorName} approved this request.`
-    case 'Refused':
-      return `${actorName} refused this request.`
-    case 'To Submit':
-      return `${actorName} reopened this as a draft.`
-  }
-}
