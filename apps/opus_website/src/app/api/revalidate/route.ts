@@ -9,9 +9,13 @@ const ALLOWED_EXACT = new Set(['/', '/vendors', '/advice-and-ideas'])
 // Article slug paths — must mirror slugify() in
 // apps/opus_admin/src/lib/cms/advice-ideas.ts. Keep in sync if that changes.
 const ARTICLE_SLUG = /^\/advice-and-ideas\/[a-z0-9](?:[a-z0-9-]{0,79})$/
+// Vendor profile paths — busted by the vendors_portal on storefront publish
+// (see apps/vendors_portal/src/lib/revalidate-website.ts). A single slug
+// segment only; no nested paths or traversal.
+const VENDOR_SLUG = /^\/vendors\/[A-Za-z0-9][A-Za-z0-9-]{0,99}$/
 
 function isAllowed(path: string): boolean {
-  return ALLOWED_EXACT.has(path) || ARTICLE_SLUG.test(path)
+  return ALLOWED_EXACT.has(path) || ARTICLE_SLUG.test(path) || VENDOR_SLUG.test(path)
 }
 
 export async function POST(request: Request) {

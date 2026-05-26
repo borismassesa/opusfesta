@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
+import { revalidatePublicVendor } from '@/lib/revalidate-website'
 
 export type PublishResult =
   | { ok: true }
@@ -174,6 +175,12 @@ export async function publishStorefront(): Promise<PublishResult> {
   revalidatePath('/storefront/team')
   revalidatePath('/storefront/faq')
   revalidatePath('/storefront/recognition')
+
+  // Bust the public profile on opus_website (separate deployment) so the
+  // vendor's published changes appear immediately rather than within the ISR
+  // window. Best-effort — never fails the publish.
+  await revalidatePublicVendor(state.vendor.slug)
+
   return { ok: true }
 }
 
