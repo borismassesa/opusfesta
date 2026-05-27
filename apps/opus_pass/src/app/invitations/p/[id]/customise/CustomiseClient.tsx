@@ -97,7 +97,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
     toast.success('Added to cart', {
       description: `${product.name} — TZS ${(product.digitalUnitPrice * 150).toLocaleString('en-US')}`,
     })
-    router.push('/cart')
+    router.push('/invitations/cart')
   }
 
   const setPaletteAt = (i: number, v: string) => setPalette((p) => p.map((c, idx) => (idx === i ? v : c)))
