@@ -1,4 +1,8 @@
-import Image from 'next/image'
+import type { InvitationPalette } from './invitation-templates/_types'
+import {
+  ClassicSerif, MinimalLine, ModernBlock, FloralBorder, NavyGold,
+  BlushFrame, SagePanel, CulturalRed, ArchScript, PhotoOverlay,
+} from './invitation-templates'
 
 export type Treatment =
   | 'classic-serif' | 'minimal-line' | 'modern-block'  | 'floral-border'
@@ -13,139 +17,45 @@ export const COUPLE_DEFAULT: Couple = {
   venue: 'Bagamoyo, Tanzania',
 }
 
+export const DEFAULT_PALETTES: Record<Treatment, InvitationPalette> = {
+  'classic-serif':  { background: '#F5EFE3', surface: '#F5EFE3', accent: '#C4B9A8', textPrimary: '#1A1A1A', textSecondary: '#6B6B6B', muted: '#8D8D8D' },
+  'minimal-line':   { background: '#FFFFFF', surface: '#FFFFFF', accent: '#1A1A1A', textPrimary: '#1A1A1A', textSecondary: '#6B6B6B', muted: '#8D8D8D' },
+  'modern-block':   { background: '#FFFFFF', surface: '#1A1A1A', accent: '#1A1A1A', textPrimary: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.6)', muted: 'rgba(255,255,255,0.6)' },
+  'floral-border':  { background: '#FBF7F2', surface: '#FBF7F2', accent: '#A6B89A', textPrimary: '#1A1A1A', textSecondary: '#5C6B4D', muted: '#5C6B4D' },
+  'navy-gold':      { background: '#1E2D54', surface: '#1E2D54', accent: '#E8D9A7', textPrimary: '#F5EFE3', textSecondary: '#E8D9A7', muted: 'rgba(232,217,167,0.7)' },
+  'blush-frame':    { background: '#F5DCE2', surface: '#FFFFFF', accent: '#A84F66', textPrimary: '#7A1F2B', textSecondary: '#A84F66', muted: '#A84F66' },
+  'sage-panel':     { background: '#A6B89A', surface: '#FBF7F2', accent: '#5C6B4D', textPrimary: '#1A1A1A', textSecondary: '#5C6B4D', muted: 'rgba(92,107,77,0.7)' },
+  'cultural-red':   { background: '#7A1F2B', surface: '#7A1F2B', accent: '#C8A35C', textPrimary: '#F5EFE3', textSecondary: '#C8A35C', muted: 'rgba(200,163,92,0.8)' },
+  'arch-script':    { background: '#F5EFE3', surface: '#F5EFE3', accent: '#7A1F2B', textPrimary: '#7A1F2B', textSecondary: 'rgba(122,31,43,0.8)', muted: 'rgba(122,31,43,0.6)' },
+  'photo-overlay':  { background: 'transparent', surface: 'rgba(0,0,0,0.35)', accent: 'rgba(255,255,255,0.6)', textPrimary: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', muted: 'rgba(255,255,255,0.7)' },
+}
+
+export type { InvitationPalette }
+
 export function InvitationVisual({
   treatment,
   couple = COUPLE_DEFAULT,
+  palette,
+  photoSrc,
 }: {
   treatment: Treatment
   couple?: Couple
+  palette?: InvitationPalette
+  photoSrc?: string
 }) {
   const { names, date, venue } = couple
+  const p = palette ?? DEFAULT_PALETTES[treatment]
+
   switch (treatment) {
-    case 'classic-serif':
-      return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#F5EFE3] p-4 text-[#1A1A1A]">
-          <p className="text-[8px] uppercase tracking-[0.32em] text-[#1A1A1A]/50">Save the Date</p>
-          <p className="mt-3 font-serif text-[16px] leading-tight text-center">{names}</p>
-          <div className="my-3 h-px w-10 bg-[#1A1A1A]/30" />
-          <p className="text-[10px] tracking-[0.22em] text-[#1A1A1A]/70">{date}</p>
-          <p className="mt-2 text-[8px] tracking-[0.22em] text-[#1A1A1A]/50 uppercase">{venue}</p>
-        </div>
-      )
-    case 'minimal-line':
-      return (
-        <div className="absolute inset-0 flex flex-col bg-white p-4">
-          <div className="h-px w-full bg-[#1A1A1A]" />
-          <div className="flex flex-1 flex-col items-start justify-center">
-            <p className="text-[7px] uppercase tracking-[0.3em] text-[#1A1A1A]/50">Together with their families</p>
-            <p className="mt-3 font-serif text-[17px] text-[#1A1A1A] leading-tight">{names}</p>
-            <p className="mt-3 text-[9px] uppercase tracking-[0.22em] text-[#1A1A1A]/60">{date}</p>
-          </div>
-          <div className="h-px w-full bg-[#1A1A1A]" />
-        </div>
-      )
-    case 'modern-block':
-      return (
-        <div className="absolute inset-0 flex flex-col justify-end bg-white p-4">
-          <div className="bg-[#1A1A1A] -mx-4 -mb-4 px-4 py-4 text-white">
-            <p className="text-[7px] uppercase tracking-[0.3em] text-white/60">{date}</p>
-            <p className="mt-1.5 font-sans text-[16px] font-black uppercase tracking-tight leading-[1] text-white">{names}</p>
-            <p className="mt-1.5 text-[8px] uppercase tracking-[0.22em] text-white/60">{venue}</p>
-          </div>
-        </div>
-      )
-    case 'floral-border':
-      return (
-        <div className="absolute inset-0 bg-[#FBF7F2] p-3">
-          <div className="relative h-full w-full border border-[#A6B89A]/40 p-3 flex flex-col items-center justify-center">
-            <span className="absolute -top-[6px] -left-[6px] h-3 w-3 rounded-full bg-[#A6B89A]/60" />
-            <span className="absolute -top-[6px] -right-[6px] h-3 w-3 rounded-full bg-[#F5DCE2]" />
-            <span className="absolute -bottom-[6px] -left-[6px] h-3 w-3 rounded-full bg-[#F5DCE2]" />
-            <span className="absolute -bottom-[6px] -right-[6px] h-3 w-3 rounded-full bg-[#A6B89A]/60" />
-            <p className="text-[7px] uppercase tracking-[0.3em] text-[#5C6B4D]">You are invited</p>
-            <p className="mt-2 font-serif italic text-[16px] text-[#1A1A1A] leading-tight text-center">{names}</p>
-            <div className="my-2 h-px w-8 bg-[#A6B89A]" />
-            <p className="text-[9px] tracking-[0.18em] text-[#5C6B4D]">{date}</p>
-          </div>
-        </div>
-      )
-    case 'navy-gold':
-      return (
-        <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#1E2D54] p-4 text-[#E8D9A7]">
-          <p className="text-[8px] uppercase tracking-[0.32em]">Save the Date</p>
-          <div className="mt-3 h-px w-6 bg-[#E8D9A7]" />
-          <p className="mt-3 font-serif text-[16px] leading-tight text-center text-[#F5EFE3]">{names}</p>
-          <p className="mt-3 text-[9px] tracking-[0.22em]">{date}</p>
-          <p className="mt-1 text-[7px] uppercase tracking-[0.22em] text-[#E8D9A7]/70">{venue}</p>
-        </div>
-      )
-    case 'blush-frame':
-      return (
-        <div className="absolute inset-0 bg-[#F5DCE2] p-3">
-          <div className="h-full w-full bg-white p-3 flex flex-col items-center justify-center">
-            <p className="text-[7px] uppercase tracking-[0.3em] text-[#A84F66]">Save the Date</p>
-            <p className="mt-3 font-serif italic text-[17px] text-[#7A1F2B] leading-tight text-center">{names}</p>
-            <p className="mt-3 text-[9px] tracking-[0.22em] text-[#A84F66]">{date}</p>
-          </div>
-        </div>
-      )
-    case 'sage-panel':
-      return (
-        <div className="absolute inset-0 flex bg-[#A6B89A]">
-          <div className="w-1/3 bg-[#A6B89A]" />
-          <div className="flex-1 bg-[#FBF7F2] p-3 flex flex-col justify-center items-start">
-            <p className="text-[7px] uppercase tracking-[0.3em] text-[#5C6B4D]">Wedding</p>
-            <p className="mt-2 font-serif text-[15px] text-[#1A1A1A] leading-tight">{names}</p>
-            <div className="my-2 h-px w-6 bg-[#5C6B4D]" />
-            <p className="text-[8px] tracking-[0.22em] text-[#5C6B4D]">{date}</p>
-            <p className="mt-1 text-[7px] uppercase tracking-[0.18em] text-[#5C6B4D]/70">{venue}</p>
-          </div>
-        </div>
-      )
-    case 'cultural-red':
-      return (
-        <div className="absolute inset-0 bg-[#7A1F2B] p-3">
-          <div className="relative h-full w-full border-2 border-[#C8A35C] p-3 flex flex-col items-center justify-center">
-            <p className="font-serif text-[10px] tracking-[0.3em] text-[#C8A35C]">— KARIBU —</p>
-            <p className="mt-3 font-serif text-[15px] leading-tight text-center text-[#F5EFE3]">{names}</p>
-            <div className="my-2 flex items-center gap-1">
-              <span className="text-[#C8A35C] text-[8px]">✦</span>
-              <p className="text-[9px] tracking-[0.22em] text-[#C8A35C]">{date}</p>
-              <span className="text-[#C8A35C] text-[8px]">✦</span>
-            </div>
-            <p className="text-[7px] uppercase tracking-[0.22em] text-[#C8A35C]/80">{venue}</p>
-          </div>
-        </div>
-      )
-    case 'arch-script':
-      return (
-        <div className="absolute inset-0 bg-[#F5EFE3] flex flex-col items-center justify-end p-3">
-          <div className="relative w-full h-full flex flex-col items-center justify-center pt-6">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[80%] h-[60%] rounded-t-full border-2 border-[#7A1F2B]/70" />
-            <p className="relative font-serif italic text-[16px] text-[#7A1F2B] leading-tight text-center px-4">{names}</p>
-            <div className="relative mt-3 h-px w-8 bg-[#7A1F2B]/60" />
-            <p className="relative mt-2 text-[8px] uppercase tracking-[0.22em] text-[#7A1F2B]/80">{date}</p>
-          </div>
-        </div>
-      )
-    case 'photo-overlay':
-      return (
-        <div className="absolute inset-0">
-          <Image
-            src="/assets/images/cutesy_couple.jpg"
-            alt="Couple portrait used in invitation"
-            fill
-            sizes="(min-width:1024px) 25vw, 50vw"
-            className="object-cover"
-          />
-          <div className="absolute inset-0 bg-black/35" />
-          <div className="absolute inset-0 flex flex-col items-center justify-end p-4 text-white">
-            <p className="text-[7px] uppercase tracking-[0.32em] text-white/70">Save the Date</p>
-            <p className="mt-2 font-serif text-[16px] leading-tight text-center">{names}</p>
-            <div className="my-2 h-px w-8 bg-white/60" />
-            <p className="text-[8px] tracking-[0.22em] text-white/80">{date}</p>
-          </div>
-        </div>
-      )
+    case 'classic-serif':  return <ClassicSerif  names={names} date={date} venue={venue} palette={p} />
+    case 'minimal-line':   return <MinimalLine   names={names} date={date} venue={venue} palette={p} />
+    case 'modern-block':   return <ModernBlock   names={names} date={date} venue={venue} palette={p} />
+    case 'floral-border':  return <FloralBorder  names={names} date={date} venue={venue} palette={p} />
+    case 'navy-gold':      return <NavyGold      names={names} date={date} venue={venue} palette={p} />
+    case 'blush-frame':    return <BlushFrame    names={names} date={date} venue={venue} palette={p} />
+    case 'sage-panel':     return <SagePanel     names={names} date={date} venue={venue} palette={p} />
+    case 'cultural-red':   return <CulturalRed   names={names} date={date} venue={venue} palette={p} />
+    case 'arch-script':    return <ArchScript    names={names} date={date} venue={venue} palette={p} />
+    case 'photo-overlay':  return <PhotoOverlay  names={names} date={date} venue={venue} palette={p} photoSrc={photoSrc} />
   }
 }

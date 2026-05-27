@@ -1,4 +1,4 @@
-import type { Treatment } from '@/components/guests/InvitationVisual'
+import type { Treatment, InvitationPalette } from '@/components/guests/InvitationVisual'
 import type { Product as BaseProduct } from '@/components/guests/productInfo'
 
 // Catalog product — shared Product + visual treatment + optional designer/sample fields.
@@ -11,6 +11,10 @@ export type CatalogProduct = BaseProduct & {
   treatment: Treatment
   /** Required for catalog products — TZS per digital card (the primary product). */
   digitalUnitPrice: number
+  /** Supabase public storage URL for the Figma-exported SVG. Populated by design team. */
+  designImage?: string
+  /** Per-swatch palettes — index matches swatches[]. Must equal swatches.length (1–5). */
+  palettes?: InvitationPalette[]
 }
 
 // Digital prices tiered by design complexity:

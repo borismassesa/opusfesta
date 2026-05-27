@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Check, ChevronDown, ChevronRight, Heart, MessageCircle, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, MessageCircle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { InvitationVisual } from '@/components/guests/InvitationVisual'
+import { InvitationVisual, COUPLE_DEFAULT } from '@/components/guests/InvitationVisual'
+import { MockupCarousel } from '@/components/guests/MockupCarousel'
 import { PACK_QTY, PROMO_CODE } from '@/components/guests/productInfo'
 import { PRODUCTS, type CatalogProduct } from '@/data/invitations-products'
 
@@ -78,38 +79,16 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
       {/* Main 2-column layout */}
       <div className="px-4 sm:px-6 pt-6 sm:pt-8 pb-12 sm:pb-16">
         <div className="mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-          {/* ─── LEFT: sticky preview ─── */}
+          {/* ─── LEFT: sticky mockup carousel ─── */}
           <div className="lg:sticky lg:top-6">
-            <div className="relative aspect-[3/4] bg-white rounded-md shadow-md overflow-hidden">
-              <InvitationVisual treatment={product.treatment} />
-              <button
-                type="button"
-                onClick={() => setFavourited((v) => !v)}
-                aria-label={favourited ? 'Remove from favourites' : 'Add to favourites'}
-                aria-pressed={favourited}
-                className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-sm hover:bg-white transition"
-              >
-                <Heart className={cn('h-4 w-4', favourited ? 'fill-[#7A1F2B] text-[#7A1F2B]' : 'text-[#1A1A1A]')} />
-              </button>
-              <span className="absolute left-4 bottom-4 inline-flex items-center rounded-full bg-white/95 backdrop-blur px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-700">
-                Digital preview
-              </span>
-            </div>
-            <div className="mt-4 grid grid-cols-5 gap-2">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-label={`View ${i + 1}`}
-                  className={cn(
-                    'relative aspect-[3/4] bg-white rounded-sm overflow-hidden transition',
-                    i === 0 ? 'ring-2 ring-[#1A1A1A]' : 'ring-1 ring-gray-200 hover:ring-gray-400',
-                  )}
-                >
-                  <InvitationVisual treatment={product.treatment} />
-                </button>
-              ))}
-            </div>
+            <MockupCarousel
+              treatment={product.treatment}
+              couple={COUPLE_DEFAULT}
+              designImage={product.designImage}
+              palette={product.palettes?.[selectedColor]}
+              favourited={favourited}
+              onFavourite={() => setFavourited((v) => !v)}
+            />
           </div>
 
           {/* ─── RIGHT: scrollable configurator ─── */}
@@ -546,6 +525,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
           setShowCustomise(true)
         }}
         product={product}
+        palette={product.palettes?.[selectedColor]}
       />
 
       {/* Customise modal — real form, live preview, send-out CTA */}
@@ -553,6 +533,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
         open={showCustomise}
         onClose={() => setShowCustomise(false)}
         product={product}
+        palette={product.palettes?.[selectedColor]}
       />
     </div>
   )
@@ -719,11 +700,13 @@ function PreviewModal({
   onClose,
   onCustomise,
   product,
+  palette,
 }: {
   open: boolean
   onClose: () => void
   onCustomise: () => void
   product: CatalogProduct
+  palette?: import('@/components/guests/InvitationVisual').InvitationPalette
 }) {
   const sampleCouple = { names: 'Amani  &  Neema', date: '22 · 08 · 2026', venue: 'Bagamoyo, Tanzania' }
   return (
@@ -747,7 +730,7 @@ function PreviewModal({
         <div className="px-5 sm:px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* Invite preview — large */}
           <div className="relative aspect-[3/4] bg-gray-50 rounded-md shadow-md overflow-hidden ring-1 ring-gray-200">
-            <InvitationVisual treatment={product.treatment} couple={sampleCouple} />
+            <InvitationVisual treatment={product.treatment} couple={sampleCouple} palette={palette} />
           </div>
 
           {/* Right column */}
@@ -803,10 +786,12 @@ function CustomiseModal({
   open,
   onClose,
   product,
+  palette,
 }: {
   open: boolean
   onClose: () => void
   product: CatalogProduct
+  palette?: import('@/components/guests/InvitationVisual').InvitationPalette
 }) {
   const [names, setNames] = useState('Amani & Neema')
   const [dateISO, setDateISO] = useState('2026-08-22')
@@ -841,7 +826,7 @@ function CustomiseModal({
           {/* Live preview */}
           <div className="md:sticky md:top-20 md:self-start">
             <div className="relative aspect-[3/4] bg-gray-50 rounded-md shadow-md overflow-hidden ring-1 ring-gray-200">
-              <InvitationVisual treatment={product.treatment} couple={couple} />
+              <InvitationVisual treatment={product.treatment} couple={couple} palette={palette} />
             </div>
             <p className="mt-2 text-[11px] text-gray-500 text-center">Live preview — updates as you type</p>
           </div>
