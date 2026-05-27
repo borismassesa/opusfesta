@@ -5,6 +5,18 @@ import { Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InvitationVisual, COUPLE_DEFAULT, type Treatment, type Couple, type InvitationPalette } from '@/components/guests/InvitationVisual'
 
+// Defense-in-depth for the inlined SVG: require an SVG/XML prefix and strip the
+// obvious script vectors. This is NOT full sanitization — before wiring designImage
+// to any untrusted source (CMS/storage), replace with DOMPurify (svg profile).
+function sanitizeSvg(text: string): string | null {
+  const t = text.trimStart()
+  if (!t.startsWith('<svg') && !t.startsWith('<?xml')) return null
+  return t
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/(?:href|xlink:href)\s*=\s*(["'])\s*javascript:[^"']*\1/gi, '')
+}
+
 type SceneId = 'flat-lay' | 'dark-studio' | 'paper-stack' | 'envelope' | 'phone'
 
 const SCENES: { id: SceneId; label: string }[] = [
@@ -39,7 +51,7 @@ function InviteCard({
     prevUrl.current = designImage
     fetch(designImage)
       .then((r) => r.text())
-      .then(setSvgHtml)
+      .then((text) => setSvgHtml(sanitizeSvg(text)))
       .catch(() => setSvgHtml(null))
   }, [designImage])
 
