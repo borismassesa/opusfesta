@@ -290,6 +290,68 @@ export type EmployeeDocument = {
   attachment: RecordAttachment | null
 }
 
+// Task assignments — admins / dept managers assign tasks to a single
+// employee or a whole department, one-off or recurring. Mirrors
+// workforce_task_assignments; workforce_tasks holds the per-employee
+// instances the generator materialises. See migration 20260525000002.
+export type TaskCadence = 'once' | 'daily' | 'weekly' | 'monthly'
+export type TaskTargetType = 'employee' | 'department'
+export type TaskCategory =
+  | 'General'
+  | 'Project'
+  | 'Admin'
+  | 'Reporting'
+  | 'Meeting'
+  | 'Onboarding'
+  | 'Review'
+export type TaskStatus = 'Todo' | 'In Progress' | 'Done' | 'Skipped'
+
+export const TASK_CADENCES: TaskCadence[] = ['once', 'daily', 'weekly', 'monthly']
+export const TASK_CATEGORIES: TaskCategory[] = [
+  'General',
+  'Project',
+  'Admin',
+  'Reporting',
+  'Meeting',
+  'Onboarding',
+  'Review',
+]
+
+export type TaskAssignment = {
+  id: string
+  title: string
+  description: string | null
+  category: TaskCategory
+  targetType: TaskTargetType
+  targetEmployeeId: string | null
+  targetEmployeeName: string | null
+  targetDepartment: Department | null
+  cadence: TaskCadence
+  startDate: string
+  endDate: string | null
+  isActive: boolean
+  assignedByName: string | null
+  createdAt: string
+  // Rollup over the generated instances (workforce_tasks).
+  totalTasks: number
+  doneTasks: number
+}
+
+// One generated per-employee instance — what the employee sees and
+// completes on the My tasks page.
+export type AssignedTask = {
+  id: string
+  title: string
+  description: string | null
+  category: TaskCategory
+  cadence: TaskCadence
+  status: TaskStatus
+  dueDate: string | null
+  occurrenceDate: string
+  completedAt: string | null
+  createdAt: string
+}
+
 export type Job = {
   id: string
   slug: string

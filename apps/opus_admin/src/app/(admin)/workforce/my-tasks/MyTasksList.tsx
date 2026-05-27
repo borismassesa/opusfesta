@@ -2,29 +2,47 @@
 
 import { useState, useTransition } from 'react'
 import { CheckCircle2, Circle, Play, RotateCcw } from 'lucide-react'
-import type { InternTaskRow } from './page'
+import type { MyTask } from './page'
+import type { TaskSource } from './actions'
 
 // Renders the caller's tasks grouped into "Up next" (Todo + In Progress)
 // and "Done". Each row has the appropriate state-change buttons:
 //   Todo        → [Start] [Done]
 //   In Progress → [Done]
 //   Done        → [Reopen]
+// Tasks come from two sources (intern checklist + assigned tasks); the
+// `source` on each routes the action to the right table.
 //
-// useTransition keeps the UI responsive while the server action
-// resolves — buttons disable but the page doesn't block.
+// useTransition keeps the UI responsive while the server action resolves.
 
 type Actions = {
-  start: (id: string) => Promise<void>
-  complete: (id: string) => Promise<void>
-  reopen: (id: string) => Promise<void>
+  start: (id: string, source: TaskSource) => Promise<void>
+  complete: (id: string, source: TaskSource) => Promise<void>
+  reopen: (id: string, source: TaskSource) => Promise<void>
 }
 
-const CATEGORY_TONE: Record<InternTaskRow['category'], string> = {
+// Tolerant lookup — both intern categories and the broader assignment
+// categories pass through; unknown values fall back to neutral gray.
+const CATEGORY_TONE: Record<string, string> = {
   Onboarding: 'bg-emerald-50 text-emerald-700',
   Reading: 'bg-sky-50 text-sky-700',
   Shadowing: 'bg-purple-50 text-purple-700',
   Project: 'bg-amber-50 text-amber-700',
   Admin: 'bg-gray-100 text-gray-700',
+  General: 'bg-gray-100 text-gray-700',
+  Reporting: 'bg-sky-50 text-sky-700',
+  Meeting: 'bg-purple-50 text-purple-700',
+  Review: 'bg-amber-50 text-amber-700',
+}
+
+const CADENCE_LABEL: Record<string, string> = {
+  daily: 'Daily',
+  weekly: 'Weekly',
+  monthly: 'Monthly',
+}
+
+function toneFor(category: string): string {
+  return CATEGORY_TONE[category] ?? 'bg-gray-100 text-gray-700'
 }
 
 function formatDueDate(iso: string | null): string {
@@ -45,7 +63,7 @@ export default function MyTasksList({
   tasks,
   actions,
 }: {
-  tasks: InternTaskRow[]
+  tasks: MyTask[]
   actions: Actions
 }) {
   const open = tasks.filter((t) => t.status === 'Todo' || t.status === 'In Progress')
@@ -56,8 +74,7 @@ export default function MyTasksList({
       <div className="rounded-2xl border border-gray-100 bg-white p-10 text-center shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
         <p className="text-sm font-semibold text-gray-900">No tasks assigned yet</p>
         <p className="mt-1 text-xs text-gray-500">
-          Your manager will add onboarding and reading items here. Check back
-          tomorrow.
+          Tasks your team assigns will show up here. Check back soon.
         </p>
       </div>
     )
@@ -78,7 +95,7 @@ function Group({
   emptyMessage,
 }: {
   title: string
-  tasks: InternTaskRow[]
+  tasks: MyTask[]
   actions: Actions
   emptyMessage: string
 }) {
@@ -93,7 +110,7 @@ function Group({
         ) : (
           <ul className="divide-y divide-gray-100">
             {tasks.map((task) => (
-              <TaskRow key={task.id} task={task} actions={actions} />
+              <TaskRow key={`${task.source}:${task.id}`} task={task} actions={actions} />
             ))}
           </ul>
         )}
@@ -102,23 +119,22 @@ function Group({
   )
 }
 
-function TaskRow({ task, actions }: { task: InternTaskRow; actions: Actions }) {
+function TaskRow({ task, actions }: { task: MyTask; actions: Actions }) {
   const [pending, start] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const done = task.status === 'Done'
   const due = formatDueDate(task.due_date)
   const overdue = due.endsWith('overdue')
+  const cadenceLabel = task.cadence ? CADENCE_LABEL[task.cadence] : null
 
-  // Wraps a server action with explicit error surfacing. Without this
-  // the action's throw bubbles into the transition error boundary and
-  // the user just sees "nothing happened" — including the case where
-  // the row's employee_id doesn't match (the server already records a
-  // critical audit event, but the user deserves feedback too).
-  function run(action: (id: string) => Promise<void>) {
+  // Wraps a server action with explicit error surfacing — otherwise the
+  // throw bubbles into the transition error boundary and the user just
+  // sees "nothing happened".
+  function run(action: (id: string, source: typeof task.source) => Promise<void>) {
     setError(null)
     start(async () => {
       try {
-        await action(task.id)
+        await action(task.id, task.source)
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Could not update task.')
       }
@@ -134,20 +150,21 @@ function TaskRow({ task, actions }: { task: InternTaskRow; actions: Actions }) {
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-2">
-          <p
-            className={`text-sm font-semibold ${done ? 'text-gray-500 line-through' : 'text-gray-900'}`}
-          >
+          <p className={`text-sm font-semibold ${done ? 'text-gray-500 line-through' : 'text-gray-900'}`}>
             {task.title}
           </p>
           <span
-            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${CATEGORY_TONE[task.category]}`}
+            className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${toneFor(task.category)}`}
           >
             {task.category}
           </span>
+          {cadenceLabel && (
+            <span className="inline-flex items-center rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-gray-500">
+              {cadenceLabel}
+            </span>
+          )}
           {due && !done && (
-            <span
-              className={`text-[11px] font-medium tabular-nums ${overdue ? 'text-rose-600' : 'text-gray-500'}`}
-            >
+            <span className={`text-[11px] font-medium tabular-nums ${overdue ? 'text-rose-600' : 'text-gray-500'}`}>
               {due}
             </span>
           )}

@@ -1,30 +1,33 @@
 import { redirect } from 'next/navigation'
 import { getCallerEmail } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { getAssignedTasksForEmployee } from '../_lib/queries'
 import MyTasksHeading from './MyTasksHeading'
 import MyTasksList from './MyTasksList'
 import { completeTask, reopenTask, startTask } from './actions'
 
 export const dynamic = 'force-dynamic'
 
-// "My tasks" — every workforce member can land here from their
-// dashboard lane, but the page is most meaningful for interns
-// (their lane links here). Shows the caller's own tasks grouped by
-// status; supports marking complete / start / reopen via server
-// actions.
+// "My tasks" — every workforce member can land here from their dashboard
+// lane. Shows the caller's own tasks from two sources, merged:
+//   - intern_tasks    (onboarding / shadowing checklist)
+//   - workforce_tasks (instances generated from admin assignments)
+// grouped by status, with mark complete / start / reopen via the server
+// actions. The `source` on each task routes the action to the right table.
 //
-// Auth: covered by the (admin)/workforce layout which gates on
-// workforce.read. The actions enforce write permission of their own.
+// Auth: covered by the (admin)/workforce layout (workforce.read). The
+// actions enforce per-row ownership of their own.
 
-export type InternTaskRow = {
+export type MyTask = {
   id: string
+  source: 'intern' | 'assigned'
   title: string
   description: string | null
   status: 'Todo' | 'In Progress' | 'Done' | 'Skipped'
-  category: 'Onboarding' | 'Reading' | 'Shadowing' | 'Project' | 'Admin'
+  category: string
+  cadence: string | null
   due_date: string | null
   completed_at: string | null
-  created_at: string
 }
 
 export default async function MyTasksPage() {
@@ -49,15 +52,49 @@ export default async function MyTasksPage() {
     )
   }
 
-  const { data, error } = await supabase
+  const { data: internRows, error: internError } = await supabase
     .from('intern_tasks')
-    .select('id, title, description, status, category, due_date, completed_at, created_at')
+    .select('id, title, description, status, category, due_date, completed_at')
     .eq('employee_id', employee.id)
-    .order('status', { ascending: true })
-    .order('due_date', { ascending: true, nullsFirst: false })
     .limit(200)
-  if (error) throw error
-  const tasks = (data ?? []) as InternTaskRow[]
+  if (internError) throw internError
+
+  const assigned = await getAssignedTasksForEmployee(employee.id)
+
+  const tasks: MyTask[] = [
+    ...(internRows ?? []).map((r) => ({
+      id: r.id as string,
+      source: 'intern' as const,
+      title: r.title as string,
+      description: (r.description ?? null) as string | null,
+      status: r.status as MyTask['status'],
+      category: r.category as string,
+      cadence: null,
+      due_date: (r.due_date ?? null) as string | null,
+      completed_at: (r.completed_at ?? null) as string | null,
+    })),
+    ...assigned.map((t) => ({
+      id: t.id,
+      source: 'assigned' as const,
+      title: t.title,
+      description: t.description,
+      status: t.status,
+      category: t.category,
+      cadence: t.cadence,
+      due_date: t.dueDate,
+      completed_at: t.completedAt,
+    })),
+  ]
+
+  // Merging two sources loses the per-query ordering, so sort the combined
+  // list by due date (soonest/overdue first, undated last). The open/done
+  // groups below derive from this order via filter, so both stay sorted.
+  tasks.sort((a, b) => {
+    if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date)
+    if (a.due_date) return -1
+    if (b.due_date) return 1
+    return 0
+  })
 
   const open = tasks.filter((t) => t.status === 'Todo' || t.status === 'In Progress')
   const done = tasks.filter((t) => t.status === 'Done')

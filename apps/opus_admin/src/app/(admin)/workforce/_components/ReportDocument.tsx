@@ -1,0 +1,192 @@
+'use client'
+
+import { Printer, X } from 'lucide-react'
+import {
+  readBullets,
+  readGroupedBullets,
+  readNumber,
+  readText,
+  type ReportSection,
+  type ReportSubmission,
+} from '../_lib/report-schema'
+
+// Renders a submitted report in the OpusFesta letterhead — logo + company
+// address header, title / date / prepared-by block, numbered sections, and
+// a branded footer with socials. Matches the company's .docx report format
+// so a Print → "Save as PDF" produces the same document.
+
+const LOGO_URL = 'https://www.opusfesta.com/assets/logo/opusfesta-logo-black.png'
+const ACCENT = '#6B4E8C'
+
+function formatLongDate(iso: string): string {
+  const [y, m, d] = iso.split('-').map(Number)
+  return new Date(y, m - 1, d).toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+}
+
+function CompanyBlock({ small }: { small?: boolean }) {
+  return (
+    <div className={`text-right ${small ? 'text-[10px] leading-tight' : 'text-[11px] leading-snug'} text-gray-600`}>
+      <p className="font-bold" style={{ color: ACCENT }}>OpusFesta Company Limited</p>
+      <p>Samaki Wabichi Annex, Mbezi Beach,</p>
+      <p>P.O.Box 7787 Dar es Salaam, Tanzania</p>
+      <p>info@opusfesta.com | www.opusfesta.com</p>
+    </div>
+  )
+}
+
+function SectionBody({
+  section,
+  submission,
+}: {
+  section: ReportSection
+  submission: ReportSubmission
+}) {
+  const { content } = submission
+  switch (section.type) {
+    case 'text':
+    case 'short_text': {
+      const v = readText(content, section)
+      if (!v) return <p className="text-sm italic text-gray-400">—</p>
+      return <p className="whitespace-pre-wrap text-sm leading-relaxed text-gray-800">{v}</p>
+    }
+    case 'number': {
+      const n = readNumber(content, section)
+      return <p className="text-sm text-gray-800">{n ?? '—'}</p>
+    }
+    case 'bullets': {
+      const items = readBullets(content, section)
+      if (items.length === 0) return <p className="text-sm italic text-gray-400">—</p>
+      return (
+        <ul className="list-disc space-y-1 pl-5 text-sm leading-relaxed text-gray-800">
+          {items.map((it, i) => (
+            <li key={i}>{it}</li>
+          ))}
+        </ul>
+      )
+    }
+    case 'grouped_bullets': {
+      const groups = readGroupedBullets(content, section)
+      const any = groups.some((g) => g.items.length > 0)
+      if (!any) return <p className="text-sm italic text-gray-400">—</p>
+      return (
+        <div className="space-y-3">
+          {groups.map((g) => (
+            <div key={g.id}>
+              <p className="text-sm font-semibold text-gray-700">
+                {g.label} ({g.items.length})
+              </p>
+              {g.items.length > 0 && (
+                <ul className="mt-1 list-disc space-y-1 pl-5 text-sm leading-relaxed text-gray-800">
+                  {g.items.map((it, i) => (
+                    <li key={i}>{it}</li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          ))}
+        </div>
+      )
+    }
+  }
+}
+
+export function ReportDocument({ submission }: { submission: ReportSubmission }) {
+  return (
+    <div className="report-print-root mx-auto max-w-[760px] bg-white px-10 py-10 text-gray-900">
+      {/* Letterhead */}
+      <header className="flex items-start justify-between gap-6 border-b-2 pb-5" style={{ borderColor: ACCENT }}>
+        <div className="flex flex-col">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={LOGO_URL} alt="OpusFesta" className="h-12 w-auto object-contain" />
+          <span className="mt-1 text-[8px] font-semibold uppercase tracking-[0.25em]" style={{ color: ACCENT }}>
+            Plan Less, Celebrate More
+          </span>
+        </div>
+        <CompanyBlock />
+      </header>
+
+      {/* Title + meta */}
+      <div className="mt-8">
+        <h1 className="text-xl font-bold text-gray-900">{submission.templateName}</h1>
+        <div className="mt-3 space-y-0.5 text-sm text-gray-700">
+          <p>
+            <span className="font-semibold">Date:</span> {formatLongDate(submission.reportDate)}
+            {submission.periodEnd && ` – ${formatLongDate(submission.periodEnd)}`}
+          </p>
+          <p>
+            <span className="font-semibold">Prepared by:</span>{' '}
+            {submission.preparedByName ?? submission.employeeName}
+          </p>
+          {submission.preparedByRole && <p className="text-gray-600">{submission.preparedByRole}</p>}
+        </div>
+      </div>
+
+      {/* Sections */}
+      <div className="mt-7 space-y-6">
+        {submission.sections.map((section, i) => (
+          <section key={section.id}>
+            <h2 className="text-base font-bold text-gray-900">
+              {i + 1}. {section.title}
+            </h2>
+            <div className="mt-2">
+              <SectionBody section={section} submission={submission} />
+            </div>
+          </section>
+        ))}
+      </div>
+
+      {/* Footer */}
+      <footer className="mt-12 flex items-end justify-between gap-6 border-t pt-4" style={{ borderColor: ACCENT }}>
+        <CompanyBlock small />
+        <p className="text-[10px] text-gray-500">info@opusfesta.com | +255 799 242 475</p>
+      </footer>
+    </div>
+  )
+}
+
+// Full-screen overlay that shows a ReportDocument with Print + Close. The
+// injected print stylesheet hides the rest of the app so the browser's
+// "Save as PDF" outputs only the letterhead document.
+export function ReportViewerModal({
+  submission,
+  onClose,
+}: {
+  submission: ReportSubmission
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 overflow-auto bg-black/40 p-4 sm:p-8">
+      <style>{`@media print {
+        body * { visibility: hidden !important; }
+        .report-print-root, .report-print-root * { visibility: visible !important; }
+        .report-print-root { position: absolute !important; left: 0; top: 0; width: 100%; box-shadow: none !important; }
+        .report-print-hide { display: none !important; }
+      }`}</style>
+      <div className="mx-auto max-w-[820px]">
+        <div className="report-print-hide mb-3 flex items-center justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => window.print()}
+            className="inline-flex items-center gap-1.5 rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800"
+          >
+            <Printer className="h-4 w-4" /> Print / Save as PDF
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-white/40 bg-white/90 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-white"
+          >
+            <X className="h-4 w-4" /> Close
+          </button>
+        </div>
+        <div className="overflow-hidden rounded-xl shadow-2xl">
+          <ReportDocument submission={submission} />
+        </div>
+      </div>
+    </div>
+  )
+}
