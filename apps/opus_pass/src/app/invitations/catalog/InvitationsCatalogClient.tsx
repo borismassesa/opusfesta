@@ -674,7 +674,12 @@ function ProductCard({
       >
         {/* Zoom-on-hover wrapper around the invitation visual */}
         <span className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.04]">
-          <InvitationVisual treatment={product.treatment} />
+          {product.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={product.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+          ) : (
+            <InvitationVisual treatment={product.treatment} />
+          )}
         </span>
 
         {/* Heart button — stays put (above zoom layer) */}
