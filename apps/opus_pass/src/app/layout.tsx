@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { ClerkProvider } from '@clerk/nextjs'
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
 import ToastProvider from '@/components/providers/ToastProvider'
+import { CartProvider } from '@/components/providers/CartProvider'
 import './globals.css'
 
 export const metadata: Metadata = {
@@ -23,7 +24,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
       <html lang="en" className="bg-white">
         <body className="bg-white">
-          <SmoothScrollProvider>{children}</SmoothScrollProvider>
+          <CartProvider>
+            <SmoothScrollProvider>{children}</SmoothScrollProvider>
+          </CartProvider>
           <ToastProvider />
         </body>
       </html>

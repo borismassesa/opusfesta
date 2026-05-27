@@ -11,6 +11,10 @@ export type OpusPassInvitationsHeroContent = {
   /** Optional banner image shown on the right. When empty, the built-in flat-lay arrangement renders instead. */
   right_image_url: string
   right_image_alt: string
+  /** How the image fills the banner area: 'cover' crops to fill, 'contain' fits the whole image. */
+  right_image_fit: 'cover' | 'contain'
+  /** CSS object-position focal point (e.g. 'center', 'left top') — which part stays visible when cropped. */
+  right_image_position: string
 }
 
 export type OpusPassInvitationsHeroRow = {
@@ -35,4 +39,6 @@ export const OPUS_PASS_INVITATIONS_HERO_FALLBACK: OpusPassInvitationsHeroContent
   background_color: '#FAE6E9',
   right_image_url: '',
   right_image_alt: '',
+  right_image_fit: 'cover',
+  right_image_position: 'center',
 }

@@ -5,6 +5,7 @@ import { loadInvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-b
 import { loadInvitationsStyleStripContent } from '@/lib/cms/invitations-style-strip'
 import { loadInvitationsExploreStylesContent } from '@/lib/cms/invitations-explore-styles'
 import { loadInvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-free-website-promo'
+import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import InvitationsCatalogClient from './InvitationsCatalogClient'
 
 export const metadata: Metadata = {
@@ -14,9 +15,10 @@ export const metadata: Metadata = {
 }
 
 export default async function InvitationsCatalogPage() {
-  const [{ isEnabled: isDraft }, promoBanner, styleStrip, exploreStyles, freeWebsitePromo] =
+  const [{ isEnabled: isDraft }, products, promoBanner, styleStrip, exploreStyles, freeWebsitePromo] =
     await Promise.all([
       draftMode(),
+      loadInvitationProducts(),
       loadInvitationsPromoBannerContent(),
       loadInvitationsStyleStripContent(),
       loadInvitationsExploreStylesContent(),
@@ -26,6 +28,7 @@ export default async function InvitationsCatalogPage() {
     <>
       {isDraft && <PreviewBanner />}
       <InvitationsCatalogClient
+        products={products}
         promoBanner={promoBanner}
         styleStrip={styleStrip}
         exploreStyles={exploreStyles}

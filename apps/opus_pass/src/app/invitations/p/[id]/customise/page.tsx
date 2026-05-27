@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { loadInvitationProduct } from '@/lib/cms/invitations-products'
-import ProductDetailClient from './ProductDetailClient'
+import CustomiseClient from './CustomiseClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -12,14 +12,14 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const product = await loadInvitationProduct(id)
   if (!product) return { title: 'Product not found | OpusFesta' }
   return {
-    title: `${product.name} | OpusFesta`,
-    description: `${product.name} — ${product.category} by ${product.designer}. Bilingual digital invitation, sent by WhatsApp or SMS.`,
+    title: `Customise ${product.name} | OpusFesta`,
+    description: `Personalise ${product.name} — add your names, date, venue, colours and message, then send it to every guest by WhatsApp or SMS.`,
   }
 }
 
-export default async function ProductDetailPage({ params }: { params: Promise<Params> }) {
+export default async function CustomiseProductPage({ params }: { params: Promise<Params> }) {
   const { id } = await params
   const product = await loadInvitationProduct(id)
   if (!product) return notFound()
-  return <ProductDetailClient product={product} />
+  return <CustomiseClient product={product} />
 }

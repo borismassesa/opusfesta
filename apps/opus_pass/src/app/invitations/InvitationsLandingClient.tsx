@@ -89,6 +89,22 @@ function HeroBanner({ hero }: { hero: InvitationsHeroContent }) {
           {/* Linen-y texture using subtle radial dots */}
           <div className="absolute inset-0 opacity-[0.18] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #B7A88E 0.6px, transparent 0)', backgroundSize: '6px 6px' }} />
 
+          {/* Uploaded hero image — bleeds flush to the top/right edges of the banner on desktop */}
+          {hero.right_image_url && (
+            <div className="hidden md:block absolute inset-y-0 right-0 w-5/12">
+              <Image
+                src={hero.right_image_url}
+                alt={hero.right_image_alt}
+                fill
+                sizes="42vw"
+                style={{
+                  objectFit: hero.right_image_fit || 'cover',
+                  objectPosition: hero.right_image_position || 'center',
+                }}
+              />
+            </div>
+          )}
+
           <div className="relative grid grid-cols-1 md:grid-cols-12 items-center gap-6 md:gap-4 p-6 sm:p-10 md:p-14">
             {/* Copy */}
             <div className="md:col-span-7 lg:col-span-7">
@@ -115,15 +131,19 @@ function HeroBanner({ hero }: { hero: InvitationsHeroContent }) {
             </div>
 
             {/* Right side — uploaded image if present, otherwise the built-in flat-lay */}
-            <div className="md:col-span-5 lg:col-span-5 relative h-[200px] sm:h-[280px] md:h-[340px]">
+            <div className="md:col-span-5 lg:col-span-5 relative h-[200px] sm:h-[280px] md:h-auto">
               {hero.right_image_url ? (
-                <div className="relative h-full w-full overflow-hidden rounded-md shadow-md">
+                /* Mobile: rounded card. Desktop bleed is handled by the absolute image above. */
+                <div className="md:hidden relative h-full w-full overflow-hidden rounded-md shadow-md">
                   <Image
                     src={hero.right_image_url}
                     alt={hero.right_image_alt}
                     fill
-                    sizes="(min-width: 768px) 40vw, 100vw"
-                    className="object-cover"
+                    sizes="100vw"
+                    style={{
+                      objectFit: hero.right_image_fit || 'cover',
+                      objectPosition: hero.right_image_position || 'center',
+                    }}
                   />
                 </div>
               ) : (

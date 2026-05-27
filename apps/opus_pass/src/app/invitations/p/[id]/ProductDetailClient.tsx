@@ -2,11 +2,15 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { Check, ChevronDown, ChevronRight, Heart, MessageCircle, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Check, CheckCircle2, ChevronDown, ChevronRight, MessageCircle, Printer, SlidersHorizontal, Smile, Truck, X } from 'lucide-react'
+import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { InvitationVisual } from '@/components/guests/InvitationVisual'
+import { InvitationVisual, type Treatment } from '@/components/guests/InvitationVisual'
+import { StructuredInvitation, resolveProductInvitation, type ResolvedInvitation } from '@/components/guests/StructuredInvitation'
 import { PACK_QTY, PROMO_CODE } from '@/components/guests/productInfo'
 import { PRODUCTS, type CatalogProduct } from '@/data/invitations-products'
+import { useCart } from '@/components/providers/CartProvider'
 
 // Pricing model:
 //   • Digital cards — `product.digitalUnitPrice × digitalQty` (priced per-card, scales with guest count)
@@ -14,22 +18,43 @@ import { PRODUCTS, type CatalogProduct } from '@/data/invitations-products'
 //   • Door-scan     — flat base fee per event
 //   • Foil add-on   — flat base fee
 const DOOR_SCAN_SERVICE_PRICE = 150000 // TZS — flat per event (host with scanner at venue entrance)
-const FOIL_ADDON_PRICE = 35000 // TZS — flat for foil + letterpress accents on paper prints
+const FOIL_ADDON_PRICE = 35000 // TZS — flat for gold foil accents on paper prints
 
-const FORMAT_OPTIONS = ['Standard', 'All-in-One'] as const
-const PAPER_TYPES = ['Signature', 'Signature smooth', 'Pearlescent', 'Recycled', 'Double thick', 'Triple thick']
+// `gsm` drives the visual stack thickness in PaperSwatch; `tone` is the sheet face gradient.
+const PAPER_TYPES = [
+  { id: 'standard', label: 'Standard card', weight: '250gsm', gsm: 250, tone: 'from-stone-50 to-stone-200', desc: 'Smooth art card — the everyday favourite for wedding invitations.' },
+  { id: 'premium-thick', label: 'Premium thick card', weight: '350gsm', gsm: 350, tone: 'from-stone-50 to-stone-300', desc: 'Heavier board with a substantial feel, for VIP and head-table cards.' },
+  { id: 'ivory', label: 'Textured ivory', weight: '300gsm', gsm: 300, tone: 'from-amber-50 to-stone-200', desc: 'Lightly textured ivory stock for an elegant, classic look.' },
+  { id: 'shimmer', label: 'Shimmer card', weight: '300gsm', gsm: 300, tone: 'from-violet-50 via-white to-sky-50', desc: 'Subtle shimmer that catches the light — popular for evening weddings.' },
+] as const
+const PAPER_FINISHES = [
+  { id: 'matte', label: 'Matte lamination', desc: "Soft, glare-free finish that's easy to read and write on." },
+  { id: 'gloss', label: 'Gloss lamination', desc: 'Shiny finish that makes colours vivid — a classic wedding-card look.' },
+] as const
 const TRIM_SHAPES = [
   { id: 'standard', label: 'Standard', d: 'M2 2h12v16H2z' },
   { id: 'rounded',  label: 'Rounded',  d: 'M4 2h8a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z' },
   { id: 'arch',     label: 'Arch',     d: 'M2 8a6 6 0 0 1 12 0v10H2z' },
-  { id: 'tag',      label: 'Tag',      d: 'M2 2h12v14l-6 2-6-2z' },
-  { id: 'scallop',  label: 'Scallop',  d: 'M2 4q2-2 4 0 q2-2 4 0 q2-2 4 0 v12 q-2 2-4 0 q-2 2-4 0 q-2 2-4 0z' },
 ] as const
 
 const DIGITAL_QTY_OPTIONS = [50, 100, 150, 200, 300, 500]
-const PAPER_QTY_OPTIONS = [10, 25, 50, 100, 150, 200, 300, 500]
+const PAPER_QTY_OPTIONS = [10, 25, 50, 100, 150, 200]
+
+// Gallery views — each renders the same card in a different staged composition.
+const GALLERY_VIEWS = [
+  { id: 'flatlay', label: 'Styled flat-lay' },
+  { id: 'front', label: 'Front' },
+  { id: 'angled', label: 'Angled' },
+  { id: 'paired', label: 'With envelope' },
+  { id: 'detail', label: 'Detail' },
+] as const
+type GalleryView = (typeof GALLERY_VIEWS)[number]['id']
 
 export default function ProductDetailClient({ product }: { product: CatalogProduct }) {
+  const customiseHref = `/invitations/p/${product.id}/customise`
+  const router = useRouter()
+  const { addItem } = useCart()
+
   // Core selections
   const [selectedColor, setSelectedColor] = useState(0)
   const [digitalQty, setDigitalQty] = useState<number>(150) // default to 150 guests — typical mid-sized Tanzanian wedding count
@@ -37,19 +62,19 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
   // Paper add-on selections
   const [paperPrints, setPaperPrints] = useState(false)
   const [paperQty, setPaperQty] = useState<number>(50)
-  const [format, setFormat] = useState<typeof FORMAT_OPTIONS[number]>('Standard')
+  const [customQty, setCustomQty] = useState(false)
   const [trimShape, setTrimShape] = useState<string>('standard')
-  const [paperType, setPaperType] = useState('Signature')
+  const [paperType, setPaperType] = useState<string>('standard')
+  const [paperFinish, setPaperFinish] = useState<string>('matte')
   const [foilAddon, setFoilAddon] = useState(false)
 
   // Service add-on
   const [doorScan, setDoorScan] = useState(false)
 
-  const [favourited, setFavourited] = useState(false)
+  const [activeView, setActiveView] = useState<GalleryView>('flatlay')
 
-  // Modal state for the two CTAs
+  // Preview modal state — Customise navigates to a dedicated full-page editor
   const [showPreview, setShowPreview] = useState(false)
-  const [showCustomise, setShowCustomise] = useState(false)
 
   const digitalSubtotal = product.digitalUnitPrice * digitalQty
   const paperUnitPrice = Math.round(product.priceNow / PACK_QTY / 10) * 10 // TZS per piece
@@ -58,9 +83,37 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
   const doorScanSubtotal = doorScan ? DOOR_SCAN_SERVICE_PRICE : 0
   const total = digitalSubtotal + paperSubtotal + foilSubtotal + doorScanSubtotal
 
+  const paperTypeLabel = PAPER_TYPES.find((p) => p.id === paperType)?.label ?? 'Standard card'
+  const paperFinishLabel = PAPER_FINISHES.find((f) => f.id === paperFinish)?.label ?? 'Matte lamination'
+
   const sameCategory = PRODUCTS.filter((p) => p.id !== product.id && p.category === product.category)
   const others = PRODUCTS.filter((p) => p.id !== product.id && p.category !== product.category)
   const recommendations = [...sameCategory, ...others].slice(0, 4)
+
+  // Structured full-block preview for invitation-type designs (null for day-of stationery).
+  const invite = resolveProductInvitation(product)
+
+  const cartSummary = [
+    `${digitalQty.toLocaleString('en-US')} digital cards`,
+    paperPrints && `${paperQty.toLocaleString('en-US')} paper prints`,
+    doorScan && 'door-scan check-in',
+  ]
+    .filter(Boolean)
+    .join(' · ')
+
+  const handleAddToCart = () => {
+    addItem({
+      id: product.id,
+      name: product.name,
+      designer: product.designer,
+      treatment: product.treatment,
+      summary: cartSummary,
+      total,
+    })
+    toast.success('Added to cart', {
+      description: `${product.name} — TZS ${total.toLocaleString('en-US')}`,
+    })
+  }
 
   return (
     <div className="bg-[#FAFAF8] text-[#1A1A1A]">
@@ -78,37 +131,33 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
       {/* Main 2-column layout */}
       <div className="px-4 sm:px-6 pt-6 sm:pt-8 pb-12 sm:pb-16">
         <div className="mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-          {/* ─── LEFT: sticky preview ─── */}
+          {/* ─── LEFT: gallery ─── */}
           <div className="lg:sticky lg:top-6">
-            <div className="relative aspect-[3/4] bg-white rounded-md shadow-md overflow-hidden">
-              <InvitationVisual treatment={product.treatment} />
-              <button
-                type="button"
-                onClick={() => setFavourited((v) => !v)}
-                aria-label={favourited ? 'Remove from favourites' : 'Add to favourites'}
-                aria-pressed={favourited}
-                className="absolute right-4 top-4 grid h-10 w-10 place-items-center rounded-full bg-white/95 shadow-sm hover:bg-white transition"
-              >
-                <Heart className={cn('h-4 w-4', favourited ? 'fill-[#7A1F2B] text-[#7A1F2B]' : 'text-[#1A1A1A]')} />
-              </button>
-              <span className="absolute left-4 bottom-4 inline-flex items-center rounded-full bg-white/95 backdrop-blur px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-700">
-                Digital preview
-              </span>
+            {/* Hero — staged scene, sized to the viewport */}
+            <div className="relative h-[clamp(340px,60vh,620px)] overflow-hidden rounded-md shadow-md ring-1 ring-black/5">
+              <MockupScene view={activeView} treatment={product.treatment} imageUrl={product.imageUrl} invite={invite} />
             </div>
+            {/* Thumbnails — each a distinct view */}
             <div className="mt-4 grid grid-cols-5 gap-2">
-              {[0, 1, 2, 3, 4].map((i) => (
-                <button
-                  key={i}
-                  type="button"
-                  aria-label={`View ${i + 1}`}
-                  className={cn(
-                    'relative aspect-[3/4] bg-white rounded-sm overflow-hidden transition',
-                    i === 0 ? 'ring-2 ring-[#1A1A1A]' : 'ring-1 ring-gray-200 hover:ring-gray-400',
-                  )}
-                >
-                  <InvitationVisual treatment={product.treatment} />
-                </button>
-              ))}
+              {GALLERY_VIEWS.map((v) => {
+                const active = activeView === v.id
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => setActiveView(v.id)}
+                    aria-label={`View: ${v.label}`}
+                    aria-pressed={active}
+                    title={v.label}
+                    className={cn(
+                      'relative aspect-[4/3] overflow-hidden rounded-sm transition',
+                      active ? 'ring-2 ring-[#1A1A1A]' : 'ring-1 ring-gray-200 hover:ring-gray-400',
+                    )}
+                  >
+                    <MockupScene view={v.id} treatment={product.treatment} imageUrl={product.imageUrl} />
+                  </button>
+                )
+              })}
             </div>
           </div>
 
@@ -247,77 +296,54 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
               >
                 {paperPrints && (
                   <div className="mt-5 space-y-5 pl-7 border-l-2 border-gray-200">
-                    {/* Paper qty — chip grid (matches digital qty pattern) */}
+                    {/* Paper quantity — dropdown */}
                     <div>
-                      <div className="flex items-baseline justify-between gap-3 mb-2">
-                        <p className="text-[12px] font-bold text-gray-700">Paper quantity</p>
-                        <p className="text-[12px] text-gray-600 tabular-nums">
-                          {paperQty.toLocaleString('en-US')} selected
-                        </p>
+                      <p className="text-[12px] font-bold text-gray-700 mb-1.5">How many?</p>
+                      <div className="relative">
+                        <select
+                          value={customQty ? 'custom' : String(paperQty)}
+                          onChange={(e) => {
+                            const v = e.target.value
+                            if (v === 'custom') {
+                              setCustomQty(true)
+                            } else {
+                              setCustomQty(false)
+                              setPaperQty(Number(v))
+                            }
+                          }}
+                          aria-label="Number of paper prints"
+                          className="h-11 w-full appearance-none rounded-md border border-gray-300 bg-white pl-3.5 pr-10 text-[14px] font-semibold text-gray-900 tabular-nums focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A]"
+                        >
+                          {PAPER_QTY_OPTIONS.map((n) => (
+                            <option key={n} value={n}>
+                              {n.toLocaleString('en-US')} prints
+                            </option>
+                          ))}
+                          <option value="custom">Custom amount…</option>
+                        </select>
+                        <ChevronDown
+                          size={18}
+                          className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-500"
+                          aria-hidden="true"
+                        />
                       </div>
-                      <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Number of paper prints">
-                        {PAPER_QTY_OPTIONS.map((n) => {
-                          const active = paperQty === n
-                          return (
-                            <button
-                              key={n}
-                              type="button"
-                              role="radio"
-                              aria-checked={active}
-                              onClick={() => setPaperQty(n)}
-                              className={cn(
-                                'min-w-[56px] rounded-md border px-3 py-1.5 text-[12px] font-semibold transition tabular-nums',
-                                active
-                                  ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white'
-                                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-500',
-                              )}
-                            >
-                              {n.toLocaleString('en-US')}
-                            </button>
-                          )
-                        })}
-                        <span className="text-[12px] text-gray-500 mx-1" aria-hidden="true">or</span>
+                      {customQty && (
                         <input
                           type="number"
                           min={1}
+                          autoFocus
                           inputMode="numeric"
-                          placeholder="Custom"
+                          placeholder="Enter quantity"
                           aria-label="Enter custom paper quantity"
-                          value={PAPER_QTY_OPTIONS.includes(paperQty) ? '' : paperQty}
+                          value={paperQty}
                           onChange={(e) => {
-                            const v = e.target.value
-                            if (v === '') return
-                            const n = Number(v)
+                            const n = Number(e.target.value)
                             if (!Number.isNaN(n) && n > 0) setPaperQty(n)
                           }}
-                          className="w-24 h-8 rounded-md border border-gray-300 bg-white px-3 text-[12px] font-semibold text-gray-800 tabular-nums focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A]"
+                          className="mt-2 h-10 w-full rounded-md border border-gray-300 bg-white px-3.5 text-[14px] font-semibold text-gray-800 tabular-nums focus:outline-none focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A]"
                         />
-                      </div>
+                      )}
                     </div>
-
-                    {/* Format */}
-                    <ConfigGroup title="Format" value={format} compact>
-                      <div className="flex gap-2 flex-wrap">
-                        {FORMAT_OPTIONS.map((f) => {
-                          const active = format === f
-                          return (
-                            <button
-                              key={f}
-                              type="button"
-                              onClick={() => setFormat(f)}
-                              className={cn(
-                                'min-w-[110px] rounded-md border px-3.5 py-2 text-[13px] font-medium transition',
-                                active
-                                  ? 'border-[#1A1A1A] bg-white text-[#1A1A1A] ring-1 ring-[#1A1A1A]'
-                                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400',
-                              )}
-                            >
-                              {f}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </ConfigGroup>
 
                     {/* Trim shape */}
                     <ConfigGroup title="Trim shape" value={TRIM_SHAPES.find((t) => t.id === trimShape)?.label} compact>
@@ -347,26 +373,35 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
                     </ConfigGroup>
 
                     {/* Paper type */}
-                    <ConfigGroup title="Paper type" value={paperType} compact>
-                      <div className="flex flex-wrap gap-2">
-                        {PAPER_TYPES.map((p) => {
-                          const active = paperType === p
-                          return (
-                            <button
-                              key={p}
-                              type="button"
-                              onClick={() => setPaperType(p)}
-                              className={cn(
-                                'rounded-md border px-3 py-1.5 text-[12px] transition',
-                                active
-                                  ? 'border-[#1A1A1A] bg-white text-[#1A1A1A] ring-1 ring-[#1A1A1A]'
-                                  : 'border-gray-300 bg-white text-gray-700 hover:border-gray-400',
-                              )}
-                            >
-                              {p}
-                            </button>
-                          )
-                        })}
+                    <ConfigGroup title="Paper type" value={paperTypeLabel} compact>
+                      <div className="space-y-2">
+                        {PAPER_TYPES.map((p) => (
+                          <OptionCard
+                            key={p.id}
+                            active={paperType === p.id}
+                            onSelect={() => setPaperType(p.id)}
+                            title={p.label}
+                            meta={p.weight}
+                            description={p.desc}
+                            swatch={<PaperSwatch tone={p.tone} gsm={p.gsm} />}
+                          />
+                        ))}
+                      </div>
+                    </ConfigGroup>
+
+                    {/* Paper finish */}
+                    <ConfigGroup title="Finish" value={paperFinishLabel} compact>
+                      <div className="space-y-2">
+                        {PAPER_FINISHES.map((f) => (
+                          <OptionCard
+                            key={f.id}
+                            active={paperFinish === f.id}
+                            onSelect={() => setPaperFinish(f.id)}
+                            title={f.label}
+                            description={f.desc}
+                            swatch={<FinishSwatch id={f.id} />}
+                          />
+                        ))}
                       </div>
                     </ConfigGroup>
 
@@ -379,9 +414,9 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
                         className="mt-1 h-4 w-4 rounded border-gray-300 text-gray-900 focus:ring-gray-900"
                       />
                       <div className="grow">
-                        <p className="text-[13px] font-bold text-gray-900">Foil &amp; letterpress accents</p>
+                        <p className="text-[13px] font-bold text-gray-900">Gold foil accents</p>
                         <p className="text-[12px] text-gray-600">
-                          Gold, silver, or rose-gold foil pressed onto your design — adds <strong>TZS {FOIL_ADDON_PRICE.toLocaleString('en-US')}</strong> flat to the order.
+                          Shimmering gold foil pressed onto your names and borders — a favourite for Tanzanian wedding cards. Adds <strong>TZS {FOIL_ADDON_PRICE.toLocaleString('en-US')}</strong> flat to the order.
                         </p>
                       </div>
                     </label>
@@ -408,7 +443,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
                   <SummaryRow label={`VIP paper prints (${paperQty})`} value={paperSubtotal} />
                 )}
                 {paperPrints && foilAddon && (
-                  <SummaryRow label="Foil & letterpress accents" value={FOIL_ADDON_PRICE} />
+                  <SummaryRow label="Gold foil accents" value={FOIL_ADDON_PRICE} />
                 )}
                 {doorScan && (
                   <SummaryRow label="Door-scan check-in service" value={DOOR_SCAN_SERVICE_PRICE} />
@@ -429,21 +464,21 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
               )}
             </div>
 
-            {/* Action buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setShowPreview(true)}
-                className="inline-flex items-center justify-center rounded-full border border-[#1A1A1A] bg-white text-[#1A1A1A] px-7 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.1em] hover:bg-gray-50 transition"
+            {/* Action buttons — explore (Customise) then commit (Add to cart) */}
+            <div className="grid grid-cols-2 gap-3">
+              <Link
+                href={customiseHref}
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#1A1A1A] bg-transparent text-[#1A1A1A] px-5 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.1em] hover:bg-gray-50 transition"
               >
-                Preview my invite
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowCustomise(true)}
-                className="inline-flex items-center justify-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.1em]"
-              >
+                <SlidersHorizontal size={16} aria-hidden="true" />
                 Customise
+              </Link>
+              <button
+                type="button"
+                onClick={handleAddToCart}
+                className="inline-flex items-center justify-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-5 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.1em]"
+              >
+                Add to cart
               </button>
             </div>
 
@@ -458,29 +493,62 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
               </div>
             </div>
 
-            {/* Accordion */}
+            {/* Details + collapsible sections */}
             <div className="border-t border-gray-200">
-              <Accordion title="Details" defaultOpen>
-                <p>
-                  {product.name} is a {product.designer} signature design — elegant typography paired with
-                  a customisable colour palette. Sent digitally to every guest by WhatsApp or SMS, with optional
-                  paper prints designed in Bagamoyo for elders, VIPs, and the head table.
-                </p>
-                <dl className="grid grid-cols-[110px_1fr] gap-y-1 mt-3 text-[13px]">
-                  <dt className="font-bold">Designer</dt><dd>{product.designer}</dd>
-                  <dt className="font-bold">Delivery</dt><dd>WhatsApp / SMS / link</dd>
-                  <dt className="font-bold">Languages</dt><dd>Swahili &amp; English (bilingual)</dd>
-                  <dt className="font-bold">RSVP</dt><dd>Built-in, real-time tracking</dd>
-                  {paperPrints && (
-                    <>
-                      <dt className="font-bold">Paper format</dt><dd>{format}</dd>
-                      <dt className="font-bold">Trim</dt><dd>{TRIM_SHAPES.find((t) => t.id === trimShape)?.label}</dd>
-                      <dt className="font-bold">Paper type</dt><dd>{paperType}</dd>
-                      <dt className="font-bold">Paper size</dt><dd>5 × 7 inches</dd>
-                    </>
-                  )}
-                </dl>
+              {/* Details — always shown, no toggle */}
+              <div className="border-b border-gray-200">
+                <p className="py-4 text-[15px] font-medium text-gray-900">Details</p>
+                <div className="pb-5 text-[14px] text-gray-700 space-y-2 leading-relaxed">
+                  <p>
+                    {product.name} is a {product.designer} signature design — elegant typography paired with
+                    a customisable colour palette. Sent digitally to every guest by WhatsApp or SMS, with optional
+                    paper prints designed in Bagamoyo for elders, VIPs, and the head table.
+                  </p>
+                  <dl className="grid grid-cols-[110px_1fr] gap-y-1 mt-3 text-[13px]">
+                    <dt className="font-bold">Designer</dt><dd>{product.designer}</dd>
+                    <dt className="font-bold">Delivery</dt><dd>WhatsApp / SMS / link</dd>
+                    <dt className="font-bold">Languages</dt><dd>Swahili &amp; English (bilingual)</dd>
+                    <dt className="font-bold">RSVP</dt><dd>Built-in, real-time tracking</dd>
+                    {paperPrints && (
+                      <>
+                        <dt className="font-bold">Trim</dt><dd>{TRIM_SHAPES.find((t) => t.id === trimShape)?.label}</dd>
+                        <dt className="font-bold">Paper type</dt><dd>{paperTypeLabel}</dd>
+                        <dt className="font-bold">Finish</dt><dd>{paperFinishLabel}</dd>
+                        <dt className="font-bold">Paper size</dt><dd>5 × 7 inches</dd>
+                      </>
+                    )}
+                  </dl>
+                </div>
+              </div>
+
+              <Accordion title="Design, send & print in one place">
+                <ul className="space-y-3">
+                  <FeatureRow icon={<MessageCircle size={18} />} text="Sent to every guest by WhatsApp or SMS — unlimited shares" />
+                  <FeatureRow icon={<Printer size={18} />} text="Optional paper prints for elders & VIPs, designed in Bagamoyo" />
+                  <FeatureRow icon={<Truck size={18} />} text="Nationwide delivery across Tanzania in 3–5 working days" />
+                  <FeatureRow icon={<Smile size={18} />} text="Backed by free design revisions if your plans change" />
+                </ul>
               </Accordion>
+
+              <Accordion title="Availability">
+                <div className="flex items-center gap-2.5">
+                  <CheckCircle2 size={18} className="shrink-0 text-[#5C6B4D]" aria-hidden="true" />
+                  <span>
+                    Ready to send today
+                    {paperPrints && ' — paper prints dispatched in 3–5 days'}
+                  </span>
+                </div>
+              </Accordion>
+
+              {paperPrints && (
+                <Accordion title="Shipping & delivery">
+                  <p>
+                    Paper prints ship from Bagamoyo in 3–5 working days, anywhere in Tanzania.
+                    Delivery to Dar es Salaam, Arusha, Mwanza, and Zanzibar is included.
+                  </p>
+                </Accordion>
+              )}
+
               <Accordion title="How door-scan check-in works">
                 <p>
                   When you add the check-in service to your order, our host shows up at your venue 30 minutes
@@ -490,14 +558,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
                   Bagamoyo, and Zanzibar.
                 </p>
               </Accordion>
-              {paperPrints && (
-                <Accordion title="Paper, shipping & delivery">
-                  <p>
-                    <strong>{paperType}:</strong> Premium {paperType.toLowerCase()} stock, FSC-certified.
-                    Paper prints ship from Bagamoyo in 3–5 working days anywhere in Tanzania.
-                  </p>
-                </Accordion>
-              )}
+
               <Accordion title="Payment">
                 <p>
                   M-Pesa, Airtel Money, Tigo Pesa, and major bank cards accepted. Pay in full or split into
@@ -543,17 +604,96 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
         onClose={() => setShowPreview(false)}
         onCustomise={() => {
           setShowPreview(false)
-          setShowCustomise(true)
+          router.push(customiseHref)
         }}
         product={product}
       />
+    </div>
+  )
+}
 
-      {/* Customise modal — real form, live preview, send-out CTA */}
-      <CustomiseModal
-        open={showCustomise}
-        onClose={() => setShowCustomise(false)}
-        product={product}
-      />
+function FeatureRow({ icon, text }: { icon: React.ReactNode; text: string }) {
+  return (
+    <li className="flex items-start gap-2.5 text-[14px] text-gray-700">
+      <span className="mt-0.5 shrink-0 text-gray-500" aria-hidden="true">{icon}</span>
+      <span>{text}</span>
+    </li>
+  )
+}
+
+// The card face — attached artwork first, then the structured full-block card
+// (for invitation-type designs), otherwise the legacy CSS treatment.
+function CardFace({ treatment, imageUrl, invite }: { treatment: Treatment; imageUrl?: string; invite?: ResolvedInvitation | null }) {
+  if (imageUrl) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+    )
+  }
+  if (invite) {
+    return <StructuredInvitation content={invite.content} theme={invite.theme} />
+  }
+  return <InvitationVisual treatment={treatment} />
+}
+
+// A single portrait card sitting on the scene surface (drop shadow + thin bevel).
+function CardPlate({
+  treatment,
+  imageUrl,
+  invite,
+  blank = false,
+  className,
+}: {
+  treatment: Treatment
+  imageUrl?: string
+  invite?: ResolvedInvitation | null
+  blank?: boolean
+  className?: string
+}) {
+  return (
+    <div
+      className={cn(
+        'relative aspect-[5/7] overflow-hidden rounded-[3px] bg-white shadow-[0_16px_36px_-16px_rgba(0,0,0,0.5)] ring-1 ring-black/5',
+        className,
+      )}
+    >
+      {!blank && <CardFace treatment={treatment} imageUrl={imageUrl} invite={invite} />}
+    </div>
+  )
+}
+
+// Stages the card in one of several compositions on a soft tabletop surface.
+function MockupScene({ view, treatment, imageUrl, invite }: { view: GalleryView; treatment: Treatment; imageUrl?: string; invite?: ResolvedInvitation | null }) {
+  return (
+    <div className="absolute inset-0 bg-gradient-to-br from-[#F2EDE5] via-[#ECE6DC] to-[#E2DBCF]">
+      {/* soft light from the top-left, like a flat-lay photo */}
+      <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_28%_12%,rgba(255,255,255,0.65),transparent_62%)]" />
+
+      {view === 'flatlay' && (
+        <>
+          <CardPlate treatment={treatment} imageUrl={imageUrl} invite={invite} className="absolute left-[12%] top-1/2 w-[40%] -translate-y-1/2 -rotate-[4deg]" />
+          <CardPlate treatment={treatment} blank className="absolute right-[13%] top-1/2 w-[34%] -translate-y-1/2 rotate-[3deg]" />
+        </>
+      )}
+      {view === 'front' && (
+        <CardPlate treatment={treatment} imageUrl={imageUrl} invite={invite} className="absolute left-1/2 top-1/2 w-[46%] -translate-x-1/2 -translate-y-1/2" />
+      )}
+      {view === 'angled' && (
+        <CardPlate treatment={treatment} imageUrl={imageUrl} invite={invite} className="absolute left-1/2 top-1/2 w-[44%] -translate-x-1/2 -translate-y-1/2 rotate-[7deg]" />
+      )}
+      {view === 'paired' && (
+        <>
+          <CardPlate treatment={treatment} blank className="absolute left-[22%] top-1/2 w-[40%] -translate-y-1/2 -rotate-[7deg]" />
+          <CardPlate treatment={treatment} imageUrl={imageUrl} invite={invite} className="absolute right-[18%] top-1/2 w-[40%] -translate-y-1/2 rotate-[2deg]" />
+        </>
+      )}
+      {view === 'detail' && (
+        <div className="absolute left-1/2 top-1/2 h-[80%] w-[58%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[3px] shadow-[0_16px_36px_-16px_rgba(0,0,0,0.5)] ring-1 ring-black/5">
+          <div className="absolute inset-0 origin-[26%_20%] scale-[2.1]">
+            <CardFace treatment={treatment} imageUrl={imageUrl} invite={invite} />
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -578,6 +718,71 @@ function ConfigGroup({
       {children}
     </div>
   )
+}
+
+function OptionCard({
+  active,
+  onSelect,
+  title,
+  meta,
+  description,
+  swatch,
+}: {
+  active: boolean
+  onSelect: () => void
+  title: string
+  meta?: string
+  description: string
+  swatch: React.ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onSelect}
+      aria-pressed={active}
+      className={cn(
+        'flex w-full items-center gap-2.5 rounded-md border px-2.5 py-2 text-left transition',
+        active
+          ? 'border-[#1A1A1A] bg-white ring-1 ring-[#1A1A1A]'
+          : 'border-gray-300 bg-white hover:border-gray-400',
+      )}
+    >
+      <span aria-hidden="true" className="shrink-0">{swatch}</span>
+      <span className="grow">
+        <span className="flex items-baseline gap-1.5">
+          <span className="text-[12px] font-bold text-gray-900">{title}</span>
+          {meta && <span className="text-[10px] font-medium text-gray-500 tabular-nums">{meta}</span>}
+        </span>
+        <span className="mt-0.5 block text-[11px] leading-snug text-gray-600">{description}</span>
+      </span>
+      {active && <Check size={15} className="shrink-0 text-[#1A1A1A]" aria-hidden="true" />}
+    </button>
+  )
+}
+
+// Stack thickness scales with paper weight so heavier stocks read visibly thicker.
+function PaperSwatch({ tone, gsm }: { tone: string; gsm: number }) {
+  const depth = Math.min(8, Math.max(2, Math.round(gsm / 80)))
+  return (
+    <span className="relative block h-9 w-9">
+      <span className="absolute rounded-sm bg-gray-300" style={{ left: depth, top: depth, right: 0, bottom: 0 }} />
+      <span
+        className={cn('absolute rounded-sm border border-gray-200 bg-gradient-to-br shadow-sm', tone)}
+        style={{ left: 0, top: 0, right: depth, bottom: depth }}
+      />
+    </span>
+  )
+}
+
+function FinishSwatch({ id }: { id: string }) {
+  if (id === 'gloss') {
+    return (
+      <span className="relative block h-9 w-9 overflow-hidden rounded-sm border border-gray-200 bg-gradient-to-br from-gray-100 to-gray-300 shadow-sm">
+        <span className="absolute -inset-y-2 left-1.5 w-2.5 rotate-[18deg] bg-white/80 blur-[1px]" />
+      </span>
+    )
+  }
+  return <span className="block h-9 w-9 rounded-sm border border-gray-200 bg-gradient-to-br from-gray-200 to-gray-300 shadow-sm" />
 }
 
 function AddOnCard({
@@ -661,7 +866,7 @@ function Accordion({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  MODALS — Preview my invite + Customise
+//  MODAL — Preview my invite
 // ─────────────────────────────────────────────────────────────────────────────
 
 function ModalShell({
@@ -799,138 +1004,3 @@ function PreviewModal({
   )
 }
 
-function CustomiseModal({
-  open,
-  onClose,
-  product,
-}: {
-  open: boolean
-  onClose: () => void
-  product: CatalogProduct
-}) {
-  const [names, setNames] = useState('Amani & Neema')
-  const [dateISO, setDateISO] = useState('2026-08-22')
-  const [venue, setVenue] = useState('Bagamoyo, Tanzania')
-  const [message, setMessage] = useState('Together with their families, we invite you to celebrate our wedding.')
-
-  const couple = useMemo(() => {
-    // Convert "2026-08-22" → "22 · 08 · 2026" for the InvitationVisual rendering
-    const date = dateISO ? dateISO.split('-').reverse().join(' · ') : ''
-    return { names: names.replace(/&/g, '  &  '), date, venue }
-  }, [names, dateISO, venue])
-
-  return (
-    <ModalShell open={open} onClose={onClose} ariaLabel="Customise your invite">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-4xl my-8 overflow-hidden">
-        <header className="sticky top-0 bg-white border-b border-gray-200 px-5 sm:px-6 py-4 flex items-center justify-between z-10">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-gray-500">Customise</p>
-            <h2 className="text-[17px] font-bold text-gray-900 mt-0.5">{product.name}</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close customiser"
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
-          >
-            <X size={20} className="text-gray-700" />
-          </button>
-        </header>
-
-        <div className="px-5 sm:px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Live preview */}
-          <div className="md:sticky md:top-20 md:self-start">
-            <div className="relative aspect-[3/4] bg-gray-50 rounded-md shadow-md overflow-hidden ring-1 ring-gray-200">
-              <InvitationVisual treatment={product.treatment} couple={couple} />
-            </div>
-            <p className="mt-2 text-[11px] text-gray-500 text-center">Live preview — updates as you type</p>
-          </div>
-
-          {/* Form */}
-          <form
-            onSubmit={(e) => {
-              e.preventDefault()
-              // No backend yet — close the modal and let the user know it'd send
-              alert(`Your invite is ready! In the real flow we'd save and continue to the send step.\n\nNames: ${names}\nDate: ${dateISO}\nVenue: ${venue}`)
-              onClose()
-            }}
-            className="space-y-4"
-          >
-            <Field label="Couple names" hint="Appears as the main name on the invite">
-              <input
-                type="text"
-                value={names}
-                onChange={(e) => setNames(e.target.value)}
-                required
-                className="h-10 w-full rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:border-gray-500"
-              />
-            </Field>
-
-            <Field label="Wedding date">
-              <input
-                type="date"
-                value={dateISO}
-                onChange={(e) => setDateISO(e.target.value)}
-                required
-                className="h-10 w-full rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:border-gray-500"
-              />
-            </Field>
-
-            <Field label="Venue / city">
-              <input
-                type="text"
-                value={venue}
-                onChange={(e) => setVenue(e.target.value)}
-                required
-                className="h-10 w-full rounded-md border border-gray-300 px-3 text-sm focus:outline-none focus:border-gray-500"
-              />
-            </Field>
-
-            <Field label="Personal message" hint="Optional — shown on the invite or RSVP page">
-              <textarea
-                value={message}
-                onChange={(e) => setMessage(e.target.value)}
-                rows={3}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm leading-relaxed resize-none focus:outline-none focus:border-gray-500"
-              />
-            </Field>
-
-            <div className="flex flex-col gap-2 pt-3 border-t border-gray-200">
-              <button
-                type="submit"
-                className="inline-flex items-center justify-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] font-extrabold uppercase tracking-[0.1em]"
-              >
-                Continue to send
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-[13px] font-semibold text-gray-700 underline underline-offset-4 hover:text-gray-900"
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    </ModalShell>
-  )
-}
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string
-  hint?: string
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <label className="block text-[13px] font-bold text-gray-900 mb-1">{label}</label>
-      {hint && <p className="text-[11px] text-gray-500 mb-1.5">{hint}</p>}
-      {children}
-    </div>
-  )
-}

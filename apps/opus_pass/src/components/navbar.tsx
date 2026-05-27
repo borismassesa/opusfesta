@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { UserButton, useUser } from '@clerk/nextjs'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
+import CartMenu from '@/components/CartMenu'
 import {
   Menu,
   X,
@@ -22,6 +23,8 @@ import {
   Monitor,
   Image,
   Share2,
+  FileText,
+  Settings,
 } from 'lucide-react'
 
 type NavLink = { label: string; href?: string; Icon?: LucideIcon; subLinks?: string[] }
@@ -195,8 +198,11 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Right: auth + hamburger */}
-        <div className="flex shrink-0 items-center gap-2 font-semibold text-sm sm:gap-3 lg:text-[15px]">
+        {/* Right: cart + auth + hamburger */}
+        <div className="flex shrink-0 items-center gap-1 font-semibold text-sm sm:gap-2 lg:text-[15px]">
+          {/* Cart — available signed in or out so guests can build an order pre-signup */}
+          <CartMenu />
+
           {isLoaded && !isSignedIn ? (
             <>
               <Link
@@ -209,18 +215,25 @@ export default function Navbar() {
                 href="/sign-up"
                 className="shrink-0 rounded-full bg-(--accent) px-3.5 py-2 text-xs font-bold whitespace-nowrap text-(--on-accent) transition-colors hover:bg-(--accent-hover) sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]"
               >
-                Sign up
+                Create account
               </Link>
             </>
           ) : isLoaded ? (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-2.5">
               <Link
                 href="/my/dashboard"
                 className="hidden lg:flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-[#1A1A1A] px-4 py-2.5 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap"
               >
                 My Wedding
               </Link>
-              <UserButton appearance={{ elements: { avatarBox: 'w-9 h-9' } }} />
+              <UserButton appearance={{ elements: { avatarBox: 'w-9 h-9' } }}>
+                <UserButton.MenuItems>
+                  <UserButton.Link label="My Wedding" labelIcon={<Heart size={15} />} href="/my/dashboard" />
+                  <UserButton.Link label="My Invitations" labelIcon={<FileText size={15} />} href="/my/dashboard/invitations" />
+                  <UserButton.Link label="Guests & RSVPs" labelIcon={<Users size={15} />} href="/my/dashboard/rsvps" />
+                  <UserButton.Link label="Settings" labelIcon={<Settings size={15} />} href="/my/dashboard/settings" />
+                </UserButton.MenuItems>
+              </UserButton>
             </div>
           ) : null}
           <button
@@ -395,7 +408,7 @@ export default function Navbar() {
                     onClick={() => setMobileOpen(false)}
                     className="w-full text-center bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) py-3 rounded-full font-bold text-sm transition-colors"
                   >
-                    Sign up, it&apos;s free
+                    Create account — it&apos;s free
                   </Link>
                 </>
               ) : isLoaded ? (

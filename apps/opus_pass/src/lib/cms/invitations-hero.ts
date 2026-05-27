@@ -13,6 +13,10 @@ export type InvitationsHeroContent = {
   /** When set, replaces the built-in flat-lay arrangement on the right. */
   right_image_url: string
   right_image_alt: string
+  /** How the image fills the banner area: 'cover' crops to fill, 'contain' fits the whole image. */
+  right_image_fit: 'cover' | 'contain'
+  /** CSS object-position focal point (e.g. 'center', 'left top') — which part stays visible when cropped. */
+  right_image_position: string
 }
 
 export const INVITATIONS_HERO_FALLBACK: InvitationsHeroContent = {
@@ -27,6 +31,8 @@ export const INVITATIONS_HERO_FALLBACK: InvitationsHeroContent = {
   background_color: '#FAE6E9',
   right_image_url: '',
   right_image_alt: '',
+  right_image_fit: 'cover',
+  right_image_position: 'center',
 }
 
 export async function loadInvitationsHeroContent(): Promise<InvitationsHeroContent> {

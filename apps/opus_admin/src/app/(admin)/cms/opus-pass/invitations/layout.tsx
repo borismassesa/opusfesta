@@ -13,6 +13,7 @@ import {
   HelpCircle,
   Heart,
   LayoutPanelTop,
+  Mail,
   Megaphone,
   Save,
   Send,
@@ -44,6 +45,14 @@ const sections: Section[] = [
     href: '/cms/opus-pass/invitations/hero',
     status: 'live',
     description: 'Top banner with the lead headline, description and primary/secondary CTAs.',
+  },
+  {
+    key: 'products',
+    label: 'Products / Cards',
+    icon: Mail,
+    href: '/cms/opus-pass/invitations/products',
+    status: 'live',
+    description: 'Invitation card catalog — artwork, prices, designer and details per card.',
   },
   {
     key: 'categories',

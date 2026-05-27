@@ -41,8 +41,9 @@
     {
       "name": "opus_pass",
       "runtimeExecutable": "npx",
-      "runtimeArgs": ["next", "dev", "--port", "3008"],
+      "runtimeArgs": ["next", "dev"],
       "port": 3008,
+      "autoPort": true,
       "cwd": "apps/opus_pass"
     }
   ]

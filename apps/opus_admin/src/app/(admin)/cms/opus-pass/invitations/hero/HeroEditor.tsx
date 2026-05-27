@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { OpusPassInvitationsHeroContent } from '@/lib/cms/opus-pass-invitations-hero'
 import { cn } from '@/lib/utils'
@@ -39,6 +39,101 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
       <legend className="px-1 text-[11px] font-bold uppercase tracking-wider text-gray-500">{label}</legend>
       {children}
     </fieldset>
+  )
+}
+
+function FitToggle({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(
+        'flex-1 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors',
+        active
+          ? 'border-[#C9A0DC] bg-[#C9A0DC]/15 text-gray-900'
+          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300',
+      )}
+    >
+      {label}
+    </button>
+  )
+}
+
+function parseObjectPosition(value: string): { x: number; y: number } {
+  if (!value || value === 'center') return { x: 50, y: 50 }
+  const pct = value.match(/(-?\d+(?:\.\d+)?)%\s+(-?\d+(?:\.\d+)?)%/)
+  if (pct) return { x: Number(pct[1]), y: Number(pct[2]) }
+  let x = 50
+  let y = 50
+  for (const token of value.split(/\s+/)) {
+    if (token === 'left') x = 0
+    else if (token === 'right') x = 100
+    else if (token === 'top') y = 0
+    else if (token === 'bottom') y = 100
+  }
+  return { x, y }
+}
+
+function FocalPointPicker({
+  src,
+  fit,
+  value,
+  onChange,
+}: {
+  src: string
+  fit: 'cover' | 'contain'
+  value: string
+  onChange: (v: string) => void
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const [dragging, setDragging] = useState(false)
+  const { x, y } = parseObjectPosition(value)
+
+  const apply = (clientX: number, clientY: number) => {
+    const el = ref.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const px = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100))
+    const py = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100))
+    onChange(`${Math.round(px)}% ${Math.round(py)}%`)
+  }
+
+  return (
+    <div className="space-y-2">
+      <div
+        ref={ref}
+        onPointerDown={(e) => {
+          e.currentTarget.setPointerCapture(e.pointerId)
+          setDragging(true)
+          apply(e.clientX, e.clientY)
+        }}
+        onPointerMove={(e) => {
+          if (dragging) apply(e.clientX, e.clientY)
+        }}
+        onPointerUp={(e) => {
+          setDragging(false)
+          e.currentTarget.releasePointerCapture(e.pointerId)
+        }}
+        className="relative w-full max-w-sm aspect-[6/5] overflow-hidden rounded-lg border border-gray-200 bg-gray-50 cursor-crosshair select-none touch-none"
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={src}
+          alt=""
+          draggable={false}
+          className="absolute inset-0 h-full w-full pointer-events-none"
+          style={{ objectFit: fit, objectPosition: `${x}% ${y}%` }}
+        />
+        <div
+          className="absolute h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#C9A0DC]/40 ring-2 ring-[#C9A0DC] shadow pointer-events-none"
+          style={{ left: `${x}%`, top: `${y}%` }}
+        />
+      </div>
+      <p className="text-[11px] text-gray-400">
+        Drag the dot to choose what stays in view when the banner crops the image.
+      </p>
+    </div>
   )
 }
 
@@ -242,6 +337,35 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
               className={inputCls}
             />
           </Field>
+
+          {draft.right_image_url && (
+            <>
+              <Field label="Image fit" hint="How the image fills the banner">
+                <div className="flex gap-2">
+                  <FitToggle
+                    active={draft.right_image_fit !== 'contain'}
+                    onClick={() => set('right_image_fit', 'cover')}
+                    label="Fill (crop)"
+                  />
+                  <FitToggle
+                    active={draft.right_image_fit === 'contain'}
+                    onClick={() => set('right_image_fit', 'contain')}
+                    label="Fit whole image"
+                  />
+                </div>
+              </Field>
+              {draft.right_image_fit !== 'contain' && (
+                <Field label="Focal point" hint="Click or drag on the image">
+                  <FocalPointPicker
+                    src={resolveOpusPassAssetUrl(draft.right_image_url)}
+                    fit={draft.right_image_fit || 'cover'}
+                    value={draft.right_image_position || 'center'}
+                    onChange={(v) => set('right_image_position', v)}
+                  />
+                </Field>
+              )}
+            </>
+          )}
         </FieldGroup>
       </div>
 
@@ -292,7 +416,11 @@ function HeroPreview({ content }: { content: OpusPassInvitationsHeroContent }) {
             <img
               src={resolveOpusPassAssetUrl(content.right_image_url)}
               alt={content.right_image_alt}
-              className="absolute inset-0 w-full h-full object-cover"
+              className="absolute inset-0 w-full h-full"
+              style={{
+                objectFit: content.right_image_fit || 'cover',
+                objectPosition: content.right_image_position || 'center',
+              }}
             />
           ) : (
             <div className="absolute inset-0 flex items-center justify-center text-[9px] uppercase tracking-wider text-gray-500 text-center px-2">
