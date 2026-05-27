@@ -1,17 +1,23 @@
-import { SignIn } from '@clerk/nextjs'
+import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
 
-export const metadata = { title: 'Log in — OpusPass' }
+export const metadata = { title: 'Accounts coming soon — OpusPass' }
 
+// Clerk auth temporarily removed — placeholder until sign-in is re-introduced.
 export default function SignInPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#F3E9FA] via-[#FBF7F2] to-white px-4 py-12">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#F3E9FA] via-[#FBF7F2] to-white px-4 py-12 text-center">
       <Logo className="mb-6 text-3xl" />
-      <SignIn
-        appearance={{ elements: { formButtonPrimary: 'bg-[#C9A0DC] hover:bg-[#b97fd0] text-[#1A1A1A]' } }}
-        signUpUrl="/sign-up"
-        fallbackRedirectUrl="/my/dashboard"
-      />
+      <h1 className="text-xl font-bold text-[#1A1A1A]">Accounts are coming soon</h1>
+      <p className="mt-2 max-w-sm text-sm text-[#1A1A1A]/60">
+        Sign-in isn&apos;t available just yet. You can browse and customise invitations without an account.
+      </p>
+      <Link
+        href="/invitations"
+        className="mt-6 rounded-full bg-(--accent) px-6 py-3 text-sm font-bold text-(--on-accent) transition-colors hover:bg-(--accent-hover)"
+      >
+        Browse invitations
+      </Link>
     </div>
   )
 }

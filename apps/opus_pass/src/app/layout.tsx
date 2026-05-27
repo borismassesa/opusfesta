@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
-import { ClerkProvider } from '@clerk/nextjs'
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
 import ToastProvider from '@/components/providers/ToastProvider'
 import { CartProvider } from '@/components/providers/CartProvider'
@@ -21,15 +20,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
-      <html lang="en" className="bg-white">
-        <body className="bg-white">
-          <CartProvider>
-            <SmoothScrollProvider>{children}</SmoothScrollProvider>
-          </CartProvider>
-          <ToastProvider />
-        </body>
-      </html>
-    </ClerkProvider>
+    <html lang="en" className="bg-white">
+      <body className="bg-white">
+        <CartProvider>
+          <SmoothScrollProvider>{children}</SmoothScrollProvider>
+        </CartProvider>
+        <ToastProvider />
+      </body>
+    </html>
   )
 }
