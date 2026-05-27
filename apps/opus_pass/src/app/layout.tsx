@@ -20,7 +20,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <ClerkProvider>
+    <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
       <html lang="en" className="bg-white">
         <body className="bg-white">
           <SmoothScrollProvider>{children}</SmoothScrollProvider>
