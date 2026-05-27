@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
-import DashboardShell from '@/components/dashboard/DashboardShell'
-import { getCoupleProfile, coupleDisplayName } from '@/lib/dashboard/queries'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
-export default async function MyLayout({ children }: { children: ReactNode }) {
-  const profile = await getCoupleProfile()
-  return <DashboardShell coupleName={coupleDisplayName(profile)}>{children}</DashboardShell>
+// Couple dashboard is temporarily disabled while Clerk auth is removed.
+// Redirect every /my route home until authentication is re-introduced.
+export default function MyLayout({ children: _children }: { children: ReactNode }) {
+  redirect('/')
 }

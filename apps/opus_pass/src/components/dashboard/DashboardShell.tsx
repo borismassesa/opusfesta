@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { UserButton } from '@clerk/nextjs'
 import {
   LayoutDashboard,
   Users,
@@ -82,7 +81,7 @@ export default function DashboardShell({
             <ExternalLink className="h-4 w-4" /> Browse designs
           </Link>
           <div className="flex items-center gap-3 px-3 pt-1">
-            <UserButton appearance={{ elements: { avatarBox: 'w-8 h-8' } }} />
+            <span className="h-8 w-8 rounded-full bg-black/[0.06]" aria-hidden="true" />
             <span className="text-sm text-[#1A1A1A]/60">Account</span>
           </div>
         </div>
@@ -99,7 +98,7 @@ export default function DashboardShell({
           <Menu className="h-5 w-5" />
         </button>
         <Logo className="text-xl" />
-        <UserButton appearance={{ elements: { avatarBox: 'w-8 h-8' } }} />
+        <span className="h-8 w-8 rounded-full bg-black/[0.06]" aria-hidden="true" />
       </header>
 
       {/* Drawer — mobile */}
