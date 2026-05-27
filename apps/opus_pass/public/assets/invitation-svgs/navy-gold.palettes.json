@@ -1,0 +1,46 @@
+{
+  "treatment": "navy-gold",
+  "swatches": ["#1E2D54", "#E8D9A7", "#F5EFE3", "#C8A35C"],
+  "palettes": [
+    {
+      "label": "Navy",
+      "swatch": "#1E2D54",
+      "background": "#1E2D54",
+      "surface": "#1E2D54",
+      "accent": "#E8D9A7",
+      "textPrimary": "#F5EFE3",
+      "textSecondary": "#E8D9A7",
+      "muted": "rgba(232,217,167,0.7)"
+    },
+    {
+      "label": "Champagne",
+      "swatch": "#E8D9A7",
+      "background": "#FBF5E8",
+      "surface": "#FBF5E8",
+      "accent": "#C8A35C",
+      "textPrimary": "#1E2D54",
+      "textSecondary": "#2E4080",
+      "muted": "rgba(30,45,84,0.6)"
+    },
+    {
+      "label": "Ivory",
+      "swatch": "#F5EFE3",
+      "background": "#F5EFE3",
+      "surface": "#F5EFE3",
+      "accent": "#1E2D54",
+      "textPrimary": "#1E2D54",
+      "textSecondary": "#2E4080",
+      "muted": "rgba(30,45,84,0.55)"
+    },
+    {
+      "label": "Deep Gold",
+      "swatch": "#C8A35C",
+      "background": "#1A1208",
+      "surface": "#1A1208",
+      "accent": "#C8A35C",
+      "textPrimary": "#FBF5E8",
+      "textSecondary": "#C8A35C",
+      "muted": "rgba(200,163,92,0.7)"
+    }
+  ]
+}

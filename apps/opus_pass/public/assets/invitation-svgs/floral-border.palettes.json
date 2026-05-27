@@ -1,0 +1,56 @@
+{
+  "treatment": "floral-border",
+  "swatches": ["#A6B89A", "#F5DCE2", "#FBF7F2", "#1A1A1A", "#7A1F2B"],
+  "palettes": [
+    {
+      "label": "Sage",
+      "swatch": "#A6B89A",
+      "background": "#FBF7F2",
+      "surface": "#FBF7F2",
+      "accent": "#A6B89A",
+      "textPrimary": "#1A1A1A",
+      "textSecondary": "#5C6B4D",
+      "muted": "#7A8A6E"
+    },
+    {
+      "label": "Blush",
+      "swatch": "#F5DCE2",
+      "background": "#FDF5F7",
+      "surface": "#FDF5F7",
+      "accent": "#F5DCE2",
+      "textPrimary": "#1A1A1A",
+      "textSecondary": "#A84F66",
+      "muted": "#C07080"
+    },
+    {
+      "label": "Ivory",
+      "swatch": "#FBF7F2",
+      "background": "#FBF7F2",
+      "surface": "#FBF7F2",
+      "accent": "#D8CFC4",
+      "textPrimary": "#1A1A1A",
+      "textSecondary": "#6B6B6B",
+      "muted": "#8D8D8D"
+    },
+    {
+      "label": "Onyx",
+      "swatch": "#1A1A1A",
+      "background": "#F0EEE9",
+      "surface": "#F0EEE9",
+      "accent": "#1A1A1A",
+      "textPrimary": "#1A1A1A",
+      "textSecondary": "#3A3A3A",
+      "muted": "#6B6B6B"
+    },
+    {
+      "label": "Crimson",
+      "swatch": "#7A1F2B",
+      "background": "#FBF2F0",
+      "surface": "#FBF2F0",
+      "accent": "#7A1F2B",
+      "textPrimary": "#1A1A1A",
+      "textSecondary": "#7A1F2B",
+      "muted": "rgba(122,31,43,0.65)"
+    }
+  ]
+}
