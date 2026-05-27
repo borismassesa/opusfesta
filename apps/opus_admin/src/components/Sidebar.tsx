@@ -25,10 +25,10 @@ import {
   HelpCircle,
   History,
   Home,
-  Inbox,
   Landmark,
   LayoutDashboard,
   Lightbulb,
+  ListTodo,
   MessageSquare,
   Newspaper,
   PanelLeftClose,
@@ -88,8 +88,8 @@ type NavSection = {
 
 const topItems: NavItem[] = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/" },
-  { icon: Inbox, label: "Inbox", href: "/inbox", badge: "12" },
   { icon: Clock, label: "My time clock", href: "/me/timeclock" },
+  { icon: FileText, label: "My reports", href: "/me/reports" },
 ];
 
 const sections: NavSection[] = [
@@ -193,7 +193,11 @@ const sections: NavSection[] = [
     requiredPermission: "workforce.read",
     items: [
       { icon: UserCog, label: "Employees", href: "/workforce/employees", requiredPermission: "workforce.read" },
+      { icon: ListTodo, label: "Tasks", href: "/workforce/tasks", requiredPermission: "workforce.read" },
       { icon: ClipboardList, label: "Schedule", href: "/workforce/schedule", requiredPermission: "workforce.read" },
+      { icon: Newspaper, label: "Reports", href: "/workforce/reports", requiredPermission: "workforce.read" },
+      { icon: TrendingUp, label: "Performance", href: "/workforce/performance", requiredPermission: "workforce.read" },
+      { icon: FileText, label: "Report Templates", href: "/workforce/report-templates", requiredPermission: "workforce.write" },
       { icon: Plane, label: "Leave & Attendance", href: "/workforce/leave", requiredPermission: "workforce.read" },
       { icon: Clock, label: "Timesheets", href: "/workforce/timesheets", requiredPermission: "workforce.read" },
       { icon: Shield, label: "Roles", href: "/workforce/roles", requiredPermission: "workforce.write" },

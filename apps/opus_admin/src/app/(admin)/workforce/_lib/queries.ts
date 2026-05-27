@@ -7,11 +7,25 @@ import 'server-only'
 import { clerkClient } from '@clerk/nextjs/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import {
+  parseSections,
+  type ReportCadence,
+  type ReportContent,
+  type ReportStatus,
+  type ReportSubmission,
+  type ReportTemplate,
+} from './report-schema'
 import type {
+  AssignedTask,
   Candidate,
   CurrentlyClockedEmployee,
   Department,
   Employee,
+  TaskAssignment,
+  TaskCadence,
+  TaskCategory,
+  TaskStatus,
+  TaskTargetType,
   EmployeeStatus,
   EmploymentType,
   Job,
@@ -839,6 +853,351 @@ export async function getCurrentlyClockedEmployees(): Promise<CurrentlyClockedEm
     }),
   )
   return out.sort((a, b) => a.sinceIso.localeCompare(b.sinceIso))
+}
+
+// --- Task assignments ---
+
+type AssignmentRow = {
+  id: string
+  title: string
+  description: string | null
+  category: TaskCategory
+  target_type: TaskTargetType
+  target_employee_id: string | null
+  target_department: Department | null
+  cadence: TaskCadence
+  start_date: string
+  end_date: string | null
+  is_active: boolean
+  created_at: string
+  target_employee: { full_name: string } | null
+  assigned_by_employee: { full_name: string } | null
+}
+
+// Admin tracking list. Optionally filter to one department (a manager's
+// own department, or an admin narrowing the view). Completion rollups are
+// fetched in a second query and merged so we don't N+1 per assignment.
+export async function getTaskAssignments(filters?: {
+  department?: string | null
+}): Promise<TaskAssignment[]> {
+  const supabase = createSupabaseAdminClient()
+  let query = supabase
+    .from('workforce_task_assignments')
+    .select(
+      'id, title, description, category, target_type, target_employee_id, ' +
+        'target_department, cadence, start_date, end_date, is_active, created_at, ' +
+        'target_employee:workforce_employees!workforce_task_assignments_target_employee_id_fkey(full_name), ' +
+        'assigned_by_employee:workforce_employees!workforce_task_assignments_assigned_by_fkey(full_name)',
+    )
+    .order('is_active', { ascending: false })
+    .order('created_at', { ascending: false })
+    .limit(300)
+
+  if (filters?.department) query = query.eq('target_department', filters.department)
+
+  const { data, error } = await query.returns<AssignmentRow[]>()
+  if (error) throw new Error(`[workforce] getTaskAssignments: ${error.message}`)
+
+  const rows = data ?? []
+  const ids = rows.map((r) => r.id)
+  const stats = await getAssignmentStats(supabase, ids)
+
+  return rows.map((r) => {
+    const s = stats.get(r.id) ?? { total: 0, done: 0 }
+    return {
+      id: r.id,
+      title: r.title,
+      description: r.description,
+      category: r.category,
+      targetType: r.target_type,
+      targetEmployeeId: r.target_employee_id,
+      targetEmployeeName: r.target_employee?.full_name ?? null,
+      targetDepartment: r.target_department,
+      cadence: r.cadence,
+      startDate: r.start_date,
+      endDate: r.end_date,
+      isActive: r.is_active,
+      assignedByName: r.assigned_by_employee?.full_name ?? null,
+      createdAt: r.created_at,
+      totalTasks: s.total,
+      doneTasks: s.done,
+    }
+  })
+}
+
+async function getAssignmentStats(
+  supabase: SupabaseClient,
+  assignmentIds: string[],
+): Promise<Map<string, { total: number; done: number }>> {
+  const out = new Map<string, { total: number; done: number }>()
+  if (assignmentIds.length === 0) return out
+  const { data, error } = await supabase
+    .from('workforce_tasks')
+    .select('assignment_id, status')
+    .in('assignment_id', assignmentIds)
+    .returns<Array<{ assignment_id: string; status: TaskStatus }>>()
+  if (error) throw new Error(`[workforce] getAssignmentStats: ${error.message}`)
+  for (const row of data ?? []) {
+    const cur = out.get(row.assignment_id) ?? { total: 0, done: 0 }
+    cur.total += 1
+    if (row.status === 'Done') cur.done += 1
+    out.set(row.assignment_id, cur)
+  }
+  return out
+}
+
+// Per-employee instances for the My tasks page.
+type AssignedTaskRow = {
+  id: string
+  title: string
+  description: string | null
+  category: TaskCategory
+  cadence: TaskCadence
+  status: TaskStatus
+  due_date: string | null
+  occurrence_date: string
+  completed_at: string | null
+  created_at: string
+}
+
+export async function getAssignedTasksForEmployee(
+  employeeId: string,
+): Promise<AssignedTask[]> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_tasks')
+    .select(
+      'id, title, description, category, cadence, status, due_date, occurrence_date, completed_at, created_at',
+    )
+    .eq('employee_id', employeeId)
+    .order('due_date', { ascending: true, nullsFirst: false })
+    .limit(300)
+    .returns<AssignedTaskRow[]>()
+  if (error) throw new Error(`[workforce] getAssignedTasksForEmployee: ${error.message}`)
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    title: r.title,
+    description: r.description,
+    category: r.category,
+    cadence: r.cadence,
+    status: r.status,
+    dueDate: r.due_date,
+    occurrenceDate: r.occurrence_date,
+    completedAt: r.completed_at,
+    createdAt: r.created_at,
+  }))
+}
+
+// --- Report templates + submissions ---
+
+type ReportTemplateRow = {
+  id: string
+  slug: string
+  name: string
+  description: string | null
+  cadence: ReportCadence
+  departments: string[] | null
+  sections: unknown
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+function mapTemplate(r: ReportTemplateRow): ReportTemplate {
+  return {
+    id: r.id,
+    slug: r.slug,
+    name: r.name,
+    description: r.description,
+    cadence: r.cadence,
+    departments: r.departments ?? [],
+    sections: parseSections(r.sections),
+    isActive: r.is_active,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }
+}
+
+const TEMPLATE_COLUMNS =
+  'id, slug, name, description, cadence, departments, sections, is_active, created_at, updated_at'
+
+export async function getReportTemplates(opts?: {
+  activeOnly?: boolean
+}): Promise<ReportTemplate[]> {
+  const supabase = createSupabaseAdminClient()
+  let query = supabase
+    .from('report_templates')
+    .select(TEMPLATE_COLUMNS)
+    .order('name', { ascending: true })
+  if (opts?.activeOnly) query = query.eq('is_active', true)
+  const { data, error } = await query.returns<ReportTemplateRow[]>()
+  if (error) throw new Error(`[workforce] getReportTemplates: ${error.message}`)
+  return (data ?? []).map(mapTemplate)
+}
+
+export async function getReportTemplateById(id: string): Promise<ReportTemplate | null> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('report_templates')
+    .select(TEMPLATE_COLUMNS)
+    .eq('id', id)
+    .maybeSingle<ReportTemplateRow>()
+  if (error) throw new Error(`[workforce] getReportTemplateById: ${error.message}`)
+  return data ? mapTemplate(data) : null
+}
+
+type ReportSubmissionRow = {
+  id: string
+  template_id: string | null
+  template_snapshot: unknown
+  employee_id: string
+  report_date: string
+  period_end: string | null
+  status: ReportStatus
+  content: ReportContent | null
+  prepared_by_name: string | null
+  prepared_by_role: string | null
+  submitted_at: string | null
+  created_at: string
+  updated_at: string
+  workforce_employees: {
+    full_name: string
+    employee_code: string
+    department: string
+    avatar_color: string
+    avatar_url: string | null
+  } | null
+  report_templates: { name: string; slug: string; sections: unknown } | null
+}
+
+function mapSubmission(r: ReportSubmissionRow): ReportSubmission {
+  const snap =
+    r.template_snapshot && typeof r.template_snapshot === 'object'
+      ? (r.template_snapshot as Record<string, unknown>)
+      : {}
+  // Prefer the frozen snapshot so the report renders as it was written;
+  // fall back to the live template (older rows / drafts).
+  const sections =
+    parseSections(snap.sections).length > 0
+      ? parseSections(snap.sections)
+      : parseSections(r.report_templates?.sections)
+  const e = r.workforce_employees
+  return {
+    id: r.id,
+    templateId: r.template_id,
+    templateSlug:
+      typeof snap.slug === 'string' ? snap.slug : r.report_templates?.slug ?? '',
+    templateName:
+      typeof snap.name === 'string' ? snap.name : r.report_templates?.name ?? 'Report',
+    sections,
+    employeeId: r.employee_id,
+    employeeName: e?.full_name ?? 'Unknown',
+    employeeCode: e?.employee_code ?? '',
+    department: e?.department ?? '',
+    avatarColor: e?.avatar_color ?? '#F0DFF6',
+    avatarUrl: e?.avatar_url ?? null,
+    reportDate: r.report_date,
+    periodEnd: r.period_end,
+    status: r.status,
+    content: r.content ?? {},
+    preparedByName: r.prepared_by_name,
+    preparedByRole: r.prepared_by_role,
+    submittedAt: r.submitted_at,
+    createdAt: r.created_at,
+    updatedAt: r.updated_at,
+  }
+}
+
+const SUBMISSION_COLUMNS =
+  'id, template_id, template_snapshot, employee_id, report_date, period_end, status, ' +
+  'content, prepared_by_name, prepared_by_role, submitted_at, created_at, updated_at, ' +
+  'workforce_employees!inner(full_name, employee_code, department, avatar_color, avatar_url), ' +
+  'report_templates(name, slug, sections)'
+
+// One employee's own reports (any status) for the My reports page.
+export async function getReportsForEmployee(employeeId: string): Promise<ReportSubmission[]> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_reports')
+    .select(SUBMISSION_COLUMNS)
+    .eq('employee_id', employeeId)
+    .order('report_date', { ascending: false })
+    .limit(200)
+    .returns<ReportSubmissionRow[]>()
+  if (error) throw new Error(`[workforce] getReportsForEmployee: ${error.message}`)
+  return (data ?? []).map(mapSubmission)
+}
+
+// Admin tracking. Only submitted reports by default; filters narrow it.
+export async function getReports(filters?: {
+  templateId?: string | null
+  employeeId?: string | null
+  date?: string | null
+  status?: ReportStatus | null
+}): Promise<ReportSubmission[]> {
+  const supabase = createSupabaseAdminClient()
+  let query = supabase
+    .from('workforce_reports')
+    .select(SUBMISSION_COLUMNS)
+    .order('report_date', { ascending: false })
+    .limit(500)
+  query = query.eq('status', filters?.status ?? 'submitted')
+  if (filters?.templateId) query = query.eq('template_id', filters.templateId)
+  if (filters?.employeeId) query = query.eq('employee_id', filters.employeeId)
+  if (filters?.date) query = query.eq('report_date', filters.date)
+  const { data, error } = await query.returns<ReportSubmissionRow[]>()
+  if (error) throw new Error(`[workforce] getReports: ${error.message}`)
+  return (data ?? []).map(mapSubmission)
+}
+
+// Per-employee counts for the performance overview. Both keyed by
+// employee_id. Reports counts only submitted ones in the window; tasks
+// count all instances due in the window plus how many are Done.
+export async function getReportCountsByEmployee(
+  sinceDate: string,
+): Promise<Map<string, number>> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_reports')
+    .select('employee_id')
+    .eq('status', 'submitted')
+    .gte('report_date', sinceDate)
+    .returns<Array<{ employee_id: string }>>()
+  if (error) throw new Error(`[workforce] getReportCountsByEmployee: ${error.message}`)
+  const m = new Map<string, number>()
+  for (const r of data ?? []) m.set(r.employee_id, (m.get(r.employee_id) ?? 0) + 1)
+  return m
+}
+
+export async function getTaskCountsByEmployee(
+  sinceDate: string,
+): Promise<Map<string, { total: number; done: number }>> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_tasks')
+    .select('employee_id, status, due_date')
+    .gte('due_date', sinceDate)
+    .returns<Array<{ employee_id: string; status: string }>>()
+  if (error) throw new Error(`[workforce] getTaskCountsByEmployee: ${error.message}`)
+  const m = new Map<string, { total: number; done: number }>()
+  for (const r of data ?? []) {
+    const cur = m.get(r.employee_id) ?? { total: 0, done: 0 }
+    cur.total += 1
+    if (r.status === 'Done') cur.done += 1
+    m.set(r.employee_id, cur)
+  }
+  return m
+}
+
+export async function getReportById(id: string): Promise<ReportSubmission | null> {
+  const supabase = createSupabaseAdminClient()
+  const { data, error } = await supabase
+    .from('workforce_reports')
+    .select(SUBMISSION_COLUMNS)
+    .eq('id', id)
+    .maybeSingle<ReportSubmissionRow>()
+  if (error) throw new Error(`[workforce] getReportById: ${error.message}`)
+  return data ? mapSubmission(data) : null
 }
 
 // summarizePunchesByDay (pure utility) lives in `time-summary.ts` so
