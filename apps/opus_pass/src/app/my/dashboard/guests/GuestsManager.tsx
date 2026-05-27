@@ -146,11 +146,13 @@ export default function GuestsManager({
     const url = rsvpUrl(window.location.origin, g.public_token)
     try {
       await navigator.clipboard.writeText(url)
-      toast.success('RSVP link copied')
-      await recordSend(g.id, 'link')
     } catch {
       toast.error('Could not copy link')
+      return
     }
+    toast.success('RSVP link copied')
+    // Tracking is best-effort — a failure here shouldn't look like a copy failure.
+    recordSend(g.id, 'link').catch(() => {})
   }
 
   function runImport() {

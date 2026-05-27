@@ -62,8 +62,14 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
     .single<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
 
   if (error || !inserted) {
-    // Email collision with a pre-existing row: adopt that row.
-    if (email) {
+    // Only adopt a pre-existing row on a genuine email unique-violation (23505).
+    // Clerk verifies the email before sign-in, so this safely links a Clerk
+    // identity to a user provisioned earlier (e.g. by the marketplace app).
+    // Other insert errors must surface, not silently rebind an unrelated row.
+    const isEmailConflict =
+      (error as { code?: string } | null)?.code === '23505' &&
+      (error?.message?.includes('email') ?? false)
+    if (email && isEmailConflict) {
       const { data: byEmail } = await supabase
         .from('users')
         .update({ clerk_id: userId, updated_at: new Date().toISOString() })

@@ -9,6 +9,9 @@
 -- writes are NOT granted via RLS — they go through trusted server actions that
 -- validate the bearer token with the service-role client.
 
+-- gen_random_bytes() (used for public_token below) lives in pgcrypto.
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1) Events the couple is hosting
 CREATE TABLE IF NOT EXISTS wedding_events (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),

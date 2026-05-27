@@ -179,7 +179,8 @@ export async function getPublicRsvpData(token: string): Promise<PublicRsvpData |
 
   const eventIds = invs.map((i) => i.event_id)
   const [{ data: events }, { data: profile }] = await Promise.all([
-    supabase.from('wedding_events').select('*').in('id', eventIds),
+    // Scope to the guest's owner so a public page can only ever show this couple's events.
+    supabase.from('wedding_events').select('*').eq('user_id', guest.user_id).in('id', eventIds),
     supabase
       .from('couple_profiles')
       .select('partner1_name, partner2_name, wedding_date')

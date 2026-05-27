@@ -99,8 +99,22 @@ export interface GuestInput {
   eventIds?: string[]
 }
 
-async function syncInvitations(userId: string, guestId: string, eventIds: string[]) {
+/** Returns only the event ids that belong to this user — prevents attaching a
+ *  guest to another couple's event (the FK only checks existence, not ownership). */
+async function ownedEventIds(userId: string, eventIds: string[]): Promise<string[]> {
+  if (eventIds.length === 0) return []
   const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('wedding_events')
+    .select('id')
+    .eq('user_id', userId)
+    .in('id', eventIds)
+  return (data ?? []).map((r) => r.id as string)
+}
+
+async function syncInvitations(userId: string, guestId: string, requestedEventIds: string[]) {
+  const supabase = createDashboardClient()
+  const eventIds = await ownedEventIds(userId, requestedEventIds)
   const { data: existing } = await supabase
     .from('guest_invitations')
     .select('id, event_id')
@@ -206,9 +220,10 @@ export async function bulkImportGuests(text: string, eventIds: string[] = []): P
     .select('id')
   if (error) throw new Error(error.message)
 
-  if (eventIds.length && data?.length) {
+  const ownedIds = await ownedEventIds(user.id, eventIds)
+  if (ownedIds.length && data?.length) {
     const invites = data.flatMap((g) =>
-      eventIds.map((event_id) => ({ user_id: user.id, guest_contact_id: g.id, event_id }))
+      ownedIds.map((event_id) => ({ user_id: user.id, guest_contact_id: g.id, event_id }))
     )
     const { error: invErr } = await supabase.from('guest_invitations').insert(invites)
     if (invErr) throw new Error(invErr.message)

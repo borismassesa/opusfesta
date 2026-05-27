@@ -80,7 +80,12 @@ export default function RsvpTracker({
 
   function exportCsv() {
     const header = ['Guest', 'Group', 'Event', 'Status', 'Party size', 'Meal', 'Dietary notes', 'Message']
-    const escape = (v: string | number | null) => `"${String(v ?? '').replace(/"/g, '""')}"`
+    const escape = (v: string | number | null) => {
+      let s = String(v ?? '')
+      // Neutralize spreadsheet formula injection from free-text guest fields.
+      if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
+      return `"${s.replace(/"/g, '""')}"`
+    }
     const lines = filtered.map((r) =>
       [
         r.guestName,
