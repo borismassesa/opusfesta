@@ -76,13 +76,18 @@ export default async function EmployeePerformancePage({
   const reportsInWindow = reports.filter(
     (r) => r.status === 'submitted' && r.reportDate >= w.startDate,
   ).length
+  // Tasks due within the window. A task with no due_date can't be placed in
+  // a dated window, so it's excluded here — the generator always stamps a
+  // due_date, so in practice every instance is covered. The open/done lists
+  // below are derived from the same set so the listed tasks always match the
+  // "X/Y done" stat above them.
   const windowTasks = tasks.filter((t) => (t.dueDate ?? '') >= w.startDate)
   const tasksDone = windowTasks.filter((t) => t.status === 'Done').length
   const tasksTotal = windowTasks.length
   const completionPct = tasksTotal > 0 ? Math.round((tasksDone / tasksTotal) * 100) : 0
 
-  const openTasks = tasks.filter((t) => t.status === 'Todo' || t.status === 'In Progress')
-  const doneTasks = tasks.filter((t) => t.status === 'Done')
+  const openTasks = windowTasks.filter((t) => t.status === 'Todo' || t.status === 'In Progress')
+  const doneTasks = windowTasks.filter((t) => t.status === 'Done')
 
   const clockExportRows = days.map((d) => [
     d.date,
@@ -204,8 +209,8 @@ export default async function EmployeePerformancePage({
             Tasks <span className="ml-2 font-normal text-gray-400">{openTasks.length} open · {doneTasks.length} done</span>
           </h2>
           <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
-            {tasks.length === 0 ? (
-              <p className="px-5 py-6 text-center text-xs text-gray-400">No tasks assigned.</p>
+            {windowTasks.length === 0 ? (
+              <p className="px-5 py-6 text-center text-xs text-gray-400">No tasks due in this window.</p>
             ) : (
               <ul className="divide-y divide-gray-100">
                 {[...openTasks, ...doneTasks].map((t) => (

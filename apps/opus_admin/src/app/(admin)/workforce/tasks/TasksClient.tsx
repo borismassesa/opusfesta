@@ -136,9 +136,11 @@ function AssignmentForm({
   const [endDate, setEndDate] = useState('')
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [notice, setNotice] = useState<string | null>(null)
 
   function submit() {
     setError(null)
+    setNotice(null)
     startTransition(async () => {
       const result = await create({
         title,
@@ -152,7 +154,11 @@ function AssignmentForm({
         endDate: endDate || null,
       })
       if (result.ok) {
-        onClose()
+        // On a clean create, close. If generation didn't complete, keep the
+        // modal open and show the warning so it isn't silently swallowed —
+        // the row already appears in the list underneath via revalidation.
+        if (result.warning) setNotice(result.warning)
+        else onClose()
       } else {
         setError(result.error)
       }
@@ -251,11 +257,12 @@ function AssignmentForm({
         </div>
 
         {error && <p role="alert" className="text-xs font-medium text-rose-600">{error}</p>}
+        {notice && <p role="status" className="text-xs font-medium text-amber-600">{notice}</p>}
 
         <div className="flex items-center gap-3">
           <button
             type="button"
-            disabled={pending || title.trim().length === 0}
+            disabled={pending || title.trim().length === 0 || notice !== null}
             onClick={submit}
             className="inline-flex items-center gap-1.5 rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
           >
@@ -266,7 +273,7 @@ function AssignmentForm({
             onClick={onClose}
             className="rounded-xl border border-gray-200 px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-50"
           >
-            Cancel
+            {notice ? 'Done' : 'Cancel'}
           </button>
         </div>
       </div>

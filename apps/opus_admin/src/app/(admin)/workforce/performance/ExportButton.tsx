@@ -9,7 +9,11 @@ type Cell = string | number
 
 function toCsv(headers: string[], rows: Cell[][]): string {
   const escape = (v: Cell) => {
-    const s = String(v)
+    let s = String(v)
+    // Neutralize spreadsheet formula injection: a cell starting with one of
+    // these is treated as a formula by Excel/Sheets, so prefix it with a
+    // tab-free apostrophe to force it to render as text.
+    if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
     return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s
   }
   return [headers, ...rows].map((r) => r.map(escape).join(',')).join('\n')

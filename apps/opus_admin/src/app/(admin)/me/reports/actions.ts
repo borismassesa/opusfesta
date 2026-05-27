@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { getCallerEmail } from '@/lib/admin-auth'
+import { escapeLike, getCallerEmail, hasPermission } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import {
   cleanContent,
@@ -22,15 +22,16 @@ async function resolveCallerEmployee(): Promise<{
   id: string
   full_name: string
   job_title: string
+  department: string
 } | null> {
   const email = await getCallerEmail()
   if (!email) return null
   const supabase = createSupabaseAdminClient()
   const { data } = await supabase
     .from('workforce_employees')
-    .select('id, full_name, job_title')
-    .ilike('email', email)
-    .maybeSingle<{ id: string; full_name: string; job_title: string }>()
+    .select('id, full_name, job_title, department')
+    .ilike('email', escapeLike(email))
+    .maybeSingle<{ id: string; full_name: string; job_title: string; department: string }>()
   return data ?? null
 }
 
@@ -52,11 +53,14 @@ export async function saveReport(input: SaveReportInput): Promise<SaveReportResu
   if (input.periodEnd && !DATE_RE.test(input.periodEnd)) {
     return { ok: false, error: 'Period end date is invalid.' }
   }
+  if (input.periodEnd && input.periodEnd < input.reportDate) {
+    return { ok: false, error: 'Period end must be on or after the report date.' }
+  }
 
   const supabase = createSupabaseAdminClient()
   const { data: template, error: templateError } = await supabase
     .from('report_templates')
-    .select('id, slug, name, sections, is_active')
+    .select('id, slug, name, sections, is_active, departments')
     .eq('id', input.templateId)
     .maybeSingle<{
       id: string
@@ -64,10 +68,23 @@ export async function saveReport(input: SaveReportInput): Promise<SaveReportResu
       name: string
       sections: unknown
       is_active: boolean
+      departments: string[] | null
     }>()
   if (templateError) return { ok: false, error: templateError.message }
   if (!template || !template.is_active) {
     return { ok: false, error: 'That report type is no longer available.' }
+  }
+
+  // Department scoping: the picker on the page only offers templates for the
+  // caller's department (or unrestricted ones), but the action is the real
+  // gate — re-check here so a caller can't submit against another
+  // department's template by passing its id directly. Admins (workforce.write)
+  // can write any report type.
+  const canWriteAny = await hasPermission('workforce.write')
+  const departments = template.departments ?? []
+  const inScope = departments.length === 0 || departments.includes(employee.department)
+  if (!canWriteAny && !inScope) {
+    return { ok: false, error: 'That report type is not available for your department.' }
   }
 
   const sections = parseSections(template.sections)

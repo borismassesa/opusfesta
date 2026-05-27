@@ -2,7 +2,7 @@ import { auth, currentUser } from '@clerk/nextjs/server'
 import { redirect } from 'next/navigation'
 import WorkforceHeading from '../../workforce/_components/PageHeading'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { hasPermission } from '@/lib/admin-auth'
+import { escapeLike, hasPermission } from '@/lib/admin-auth'
 import { getReportsForEmployee, getReportTemplates } from '../../workforce/_lib/queries'
 import MyReportsClient from './MyReportsClient'
 import { saveReport } from './actions'
@@ -40,7 +40,7 @@ export default async function MyReportsPage() {
   const { data: employee } = await supabase
     .from('workforce_employees')
     .select('id, full_name, department, job_title')
-    .ilike('email', email)
+    .ilike('email', escapeLike(email))
     .maybeSingle<{ id: string; full_name: string; department: string; job_title: string }>()
 
   if (!employee) {

@@ -1,6 +1,6 @@
 import 'server-only'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { getCallerEmail, hasPermission } from '@/lib/admin-auth'
+import { escapeLike, getCallerEmail, hasPermission } from '@/lib/admin-auth'
 import type { Department } from './types'
 
 // Who may assign tasks, and how widely. Two tiers:
@@ -23,7 +23,7 @@ export async function getCallerScope(): Promise<CallerScope | null> {
         await supabase
           .from('workforce_employees')
           .select('id, department')
-          .ilike('email', email)
+          .ilike('email', escapeLike(email))
           .maybeSingle<{ id: string; department: Department }>()
       ).data
     : null
@@ -31,10 +31,13 @@ export async function getCallerScope(): Promise<CallerScope | null> {
   if (canAssignAll) return { canAssignAll: true, employeeId: employee?.id ?? null }
   if (!employee) return null
 
+  // Only currently-employed reports confer manager tier — a resigned report
+  // shouldn't keep granting department-wide task-assignment power.
   const { count } = await supabase
     .from('workforce_employees')
     .select('id', { count: 'exact', head: true })
     .eq('manager_id', employee.id)
+    .neq('status', 'Resigned')
   if (count && count > 0) {
     return { canAssignAll: false, department: employee.department, employeeId: employee.id }
   }

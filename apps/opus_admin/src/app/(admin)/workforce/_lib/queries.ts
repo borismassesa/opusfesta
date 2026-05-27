@@ -870,35 +870,45 @@ type AssignmentRow = {
   end_date: string | null
   is_active: boolean
   created_at: string
-  target_employee: { full_name: string } | null
+  target_employee: { full_name: string; department: Department } | null
   assigned_by_employee: { full_name: string } | null
 }
 
 // Admin tracking list. Optionally filter to one department (a manager's
 // own department, or an admin narrowing the view). Completion rollups are
 // fetched in a second query and merged so we don't N+1 per assignment.
+//
+// Department scoping happens in JS, not in the query: employee-targeted
+// assignments store target_department = NULL, so a plain
+// `.eq('target_department', dept)` would hide every task a manager assigned
+// to one of their own reports. We keep a row when it targets the department
+// directly OR it targets an employee who belongs to that department.
 export async function getTaskAssignments(filters?: {
   department?: string | null
 }): Promise<TaskAssignment[]> {
   const supabase = createSupabaseAdminClient()
-  let query = supabase
+  const { data, error } = await supabase
     .from('workforce_task_assignments')
     .select(
       'id, title, description, category, target_type, target_employee_id, ' +
         'target_department, cadence, start_date, end_date, is_active, created_at, ' +
-        'target_employee:workforce_employees!workforce_task_assignments_target_employee_id_fkey(full_name), ' +
+        'target_employee:workforce_employees!workforce_task_assignments_target_employee_id_fkey(full_name, department), ' +
         'assigned_by_employee:workforce_employees!workforce_task_assignments_assigned_by_fkey(full_name)',
     )
     .order('is_active', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(300)
-
-  if (filters?.department) query = query.eq('target_department', filters.department)
-
-  const { data, error } = await query.returns<AssignmentRow[]>()
+    .returns<AssignmentRow[]>()
   if (error) throw new Error(`[workforce] getTaskAssignments: ${error.message}`)
 
-  const rows = data ?? []
+  const dept = filters?.department
+  const rows = dept
+    ? (data ?? []).filter(
+        (r) =>
+          r.target_department === dept ||
+          (r.target_type === 'employee' && r.target_employee?.department === dept),
+      )
+    : data ?? []
   const ids = rows.map((r) => r.id)
   const stats = await getAssignmentStats(supabase, ids)
 
@@ -1141,7 +1151,10 @@ export async function getReports(filters?: {
     .select(SUBMISSION_COLUMNS)
     .order('report_date', { ascending: false })
     .limit(500)
-  query = query.eq('status', filters?.status ?? 'submitted')
+  // `status: null` is an explicit "all statuses" sentinel; only `undefined`
+  // (omitted) falls back to the submitted-only default.
+  const statusFilter = filters?.status === null ? undefined : filters?.status ?? 'submitted'
+  if (statusFilter) query = query.eq('status', statusFilter)
   if (filters?.templateId) query = query.eq('template_id', filters.templateId)
   if (filters?.employeeId) query = query.eq('employee_id', filters.employeeId)
   if (filters?.date) query = query.eq('report_date', filters.date)

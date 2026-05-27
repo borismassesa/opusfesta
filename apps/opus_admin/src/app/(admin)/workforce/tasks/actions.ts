@@ -43,7 +43,7 @@ export type CreateAssignmentInput = {
 }
 
 export type CreateAssignmentResult =
-  | { ok: true; id: string; generated: number }
+  | { ok: true; id: string; generated: number; warning?: string }
   | { ok: false; error: string }
 
 export async function createAssignment(
@@ -132,7 +132,17 @@ export async function createAssignment(
   revalidatePath('/workforce/tasks')
   revalidatePath('/workforce/my-tasks')
   revalidatePath('/')
-  return { ok: true, id: data.id, generated: typeof generated === 'number' ? generated : 0 }
+  return {
+    ok: true,
+    id: data.id,
+    generated: typeof generated === 'number' ? generated : 0,
+    // The assignment was saved, but the first occurrence couldn't be
+    // materialised. The nightly generator will pick it up; tell the admin so
+    // they don't think the assignee will see it immediately.
+    warning: genError
+      ? "Assignment saved, but its first task couldn't be generated yet — it'll appear after the nightly run."
+      : undefined,
+  }
 }
 
 // Confirms the caller may mutate a given assignment. Admins: always.

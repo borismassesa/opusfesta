@@ -58,6 +58,12 @@ CREATE INDEX IF NOT EXISTS idx_workforce_task_assignments_active
   ON workforce_task_assignments (is_active) WHERE is_active;
 CREATE INDEX IF NOT EXISTS idx_workforce_task_assignments_department
   ON workforce_task_assignments (target_department);
+-- FK-covering indexes: both columns are joined when building the tracking
+-- list and scanned on employee ON DELETE CASCADE / SET NULL.
+CREATE INDEX IF NOT EXISTS idx_workforce_task_assignments_target_employee
+  ON workforce_task_assignments (target_employee_id);
+CREATE INDEX IF NOT EXISTS idx_workforce_task_assignments_assigned_by
+  ON workforce_task_assignments (assigned_by);
 
 -- =============================================================================
 -- workforce_tasks — per-employee, per-occurrence instances

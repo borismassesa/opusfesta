@@ -86,6 +86,16 @@ export default async function MyTasksPage() {
     })),
   ]
 
+  // Merging two sources loses the per-query ordering, so sort the combined
+  // list by due date (soonest/overdue first, undated last). The open/done
+  // groups below derive from this order via filter, so both stay sorted.
+  tasks.sort((a, b) => {
+    if (a.due_date && b.due_date) return a.due_date.localeCompare(b.due_date)
+    if (a.due_date) return -1
+    if (b.due_date) return 1
+    return 0
+  })
+
   const open = tasks.filter((t) => t.status === 'Todo' || t.status === 'In Progress')
   const done = tasks.filter((t) => t.status === 'Done')
 

@@ -227,6 +227,14 @@ function logRejectedElevatedFallback(
   })
 }
 
+// Escape Postgres LIKE/ILIKE metacharacters so a value used as an equality
+// match can't be interpreted as a pattern. Without this, an email such as
+// `john_doe@x.com` would match any single character at the `_`, silently
+// resolving to a different employee row.
+export function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, (c) => `\\${c}`)
+}
+
 export const getCallerEmail = cache(async (): Promise<string | null> => {
   const { userId, sessionClaims } = await auth()
   if (!userId) return null
