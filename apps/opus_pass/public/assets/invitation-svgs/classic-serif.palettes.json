@@ -1,0 +1,46 @@
+{
+  "treatment": "classic-serif",
+  "swatches": ["#F5EFE3", "#1A1A1A", "#A6B89A", "#C8A35C"],
+  "palettes": [
+    {
+      "label": "Cream",
+      "swatch": "#F5EFE3",
+      "background": "#F5EFE3",
+      "surface": "#F5EFE3",
+      "accent": "#C4B9A8",
+      "textPrimary": "#1A1A1A",
+      "textSecondary": "#6B6B6B",
+      "muted": "#8D8D8D"
+    },
+    {
+      "label": "Onyx",
+      "swatch": "#1A1A1A",
+      "background": "#1A1A1A",
+      "surface": "#2A2A2A",
+      "accent": "#6B6B6B",
+      "textPrimary": "#F5EFE3",
+      "textSecondary": "#C4B9A8",
+      "muted": "#8D8D8D"
+    },
+    {
+      "label": "Sage",
+      "swatch": "#A6B89A",
+      "background": "#EEF2EB",
+      "surface": "#EEF2EB",
+      "accent": "#A6B89A",
+      "textPrimary": "#2E3D28",
+      "textSecondary": "#5C6B4D",
+      "muted": "#7A8A6E"
+    },
+    {
+      "label": "Gold",
+      "swatch": "#C8A35C",
+      "background": "#FBF5E8",
+      "surface": "#FBF5E8",
+      "accent": "#C8A35C",
+      "textPrimary": "#2B1F0A",
+      "textSecondary": "#7A6030",
+      "muted": "#A8884C"
+    }
+  ]
+}
