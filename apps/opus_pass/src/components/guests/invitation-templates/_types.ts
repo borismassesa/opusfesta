@@ -1,4 +1,5 @@
 export type InvitationPalette = {
+  name?: string
   background: string
   surface: string
   accent: string

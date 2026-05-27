@@ -17,7 +17,12 @@ export const COUPLE_DEFAULT: Couple = {
   venue: 'Bagamoyo, Tanzania',
 }
 
-export const DEFAULT_PALETTES: Record<Treatment, InvitationPalette> = {
+export type { InvitationPalette }
+
+// Minimal fallback used only by static preview contexts (landing, catalog, cart)
+// that render a treatment without a specific product palette. Product pages always
+// supply a real palette from product.palettes[].
+const PREVIEW_PALETTES: Record<Treatment, InvitationPalette> = {
   'classic-serif':  { background: '#F5EFE3', surface: '#F5EFE3', accent: '#C4B9A8', textPrimary: '#1A1A1A', textSecondary: '#6B6B6B', muted: '#8D8D8D' },
   'minimal-line':   { background: '#FFFFFF', surface: '#FFFFFF', accent: '#1A1A1A', textPrimary: '#1A1A1A', textSecondary: '#6B6B6B', muted: '#8D8D8D' },
   'modern-block':   { background: '#FFFFFF', surface: '#1A1A1A', accent: '#1A1A1A', textPrimary: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.6)', muted: 'rgba(255,255,255,0.6)' },
@@ -29,8 +34,6 @@ export const DEFAULT_PALETTES: Record<Treatment, InvitationPalette> = {
   'arch-script':    { background: '#F5EFE3', surface: '#F5EFE3', accent: '#7A1F2B', textPrimary: '#7A1F2B', textSecondary: 'rgba(122,31,43,0.8)', muted: 'rgba(122,31,43,0.6)' },
   'photo-overlay':  { background: 'transparent', surface: 'rgba(0,0,0,0.35)', accent: 'rgba(255,255,255,0.6)', textPrimary: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', muted: 'rgba(255,255,255,0.7)' },
 }
-
-export type { InvitationPalette }
 
 export function InvitationVisual({
   treatment,
@@ -44,7 +47,7 @@ export function InvitationVisual({
   photoSrc?: string
 }) {
   const { names, date, venue } = couple
-  const p = palette ?? DEFAULT_PALETTES[treatment]
+  const p = palette ?? PREVIEW_PALETTES[treatment]
 
   switch (treatment) {
     case 'classic-serif':  return <ClassicSerif  names={names} date={date} venue={venue} palette={p} />
