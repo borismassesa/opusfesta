@@ -1,6 +1,7 @@
 import type { TemplateProps } from './_types'
+import { resolveFont } from './_types'
 
-export function ModernBlock({ names, date, venue, palette }: TemplateProps) {
+export function ModernBlock({ names, date, venue, palette, message, messageAttr, fontStyle }: TemplateProps) {
   const vars = {
     '--iv-bg': palette.background,
     '--iv-surf': palette.surface,
@@ -9,6 +10,7 @@ export function ModernBlock({ names, date, venue, palette }: TemplateProps) {
     '--iv-mut': palette.muted,
   } as React.CSSProperties
 
+  const font = resolveFont(fontStyle)
   const parts = names.split(/\s*&\s*/)
   const line1 = parts[0] ?? names
   const line2 = parts[1]
@@ -21,6 +23,24 @@ export function ModernBlock({ names, date, venue, palette }: TemplateProps) {
       className="absolute inset-0 w-full h-full"
     >
       <rect width="300" height="400" fill="var(--iv-bg)" />
+      {message && (
+        <>
+          <text
+            x="20" y="160"
+            dominantBaseline="middle"
+            style={font.bodyStyle} fontSize="7"
+            fill="rgba(100,100,100,0.7)"
+          >{message}</text>
+          {messageAttr && (
+            <text
+              x="20" y="174"
+              dominantBaseline="middle"
+              style={font.bodyStyle} fontSize="6"
+              fill="rgba(100,100,100,0.5)"
+            >{messageAttr}</text>
+          )}
+        </>
+      )}
       {/* Black block at bottom */}
       <rect x="0" y="300" width="300" height="100" fill="var(--iv-surf)" />
       <text
@@ -34,26 +54,29 @@ export function ModernBlock({ names, date, venue, palette }: TemplateProps) {
           <text
             x="20" y="338"
             dominantBaseline="middle"
-            fontFamily="Arial, Helvetica, sans-serif" fontSize="16"
-            fontWeight="900" fill="var(--iv-tp)"
+            style={font.namesStyle} fontSize="16"
+            fontWeight={font.italic ? 'normal' : '900'}
+            fill="var(--iv-tp)"
             letterSpacing="-0.5"
-          >{line1.toUpperCase()}</text>
+          >{font.italic ? line1 : line1.toUpperCase()}</text>
           <text
             x="20" y="356"
             dominantBaseline="middle"
-            fontFamily="Arial, Helvetica, sans-serif" fontSize="16"
-            fontWeight="900" fill="var(--iv-tp)"
+            style={font.namesStyle} fontSize="16"
+            fontWeight={font.italic ? 'normal' : '900'}
+            fill="var(--iv-tp)"
             letterSpacing="-0.5"
-          >&amp; {line2.toUpperCase()}</text>
+          >&amp; {font.italic ? line2 : line2.toUpperCase()}</text>
         </>
       ) : (
         <text
           x="20" y="348"
           dominantBaseline="middle"
-          fontFamily="Arial, Helvetica, sans-serif" fontSize="16"
-          fontWeight="900" fill="var(--iv-tp)"
+          style={font.namesStyle} fontSize="16"
+          fontWeight={font.italic ? 'normal' : '900'}
+          fill="var(--iv-tp)"
           letterSpacing="-0.5"
-        >{names.toUpperCase()}</text>
+        >{font.italic ? names : names.toUpperCase()}</text>
       )}
       <text
         x="20" y="378"

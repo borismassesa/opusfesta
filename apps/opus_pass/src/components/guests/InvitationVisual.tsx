@@ -1,15 +1,16 @@
-import type { InvitationPalette } from './invitation-templates/_types'
+import type { InvitationPalette, FontStyle } from './invitation-templates/_types'
 import {
   ClassicSerif, MinimalLine, ModernBlock, FloralBorder, NavyGold,
   BlushFrame, SagePanel, CulturalRed, ArchScript, PhotoOverlay,
+  SaveTheDate, SaveTheDatePhoto,
 } from './invitation-templates'
 
 export type Treatment =
   | 'classic-serif' | 'minimal-line' | 'modern-block'  | 'floral-border'
   | 'navy-gold'     | 'blush-frame'  | 'sage-panel'    | 'cultural-red'
-  | 'arch-script'   | 'photo-overlay'
+  | 'arch-script'   | 'photo-overlay'| 'save-the-date' | 'save-the-date-photo'
 
-export type Couple = { names: string; date: string; venue: string }
+export type Couple = { names: string; date: string; venue: string; time?: string }
 
 export const COUPLE_DEFAULT: Couple = {
   names: 'Amani  &  Neema',
@@ -17,7 +18,7 @@ export const COUPLE_DEFAULT: Couple = {
   venue: 'Bagamoyo, Tanzania',
 }
 
-export type { InvitationPalette }
+export type { InvitationPalette, FontStyle }
 
 // Minimal fallback used only by static preview contexts (landing, catalog, cart)
 // that render a treatment without a specific product palette. Product pages always
@@ -33,6 +34,8 @@ const PREVIEW_PALETTES: Record<Treatment, InvitationPalette> = {
   'cultural-red':   { background: '#7A1F2B', surface: '#7A1F2B', accent: '#C8A35C', textPrimary: '#F5EFE3', textSecondary: '#C8A35C', muted: 'rgba(200,163,92,0.8)' },
   'arch-script':    { background: '#F5EFE3', surface: '#F5EFE3', accent: '#7A1F2B', textPrimary: '#7A1F2B', textSecondary: 'rgba(122,31,43,0.8)', muted: 'rgba(122,31,43,0.6)' },
   'photo-overlay':  { background: 'transparent', surface: 'rgba(0,0,0,0.35)', accent: 'rgba(255,255,255,0.6)', textPrimary: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', muted: 'rgba(255,255,255,0.7)' },
+  'save-the-date':       { background: '#00a79d', surface: '#00a79d', accent: '#6fc7b0', textPrimary: '#ffffff', textSecondary: '#ffffff', muted: 'rgba(255,255,255,0.65)' },
+  'save-the-date-photo': { background: '#00a79d', surface: '#00a79d', accent: '#6fc7b0', textPrimary: '#ffffff', textSecondary: '#ffffff', muted: 'rgba(255,255,255,0.65)' },
 }
 
 export function InvitationVisual({
@@ -40,25 +43,44 @@ export function InvitationVisual({
   couple = COUPLE_DEFAULT,
   palette,
   photoSrc,
+  photoOpacity = 0.85,
+  message,
+  messageAttr,
+  fontStyle,
+  dressCode,
+  rsvpContact,
+  receptionVenue,
+  receptionTime,
 }: {
   treatment: Treatment
   couple?: Couple
   palette?: InvitationPalette
   photoSrc?: string
+  photoOpacity?: number
+  message?: string
+  messageAttr?: string
+  fontStyle?: FontStyle
+  dressCode?: string
+  rsvpContact?: string
+  receptionVenue?: string
+  receptionTime?: string
 }) {
-  const { names, date, venue } = couple
+  const { names, date, venue, time } = couple
   const p = palette ?? PREVIEW_PALETTES[treatment]
+  const shared = { names, date, venue, time, palette: p, message, messageAttr, fontStyle, dressCode, rsvpContact, receptionVenue, receptionTime }
 
   switch (treatment) {
-    case 'classic-serif':  return <ClassicSerif  names={names} date={date} venue={venue} palette={p} />
-    case 'minimal-line':   return <MinimalLine   names={names} date={date} venue={venue} palette={p} />
-    case 'modern-block':   return <ModernBlock   names={names} date={date} venue={venue} palette={p} />
-    case 'floral-border':  return <FloralBorder  names={names} date={date} venue={venue} palette={p} />
-    case 'navy-gold':      return <NavyGold      names={names} date={date} venue={venue} palette={p} />
-    case 'blush-frame':    return <BlushFrame    names={names} date={date} venue={venue} palette={p} />
-    case 'sage-panel':     return <SagePanel     names={names} date={date} venue={venue} palette={p} />
-    case 'cultural-red':   return <CulturalRed   names={names} date={date} venue={venue} palette={p} />
-    case 'arch-script':    return <ArchScript    names={names} date={date} venue={venue} palette={p} />
-    case 'photo-overlay':  return <PhotoOverlay  names={names} date={date} venue={venue} palette={p} photoSrc={photoSrc} />
+    case 'classic-serif':  return <ClassicSerif  {...shared} />
+    case 'minimal-line':   return <MinimalLine   {...shared} />
+    case 'modern-block':   return <ModernBlock   {...shared} />
+    case 'floral-border':  return <FloralBorder  {...shared} />
+    case 'navy-gold':      return <NavyGold      {...shared} />
+    case 'blush-frame':    return <BlushFrame    {...shared} />
+    case 'sage-panel':     return <SagePanel     {...shared} />
+    case 'cultural-red':   return <CulturalRed   {...shared} />
+    case 'arch-script':    return <ArchScript    {...shared} />
+    case 'photo-overlay':  return <PhotoOverlay  {...shared} photoSrc={photoSrc} />
+    case 'save-the-date':       return <SaveTheDate      {...shared} />
+    case 'save-the-date-photo': return <SaveTheDatePhoto {...shared} photoSrc={photoSrc} photoOpacity={photoOpacity} />
   }
 }

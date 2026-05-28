@@ -1,6 +1,7 @@
 import type { TemplateProps } from './_types'
+import { resolveFont } from './_types'
 
-export function ArchScript({ names, date, venue, palette }: TemplateProps) {
+export function ArchScript({ names, date, venue, palette, message, messageAttr, fontStyle }: TemplateProps) {
   const vars = {
     '--iv-bg': palette.background,
     '--iv-acc': palette.accent,
@@ -9,12 +10,12 @@ export function ArchScript({ names, date, venue, palette }: TemplateProps) {
     '--iv-mut': palette.muted,
   } as React.CSSProperties
 
+  const font = resolveFont(fontStyle)
   const parts = names.split(/\s*&\s*/)
   const line1 = parts[0] ?? names
   const line2 = parts[1]
 
   // Arch: centered at (150, 180), width ~240, height ~240, rounded top
-  // SVG arc path: start bottom-left, arc to bottom-right
   const archPath = 'M 30 280 L 30 180 A 120 120 0 0 1 270 180 L 270 280'
 
   return (
@@ -31,22 +32,22 @@ export function ArchScript({ names, date, venue, palette }: TemplateProps) {
           <text
             x="150" y="184"
             textAnchor="middle" dominantBaseline="middle"
-            fontFamily="Georgia, 'Times New Roman', serif" fontSize="17"
-            fontStyle="italic" fill="var(--iv-tp)"
+            style={font.namesStyle} fontSize="17"
+            fill="var(--iv-tp)"
           >{line1}</text>
           <text
             x="150" y="206"
             textAnchor="middle" dominantBaseline="middle"
-            fontFamily="Georgia, 'Times New Roman', serif" fontSize="17"
-            fontStyle="italic" fill="var(--iv-tp)"
+            style={font.namesStyle} fontSize="17"
+            fill="var(--iv-tp)"
           >&amp; {line2}</text>
         </>
       ) : (
         <text
           x="150" y="196"
           textAnchor="middle" dominantBaseline="middle"
-          fontFamily="Georgia, 'Times New Roman', serif" fontSize="17"
-          fontStyle="italic" fill="var(--iv-tp)"
+          style={font.namesStyle} fontSize="17"
+          fill="var(--iv-tp)"
         >{names}</text>
       )}
       <line x1="134" y1={line2 ? '224' : '214'} x2="166" y2={line2 ? '224' : '214'} stroke="var(--iv-acc)" strokeWidth="0.8" strokeOpacity="0.6" />
@@ -56,6 +57,25 @@ export function ArchScript({ names, date, venue, palette }: TemplateProps) {
         fontFamily="inherit" fontSize="8" letterSpacing="2.2"
         fill="var(--iv-ts)"
       >{date.toUpperCase()}</text>
+      {message && (
+        <>
+          <line x1="100" y1="300" x2="200" y2="300" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
+          <text
+            x="150" y="314"
+            textAnchor="middle" dominantBaseline="middle"
+            style={font.bodyStyle} fontSize="7"
+            fill="var(--iv-ts)"
+          >{message}</text>
+          {messageAttr && (
+            <text
+              x="150" y="328"
+              textAnchor="middle" dominantBaseline="middle"
+              style={font.bodyStyle} fontSize="6"
+              fill="var(--iv-mut)"
+            >{messageAttr}</text>
+          )}
+        </>
+      )}
     </svg>
   )
 }

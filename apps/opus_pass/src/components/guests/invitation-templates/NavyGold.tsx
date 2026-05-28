@@ -1,6 +1,7 @@
 import type { TemplateProps } from './_types'
+import { resolveFont } from './_types'
 
-export function NavyGold({ names, date, venue, palette }: TemplateProps) {
+export function NavyGold({ names, date, venue, palette, message, messageAttr, fontStyle }: TemplateProps) {
   const vars = {
     '--iv-bg': palette.background,
     '--iv-acc': palette.accent,
@@ -9,6 +10,7 @@ export function NavyGold({ names, date, venue, palette }: TemplateProps) {
     '--iv-mut': palette.muted,
   } as React.CSSProperties
 
+  const font = resolveFont(fontStyle)
   const parts = names.split(/\s*&\s*/)
   const line1 = parts[0] ?? names
   const line2 = parts[1]
@@ -33,13 +35,13 @@ export function NavyGold({ names, date, venue, palette }: TemplateProps) {
           <text
             x="150" y="190"
             textAnchor="middle" dominantBaseline="middle"
-            fontFamily="Georgia, 'Times New Roman', serif" fontSize="17"
+            style={font.namesStyle} fontSize="17"
             fill="var(--iv-tp)"
           >{line1}</text>
           <text
             x="150" y="210"
             textAnchor="middle" dominantBaseline="middle"
-            fontFamily="Georgia, 'Times New Roman', serif" fontSize="17"
+            style={font.namesStyle} fontSize="17"
             fill="var(--iv-tp)"
           >&amp; {line2}</text>
         </>
@@ -47,7 +49,7 @@ export function NavyGold({ names, date, venue, palette }: TemplateProps) {
         <text
           x="150" y="200"
           textAnchor="middle" dominantBaseline="middle"
-          fontFamily="Georgia, 'Times New Roman', serif" fontSize="17"
+          style={font.namesStyle} fontSize="17"
           fill="var(--iv-tp)"
         >{names}</text>
       )}
@@ -63,6 +65,25 @@ export function NavyGold({ names, date, venue, palette }: TemplateProps) {
         fontFamily="inherit" fontSize="7" letterSpacing="2.2"
         fill="var(--iv-mut)"
       >{venue.toUpperCase()}</text>
+      {message && (
+        <>
+          <line x1="100" y1="285" x2="200" y2="285" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
+          <text
+            x="150" y="299"
+            textAnchor="middle" dominantBaseline="middle"
+            style={font.bodyStyle} fontSize="7"
+            fill="var(--iv-ts)"
+          >{message}</text>
+          {messageAttr && (
+            <text
+              x="150" y="313"
+              textAnchor="middle" dominantBaseline="middle"
+              style={font.bodyStyle} fontSize="6"
+              fill="var(--iv-mut)"
+            >{messageAttr}</text>
+          )}
+        </>
+      )}
     </svg>
   )
 }
