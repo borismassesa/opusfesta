@@ -22,9 +22,16 @@ export type StoredOrderItem = {
   total: number
 }
 
+export type StoredOrderContact = {
+  email: string
+  phone: string
+}
+
 export type StoredOrder = {
   ref: string
   paidAt: string
+  paymentLabel?: string
+  contact: StoredOrderContact
   items: StoredOrderItem[]
   subtotal: number
   vat: number
@@ -66,6 +73,8 @@ function sanitizeOrderForStorage(order: StoredOrder): StoredOrder {
   return {
     ref: order.ref,
     paidAt: order.paidAt,
+    paymentLabel: order.paymentLabel,
+    contact: order.contact,
     items: order.items,
     subtotal: order.subtotal,
     vat: order.vat,

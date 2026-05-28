@@ -59,7 +59,7 @@ export default function ConfirmationPage() {
                     </span>
                     <span className="text-lg font-mono font-bold text-gray-900">{ref}</span>
                     <span className="text-xs text-gray-500 mt-1">
-                      Paid via <strong className="font-semibold text-gray-700">{order.paymentLabel}</strong>
+                      Paid via <strong className="font-semibold text-gray-700">{order.paymentLabel ?? 'Saved method'}</strong>
                     </span>
                   </div>
                 )}

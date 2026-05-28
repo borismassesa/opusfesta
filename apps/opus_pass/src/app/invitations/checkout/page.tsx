@@ -170,6 +170,11 @@ export default function CheckoutPage() {
       setLastOrder({
         ref,
         paidAt: new Date().toISOString(),
+        paymentLabel: paymentLabel(),
+        contact: {
+          email: contact.email,
+          phone: contact.phone,
+        },
         items: items.map((i) => ({ id: i.id, name: i.name, summary: i.summary, total: i.total })),
         subtotal,
         vat,
