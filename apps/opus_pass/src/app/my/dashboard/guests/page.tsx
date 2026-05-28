@@ -3,9 +3,9 @@ import {
   getEvents,
   getCoupleProfile,
   coupleDisplayName,
-  getDashboardHeroMedia,
   getMyCollectorToken,
 } from '@/lib/dashboard/queries'
+import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import GuestsManager from './GuestsManager'
 
 export const dynamic = 'force-dynamic'
@@ -15,7 +15,7 @@ export default async function GuestsPage() {
     getGuestsWithInvitations(),
     getEvents(),
     getCoupleProfile(),
-    getDashboardHeroMedia('guests'),
+    loadDashboardHero('guests'),
     getMyCollectorToken(),
   ])
   return (

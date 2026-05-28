@@ -2,11 +2,9 @@ import 'server-only'
 import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
 import type {
-  DashboardHeroMedia,
   DashboardStats,
   GuestInvitation,
   GuestWithInvitations,
-  HeroPageSlug,
   WeddingEvent,
 } from './types'
 
@@ -225,17 +223,3 @@ export async function getPublicRsvpData(token: string): Promise<PublicRsvpData |
   }
 }
 
-/** Fetch this couple's hero cover for a single dashboard page. */
-export async function getDashboardHeroMedia(
-  pageSlug: HeroPageSlug
-): Promise<DashboardHeroMedia | null> {
-  const user = await requireDashboardUser()
-  const supabase = createDashboardClient()
-  const { data } = await supabase
-    .from('dashboard_hero_media')
-    .select('page_slug, media_url, media_type, storage_path, updated_at')
-    .eq('user_id', user.id)
-    .eq('page_slug', pageSlug)
-    .maybeSingle<DashboardHeroMedia>()
-  return data ?? null
-}
