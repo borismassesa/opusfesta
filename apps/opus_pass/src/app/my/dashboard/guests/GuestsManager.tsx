@@ -10,15 +10,16 @@ import {
   Trash2,
   Link2,
   Upload,
-  Mail,
-  Phone,
   MessageCircle,
   Minus,
   X,
   ClipboardSignature,
+  ArrowUp,
+  ArrowDown,
 } from 'lucide-react'
 import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
 import { Button, ConfirmDialog, Slideover, Tabs, Field, inputClass } from '@/components/dashboard/controls'
+import { cn } from '@/lib/utils'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import CollectorShareSlideover from './CollectorShareSlideover'
 import {
@@ -78,6 +79,9 @@ export default function GuestsManager({
   const [importOpen, setImportOpen] = useState(false)
   const [collectorOpen, setCollectorOpen] = useState(false)
   const [pendingDelete, setPendingDelete] = useState<GuestWithInvitations | null>(null)
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
   const [importText, setImportText] = useState('')
   const [importEventIds, setImportEventIds] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -92,7 +96,7 @@ export default function GuestsManager({
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase()
-    return initialGuests.filter((g) => {
+    const matched = initialGuests.filter((g) => {
       if (groupFilter !== 'all' && g.group_tag !== groupFilter) return false
       if (!q) return true
       return (
@@ -101,7 +105,67 @@ export default function GuestsManager({
         (g.group_tag ?? '').toLowerCase().includes(q)
       )
     })
-  }, [initialGuests, query, groupFilter])
+    return matched.sort((a, b) =>
+      sortDir === 'asc'
+        ? a.full_name.localeCompare(b.full_name)
+        : b.full_name.localeCompare(a.full_name),
+    )
+  }, [initialGuests, query, groupFilter, sortDir])
+
+  const counts = useMemo(() => {
+    const missingContact = filtered.filter((g) => !g.email && !g.phone && !g.whatsapp_phone).length
+    const invited = filtered.filter((g) => g.invite_count > 0).length
+    let replied = 0
+    let totalInvites = 0
+    for (const g of filtered) {
+      for (const inv of g.invitations) {
+        totalInvites += 1
+        if (inv.rsvp_status !== 'pending') replied += 1
+      }
+    }
+    return { missingContact, invited, replied, totalInvites }
+  }, [filtered])
+
+  const allSelected = filtered.length > 0 && filtered.every((g) => selected.has(g.id))
+  const someSelected = !allSelected && filtered.some((g) => selected.has(g.id))
+
+  function toggleSort() {
+    setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+  }
+
+  function toggleAll() {
+    setSelected(allSelected ? new Set() : new Set(filtered.map((g) => g.id)))
+  }
+
+  function toggleOne(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  function clearSelection() {
+    setSelected(new Set())
+  }
+
+  function bulkRemove() {
+    if (selected.size === 0) return
+    const ids = [...selected]
+    startTransition(async () => {
+      try {
+        for (const id of ids) {
+          await deleteGuest(id)
+        }
+        toast.success(`${ids.length} guest${ids.length === 1 ? '' : 's'} removed`)
+        clearSelection()
+        setPendingBulkDelete(false)
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : 'Bulk remove failed')
+      }
+    })
+  }
 
   function openCreate() {
     setEditing(null)
@@ -320,95 +384,236 @@ export default function GuestsManager({
       ) : filtered.length === 0 ? (
         <EmptyState icon={<Search className="h-6 w-6" />} title="No guests match your search" />
       ) : (
-        <Card className="overflow-hidden">
-          <div className="divide-y divide-black/[0.05]">
-            {filtered.map((g) => {
-              const status = summaryStatus(g)
-              return (
-                <div key={g.id} className="flex flex-wrap items-center gap-3 px-4 py-3.5 sm:flex-nowrap">
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-sm font-semibold text-[#1A1A1A]/70">
-                      {g.full_name.charAt(0).toUpperCase()}
+        <>
+          {selected.size > 0 ? (
+            <div className="sticky top-2 z-10 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-[#1A1A1A] px-4 py-2.5 text-sm text-white shadow-lg">
+              <span className="font-medium">
+                {selected.size} {selected.size === 1 ? 'guest' : 'guests'} selected
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={clearSelection}
+                  className="rounded-md px-2 py-1 text-xs text-white/70 hover:bg-white/10 hover:text-white"
+                >
+                  Clear
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPendingBulkDelete(true)}
+                  className="inline-flex items-center gap-1.5 rounded-md bg-rose-500/90 px-2.5 py-1 text-xs font-semibold text-white hover:bg-rose-500"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> Remove selected
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          <Card className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-black/[0.06] align-bottom">
+                  <th scope="col" className="w-10 px-4 py-3">
+                    <input
+                      type="checkbox"
+                      aria-label={allSelected ? 'Deselect all' : 'Select all'}
+                      checked={allSelected}
+                      ref={(el) => {
+                        if (el) el.indeterminate = someSelected
+                      }}
+                      onChange={toggleAll}
+                      className="h-4 w-4 rounded border-black/30 accent-[#1A1A1A]"
+                    />
+                  </th>
+                  <th scope="col" className="py-3 pr-4">
+                    <button
+                      type="button"
+                      onClick={toggleSort}
+                      className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55 hover:text-[#1A1A1A]"
+                    >
+                      Name
+                      {sortDir === 'asc' ? (
+                        <ArrowUp className="h-3 w-3" />
+                      ) : (
+                        <ArrowDown className="h-3 w-3" />
+                      )}
+                    </button>
+                    <p className="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-[#1A1A1A]/45">
+                      {filtered.length} {filtered.length === 1 ? 'guest' : 'guests'}
+                    </p>
+                  </th>
+                  <th scope="col" className="py-3 pr-4">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
+                      Email &amp; phone
                     </span>
-                    <div className="min-w-0">
-                      <p className="truncate font-medium text-[#1A1A1A]">{g.full_name}</p>
-                      <div className="flex flex-wrap items-center gap-x-2 text-xs text-[#1A1A1A]/50">
-                        {g.group_tag ? <span>{g.group_tag}</span> : null}
-                        {g.email ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Mail className="h-3 w-3" /> {g.email}
+                    {counts.missingContact > 0 ? (
+                      <p className="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-rose-600">
+                        {counts.missingContact} missing
+                      </p>
+                    ) : null}
+                  </th>
+                  <th scope="col" className="hidden py-3 pr-4 md:table-cell">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
+                      Invited to
+                    </span>
+                  </th>
+                  <th scope="col" className="py-3 pr-4">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
+                      RSVP
+                    </span>
+                    {counts.totalInvites > 0 ? (
+                      <p className="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-[#1A1A1A]/45">
+                        {counts.replied} of {counts.totalInvites} replied
+                      </p>
+                    ) : null}
+                  </th>
+                  <th scope="col" className="py-3 pr-4">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
+                      Invite sent?
+                    </span>
+                    <p className="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-[#1A1A1A]/45">
+                      {counts.invited} of {filtered.length} sent
+                    </p>
+                  </th>
+                  <th scope="col" className="w-1 py-3 pr-3">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/[0.05]">
+                {filtered.map((g) => {
+                  const status = summaryStatus(g)
+                  const isSelected = selected.has(g.id)
+                  const sent = g.invite_count > 0
+                  return (
+                    <tr
+                      key={g.id}
+                      className={cn('align-middle hover:bg-black/[0.02]', isSelected && 'bg-black/[0.03]')}
+                    >
+                      <td className="px-4 py-3.5">
+                        <input
+                          type="checkbox"
+                          aria-label={`Select ${g.full_name}`}
+                          checked={isSelected}
+                          onChange={() => toggleOne(g.id)}
+                          className="h-4 w-4 rounded border-black/30 accent-[#1A1A1A]"
+                        />
+                      </td>
+                      <td className="py-3.5 pr-4">
+                        <div className="flex items-center gap-3">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-xs font-semibold text-[#1A1A1A]/70">
+                            {g.full_name.charAt(0).toUpperCase()}
                           </span>
-                        ) : null}
-                        {g.phone ? (
-                          <span className="inline-flex items-center gap-1">
-                            <Phone className="h-3 w-3" /> {g.phone}
-                          </span>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="hidden max-w-[180px] flex-wrap gap-1 md:flex">
-                    {g.invitations.length === 0 ? (
-                      <span className="text-xs text-[#1A1A1A]/40">Not invited yet</span>
-                    ) : (
-                      g.invitations.slice(0, 2).map((inv) => (
+                          <div className="min-w-0">
+                            <p className="truncate font-medium text-[#1A1A1A]">{g.full_name}</p>
+                            {g.group_tag ? (
+                              <p className="truncate text-xs text-[#1A1A1A]/50">{g.group_tag}</p>
+                            ) : null}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="py-3.5 pr-4">
+                        <div className="space-y-0.5 text-xs">
+                          {g.email ? (
+                            <p className="truncate text-[#1A1A1A]/70">{g.email}</p>
+                          ) : (
+                            <p className="text-rose-600">Missing email</p>
+                          )}
+                          {g.whatsapp_phone || g.phone ? (
+                            <p className="truncate text-[#1A1A1A]/70">{g.whatsapp_phone ?? g.phone}</p>
+                          ) : (
+                            <p className="text-rose-600">Missing phone</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="hidden py-3.5 pr-4 md:table-cell">
+                        {g.invitations.length === 0 ? (
+                          <span className="text-xs text-[#1A1A1A]/40">Not invited yet</span>
+                        ) : (
+                          <div className="flex max-w-[180px] flex-wrap gap-1">
+                            {g.invitations.slice(0, 2).map((inv) => (
+                              <span
+                                key={inv.id}
+                                className="rounded-full bg-black/[0.05] px-2 py-0.5 text-xs text-[#1A1A1A]/70"
+                              >
+                                {eventName(inv.event_id)}
+                              </span>
+                            ))}
+                            {g.invitations.length > 2 ? (
+                              <span className="text-xs text-[#1A1A1A]/40">
+                                +{g.invitations.length - 2}
+                              </span>
+                            ) : null}
+                          </div>
+                        )}
+                      </td>
+                      <td className="py-3.5 pr-4">
+                        {status ? (
+                          <StatusPill status={status} />
+                        ) : (
+                          <span className="text-xs text-[#1A1A1A]/35">—</span>
+                        )}
+                      </td>
+                      <td className="py-3.5 pr-4">
                         <span
-                          key={inv.id}
-                          className="rounded-full bg-black/[0.04] px-2 py-0.5 text-xs text-[#1A1A1A]/60"
+                          className={cn(
+                            'inline-flex items-center gap-1.5 text-xs font-medium',
+                            sent ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]/50',
+                          )}
                         >
-                          {eventName(inv.event_id)}
+                          <span
+                            className={cn(
+                              'h-2 w-2 rounded-full',
+                              sent ? 'bg-emerald-500' : 'bg-neutral-300',
+                            )}
+                            aria-hidden="true"
+                          />
+                          {sent ? `Yes · ${g.invite_count}×` : 'No'}
                         </span>
-                      ))
-                    )}
-                    {g.invitations.length > 2 ? (
-                      <span className="text-xs text-[#1A1A1A]/40">+{g.invitations.length - 2}</span>
-                    ) : null}
-                  </div>
-
-                  <div className="w-24 shrink-0 text-right">
-                    {status ? <StatusPill status={status} /> : null}
-                  </div>
-
-                  <div className="flex shrink-0 gap-1">
-                    {g.whatsapp_phone || g.phone ? (
-                      <button
-                        onClick={() => sendWhatsApp(g)}
-                        aria-label="Send invite on WhatsApp"
-                        title="Send invite on WhatsApp"
-                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[#25D366] hover:bg-[#25D366]/10"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                      </button>
-                    ) : null}
-                    <button
-                      onClick={() => copyLink(g)}
-                      aria-label="Copy RSVP link"
-                      title="Copy RSVP link"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A]"
-                    >
-                      <Link2 className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => openEdit(g)}
-                      aria-label="Edit"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/50 hover:bg-black/[0.05]"
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => setPendingDelete(g)}
-                      aria-label="Remove"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-        </Card>
+                      </td>
+                      <td className="py-3.5 pr-3 text-right">
+                        <div className="inline-flex gap-1">
+                          {g.whatsapp_phone || g.phone ? (
+                            <button
+                              onClick={() => sendWhatsApp(g)}
+                              aria-label="Send invite on WhatsApp"
+                              title="Send invite on WhatsApp"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#25D366] hover:bg-[#25D366]/10"
+                            >
+                              <MessageCircle className="h-4 w-4" />
+                            </button>
+                          ) : null}
+                          <button
+                            onClick={() => copyLink(g)}
+                            aria-label="Copy RSVP link"
+                            title="Copy RSVP link"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A]"
+                          >
+                            <Link2 className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => openEdit(g)}
+                            aria-label="Edit"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/50 hover:bg-black/[0.05]"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setPendingDelete(g)}
+                            aria-label="Remove"
+                            className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+          </Card>
+        </>
       )}
 
       {/* Add / edit guest — slideover */}
@@ -648,6 +853,16 @@ export default function GuestsManager({
         title={pendingDelete ? `Remove ${pendingDelete.full_name}?` : ''}
         description="Their RSVP responses and personal invite link will be deleted too. This can't be undone."
         confirmLabel="Remove guest"
+        pending={pending}
+      />
+
+      <ConfirmDialog
+        open={pendingBulkDelete}
+        onClose={() => setPendingBulkDelete(false)}
+        onConfirm={bulkRemove}
+        title={`Remove ${selected.size} ${selected.size === 1 ? 'guest' : 'guests'}?`}
+        description="Their RSVP responses and personal invite links will be deleted. This can't be undone."
+        confirmLabel={`Remove ${selected.size}`}
         pending={pending}
       />
     </div>
