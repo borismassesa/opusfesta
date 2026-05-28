@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Logo from '@/components/ui/Logo'
 import { getSupabaseBrowserClient } from '@/lib/supabase-browser'
@@ -9,21 +9,43 @@ interface Props {
   returnTo: string
   seed: boolean
   sentEmail: string | null
+  errorCode: string | null
 }
 
-export default function SignInForm({ returnTo, seed, sentEmail }: Props) {
+const ERROR_HINTS: Record<string, string> = {
+  missing_code: "That sign-in link didn't carry a code. Send yourself a fresh one below.",
+  wrong_browser:
+    'Open the sign-in link in the same browser you used to request it. Or just request a fresh link below.',
+  expired_link: 'Your sign-in link expired. Request a fresh one — they only last about an hour.',
+  unknown: "Couldn't finish signing you in. Try requesting a fresh link below.",
+}
+
+export default function SignInForm({ returnTo, seed, sentEmail, errorCode }: Props) {
   const [email, setEmail] = useState('')
   const [status, setStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>(
     sentEmail ? 'sent' : 'idle',
   )
   const [error, setError] = useState<string | null>(null)
+  const [hint, setHint] = useState<string | null>(
+    errorCode ? (ERROR_HINTS[errorCode] ?? ERROR_HINTS.unknown) : null,
+  )
   const [lastEmail, setLastEmail] = useState<string | null>(sentEmail)
+
+  // Strip the error param from the URL so it stops sitting in the address bar.
+  // The hint stays visible in component state.
+  useEffect(() => {
+    if (!errorCode || typeof window === 'undefined') return
+    const url = new URL(window.location.href)
+    url.searchParams.delete('error')
+    window.history.replaceState(null, '', url.pathname + (url.search ? url.search : ''))
+  }, [errorCode])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email) return
     setStatus('sending')
     setError(null)
+    setHint(null)
 
     const params = new URLSearchParams({ return_to: returnTo })
     if (seed) params.set('seed', '1')
@@ -75,6 +97,12 @@ export default function SignInForm({ returnTo, seed, sentEmail }: Props) {
             <p className="mt-2 text-center text-sm text-[#1A1A1A]/60">
               Enter your email and we&apos;ll send you a sign-in link. No password.
             </p>
+
+            {hint ? (
+              <div className="mt-5 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
+                {hint}
+              </div>
+            ) : null}
 
             <form onSubmit={handleSubmit} className="mt-6 space-y-4">
               <label className="block">
