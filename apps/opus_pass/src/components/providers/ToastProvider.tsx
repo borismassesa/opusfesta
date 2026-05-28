@@ -3,17 +3,15 @@
 import { Toaster } from 'sonner'
 
 // Toasts match the dashboard's clean palette: white card, hairline border,
-// subtle elevation, with a colored left edge that signals state. Brand green
-// (#9FE870) for success keeps it on-palette; amber / rose / sky for the rest.
+// subtle elevation. No colored state bar — keep it quiet and on-palette.
 //
 // Action buttons (toast({ action: { label, onClick } }) — used e.g. on the
 // product page) get the OpusPass primary look.
 
 const TOAST_BASE =
-  'group relative w-full rounded-xl border border-black/[0.08] bg-white p-4 pl-5 ' +
+  'group relative w-full rounded-xl border border-black/[0.08] bg-white p-4 ' +
   'shadow-[0_10px_28px_-12px_rgba(26,26,26,0.18),0_2px_6px_-2px_rgba(26,26,26,0.08)] ' +
-  'text-[#1A1A1A] before:absolute before:inset-y-3 before:left-2 before:w-[3px] ' +
-  'before:rounded-full before:bg-[#1A1A1A]/30'
+  'text-[#1A1A1A]'
 
 export default function ToastProvider() {
   return (
@@ -33,10 +31,6 @@ export default function ToastProvider() {
             '!bg-transparent !text-[#1A1A1A]/65 !rounded-full !px-3 !py-1.5 !text-xs !font-semibold hover:!bg-black/[0.05]',
           closeButton:
             '!left-auto !right-2 !top-2 !h-6 !w-6 !rounded-md !border-0 !bg-transparent !text-[#1A1A1A]/45 hover:!bg-black/[0.05] hover:!text-[#1A1A1A]',
-          success: 'before:!bg-[#3C9A5F]',
-          error: 'before:!bg-[#A04450]',
-          warning: 'before:!bg-[#C99A2E]',
-          info: 'before:!bg-[#1A1A1A]/40',
         },
       }}
     />
