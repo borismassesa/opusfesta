@@ -31,61 +31,26 @@ export function CulturalRed({ names, date, venue, palette, message, messageAttr,
         fontFamily="Georgia, 'Times New Roman', serif" fontSize="10" letterSpacing="3"
         fill="var(--iv-acc)"
       >— KARIBU —</text>
-      {line2 ? (
-        <>
-          <text
-            x="150" y="186"
-            textAnchor="middle" dominantBaseline="middle"
-            style={font.namesStyle} fontSize="16"
-            fill="var(--iv-tp)"
-          >{line1}</text>
-          <text
-            x="150" y="206"
-            textAnchor="middle" dominantBaseline="middle"
-            style={font.namesStyle} fontSize="16"
-            fill="var(--iv-tp)"
-          >&amp; {line2}</text>
-        </>
-      ) : (
-        <text
-          x="150" y="196"
-          textAnchor="middle" dominantBaseline="middle"
-          style={font.namesStyle} fontSize="16"
-          fill="var(--iv-tp)"
-        >{names}</text>
-      )}
+      <g data-section="names">
+        {line2 ? (
+          <>
+            <text x="150" y="186" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="16" fill="var(--iv-tp)">{line1}</text>
+            <text x="150" y="206" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="16" fill="var(--iv-tp)">&amp; {line2}</text>
+          </>
+        ) : (
+          <text x="150" y="196" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="16" fill="var(--iv-tp)">{names}</text>
+        )}
+      </g>
       <text x="135" y={line2 ? '226' : '216'} textAnchor="middle" dominantBaseline="middle" fontSize="8" fill="var(--iv-acc)">✦</text>
-      <text
-        x="150" y={line2 ? '226' : '216'}
-        textAnchor="middle" dominantBaseline="middle"
-        fontFamily="inherit" fontSize="9" letterSpacing="2.2"
-        fill="var(--iv-ts)"
-      >{date}</text>
+      <text data-section="date" x="150" y={line2 ? '226' : '216'} textAnchor="middle" dominantBaseline="middle" fontFamily="inherit" fontSize="9" letterSpacing="2.2" fill="var(--iv-ts)">{date}</text>
       <text x="165" y={line2 ? '226' : '216'} textAnchor="middle" dominantBaseline="middle" fontSize="8" fill="var(--iv-acc)">✦</text>
-      <text
-        x="150" y={line2 ? '242' : '232'}
-        textAnchor="middle" dominantBaseline="middle"
-        fontFamily="inherit" fontSize="7" letterSpacing="2.2"
-        fill="var(--iv-mut)"
-      >{venue.toUpperCase()}</text>
+      <text data-section="venue" x="150" y={line2 ? '242' : '232'} textAnchor="middle" dominantBaseline="middle" fontFamily="inherit" fontSize="7" letterSpacing="2.2" fill="var(--iv-mut)">{venue.toUpperCase()}</text>
       {message && (
-        <>
+        <g data-section="message">
           <line x1="100" y1="280" x2="200" y2="280" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.7" />
-          <text
-            x="150" y="294"
-            textAnchor="middle" dominantBaseline="middle"
-            style={font.bodyStyle} fontSize="7"
-            fill="var(--iv-ts)"
-          >{message}</text>
-          {messageAttr && (
-            <text
-              x="150" y="308"
-              textAnchor="middle" dominantBaseline="middle"
-              style={font.bodyStyle} fontSize="6"
-              fill="var(--iv-mut)"
-            >{messageAttr}</text>
-          )}
-        </>
+          <text x="150" y="294" textAnchor="middle" dominantBaseline="middle" style={font.bodyStyle} fontSize="7" fill="var(--iv-ts)">{message}</text>
+          {messageAttr && <text x="150" y="308" textAnchor="middle" dominantBaseline="middle" style={font.bodyStyle} fontSize="6" fill="var(--iv-mut)">{messageAttr}</text>}
+        </g>
       )}
     </svg>
   )

@@ -1,4 +1,4 @@
-import type { InvitationPalette, FontStyle } from './invitation-templates/_types'
+import type { InvitationPalette, FontStyle, SectionStyles } from './invitation-templates/_types'
 import {
   ClassicSerif, MinimalLine, ModernBlock, FloralBorder, NavyGold,
   BlushFrame, SagePanel, CulturalRed, ArchScript, PhotoOverlay,
@@ -18,7 +18,7 @@ export const COUPLE_DEFAULT: Couple = {
   venue: 'Bagamoyo, Tanzania',
 }
 
-export type { InvitationPalette, FontStyle }
+export type { InvitationPalette, FontStyle, SectionStyles }
 
 // Minimal fallback used only by static preview contexts (landing, catalog, cart)
 // that render a treatment without a specific product palette. Product pages always
@@ -47,6 +47,7 @@ export function InvitationVisual({
   message,
   messageAttr,
   fontStyle,
+  sectionStyles,
   dressCode,
   rsvpContact,
   receptionVenue,
@@ -60,6 +61,7 @@ export function InvitationVisual({
   message?: string
   messageAttr?: string
   fontStyle?: FontStyle
+  sectionStyles?: SectionStyles
   dressCode?: string
   rsvpContact?: string
   receptionVenue?: string
@@ -67,7 +69,7 @@ export function InvitationVisual({
 }) {
   const { names, date, venue, time } = couple
   const p = palette ?? PREVIEW_PALETTES[treatment]
-  const shared = { names, date, venue, time, palette: p, message, messageAttr, fontStyle, dressCode, rsvpContact, receptionVenue, receptionTime }
+  const shared = { names, date, venue, time, palette: p, message, messageAttr, fontStyle, sectionStyles, dressCode, rsvpContact, receptionVenue, receptionTime }
 
   switch (treatment) {
     case 'classic-serif':  return <ClassicSerif  {...shared} />

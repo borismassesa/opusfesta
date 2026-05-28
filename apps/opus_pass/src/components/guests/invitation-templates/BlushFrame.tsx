@@ -30,53 +30,23 @@ export function BlushFrame({ names, date, venue, palette, message, messageAttr, 
         fontFamily="inherit" fontSize="7" letterSpacing="3"
         fill="var(--iv-acc)"
       >SAVE THE DATE</text>
-      {line2 ? (
-        <>
-          <text
-            x="150" y="197"
-            textAnchor="middle" dominantBaseline="middle"
-            style={font.namesStyle} fontSize="18"
-            fill="var(--iv-tp)"
-          >{line1}</text>
-          <text
-            x="150" y="218"
-            textAnchor="middle" dominantBaseline="middle"
-            style={font.namesStyle} fontSize="18"
-            fill="var(--iv-tp)"
-          >&amp; {line2}</text>
-        </>
-      ) : (
-        <text
-          x="150" y="208"
-          textAnchor="middle" dominantBaseline="middle"
-          style={font.namesStyle} fontSize="18"
-          fill="var(--iv-tp)"
-        >{names}</text>
-      )}
-      <text
-        x="150" y={line2 ? '240' : '230'}
-        textAnchor="middle" dominantBaseline="middle"
-        fontFamily="inherit" fontSize="9" letterSpacing="2.2"
-        fill="var(--iv-ts)"
-      >{date}</text>
+      <g data-section="names">
+        {line2 ? (
+          <>
+            <text x="150" y="197" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="18" fill="var(--iv-tp)">{line1}</text>
+            <text x="150" y="218" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="18" fill="var(--iv-tp)">&amp; {line2}</text>
+          </>
+        ) : (
+          <text x="150" y="208" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="18" fill="var(--iv-tp)">{names}</text>
+        )}
+      </g>
+      <text data-section="date" x="150" y={line2 ? '240' : '230'} textAnchor="middle" dominantBaseline="middle" fontFamily="inherit" fontSize="9" letterSpacing="2.2" fill="var(--iv-ts)">{date}</text>
       {message && (
-        <>
+        <g data-section="message">
           <line x1="100" y1="278" x2="200" y2="278" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
-          <text
-            x="150" y="292"
-            textAnchor="middle" dominantBaseline="middle"
-            style={font.bodyStyle} fontSize="7"
-            fill="var(--iv-ts)"
-          >{message}</text>
-          {messageAttr && (
-            <text
-              x="150" y="306"
-              textAnchor="middle" dominantBaseline="middle"
-              style={font.bodyStyle} fontSize="6"
-              fill="var(--iv-acc)"
-            >{messageAttr}</text>
-          )}
-        </>
+          <text x="150" y="292" textAnchor="middle" dominantBaseline="middle" style={font.bodyStyle} fontSize="7" fill="var(--iv-ts)">{message}</text>
+          {messageAttr && <text x="150" y="306" textAnchor="middle" dominantBaseline="middle" style={font.bodyStyle} fontSize="6" fill="var(--iv-acc)">{messageAttr}</text>}
+        </g>
       )}
     </svg>
   )

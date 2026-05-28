@@ -24,60 +24,24 @@ export function ModernBlock({ names, date, venue, palette, message, messageAttr,
     >
       <rect width="300" height="400" fill="var(--iv-bg)" />
       {message && (
-        <>
-          <text
-            x="20" y="160"
-            dominantBaseline="middle"
-            style={font.bodyStyle} fontSize="7"
-            fill="rgba(100,100,100,0.7)"
-          >{message}</text>
-          {messageAttr && (
-            <text
-              x="20" y="174"
-              dominantBaseline="middle"
-              style={font.bodyStyle} fontSize="6"
-              fill="rgba(100,100,100,0.5)"
-            >{messageAttr}</text>
-          )}
-        </>
+        <g data-section="message">
+          <text x="20" y="160" dominantBaseline="middle" style={font.bodyStyle} fontSize="7" fill="rgba(100,100,100,0.7)">{message}</text>
+          {messageAttr && <text x="20" y="174" dominantBaseline="middle" style={font.bodyStyle} fontSize="6" fill="rgba(100,100,100,0.5)">{messageAttr}</text>}
+        </g>
       )}
       {/* Black block at bottom */}
       <rect x="0" y="300" width="300" height="100" fill="var(--iv-surf)" />
-      <text
-        x="20" y="316"
-        dominantBaseline="middle"
-        fontFamily="inherit" fontSize="7" letterSpacing="3"
-        fill="var(--iv-ts)"
-      >{date.toUpperCase()}</text>
-      {line2 ? (
-        <>
-          <text
-            x="20" y="338"
-            dominantBaseline="middle"
-            style={font.namesStyle} fontSize="16"
-            fontWeight={font.italic ? 'normal' : '900'}
-            fill="var(--iv-tp)"
-            letterSpacing="-0.5"
-          >{font.italic ? line1 : line1.toUpperCase()}</text>
-          <text
-            x="20" y="356"
-            dominantBaseline="middle"
-            style={font.namesStyle} fontSize="16"
-            fontWeight={font.italic ? 'normal' : '900'}
-            fill="var(--iv-tp)"
-            letterSpacing="-0.5"
-          >&amp; {font.italic ? line2 : line2.toUpperCase()}</text>
-        </>
-      ) : (
-        <text
-          x="20" y="348"
-          dominantBaseline="middle"
-          style={font.namesStyle} fontSize="16"
-          fontWeight={font.italic ? 'normal' : '900'}
-          fill="var(--iv-tp)"
-          letterSpacing="-0.5"
-        >{font.italic ? names : names.toUpperCase()}</text>
-      )}
+      <text data-section="date" x="20" y="316" dominantBaseline="middle" fontFamily="inherit" fontSize="7" letterSpacing="3" fill="var(--iv-ts)">{date.toUpperCase()}</text>
+      <g data-section="names">
+        {line2 ? (
+          <>
+            <text x="20" y="338" dominantBaseline="middle" style={font.namesStyle} fontSize="16" fontWeight={font.namesStyle.fontStyle === 'italic' ? 'normal' : '900'} fill="var(--iv-tp)" letterSpacing="-0.5">{font.namesStyle.fontStyle === 'italic' ? line1 : line1.toUpperCase()}</text>
+            <text x="20" y="356" dominantBaseline="middle" style={font.namesStyle} fontSize="16" fontWeight={font.namesStyle.fontStyle === 'italic' ? 'normal' : '900'} fill="var(--iv-tp)" letterSpacing="-0.5">&amp; {font.namesStyle.fontStyle === 'italic' ? line2 : line2.toUpperCase()}</text>
+          </>
+        ) : (
+          <text x="20" y="348" dominantBaseline="middle" style={font.namesStyle} fontSize="16" fontWeight={font.namesStyle.fontStyle === 'italic' ? 'normal' : '900'} fill="var(--iv-tp)" letterSpacing="-0.5">{font.namesStyle.fontStyle === 'italic' ? names : names.toUpperCase()}</text>
+        )}
+      </g>
       <text
         x="20" y="378"
         dominantBaseline="middle"

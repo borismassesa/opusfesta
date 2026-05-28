@@ -7,14 +7,15 @@ import {
   ZoomIn, ZoomOut, Lightbulb, HelpCircle, Pencil, Eye, EyeOff, LayoutGrid,
   MessageSquare, Upload, Layers, Text, ChevronUp, ChevronDown, Ticket,
   Mail, ClipboardCheck, FileText, UtensilsCrossed, BookOpen, Hash, Gift,
-  CheckCircle,
+  CheckCircle, AlignLeft, AlignCenter, AlignRight,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/components/providers/CartProvider'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
-import type { FontStyle } from '@/components/guests/InvitationVisual'
+import type { FontStyle, SectionStyles } from '@/components/guests/InvitationVisual'
+import type { SectionStyle } from '@/components/guests/invitation-templates/_types'
 import type { CatalogProduct } from '@/data/invitations-products'
 import { OverlayEditor } from './OverlayEditor'
 import type { OverlayItem } from './_overlay-types'
@@ -140,8 +141,16 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
   const [message, setMessage] = useState('')
   const [messageAttr, setMessageAttr] = useState('')
 
-  // Font style
+  // Font style + per-section typography overrides
   const [fontStyle, setFontStyle] = useState<FontStyle>('serif')
+  const [sectionStyles, setSectionStyles] = useState<SectionStyles>({})
+  const updateSectionStyle = (key: keyof SectionStyles, patch: Partial<SectionStyle>) =>
+    setSectionStyles((prev) => {
+      const merged = { ...prev[key], ...patch }
+      const hasValues = Object.values(merged).some((v) => v !== undefined)
+      if (!hasValues) { const next = { ...prev }; delete next[key]; return next }
+      return { ...prev, [key]: merged }
+    })
 
   // Photo upload + overlay opacity
   const [photoSrc, setPhotoSrc] = useState<string | undefined>()
@@ -651,6 +660,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   <>
                     <Field label="Celebrant names" hint="The large script line on the card">
                       <Input value={celebrant} onChange={setCelebrant} placeholder="e.g. Amani & Neema" />
+                      <TextStyleBar sectionKey="names" sectionStyles={sectionStyles} onUpdate={updateSectionStyle} />
                     </Field>
                     <Field label="Family introduction" hint={'Swahili lead — "Familia ya …"'}>
                       <textarea
@@ -660,6 +670,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                         placeholder="Familia ya … pamoja na Familia ya …"
                         className="w-full resize-none rounded-md border border-gray-300 px-3.5 py-2.5 text-[14px] leading-relaxed focus:border-[#1A1A1A] focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
                       />
+                      <TextStyleBar sectionKey="familyIntro" sectionStyles={sectionStyles} onUpdate={updateSectionStyle} />
                     </Field>
                   </>
                 )}
@@ -673,12 +684,15 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                         onChange={(e) => setDateISO(e.target.value)}
                         className="h-11 w-full rounded-md border border-gray-300 px-3.5 text-[14px] focus:border-[#1A1A1A] focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
                       />
+                      <TextStyleBar sectionKey="date" sectionStyles={sectionStyles} onUpdate={updateSectionStyle} />
                     </Field>
                     <Field label="Ceremony time">
                       <Input value={time} onChange={setTime} placeholder="e.g. 4:00 PM" />
+                      <TextStyleBar sectionKey="time" sectionStyles={sectionStyles} onUpdate={updateSectionStyle} />
                     </Field>
                     <Field label="Ceremony venue">
                       <Input value={venue} onChange={setVenue} placeholder="e.g. Bagamoyo, Tanzania" />
+                      <TextStyleBar sectionKey="venue" sectionStyles={sectionStyles} onUpdate={updateSectionStyle} />
                     </Field>
                     <div className="border-t border-gray-100 pt-4">
                       <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-gray-400">Reception (optional)</p>
@@ -698,6 +712,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   <>
                     <Field label="Dress code" hint={'Shown as "Mavazi · …"'}>
                       <Input value={dressCode} onChange={setDressCode} placeholder="e.g. Cocktail" />
+                      <TextStyleBar sectionKey="dressCode" sectionStyles={sectionStyles} onUpdate={updateSectionStyle} />
                     </Field>
                     <Field label="Colour palette" hint="The dress-code colours shown as dots">
                       <div className="flex items-center gap-3">
@@ -812,6 +827,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                           {message.length}/{MESSAGE_MAX}
                         </span>
                       </div>
+                      <TextStyleBar sectionKey="message" sectionStyles={sectionStyles} onUpdate={updateSectionStyle} />
                     </Field>
                     <Field label="Attribution" hint="e.g. — 1 Corinthians 13:4">
                       <Input value={messageAttr} onChange={setMessageAttr} placeholder="— Source or author" />
@@ -1071,6 +1087,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 </div>
                 <QuantityField value={qty['invitation'] ?? 50} onChange={(v) => setQtyFor('invitation', v)} />
                 <BackPrintToggle value={backPrint['invitation']} onChange={(v) => setBackPrintFor('invitation', v)} />
+
               </>
             )}
 
@@ -1470,12 +1487,20 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                     message={message || undefined}
                     messageAttr={messageAttr || undefined}
                     fontStyle={fontStyle}
+                    sectionStyles={sectionStyles}
                     photoSrc={photoSrc}
                     photoOpacity={photoOpacity}
                     dressCode={dressCode || undefined}
                     rsvpContact={rsvpContacts.filter(Boolean).join('  ·  ') || undefined}
                     receptionVenue={receptionVenue || undefined}
                     receptionTime={receptionTime || undefined}
+                  />
+                  <CardClickLayer
+                    containerRef={cardRef}
+                    onEdit={(panel) => {
+                      setActivePanel(panel)
+                      setSelectedItemId(null)
+                    }}
                   />
                   <OverlayEditor
                     containerRef={cardRef}
@@ -2099,6 +2124,201 @@ function TicketPreview({
           <p className="mt-0.5 text-[8px] tabular-nums text-gray-700">{rsvpContact || '+255 7XX XXX XXX'}</p>
         </div>
       </div>
+    </div>
+  )
+}
+
+// ─── Card click-to-edit hotspot layer ────────────────────────────────────────
+
+const SECTION_PANEL_MAP: Record<string, { label: string; panel: InvitationPanel }> = {
+  names:       { label: 'Names',        panel: 'event'   },
+  familyIntro: { label: 'Family intro', panel: 'event'   },
+  date:        { label: 'Date',         panel: 'details' },
+  time:        { label: 'Time',         panel: 'details' },
+  venue:       { label: 'Venue',        panel: 'details' },
+  reception:   { label: 'Reception',    panel: 'details' },
+  dressCode:   { label: 'Dress code',   panel: 'dress'   },
+  message:     { label: 'Quote',        panel: 'message' },
+  rsvpContact: { label: 'RSVP',         panel: 'rsvp'    },
+}
+
+type MeasuredHotspot = { key: string; label: string; panel: InvitationPanel; top: number; height: number }
+
+function CardClickLayer({
+  containerRef,
+  onEdit,
+}: {
+  containerRef: React.RefObject<HTMLDivElement | null>
+  onEdit: (panel: InvitationPanel) => void
+}) {
+  const [hotspots, setHotspots] = useState<MeasuredHotspot[]>([])
+
+  useEffect(() => {
+    const container = containerRef.current
+    if (!container) return
+
+    const measure = () => {
+      const cr = container.getBoundingClientRect()
+      if (cr.height === 0) return
+
+      // Compute union bounding box per section key
+      const boxes = new Map<string, { top: number; bottom: number }>()
+      container.querySelectorAll<Element>('[data-section]').forEach((el) => {
+        const key = el.getAttribute('data-section')!
+        const r = el.getBoundingClientRect()
+        if (r.width === 0 && r.height === 0) return
+        const top = r.top - cr.top
+        const bottom = r.bottom - cr.top
+        const existing = boxes.get(key)
+        boxes.set(key, existing
+          ? { top: Math.min(existing.top, top), bottom: Math.max(existing.bottom, bottom) }
+          : { top, bottom }
+        )
+      })
+
+      const pad = 5
+      const next: MeasuredHotspot[] = []
+      boxes.forEach((box, key) => {
+        const meta = SECTION_PANEL_MAP[key]
+        if (!meta) return
+        next.push({ key, label: meta.label, panel: meta.panel, top: Math.max(0, box.top - pad), height: box.bottom - box.top + pad * 2 })
+      })
+      setHotspots(next)
+    }
+
+    measure()
+    const ro = new ResizeObserver(measure)
+    ro.observe(container)
+    const mo = new MutationObserver(measure)
+    mo.observe(container, { subtree: true, characterData: true, childList: true, attributes: false })
+    return () => { ro.disconnect(); mo.disconnect() }
+  }, [containerRef])
+
+  return (
+    <div className="absolute inset-0 z-10 pointer-events-none">
+      {hotspots.map((h) => (
+        <button
+          key={h.key}
+          type="button"
+          onClick={() => onEdit(h.panel)}
+          aria-label={`Edit ${h.label}`}
+          className={cn(
+            'group absolute left-2 right-2 pointer-events-auto',
+            'rounded transition-all duration-150',
+            'hover:bg-[#1A1A1A]/6 hover:ring-1 hover:ring-[#1A1A1A]/20',
+          )}
+          style={{ top: h.top, height: h.height }}
+        >
+          <span className={cn(
+            'absolute right-1.5 top-1/2 -translate-y-1/2',
+            'flex items-center gap-1 rounded px-1.5 py-0.5',
+            'bg-[#1A1A1A] text-white text-[9px] font-bold uppercase tracking-[0.12em]',
+            'opacity-0 transition-opacity duration-150 group-hover:opacity-100',
+            'pointer-events-none select-none',
+          )}>
+            <Pencil size={8} />
+            {h.label}
+          </span>
+        </button>
+      ))}
+    </div>
+  )
+}
+
+// ─── Inline text style bar — shown beneath each relevant field ────────────────
+
+function TextStyleBar({
+  sectionKey,
+  sectionStyles,
+  onUpdate,
+}: {
+  sectionKey: keyof SectionStyles
+  sectionStyles: SectionStyles
+  onUpdate: (key: keyof SectionStyles, patch: Partial<SectionStyle>) => void
+}) {
+  const s = sectionStyles[sectionKey]
+  const activeScale = s?.scale ?? 1
+  const activeAlign = s?.align
+  const isBold = s?.fontWeight === 'bold'
+  const hasOverride = s?.scale !== undefined || s?.fontWeight !== undefined || s?.align !== undefined
+
+  return (
+    <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
+      {/* Size */}
+      {([0.75, 1, 1.25, 1.5] as const).map((scale) => {
+        const label = scale === 0.75 ? 'S' : scale === 1 ? 'M' : scale === 1.25 ? 'L' : 'XL'
+        return (
+          <button
+            key={scale}
+            type="button"
+            onClick={() => onUpdate(sectionKey, { scale })}
+            aria-pressed={activeScale === scale}
+            className={cn(
+              'h-6 w-7 rounded border text-[10px] font-bold transition',
+              activeScale === scale
+                ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white'
+                : 'border-gray-200 text-gray-500 hover:border-gray-400',
+            )}
+          >
+            {label}
+          </button>
+        )
+      })}
+
+      <span className="mx-0.5 h-4 w-px bg-gray-200" aria-hidden="true" />
+
+      {/* Alignment */}
+      {([
+        { value: 'left'   as const, icon: <AlignLeft   size={10} /> },
+        { value: 'center' as const, icon: <AlignCenter size={10} /> },
+        { value: 'right'  as const, icon: <AlignRight  size={10} /> },
+      ]).map(({ value, icon }) => (
+        <button
+          key={value}
+          type="button"
+          onClick={() => onUpdate(sectionKey, { align: activeAlign === value ? undefined : value })}
+          aria-pressed={activeAlign === value}
+          aria-label={`Align ${value}`}
+          className={cn(
+            'flex h-6 w-7 items-center justify-center rounded border transition',
+            activeAlign === value
+              ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white'
+              : 'border-gray-200 text-gray-500 hover:border-gray-400',
+          )}
+        >
+          {icon}
+        </button>
+      ))}
+
+      <span className="mx-0.5 h-4 w-px bg-gray-200" aria-hidden="true" />
+
+      {/* Bold */}
+      <button
+        type="button"
+        onClick={() => onUpdate(sectionKey, { fontWeight: isBold ? 'normal' : 'bold' })}
+        aria-pressed={isBold}
+        aria-label={isBold ? 'Remove bold' : 'Bold'}
+        className={cn(
+          'h-6 w-7 rounded border text-[11px] font-black transition',
+          isBold
+            ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white'
+            : 'border-gray-200 text-gray-700 hover:border-gray-400',
+        )}
+      >
+        B
+      </button>
+
+      {/* Reset — only when overrides are active */}
+      {hasOverride && (
+        <button
+          type="button"
+          onClick={() => onUpdate(sectionKey, { scale: undefined, fontWeight: undefined, align: undefined })}
+          aria-label="Reset styles"
+          className="ml-1 text-[10px] font-semibold text-gray-400 underline underline-offset-2 hover:text-gray-600"
+        >
+          Reset
+        </button>
+      )}
     </div>
   )
 }

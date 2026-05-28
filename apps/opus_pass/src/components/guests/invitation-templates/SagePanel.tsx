@@ -33,60 +33,25 @@ export function SagePanel({ names, date, venue, palette, message, messageAttr, f
         fontFamily="inherit" fontSize="7" letterSpacing="3"
         fill="var(--iv-acc)"
       >WEDDING</text>
-      {line2 ? (
-        <>
-          <text
-            x="114" y="196"
-            dominantBaseline="middle"
-            style={font.namesStyle} fontSize="16"
-            fill="var(--iv-tp)"
-          >{line1}</text>
-          <text
-            x="114" y="215"
-            dominantBaseline="middle"
-            style={font.namesStyle} fontSize="16"
-            fill="var(--iv-tp)"
-          >&amp; {line2}</text>
-        </>
-      ) : (
-        <text
-          x="114" y="205"
-          dominantBaseline="middle"
-          style={font.namesStyle} fontSize="16"
-          fill="var(--iv-tp)"
-        >{names}</text>
-      )}
+      <g data-section="names">
+        {line2 ? (
+          <>
+            <text x="114" y="196" dominantBaseline="middle" style={font.namesStyle} fontSize="16" fill="var(--iv-tp)">{line1}</text>
+            <text x="114" y="215" dominantBaseline="middle" style={font.namesStyle} fontSize="16" fill="var(--iv-tp)">&amp; {line2}</text>
+          </>
+        ) : (
+          <text x="114" y="205" dominantBaseline="middle" style={font.namesStyle} fontSize="16" fill="var(--iv-tp)">{names}</text>
+        )}
+      </g>
       <line x1="114" y1={line2 ? '228' : '218'} x2="138" y2={line2 ? '228' : '218'} stroke="var(--iv-acc)" strokeWidth="1" />
-      <text
-        x="114" y={line2 ? '242' : '232'}
-        dominantBaseline="middle"
-        fontFamily="inherit" fontSize="8" letterSpacing="2.2"
-        fill="var(--iv-ts)"
-      >{date}</text>
-      <text
-        x="114" y={line2 ? '258' : '248'}
-        dominantBaseline="middle"
-        fontFamily="inherit" fontSize="7" letterSpacing="1.8"
-        fill="var(--iv-mut)"
-      >{venue.toUpperCase()}</text>
+      <text data-section="date" x="114" y={line2 ? '242' : '232'} dominantBaseline="middle" fontFamily="inherit" fontSize="8" letterSpacing="2.2" fill="var(--iv-ts)">{date}</text>
+      <text data-section="venue" x="114" y={line2 ? '258' : '248'} dominantBaseline="middle" fontFamily="inherit" fontSize="7" letterSpacing="1.8" fill="var(--iv-mut)">{venue.toUpperCase()}</text>
       {message && (
-        <>
+        <g data-section="message">
           <line x1="114" y1="292" x2="240" y2="292" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
-          <text
-            x="114" y="306"
-            dominantBaseline="middle"
-            style={font.bodyStyle} fontSize="7"
-            fill="var(--iv-ts)"
-          >{message}</text>
-          {messageAttr && (
-            <text
-              x="114" y="320"
-              dominantBaseline="middle"
-              style={font.bodyStyle} fontSize="6"
-              fill="var(--iv-mut)"
-            >{messageAttr}</text>
-          )}
-        </>
+          <text x="114" y="306" dominantBaseline="middle" style={font.bodyStyle} fontSize="7" fill="var(--iv-ts)">{message}</text>
+          {messageAttr && <text x="114" y="320" dominantBaseline="middle" style={font.bodyStyle} fontSize="6" fill="var(--iv-mut)">{messageAttr}</text>}
+        </g>
       )}
     </svg>
   )

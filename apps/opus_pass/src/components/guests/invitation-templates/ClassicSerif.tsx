@@ -1,7 +1,7 @@
 import type { TemplateProps } from './_types'
-import { resolveFont } from './_types'
+import { resolveFont, applySectionStyle } from './_types'
 
-export function ClassicSerif({ names, date, venue, palette, message, messageAttr, fontStyle }: TemplateProps) {
+export function ClassicSerif({ names, date, venue, palette, message, messageAttr, fontStyle, sectionStyles }: TemplateProps) {
   const vars = {
     '--iv-bg': palette.background,
     '--iv-acc': palette.accent,
@@ -14,6 +14,11 @@ export function ClassicSerif({ names, date, venue, palette, message, messageAttr
   const parts = names.split(/\s*&\s*/)
   const line1 = parts[0] ?? names
   const line2 = parts[1]
+
+  const na = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 17 }, sectionStyles?.names)
+  const da = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 10 }, sectionStyles?.date)
+  const va = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 8  }, sectionStyles?.venue)
+  const ma = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 7  }, sectionStyles?.message)
 
   return (
     <svg
@@ -29,60 +34,64 @@ export function ClassicSerif({ names, date, venue, palette, message, messageAttr
         fontFamily="inherit" fontSize="8" letterSpacing="3.2"
         fill="var(--iv-mut)"
       >SAVE THE DATE</text>
-      {line2 ? (
-        <>
+      <g data-section="names">
+        {line2 ? (
+          <>
+            <text
+              x={na.x} y="178"
+              textAnchor={na.textAnchor} dominantBaseline="middle"
+              style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight}
+              fill="var(--iv-tp)"
+            >{line1}</text>
+            <text
+              x={na.x} y="198"
+              textAnchor={na.textAnchor} dominantBaseline="middle"
+              style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight}
+              fill="var(--iv-tp)"
+            >&amp; {line2}</text>
+          </>
+        ) : (
           <text
-            x="150" y="178"
-            textAnchor="middle" dominantBaseline="middle"
-            style={font.namesStyle} fontSize="17"
+            x={na.x} y="188"
+            textAnchor={na.textAnchor} dominantBaseline="middle"
+            style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight}
             fill="var(--iv-tp)"
-          >{line1}</text>
-          <text
-            x="150" y="198"
-            textAnchor="middle" dominantBaseline="middle"
-            style={font.namesStyle} fontSize="17"
-            fill="var(--iv-tp)"
-          >&amp; {line2}</text>
-        </>
-      ) : (
-        <text
-          x="150" y="188"
-          textAnchor="middle" dominantBaseline="middle"
-          style={font.namesStyle} fontSize="17"
-          fill="var(--iv-tp)"
-        >{names}</text>
-      )}
+          >{names}</text>
+        )}
+      </g>
       <line x1="125" y1="216" x2="175" y2="216" stroke="var(--iv-acc)" strokeWidth="0.8" />
       <text
-        x="150" y="232"
-        textAnchor="middle" dominantBaseline="middle"
-        fontFamily="inherit" fontSize="10" letterSpacing="2.2"
+        data-section="date"
+        x={da.x} y="232"
+        textAnchor={da.textAnchor} dominantBaseline="middle"
+        fontFamily="inherit" fontSize={da.fontSize} fontWeight={da.fontWeight} letterSpacing="2.2"
         fill="var(--iv-ts)"
       >{date}</text>
       <text
-        x="150" y="250"
-        textAnchor="middle" dominantBaseline="middle"
-        fontFamily="inherit" fontSize="8" letterSpacing="2.2"
+        data-section="venue"
+        x={va.x} y="250"
+        textAnchor={va.textAnchor} dominantBaseline="middle"
+        fontFamily="inherit" fontSize={va.fontSize} fontWeight={va.fontWeight} letterSpacing="2.2"
         fill="var(--iv-mut)"
       >{venue.toUpperCase()}</text>
       {message && (
-        <>
+        <g data-section="message">
           <line x1="100" y1="285" x2="200" y2="285" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
           <text
-            x="150" y="299"
-            textAnchor="middle" dominantBaseline="middle"
-            style={font.bodyStyle} fontSize="7"
+            x={ma.x} y="299"
+            textAnchor={ma.textAnchor} dominantBaseline="middle"
+            style={font.bodyStyle} fontSize={ma.fontSize} fontWeight={ma.fontWeight}
             fill="var(--iv-ts)"
           >{message}</text>
           {messageAttr && (
             <text
-              x="150" y="313"
-              textAnchor="middle" dominantBaseline="middle"
-              style={font.bodyStyle} fontSize="6"
+              x={ma.x} y="313"
+              textAnchor={ma.textAnchor} dominantBaseline="middle"
+              style={font.bodyStyle} fontSize={Math.round(ma.fontSize * 0.86 * 10) / 10}
               fill="var(--iv-mut)"
             >{messageAttr}</text>
           )}
-        </>
+        </g>
       )}
     </svg>
   )

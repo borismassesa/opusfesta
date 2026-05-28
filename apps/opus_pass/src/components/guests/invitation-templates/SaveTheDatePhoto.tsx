@@ -117,41 +117,43 @@ export function SaveTheDatePhoto({
       </text>
 
       {/* ── Names ── */}
-      {line2 ? (
-        <>
+      <g data-section="names">
+        {line2 ? (
+          <>
+            <text transform="translate(110.37 389.15)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="24.32" fontWeight="700" fill="var(--iv-tp)">
+              <tspan x="0" y="0">{line1.toUpperCase()}</tspan>
+            </text>
+            <text transform="translate(110.37 418)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="24.32" fontWeight="700" fill="var(--iv-tp)">
+              <tspan x="0" y="0">&amp; {line2.toUpperCase()}</tspan>
+            </text>
+          </>
+        ) : (
           <text transform="translate(110.37 389.15)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="24.32" fontWeight="700" fill="var(--iv-tp)">
-            <tspan x="0" y="0">{line1.toUpperCase()}</tspan>
+            <tspan x="0" y="0">{names.toUpperCase()}</tspan>
           </text>
-          <text transform="translate(110.37 418)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="24.32" fontWeight="700" fill="var(--iv-tp)">
-            <tspan x="0" y="0">&amp; {line2.toUpperCase()}</tspan>
-          </text>
-        </>
-      ) : (
-        <text transform="translate(110.37 389.15)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="24.32" fontWeight="700" fill="var(--iv-tp)">
-          <tspan x="0" y="0">{names.toUpperCase()}</tspan>
-        </text>
-      )}
+        )}
+      </g>
 
       {/* ── Date ── */}
-      <text transform="translate(181.86 438.76)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="15.98" fill="var(--iv-tp)">
+      <text data-section="date" transform="translate(181.86 438.76)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="15.98" fill="var(--iv-tp)">
         <tspan x="0" y="0">{date}</tspan>
       </text>
 
       {/* ── Venue ── */}
-      <text transform="translate(134.53 455.73)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="13" fill="var(--iv-tp)">
+      <text data-section="venue" transform="translate(134.53 455.73)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="13" fill="var(--iv-tp)">
         <tspan x="0" y="0">{venue}</tspan>
       </text>
 
       {/* ── Time ── */}
       {time && (
-        <text transform="translate(172 472)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="12" fill="var(--iv-mut)">
+        <text data-section="time" transform="translate(172 472)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="12" fill="var(--iv-mut)">
           <tspan x="0" y="0">{time}</tspan>
         </text>
       )}
 
       {/* ── Reception ── */}
       {hasReception && (
-        <text transform="translate(120 490)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="11" fill="var(--iv-mut)">
+        <text data-section="reception" transform="translate(120 490)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="11" fill="var(--iv-mut)">
           <tspan x="0" y="0">
             Reception{receptionVenue ? ` · ${receptionVenue}` : ''}{receptionTime ? ` · ${receptionTime}` : ''}
           </tspan>
@@ -160,6 +162,7 @@ export function SaveTheDatePhoto({
 
       {/* ── Dress code ── */}
       <text
+        data-section="dressCode"
         transform={`translate(135.78 ${dressY})`}
         fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif"
         fontSize="13.33"
@@ -173,6 +176,7 @@ export function SaveTheDatePhoto({
 
       {/* ── RSVP ── */}
       <text
+        data-section="rsvpContact"
         transform={`translate(120 ${rsvpY})`}
         fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif"
         fontSize="12.28"
