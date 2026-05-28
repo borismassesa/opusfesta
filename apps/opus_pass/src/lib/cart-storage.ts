@@ -25,12 +25,10 @@ export type StoredOrderItem = {
 export type StoredOrder = {
   ref: string
   paidAt: string
-  paymentLabel: string
   items: StoredOrderItem[]
   subtotal: number
   vat: number
   total: number
-  contact: StoredContact
 }
 
 function read<T>(key: string): T | null {
@@ -64,8 +62,19 @@ export function getLastOrder(): StoredOrder | null {
   return read<StoredOrder>(ORDER_KEY)
 }
 
+function sanitizeOrderForStorage(order: StoredOrder): StoredOrder {
+  return {
+    ref: order.ref,
+    paidAt: order.paidAt,
+    items: order.items,
+    subtotal: order.subtotal,
+    vat: order.vat,
+    total: order.total,
+  }
+}
+
 export function setLastOrder(order: StoredOrder): void {
-  write(ORDER_KEY, order)
+  write(ORDER_KEY, sanitizeOrderForStorage(order))
 }
 
 export function generateOrderRef(): string {

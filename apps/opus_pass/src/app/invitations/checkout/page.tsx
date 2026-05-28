@@ -170,12 +170,10 @@ export default function CheckoutPage() {
       setLastOrder({
         ref,
         paidAt: new Date().toISOString(),
-        paymentLabel: paymentLabel(),
         items: items.map((i) => ({ id: i.id, name: i.name, summary: i.summary, total: i.total })),
         subtotal,
         vat,
         total,
-        contact,
       })
       clear()
       router.push('/invitations/confirmation')
