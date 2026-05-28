@@ -4,8 +4,9 @@ import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { MessageCircle, Mail, Copy, Send, Smartphone, Check, Users } from 'lucide-react'
-import { Card, SectionTitle, EmptyState, StatusPill } from '@/components/dashboard/primitives'
+import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
+import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { recordSend } from '@/lib/dashboard/actions'
 import {
   rsvpUrl,
@@ -14,7 +15,12 @@ import {
   smsShareUrl,
   emailShareUrl,
 } from '@/lib/dashboard/share'
-import type { GuestWithInvitations, RsvpStatus, SendChannel } from '@/lib/dashboard/types'
+import type {
+  DashboardHeroMedia,
+  GuestWithInvitations,
+  RsvpStatus,
+  SendChannel,
+} from '@/lib/dashboard/types'
 
 function summaryStatus(g: GuestWithInvitations): RsvpStatus | null {
   if (g.invitations.length === 0) return null
@@ -27,9 +33,11 @@ function summaryStatus(g: GuestWithInvitations): RsvpStatus | null {
 export default function InvitationsCenter({
   guests,
   coupleName,
+  hero,
 }: {
   guests: GuestWithInvitations[]
   coupleName: string
+  hero: DashboardHeroMedia | null
 }) {
   const [origin, setOrigin] = useState('')
   const [, startTransition] = useTransition()
@@ -73,9 +81,12 @@ export default function InvitationsCenter({
 
   return (
     <div className="space-y-6">
-      <SectionTitle
+      <DashboardHero
+        pageSlug="invitations"
+        eyebrow="Invitations"
         title="Send invitations"
         subtitle="Share each guest's personal RSVP link — no app needed on their end"
+        media={hero}
       />
 
       {guests.length === 0 ? (

@@ -9,6 +9,7 @@ import {
   CalendarHeart,
   Send,
   ClipboardCheck,
+  Globe,
   Settings,
   Menu,
   X,
@@ -24,6 +25,7 @@ const NAV = [
   { href: '/my/dashboard/events', label: 'Events', icon: CalendarHeart },
   { href: '/my/dashboard/invitations', label: 'Send invites', icon: Send },
   { href: '/my/dashboard/rsvps', label: 'RSVPs', icon: ClipboardCheck },
+  { href: '/my/dashboard/website', label: 'Wedding website', icon: Globe },
   { href: '/my/dashboard/settings', label: 'Settings', icon: Settings },
 ] as const
 

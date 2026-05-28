@@ -2,9 +2,11 @@ import 'server-only'
 import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
 import type {
+  DashboardHeroMedia,
   DashboardStats,
   GuestInvitation,
   GuestWithInvitations,
+  HeroPageSlug,
   WeddingEvent,
 } from './types'
 
@@ -128,6 +130,18 @@ export function coupleDisplayName(profile: CoupleProfileLite | null): string {
   return names.join(' & ')
 }
 
+/** The signed-in couple's Contact Collector token (shareable via WhatsApp). */
+export async function getMyCollectorToken(): Promise<string | null> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('users')
+    .select('collector_token')
+    .eq('id', user.id)
+    .maybeSingle<{ collector_token: string | null }>()
+  return data?.collector_token ?? null
+}
+
 /** Public, token-scoped fetch for the guest RSVP page (no auth). */
 export interface PublicRsvpData {
   guest: {
@@ -209,4 +223,19 @@ export async function getPublicRsvpData(token: string): Promise<PublicRsvpData |
     weddingDate: profile?.wedding_date ?? null,
     events: merged,
   }
+}
+
+/** Fetch this couple's hero cover for a single dashboard page. */
+export async function getDashboardHeroMedia(
+  pageSlug: HeroPageSlug
+): Promise<DashboardHeroMedia | null> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('dashboard_hero_media')
+    .select('page_slug, media_url, media_type, storage_path, updated_at')
+    .eq('user_id', user.id)
+    .eq('page_slug', pageSlug)
+    .maybeSingle<DashboardHeroMedia>()
+  return data ?? null
 }

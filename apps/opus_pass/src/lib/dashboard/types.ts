@@ -90,3 +90,14 @@ export const RSVP_STATUS_LABELS: Record<RsvpStatus, string> = {
   declined: 'Declined',
   maybe: 'Maybe',
 }
+
+export type HeroPageSlug = 'invitations' | 'guests' | 'rsvps' | 'website'
+export type HeroMediaType = 'image' | 'video'
+
+export interface DashboardHeroMedia {
+  page_slug: HeroPageSlug
+  media_url: string
+  media_type: HeroMediaType
+  storage_path: string
+  updated_at: string
+}

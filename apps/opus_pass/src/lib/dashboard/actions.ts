@@ -3,7 +3,28 @@
 import { revalidatePath } from 'next/cache'
 import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
-import type { EventType, RsvpStatus, SendChannel } from './types'
+import type { EventType, HeroMediaType, HeroPageSlug, RsvpStatus, SendChannel } from './types'
+
+const HERO_BUCKET = 'dashboard-hero-media'
+const HERO_PAGE_SLUGS = ['invitations', 'guests', 'rsvps', 'website'] as const
+const HERO_MAX_BYTES = 50 * 1024 * 1024 // 50 MB
+
+function heroPagePath(slug: HeroPageSlug): string {
+  return `/my/dashboard/${slug === 'rsvps' ? 'rsvps' : slug}`
+}
+
+function detectHeroMediaType(mimeType: string): HeroMediaType | null {
+  if (mimeType.startsWith('image/')) return 'image'
+  if (mimeType.startsWith('video/')) return 'video'
+  return null
+}
+
+function safeExtension(name: string, mimeType: string): string {
+  const fromName = name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '')
+  if (fromName && fromName.length <= 5) return fromName
+  const fromMime = mimeType.split('/').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '')
+  return fromMime && fromMime.length <= 5 ? fromMime : 'bin'
+}
 
 function revalidateDashboard() {
   revalidatePath('/my/dashboard')
@@ -11,6 +32,7 @@ function revalidateDashboard() {
   revalidatePath('/my/dashboard/events')
   revalidatePath('/my/dashboard/invitations')
   revalidatePath('/my/dashboard/rsvps')
+  revalidatePath('/my/dashboard/website')
 }
 
 // ---------------------------------------------------------------- Events
@@ -363,5 +385,114 @@ export async function submitPublicRsvp(
   }
 
   revalidatePath(`/rsvp/${token}`)
+  return { ok: true }
+}
+
+// ---------------------------------------------------------------- Dashboard hero media
+
+export interface UploadHeroResult {
+  ok: boolean
+  url?: string
+  mediaType?: HeroMediaType
+  error?: string
+}
+
+export async function uploadDashboardHero(
+  pageSlug: HeroPageSlug,
+  formData: FormData
+): Promise<UploadHeroResult> {
+  if (!HERO_PAGE_SLUGS.includes(pageSlug)) {
+    return { ok: false, error: 'Unsupported page' }
+  }
+
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) {
+    return { ok: false, error: 'No file selected' }
+  }
+  if (file.size > HERO_MAX_BYTES) {
+    return { ok: false, error: 'File is too large (50MB max)' }
+  }
+  const mediaType = detectHeroMediaType(file.type)
+  if (!mediaType) {
+    return { ok: false, error: 'Use an image or video file' }
+  }
+
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  // Clean up any previous hero for this slug so we don't leak storage objects.
+  const { data: existing } = await supabase
+    .from('dashboard_hero_media')
+    .select('storage_path')
+    .eq('user_id', user.id)
+    .eq('page_slug', pageSlug)
+    .maybeSingle<{ storage_path: string }>()
+
+  const ext = safeExtension(file.name, file.type)
+  const storagePath = `${user.id}/${pageSlug}/${Date.now()}.${ext}`
+
+  const arrayBuffer = await file.arrayBuffer()
+  const { error: uploadError } = await supabase.storage
+    .from(HERO_BUCKET)
+    .upload(storagePath, arrayBuffer, {
+      contentType: file.type,
+      cacheControl: '3600',
+      upsert: false,
+    })
+  if (uploadError) return { ok: false, error: uploadError.message }
+
+  const { data: publicUrl } = supabase.storage.from(HERO_BUCKET).getPublicUrl(storagePath)
+
+  const { error: upsertError } = await supabase.from('dashboard_hero_media').upsert(
+    {
+      user_id: user.id,
+      page_slug: pageSlug,
+      media_url: publicUrl.publicUrl,
+      media_type: mediaType,
+      storage_path: storagePath,
+      updated_at: new Date().toISOString(),
+    },
+    { onConflict: 'user_id,page_slug' }
+  )
+  if (upsertError) {
+    // Best-effort: remove the just-uploaded object so we don't leak it.
+    await supabase.storage.from(HERO_BUCKET).remove([storagePath]).catch(() => {})
+    return { ok: false, error: upsertError.message }
+  }
+
+  if (existing?.storage_path && existing.storage_path !== storagePath) {
+    await supabase.storage.from(HERO_BUCKET).remove([existing.storage_path]).catch(() => {})
+  }
+
+  revalidatePath(heroPagePath(pageSlug))
+  return { ok: true, url: publicUrl.publicUrl, mediaType }
+}
+
+export async function removeDashboardHero(pageSlug: HeroPageSlug): Promise<UploadHeroResult> {
+  if (!HERO_PAGE_SLUGS.includes(pageSlug)) {
+    return { ok: false, error: 'Unsupported page' }
+  }
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const { data: existing } = await supabase
+    .from('dashboard_hero_media')
+    .select('storage_path')
+    .eq('user_id', user.id)
+    .eq('page_slug', pageSlug)
+    .maybeSingle<{ storage_path: string }>()
+
+  const { error } = await supabase
+    .from('dashboard_hero_media')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('page_slug', pageSlug)
+  if (error) return { ok: false, error: error.message }
+
+  if (existing?.storage_path) {
+    await supabase.storage.from(HERO_BUCKET).remove([existing.storage_path]).catch(() => {})
+  }
+
+  revalidatePath(heroPagePath(pageSlug))
   return { ok: true }
 }

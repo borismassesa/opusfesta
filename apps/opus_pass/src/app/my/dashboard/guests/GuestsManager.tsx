@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
   Users,
@@ -12,9 +12,15 @@ import {
   Upload,
   Mail,
   Phone,
+  MessageCircle,
+  Minus,
+  X,
+  ClipboardSignature,
 } from 'lucide-react'
-import { Card, SectionTitle, EmptyState, StatusPill } from '@/components/dashboard/primitives'
-import { Button, Dialog, Field, inputClass } from '@/components/dashboard/controls'
+import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
+import { Button, Slideover, Tabs, Field, inputClass } from '@/components/dashboard/controls'
+import { DashboardHero } from '@/components/dashboard/DashboardHero'
+import CollectorShareSlideover from './CollectorShareSlideover'
 import {
   createGuest,
   updateGuest,
@@ -23,8 +29,15 @@ import {
   recordSend,
   type GuestInput,
 } from '@/lib/dashboard/actions'
-import { rsvpUrl } from '@/lib/dashboard/share'
-import type { GuestWithInvitations, RsvpStatus, WeddingEvent } from '@/lib/dashboard/types'
+import { inviteMessage, rsvpUrl, whatsappShareUrl } from '@/lib/dashboard/share'
+import type {
+  DashboardHeroMedia,
+  GuestWithInvitations,
+  RsvpStatus,
+  WeddingEvent,
+} from '@/lib/dashboard/types'
+
+type FormTab = 'info' | 'invitations'
 
 const emptyForm: GuestInput = {
   full_name: '',
@@ -48,16 +61,25 @@ function summaryStatus(g: GuestWithInvitations): RsvpStatus | null {
 export default function GuestsManager({
   initialGuests,
   events,
+  coupleName,
+  hero,
+  collectorToken,
 }: {
   initialGuests: GuestWithInvitations[]
   events: WeddingEvent[]
+  coupleName: string
+  hero: DashboardHeroMedia | null
+  collectorToken: string | null
 }) {
   const [query, setQuery] = useState('')
   const [groupFilter, setGroupFilter] = useState('all')
   const [open, setOpen] = useState(false)
+  const [tab, setTab] = useState<FormTab>('info')
   const [importOpen, setImportOpen] = useState(false)
+  const [collectorOpen, setCollectorOpen] = useState(false)
   const [importText, setImportText] = useState('')
   const [importEventIds, setImportEventIds] = useState<string[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [editing, setEditing] = useState<GuestWithInvitations | null>(null)
   const [form, setForm] = useState<GuestInput>(emptyForm)
   const [pending, startTransition] = useTransition()
@@ -83,6 +105,7 @@ export default function GuestsManager({
   function openCreate() {
     setEditing(null)
     setForm(emptyForm)
+    setTab('info')
     setOpen(true)
   }
 
@@ -98,20 +121,30 @@ export default function GuestsManager({
       notes: g.notes ?? '',
       eventIds: g.invitations.map((i) => i.event_id),
     })
+    setTab('info')
     setOpen(true)
   }
 
   function toggleEvent(id: string) {
     setForm((f) => {
       const set = new Set(f.eventIds ?? [])
-      set.has(id) ? set.delete(id) : set.add(id)
+      if (set.has(id)) set.delete(id)
+      else set.add(id)
       return { ...f, eventIds: [...set] }
     })
+  }
+
+  function adjustParty(delta: number) {
+    setForm((f) => ({
+      ...f,
+      max_party_size: Math.max(1, (f.max_party_size ?? 1) + delta),
+    }))
   }
 
   function save() {
     if (!form.full_name.trim()) {
       toast.error("Enter the guest's name")
+      setTab('info')
       return
     }
     startTransition(async () => {
@@ -151,8 +184,32 @@ export default function GuestsManager({
       return
     }
     toast.success('RSVP link copied')
-    // Tracking is best-effort — a failure here shouldn't look like a copy failure.
     recordSend(g.id, 'link').catch(() => {})
+  }
+
+  function sendWhatsApp(g: GuestWithInvitations) {
+    const link = rsvpUrl(window.location.origin, g.public_token)
+    const msg = inviteMessage(coupleName, g.full_name, link)
+    const url = whatsappShareUrl(g, msg)
+    window.open(url, '_blank', 'noopener,noreferrer')
+    recordSend(g.id, 'whatsapp').catch(() => {})
+  }
+
+  function pickImportFile() {
+    fileInputRef.current?.click()
+  }
+
+  async function onImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    try {
+      const raw = await file.text()
+      setImportText(csvToImportLines(raw))
+    } catch {
+      toast.error('Could not read file')
+    } finally {
+      e.target.value = '' // allow re-selecting the same file
+    }
   }
 
   function runImport() {
@@ -177,17 +234,40 @@ export default function GuestsManager({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <SectionTitle title="Guest list" subtitle={`${initialGuests.length} guests on your list`} />
-        <div className="flex gap-2">
-          <Button variant="secondary" onClick={() => setImportOpen(true)}>
-            <Upload className="h-4 w-4" /> Import
-          </Button>
-          <Button onClick={openCreate}>
-            <Plus className="h-4 w-4" /> Add guest
-          </Button>
-        </div>
-      </div>
+      <DashboardHero
+        pageSlug="guests"
+        eyebrow="Guest list"
+        title={coupleName === 'The Couple' ? 'Your guest list' : `${coupleName}'s guests`}
+        subtitle={`${initialGuests.length} ${initialGuests.length === 1 ? 'guest' : 'guests'} on your list`}
+        media={hero}
+        actions={
+          <>
+            {collectorToken ? (
+              <button
+                type="button"
+                onClick={() => setCollectorOpen(true)}
+                className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-white"
+              >
+                <ClipboardSignature className="h-3.5 w-3.5" /> Collect addresses
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={() => setImportOpen(true)}
+              className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-white"
+            >
+              <Upload className="h-3.5 w-3.5" /> Upload spreadsheet
+            </button>
+            <button
+              type="button"
+              onClick={openCreate}
+              className="inline-flex items-center gap-2 rounded-full bg-[#C9A0DC] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
+            >
+              <Plus className="h-3.5 w-3.5" /> Add guests
+            </button>
+          </>
+        }
+      />
 
       {initialGuests.length > 0 ? (
         <div className="flex flex-wrap items-center gap-3">
@@ -221,15 +301,20 @@ export default function GuestsManager({
         <EmptyState
           icon={<Users className="h-7 w-7" />}
           title="Build your guest list"
-          description="Add guests one by one, or paste a list to import them in bulk. Each guest gets a personal RSVP link."
+          description="Add guests one by one, or upload a spreadsheet to import them in bulk. Each guest gets a personal RSVP link you can send by WhatsApp."
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <Button onClick={openCreate}>
-                <Plus className="h-4 w-4" /> Add a guest
+                <Plus className="h-4 w-4" /> Add guests
               </Button>
               <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                <Upload className="h-4 w-4" /> Import a list
+                <Upload className="h-4 w-4" /> Upload spreadsheet
               </Button>
+              {collectorToken ? (
+                <Button variant="secondary" onClick={() => setCollectorOpen(true)}>
+                  <ClipboardSignature className="h-4 w-4" /> Collect addresses
+                </Button>
+              ) : null}
             </div>
           }
         />
@@ -287,6 +372,16 @@ export default function GuestsManager({
                   </div>
 
                   <div className="flex shrink-0 gap-1">
+                    {g.whatsapp_phone || g.phone ? (
+                      <button
+                        onClick={() => sendWhatsApp(g)}
+                        aria-label="Send invite on WhatsApp"
+                        title="Send invite on WhatsApp"
+                        className="flex h-8 w-8 items-center justify-center rounded-lg text-[#25D366] hover:bg-[#25D366]/10"
+                      >
+                        <MessageCircle className="h-4 w-4" />
+                      </button>
+                    ) : null}
                     <button
                       onClick={() => copyLink(g)}
                       aria-label="Copy RSVP link"
@@ -317,104 +412,154 @@ export default function GuestsManager({
         </Card>
       )}
 
-      {/* Add / edit guest */}
-      <Dialog
+      {/* Add / edit guest — slideover */}
+      <Slideover
         open={open}
         onClose={() => setOpen(false)}
-        title={editing ? 'Edit guest' : 'Add guest'}
+        title={editing ? 'Edit guest' : 'Add guests'}
         footer={
           <>
             <Button variant="secondary" onClick={() => setOpen(false)}>
               Cancel
             </Button>
             <Button onClick={save} disabled={pending}>
-              {pending ? 'Saving…' : editing ? 'Save changes' : 'Add guest'}
+              {pending ? 'Saving…' : editing ? 'Save changes' : 'Add to list'}
             </Button>
           </>
         }
       >
-        <div className="space-y-4">
-          <Field label="Full name">
-            <input
-              className={inputClass}
-              value={form.full_name}
-              onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-              placeholder="e.g. Asha & Juma Mussa"
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Email">
+        <Tabs
+          value={tab}
+          onChange={setTab}
+          tabs={[
+            { id: 'info', label: 'Guest info' },
+            { id: 'invitations', label: 'Invitations' },
+          ]}
+        />
+
+        {tab === 'info' ? (
+          <div className="space-y-4">
+            <Field label="Full name">
               <input
-                type="email"
                 className={inputClass}
-                value={form.email ?? ''}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
+                value={form.full_name}
+                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
+                placeholder="e.g. Asha & Juma Mussa"
               />
             </Field>
-            <Field label="Phone">
-              <input
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="Email">
+                <input
+                  type="email"
+                  className={inputClass}
+                  value={form.email ?? ''}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  placeholder="you@example.com"
+                />
+              </Field>
+              <Field label="Phone">
+                <input
+                  className={inputClass}
+                  value={form.phone ?? ''}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  placeholder="07XX XXX XXX"
+                />
+              </Field>
+            </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <Field label="WhatsApp" hint="If different from phone">
+                <input
+                  className={inputClass}
+                  value={form.whatsapp_phone ?? ''}
+                  onChange={(e) => setForm({ ...form, whatsapp_phone: e.target.value })}
+                  placeholder="07XX XXX XXX"
+                />
+              </Field>
+              <Field label="Group">
+                <input
+                  className={inputClass}
+                  value={form.group_tag ?? ''}
+                  onChange={(e) => setForm({ ...form, group_tag: e.target.value })}
+                  placeholder="e.g. Family"
+                />
+              </Field>
+            </div>
+
+            <Field label="Total seats" hint="Including the named guest, plus any plus-ones or kids">
+              <div className="flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => adjustParty(-1)}
+                  aria-label="Fewer seats"
+                  className="flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-inset ring-black/[0.12] hover:bg-black/[0.04]"
+                >
+                  <Minus className="h-4 w-4" />
+                </button>
+                <span className="min-w-[2ch] text-center text-xl font-semibold tabular-nums text-[#1A1A1A]">
+                  {form.max_party_size ?? 1}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => adjustParty(1)}
+                  aria-label="More seats"
+                  className="flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-inset ring-black/[0.12] hover:bg-black/[0.04]"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              </div>
+            </Field>
+
+            <Field label="Notes" hint="Optional — meal preferences, accessibility, who they came with">
+              <textarea
+                rows={3}
                 className={inputClass}
-                value={form.phone ?? ''}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                placeholder="07XX XXX XXX"
+                value={form.notes ?? ''}
+                onChange={(e) => setForm({ ...form, notes: e.target.value })}
+                placeholder="Vegetarian, requires wheelchair access…"
               />
             </Field>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="WhatsApp" hint="If different from phone">
-              <input
-                className={inputClass}
-                value={form.whatsapp_phone ?? ''}
-                onChange={(e) => setForm({ ...form, whatsapp_phone: e.target.value })}
-              />
-            </Field>
-            <Field label="Group">
-              <input
-                className={inputClass}
-                value={form.group_tag ?? ''}
-                onChange={(e) => setForm({ ...form, group_tag: e.target.value })}
-                placeholder="e.g. Family"
-              />
-            </Field>
-          </div>
-          <Field label="Seats allowed" hint="Max people this invite can bring">
-            <input
-              type="number"
-              min={1}
-              className={inputClass}
-              value={form.max_party_size ?? 1}
-              onChange={(e) => setForm({ ...form, max_party_size: Math.max(1, Number(e.target.value) || 1) })}
-            />
-          </Field>
-          {events.length > 0 ? (
-            <Field label="Invite to events">
+        ) : (
+          <div className="space-y-3">
+            <p className="text-sm text-[#1A1A1A]/60">
+              Pick which events this guest is invited to. They&apos;ll see only the events you tick on their RSVP page.
+            </p>
+            {events.length > 0 ? (
               <div className="space-y-2 rounded-xl border border-black/[0.1] p-3">
                 {events.map((ev) => (
-                  <label key={ev.id} className="flex items-center gap-2 text-sm text-[#1A1A1A]/80">
+                  <label key={ev.id} className="flex items-center gap-3 text-sm text-[#1A1A1A]/80">
                     <input
                       type="checkbox"
                       checked={(form.eventIds ?? []).includes(ev.id)}
                       onChange={() => toggleEvent(ev.id)}
                       className="h-4 w-4 rounded border-black/20 accent-[#C9A0DC]"
                     />
-                    {ev.name}
+                    <span className="flex-1">{ev.name}</span>
+                    {ev.starts_at ? (
+                      <span className="text-xs text-[#1A1A1A]/45">
+                        {new Date(ev.starts_at).toLocaleDateString('en-GB', {
+                          day: 'numeric',
+                          month: 'short',
+                        })}
+                      </span>
+                    ) : null}
                   </label>
                 ))}
               </div>
-            </Field>
-          ) : (
-            <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
-              Add an event first to invite this guest to it.
-            </p>
-          )}
-        </div>
-      </Dialog>
+            ) : (
+              <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
+                Add an event first to invite this guest to it.
+              </p>
+            )}
+          </div>
+        )}
+      </Slideover>
 
-      {/* Bulk import */}
-      <Dialog
+      {/* Bulk import — slideover with file or paste */}
+      <Slideover
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        title="Import guests"
+        title="Upload spreadsheet"
         footer={
           <>
             <Button variant="secondary" onClick={() => setImportOpen(false)}>
@@ -427,15 +572,45 @@ export default function GuestsManager({
         }
       >
         <div className="space-y-4">
-          <Field label="Paste guests" hint="One per line. Optionally: Name, email, phone">
+          <div className="rounded-xl border border-dashed border-black/[0.15] bg-black/[0.02] p-4">
+            <p className="text-sm font-medium text-[#1A1A1A]">Drop a .csv file</p>
+            <p className="mt-1 text-xs text-[#1A1A1A]/55">
+              Columns we recognize: <span className="font-medium">Name, Email, Phone, Group</span>. The first
+              row is treated as a header if it looks like one.
+            </p>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Button variant="secondary" onClick={pickImportFile}>
+                <Upload className="h-4 w-4" /> Choose CSV file
+              </Button>
+              {importText ? (
+                <button
+                  type="button"
+                  onClick={() => setImportText('')}
+                  className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs text-[#1A1A1A]/55 hover:bg-black/[0.05]"
+                >
+                  <X className="h-3 w-3" /> Clear
+                </button>
+              ) : null}
+            </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv,text/csv"
+              className="hidden"
+              onChange={onImportFile}
+            />
+          </div>
+
+          <Field label="Or paste names" hint="One per line. Optionally: Name, email, phone">
             <textarea
               className={inputClass}
-              rows={7}
+              rows={8}
               value={importText}
               onChange={(e) => setImportText(e.target.value)}
               placeholder={'Asha Mussa, asha@email.com, 0712345678\nJuma Said\nGrace Mollel, grace@email.com'}
             />
           </Field>
+
           {events.length > 0 ? (
             <Field label="Invite all to">
               <div className="space-y-2 rounded-xl border border-black/[0.1] p-3">
@@ -458,7 +633,97 @@ export default function GuestsManager({
             </Field>
           ) : null}
         </div>
-      </Dialog>
+      </Slideover>
+
+      <CollectorShareSlideover
+        open={collectorOpen}
+        onClose={() => setCollectorOpen(false)}
+        collectorToken={collectorToken}
+        coupleName={coupleName}
+      />
     </div>
   )
+}
+
+/**
+ * Convert raw CSV content into the line-based format `bulkImportGuests` expects:
+ * `Name, email, phone` per line. Skips a leading header row when it looks like
+ * one (i.e. cells contain the keywords name/email/phone). Tolerates quoted
+ * fields and Windows line endings.
+ */
+function csvToImportLines(raw: string): string {
+  const text = raw.replace(/\r\n?/g, '\n').trim()
+  if (!text) return ''
+  const rows = parseCsv(text)
+  if (rows.length === 0) return ''
+
+  const header = rows[0].map((c) => c.toLowerCase())
+  const looksLikeHeader =
+    header.some((c) => /(^|\b)(name|full ?name)\b/.test(c)) ||
+    header.some((c) => c.includes('email')) ||
+    header.some((c) => c.includes('phone'))
+
+  const colIndex = (matchers: RegExp[]) =>
+    header.findIndex((c) => matchers.some((re) => re.test(c)))
+
+  let nameIdx = 0
+  let emailIdx = 1
+  let phoneIdx = 2
+  if (looksLikeHeader) {
+    const n = colIndex([/(^|\b)name\b/, /full ?name/])
+    const e = colIndex([/email/])
+    const p = colIndex([/phone|mobile|whatsapp/])
+    if (n >= 0) nameIdx = n
+    if (e >= 0) emailIdx = e
+    if (p >= 0) phoneIdx = p
+  }
+
+  const dataRows = looksLikeHeader ? rows.slice(1) : rows
+  return dataRows
+    .map((cols) => {
+      const name = (cols[nameIdx] ?? '').trim()
+      const email = (cols[emailIdx] ?? '').trim()
+      const phone = (cols[phoneIdx] ?? '').trim()
+      if (!name) return null
+      return [name, email, phone].filter(Boolean).join(', ')
+    })
+    .filter((line): line is string => line !== null)
+    .join('\n')
+}
+
+function parseCsv(text: string): string[][] {
+  const rows: string[][] = []
+  let row: string[] = []
+  let cell = ''
+  let inQuotes = false
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i]
+    if (inQuotes) {
+      if (ch === '"' && text[i + 1] === '"') {
+        cell += '"'
+        i++
+      } else if (ch === '"') {
+        inQuotes = false
+      } else {
+        cell += ch
+      }
+    } else if (ch === '"') {
+      inQuotes = true
+    } else if (ch === ',') {
+      row.push(cell)
+      cell = ''
+    } else if (ch === '\n') {
+      row.push(cell)
+      rows.push(row)
+      row = []
+      cell = ''
+    } else {
+      cell += ch
+    }
+  }
+  if (cell.length > 0 || row.length > 0) {
+    row.push(cell)
+    rows.push(row)
+  }
+  return rows.filter((r) => r.some((c) => c.trim().length > 0))
 }

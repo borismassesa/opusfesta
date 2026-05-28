@@ -2,12 +2,14 @@
 
 import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Download, ClipboardCheck, Utensils } from 'lucide-react'
-import { Card, SectionTitle, EmptyState, StatusPill } from '@/components/dashboard/primitives'
+import { Download, ClipboardCheck, Utensils, Search } from 'lucide-react'
+import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
 import { inputClass } from '@/components/dashboard/controls'
+import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { updateRsvp } from '@/lib/dashboard/actions'
 import {
   RSVP_STATUS_LABELS,
+  type DashboardHeroMedia,
   type GuestWithInvitations,
   type RsvpStatus,
   type WeddingEvent,
@@ -31,12 +33,15 @@ interface Row {
 export default function RsvpTracker({
   guests,
   events,
+  hero,
 }: {
   guests: GuestWithInvitations[]
   events: WeddingEvent[]
+  hero: DashboardHeroMedia | null
 }) {
   const [eventFilter, setEventFilter] = useState('all')
-  const [statusFilter, setStatusFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | RsvpStatus>('all')
+  const [query, setQuery] = useState('')
   const [pending, startTransition] = useTransition()
 
   const eventName = (id: string) => events.find((e) => e.id === id)?.name ?? 'Event'
@@ -61,11 +66,25 @@ export default function RsvpTracker({
     [guests, events]
   )
 
-  const filtered = rows.filter(
-    (r) =>
-      (eventFilter === 'all' || r.eventId === eventFilter) &&
-      (statusFilter === 'all' || r.status === statusFilter)
-  )
+  const statusCounts = useMemo(() => {
+    const eventScoped = eventFilter === 'all' ? rows : rows.filter((r) => r.eventId === eventFilter)
+    const counts: Record<RsvpStatus, number> = { attending: 0, maybe: 0, declined: 0, pending: 0 }
+    for (const r of eventScoped) counts[r.status] += 1
+    return counts
+  }, [rows, eventFilter])
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return rows.filter((r) => {
+      if (eventFilter !== 'all' && r.eventId !== eventFilter) return false
+      if (statusFilter !== 'all' && r.status !== statusFilter) return false
+      if (q) {
+        const hay = `${r.guestName} ${r.group ?? ''} ${r.meal ?? ''}`.toLowerCase()
+        if (!hay.includes(q)) return false
+      }
+      return true
+    })
+  }, [rows, eventFilter, statusFilter, query])
 
   function changeStatus(invitationId: string, status: RsvpStatus) {
     startTransition(async () => {
@@ -112,17 +131,23 @@ export default function RsvpTracker({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <SectionTitle title="RSVPs" subtitle={`${filtered.length} of ${rows.length} invitations`} />
-        {rows.length > 0 ? (
-          <button
-            onClick={exportCsv}
-            className="inline-flex items-center gap-2 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] ring-1 ring-inset ring-black/[0.12] hover:bg-black/[0.03]"
-          >
-            <Download className="h-4 w-4" /> Export CSV
-          </button>
-        ) : null}
-      </div>
+      <DashboardHero
+        pageSlug="rsvps"
+        eyebrow="RSVPs"
+        title="Who's coming"
+        subtitle={`${filtered.length} of ${rows.length} invitations shown`}
+        media={hero}
+        actions={
+          rows.length > 0 ? (
+            <button
+              onClick={exportCsv}
+              className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-white"
+            >
+              <Download className="h-3.5 w-3.5" /> Export CSV
+            </button>
+          ) : null
+        }
+      />
 
       {rows.length === 0 ? (
         <EmptyState
@@ -132,7 +157,49 @@ export default function RsvpTracker({
         />
       ) : (
         <>
-          <div className="flex flex-wrap gap-3">
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+            {STATUSES.map((s) => {
+              const active = statusFilter === s
+              const dotColor =
+                s === 'attending'
+                  ? 'bg-emerald-500'
+                  : s === 'maybe'
+                    ? 'bg-amber-500'
+                    : s === 'declined'
+                      ? 'bg-rose-500'
+                      : 'bg-neutral-400'
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatusFilter(active ? 'all' : s)}
+                  aria-pressed={active}
+                  className={`rounded-2xl border px-4 py-3 text-left transition-colors ${
+                    active
+                      ? 'border-[#1A1A1A] bg-white shadow-sm'
+                      : 'border-black/[0.08] bg-white/60 hover:border-black/20 hover:bg-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${dotColor}`} />
+                    <span className="text-xs text-[#1A1A1A]/55">{RSVP_STATUS_LABELS[s]}</span>
+                  </div>
+                  <p className="mt-1 text-2xl font-bold tabular-nums text-[#1A1A1A]">{statusCounts[s]}</p>
+                </button>
+              )
+            })}
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="relative flex-1 min-w-[220px]">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/35" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search by name, group, meal…"
+                className={`${inputClass} pl-9`}
+              />
+            </div>
             <select
               className={`${inputClass} w-auto`}
               value={eventFilter}
@@ -145,18 +212,18 @@ export default function RsvpTracker({
                 </option>
               ))}
             </select>
-            <select
-              className={`${inputClass} w-auto`}
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="all">All statuses</option>
-              {STATUSES.map((s) => (
-                <option key={s} value={s}>
-                  {RSVP_STATUS_LABELS[s]}
-                </option>
-              ))}
-            </select>
+            {statusFilter !== 'all' || query ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setStatusFilter('all')
+                  setQuery('')
+                }}
+                className="text-xs font-semibold text-[#8e57b3] hover:underline"
+              >
+                Clear filters
+              </button>
+            ) : null}
           </div>
 
           {filtered.length === 0 ? (
