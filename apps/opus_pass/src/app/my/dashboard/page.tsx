@@ -20,6 +20,7 @@ import { requireDashboardUser } from '@/lib/dashboard/auth'
 import { createDashboardClient } from '@/lib/dashboard/supabase'
 import { Card, StatCard, SectionTitle, ProgressBar, StatusPill, EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
+import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { EVENT_TYPE_LABELS } from '@/lib/dashboard/types'
 
 export const dynamic = 'force-dynamic'
@@ -58,11 +59,12 @@ export default async function DashboardOverviewPage({ searchParams }: PageProps)
   const { seed } = await searchParams
   if (seed === '1') await seedStarterEventIfEmpty()
 
-  const [stats, events, guests, profile] = await Promise.all([
+  const [stats, events, guests, profile, hero] = await Promise.all([
     getStats(),
     getEvents(),
     getGuestsWithInvitations(),
     getCoupleProfile(),
+    loadDashboardHero('home'),
   ])
 
   const upcoming = events
@@ -77,21 +79,31 @@ export default async function DashboardOverviewPage({ searchParams }: PageProps)
 
   const empty = stats.totalGuests === 0 && events.length === 0
 
+  const coupleName = coupleDisplayName(profile)
+  const headerTitle = coupleName === 'The Couple' ? hero.title : `Welcome back, ${coupleName}`
+
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm text-[#1A1A1A]/50">Welcome back</p>
-          <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
-            {coupleDisplayName(profile)}
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-black/[0.06] pb-6">
+        <div className="max-w-2xl">
+          {hero.eyebrow ? (
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1A1A1A]/55">
+              {hero.eyebrow}
+            </p>
+          ) : null}
+          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
+            {headerTitle}
           </h1>
+          {hero.subtitle ? (
+            <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">{hero.subtitle}</p>
+          ) : null}
         </div>
         <Link href="/my/dashboard/guests">
           <Button>
             <Users className="h-4 w-4" /> Manage guests
           </Button>
         </Link>
-      </div>
+      </header>
 
       {empty ? (
         <EmptyState
