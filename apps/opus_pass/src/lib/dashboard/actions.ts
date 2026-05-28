@@ -28,6 +28,10 @@ export interface EventInput {
   dress_code?: string | null
   collect_meal_choice?: boolean
   meal_options?: string[]
+  /** Show on public website. Defaults to true server-side. */
+  is_public?: boolean
+  /** Let guests RSVP via the website. Defaults to false server-side. */
+  allow_rsvp?: boolean
   sort_order?: number
 }
 
@@ -47,6 +51,8 @@ export async function createEvent(input: EventInput): Promise<void> {
     dress_code: input.dress_code || null,
     collect_meal_choice: input.collect_meal_choice ?? false,
     meal_options: input.meal_options ?? [],
+    is_public: input.is_public ?? true,
+    allow_rsvp: input.allow_rsvp ?? false,
     sort_order: input.sort_order ?? 0,
   })
   if (error) throw new Error(error.message)
@@ -70,6 +76,8 @@ export async function updateEvent(id: string, input: EventInput): Promise<void> 
       dress_code: input.dress_code || null,
       collect_meal_choice: input.collect_meal_choice ?? false,
       meal_options: input.meal_options ?? [],
+      is_public: input.is_public ?? true,
+      allow_rsvp: input.allow_rsvp ?? false,
       sort_order: input.sort_order ?? 0,
     })
     .eq('id', id)

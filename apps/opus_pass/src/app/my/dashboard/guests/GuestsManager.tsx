@@ -1,12 +1,14 @@
 'use client'
 
-import { useMemo, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   Users,
   Plus,
   Search,
+  SlidersHorizontal,
+  Check,
   Pencil,
   Trash2,
   Link2,
@@ -17,6 +19,7 @@ import {
   ArrowUp,
   ArrowDown,
   CalendarHeart,
+  Copy,
 } from 'lucide-react'
 import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
 import { Button, ConfirmDialog, Slideover, Tabs, Field, inputClass } from '@/components/dashboard/controls'
@@ -117,6 +120,9 @@ export default function GuestsManager({
 }) {
   const [query, setQuery] = useState('')
   const [groupFilter, setGroupFilter] = useState('all')
+  const [rsvpFilter, setRsvpFilter] = useState<Set<RsvpStatus>>(new Set())
+  const [filterOpen, setFilterOpen] = useState(false)
+  const filterRef = useRef<HTMLDivElement>(null)
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState<FormTab>('info')
   const [importOpen, setImportOpen] = useState(false)
@@ -144,6 +150,14 @@ export default function GuestsManager({
       if (groupFilter !== 'all' && g.group_tag !== groupFilter) return false
       if (view === 'invite' && g.invite_count > 0) return false
       if (view === 'address' && guestHasFullAddress(g)) return false
+      if (rsvpFilter.size > 0) {
+        // Match if ANY invitation on this guest has a selected status. A
+        // guest with no invitations is treated as 'pending' for filter UX.
+        const statuses = g.invitations.length
+          ? g.invitations.map((i) => i.rsvp_status)
+          : (['pending'] as RsvpStatus[])
+        if (!statuses.some((s) => rsvpFilter.has(s))) return false
+      }
       if (!q) return true
       return (
         g.full_name.toLowerCase().includes(q) ||
@@ -156,7 +170,28 @@ export default function GuestsManager({
         ? a.full_name.localeCompare(b.full_name)
         : b.full_name.localeCompare(a.full_name),
     )
-  }, [initialGuests, query, groupFilter, sortDir, view])
+  }, [initialGuests, query, groupFilter, sortDir, view, rsvpFilter])
+
+  // Close the Filter popover when the user clicks outside it.
+  useEffect(() => {
+    if (!filterOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setFilterOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [filterOpen])
+
+  function toggleRsvpFilter(status: RsvpStatus) {
+    setRsvpFilter((prev) => {
+      const next = new Set(prev)
+      if (next.has(status)) next.delete(status)
+      else next.add(status)
+      return next
+    })
+  }
 
   // Counts for the sub-nav badges — computed from the whole guest list so the
   // numbers stay stable regardless of the currently-active view's filter.
@@ -165,6 +200,41 @@ export default function GuestsManager({
     const missingAddress = initialGuests.filter((g) => !guestHasFullAddress(g)).length
     return { notInvited, missingAddress }
   }, [initialGuests])
+
+  // Headcounts shown in the stats card row above the toolbar. Adults = each
+  // primary guest + a plus-one when any plus-one field is present. Children
+  // = sum of attached children entries across all guests.
+  const headCounts = useMemo(() => {
+    let adults = initialGuests.length
+    let children = 0
+    for (const g of initialGuests) {
+      const hasPlusOne =
+        Boolean(g.plus_one_first_name?.trim()) ||
+        Boolean(g.plus_one_last_name?.trim()) ||
+        g.plus_one_name_unknown
+      if (hasPlusOne) adults += 1
+      children += g.children.length
+    }
+    return { adults, children }
+  }, [initialGuests])
+
+  // Collector share URL — origin is only available client-side, so we
+  // initialise lazily once mounted to avoid a hydration mismatch.
+  const [origin, setOrigin] = useState('')
+  useEffect(() => {
+    setOrigin(window.location.origin)
+  }, [])
+  const collectorLink = collectorToken && origin ? `${origin}/collect/${collectorToken}` : null
+
+  async function copyCollectorLink() {
+    if (!collectorLink) return
+    try {
+      await navigator.clipboard.writeText(collectorLink)
+      toast.success('Collector link copied')
+    } catch {
+      toast.error('Could not copy link')
+    }
+  }
 
   const counts = useMemo(() => {
     const missingContact = filtered.filter((g) => !g.email && !g.phone && !g.whatsapp_phone).length
@@ -413,22 +483,6 @@ export default function GuestsManager({
         content={hero}
         actions={
           <>
-            {collectorToken ? (
-              <button
-                type="button"
-                onClick={() => setCollectorOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
-              >
-                <ClipboardSignature className="h-3.5 w-3.5" /> Collect addresses
-              </button>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => setImportOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
-            >
-              <Upload className="h-3.5 w-3.5" /> Upload spreadsheet
-            </button>
             <button
               type="button"
               onClick={openCreate}
@@ -444,8 +498,66 @@ export default function GuestsManager({
         view={view}
         onChange={setView}
         notInvitedCount={viewCounts.notInvited}
-        missingAddressCount={viewCounts.missingAddress}
+        onOpenCollector={collectorToken ? () => setCollectorOpen(true) : undefined}
       />
+
+      {initialGuests.length > 0 ? (
+        <div className="grid gap-3 lg:grid-cols-2">
+          <Card className="px-5 py-4">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <Stat value={initialGuests.length} label="Guests" />
+              <Stat value={headCounts.adults} label="Adults" />
+              <Stat value={headCounts.children} label="Children" />
+            </div>
+          </Card>
+          <Card className="px-5 py-4">
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-xs text-[#1A1A1A]/65">
+                    <span>Your Contact Collector</span>
+                    {collectorToken ? (
+                      <button
+                        type="button"
+                        onClick={() => setCollectorOpen(true)}
+                        className="font-semibold text-[#7E5896] underline-offset-2 hover:underline"
+                      >
+                        Edit
+                      </button>
+                    ) : null}
+                  </div>
+                  {collectorLink ? (
+                    <div className="mt-1 truncate rounded-lg border border-black/[0.12] bg-white px-3 py-2 text-xs text-[#1A1A1A]/80">
+                      {collectorLink.replace(/^https?:\/\//, '')}
+                    </div>
+                  ) : (
+                    <div className="mt-1 text-xs text-[#1A1A1A]/55">
+                      No collector link yet — open Contact Collector to generate one.
+                    </div>
+                  )}
+                </div>
+                {collectorToken ? (
+                  <button
+                    type="button"
+                    onClick={copyCollectorLink}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/[0.18] bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
+                  >
+                    <Copy className="h-3.5 w-3.5" /> Copy link
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setCollectorOpen(true)}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
+                  >
+                    <ClipboardSignature className="h-3.5 w-3.5" /> Set up
+                  </button>
+                )}
+              </div>
+            </div>
+          </Card>
+        </div>
+      ) : null}
 
       {view !== 'manage' ? (
         <ViewBanner
@@ -457,8 +569,77 @@ export default function GuestsManager({
       ) : null}
 
       {initialGuests.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-3">
-          <div className="relative flex-1 min-w-[200px]">
+        <div className="flex flex-nowrap items-center gap-3">
+          <div className="relative shrink-0" ref={filterRef}>
+            <button
+              type="button"
+              onClick={() => setFilterOpen((v) => !v)}
+              aria-expanded={filterOpen}
+              aria-haspopup="true"
+              className={cn(
+                'inline-flex items-center gap-2 rounded-xl border border-black/[0.12] bg-white px-3.5 py-2.5 text-sm text-[#1A1A1A] transition-colors hover:bg-black/[0.03]',
+                rsvpFilter.size > 0 && 'border-[#C9A0DC] bg-[#F0DFF6] text-[#5d3a78]',
+              )}
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              <span>Filter</span>
+              {rsvpFilter.size > 0 ? (
+                <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#C9A0DC] px-1.5 text-[11px] font-semibold text-[#1A1A1A]">
+                  {rsvpFilter.size}
+                </span>
+              ) : null}
+            </button>
+            {filterOpen ? (
+              <div
+                role="menu"
+                className="absolute left-0 top-[calc(100%+6px)] z-20 w-64 rounded-xl border border-black/[0.08] bg-white p-3 shadow-lg ring-1 ring-black/[0.04]"
+              >
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/60">
+                    RSVP status
+                  </span>
+                  {rsvpFilter.size > 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => setRsvpFilter(new Set())}
+                      className="text-xs font-medium text-[#7E5896] hover:text-[#5d3a78]"
+                    >
+                      Clear
+                    </button>
+                  ) : null}
+                </div>
+                <ul className="space-y-1">
+                  {(Object.keys(RSVP_STATUS_LABELS) as RsvpStatus[]).map((status) => {
+                    const checked = rsvpFilter.has(status)
+                    return (
+                      <li key={status}>
+                        <button
+                          type="button"
+                          role="menuitemcheckbox"
+                          aria-checked={checked}
+                          onClick={() => toggleRsvpFilter(status)}
+                          className="flex w-full items-center justify-between gap-2 rounded-lg px-2 py-1.5 text-sm text-[#1A1A1A] hover:bg-black/[0.04]"
+                        >
+                          <span>{RSVP_STATUS_LABELS[status]}</span>
+                          <span
+                            className={cn(
+                              'flex h-4 w-4 items-center justify-center rounded border',
+                              checked
+                                ? 'border-[#C9A0DC] bg-[#C9A0DC] text-[#1A1A1A]'
+                                : 'border-black/[0.2] bg-white',
+                            )}
+                          >
+                            {checked ? <Check className="h-3 w-3" /> : null}
+                          </span>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+              </div>
+            ) : null}
+          </div>
+          <div className="relative flex-1 min-w-0">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/35" />
             <input
               className={`${inputClass} pl-9`}
@@ -467,20 +648,14 @@ export default function GuestsManager({
               onChange={(e) => setQuery(e.target.value)}
             />
           </div>
-          {groups.length > 0 ? (
-            <select
-              className={`${inputClass} w-auto`}
-              value={groupFilter}
-              onChange={(e) => setGroupFilter(e.target.value)}
-            >
-              <option value="all">All groups</option>
-              {groups.map((g) => (
-                <option key={g} value={g}>
-                  {g}
-                </option>
-              ))}
-            </select>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => setImportOpen(true)}
+            className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-black/[0.12] bg-white px-3.5 py-2.5 text-sm font-medium text-[#1A1A1A] transition-colors hover:bg-black/[0.03]"
+          >
+            <Upload className="h-4 w-4" />
+            <span>Upload a spreadsheet</span>
+          </button>
         </div>
       ) : null}
 
@@ -932,21 +1107,31 @@ export default function GuestsManager({
 
 // ──────────────────────── page sub-nav ────────────────────────
 
+function Stat({ value, label }: { value: number; label: string }) {
+  return (
+    <div>
+      <div className="text-2xl font-semibold leading-none tracking-tight text-[#1A1A1A]">
+        {value}
+      </div>
+      <div className="mt-1 text-xs font-medium text-[#1A1A1A]/55">{label}</div>
+    </div>
+  )
+}
+
 function GuestSubNav({
   view,
   onChange,
   notInvitedCount,
-  missingAddressCount,
+  onOpenCollector,
 }: {
   view: GuestView
   onChange: (v: GuestView) => void
   notInvitedCount: number
-  missingAddressCount: number
+  /** Opens the Contact Collector slideover. Omit to hide the tab (no token yet). */
+  onOpenCollector?: () => void
 }) {
   const items: { id: GuestView; label: string; badge?: number }[] = [
     { id: 'manage', label: 'Manage guest list' },
-    { id: 'invite', label: 'Invite guests to events', badge: notInvitedCount || undefined },
-    { id: 'address', label: 'Address envelopes', badge: missingAddressCount || undefined },
   ]
   return (
     <nav
@@ -984,6 +1169,16 @@ function GuestSubNav({
           </button>
         )
       })}
+      {onOpenCollector ? (
+        <button
+          type="button"
+          onClick={onOpenCollector}
+          className="-mb-[9px] inline-flex items-center gap-2 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 transition-colors hover:text-[#1A1A1A]"
+        >
+          <ClipboardSignature className="h-3.5 w-3.5" />
+          Contact Collector
+        </button>
+      ) : null}
       <Link
         href="/my/dashboard/rsvps"
         className="-mb-[9px] inline-flex items-center gap-1.5 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]"

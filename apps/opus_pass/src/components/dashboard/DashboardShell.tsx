@@ -142,7 +142,7 @@ export default function DashboardShell({
 
       {/* Content */}
       <main className="lg:pl-64">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10">{children}</div>
+        <div className="mx-auto max-w-6xl px-3 py-6 sm:px-4 lg:px-6 lg:py-10">{children}</div>
       </main>
     </div>
   )

@@ -23,6 +23,10 @@ export interface WeddingEvent {
   dress_code: string | null
   collect_meal_choice: boolean
   meal_options: string[]
+  /** Show this event on the public wedding website. */
+  is_public: boolean
+  /** Let guests RSVP to this event directly from the wedding website. */
+  allow_rsvp: boolean
   sort_order: number
   created_at: string
   updated_at: string
