@@ -98,9 +98,9 @@ function HeroBanner() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  COLLECTION GRID — magazine grid on a light-grey canvas: one hero feature,
-//  two medium feature cards, and a row of four image-top cards. Square white
-//  cards separated by the grey gutter (WeddingWire / Zola "shop" layout).
+//  COLLECTION GRID — magazine grid on a light-grey canvas: two medium feature
+//  cards and a row of four image-top cards. Square white cards separated by
+//  the grey gutter (WeddingWire / Zola "shop" layout).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MEDIUM_CARDS: Array<{
@@ -329,8 +329,8 @@ function TurnIntoRsvp() {
           </ul>
         </div>
 
-        {/* Right — decorative RSVP mock */}
-        <div className="order-first lg:order-last">
+        {/* Right — decorative RSVP mock (hidden from assistive tech: fake invite copy is purely visual) */}
+        <div className="order-first lg:order-last" aria-hidden="true">
           <RsvpInviteMock />
         </div>
       </div>
