@@ -16,11 +16,30 @@ import {
   getCoupleProfile,
   coupleDisplayName,
 } from '@/lib/dashboard/queries'
+import { requireDashboardUser } from '@/lib/dashboard/auth'
+import { createDashboardClient } from '@/lib/dashboard/supabase'
 import { Card, StatCard, SectionTitle, ProgressBar, StatusPill, EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
+import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { EVENT_TYPE_LABELS } from '@/lib/dashboard/types'
 
 export const dynamic = 'force-dynamic'
+
+async function seedStarterEventIfEmpty(): Promise<void> {
+  const user = await requireDashboardUser()
+  const admin = createDashboardClient()
+  const { count } = await admin
+    .from('wedding_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+  if ((count ?? 0) > 0) return
+  await admin.from('wedding_events').insert({
+    user_id: user.id,
+    name: 'Our wedding',
+    event_type: 'ceremony',
+    sort_order: 0,
+  })
+}
 
 function formatDate(value: string | null): string {
   if (!value) return 'Date TBC'
@@ -32,12 +51,20 @@ function formatDate(value: string | null): string {
   })
 }
 
-export default async function DashboardOverviewPage() {
-  const [stats, events, guests, profile] = await Promise.all([
+interface PageProps {
+  searchParams: Promise<{ seed?: string }>
+}
+
+export default async function DashboardOverviewPage({ searchParams }: PageProps) {
+  const { seed } = await searchParams
+  if (seed === '1') await seedStarterEventIfEmpty()
+
+  const [stats, events, guests, profile, hero] = await Promise.all([
     getStats(),
     getEvents(),
     getGuestsWithInvitations(),
     getCoupleProfile(),
+    loadDashboardHero('home'),
   ])
 
   const upcoming = events
@@ -52,21 +79,26 @@ export default async function DashboardOverviewPage() {
 
   const empty = stats.totalGuests === 0 && events.length === 0
 
+  const coupleName = coupleDisplayName(profile)
+  const headerTitle = coupleName === 'The Couple' ? hero.title : `Welcome back, ${coupleName}`
+
   return (
     <div className="space-y-8">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <p className="text-sm text-[#1A1A1A]/50">Welcome back</p>
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-black/[0.06] pb-6">
+        <div className="max-w-2xl">
           <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
-            {coupleDisplayName(profile)}
+            {headerTitle}
           </h1>
+          {hero.subtitle ? (
+            <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">{hero.subtitle}</p>
+          ) : null}
         </div>
         <Link href="/my/dashboard/guests">
           <Button>
             <Users className="h-4 w-4" /> Manage guests
           </Button>
         </Link>
-      </div>
+      </header>
 
       {empty ? (
         <EmptyState
@@ -152,7 +184,7 @@ export default async function DashboardOverviewPage() {
               <SectionTitle
                 title="Upcoming events"
                 action={
-                  <Link href="/my/dashboard/events" className="text-sm font-medium text-[#8e57b3] hover:underline">
+                  <Link href="/my/dashboard/events" className="text-sm font-medium text-[#1A1A1A]/70 hover:text-[#1A1A1A] hover:underline">
                     View all
                   </Link>
                 }
@@ -171,7 +203,7 @@ export default async function DashboardOverviewPage() {
                 <div className="space-y-3">
                   {upcoming.map((e) => (
                     <Card key={e.id} className="flex items-center gap-4 p-4">
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#C9A0DC]/15 text-[#8e57b3]">
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-black/[0.05] text-[#1A1A1A]/70">
                         <CalendarHeart className="h-5 w-5" />
                       </span>
                       <div className="min-w-0 flex-1">
@@ -192,7 +224,7 @@ export default async function DashboardOverviewPage() {
               <SectionTitle
                 title="Recent responses"
                 action={
-                  <Link href="/my/dashboard/rsvps" className="text-sm font-medium text-[#8e57b3] hover:underline">
+                  <Link href="/my/dashboard/rsvps" className="text-sm font-medium text-[#1A1A1A]/70 hover:text-[#1A1A1A] hover:underline">
                     View all
                   </Link>
                 }
@@ -228,7 +260,7 @@ export default async function DashboardOverviewPage() {
             </div>
           </div>
 
-          <Card className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-br from-[#F3E9FA] to-white p-6">
+          <Card className="flex flex-wrap items-center justify-between gap-4 p-6">
             <div>
               <h3 className="font-semibold text-[#1A1A1A]">Ready to invite more guests?</h3>
               <p className="text-sm text-[#1A1A1A]/55">

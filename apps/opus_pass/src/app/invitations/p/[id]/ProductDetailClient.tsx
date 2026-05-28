@@ -112,6 +112,12 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
     })
     toast.success('Added to cart', {
       description: `${product.name} — TZS ${total.toLocaleString('en-US')}`,
+      action: {
+        label: 'Start guest list',
+        onClick: () => {
+          window.location.href = '/my/dashboard?seed=1'
+        },
+      },
     })
   }
 
@@ -481,6 +487,13 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
                 Add to cart
               </button>
             </div>
+
+            <Link
+              href="/my/dashboard?seed=1"
+              className="block text-center text-[12px] font-semibold text-gray-700 underline underline-offset-[5px] decoration-gray-300 hover:text-gray-900 hover:decoration-gray-700"
+            >
+              Already buying? Start your guest list now →
+            </Link>
 
             {/* Reassurance card */}
             <div className="rounded-md bg-[#F5EFE3] border border-[#E8D9A7]/50 px-4 py-3.5 flex items-start gap-3">

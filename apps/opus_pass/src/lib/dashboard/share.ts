@@ -10,6 +10,26 @@ export function rsvpUrl(origin: string, token: string): string {
   return `${origin.replace(/\/$/, '')}${rsvpPath(token)}`
 }
 
+/** Path to the couple's public Contact Collector page. */
+export function collectorPath(token: string): string {
+  return `/collect/${token}`
+}
+
+/** Absolute Contact Collector URL given a browser/runtime origin. */
+export function collectorUrl(origin: string, token: string): string {
+  return `${origin.replace(/\/$/, '')}${collectorPath(token)}`
+}
+
+export function collectorShareMessage(coupleNames: string, link: string): string {
+  return (
+    `Habari! 💚 ${coupleNames} wanaweka orodha ya wageni wa harusi yao. ` +
+    `Tafadhali tuma majina, namba na email yako kwa kubonyeza: ${link}\n` +
+    `\n` +
+    `Hi! ${coupleNames} are putting together their wedding guest list. ` +
+    `Please share your contact details here: ${link}`
+  )
+}
+
 /** Normalize a phone number to digits + leading country code for wa.me / sms. */
 export function normalizePhone(raw: string | null | undefined): string | null {
   if (!raw) return null
@@ -25,9 +45,14 @@ export function inviteMessage(
   guestName: string,
   rsvpLink: string
 ): string {
+  const firstName = guestName.split(/\s+/)[0] || guestName
   return (
-    `Hi ${guestName}! ${coupleNames} would love for you to join their celebration. ` +
-    `Please view the details and RSVP here: ${rsvpLink}`
+    `Karibu ${firstName}! 💚\n` +
+    `${coupleNames} wanafurahi kukukaribisha kwenye harusi yao.\n` +
+    `Tafadhali tujibu hapa: ${rsvpLink}\n` +
+    `\n` +
+    `Hi ${firstName}! ${coupleNames} would love to see you at their wedding. ` +
+    `Please RSVP here: ${rsvpLink}`
   )
 }
 

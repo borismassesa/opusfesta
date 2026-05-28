@@ -15,6 +15,18 @@ type Props = {
   previewAspect?: string
   /** Preview max width (Tailwind w-* utility). Defaults to max-w-sm. */
   previewWidth?: string
+  /** Which file kind to accept. 'svg' restricts to SVG only. Defaults to 'image'. */
+  accept?: 'image' | 'svg'
+}
+
+const ACCEPT_ATTR: Record<'image' | 'svg', string> = {
+  image: 'image/jpeg,image/png,image/webp,image/gif,image/avif,image/svg+xml',
+  svg: 'image/svg+xml,.svg',
+}
+
+const FILE_NOUN: Record<'image' | 'svg', string> = {
+  image: 'image',
+  svg: 'SVG',
 }
 
 const inputCls =
@@ -27,6 +39,7 @@ export function ImageUploadField({
   pathPrefix,
   previewAspect = 'aspect-[4/3]',
   previewWidth = 'max-w-sm',
+  accept = 'image',
 }: Props) {
   const id = useId()
   const fileRef = useRef<HTMLInputElement>(null)
@@ -37,15 +50,21 @@ export function ImageUploadField({
 
   const handleFile = (file: File) => {
     setError(null)
+    if (accept === 'svg' && file.type !== 'image/svg+xml' && !file.name.toLowerCase().endsWith('.svg')) {
+      setError('Please choose an SVG file.')
+      return
+    }
     startTransition(async () => {
       try {
-        const { url } = await uploadCmsMedia(file, pathPrefix, 'image')
+        const { url } = await uploadCmsMedia(file, pathPrefix, accept)
         onChange(url)
       } catch (err) {
         setError(err instanceof Error ? err.message : String(err))
       }
     })
   }
+
+  const noun = FILE_NOUN[accept]
 
   return (
     <div className="block space-y-2">
@@ -71,7 +90,7 @@ export function ImageUploadField({
           className="inline-flex items-center gap-1.5 text-sm font-medium text-[#7E5896] hover:text-[#5d3a78] px-3 py-1.5 rounded-lg border border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors disabled:opacity-50"
         >
           {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-          {pending ? 'Uploading…' : value ? 'Replace image' : 'Upload image'}
+          {pending ? 'Uploading…' : value ? `Replace ${noun}` : `Upload ${noun}`}
         </button>
         {value && (
           <button
@@ -87,7 +106,7 @@ export function ImageUploadField({
           ref={fileRef}
           id={id}
           type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif,image/avif"
+          accept={ACCEPT_ATTR[accept]}
           className="hidden"
           onChange={(e) => {
             const file = e.target.files?.[0]
@@ -101,7 +120,7 @@ export function ImageUploadField({
         type="text"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="Or paste an image URL / asset path"
+        placeholder={accept === 'svg' ? 'Or paste an SVG URL / asset path' : 'Or paste an image URL / asset path'}
         className={inputCls}
       />
     </div>

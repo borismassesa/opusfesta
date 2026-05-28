@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
-import type { EventType, RsvpStatus, SendChannel } from './types'
+import type { ChildEntry, EventType, RsvpStatus, SendChannel } from './types'
 
 function revalidateDashboard() {
   revalidatePath('/my/dashboard')
@@ -11,6 +11,7 @@ function revalidateDashboard() {
   revalidatePath('/my/dashboard/events')
   revalidatePath('/my/dashboard/invitations')
   revalidatePath('/my/dashboard/rsvps')
+  revalidatePath('/my/dashboard/website')
 }
 
 // ---------------------------------------------------------------- Events
@@ -88,15 +89,102 @@ export async function deleteEvent(id: string): Promise<void> {
 // ---------------------------------------------------------------- Guests
 
 export interface GuestInput {
-  full_name: string
+  /** Required for the legacy code path / public RSVP page; auto-synthesized from
+   *  title + first + last + suffix when first_name/last_name are present. */
+  full_name?: string
+  title?: string | null
+  first_name?: string | null
+  last_name?: string | null
+  suffix?: string | null
+
+  plus_one_title?: string | null
+  plus_one_first_name?: string | null
+  plus_one_last_name?: string | null
+  plus_one_suffix?: string | null
+  plus_one_name_unknown?: boolean
+
+  children?: ChildEntry[]
+
   email?: string | null
   phone?: string | null
   whatsapp_phone?: string | null
   group_tag?: string | null
   max_party_size?: number
   notes?: string | null
+
+  name_on_envelope?: string | null
+  address_country?: string | null
+  address_line1?: string | null
+  address_apt?: string | null
+  address_city?: string | null
+  address_region?: string | null
+  address_postal_code?: string | null
+
   /** Event ids this guest should be invited to (syncs invitations). */
   eventIds?: string[]
+}
+
+function composeName(parts: Array<string | null | undefined>): string {
+  return parts
+    .map((p) => (p ?? '').trim())
+    .filter(Boolean)
+    .join(' ')
+}
+
+function guestColumnsFromInput(input: GuestInput): Record<string, unknown> {
+  const first = (input.first_name ?? '').trim() || null
+  const last = (input.last_name ?? '').trim() || null
+  const title = (input.title ?? '').trim() || null
+  const suffix = (input.suffix ?? '').trim() || null
+  const composed = composeName([title, first, last, suffix])
+  const full_name = (input.full_name ?? composed).trim()
+  if (!full_name) throw new Error('Guest name is required')
+
+  const plusOneNameUnknown = input.plus_one_name_unknown === true
+  const plusOneFirst = (input.plus_one_first_name ?? '').trim() || null
+  const plusOneLast = (input.plus_one_last_name ?? '').trim() || null
+  const children = (input.children ?? [])
+    .map((c) => ({
+      first_name: (c.first_name ?? '').trim(),
+      last_name: (c.last_name ?? '').trim(),
+    }))
+    .filter((c) => c.first_name || c.last_name)
+
+  // Derive a sensible max_party_size if the caller didn't pin one.
+  const hasPlusOne = plusOneNameUnknown || Boolean(plusOneFirst) || Boolean(plusOneLast)
+  const derivedParty = 1 + (hasPlusOne ? 1 : 0) + children.length
+  const max_party_size = input.max_party_size ?? Math.max(1, derivedParty)
+
+  return {
+    full_name,
+    title,
+    first_name: first,
+    last_name: last,
+    suffix,
+
+    plus_one_title: (input.plus_one_title ?? '').trim() || null,
+    plus_one_first_name: plusOneFirst,
+    plus_one_last_name: plusOneLast,
+    plus_one_suffix: (input.plus_one_suffix ?? '').trim() || null,
+    plus_one_name_unknown: plusOneNameUnknown,
+
+    children,
+
+    email: (input.email ?? '').trim() || null,
+    phone: (input.phone ?? '').trim() || null,
+    whatsapp_phone: (input.whatsapp_phone ?? '').trim() || null,
+    group_tag: (input.group_tag ?? '').trim() || null,
+    max_party_size,
+    notes: (input.notes ?? '').trim() || null,
+
+    name_on_envelope: (input.name_on_envelope ?? '').trim() || null,
+    address_country: (input.address_country ?? '').trim() || null,
+    address_line1: (input.address_line1 ?? '').trim() || null,
+    address_apt: (input.address_apt ?? '').trim() || null,
+    address_city: (input.address_city ?? '').trim() || null,
+    address_region: (input.address_region ?? '').trim() || null,
+    address_postal_code: (input.address_postal_code ?? '').trim() || null,
+  }
 }
 
 /** Returns only the event ids that belong to this user — prevents attaching a
@@ -144,16 +232,7 @@ export async function createGuest(input: GuestInput): Promise<string> {
   const supabase = createDashboardClient()
   const { data, error } = await supabase
     .from('guest_contacts')
-    .insert({
-      user_id: user.id,
-      full_name: input.full_name.trim(),
-      email: input.email || null,
-      phone: input.phone || null,
-      whatsapp_phone: input.whatsapp_phone || null,
-      group_tag: input.group_tag || null,
-      max_party_size: input.max_party_size ?? 1,
-      notes: input.notes || null,
-    })
+    .insert({ user_id: user.id, ...guestColumnsFromInput(input) })
     .select('id')
     .single<{ id: string }>()
   if (error || !data) throw new Error(error?.message ?? 'Failed to create guest')
@@ -170,15 +249,7 @@ export async function updateGuest(id: string, input: GuestInput): Promise<void> 
   const supabase = createDashboardClient()
   const { error } = await supabase
     .from('guest_contacts')
-    .update({
-      full_name: input.full_name.trim(),
-      email: input.email || null,
-      phone: input.phone || null,
-      whatsapp_phone: input.whatsapp_phone || null,
-      group_tag: input.group_tag || null,
-      max_party_size: input.max_party_size ?? 1,
-      notes: input.notes || null,
-    })
+    .update(guestColumnsFromInput(input))
     .eq('id', id)
     .eq('user_id', user.id)
   if (error) throw new Error(error.message)
@@ -277,7 +348,10 @@ export async function recordSend(guestId: string, channel: SendChannel): Promise
     .eq('user_id', user.id)
   if (error) throw new Error(error.message)
 
-  await supabase.from('guest_message_log').insert({ user_id: user.id, guest_contact_id: guestId, channel })
+  const { error: logErr } = await supabase
+    .from('guest_message_log')
+    .insert({ user_id: user.id, guest_contact_id: guestId, channel })
+  if (logErr) throw new Error(logErr.message)
   revalidateDashboard()
 }
 
@@ -329,18 +403,26 @@ export async function submitPublicRsvp(
   const supabase = createDashboardClient()
 
   // Resolve the guest by token; this is the bearer secret gating access.
-  const { data: guest } = await supabase
+  const { data: guest, error: guestErr } = await supabase
     .from('guest_contacts')
     .select('id, max_party_size')
     .eq('public_token', token)
     .maybeSingle<{ id: string; max_party_size: number }>()
+  if (guestErr) {
+    console.error('[public-rsvp] guest lookup failed', guestErr)
+    return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+  }
   if (!guest) return { ok: false, error: 'Invitation not found.' }
 
   // Only allow updates to invitations that belong to this guest.
-  const { data: owned } = await supabase
+  const { data: owned, error: ownedErr } = await supabase
     .from('guest_invitations')
     .select('id')
     .eq('guest_contact_id', guest.id)
+  if (ownedErr) {
+    console.error('[public-rsvp] invitation lookup failed', ownedErr)
+    return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+  }
   const ownedIds = new Set((owned ?? []).map((r) => r.id as string))
 
   const now = new Date().toISOString()

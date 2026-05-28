@@ -3,8 +3,8 @@
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { CalendarHeart, MapPin, Plus, Pencil, Trash2, Clock } from 'lucide-react'
-import { Card, SectionTitle, EmptyState } from '@/components/dashboard/primitives'
-import { Button, Dialog, Field, inputClass } from '@/components/dashboard/controls'
+import { Card, EmptyState } from '@/components/dashboard/primitives'
+import { Button, ConfirmDialog, Dialog, Field, inputClass } from '@/components/dashboard/controls'
 import { createEvent, updateEvent, deleteEvent, type EventInput } from '@/lib/dashboard/actions'
 import { EVENT_TYPE_LABELS, type EventType, type WeddingEvent } from '@/lib/dashboard/types'
 
@@ -45,6 +45,7 @@ const emptyForm: EventInput = {
 export default function EventsManager({ initialEvents }: { initialEvents: WeddingEvent[] }) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<WeddingEvent | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<WeddingEvent | null>(null)
   const [form, setForm] = useState<EventInput>(emptyForm)
   const [mealsText, setMealsText] = useState('')
   const [pending, startTransition] = useTransition()
@@ -102,12 +103,14 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
     })
   }
 
-  function remove(e: WeddingEvent) {
-    if (!confirm(`Delete "${e.name}"? This also removes its invitations.`)) return
+  function confirmRemove() {
+    const target = pendingDelete
+    if (!target) return
     startTransition(async () => {
       try {
-        await deleteEvent(e.id)
+        await deleteEvent(target.id)
         toast.success('Event deleted')
+        setPendingDelete(null)
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not delete')
       }
@@ -116,12 +119,17 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <SectionTitle title="Events" subtitle="The moments your guests will RSVP to" />
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-black/[0.06] pb-6">
+        <div className="max-w-2xl">
+          <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">Events</h1>
+          <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">
+            The moments your guests will RSVP to
+          </p>
+        </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4" /> Add event
         </Button>
-      </div>
+      </header>
 
       {initialEvents.length === 0 ? (
         <EmptyState
@@ -139,7 +147,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
           {initialEvents.map((e) => (
             <Card key={e.id} className="p-5">
               <div className="flex items-start justify-between gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#C9A0DC]/15 text-[#8e57b3]">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-black/[0.05] text-[#1A1A1A]/70">
                   <CalendarHeart className="h-5 w-5" />
                 </span>
                 <div className="flex gap-1">
@@ -151,7 +159,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => remove(e)}
+                    onClick={() => setPendingDelete(e)}
                     aria-label="Delete"
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
                   >
@@ -160,7 +168,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                 </div>
               </div>
               <h3 className="mt-3 text-lg font-semibold text-[#1A1A1A]">{e.name}</h3>
-              <span className="mt-1 inline-block rounded-full bg-[#C9A0DC]/15 px-2.5 py-0.5 text-xs font-medium text-[#8e57b3]">
+              <span className="mt-1 inline-block rounded-full bg-black/[0.05] px-2.5 py-0.5 text-xs font-medium text-[#1A1A1A]/70">
                 {EVENT_TYPE_LABELS[e.event_type]}
               </span>
               <div className="mt-4 space-y-1.5 text-sm text-[#1A1A1A]/60">
@@ -287,6 +295,16 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
           ) : null}
         </div>
       </Dialog>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={confirmRemove}
+        title={pendingDelete ? `Delete "${pendingDelete.name}"?` : ''}
+        description="This also removes the event from every guest's invitation. It can't be undone."
+        confirmLabel="Delete event"
+        pending={pending}
+      />
     </div>
   )
 }

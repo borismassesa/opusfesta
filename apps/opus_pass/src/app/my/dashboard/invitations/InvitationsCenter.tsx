@@ -4,8 +4,9 @@ import { useEffect, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
 import { MessageCircle, Mail, Copy, Send, Smartphone, Check, Users } from 'lucide-react'
-import { Card, SectionTitle, EmptyState, StatusPill } from '@/components/dashboard/primitives'
+import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
+import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { recordSend } from '@/lib/dashboard/actions'
 import {
   rsvpUrl,
@@ -14,7 +15,12 @@ import {
   smsShareUrl,
   emailShareUrl,
 } from '@/lib/dashboard/share'
-import type { GuestWithInvitations, RsvpStatus, SendChannel } from '@/lib/dashboard/types'
+import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
+import type {
+  GuestWithInvitations,
+  RsvpStatus,
+  SendChannel,
+} from '@/lib/dashboard/types'
 
 function summaryStatus(g: GuestWithInvitations): RsvpStatus | null {
   if (g.invitations.length === 0) return null
@@ -27,9 +33,11 @@ function summaryStatus(g: GuestWithInvitations): RsvpStatus | null {
 export default function InvitationsCenter({
   guests,
   coupleName,
+  hero,
 }: {
   guests: GuestWithInvitations[]
   coupleName: string
+  hero: DashboardHeroContent
 }) {
   const [origin, setOrigin] = useState('')
   const [, startTransition] = useTransition()
@@ -73,10 +81,7 @@ export default function InvitationsCenter({
 
   return (
     <div className="space-y-6">
-      <SectionTitle
-        title="Send invitations"
-        subtitle="Share each guest's personal RSVP link — no app needed on their end"
-      />
+      <DashboardHero content={hero} />
 
       {guests.length === 0 ? (
         <EmptyState
@@ -121,7 +126,7 @@ export default function InvitationsCenter({
               return (
                 <div key={g.id} className="flex flex-wrap items-center gap-3 px-4 py-3.5">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C9A0DC]/15 text-sm font-semibold text-[#8e57b3]">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-sm font-semibold text-[#1A1A1A]/70">
                       {g.full_name.charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0">
@@ -166,7 +171,7 @@ export default function InvitationsCenter({
                     <button
                       onClick={() => copy(g)}
                       aria-label="Copy link"
-                      className="flex items-center gap-1.5 rounded-lg bg-[#C9A0DC]/15 px-2.5 py-1.5 text-xs font-medium text-[#8e57b3] hover:bg-[#C9A0DC]/25"
+                      className="flex items-center gap-1.5 rounded-lg bg-black/[0.05] px-2.5 py-1.5 text-xs font-medium text-[#1A1A1A]/70 hover:bg-black/[0.08]"
                     >
                       <Copy className="h-3.5 w-3.5" /> Copy
                     </button>

@@ -35,7 +35,7 @@ export function StatCard({
   accent?: boolean
 }) {
   return (
-    <Card className={cn('p-5', accent && 'bg-gradient-to-br from-[#F3E9FA] to-white border-[#C9A0DC]/30')}>
+    <Card className={cn('p-5', accent && 'border-[#1A1A1A]/15')}>
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium uppercase tracking-wide text-[#1A1A1A]/50">{label}</p>
@@ -43,7 +43,7 @@ export function StatCard({
           {hint ? <p className="mt-1 text-xs text-[#1A1A1A]/50">{hint}</p> : null}
         </div>
         {icon ? (
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#C9A0DC]/15 text-[#8e57b3]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/[0.05] text-[#1A1A1A]/70">
             {icon}
           </span>
         ) : null}
@@ -105,7 +105,7 @@ export function ProgressBar({ value }: { value: number }) {
   return (
     <div className="h-2 w-full overflow-hidden rounded-full bg-black/[0.06]">
       <div
-        className="h-full rounded-full bg-gradient-to-r from-[#C9A0DC] to-[#8e57b3] transition-all"
+        className="h-full rounded-full bg-[#1A1A1A] transition-all"
         style={{ width: `${clamped}%` }}
       />
     </div>
@@ -126,7 +126,7 @@ export function EmptyState({
   return (
     <Card className="flex flex-col items-center justify-center px-6 py-14 text-center">
       {icon ? (
-        <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#C9A0DC]/15 text-[#8e57b3]">
+        <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-black/[0.05] text-[#1A1A1A]/70">
           {icon}
         </span>
       ) : null}

@@ -45,7 +45,7 @@ export default function SettingsForm({ profile }: { profile: CoupleProfileLite |
 
       <Card className="p-6">
         <div className="mb-5 flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#C9A0DC]/15 text-[#8e57b3]">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-black/[0.05] text-[#1A1A1A]/70">
             <Heart className="h-5 w-5" />
           </span>
           <div>
