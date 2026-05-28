@@ -183,9 +183,10 @@ export default function ProductEditor({
             pathPrefix={IMAGE_PREFIX}
             previewAspect="aspect-[5/7]"
             previewWidth="max-w-[180px]"
+            accept="svg"
           />
           <p className="text-[11px] text-gray-500 -mt-1">
-            When an image is attached it replaces the built-in CSS design on the product page. Leave empty to use the CSS design below.
+            Upload an SVG of the card design. When attached it replaces the built-in CSS design on the product page. Leave empty to use the CSS design below.
           </p>
           <Field label="Built-in design (fallback)">
             <select value={product.treatment} onChange={(e) => set('treatment', e.target.value as InvitationProductRecord['treatment'])} className={inputCls}>
@@ -307,6 +308,7 @@ function GalleryEditor({ value, onChange }: { value: string[]; onChange: (v: str
               pathPrefix={IMAGE_PREFIX}
               previewAspect="aspect-[5/7]"
               previewWidth="max-w-[120px]"
+              accept="svg"
             />
           </div>
           <button

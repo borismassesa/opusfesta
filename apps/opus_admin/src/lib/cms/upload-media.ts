@@ -20,7 +20,9 @@ const IMAGE_MIME = new Set([
   'image/webp',
   'image/gif',
   'image/avif',
+  'image/svg+xml',
 ])
+const SVG_MIME = 'image/svg+xml'
 const VIDEO_MIME = new Set(['video/mp4', 'video/webm', 'video/quicktime'])
 const MAX_BYTES = 500 * 1024 * 1024 // matches the website-media bucket cap
 
@@ -44,13 +46,17 @@ export async function createCmsMediaUploadUrl(input: {
   filename: string
   mimeType: string
   sizeBytes: number
-  kind: 'image' | 'video' | 'media'
+  kind: 'image' | 'svg' | 'video' | 'media'
 }): Promise<CmsMediaUploadUrlResult> {
   await requireAdminRole(CMS_UPLOAD_ROLES)
   const isImage = IMAGE_MIME.has(input.mimeType)
+  const isSvg = input.mimeType === SVG_MIME
   const isVideo = VIDEO_MIME.has(input.mimeType)
   if (input.kind === 'image' && !isImage) {
-    return { ok: false, error: 'Only JPEG, PNG, WebP, GIF, or AVIF images are allowed.' }
+    return { ok: false, error: 'Only JPEG, PNG, WebP, GIF, AVIF, or SVG images are allowed.' }
+  }
+  if (input.kind === 'svg' && !isSvg) {
+    return { ok: false, error: 'Only SVG files are allowed for this field.' }
   }
   if (input.kind === 'video' && !isVideo) {
     return { ok: false, error: 'Only MP4, WebM, or MOV video files are allowed.' }
@@ -106,6 +112,7 @@ function extFromMime(mime: string): string | null {
   if (mime === 'image/webp') return 'webp'
   if (mime === 'image/gif') return 'gif'
   if (mime === 'image/avif') return 'avif'
+  if (mime === 'image/svg+xml') return 'svg'
   if (mime === 'video/mp4') return 'mp4'
   if (mime === 'video/webm') return 'webm'
   if (mime === 'video/quicktime') return 'mov'
