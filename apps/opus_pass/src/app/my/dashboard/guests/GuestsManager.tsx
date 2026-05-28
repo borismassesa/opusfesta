@@ -30,8 +30,8 @@ import {
   type GuestInput,
 } from '@/lib/dashboard/actions'
 import { inviteMessage, rsvpUrl, whatsappShareUrl } from '@/lib/dashboard/share'
+import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type {
-  DashboardHeroMedia,
   GuestWithInvitations,
   RsvpStatus,
   WeddingEvent,
@@ -68,7 +68,7 @@ export default function GuestsManager({
   initialGuests: GuestWithInvitations[]
   events: WeddingEvent[]
   coupleName: string
-  hero: DashboardHeroMedia | null
+  hero: DashboardHeroContent
   collectorToken: string | null
 }) {
   const [query, setQuery] = useState('')
@@ -235,11 +235,7 @@ export default function GuestsManager({
   return (
     <div className="space-y-6">
       <DashboardHero
-        pageSlug="guests"
-        eyebrow="Guest list"
-        title={coupleName === 'The Couple' ? 'Your guest list' : `${coupleName}'s guests`}
-        subtitle={`${initialGuests.length} ${initialGuests.length === 1 ? 'guest' : 'guests'} on your list`}
-        media={hero}
+        content={hero}
         actions={
           <>
             {collectorToken ? (
@@ -328,7 +324,7 @@ export default function GuestsManager({
               return (
                 <div key={g.id} className="flex flex-wrap items-center gap-3 px-4 py-3.5 sm:flex-nowrap">
                   <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#C9A0DC]/15 text-sm font-semibold text-[#8e57b3]">
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/[0.05] text-sm font-semibold text-[#1A1A1A]/70">
                       {g.full_name.charAt(0).toUpperCase()}
                     </span>
                     <div className="min-w-0">
@@ -386,7 +382,7 @@ export default function GuestsManager({
                       onClick={() => copyLink(g)}
                       aria-label="Copy RSVP link"
                       title="Copy RSVP link"
-                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[#8e57b3] hover:bg-[#C9A0DC]/15"
+                      className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A]"
                     >
                       <Link2 className="h-4 w-4" />
                     </button>

@@ -189,7 +189,7 @@ export default async function DashboardOverviewPage({ searchParams }: PageProps)
               <SectionTitle
                 title="Upcoming events"
                 action={
-                  <Link href="/my/dashboard/events" className="text-sm font-medium text-[#8e57b3] hover:underline">
+                  <Link href="/my/dashboard/events" className="text-sm font-medium text-[#1A1A1A]/70 hover:text-[#1A1A1A] hover:underline">
                     View all
                   </Link>
                 }
@@ -208,7 +208,7 @@ export default async function DashboardOverviewPage({ searchParams }: PageProps)
                 <div className="space-y-3">
                   {upcoming.map((e) => (
                     <Card key={e.id} className="flex items-center gap-4 p-4">
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-[#C9A0DC]/15 text-[#8e57b3]">
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-black/[0.05] text-[#1A1A1A]/70">
                         <CalendarHeart className="h-5 w-5" />
                       </span>
                       <div className="min-w-0 flex-1">
@@ -229,7 +229,7 @@ export default async function DashboardOverviewPage({ searchParams }: PageProps)
               <SectionTitle
                 title="Recent responses"
                 action={
-                  <Link href="/my/dashboard/rsvps" className="text-sm font-medium text-[#8e57b3] hover:underline">
+                  <Link href="/my/dashboard/rsvps" className="text-sm font-medium text-[#1A1A1A]/70 hover:text-[#1A1A1A] hover:underline">
                     View all
                   </Link>
                 }
@@ -265,7 +265,7 @@ export default async function DashboardOverviewPage({ searchParams }: PageProps)
             </div>
           </div>
 
-          <Card className="flex flex-wrap items-center justify-between gap-4 bg-gradient-to-br from-[#F3E9FA] to-white p-6">
+          <Card className="flex flex-wrap items-center justify-between gap-4 p-6">
             <div>
               <h3 className="font-semibold text-[#1A1A1A]">Ready to invite more guests?</h3>
               <p className="text-sm text-[#1A1A1A]/55">

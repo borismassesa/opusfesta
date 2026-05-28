@@ -139,7 +139,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
           {initialEvents.map((e) => (
             <Card key={e.id} className="p-5">
               <div className="flex items-start justify-between gap-3">
-                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#C9A0DC]/15 text-[#8e57b3]">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-black/[0.05] text-[#1A1A1A]/70">
                   <CalendarHeart className="h-5 w-5" />
                 </span>
                 <div className="flex gap-1">
@@ -160,7 +160,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                 </div>
               </div>
               <h3 className="mt-3 text-lg font-semibold text-[#1A1A1A]">{e.name}</h3>
-              <span className="mt-1 inline-block rounded-full bg-[#C9A0DC]/15 px-2.5 py-0.5 text-xs font-medium text-[#8e57b3]">
+              <span className="mt-1 inline-block rounded-full bg-black/[0.05] px-2.5 py-0.5 text-xs font-medium text-[#1A1A1A]/70">
                 {EVENT_TYPE_LABELS[e.event_type]}
               </span>
               <div className="mt-4 space-y-1.5 text-sm text-[#1A1A1A]/60">

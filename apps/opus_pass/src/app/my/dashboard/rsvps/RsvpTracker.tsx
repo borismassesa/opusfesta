@@ -7,9 +7,9 @@ import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
 import { inputClass } from '@/components/dashboard/controls'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { updateRsvp } from '@/lib/dashboard/actions'
+import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import {
   RSVP_STATUS_LABELS,
-  type DashboardHeroMedia,
   type GuestWithInvitations,
   type RsvpStatus,
   type WeddingEvent,
@@ -37,7 +37,7 @@ export default function RsvpTracker({
 }: {
   guests: GuestWithInvitations[]
   events: WeddingEvent[]
-  hero: DashboardHeroMedia | null
+  hero: DashboardHeroContent
 }) {
   const [eventFilter, setEventFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'all' | RsvpStatus>('all')
@@ -132,11 +132,7 @@ export default function RsvpTracker({
   return (
     <div className="space-y-6">
       <DashboardHero
-        pageSlug="rsvps"
-        eyebrow="RSVPs"
-        title="Who's coming"
-        subtitle={`${filtered.length} of ${rows.length} invitations shown`}
-        media={hero}
+        content={hero}
         actions={
           rows.length > 0 ? (
             <button
@@ -219,7 +215,7 @@ export default function RsvpTracker({
                   setStatusFilter('all')
                   setQuery('')
                 }}
-                className="text-xs font-semibold text-[#8e57b3] hover:underline"
+                className="text-xs font-semibold text-[#1A1A1A]/70 hover:text-[#1A1A1A] hover:underline"
               >
                 Clear filters
               </button>
