@@ -141,7 +141,7 @@ function EnvelopeScene({ treatment, couple, designImage, palette }: SceneProps) 
   return (
     <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: '#F5EFE3' }}>
       <div className="relative" style={{ width: '72%' }}>
-        {/* Envelope body */}
+        {/* Envelope body — overflow-hidden only applies to the envelope itself */}
         <div
           className="relative rounded-sm overflow-hidden"
           style={{
@@ -155,20 +155,21 @@ function EnvelopeScene({ treatment, couple, designImage, palette }: SceneProps) 
             <path d="M0 0 L50 38 L100 0" fill="none" stroke="#C8BFB0" strokeWidth="0.5" />
             <path d="M0 0 L0 70 L100 70 L100 0" fill="none" stroke="#C8BFB0" strokeWidth="0.3" />
           </svg>
-          {/* Card peeking up */}
-          <div
-            className="absolute left-1/2 bottom-full -translate-x-1/2"
-            style={{ width: '62%', marginBottom: '-30%' }}
-          >
-            <InviteCard
-              treatment={treatment}
-              couple={couple}
-              designImage={designImage}
-              palette={palette}
-              className="w-full rounded-t-sm"
-              style={{ boxShadow: '0 -8px 24px -4px rgba(0,0,0,0.12)' }}
-            />
-          </div>
+        </div>
+
+        {/* Card peeking up — sibling of envelope body so it's not clipped */}
+        <div
+          className="absolute left-1/2 -translate-x-1/2"
+          style={{ width: '62%', bottom: '57%', zIndex: 2 }}
+        >
+          <InviteCard
+            treatment={treatment}
+            couple={couple}
+            designImage={designImage}
+            palette={palette}
+            className="w-full rounded-t-sm"
+            style={{ boxShadow: '0 -8px 24px -4px rgba(0,0,0,0.12)' }}
+          />
         </div>
       </div>
     </div>
