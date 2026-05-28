@@ -11,11 +11,11 @@ import {
   Link2,
   Upload,
   MessageCircle,
-  Minus,
   X,
   ClipboardSignature,
   ArrowUp,
   ArrowDown,
+  CalendarHeart,
 } from 'lucide-react'
 import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
 import { Button, ConfirmDialog, Slideover, Tabs, Field, inputClass } from '@/components/dashboard/controls'
@@ -33,22 +33,47 @@ import {
 import { inviteMessage, rsvpUrl, whatsappShareUrl } from '@/lib/dashboard/share'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type {
+  ChildEntry,
   GuestWithInvitations,
   RsvpStatus,
   WeddingEvent,
 } from '@/lib/dashboard/types'
+import { RSVP_STATUS_LABELS } from '@/lib/dashboard/types'
 
-type FormTab = 'info' | 'invitations'
+type FormTab = 'info' | 'address' | 'rsvps'
 
 const emptyForm: GuestInput = {
-  full_name: '',
+  title: '',
+  first_name: '',
+  last_name: '',
+  suffix: '',
+  plus_one_title: '',
+  plus_one_first_name: '',
+  plus_one_last_name: '',
+  plus_one_suffix: '',
+  plus_one_name_unknown: false,
+  children: [],
   email: '',
   phone: '',
   whatsapp_phone: '',
   group_tag: '',
-  max_party_size: 1,
   notes: '',
+  name_on_envelope: '',
+  address_country: '',
+  address_line1: '',
+  address_apt: '',
+  address_city: '',
+  address_region: '',
+  address_postal_code: '',
   eventIds: [],
+}
+
+function hasPlusOne(form: GuestInput): boolean {
+  return (
+    Boolean(form.plus_one_name_unknown) ||
+    Boolean(form.plus_one_first_name?.trim()) ||
+    Boolean(form.plus_one_last_name?.trim())
+  )
 }
 
 function summaryStatus(g: GuestWithInvitations): RsvpStatus | null {
@@ -177,13 +202,28 @@ export default function GuestsManager({
   function openEdit(g: GuestWithInvitations) {
     setEditing(g)
     setForm({
-      full_name: g.full_name,
+      title: g.title ?? '',
+      first_name: g.first_name ?? g.full_name.split(' ')[0] ?? '',
+      last_name: g.last_name ?? g.full_name.split(' ').slice(1).join(' '),
+      suffix: g.suffix ?? '',
+      plus_one_title: g.plus_one_title ?? '',
+      plus_one_first_name: g.plus_one_first_name ?? '',
+      plus_one_last_name: g.plus_one_last_name ?? '',
+      plus_one_suffix: g.plus_one_suffix ?? '',
+      plus_one_name_unknown: g.plus_one_name_unknown ?? false,
+      children: g.children ?? [],
       email: g.email ?? '',
       phone: g.phone ?? '',
       whatsapp_phone: g.whatsapp_phone ?? '',
       group_tag: g.group_tag ?? '',
-      max_party_size: g.max_party_size,
       notes: g.notes ?? '',
+      name_on_envelope: g.name_on_envelope ?? '',
+      address_country: g.address_country ?? '',
+      address_line1: g.address_line1 ?? '',
+      address_apt: g.address_apt ?? '',
+      address_city: g.address_city ?? '',
+      address_region: g.address_region ?? '',
+      address_postal_code: g.address_postal_code ?? '',
       eventIds: g.invitations.map((i) => i.event_id),
     })
     setTab('info')
@@ -199,15 +239,54 @@ export default function GuestsManager({
     })
   }
 
-  function adjustParty(delta: number) {
+  function addPlusOne() {
     setForm((f) => ({
       ...f,
-      max_party_size: Math.max(1, (f.max_party_size ?? 1) + delta),
+      plus_one_title: f.plus_one_title ?? '',
+      plus_one_first_name: f.plus_one_first_name ?? '',
+      plus_one_last_name: f.plus_one_last_name ?? '',
+      plus_one_suffix: f.plus_one_suffix ?? '',
+      plus_one_name_unknown: f.plus_one_name_unknown ?? false,
+    }))
+  }
+
+  function removePlusOne() {
+    setForm((f) => ({
+      ...f,
+      plus_one_title: '',
+      plus_one_first_name: '',
+      plus_one_last_name: '',
+      plus_one_suffix: '',
+      plus_one_name_unknown: false,
+    }))
+  }
+
+  function addChild() {
+    setForm((f) => ({
+      ...f,
+      children: [...(f.children ?? []), { first_name: '', last_name: '' }],
+    }))
+  }
+
+  function updateChild(idx: number, patch: Partial<ChildEntry>) {
+    setForm((f) => {
+      const next = [...(f.children ?? [])]
+      next[idx] = { ...next[idx], ...patch }
+      return { ...f, children: next }
+    })
+  }
+
+  function removeChild(idx: number) {
+    setForm((f) => ({
+      ...f,
+      children: (f.children ?? []).filter((_, i) => i !== idx),
     }))
   }
 
   function save() {
-    if (!form.full_name.trim()) {
+    const first = (form.first_name ?? '').trim()
+    const last = (form.last_name ?? '').trim()
+    if (!first && !last) {
       toast.error("Enter the guest's name")
       setTab('info')
       return
@@ -637,125 +716,30 @@ export default function GuestsManager({
           onChange={setTab}
           tabs={[
             { id: 'info', label: 'Guest info' },
-            { id: 'invitations', label: 'Invitations' },
+            { id: 'address', label: 'Mailing address' },
+            { id: 'rsvps', label: 'RSVPs' },
           ]}
         />
 
         {tab === 'info' ? (
-          <div className="space-y-4">
-            <Field label="Full name">
-              <input
-                className={inputClass}
-                value={form.full_name}
-                onChange={(e) => setForm({ ...form, full_name: e.target.value })}
-                placeholder="e.g. Asha & Juma Mussa"
-              />
-            </Field>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="Email">
-                <input
-                  type="email"
-                  className={inputClass}
-                  value={form.email ?? ''}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                  placeholder="you@example.com"
-                />
-              </Field>
-              <Field label="Phone">
-                <input
-                  className={inputClass}
-                  value={form.phone ?? ''}
-                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                  placeholder="07XX XXX XXX"
-                />
-              </Field>
-            </div>
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <Field label="WhatsApp" hint="If different from phone">
-                <input
-                  className={inputClass}
-                  value={form.whatsapp_phone ?? ''}
-                  onChange={(e) => setForm({ ...form, whatsapp_phone: e.target.value })}
-                  placeholder="07XX XXX XXX"
-                />
-              </Field>
-              <Field label="Group">
-                <input
-                  className={inputClass}
-                  value={form.group_tag ?? ''}
-                  onChange={(e) => setForm({ ...form, group_tag: e.target.value })}
-                  placeholder="e.g. Family"
-                />
-              </Field>
-            </div>
-
-            <Field label="Total seats" hint="Including the named guest, plus any plus-ones or kids">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => adjustParty(-1)}
-                  aria-label="Fewer seats"
-                  className="flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-inset ring-black/[0.12] hover:bg-black/[0.04]"
-                >
-                  <Minus className="h-4 w-4" />
-                </button>
-                <span className="min-w-[2ch] text-center text-xl font-semibold tabular-nums text-[#1A1A1A]">
-                  {form.max_party_size ?? 1}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => adjustParty(1)}
-                  aria-label="More seats"
-                  className="flex h-9 w-9 items-center justify-center rounded-full ring-1 ring-inset ring-black/[0.12] hover:bg-black/[0.04]"
-                >
-                  <Plus className="h-4 w-4" />
-                </button>
-              </div>
-            </Field>
-
-            <Field label="Notes" hint="Optional — meal preferences, accessibility, who they came with">
-              <textarea
-                rows={3}
-                className={inputClass}
-                value={form.notes ?? ''}
-                onChange={(e) => setForm({ ...form, notes: e.target.value })}
-                placeholder="Vegetarian, requires wheelchair access…"
-              />
-            </Field>
-          </div>
+          <GuestInfoTab
+            form={form}
+            setForm={setForm}
+            addPlusOne={addPlusOne}
+            removePlusOne={removePlusOne}
+            addChild={addChild}
+            updateChild={updateChild}
+            removeChild={removeChild}
+          />
+        ) : tab === 'address' ? (
+          <MailingAddressTab form={form} setForm={setForm} />
         ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-[#1A1A1A]/60">
-              Pick which events this guest is invited to. They&apos;ll see only the events you tick on their RSVP page.
-            </p>
-            {events.length > 0 ? (
-              <div className="space-y-2 rounded-xl border border-black/[0.1] p-3">
-                {events.map((ev) => (
-                  <label key={ev.id} className="flex items-center gap-3 text-sm text-[#1A1A1A]/80">
-                    <input
-                      type="checkbox"
-                      checked={(form.eventIds ?? []).includes(ev.id)}
-                      onChange={() => toggleEvent(ev.id)}
-                      className="h-4 w-4 rounded border-black/20 accent-[#C9A0DC]"
-                    />
-                    <span className="flex-1">{ev.name}</span>
-                    {ev.starts_at ? (
-                      <span className="text-xs text-[#1A1A1A]/45">
-                        {new Date(ev.starts_at).toLocaleDateString('en-GB', {
-                          day: 'numeric',
-                          month: 'short',
-                        })}
-                      </span>
-                    ) : null}
-                  </label>
-                ))}
-              </div>
-            ) : (
-              <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">
-                Add an event first to invite this guest to it.
-              </p>
-            )}
-          </div>
+          <RsvpsTab
+            form={form}
+            events={events}
+            invitations={editing?.invitations ?? []}
+            toggleEvent={toggleEvent}
+          />
         )}
       </Slideover>
 
@@ -865,6 +849,425 @@ export default function GuestsManager({
         confirmLabel={`Remove ${selected.size}`}
         pending={pending}
       />
+    </div>
+  )
+}
+
+// ──────────────────────── slideover sub-tabs ────────────────────────
+
+const TITLE_OPTIONS = ['Mr', 'Mrs', 'Ms', 'Mx', 'Dr']
+
+function NameRow({
+  title,
+  first,
+  last,
+  suffix,
+  onChange,
+  required = false,
+}: {
+  title: string
+  first: string
+  last: string
+  suffix: string
+  onChange: (patch: { title?: string; first?: string; last?: string; suffix?: string }) => void
+  required?: boolean
+}) {
+  return (
+    <div className="grid grid-cols-[80px_1fr_1fr_80px] gap-2">
+      <Field label="Title">
+        <select
+          className={inputClass}
+          value={title}
+          onChange={(e) => onChange({ title: e.target.value })}
+        >
+          <option value=""></option>
+          {TITLE_OPTIONS.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label={required ? 'First name *' : 'First name'}>
+        <input
+          className={inputClass}
+          value={first}
+          onChange={(e) => onChange({ first: e.target.value })}
+        />
+      </Field>
+      <Field label={required ? 'Last name *' : 'Last name'}>
+        <input
+          className={inputClass}
+          value={last}
+          onChange={(e) => onChange({ last: e.target.value })}
+        />
+      </Field>
+      <Field label="Suffix">
+        <input
+          className={inputClass}
+          value={suffix}
+          placeholder="Jr."
+          onChange={(e) => onChange({ suffix: e.target.value })}
+        />
+      </Field>
+    </div>
+  )
+}
+
+function GuestInfoTab({
+  form,
+  setForm,
+  addPlusOne,
+  removePlusOne,
+  addChild,
+  updateChild,
+  removeChild,
+}: {
+  form: GuestInput
+  setForm: React.Dispatch<React.SetStateAction<GuestInput>>
+  addPlusOne: () => void
+  removePlusOne: () => void
+  addChild: () => void
+  updateChild: (idx: number, patch: Partial<ChildEntry>) => void
+  removeChild: (idx: number) => void
+}) {
+  const plusOneShown = hasPlusOne(form) || (form.plus_one_first_name ?? '') !== '' || (form.plus_one_last_name ?? '') !== ''
+  const children = form.children ?? []
+
+  return (
+    <div className="space-y-6">
+      <section className="space-y-3">
+        <h4 className="text-sm font-semibold text-[#1A1A1A]">Primary guest</h4>
+        <NameRow
+          required
+          title={form.title ?? ''}
+          first={form.first_name ?? ''}
+          last={form.last_name ?? ''}
+          suffix={form.suffix ?? ''}
+          onChange={(patch) =>
+            setForm((f) => ({
+              ...f,
+              title: patch.title ?? f.title,
+              first_name: patch.first ?? f.first_name,
+              last_name: patch.last ?? f.last_name,
+              suffix: patch.suffix ?? f.suffix,
+            }))
+          }
+        />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="Email">
+            <input
+              type="email"
+              className={inputClass}
+              value={form.email ?? ''}
+              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              placeholder="you@example.com"
+            />
+          </Field>
+          <Field label="Mobile">
+            <input
+              className={inputClass}
+              value={form.phone ?? ''}
+              onChange={(e) => setForm({ ...form, phone: e.target.value })}
+              placeholder="07XX XXX XXX"
+            />
+          </Field>
+        </div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <Field label="WhatsApp" hint="If different from mobile">
+            <input
+              className={inputClass}
+              value={form.whatsapp_phone ?? ''}
+              onChange={(e) => setForm({ ...form, whatsapp_phone: e.target.value })}
+              placeholder="07XX XXX XXX"
+            />
+          </Field>
+          <Field label="Group">
+            <input
+              className={inputClass}
+              value={form.group_tag ?? ''}
+              onChange={(e) => setForm({ ...form, group_tag: e.target.value })}
+              placeholder="e.g. Family"
+            />
+          </Field>
+        </div>
+        <Field label="Notes" hint="Optional — meal preferences, accessibility, anything to remember">
+          <textarea
+            rows={3}
+            className={inputClass}
+            value={form.notes ?? ''}
+            onChange={(e) => setForm({ ...form, notes: e.target.value })}
+            placeholder="Vegetarian, requires wheelchair access…"
+          />
+        </Field>
+      </section>
+
+      {plusOneShown ? (
+        <section className="space-y-3 border-t border-black/[0.06] pt-5">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-[#1A1A1A]">Plus one</h4>
+            <button
+              type="button"
+              onClick={removePlusOne}
+              aria-label="Remove plus one"
+              className="flex h-7 w-7 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </button>
+          </div>
+          <label className="flex items-center gap-2 text-sm text-[#1A1A1A]/75">
+            <input
+              type="checkbox"
+              checked={form.plus_one_name_unknown === true}
+              onChange={(e) =>
+                setForm({ ...form, plus_one_name_unknown: e.target.checked })
+              }
+              className="h-4 w-4 rounded border-black/20 accent-[#1A1A1A]"
+            />
+            Name unknown for now
+          </label>
+          {!form.plus_one_name_unknown ? (
+            <NameRow
+              title={form.plus_one_title ?? ''}
+              first={form.plus_one_first_name ?? ''}
+              last={form.plus_one_last_name ?? ''}
+              suffix={form.plus_one_suffix ?? ''}
+              onChange={(patch) =>
+                setForm((f) => ({
+                  ...f,
+                  plus_one_title: patch.title ?? f.plus_one_title,
+                  plus_one_first_name: patch.first ?? f.plus_one_first_name,
+                  plus_one_last_name: patch.last ?? f.plus_one_last_name,
+                  plus_one_suffix: patch.suffix ?? f.plus_one_suffix,
+                }))
+              }
+            />
+          ) : null}
+        </section>
+      ) : null}
+
+      {children.length > 0 ? (
+        <section className="space-y-3 border-t border-black/[0.06] pt-5">
+          <h4 className="text-sm font-semibold text-[#1A1A1A]">Children</h4>
+          <div className="space-y-3">
+            {children.map((child, idx) => (
+              <div key={idx} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2">
+                <Field label={idx === 0 ? 'First name' : ''}>
+                  <input
+                    className={inputClass}
+                    value={child.first_name}
+                    onChange={(e) => updateChild(idx, { first_name: e.target.value })}
+                  />
+                </Field>
+                <Field label={idx === 0 ? 'Last name' : ''}>
+                  <input
+                    className={inputClass}
+                    value={child.last_name}
+                    onChange={(e) => updateChild(idx, { last_name: e.target.value })}
+                  />
+                </Field>
+                <button
+                  type="button"
+                  onClick={() => removeChild(idx)}
+                  aria-label="Remove child"
+                  className="flex h-10 w-10 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      <section className="flex flex-wrap gap-2 border-t border-black/[0.06] pt-5">
+        {!plusOneShown ? (
+          <button
+            type="button"
+            onClick={addPlusOne}
+            className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.12] px-3 py-1.5 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.04]"
+          >
+            <Plus className="h-3.5 w-3.5" /> Add plus one
+          </button>
+        ) : null}
+        <button
+          type="button"
+          onClick={addChild}
+          className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.12] px-3 py-1.5 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.04]"
+        >
+          <Plus className="h-3.5 w-3.5" /> Add child
+        </button>
+      </section>
+    </div>
+  )
+}
+
+function MailingAddressTab({
+  form,
+  setForm,
+}: {
+  form: GuestInput
+  setForm: React.Dispatch<React.SetStateAction<GuestInput>>
+}) {
+  const composed = [
+    `${form.title ?? ''} ${form.first_name ?? ''} ${form.last_name ?? ''} ${form.suffix ?? ''}`
+      .trim()
+      .replace(/\s+/g, ' '),
+    !form.plus_one_name_unknown && (form.plus_one_first_name || form.plus_one_last_name)
+      ? `${form.plus_one_title ?? ''} ${form.plus_one_first_name ?? ''} ${form.plus_one_last_name ?? ''} ${form.plus_one_suffix ?? ''}`
+          .trim()
+          .replace(/\s+/g, ' ')
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' and ')
+
+  return (
+    <div className="space-y-4">
+      <Field
+        label="Name on envelope"
+        hint={composed ? `Suggested: ${composed}` : 'How the guest should be addressed'}
+      >
+        <input
+          className={inputClass}
+          value={form.name_on_envelope ?? ''}
+          onChange={(e) => setForm({ ...form, name_on_envelope: e.target.value })}
+          placeholder={composed || 'Boris Massesa and Inviolatha Mbuya'}
+        />
+      </Field>
+
+      <Field label="Country">
+        <input
+          className={inputClass}
+          value={form.address_country ?? ''}
+          onChange={(e) => setForm({ ...form, address_country: e.target.value })}
+          placeholder="Tanzania"
+        />
+      </Field>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_120px]">
+        <Field label="Street address">
+          <input
+            className={inputClass}
+            value={form.address_line1 ?? ''}
+            onChange={(e) => setForm({ ...form, address_line1: e.target.value })}
+            placeholder="e.g. Mlimani Drive"
+          />
+        </Field>
+        <Field label="Apt / floor">
+          <input
+            className={inputClass}
+            value={form.address_apt ?? ''}
+            onChange={(e) => setForm({ ...form, address_apt: e.target.value })}
+            placeholder="Apt 4B"
+          />
+        </Field>
+      </div>
+
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_120px]">
+        <Field label="City">
+          <input
+            className={inputClass}
+            value={form.address_city ?? ''}
+            onChange={(e) => setForm({ ...form, address_city: e.target.value })}
+            placeholder="Dar es Salaam"
+          />
+        </Field>
+        <Field label="Region / state">
+          <input
+            className={inputClass}
+            value={form.address_region ?? ''}
+            onChange={(e) => setForm({ ...form, address_region: e.target.value })}
+          />
+        </Field>
+        <Field label="Postal code">
+          <input
+            className={inputClass}
+            value={form.address_postal_code ?? ''}
+            onChange={(e) => setForm({ ...form, address_postal_code: e.target.value })}
+          />
+        </Field>
+      </div>
+
+      <p className="text-xs text-[#1A1A1A]/55">
+        Mailing addresses are optional — OpusPass is digital-first. Only fill this in if you&apos;re
+        planning printed save-the-dates or wedding invitations.
+      </p>
+    </div>
+  )
+}
+
+function RsvpsTab({
+  form,
+  events,
+  invitations,
+  toggleEvent,
+}: {
+  form: GuestInput
+  events: WeddingEvent[]
+  invitations: GuestWithInvitations['invitations']
+  toggleEvent: (id: string) => void
+}) {
+  if (events.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center px-6 py-10 text-center">
+        <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-black/[0.05] text-[#1A1A1A]/45">
+          <CalendarHeart className="h-6 w-6" aria-hidden="true" />
+        </span>
+        <h4 className="text-base font-semibold text-[#1A1A1A]">
+          You haven&apos;t added any events yet
+        </h4>
+        <p className="mt-1 max-w-sm text-sm text-[#1A1A1A]/55">
+          Add a ceremony, reception, or any gathering on the Events tab. You&apos;ll be able to
+          invite this guest and see their RSVPs here.
+        </p>
+      </div>
+    )
+  }
+
+  const statusByEvent = new Map(invitations.map((inv) => [inv.event_id, inv]))
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-[#1A1A1A]/60">
+        Pick the events this guest is invited to. They&apos;ll only see ticked events on their RSVP
+        page.
+      </p>
+      <div className="divide-y divide-black/[0.05] rounded-xl border border-black/[0.08]">
+        {events.map((ev) => {
+          const invited = (form.eventIds ?? []).includes(ev.id)
+          const inv = statusByEvent.get(ev.id)
+          return (
+            <label key={ev.id} className="flex items-center gap-3 px-3 py-3">
+              <input
+                type="checkbox"
+                checked={invited}
+                onChange={() => toggleEvent(ev.id)}
+                className="h-4 w-4 rounded border-black/20 accent-[#1A1A1A]"
+              />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-medium text-[#1A1A1A]">{ev.name}</p>
+                {ev.starts_at ? (
+                  <p className="text-xs text-[#1A1A1A]/55">
+                    {new Date(ev.starts_at).toLocaleDateString('en-GB', {
+                      weekday: 'short',
+                      day: 'numeric',
+                      month: 'short',
+                    })}
+                  </p>
+                ) : null}
+              </div>
+              {invited && inv ? (
+                <StatusPill status={inv.rsvp_status} />
+              ) : invited ? (
+                <span className="rounded-full bg-black/[0.05] px-2 py-0.5 text-xs text-[#1A1A1A]/55">
+                  {RSVP_STATUS_LABELS.pending}
+                </span>
+              ) : null}
+            </label>
+          )
+        })}
+      </div>
     </div>
   )
 }

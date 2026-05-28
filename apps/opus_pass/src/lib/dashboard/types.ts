@@ -28,15 +28,42 @@ export interface WeddingEvent {
   updated_at: string
 }
 
+export interface ChildEntry {
+  first_name: string
+  last_name: string
+}
+
 export interface GuestContact {
   id: string
   full_name: string
+  title: string | null
+  first_name: string | null
+  last_name: string | null
+  suffix: string | null
+
+  plus_one_title: string | null
+  plus_one_first_name: string | null
+  plus_one_last_name: string | null
+  plus_one_suffix: string | null
+  plus_one_name_unknown: boolean
+
+  children: ChildEntry[]
+
   email: string | null
   phone: string | null
   whatsapp_phone: string | null
   group_tag: string | null
   max_party_size: number
   notes: string | null
+
+  name_on_envelope: string | null
+  address_country: string | null
+  address_line1: string | null
+  address_apt: string | null
+  address_city: string | null
+  address_region: string | null
+  address_postal_code: string | null
+
   public_token: string
   last_invited_at: string | null
   invite_count: number
@@ -91,13 +118,3 @@ export const RSVP_STATUS_LABELS: Record<RsvpStatus, string> = {
   maybe: 'Maybe',
 }
 
-export type HeroPageSlug = 'invitations' | 'guests' | 'rsvps' | 'website'
-export type HeroMediaType = 'image' | 'video'
-
-export interface DashboardHeroMedia {
-  page_slug: HeroPageSlug
-  media_url: string
-  media_type: HeroMediaType
-  storage_path: string
-  updated_at: string
-}

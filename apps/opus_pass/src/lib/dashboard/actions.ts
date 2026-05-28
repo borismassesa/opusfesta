@@ -3,28 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
-import type { EventType, HeroMediaType, HeroPageSlug, RsvpStatus, SendChannel } from './types'
-
-const HERO_BUCKET = 'dashboard-hero-media'
-const HERO_PAGE_SLUGS = ['invitations', 'guests', 'rsvps', 'website'] as const
-const HERO_MAX_BYTES = 50 * 1024 * 1024 // 50 MB
-
-function heroPagePath(slug: HeroPageSlug): string {
-  return `/my/dashboard/${slug === 'rsvps' ? 'rsvps' : slug}`
-}
-
-function detectHeroMediaType(mimeType: string): HeroMediaType | null {
-  if (mimeType.startsWith('image/')) return 'image'
-  if (mimeType.startsWith('video/')) return 'video'
-  return null
-}
-
-function safeExtension(name: string, mimeType: string): string {
-  const fromName = name.split('.').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '')
-  if (fromName && fromName.length <= 5) return fromName
-  const fromMime = mimeType.split('/').pop()?.toLowerCase().replace(/[^a-z0-9]/g, '')
-  return fromMime && fromMime.length <= 5 ? fromMime : 'bin'
-}
+import type { ChildEntry, EventType, RsvpStatus, SendChannel } from './types'
 
 function revalidateDashboard() {
   revalidatePath('/my/dashboard')
@@ -110,15 +89,102 @@ export async function deleteEvent(id: string): Promise<void> {
 // ---------------------------------------------------------------- Guests
 
 export interface GuestInput {
-  full_name: string
+  /** Required for the legacy code path / public RSVP page; auto-synthesized from
+   *  title + first + last + suffix when first_name/last_name are present. */
+  full_name?: string
+  title?: string | null
+  first_name?: string | null
+  last_name?: string | null
+  suffix?: string | null
+
+  plus_one_title?: string | null
+  plus_one_first_name?: string | null
+  plus_one_last_name?: string | null
+  plus_one_suffix?: string | null
+  plus_one_name_unknown?: boolean
+
+  children?: ChildEntry[]
+
   email?: string | null
   phone?: string | null
   whatsapp_phone?: string | null
   group_tag?: string | null
   max_party_size?: number
   notes?: string | null
+
+  name_on_envelope?: string | null
+  address_country?: string | null
+  address_line1?: string | null
+  address_apt?: string | null
+  address_city?: string | null
+  address_region?: string | null
+  address_postal_code?: string | null
+
   /** Event ids this guest should be invited to (syncs invitations). */
   eventIds?: string[]
+}
+
+function composeName(parts: Array<string | null | undefined>): string {
+  return parts
+    .map((p) => (p ?? '').trim())
+    .filter(Boolean)
+    .join(' ')
+}
+
+function guestColumnsFromInput(input: GuestInput): Record<string, unknown> {
+  const first = (input.first_name ?? '').trim() || null
+  const last = (input.last_name ?? '').trim() || null
+  const title = (input.title ?? '').trim() || null
+  const suffix = (input.suffix ?? '').trim() || null
+  const composed = composeName([title, first, last, suffix])
+  const full_name = (input.full_name ?? composed).trim()
+  if (!full_name) throw new Error('Guest name is required')
+
+  const plusOneNameUnknown = input.plus_one_name_unknown === true
+  const plusOneFirst = (input.plus_one_first_name ?? '').trim() || null
+  const plusOneLast = (input.plus_one_last_name ?? '').trim() || null
+  const children = (input.children ?? [])
+    .map((c) => ({
+      first_name: (c.first_name ?? '').trim(),
+      last_name: (c.last_name ?? '').trim(),
+    }))
+    .filter((c) => c.first_name || c.last_name)
+
+  // Derive a sensible max_party_size if the caller didn't pin one.
+  const hasPlusOne = plusOneNameUnknown || Boolean(plusOneFirst) || Boolean(plusOneLast)
+  const derivedParty = 1 + (hasPlusOne ? 1 : 0) + children.length
+  const max_party_size = input.max_party_size ?? Math.max(1, derivedParty)
+
+  return {
+    full_name,
+    title,
+    first_name: first,
+    last_name: last,
+    suffix,
+
+    plus_one_title: (input.plus_one_title ?? '').trim() || null,
+    plus_one_first_name: plusOneFirst,
+    plus_one_last_name: plusOneLast,
+    plus_one_suffix: (input.plus_one_suffix ?? '').trim() || null,
+    plus_one_name_unknown: plusOneNameUnknown,
+
+    children,
+
+    email: (input.email ?? '').trim() || null,
+    phone: (input.phone ?? '').trim() || null,
+    whatsapp_phone: (input.whatsapp_phone ?? '').trim() || null,
+    group_tag: (input.group_tag ?? '').trim() || null,
+    max_party_size,
+    notes: (input.notes ?? '').trim() || null,
+
+    name_on_envelope: (input.name_on_envelope ?? '').trim() || null,
+    address_country: (input.address_country ?? '').trim() || null,
+    address_line1: (input.address_line1 ?? '').trim() || null,
+    address_apt: (input.address_apt ?? '').trim() || null,
+    address_city: (input.address_city ?? '').trim() || null,
+    address_region: (input.address_region ?? '').trim() || null,
+    address_postal_code: (input.address_postal_code ?? '').trim() || null,
+  }
 }
 
 /** Returns only the event ids that belong to this user — prevents attaching a
@@ -166,16 +232,7 @@ export async function createGuest(input: GuestInput): Promise<string> {
   const supabase = createDashboardClient()
   const { data, error } = await supabase
     .from('guest_contacts')
-    .insert({
-      user_id: user.id,
-      full_name: input.full_name.trim(),
-      email: input.email || null,
-      phone: input.phone || null,
-      whatsapp_phone: input.whatsapp_phone || null,
-      group_tag: input.group_tag || null,
-      max_party_size: input.max_party_size ?? 1,
-      notes: input.notes || null,
-    })
+    .insert({ user_id: user.id, ...guestColumnsFromInput(input) })
     .select('id')
     .single<{ id: string }>()
   if (error || !data) throw new Error(error?.message ?? 'Failed to create guest')
@@ -192,15 +249,7 @@ export async function updateGuest(id: string, input: GuestInput): Promise<void> 
   const supabase = createDashboardClient()
   const { error } = await supabase
     .from('guest_contacts')
-    .update({
-      full_name: input.full_name.trim(),
-      email: input.email || null,
-      phone: input.phone || null,
-      whatsapp_phone: input.whatsapp_phone || null,
-      group_tag: input.group_tag || null,
-      max_party_size: input.max_party_size ?? 1,
-      notes: input.notes || null,
-    })
+    .update(guestColumnsFromInput(input))
     .eq('id', id)
     .eq('user_id', user.id)
   if (error) throw new Error(error.message)
@@ -385,114 +434,5 @@ export async function submitPublicRsvp(
   }
 
   revalidatePath(`/rsvp/${token}`)
-  return { ok: true }
-}
-
-// ---------------------------------------------------------------- Dashboard hero media
-
-export interface UploadHeroResult {
-  ok: boolean
-  url?: string
-  mediaType?: HeroMediaType
-  error?: string
-}
-
-export async function uploadDashboardHero(
-  pageSlug: HeroPageSlug,
-  formData: FormData
-): Promise<UploadHeroResult> {
-  if (!HERO_PAGE_SLUGS.includes(pageSlug)) {
-    return { ok: false, error: 'Unsupported page' }
-  }
-
-  const file = formData.get('file')
-  if (!(file instanceof File) || file.size === 0) {
-    return { ok: false, error: 'No file selected' }
-  }
-  if (file.size > HERO_MAX_BYTES) {
-    return { ok: false, error: 'File is too large (50MB max)' }
-  }
-  const mediaType = detectHeroMediaType(file.type)
-  if (!mediaType) {
-    return { ok: false, error: 'Use an image or video file' }
-  }
-
-  const user = await requireDashboardUser()
-  const supabase = createDashboardClient()
-
-  // Clean up any previous hero for this slug so we don't leak storage objects.
-  const { data: existing } = await supabase
-    .from('dashboard_hero_media')
-    .select('storage_path')
-    .eq('user_id', user.id)
-    .eq('page_slug', pageSlug)
-    .maybeSingle<{ storage_path: string }>()
-
-  const ext = safeExtension(file.name, file.type)
-  const storagePath = `${user.id}/${pageSlug}/${Date.now()}.${ext}`
-
-  const arrayBuffer = await file.arrayBuffer()
-  const { error: uploadError } = await supabase.storage
-    .from(HERO_BUCKET)
-    .upload(storagePath, arrayBuffer, {
-      contentType: file.type,
-      cacheControl: '3600',
-      upsert: false,
-    })
-  if (uploadError) return { ok: false, error: uploadError.message }
-
-  const { data: publicUrl } = supabase.storage.from(HERO_BUCKET).getPublicUrl(storagePath)
-
-  const { error: upsertError } = await supabase.from('dashboard_hero_media').upsert(
-    {
-      user_id: user.id,
-      page_slug: pageSlug,
-      media_url: publicUrl.publicUrl,
-      media_type: mediaType,
-      storage_path: storagePath,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: 'user_id,page_slug' }
-  )
-  if (upsertError) {
-    // Best-effort: remove the just-uploaded object so we don't leak it.
-    await supabase.storage.from(HERO_BUCKET).remove([storagePath]).catch(() => {})
-    return { ok: false, error: upsertError.message }
-  }
-
-  if (existing?.storage_path && existing.storage_path !== storagePath) {
-    await supabase.storage.from(HERO_BUCKET).remove([existing.storage_path]).catch(() => {})
-  }
-
-  revalidatePath(heroPagePath(pageSlug))
-  return { ok: true, url: publicUrl.publicUrl, mediaType }
-}
-
-export async function removeDashboardHero(pageSlug: HeroPageSlug): Promise<UploadHeroResult> {
-  if (!HERO_PAGE_SLUGS.includes(pageSlug)) {
-    return { ok: false, error: 'Unsupported page' }
-  }
-  const user = await requireDashboardUser()
-  const supabase = createDashboardClient()
-
-  const { data: existing } = await supabase
-    .from('dashboard_hero_media')
-    .select('storage_path')
-    .eq('user_id', user.id)
-    .eq('page_slug', pageSlug)
-    .maybeSingle<{ storage_path: string }>()
-
-  const { error } = await supabase
-    .from('dashboard_hero_media')
-    .delete()
-    .eq('user_id', user.id)
-    .eq('page_slug', pageSlug)
-  if (error) return { ok: false, error: error.message }
-
-  if (existing?.storage_path) {
-    await supabase.storage.from(HERO_BUCKET).remove([existing.storage_path]).catch(() => {})
-  }
-
-  revalidatePath(heroPagePath(pageSlug))
   return { ok: true }
 }
