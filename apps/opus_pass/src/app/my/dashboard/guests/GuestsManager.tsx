@@ -18,7 +18,7 @@ import {
   ClipboardSignature,
 } from 'lucide-react'
 import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
-import { Button, Slideover, Tabs, Field, inputClass } from '@/components/dashboard/controls'
+import { Button, ConfirmDialog, Slideover, Tabs, Field, inputClass } from '@/components/dashboard/controls'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import CollectorShareSlideover from './CollectorShareSlideover'
 import {
@@ -77,6 +77,7 @@ export default function GuestsManager({
   const [tab, setTab] = useState<FormTab>('info')
   const [importOpen, setImportOpen] = useState(false)
   const [collectorOpen, setCollectorOpen] = useState(false)
+  const [pendingDelete, setPendingDelete] = useState<GuestWithInvitations | null>(null)
   const [importText, setImportText] = useState('')
   const [importEventIds, setImportEventIds] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -163,12 +164,14 @@ export default function GuestsManager({
     })
   }
 
-  function remove(g: GuestWithInvitations) {
-    if (!confirm(`Remove ${g.full_name} from your guest list?`)) return
+  function confirmRemove() {
+    const target = pendingDelete
+    if (!target) return
     startTransition(async () => {
       try {
-        await deleteGuest(g.id)
+        await deleteGuest(target.id)
         toast.success('Guest removed')
+        setPendingDelete(null)
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not remove')
       }
@@ -394,7 +397,7 @@ export default function GuestsManager({
                       <Pencil className="h-4 w-4" />
                     </button>
                     <button
-                      onClick={() => remove(g)}
+                      onClick={() => setPendingDelete(g)}
                       aria-label="Remove"
                       className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
                     >
@@ -636,6 +639,16 @@ export default function GuestsManager({
         onClose={() => setCollectorOpen(false)}
         collectorToken={collectorToken}
         coupleName={coupleName}
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={confirmRemove}
+        title={pendingDelete ? `Remove ${pendingDelete.full_name}?` : ''}
+        description="Their RSVP responses and personal invite link will be deleted too. This can't be undone."
+        confirmLabel="Remove guest"
+        pending={pending}
       />
     </div>
   )

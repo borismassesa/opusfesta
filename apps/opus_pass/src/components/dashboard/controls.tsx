@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, type ButtonHTMLAttributes, type ReactNode } from 'react'
-import { X } from 'lucide-react'
+import { X, AlertTriangle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 type Variant = 'primary' | 'secondary' | 'ghost' | 'danger'
@@ -80,6 +80,93 @@ export function Dialog({
             {footer}
           </div>
         ) : null}
+      </div>
+    </div>
+  )
+}
+
+export function ConfirmDialog({
+  open,
+  onClose,
+  onConfirm,
+  title,
+  description,
+  confirmLabel = 'Delete',
+  cancelLabel = 'Cancel',
+  variant = 'danger',
+  pending = false,
+}: {
+  open: boolean
+  onClose: () => void
+  onConfirm: () => void
+  title: string
+  description?: ReactNode
+  confirmLabel?: string
+  cancelLabel?: string
+  variant?: 'danger' | 'primary'
+  pending?: boolean
+}) {
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+      if (e.key === 'Enter' && !pending) onConfirm()
+    }
+    document.addEventListener('keydown', onKey)
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.body.style.overflow = ''
+    }
+  }, [open, onClose, onConfirm, pending])
+
+  if (!open) return null
+
+  const isDanger = variant === 'danger'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+      <div className="absolute inset-0 bg-black/40" onClick={onClose} />
+      <div
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="confirm-title"
+        className="relative z-10 flex w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
+      >
+        <div className="px-6 pt-6">
+          <div className="flex items-start gap-4">
+            <span
+              className={cn(
+                'flex h-10 w-10 shrink-0 items-center justify-center rounded-full',
+                isDanger ? 'bg-rose-50 text-rose-600' : 'bg-black/[0.05] text-[#1A1A1A]/70',
+              )}
+              aria-hidden="true"
+            >
+              <AlertTriangle className="h-5 w-5" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h3 id="confirm-title" className="text-base font-semibold text-[#1A1A1A]">
+                {title}
+              </h3>
+              {description ? (
+                <div className="mt-1 text-sm text-[#1A1A1A]/65">{description}</div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+        <div className="mt-6 flex items-center justify-end gap-2 border-t border-black/[0.06] bg-[#FBFAF8] px-6 py-4">
+          <Button variant="secondary" onClick={onClose} disabled={pending}>
+            {cancelLabel}
+          </Button>
+          <Button
+            variant={isDanger ? 'danger' : 'primary'}
+            onClick={onConfirm}
+            disabled={pending}
+            autoFocus
+          >
+            {pending ? 'Working…' : confirmLabel}
+          </Button>
+        </div>
       </div>
     </div>
   )

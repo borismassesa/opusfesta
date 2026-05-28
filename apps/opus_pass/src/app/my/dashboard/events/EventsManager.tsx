@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { CalendarHeart, MapPin, Plus, Pencil, Trash2, Clock } from 'lucide-react'
 import { Card, EmptyState } from '@/components/dashboard/primitives'
-import { Button, Dialog, Field, inputClass } from '@/components/dashboard/controls'
+import { Button, ConfirmDialog, Dialog, Field, inputClass } from '@/components/dashboard/controls'
 import { createEvent, updateEvent, deleteEvent, type EventInput } from '@/lib/dashboard/actions'
 import { EVENT_TYPE_LABELS, type EventType, type WeddingEvent } from '@/lib/dashboard/types'
 
@@ -45,6 +45,7 @@ const emptyForm: EventInput = {
 export default function EventsManager({ initialEvents }: { initialEvents: WeddingEvent[] }) {
   const [open, setOpen] = useState(false)
   const [editing, setEditing] = useState<WeddingEvent | null>(null)
+  const [pendingDelete, setPendingDelete] = useState<WeddingEvent | null>(null)
   const [form, setForm] = useState<EventInput>(emptyForm)
   const [mealsText, setMealsText] = useState('')
   const [pending, startTransition] = useTransition()
@@ -102,12 +103,14 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
     })
   }
 
-  function remove(e: WeddingEvent) {
-    if (!confirm(`Delete "${e.name}"? This also removes its invitations.`)) return
+  function confirmRemove() {
+    const target = pendingDelete
+    if (!target) return
     startTransition(async () => {
       try {
-        await deleteEvent(e.id)
+        await deleteEvent(target.id)
         toast.success('Event deleted')
+        setPendingDelete(null)
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not delete')
       }
@@ -156,7 +159,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                     <Pencil className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => remove(e)}
+                    onClick={() => setPendingDelete(e)}
                     aria-label="Delete"
                     className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
                   >
@@ -292,6 +295,16 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
           ) : null}
         </div>
       </Dialog>
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={confirmRemove}
+        title={pendingDelete ? `Delete "${pendingDelete.name}"?` : ''}
+        description="This also removes the event from every guest's invitation. It can't be undone."
+        confirmLabel="Delete event"
+        pending={pending}
+      />
     </div>
   )
 }
