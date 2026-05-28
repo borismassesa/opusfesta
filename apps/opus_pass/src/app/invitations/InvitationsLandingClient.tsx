@@ -552,7 +552,7 @@ function PickVisual({ pick }: { pick: InvitationsEditorsPicksPick }) {
 
 function pickToProduct(pick: InvitationsEditorsPicksPick): Product {
   return {
-    id: pick.id,
+    id: pick.product_id ?? pick.id,
     category: pick.category,
     name: pick.name,
     priceWas: pick.price_was,
@@ -583,18 +583,21 @@ function EditorsPicks({ rows: cmsRows }: { rows: InvitationsEditorsPicksContent[
                 align={row.align}
               />
             </div>
-            {row.picks.map((p) => (
-              <div key={p.id} className="flex flex-col">
-                <PickCard
-                  overlay={p.overlay === 'play' ? <PlayIcon /> : p.overlay === 'heart' ? <HeartIcon /> : undefined}
-                  background={p.background}
-                  badge={p.badge}
-                >
-                  <PickVisual pick={p} />
-                </PickCard>
-                <ProductInfo product={pickToProduct(p)} showPromo={false} />
-              </div>
-            ))}
+            {row.picks.map((p) => {
+              const productHref = `/invitations/p/${p.product_id ?? p.id}`
+              return (
+                <Link key={p.id} href={productHref} className="flex flex-col group/pick">
+                  <PickCard
+                    overlay={p.overlay === 'play' ? <PlayIcon /> : p.overlay === 'heart' ? <HeartIcon /> : undefined}
+                    background={p.background}
+                    badge={p.badge}
+                  >
+                    <PickVisual pick={p} />
+                  </PickCard>
+                  <ProductInfo product={pickToProduct(p)} href={productHref} showPromo={false} />
+                </Link>
+              )
+            })}
           </div>
         ))}
       </div>

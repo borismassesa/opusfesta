@@ -51,7 +51,13 @@ export async function loadInvitationsCategoriesContent(): Promise<InvitationsCat
     return INVITATIONS_CATEGORIES_FALLBACK
   }
   try {
-    const { isEnabled: isDraft } = await draftMode()
+    let isDraft = false
+    try {
+      const draft = await draftMode()
+      isDraft = draft.isEnabled
+    } catch {
+      // called outside a request scope (e.g. generateStaticParams) — treat as non-draft
+    }
     const supabase = createSupabaseServerClient()
     const { data } = await supabase
       .from('website_page_sections')

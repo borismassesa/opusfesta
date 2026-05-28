@@ -20,11 +20,10 @@ const columns: FooterColumn[] = [
   {
     title: 'Templates',
     links: [
-      { label: 'Save the Dates', href: '/invitations/catalog' },
-      { label: 'Wedding Invitations', href: '/invitations/catalog' },
-      { label: 'Kitchen Party', href: '/invitations/catalog' },
-      { label: 'Send-Off Cards', href: '/invitations/catalog' },
-      { label: 'Kadi za Michango', href: '/invitations/catalog' },
+      { label: 'Save the Dates', href: '/invitations/save-the-date' },
+      { label: 'Wedding Invitations', href: '/invitations/wedding' },
+      { label: 'Send-Off & Kitchen Party', href: '/invitations/send-off' },
+      { label: 'Kadi za Michango', href: '/invitations/kadi-za-michango' },
     ],
   },
   {

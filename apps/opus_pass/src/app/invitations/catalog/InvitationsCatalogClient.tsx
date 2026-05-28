@@ -666,6 +666,10 @@ function ProductCard({
   favourited: boolean
   onToggleFavourite: () => void
 }) {
+  const [selectedSwatch, setSelectedSwatch] = useState(0)
+
+  const activePalette = product.palettes?.[selectedSwatch]
+
   return (
     <div className="group flex flex-col">
       <Link
@@ -678,7 +682,7 @@ function ProductCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={product.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
           ) : (
-            <InvitationVisual treatment={product.treatment} />
+            <InvitationVisual treatment={product.treatment} palette={activePalette} />
           )}
         </span>
 
@@ -696,15 +700,8 @@ function ProductCard({
           <Heart className={cn('h-3.5 w-3.5', favourited ? 'fill-[#7A1F2B] text-[#7A1F2B]' : 'text-[#1A1A1A]')} />
         </button>
 
-        {/* "Customise" CTA — fades + slides up on hover */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-3 inline-flex items-center rounded-full bg-[#1A1A1A] text-white px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] shadow-lg opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition duration-300"
-        >
-          Customise
-        </span>
       </Link>
-      <ProductInfo product={product} />
+      <ProductInfo product={product} selectedSwatch={selectedSwatch} onSwatchSelect={setSelectedSwatch} />
     </div>
   )
 }

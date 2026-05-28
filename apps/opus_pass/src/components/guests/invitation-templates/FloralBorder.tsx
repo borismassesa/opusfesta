@@ -1,6 +1,7 @@
 import type { TemplateProps } from './_types'
+import { resolveFont } from './_types'
 
-export function FloralBorder({ names, date, venue, palette }: TemplateProps) {
+export function FloralBorder({ names, date, venue, palette, message, messageAttr, fontStyle }: TemplateProps) {
   const vars = {
     '--iv-bg': palette.background,
     '--iv-acc': palette.accent,
@@ -9,6 +10,7 @@ export function FloralBorder({ names, date, venue, palette }: TemplateProps) {
     '--iv-mut': palette.muted,
   } as React.CSSProperties
 
+  const font = resolveFont(fontStyle)
   const parts = names.split(/\s*&\s*/)
   const line1 = parts[0] ?? names
   const line2 = parts[1]
@@ -34,36 +36,25 @@ export function FloralBorder({ names, date, venue, palette }: TemplateProps) {
         fontFamily="inherit" fontSize="7" letterSpacing="3"
         fill="var(--iv-ts)"
       >YOU ARE INVITED</text>
-      {line2 ? (
-        <>
-          <text
-            x="150" y="192"
-            textAnchor="middle" dominantBaseline="middle"
-            fontFamily="Georgia, 'Times New Roman', serif" fontSize="17"
-            fontStyle="italic" fill="var(--iv-tp)"
-          >{line1}</text>
-          <text
-            x="150" y="212"
-            textAnchor="middle" dominantBaseline="middle"
-            fontFamily="Georgia, 'Times New Roman', serif" fontSize="17"
-            fontStyle="italic" fill="var(--iv-tp)"
-          >&amp; {line2}</text>
-        </>
-      ) : (
-        <text
-          x="150" y="200"
-          textAnchor="middle" dominantBaseline="middle"
-          fontFamily="Georgia, 'Times New Roman', serif" fontSize="17"
-          fontStyle="italic" fill="var(--iv-tp)"
-        >{names}</text>
-      )}
+      <g data-section="names">
+        {line2 ? (
+          <>
+            <text x="150" y="192" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="17" fill="var(--iv-tp)">{line1}</text>
+            <text x="150" y="212" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="17" fill="var(--iv-tp)">&amp; {line2}</text>
+          </>
+        ) : (
+          <text x="150" y="200" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="17" fill="var(--iv-tp)">{names}</text>
+        )}
+      </g>
       <line x1="131" y1={line2 ? '226' : '216'} x2="169" y2={line2 ? '226' : '216'} stroke="var(--iv-acc)" strokeWidth="1" />
-      <text
-        x="150" y={line2 ? '240' : '230'}
-        textAnchor="middle" dominantBaseline="middle"
-        fontFamily="inherit" fontSize="9" letterSpacing="1.8"
-        fill="var(--iv-ts)"
-      >{date}</text>
+      <text data-section="date" x="150" y={line2 ? '240' : '230'} textAnchor="middle" dominantBaseline="middle" fontFamily="inherit" fontSize="9" letterSpacing="1.8" fill="var(--iv-ts)">{date}</text>
+      {message && (
+        <g data-section="message">
+          <line x1="100" y1="280" x2="200" y2="280" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
+          <text x="150" y="294" textAnchor="middle" dominantBaseline="middle" style={font.bodyStyle} fontSize="7" fill="var(--iv-ts)">{message}</text>
+          {messageAttr && <text x="150" y="308" textAnchor="middle" dominantBaseline="middle" style={font.bodyStyle} fontSize="6" fill="var(--iv-mut)">{messageAttr}</text>}
+        </g>
+      )}
     </svg>
   )
 }

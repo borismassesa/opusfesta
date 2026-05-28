@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Check, CheckCircle2, ChevronDown, ChevronRight, MessageCircle, Printer, SlidersHorizontal, Smile, Truck, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { InvitationVisual, type Treatment } from '@/components/guests/InvitationVisual'
-import { StructuredInvitation, resolveProductInvitation, type ResolvedInvitation } from '@/components/guests/StructuredInvitation'
+import { InvitationVisual, COUPLE_DEFAULT } from '@/components/guests/InvitationVisual'
+import { MockupCarousel } from '@/components/guests/MockupCarousel'
 import { PACK_QTY, PROMO_CODE } from '@/components/guests/productInfo'
 import { PRODUCTS, type CatalogProduct } from '@/data/invitations-products'
 import { useCart } from '@/components/providers/CartProvider'
@@ -40,15 +40,6 @@ const TRIM_SHAPES = [
 const DIGITAL_QTY_OPTIONS = [50, 100, 150, 200, 300, 500]
 const PAPER_QTY_OPTIONS = [10, 25, 50, 100, 150, 200]
 
-// Gallery views — each renders the same card in a different staged composition.
-const GALLERY_VIEWS = [
-  { id: 'flatlay', label: 'Styled flat-lay' },
-  { id: 'front', label: 'Front' },
-  { id: 'angled', label: 'Angled' },
-  { id: 'paired', label: 'With envelope' },
-  { id: 'detail', label: 'Detail' },
-] as const
-type GalleryView = (typeof GALLERY_VIEWS)[number]['id']
 
 export default function ProductDetailClient({ product }: { product: CatalogProduct }) {
   const customiseHref = `/invitations/p/${product.id}/customise`
@@ -71,7 +62,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
   // Service add-on
   const [doorScan, setDoorScan] = useState(false)
 
-  const [activeView, setActiveView] = useState<GalleryView>('flatlay')
+  const [favourited, setFavourited] = useState(false)
 
   // Preview modal state — Customise navigates to a dedicated full-page editor
   const [showPreview, setShowPreview] = useState(false)
@@ -89,9 +80,6 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
   const sameCategory = PRODUCTS.filter((p) => p.id !== product.id && p.category === product.category)
   const others = PRODUCTS.filter((p) => p.id !== product.id && p.category !== product.category)
   const recommendations = [...sameCategory, ...others].slice(0, 4)
-
-  // Structured full-block preview for invitation-type designs (null for day-of stationery).
-  const invite = resolveProductInvitation(product)
 
   const cartSummary = [
     `${digitalQty.toLocaleString('en-US')} digital cards`,
@@ -137,34 +125,19 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
       {/* Main 2-column layout */}
       <div className="px-4 sm:px-6 pt-6 sm:pt-8 pb-12 sm:pb-16">
         <div className="mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-          {/* ─── LEFT: gallery ─── */}
+          {/* ─── LEFT: sticky mockup carousel ─── */}
           <div className="lg:sticky lg:top-6">
-            {/* Hero — staged scene, sized to the viewport */}
-            <div className="relative h-[clamp(340px,60vh,620px)] overflow-hidden rounded-md shadow-md ring-1 ring-black/5">
-              <MockupScene view={activeView} treatment={product.treatment} imageUrl={product.imageUrl} invite={invite} />
-            </div>
-            {/* Thumbnails — each a distinct view */}
-            <div className="mt-4 grid grid-cols-5 gap-2">
-              {GALLERY_VIEWS.map((v) => {
-                const active = activeView === v.id
-                return (
-                  <button
-                    key={v.id}
-                    type="button"
-                    onClick={() => setActiveView(v.id)}
-                    aria-label={`View: ${v.label}`}
-                    aria-pressed={active}
-                    title={v.label}
-                    className={cn(
-                      'relative aspect-[4/3] overflow-hidden rounded-sm transition',
-                      active ? 'ring-2 ring-[#1A1A1A]' : 'ring-1 ring-gray-200 hover:ring-gray-400',
-                    )}
-                  >
-                    <MockupScene view={v.id} treatment={product.treatment} imageUrl={product.imageUrl} />
-                  </button>
-                )
-              })}
-            </div>
+            <MockupCarousel
+              treatment={product.treatment}
+              couple={COUPLE_DEFAULT}
+              designImage={product.designImage}
+              palette={(() => {
+                const safeIndex = product.palettes.length > 0 ? Math.max(0, Math.min(selectedColor, product.palettes.length - 1)) : 0
+                return product.palettes[safeIndex]
+              })()}
+              favourited={favourited}
+              onFavourite={() => setFavourited((v) => !v)}
+            />
           </div>
 
           {/* ─── RIGHT: scrollable configurator ─── */}
@@ -268,7 +241,10 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
             </div>
 
             {/* Design colour — always relevant */}
-            <ConfigGroup title="Design colour" value={`Swatch ${selectedColor + 1}`}>
+            <ConfigGroup title="Design colour" value={(() => {
+              const safeIndex = product.palettes.length > 0 ? Math.max(0, Math.min(selectedColor, product.palettes.length - 1)) : -1
+              return safeIndex >= 0 ? product.palettes[safeIndex]?.name ?? `Swatch ${selectedColor + 1}` : `Swatch ${selectedColor + 1}`
+            })()}>
               <div className="flex flex-wrap gap-2.5">
                 {product.swatches.map((c, i) => (
                   <button
@@ -292,6 +268,26 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
             <div className="border-t border-gray-200 pt-6">
               <p className="text-[13px] font-bold text-gray-900 mb-3">Optional add-ons</p>
 
+              {/* Door-scan service toggle */}
+              <AddOnCard
+                checked={doorScan}
+                onToggle={() => setDoorScan((v) => !v)}
+                title="Door-scan check-in service"
+                description="Send an OpusFesta host to your venue. We scan each guest's invite QR code at the entrance and tick them off your live guest list in real time — no clipboards, no chaos."
+                priceLabel={`TZS ${DOOR_SCAN_SERVICE_PRICE.toLocaleString('en-US')} flat fee per event`}
+              />
+              {doorScan && (
+                <div className="rounded-xl border border-[#C9A84C] bg-[#FFFAF0] px-4 py-3.5 flex gap-3 items-start">
+                  <span className="text-[20px] leading-none mt-0.5">🎟️</span>
+                  <div>
+                    <p className="text-[13px] font-bold text-[#7A5C1E] mb-0.5">You&apos;ll receive wedding tickets</p>
+                    <p className="text-[12px] text-[#7A5C1E] leading-relaxed">
+                      Each guest will get a personalised <strong>boarding-pass-style wedding ticket</strong> with their name, event details, and a unique QR code — just like the example above. Our host scans it at the door for seamless entry.
+                    </p>
+                  </div>
+                </div>
+              )}
+              
               {/* VIP paper prints toggle */}
               <AddOnCard
                 checked={paperPrints}
@@ -430,14 +426,6 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
                 )}
               </AddOnCard>
 
-              {/* Door-scan service toggle */}
-              <AddOnCard
-                checked={doorScan}
-                onToggle={() => setDoorScan((v) => !v)}
-                title="Door-scan check-in service"
-                description="Send an OpusFesta host to your venue. We scan each guest's invite QR code at the entrance and tick them off your live guest list in real time — no clipboards, no chaos."
-                priceLabel={`TZS ${DOOR_SCAN_SERVICE_PRICE.toLocaleString('en-US')} flat fee per event`}
-              />
             </div>
 
             {/* Order summary */}
@@ -500,7 +488,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
               <span aria-hidden className="text-[#7A1F2B] text-lg leading-none mt-0.5">✦</span>
               <div className="text-[13px] leading-snug">
                 <p className="font-bold text-gray-900">Free revisions if your plans change.</p>
-                <Link href="#" className="text-gray-700 underline underline-offset-2 hover:text-gray-900">
+                <Link href="/terms" className="text-gray-700 underline underline-offset-2 hover:text-gray-900">
                   See full details
                 </Link>
               </div>
@@ -631,83 +619,6 @@ function FeatureRow({ icon, text }: { icon: React.ReactNode; text: string }) {
       <span className="mt-0.5 shrink-0 text-gray-500" aria-hidden="true">{icon}</span>
       <span>{text}</span>
     </li>
-  )
-}
-
-// The card face — attached artwork first, then the structured full-block card
-// (for invitation-type designs), otherwise the legacy CSS treatment.
-function CardFace({ treatment, imageUrl, invite }: { treatment: Treatment; imageUrl?: string; invite?: ResolvedInvitation | null }) {
-  if (imageUrl) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
-    )
-  }
-  if (invite) {
-    return <StructuredInvitation content={invite.content} theme={invite.theme} />
-  }
-  return <InvitationVisual treatment={treatment} />
-}
-
-// A single portrait card sitting on the scene surface (drop shadow + thin bevel).
-function CardPlate({
-  treatment,
-  imageUrl,
-  invite,
-  blank = false,
-  className,
-}: {
-  treatment: Treatment
-  imageUrl?: string
-  invite?: ResolvedInvitation | null
-  blank?: boolean
-  className?: string
-}) {
-  return (
-    <div
-      className={cn(
-        'relative aspect-[5/7] overflow-hidden rounded-[3px] bg-white shadow-[0_16px_36px_-16px_rgba(0,0,0,0.5)] ring-1 ring-black/5',
-        className,
-      )}
-    >
-      {!blank && <CardFace treatment={treatment} imageUrl={imageUrl} invite={invite} />}
-    </div>
-  )
-}
-
-// Stages the card in one of several compositions on a soft tabletop surface.
-function MockupScene({ view, treatment, imageUrl, invite }: { view: GalleryView; treatment: Treatment; imageUrl?: string; invite?: ResolvedInvitation | null }) {
-  return (
-    <div className="absolute inset-0 bg-gradient-to-br from-[#F2EDE5] via-[#ECE6DC] to-[#E2DBCF]">
-      {/* soft light from the top-left, like a flat-lay photo */}
-      <div className="absolute inset-0 bg-[radial-gradient(120%_85%_at_28%_12%,rgba(255,255,255,0.65),transparent_62%)]" />
-
-      {view === 'flatlay' && (
-        <>
-          <CardPlate treatment={treatment} imageUrl={imageUrl} invite={invite} className="absolute left-[12%] top-1/2 w-[40%] -translate-y-1/2 -rotate-[4deg]" />
-          <CardPlate treatment={treatment} blank className="absolute right-[13%] top-1/2 w-[34%] -translate-y-1/2 rotate-[3deg]" />
-        </>
-      )}
-      {view === 'front' && (
-        <CardPlate treatment={treatment} imageUrl={imageUrl} invite={invite} className="absolute left-1/2 top-1/2 w-[46%] -translate-x-1/2 -translate-y-1/2" />
-      )}
-      {view === 'angled' && (
-        <CardPlate treatment={treatment} imageUrl={imageUrl} invite={invite} className="absolute left-1/2 top-1/2 w-[44%] -translate-x-1/2 -translate-y-1/2 rotate-[7deg]" />
-      )}
-      {view === 'paired' && (
-        <>
-          <CardPlate treatment={treatment} blank className="absolute left-[22%] top-1/2 w-[40%] -translate-y-1/2 -rotate-[7deg]" />
-          <CardPlate treatment={treatment} imageUrl={imageUrl} invite={invite} className="absolute right-[18%] top-1/2 w-[40%] -translate-y-1/2 rotate-[2deg]" />
-        </>
-      )}
-      {view === 'detail' && (
-        <div className="absolute left-1/2 top-1/2 h-[80%] w-[58%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[3px] shadow-[0_16px_36px_-16px_rgba(0,0,0,0.5)] ring-1 ring-black/5">
-          <div className="absolute inset-0 origin-[26%_20%] scale-[2.1]">
-            <CardFace treatment={treatment} imageUrl={imageUrl} invite={invite} />
-          </div>
-        </div>
-      )}
-    </div>
   )
 }
 
