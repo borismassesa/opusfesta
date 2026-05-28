@@ -28,9 +28,13 @@ export type Product = {
 export function ProductInfo({
   product,
   showPromo = true,
+  selectedSwatch,
+  onSwatchSelect,
 }: {
   product: Product
   showPromo?: boolean
+  selectedSwatch?: number
+  onSwatchSelect?: (index: number) => void
 }) {
   const unitNow = Math.round(product.priceNow / PACK_QTY / 10) * 10
   const unitWas = product.priceWas
@@ -46,10 +50,20 @@ export function ProductInfo({
       {/* Color swatches — bigger (20px) with hover scale + hex tooltip */}
       <div className="mt-3 flex items-center gap-2">
         {product.swatches.slice(0, 4).map((c, i) => (
-          <span
+          <button
             key={`${product.id}-sw-${i}`}
+            type="button"
             title={c}
-            className="h-5 w-5 rounded-full border border-black/15 shadow-sm transition-transform hover:scale-110"
+            aria-label={`Color variant ${i + 1}`}
+            aria-pressed={selectedSwatch === i}
+            onClick={onSwatchSelect ? (e) => { e.preventDefault(); onSwatchSelect(i) } : undefined}
+            className={cn(
+              'h-5 w-5 rounded-full border shadow-sm transition-transform hover:scale-110',
+              selectedSwatch === i
+                ? 'border-[#1A1A1A] ring-2 ring-offset-1 ring-[#1A1A1A]'
+                : 'border-black/15',
+              onSwatchSelect ? 'cursor-pointer' : 'cursor-default',
+            )}
             style={{ backgroundColor: c }}
           />
         ))}

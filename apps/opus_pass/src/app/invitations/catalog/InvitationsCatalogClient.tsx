@@ -666,6 +666,10 @@ function ProductCard({
   favourited: boolean
   onToggleFavourite: () => void
 }) {
+  const [selectedSwatch, setSelectedSwatch] = useState(0)
+
+  const activePalette = product.palettes?.[selectedSwatch]
+
   return (
     <div className="group flex flex-col">
       <Link
@@ -678,7 +682,7 @@ function ProductCard({
             // eslint-disable-next-line @next/next/no-img-element
             <img src={product.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
           ) : (
-            <InvitationVisual treatment={product.treatment} />
+            <InvitationVisual treatment={product.treatment} palette={activePalette} />
           )}
         </span>
 
@@ -704,7 +708,7 @@ function ProductCard({
           Customise
         </span>
       </Link>
-      <ProductInfo product={product} />
+      <ProductInfo product={product} selectedSwatch={selectedSwatch} onSwatchSelect={setSelectedSwatch} />
     </div>
   )
 }
