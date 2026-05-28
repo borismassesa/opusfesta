@@ -115,7 +115,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
       action: {
         label: 'Start guest list',
         onClick: () => {
-          window.location.href = '/sign-in?return_to=/my/dashboard&seed=1'
+          window.location.href = '/my/dashboard?seed=1'
         },
       },
     })
@@ -489,7 +489,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
             </div>
 
             <Link
-              href="/sign-in?return_to=/my/dashboard&seed=1"
+              href="/my/dashboard?seed=1"
               className="block text-center text-[12px] font-semibold text-gray-700 underline underline-offset-[5px] decoration-gray-300 hover:text-gray-900 hover:decoration-gray-700"
             >
               Already buying? Start your guest list now →

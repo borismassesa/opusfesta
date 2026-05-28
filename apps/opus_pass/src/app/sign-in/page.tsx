@@ -1,19 +1,6 @@
-import SignInForm from './SignInForm'
+import { redirect } from 'next/navigation'
 
-export const metadata = { title: 'Sign in — OpusPass' }
-
-interface PageProps {
-  searchParams: Promise<{ return_to?: string; seed?: string; sent?: string; error?: string }>
-}
-
-export default async function SignInPage({ searchParams }: PageProps) {
-  const { return_to, seed, sent, error } = await searchParams
-  return (
-    <SignInForm
-      returnTo={return_to ?? '/my/dashboard'}
-      seed={seed === '1'}
-      sentEmail={sent ?? null}
-      errorCode={error ?? null}
-    />
-  )
+// Auth removed — every sign-in attempt drops straight into the demo dashboard.
+export default function SignInPage() {
+  redirect('/my/dashboard?seed=1')
 }

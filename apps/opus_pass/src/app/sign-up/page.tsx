@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 
-// Magic-link sign-in handles both new and returning users — no separate sign-up flow.
+// Auth removed — every sign-up attempt drops straight into the demo dashboard.
 export default function SignUpPage() {
-  redirect('/sign-in')
+  redirect('/my/dashboard?seed=1')
 }

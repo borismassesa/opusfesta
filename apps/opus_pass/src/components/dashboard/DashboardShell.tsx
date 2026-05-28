@@ -14,7 +14,6 @@ import {
   Menu,
   X,
   ExternalLink,
-  LogOut,
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import { cn } from '@/lib/utils'
@@ -157,16 +156,6 @@ function AccountFooter({ email, initial }: { email: string; initial: string }) {
       <span className="min-w-0 flex-1 truncate text-xs text-[#1A1A1A]/60" title={email}>
         {email}
       </span>
-      <form action="/api/auth/sign-out" method="post">
-        <button
-          type="submit"
-          aria-label="Sign out"
-          title="Sign out"
-          className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/55 hover:bg-black/[0.05] hover:text-[#1A1A1A]"
-        >
-          <LogOut className="h-4 w-4" />
-        </button>
-      </form>
     </div>
   )
 }
