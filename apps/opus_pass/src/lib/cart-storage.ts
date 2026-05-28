@@ -78,8 +78,12 @@ export function setLastOrder(order: StoredOrder): void {
 }
 
 export function generateOrderRef(): string {
+  if (typeof crypto === 'undefined' || !crypto.randomUUID) {
+    throw new Error('Web Crypto API not available — cannot generate secure order reference')
+  }
   const stamp = new Date()
   const yyyy = stamp.getFullYear()
-  const rand = Math.random().toString(36).slice(2, 8).toUpperCase()
-  return `OF-${yyyy}-${rand}`
+  const uuid = crypto.randomUUID()
+  const token = uuid.replace(/-/g, '').slice(0, 6).toUpperCase()
+  return `OF-${yyyy}-${token}`
 }

@@ -22,8 +22,7 @@ const columns: FooterColumn[] = [
     links: [
       { label: 'Save the Dates', href: '/invitations/save-the-date' },
       { label: 'Wedding Invitations', href: '/invitations/wedding' },
-      { label: 'Kitchen Party', href: '/invitations/kitchen-party' },
-      { label: 'Send-Off Cards', href: '/invitations/send-off' },
+      { label: 'Send-Off & Kitchen Party', href: '/invitations/send-off' },
       { label: 'Kadi za Michango', href: '/invitations/kadi-za-michango' },
     ],
   },

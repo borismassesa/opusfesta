@@ -66,7 +66,7 @@ export const INVITATIONS_EDITORS_PICKS_FALLBACK: InvitationsEditorsPicksContent 
       picks: [
         { id: 'e4', product_id: 'p1',  category: 'Wedding Invitations', name: 'Botanical Frame Invitation Suite', price_was: 198000, price_now: 119000, swatches: ['#A6B89A', '#F5DCE2', '#FBF7F2', '#1A1A1A', '#7A1F2B'], treatment: 'floral-border', overlay: 'heart' },
         { id: 'e5', product_id: 'p6',  category: 'Wedding Invitations', name: 'Navy & Gold Editorial Invitations', price_was: 225000, price_now: 135000, swatches: ['#1E2D54', '#E8D9A7', '#F5EFE3', '#C8A35C'], treatment: 'navy-gold', overlay: 'play' },
-        { id: 'e6', product_id: 'p1',  category: 'Wedding Invitations', name: 'Arch Script Bagamoyo Invitations', price_now: 132000, swatches: ['#7A1F2B', '#F5EFE3', '#A6B89A'], treatment: 'arch-script', centered: true, overlay: 'none', background: '#CFE6F1' },
+        { id: 'e6', product_id: 'p4',  category: 'Wedding Invitations', name: 'Arch Script Bagamoyo Invitations', price_now: 132000, swatches: ['#7A1F2B', '#F5EFE3', '#A6B89A'], treatment: 'arch-script', centered: true, overlay: 'none', background: '#CFE6F1' },
       ],
     },
     {
@@ -81,7 +81,7 @@ export const INVITATIONS_EDITORS_PICKS_FALLBACK: InvitationsEditorsPicksContent 
       id: 'row-4', title_line_1: 'Premium quality,', title_line_2: 'perfectly priced', align: 'right',
       picks: [
         { id: 'e10', product_id: 'p2',  category: 'Wedding Invitations', name: 'Heritage Crown Karibu Invitations', price_was: 245000, price_now: 147000, swatches: ['#7A1F2B', '#C8A35C', '#F5EFE3', '#1A1A1A'], treatment: 'cultural-red', overlay: 'heart' },
-        { id: 'e11', product_id: 'p9',  category: 'Save the Dates', name: 'Ring Detail Foil Save the Date', price_was: 185000, price_now: 111000, swatches: ['#C8A35C', '#F5EFE3', '#1A1A1A'], media_url: '/assets/images/hand_rings.jpg', media_type: 'image', overlay: 'play' },
+        { id: 'e11', product_id: 'p17', category: 'Save the Dates', name: 'Ring Detail Foil Save the Date', price_was: 185000, price_now: 111000, swatches: ['#C8A35C', '#F5EFE3', '#1A1A1A'], media_url: '/assets/images/hand_rings.jpg', media_type: 'image', overlay: 'play' },
         { id: 'e12', product_id: 'p3',  category: 'Foil & Letterpress', name: 'Modern Block Foil Invitations', price_now: 198000, swatches: ['#1A1A1A', '#FBF7F2', '#E8D9A7', '#C8A35C'], treatment: 'modern-block', centered: true, overlay: 'none', background: '#FBF7F2', badge: 'Foil & Letterpress' },
       ],
     },

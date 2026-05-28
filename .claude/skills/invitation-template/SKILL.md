@@ -27,6 +27,8 @@ Open the SVG. Identify elements by `id` attribute matching these layer names:
 |---|---|
 | `Background` | palette background fill |
 | `Photo` | `{photoSrc}` — only present on photo templates |
+| `Event_Title` | main event title — static (leave as-is) |
+| `Intro` | intro paragraph — static (leave as-is) |
 | `Names` | `{names}` |
 | `Date` | `{date}` |
 | `Time` | `{time}` |

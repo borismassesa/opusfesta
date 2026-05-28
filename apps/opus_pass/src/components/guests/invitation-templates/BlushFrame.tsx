@@ -41,6 +41,9 @@ export function BlushFrame({ names, date, venue, palette, message, messageAttr, 
         )}
       </g>
       <text data-section="date" x="150" y={line2 ? '240' : '230'} textAnchor="middle" dominantBaseline="middle" fontFamily="inherit" fontSize="9" letterSpacing="2.2" fill="var(--iv-ts)">{date}</text>
+      {venue && (
+        <text data-section="venue" x="150" y={line2 ? '254' : '244'} textAnchor="middle" dominantBaseline="middle" fontFamily="inherit" fontSize="7" fill="var(--iv-ts)">{venue}</text>
+      )}
       {message && (
         <g data-section="message">
           <line x1="100" y1="278" x2="200" y2="278" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />

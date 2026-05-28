@@ -125,7 +125,10 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
               treatment={product.treatment}
               couple={COUPLE_DEFAULT}
               designImage={product.designImage}
-              palette={product.palettes[selectedColor]}
+              palette={(() => {
+                const safeIndex = product.palettes.length > 0 ? Math.max(0, Math.min(selectedColor, product.palettes.length - 1)) : 0
+                return product.palettes[safeIndex]
+              })()}
               favourited={favourited}
               onFavourite={() => setFavourited((v) => !v)}
             />
@@ -232,7 +235,10 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
             </div>
 
             {/* Design colour — always relevant */}
-            <ConfigGroup title="Design colour" value={product.palettes[selectedColor]?.name ?? `Swatch ${selectedColor + 1}`}>
+            <ConfigGroup title="Design colour" value={(() => {
+              const safeIndex = product.palettes.length > 0 ? Math.max(0, Math.min(selectedColor, product.palettes.length - 1)) : -1
+              return safeIndex >= 0 ? product.palettes[safeIndex]?.name ?? `Swatch ${selectedColor + 1}` : `Swatch ${selectedColor + 1}`
+            })()}>
               <div className="flex flex-wrap gap-2.5">
                 {product.swatches.map((c, i) => (
                   <button

@@ -175,15 +175,17 @@ export function SaveTheDatePhoto({
       <circle cx="374" cy={circleY} r="7" fill="#7bbc7e" />
 
       {/* ── RSVP ── */}
-      <text
-        data-section="rsvpContact"
-        transform={`translate(120 ${rsvpY})`}
-        fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif"
-        fontSize="12.28"
-        fill="var(--iv-tp)"
-      >
-        <tspan x="0" y="0">RSVP  ☎  {rsvpContact || '+255 795 682 205'}</tspan>
-      </text>
+      {rsvpContact && (
+        <text
+          data-section="rsvpContact"
+          transform={`translate(120 ${rsvpY})`}
+          fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif"
+          fontSize="12.28"
+          fill="var(--iv-tp)"
+        >
+          <tspan x="0" y="0">RSVP  ☎  {rsvpContact}</tspan>
+        </text>
+      )}
     </svg>
   )
 }

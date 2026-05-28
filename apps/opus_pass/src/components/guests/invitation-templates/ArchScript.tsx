@@ -39,6 +39,9 @@ export function ArchScript({ names, date, venue, palette, message, messageAttr, 
       </g>
       <line x1="134" y1={line2 ? '224' : '214'} x2="166" y2={line2 ? '224' : '214'} stroke="var(--iv-acc)" strokeWidth="0.8" strokeOpacity="0.6" />
       <text data-section="date" x="150" y={line2 ? '240' : '230'} textAnchor="middle" dominantBaseline="middle" fontFamily="inherit" fontSize="8" letterSpacing="2.2" fill="var(--iv-ts)">{date.toUpperCase()}</text>
+      {venue && (
+        <text data-section="venue" x="150" y={line2 ? '252' : '242'} textAnchor="middle" dominantBaseline="middle" fontFamily="inherit" fontSize="7" fill="var(--iv-ts)">{venue}</text>
+      )}
       {message && (
         <g data-section="message">
           <line x1="100" y1="300" x2="200" y2="300" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
