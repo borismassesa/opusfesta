@@ -1,6 +1,7 @@
 'use client'
 
 import { useMemo, useRef, useState, useTransition } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
 import {
   Users,
@@ -41,6 +42,23 @@ import type {
 import { RSVP_STATUS_LABELS } from '@/lib/dashboard/types'
 
 type FormTab = 'info' | 'address' | 'rsvps'
+type GuestView = 'manage' | 'invite' | 'address'
+
+function guestHasFullAddress(g: GuestWithInvitations): boolean {
+  return Boolean(g.address_line1 && g.address_city)
+}
+
+function formatAddress(g: GuestWithInvitations): string {
+  return [
+    g.address_line1,
+    g.address_apt,
+    [g.address_city, g.address_region].filter(Boolean).join(', '),
+    g.address_postal_code,
+    g.address_country,
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
 
 const emptyForm: GuestInput = {
   title: '',
@@ -107,6 +125,7 @@ export default function GuestsManager({
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false)
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc')
+  const [view, setView] = useState<GuestView>('manage')
   const [importText, setImportText] = useState('')
   const [importEventIds, setImportEventIds] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -123,6 +142,8 @@ export default function GuestsManager({
     const q = query.trim().toLowerCase()
     const matched = initialGuests.filter((g) => {
       if (groupFilter !== 'all' && g.group_tag !== groupFilter) return false
+      if (view === 'invite' && g.invite_count > 0) return false
+      if (view === 'address' && guestHasFullAddress(g)) return false
       if (!q) return true
       return (
         g.full_name.toLowerCase().includes(q) ||
@@ -135,7 +156,15 @@ export default function GuestsManager({
         ? a.full_name.localeCompare(b.full_name)
         : b.full_name.localeCompare(a.full_name),
     )
-  }, [initialGuests, query, groupFilter, sortDir])
+  }, [initialGuests, query, groupFilter, sortDir, view])
+
+  // Counts for the sub-nav badges — computed from the whole guest list so the
+  // numbers stay stable regardless of the currently-active view's filter.
+  const viewCounts = useMemo(() => {
+    const notInvited = initialGuests.filter((g) => g.invite_count === 0).length
+    const missingAddress = initialGuests.filter((g) => !guestHasFullAddress(g)).length
+    return { notInvited, missingAddress }
+  }, [initialGuests])
 
   const counts = useMemo(() => {
     const missingContact = filtered.filter((g) => !g.email && !g.phone && !g.whatsapp_phone).length
@@ -411,6 +440,22 @@ export default function GuestsManager({
         }
       />
 
+      <GuestSubNav
+        view={view}
+        onChange={setView}
+        notInvitedCount={viewCounts.notInvited}
+        missingAddressCount={viewCounts.missingAddress}
+      />
+
+      {view !== 'manage' ? (
+        <ViewBanner
+          view={view}
+          notInvited={viewCounts.notInvited}
+          missingAddress={viewCounts.missingAddress}
+          onClear={() => setView('manage')}
+        />
+      ) : null}
+
       {initialGuests.length > 0 ? (
         <div className="flex flex-wrap items-center gap-3">
           <div className="relative flex-1 min-w-[200px]">
@@ -536,6 +581,18 @@ export default function GuestsManager({
                       Invited to
                     </span>
                   </th>
+                  {view === 'address' ? (
+                    <th scope="col" className="py-3 pr-4">
+                      <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
+                        Address
+                      </span>
+                      {viewCounts.missingAddress > 0 ? (
+                        <p className="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-rose-600">
+                          {viewCounts.missingAddress} missing
+                        </p>
+                      ) : null}
+                    </th>
+                  ) : null}
                   <th scope="col" className="py-3 pr-4">
                     <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
                       RSVP
@@ -626,6 +683,26 @@ export default function GuestsManager({
                           </div>
                         )}
                       </td>
+                      {view === 'address' ? (
+                        <td className="py-3.5 pr-4">
+                          {guestHasFullAddress(g) ? (
+                            <p className="max-w-[260px] truncate text-xs text-[#1A1A1A]/70" title={formatAddress(g)}>
+                              {formatAddress(g)}
+                            </p>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                openEdit(g)
+                                setTab('address')
+                              }}
+                              className="text-xs font-medium text-rose-600 underline-offset-2 hover:underline"
+                            >
+                              Add address
+                            </button>
+                          )}
+                        </td>
+                      ) : null}
                       <td className="py-3.5 pr-4">
                         {status ? (
                           <StatusPill status={status} />
@@ -849,6 +926,103 @@ export default function GuestsManager({
         confirmLabel={`Remove ${selected.size}`}
         pending={pending}
       />
+    </div>
+  )
+}
+
+// ──────────────────────── page sub-nav ────────────────────────
+
+function GuestSubNav({
+  view,
+  onChange,
+  notInvitedCount,
+  missingAddressCount,
+}: {
+  view: GuestView
+  onChange: (v: GuestView) => void
+  notInvitedCount: number
+  missingAddressCount: number
+}) {
+  const items: { id: GuestView; label: string; badge?: number }[] = [
+    { id: 'manage', label: 'Manage guest list' },
+    { id: 'invite', label: 'Invite guests to events', badge: notInvitedCount || undefined },
+    { id: 'address', label: 'Address envelopes', badge: missingAddressCount || undefined },
+  ]
+  return (
+    <nav
+      role="tablist"
+      aria-label="Guest list views"
+      className="-mx-4 flex flex-wrap items-center gap-x-6 gap-y-2 overflow-x-auto border-b border-black/[0.06] px-4 pb-2 sm:mx-0 sm:px-0"
+    >
+      {items.map((item) => {
+        const active = item.id === view
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(item.id)}
+            className={cn(
+              '-mb-[9px] inline-flex items-center gap-2 border-b-2 pb-2.5 text-sm transition-colors',
+              active
+                ? 'border-[#1A1A1A] font-semibold text-[#1A1A1A]'
+                : 'border-transparent font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]',
+            )}
+          >
+            {item.label}
+            {item.badge ? (
+              <span
+                className={cn(
+                  'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums',
+                  active ? 'bg-[#1A1A1A] text-white' : 'bg-black/[0.06] text-[#1A1A1A]/65',
+                )}
+              >
+                {item.badge}
+              </span>
+            ) : null}
+          </button>
+        )
+      })}
+      <Link
+        href="/my/dashboard/rsvps"
+        className="-mb-[9px] inline-flex items-center gap-1.5 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]"
+      >
+        Track RSVPs <ArrowUp className="h-3 w-3 rotate-45" aria-hidden="true" />
+      </Link>
+    </nav>
+  )
+}
+
+function ViewBanner({
+  view,
+  notInvited,
+  missingAddress,
+  onClear,
+}: {
+  view: GuestView
+  notInvited: number
+  missingAddress: number
+  onClear: () => void
+}) {
+  const copy =
+    view === 'invite'
+      ? notInvited > 0
+        ? `Showing ${notInvited} ${notInvited === 1 ? 'guest who hasn’t' : 'guests who haven’t'} been invited to anything yet. Tick events on the RSVPs tab of each guest to invite them.`
+        : 'Every guest has been invited at least once. Switch back to Manage guest list to see them all.'
+      : missingAddress > 0
+        ? `Showing ${missingAddress} ${missingAddress === 1 ? 'guest' : 'guests'} missing a mailing address. Tap “Add address” on any row to fill it in.`
+        : 'Every guest has a mailing address. Switch back to Manage guest list to see them all.'
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-xl border border-black/[0.06] bg-[#FBFAF8] px-4 py-2.5 text-xs text-[#1A1A1A]/70">
+      <p className="leading-snug">{copy}</p>
+      <button
+        type="button"
+        onClick={onClear}
+        className="shrink-0 rounded-md px-2 py-1 text-[11px] font-semibold text-[#1A1A1A]/70 hover:bg-black/[0.05] hover:text-[#1A1A1A]"
+      >
+        Clear view
+      </button>
     </div>
   )
 }
