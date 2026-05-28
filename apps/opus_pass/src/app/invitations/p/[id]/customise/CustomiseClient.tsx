@@ -5,24 +5,44 @@ import Link from 'next/link'
 import {
   Users, CalendarDays, Shirt, QrCode, Palette, Check, Sparkles, Plus, X,
   ZoomIn, ZoomOut, Lightbulb, HelpCircle, Pencil, Eye, EyeOff, LayoutGrid,
+  MessageSquare, Upload, Type, Layers, Text, ChevronUp, ChevronDown,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/components/providers/CartProvider'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
+import type { FontStyle } from '@/components/guests/InvitationVisual'
 import type { CatalogProduct } from '@/data/invitations-products'
+import { OverlayEditor } from './OverlayEditor'
+import type { OverlayItem } from './_overlay-types'
+import { STICKERS } from './_overlay-types'
 
 type Step = 'design' | 'review'
-type Panel = 'event' | 'details' | 'dress' | 'rsvp' | 'theme'
+type Panel = 'event' | 'details' | 'dress' | 'rsvp' | 'message' | 'elements' | 'theme'
 
 const PANELS: { id: Panel; label: string; icon: React.ReactNode }[] = [
-  { id: 'event', label: 'Event', icon: <Users size={16} /> },
-  { id: 'details', label: 'Details', icon: <CalendarDays size={16} /> },
-  { id: 'dress', label: 'Dress', icon: <Shirt size={16} /> },
-  { id: 'rsvp', label: 'RSVP', icon: <QrCode size={16} /> },
-  { id: 'theme', label: 'Theme', icon: <Palette size={16} /> },
+  { id: 'event',    label: 'Event',    icon: <Users size={16} /> },
+  { id: 'details',  label: 'Details',  icon: <CalendarDays size={16} /> },
+  { id: 'dress',    label: 'Dress',    icon: <Shirt size={16} /> },
+  { id: 'rsvp',     label: 'RSVP',     icon: <QrCode size={16} /> },
+  { id: 'message',  label: 'Message',  icon: <MessageSquare size={16} /> },
+  { id: 'elements', label: 'Elements', icon: <Layers size={16} /> },
+  { id: 'theme',    label: 'Theme',    icon: <Palette size={16} /> },
 ]
+
+const FONT_STYLES: { id: FontStyle; label: string; fontFamily: string; fontStyle: string }[] = [
+  { id: 'serif',      label: 'Classic Serif',    fontFamily: "Georgia, 'Times New Roman', serif",            fontStyle: 'normal' },
+  { id: 'script',     label: 'Serif Italic',     fontFamily: "Georgia, 'Times New Roman', serif",            fontStyle: 'italic' },
+  { id: 'playfair',   label: 'Playfair Display', fontFamily: "var(--font-playfair), Georgia, serif",         fontStyle: 'normal' },
+  { id: 'cormorant',  label: 'Cormorant Garant', fontFamily: "var(--font-cormorant), Georgia, serif",        fontStyle: 'italic' },
+  { id: 'dancing',    label: 'Dancing Script',   fontFamily: "var(--font-dancing), cursive",                 fontStyle: 'normal' },
+  { id: 'garamond',   label: 'EB Garamond',      fontFamily: "var(--font-garamond), Georgia, serif",         fontStyle: 'normal' },
+  { id: 'montserrat', label: 'Montserrat',       fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontStyle: 'normal' },
+  { id: 'modern',     label: 'System Modern',    fontFamily: 'system-ui, -apple-system, sans-serif',         fontStyle: 'normal' },
+]
+
+const MESSAGE_MAX = 120
 
 export default function CustomiseClient({ product }: { product: CatalogProduct }) {
   const router = useRouter()
@@ -39,13 +59,38 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
   const [time, setTime] = useState('')
   const [venue, setVenue] = useState('Bagamoyo, Tanzania')
 
+  // Reception details (metadata — design team applies to card)
+  const [receptionVenue, setReceptionVenue] = useState('')
+  const [receptionTime, setReceptionTime] = useState('')
+
   // Dress code + palette swatches (display only — shown on sidebar review)
   const [dressCode, setDressCode] = useState('')
   const [palette, setPalette] = useState<string[]>([])
 
-  // RSVP + QR
-  const [rsvpContacts, setRsvpContacts] = useState<string[]>([])
+  // RSVP + QR — seed from the card's placeholder for save-the-date designs
+  const defaultRsvp = (product.treatment === 'save-the-date' || product.treatment === 'save-the-date-photo')
+    ? ['+255 795 682 205']
+    : ['']
+  const [rsvpContacts, setRsvpContacts] = useState<string[]>(defaultRsvp)
   const [qrLabel, setQrLabel] = useState<'SINGLE' | 'DOUBLE'>('SINGLE')
+
+  // Message / quote
+  const [message, setMessage] = useState('')
+  const [messageAttr, setMessageAttr] = useState('')
+
+  // Font style
+  const [fontStyle, setFontStyle] = useState<FontStyle>('serif')
+
+  // Photo upload + overlay opacity
+  const [photoSrc, setPhotoSrc] = useState<string | undefined>()
+  const [photoOpacity, setPhotoOpacity] = useState(0.85)
+  const photoInputRef = useRef<HTMLInputElement>(null)
+
+  // Overlay elements (text, stickers, images placed on card)
+  const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([])
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+  const cardRef = useRef<HTMLDivElement>(null)
+  const elemImageInputRef = useRef<HTMLInputElement>(null)
 
   // Product palette selection — drives InvitationVisual colour theme
   const [paletteIndex, setPaletteIndex] = useState(0)
@@ -66,6 +111,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [confirmLeave])
+
   const selectedPalette = product.palettes[paletteIndex] ?? product.palettes[0]
 
   const couple = useMemo(
@@ -73,8 +119,9 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
       names: celebrant.replace(/\s*&\s*/g, '  &  '),
       date: dateISO ? dateISO.split('-').reverse().join(' · ') : '',
       venue,
+      time: time || undefined,
     }),
-    [celebrant, dateISO, venue],
+    [celebrant, dateISO, venue, time],
   )
 
   const handleSave = () =>
@@ -100,18 +147,94 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
     router.push('/invitations/cart')
   }
 
+  const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => setPhotoSrc(ev.target?.result as string)
+    reader.readAsDataURL(file)
+  }
+
   const setPaletteAt = (i: number, v: string) => setPalette((p) => p.map((c, idx) => (idx === i ? v : c)))
   const setContactAt = (i: number, v: string) => setRsvpContacts((c) => c.map((x, idx) => (idx === i ? v : x)))
+
+  // Overlay element helpers
+  const addTextItem = () => {
+    setOverlayItems((prev) => [...prev, {
+      id: crypto.randomUUID(), type: 'text', x: 40, y: 40,
+      content: 'Your text', fontSize: 14, color: '#1A1A1A',
+      rotation: 0, opacity: 1, zIndex: prev.length,
+    }])
+  }
+
+  const addStickerItem = (char: string) => {
+    setOverlayItems((prev) => [...prev, {
+      id: crypto.randomUUID(), type: 'sticker', x: 45, y: 45,
+      content: char, fontSize: 24, color: '#1A1A1A',
+      rotation: 0, opacity: 1, zIndex: prev.length,
+    }])
+  }
+
+  const addImageItem = (dataUrl: string) => {
+    setOverlayItems((prev) => [...prev, {
+      id: crypto.randomUUID(), type: 'image', x: 30, y: 30,
+      content: dataUrl, fontSize: 14, color: '',
+      rotation: 0, opacity: 1, zIndex: prev.length,
+    }])
+  }
+
+  const updateOverlayItem = (id: string, patch: Partial<OverlayItem>) =>
+    setOverlayItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)))
+
+  const deleteOverlayItem = (id: string) => {
+    setOverlayItems((prev) => prev.filter((it) => it.id !== id))
+    if (selectedItemId === id) setSelectedItemId(null)
+  }
+
+  const duplicateOverlayItem = (id: string) => {
+    const item = overlayItems.find((it) => it.id === id)
+    if (!item) return
+    setOverlayItems((prev) => [...prev, {
+      ...item,
+      id: crypto.randomUUID(),
+      x: Math.min(90, item.x + 5),
+      y: Math.min(90, item.y + 5),
+      zIndex: prev.length,
+    }])
+  }
+
+  const handleElemImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => addImageItem(ev.target?.result as string)
+    reader.readAsDataURL(file)
+    e.target.value = ''
+  }
+
+  const moveOverlayItem = (id: string, dir: 'up' | 'down') => {
+    setOverlayItems((prev) => {
+      const idx = prev.findIndex((it) => it.id === id)
+      if (idx < 0) return prev
+      const next = [...prev]
+      const swapIdx = dir === 'up' ? idx - 1 : idx + 1
+      if (swapIdx < 0 || swapIdx >= next.length) return prev
+      ;[next[idx], next[swapIdx]] = [next[swapIdx]!, next[idx]!]
+      return next
+    })
+  }
 
   const dateDisplay = couple.date ? couple.date.replace(/ · /g, ' / ') : '—'
 
   // Which panels have meaningful content filled in
   const panelDone: Record<Panel, boolean> = {
-    event: celebrant.trim().length > 0,
-    details: Boolean(dateISO) && venue.trim().length > 0,
-    dress: Boolean(dressCode.trim()) || palette.length > 0,
-    rsvp: rsvpContacts.filter(Boolean).length > 0,
-    theme: true, // always has a selection
+    event:    celebrant.trim().length > 0,
+    details:  Boolean(dateISO) && venue.trim().length > 0,
+    dress:    Boolean(dressCode.trim()) || palette.length > 0,
+    rsvp:     rsvpContacts.filter(Boolean).length > 0,
+    message:  message.trim().length > 0,
+    elements: overlayItems.length > 0,
+    theme:    true,
   }
 
   const goEdit = (panel: Panel) => {
@@ -233,13 +356,13 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
       {/* ─── Editor body ─── */}
       <div className="grid flex-1 grid-cols-1 lg:grid-cols-[340px_1fr]">
         {/* ─── Left sidebar — controls / review ─── */}
-        <aside className="order-2 flex flex-col border-t border-gray-200 bg-white lg:order-1 lg:max-h-[calc(100vh-57px)] lg:border-r lg:border-t-0">
+        <aside className="order-2 flex flex-col border-t border-gray-200 bg-white lg:order-1 lg:border-r lg:border-t-0 lg:h-[calc(100vh-57px)]">
           <div className="border-b border-gray-200 px-5 pt-4">
             <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500">
               {step === 'design' ? 'Design' : 'Review'}
             </p>
             {step === 'design' && (
-              <div className="mt-3 grid grid-cols-5 gap-1">
+              <div className="mt-3 grid grid-cols-4 gap-1">
                 {PANELS.map((p) => {
                   const active = activePanel === p.id
                   const done = panelDone[p.id]
@@ -272,6 +395,13 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 <ReviewRow label="Celebrant" value={celebrant} onEdit={() => goEdit('event')} />
                 <ReviewRow label="Date & time" value={`${dateDisplay}${time ? ` · ${time}` : ''}`} onEdit={() => goEdit('details')} />
                 <ReviewRow label="Venue" value={venue} onEdit={() => goEdit('details')} />
+                {(receptionVenue || receptionTime) && (
+                  <ReviewRow
+                    label="Reception"
+                    value={[receptionVenue, receptionTime].filter(Boolean).join(' · ') || '—'}
+                    onEdit={() => goEdit('details')}
+                  />
+                )}
                 <ReviewRow label="Dress code" value={dressCode || '—'} onEdit={() => goEdit('dress')}>
                   {palette.length > 0 && (
                     <span className="flex items-center gap-1">
@@ -283,7 +413,32 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 </ReviewRow>
                 <ReviewRow label="RSVP" value={rsvpContacts.filter(Boolean).join(', ') || '—'} onEdit={() => goEdit('rsvp')} />
                 <ReviewRow label="QR entry" value={qrLabel} onEdit={() => goEdit('rsvp')} />
+                {message && (
+                  <>
+                    <ReviewRow label="Quote" value={message} onEdit={() => goEdit('message')} />
+                    {messageAttr && <ReviewRow label="Attribution" value={messageAttr} onEdit={() => goEdit('message')} />}
+                  </>
+                )}
+                {overlayItems.length > 0 && (
+                  <ReviewRow
+                    label="Elements"
+                    value={`${overlayItems.length} overlay item${overlayItems.length > 1 ? 's' : ''}`}
+                    onEdit={() => goEdit('elements')}
+                  />
+                )}
+                <ReviewRow label="Font" value={FONT_STYLES.find((f) => f.id === fontStyle)?.label ?? fontStyle} onEdit={() => goEdit('theme')} />
                 <ReviewRow label="Palette" value={selectedPalette.name ?? '—'} onEdit={() => goEdit('theme')} />
+                {photoSrc && (
+                  <div className="flex items-center justify-between border-b border-gray-100 pb-3">
+                    <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-gray-500">Photo</span>
+                    <div className="flex items-center gap-2">
+                      <img src={photoSrc} alt="Uploaded photo" className="h-8 w-8 rounded object-cover ring-1 ring-black/10" />
+                      <button type="button" onClick={() => goEdit('theme')} aria-label="Edit photo" className="text-gray-400 hover:text-gray-900">
+                        <Pencil size={12} />
+                      </button>
+                    </div>
+                  </div>
+                )}
                 <p className="rounded-md border border-[#E8D9A7]/60 bg-[#F5EFE3]/60 px-3.5 py-3 text-[12px] leading-snug text-gray-700">
                   Looks good? Continue to send your invite by WhatsApp or SMS, with a live RSVP page for every guest.
                 </p>
@@ -295,7 +450,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                     <Field label="Celebrant names" hint="The large script line on the card">
                       <Input value={celebrant} onChange={setCelebrant} placeholder="e.g. Amani & Neema" />
                     </Field>
-                    <Field label="Family introduction" hint="Swahili lead — “Familia ya …”">
+                    <Field label="Family introduction" hint={'Swahili lead — “Familia ya …”'}>
                       <textarea
                         value={familyIntro}
                         onChange={(e) => setFamilyIntro(e.target.value)}
@@ -317,18 +472,29 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                         className="h-11 w-full rounded-md border border-gray-300 px-3.5 text-[14px] focus:border-[#1A1A1A] focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
                       />
                     </Field>
-                    <Field label="Time">
+                    <Field label="Ceremony time">
                       <Input value={time} onChange={setTime} placeholder="e.g. 4:00 PM" />
                     </Field>
-                    <Field label="Venue / city">
+                    <Field label="Ceremony venue">
                       <Input value={venue} onChange={setVenue} placeholder="e.g. Bagamoyo, Tanzania" />
                     </Field>
+                    <div className="border-t border-gray-100 pt-4">
+                      <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-gray-400">Reception (optional)</p>
+                      <div className="space-y-4">
+                        <Field label="Reception venue" hint="If different from ceremony">
+                          <Input value={receptionVenue} onChange={setReceptionVenue} placeholder="e.g. Grand Ballroom, Dar es Salaam" />
+                        </Field>
+                        <Field label="Reception time">
+                          <Input value={receptionTime} onChange={setReceptionTime} placeholder="e.g. 7:00 PM" />
+                        </Field>
+                      </div>
+                    </div>
                   </>
                 )}
 
                 {activePanel === 'dress' && (
                   <>
-                    <Field label="Dress code" hint="Shown as “Mavazi · …”">
+                    <Field label="Dress code" hint={'Shown as "Mavazi · …"'}>
                       <Input value={dressCode} onChange={setDressCode} placeholder="e.g. Cocktail" />
                     </Field>
                     <Field label="Colour palette" hint="The dress-code colours shown as dots">
@@ -426,35 +592,275 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   </>
                 )}
 
-                {activePanel === 'theme' && (
-                  <Field label="Colour palette" hint="Pick the palette for this design">
-                    <div className="flex flex-wrap gap-3">
-                      {product.palettes.map((p, i) => {
-                        const active = paletteIndex === i
-                        return (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => setPaletteIndex(i)}
-                            aria-pressed={active}
-                            title={p.name}
-                            className={cn(
-                              'flex flex-col items-center gap-1.5 rounded-md border p-2 text-left transition',
-                              active ? 'border-[#1A1A1A] ring-1 ring-[#1A1A1A]' : 'border-gray-300 hover:border-gray-500',
-                            )}
-                          >
-                            <span
-                              className="h-10 w-10 rounded-full ring-1 ring-black/10"
-                              style={{ backgroundColor: p.accent, border: `3px solid ${p.background}`, outline: `1px solid ${p.textSecondary}` }}
-                              aria-hidden="true"
-                            />
-                            <span className="text-[10px] font-bold text-gray-700">{p.name}</span>
-                            {active && <Check size={11} className="text-[#1A1A1A]" aria-hidden="true" />}
-                          </button>
-                        )
-                      })}
+                {activePanel === 'message' && (
+                  <>
+                    <Field label="Quote or verse" hint="Appears on the card — keep it short">
+                      <div className="relative">
+                        <textarea
+                          value={message}
+                          onChange={(e) => setMessage(e.target.value.slice(0, MESSAGE_MAX))}
+                          rows={4}
+                          placeholder="e.g. Love is patient, love is kind…"
+                          className="w-full resize-none rounded-md border border-gray-300 px-3.5 py-2.5 text-[14px] leading-relaxed focus:border-[#1A1A1A] focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
+                        />
+                        <span className={cn(
+                          'absolute bottom-2.5 right-3 text-[11px] tabular-nums',
+                          message.length >= MESSAGE_MAX ? 'text-red-500' : 'text-gray-400',
+                        )}>
+                          {message.length}/{MESSAGE_MAX}
+                        </span>
+                      </div>
+                    </Field>
+                    <Field label="Attribution" hint="e.g. — 1 Corinthians 13:4">
+                      <Input value={messageAttr} onChange={setMessageAttr} placeholder="— Source or author" />
+                    </Field>
+                  </>
+                )}
+
+                {activePanel === 'elements' && (
+                  <>
+                    {/* Add buttons */}
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={addTextItem}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-gray-300 px-3 py-2.5 text-[12px] font-semibold text-gray-700 transition hover:border-gray-500 hover:text-gray-900"
+                      >
+                        <Text size={14} /> Add text
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => elemImageInputRef.current?.click()}
+                        className="flex flex-1 items-center justify-center gap-1.5 rounded-md border border-gray-300 px-3 py-2.5 text-[12px] font-semibold text-gray-700 transition hover:border-gray-500 hover:text-gray-900"
+                      >
+                        <Upload size={14} /> Add image
+                      </button>
+                      <input
+                        ref={elemImageInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleElemImageChange}
+                        className="hidden"
+                        aria-label="Upload overlay image"
+                      />
                     </div>
-                  </Field>
+
+                    {/* Sticker grid */}
+                    <div>
+                      <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">Stickers</p>
+                      {STICKERS.map((group) => (
+                        <div key={group.group} className="mb-3">
+                          <p className="mb-1.5 text-[11px] font-semibold text-gray-500">{group.group}</p>
+                          <div className="flex flex-wrap gap-1">
+                            {group.items.map((char) => (
+                              <button
+                                key={char}
+                                type="button"
+                                onClick={() => addStickerItem(char)}
+                                aria-label={`Add ${char} sticker`}
+                                className="grid h-9 w-9 place-items-center rounded-md border border-gray-200 text-[18px] transition hover:border-gray-400 hover:bg-gray-50"
+                              >
+                                {char}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Items list */}
+                    {overlayItems.length > 0 && (
+                      <div>
+                        <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">
+                          On card ({overlayItems.length})
+                        </p>
+                        <div className="space-y-1">
+                          {overlayItems.map((item, i) => (
+                            <div
+                              key={item.id}
+                              className={cn(
+                                'flex items-center gap-2 rounded-md border px-2.5 py-2 text-[12px] transition cursor-pointer',
+                                selectedItemId === item.id
+                                  ? 'border-[#1A1A1A] bg-gray-50'
+                                  : 'border-gray-200 hover:border-gray-400',
+                              )}
+                              onClick={() => { setSelectedItemId(item.id); setActivePanel('elements') }}
+                            >
+                              <span className="shrink-0 text-[16px]">
+                                {item.type === 'text' ? 'T' : item.type === 'image' ? '🖼' : item.content}
+                              </span>
+                              <span className="min-w-0 flex-1 truncate text-gray-700">
+                                {item.type === 'image' ? 'Image' : item.content}
+                              </span>
+                              <div className="flex shrink-0 items-center gap-0.5">
+                                <button
+                                  type="button"
+                                  aria-label="Move up"
+                                  onClick={(e) => { e.stopPropagation(); moveOverlayItem(item.id, 'up') }}
+                                  disabled={i === 0}
+                                  className="grid h-6 w-6 place-items-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30"
+                                >
+                                  <ChevronUp size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label="Move down"
+                                  onClick={(e) => { e.stopPropagation(); moveOverlayItem(item.id, 'down') }}
+                                  disabled={i === overlayItems.length - 1}
+                                  className="grid h-6 w-6 place-items-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-900 disabled:opacity-30"
+                                >
+                                  <ChevronDown size={12} />
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label="Delete element"
+                                  onClick={(e) => { e.stopPropagation(); deleteOverlayItem(item.id) }}
+                                  className="grid h-6 w-6 place-items-center rounded text-gray-400 hover:bg-red-50 hover:text-red-500"
+                                >
+                                  <X size={12} />
+                                </button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+
+                {activePanel === 'theme' && (
+                  <>
+                    {product.treatment === 'save-the-date-photo' && !photoSrc && (
+                      <div className="rounded-md border-2 border-dashed border-[#00a79d]/40 bg-[#00a79d]/5 p-4">
+                        <p className="mb-2 text-[12px] font-bold text-gray-900">Upload your couple photo</p>
+                        <p className="mb-3 text-[11px] leading-relaxed text-gray-500">
+                          This design uses your photo as a background with a teal colour overlay — upload to see the full effect.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => photoInputRef.current?.click()}
+                          className="flex w-full items-center justify-center gap-2 rounded-md bg-[#1A1A1A] px-4 py-2.5 text-[12px] font-bold text-white transition hover:bg-black"
+                        >
+                          <Upload size={14} /> Upload photo
+                        </button>
+                      </div>
+                    )}
+
+                    <Field label="Colour palette" hint="Pick the palette for this design">
+                      <div className="flex flex-wrap gap-3">
+                        {product.palettes.map((p, i) => {
+                          const active = paletteIndex === i
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() => setPaletteIndex(i)}
+                              aria-pressed={active}
+                              title={p.name}
+                              className={cn(
+                                'flex flex-col items-center gap-1.5 rounded-md border p-2 text-left transition',
+                                active ? 'border-[#1A1A1A] ring-1 ring-[#1A1A1A]' : 'border-gray-300 hover:border-gray-500',
+                              )}
+                            >
+                              <span
+                                className="h-10 w-10 rounded-full ring-1 ring-black/10"
+                                style={{ backgroundColor: p.accent, border: `3px solid ${p.background}`, outline: `1px solid ${p.textSecondary}` }}
+                                aria-hidden="true"
+                              />
+                              <span className="text-[10px] font-bold text-gray-700">{p.name}</span>
+                              {active && <Check size={11} className="text-[#1A1A1A]" aria-hidden="true" />}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </Field>
+
+                    <Field label="Font style" hint="Changes the name typography on the card">
+                      {(() => {
+                        const active = FONT_STYLES.find((f) => f.id === fontStyle) ?? FONT_STYLES[0]!
+                        return (
+                          <div className="space-y-2">
+                            <select
+                              value={fontStyle}
+                              onChange={(e) => setFontStyle(e.target.value as FontStyle)}
+                              className="h-11 w-full rounded-md border border-gray-300 px-3 text-[14px] focus:border-[#1A1A1A] focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
+                            >
+                              {FONT_STYLES.map((f) => (
+                                <option key={f.id} value={f.id}>{f.label}</option>
+                              ))}
+                            </select>
+                            <p
+                              className="rounded-md border border-gray-100 bg-gray-50 px-3.5 py-2.5 text-[20px] text-gray-800"
+                              style={{ fontFamily: active.fontFamily, fontStyle: active.fontStyle }}
+                            >
+                              {celebrant || 'Amani & Neema'}
+                            </p>
+                          </div>
+                        )
+                      })()}
+                    </Field>
+
+                    <Field label="Couple photo" hint={product.treatment === 'save-the-date-photo' ? 'Shown behind the teal overlay on this design — upload to see the effect' : 'Used as background on photo designs; our team places it on others'}>
+                      <input
+                        ref={photoInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handlePhotoChange}
+                        className="hidden"
+                        aria-label="Upload couple photo"
+                      />
+                      {photoSrc ? (
+                        <div className="flex items-center gap-3">
+                          <img src={photoSrc} alt="Uploaded couple photo" className="h-16 w-16 rounded-md object-cover ring-1 ring-black/10" />
+                          <div className="flex flex-col gap-1.5">
+                            <button
+                              type="button"
+                              onClick={() => photoInputRef.current?.click()}
+                              className="text-[12px] font-semibold text-gray-700 underline-offset-2 hover:underline"
+                            >
+                              Change photo
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPhotoSrc(undefined)}
+                              className="text-left text-[12px] text-gray-400 hover:text-gray-700"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => photoInputRef.current?.click()}
+                          className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-gray-300 px-4 py-5 text-[13px] font-semibold text-gray-600 transition hover:border-gray-500 hover:text-gray-900"
+                        >
+                          <Upload size={15} />
+                          Upload photo
+                        </button>
+                      )}
+                    </Field>
+
+                    {photoSrc && (
+                      <Field label="Photo opacity" hint="How much the colour overlay covers the photo">
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min={0}
+                            max={1}
+                            step={0.05}
+                            value={photoOpacity}
+                            onChange={(e) => setPhotoOpacity(Number(e.target.value))}
+                            aria-label="Photo opacity"
+                            className="flex-1 accent-[#1A1A1A]"
+                          />
+                          <span className="w-9 text-right text-[12px] tabular-nums text-gray-500">
+                            {Math.round(photoOpacity * 100)}%
+                          </span>
+                        </div>
+                      </Field>
+                    )}
+                  </>
                 )}
 
                 <div className="flex items-start gap-2.5 rounded-md border border-[#E8D9A7]/60 bg-[#F5EFE3]/60 px-3.5 py-3">
@@ -521,6 +927,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                     { heading: 'Dress code matters', body: 'A specific code (Cocktail, Black Tie) saves guests guesswork and photographs better.' },
                     { heading: 'Two RSVP contacts', body: 'Add a backup number — one contact is often unavailable during wedding prep.' },
                     { heading: 'QR label', body: 'Use DOUBLE for couples or families sharing one invitation, SINGLE for individual guests.' },
+                    { heading: 'Keep quotes brief', body: 'One line reads well on a card. Long quotes shrink to fit and lose impact.' },
                   ].map((tip) => (
                     <li key={tip.heading} className="py-3">
                       <p className="text-[12px] font-bold text-gray-900">{tip.heading}</p>
@@ -557,8 +964,31 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
         )}>
           <div className="flex flex-1 items-center justify-center overflow-auto p-6 sm:p-10">
             <div className="w-full max-w-sm origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
-              <div className="relative aspect-[5/7] overflow-hidden rounded-[4px] bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
-                <InvitationVisual treatment={product.treatment} couple={couple} palette={selectedPalette} />
+              <div ref={cardRef} className="relative aspect-[5/7] overflow-hidden rounded-[4px] bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
+                <InvitationVisual
+                  treatment={product.treatment}
+                  couple={couple}
+                  palette={selectedPalette}
+                  message={message || undefined}
+                  messageAttr={messageAttr || undefined}
+                  fontStyle={fontStyle}
+                  photoSrc={photoSrc}
+                  photoOpacity={photoOpacity}
+                  dressCode={dressCode || undefined}
+                  rsvpContact={rsvpContacts.filter(Boolean).join('  ·  ') || undefined}
+                  receptionVenue={receptionVenue || undefined}
+                  receptionTime={receptionTime || undefined}
+                />
+                <OverlayEditor
+                  containerRef={cardRef}
+                  items={overlayItems}
+                  selectedId={selectedItemId}
+                  onSelect={setSelectedItemId}
+                  onMove={(id, x, y) => updateOverlayItem(id, { x, y })}
+                  onUpdate={updateOverlayItem}
+                  onDelete={deleteOverlayItem}
+                  onDuplicate={duplicateOverlayItem}
+                />
               </div>
             </div>
           </div>
