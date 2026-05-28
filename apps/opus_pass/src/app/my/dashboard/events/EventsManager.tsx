@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { CalendarHeart, MapPin, Plus, Pencil, Trash2, Clock } from 'lucide-react'
-import { Card, SectionTitle, EmptyState } from '@/components/dashboard/primitives'
+import { Card, EmptyState } from '@/components/dashboard/primitives'
 import { Button, Dialog, Field, inputClass } from '@/components/dashboard/controls'
 import { createEvent, updateEvent, deleteEvent, type EventInput } from '@/lib/dashboard/actions'
 import { EVENT_TYPE_LABELS, type EventType, type WeddingEvent } from '@/lib/dashboard/types'
@@ -116,12 +116,17 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <SectionTitle title="Events" subtitle="The moments your guests will RSVP to" />
+      <header className="flex flex-wrap items-end justify-between gap-4 border-b border-black/[0.06] pb-6">
+        <div className="max-w-2xl">
+          <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">Events</h1>
+          <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">
+            The moments your guests will RSVP to
+          </p>
+        </div>
         <Button onClick={openCreate}>
           <Plus className="h-4 w-4" /> Add event
         </Button>
-      </div>
+      </header>
 
       {initialEvents.length === 0 ? (
         <EmptyState

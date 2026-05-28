@@ -137,7 +137,7 @@ export default function RsvpTracker({
           rows.length > 0 ? (
             <button
               onClick={exportCsv}
-              className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-white"
+              className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
             >
               <Download className="h-3.5 w-3.5" /> Export CSV
             </button>

@@ -1,35 +1,23 @@
 import Link from 'next/link'
 import { Globe, Palette, ArrowRight } from 'lucide-react'
-import {
-  getCoupleProfile,
-  coupleDisplayName,
-  getDashboardHeroMedia,
-} from '@/lib/dashboard/queries'
 import { Card, EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
+import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 
 export const dynamic = 'force-dynamic'
 
 export default async function WebsitePage() {
-  const [profile, hero] = await Promise.all([
-    getCoupleProfile(),
-    getDashboardHeroMedia('website'),
-  ])
-  const coupleName = coupleDisplayName(profile)
+  const hero = await loadDashboardHero('website')
 
   return (
     <div className="space-y-6">
       <DashboardHero
-        pageSlug="website"
-        eyebrow="Wedding website"
-        title={coupleName === 'The Couple' ? 'Your wedding website' : `${coupleName}'s website`}
-        subtitle="A shareable home for your story, event details and live RSVP — choose a cover image or video to set the mood."
-        media={hero}
+        content={hero}
         actions={
           <Link
             href="/websites"
-            className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-white"
+            className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
           >
             <Palette className="h-3.5 w-3.5" /> Browse designs
           </Link>

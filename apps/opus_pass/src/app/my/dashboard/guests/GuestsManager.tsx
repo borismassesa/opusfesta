@@ -242,7 +242,7 @@ export default function GuestsManager({
               <button
                 type="button"
                 onClick={() => setCollectorOpen(true)}
-                className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-white"
+                className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
               >
                 <ClipboardSignature className="h-3.5 w-3.5" /> Collect addresses
               </button>
@@ -250,7 +250,7 @@ export default function GuestsManager({
             <button
               type="button"
               onClick={() => setImportOpen(true)}
-              className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-white"
+              className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
             >
               <Upload className="h-3.5 w-3.5" /> Upload spreadsheet
             </button>
