@@ -1,15 +1,17 @@
 'use client'
 
 import { Toaster } from 'sonner'
+import { CheckCircle2, AlertCircle, AlertTriangle, Info } from 'lucide-react'
 
 // Toasts match the dashboard's clean palette: white card, hairline border,
-// subtle elevation. No colored state bar — keep it quiet and on-palette.
-//
-// Action buttons (toast({ action: { label, onClick } }) — used e.g. on the
-// product page) get the OpusPass primary look.
+// subtle elevation. State is signaled by a small colored icon on the left:
+//   success → brand green  (#3C9A5F)
+//   error   → soft rose    (#A04450)
+//   warning → amber        (#C99A2E)
+//   info    → neutral
 
 const TOAST_BASE =
-  'group relative w-full rounded-xl border border-black/[0.08] bg-white p-4 ' +
+  'group flex w-full items-start gap-3 rounded-xl border border-black/[0.08] bg-white p-4 ' +
   'shadow-[0_10px_28px_-12px_rgba(26,26,26,0.18),0_2px_6px_-2px_rgba(26,26,26,0.08)] ' +
   'text-[#1A1A1A]'
 
@@ -19,6 +21,12 @@ export default function ToastProvider() {
       position="bottom-right"
       gap={10}
       offset={20}
+      icons={{
+        success: <CheckCircle2 className="h-5 w-5 shrink-0 text-[#3C9A5F]" aria-hidden="true" />,
+        error: <AlertCircle className="h-5 w-5 shrink-0 text-[#A04450]" aria-hidden="true" />,
+        warning: <AlertTriangle className="h-5 w-5 shrink-0 text-[#C99A2E]" aria-hidden="true" />,
+        info: <Info className="h-5 w-5 shrink-0 text-[#1A1A1A]/55" aria-hidden="true" />,
+      }}
       toastOptions={{
         duration: 4000,
         classNames: {
