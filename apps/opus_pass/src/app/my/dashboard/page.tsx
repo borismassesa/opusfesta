@@ -86,12 +86,7 @@ export default async function DashboardOverviewPage({ searchParams }: PageProps)
     <div className="space-y-8">
       <header className="flex flex-wrap items-end justify-between gap-4 border-b border-black/[0.06] pb-6">
         <div className="max-w-2xl">
-          {hero.eyebrow ? (
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-[#1A1A1A]/55">
-              {hero.eyebrow}
-            </p>
-          ) : null}
-          <h1 className="mt-1 text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
+          <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
             {headerTitle}
           </h1>
           {hero.subtitle ? (

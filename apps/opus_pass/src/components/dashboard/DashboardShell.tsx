@@ -75,7 +75,9 @@ export default function DashboardShell({
         <Link href="/" className="px-2">
           <Logo className="text-2xl" />
         </Link>
-        <p className="mt-1 px-2 text-xs text-[#1A1A1A]/45">{coupleName}</p>
+        {coupleName && coupleName !== 'The Couple' ? (
+          <p className="mt-1 px-2 text-xs text-[#1A1A1A]/45">{coupleName}</p>
+        ) : null}
         <div className="mt-8 flex-1">
           <NavLinks />
         </div>
@@ -125,7 +127,9 @@ export default function DashboardShell({
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <p className="mt-1 text-xs text-[#1A1A1A]/45">{coupleName}</p>
+            {coupleName && coupleName !== 'The Couple' ? (
+              <p className="mt-1 text-xs text-[#1A1A1A]/45">{coupleName}</p>
+            ) : null}
             <div className="mt-6">
               <NavLinks onNavigate={() => setOpen(false)} />
             </div>
