@@ -27,11 +27,13 @@ export type Product = {
 
 export function ProductInfo({
   product,
+  href,
   showPromo = true,
   selectedSwatch,
   onSwatchSelect,
 }: {
   product: Product
+  href?: string
   showPromo?: boolean
   selectedSwatch?: number
   onSwatchSelect?: (index: number) => void
@@ -79,7 +81,11 @@ export function ProductInfo({
 
       {/* Title — bigger and bolder, capped at 2 lines for consistent card heights */}
       <p className="mt-1 text-[15px] sm:text-[16px] font-bold text-[#1A1A1A] leading-snug line-clamp-2">
-        <Link href="#" className="hover:underline underline-offset-2">{product.name}</Link>
+        {href ? (
+          <span className="group-hover/pick:underline underline-offset-2">{product.name}</span>
+        ) : (
+          <Link href={`/invitations/p/${product.id}`} className="hover:underline underline-offset-2">{product.name}</Link>
+        )}
       </p>
 
       {/* Pricing — digital per-card is primary when present; falls back to paper per-pack */}

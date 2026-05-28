@@ -62,10 +62,10 @@ const navItems: Array<{
         title: 'Browse',
         links: [
           { Icon: Users, label: 'All Designs', href: '/invitations/catalog' },
-          { Icon: CheckCircle2, label: 'Save the Dates', href: '/invitations/catalog' },
-          { Icon: MessageCircle, label: 'Wedding Invitations', href: '/invitations/catalog' },
-          { Icon: MapPin, label: 'Send-Off & Kitchen Party', href: '/invitations/catalog' },
-          { Icon: Heart, label: 'Kadi za Michango', href: '/invitations/catalog' },
+          { Icon: CheckCircle2, label: 'Save the Dates', href: '/invitations/save-the-date' },
+          { Icon: MessageCircle, label: 'Wedding Invitations', href: '/invitations/wedding' },
+          { Icon: MapPin, label: 'Send-Off & Kitchen Party', href: '/invitations/send-off' },
+          { Icon: Heart, label: 'Kadi za Michango', href: '/invitations/kadi-za-michango' },
         ],
       },
       {
