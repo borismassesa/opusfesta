@@ -184,6 +184,20 @@ export const PRODUCTS: CatalogProduct[] = [
       { name: 'Warm Gold',     background: '#FBF5E8', surface: '#FBF5E8', accent: '#C8A35C', textPrimary: '#2B1F0A', textSecondary: '#7A6030', muted: '#A8884C' },
     ],
   },
+  { id: 'p21', category: 'Save the Dates', designer: 'Mzimbazi Studio', name: 'Teal Fiesta Save the Date Cards', priceNow: 95000, digitalUnitPrice: 8000, freeSample: true, swatches: ['#00a79d', '#0F2535', '#7A3B2E'], treatment: 'save-the-date', designImage: '/assets/invitation-svgs/card-template.svg',
+    palettes: [
+      { name: 'Teal & Gold',   background: '#00a79d', surface: '#00a79d', accent: '#6fc7b0', textPrimary: '#ffffff', textSecondary: '#ffffff', muted: 'rgba(255,255,255,0.65)' },
+      { name: 'Ocean Night',   background: '#0F2535', surface: '#0F2535', accent: '#7EBFB5', textPrimary: '#EDF5F4', textSecondary: '#7EBFB5', muted: 'rgba(126,191,181,0.55)' },
+      { name: 'Coral Terracotta', background: '#7A3B2E', surface: '#7A3B2E', accent: '#E8A87C', textPrimary: '#FDF0E8', textSecondary: '#E8A87C', muted: 'rgba(232,168,124,0.65)' },
+    ],
+  },
+  { id: 'p22', category: 'Save the Dates', designer: 'Mzimbazi Studio', name: 'Teal Fiesta Photo Save the Date Cards', priceNow: 110000, digitalUnitPrice: 10000, freeSample: true, swatches: ['#00a79d', '#0F2535', '#7A3B2E'], treatment: 'save-the-date-photo', designImage: '/assets/invitation-svgs/card-template-4.svg',
+    palettes: [
+      { name: 'Teal & Gold',      background: '#00a79d', surface: '#00a79d', accent: '#6fc7b0', textPrimary: '#ffffff', textSecondary: '#ffffff', muted: 'rgba(255,255,255,0.65)' },
+      { name: 'Ocean Night',      background: '#0F2535', surface: '#0F2535', accent: '#7EBFB5', textPrimary: '#EDF5F4', textSecondary: '#7EBFB5', muted: 'rgba(126,191,181,0.55)' },
+      { name: 'Coral Terracotta', background: '#7A3B2E', surface: '#7A3B2E', accent: '#E8A87C', textPrimary: '#FDF0E8', textSecondary: '#E8A87C', muted: 'rgba(232,168,124,0.65)' },
+    ],
+  },
 ]
 
 export function findProductById(id: string): CatalogProduct | undefined {
