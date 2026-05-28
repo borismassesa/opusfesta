@@ -5,7 +5,9 @@ import Link from 'next/link'
 import {
   Users, CalendarDays, Shirt, QrCode, Palette, Check, Sparkles, Plus, X,
   ZoomIn, ZoomOut, Lightbulb, HelpCircle, Pencil, Eye, EyeOff, LayoutGrid,
-  MessageSquare, Upload, Type, Layers, Text, ChevronUp, ChevronDown, Ticket,
+  MessageSquare, Upload, Layers, Text, ChevronUp, ChevronDown, Ticket,
+  Mail, ClipboardCheck, FileText, UtensilsCrossed, BookOpen, Hash, Gift,
+  CheckCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -18,10 +20,46 @@ import { OverlayEditor } from './OverlayEditor'
 import type { OverlayItem } from './_overlay-types'
 import { STICKERS } from './_overlay-types'
 
-type Step = 'design' | 'review'
-type Panel = 'event' | 'details' | 'dress' | 'rsvp' | 'message' | 'elements' | 'theme' | 'ticket'
+// ─── Types ────────────────────────────────────────────────────────────────────
 
-const PANELS: { id: Panel; label: string; icon: React.ReactNode }[] = [
+type MainTab =
+  | 'invitation'
+  | 'rsvp-card'
+  | 'envelope'
+  | 'ticket'
+  | 'enclosure'
+  | 'menu'
+  | 'program'
+  | 'table-numbers'
+  | 'swag'
+  | 'review'
+
+type InvitationPanel = 'event' | 'details' | 'dress' | 'rsvp' | 'message' | 'elements' | 'theme'
+
+// ─── Config ───────────────────────────────────────────────────────────────────
+
+const MAIN_TABS: {
+  id: MainTab
+  label: string
+  shortLabel: string
+  icon: React.ReactNode
+  optional?: boolean
+}[] = [
+  { id: 'invitation',    label: 'Invitation Card',      shortLabel: 'Invitation',  icon: <Mail size={13} /> },
+  { id: 'rsvp-card',     label: 'RSVP Card',            shortLabel: 'RSVP Card',   icon: <ClipboardCheck size={13} /> },
+  { id: 'envelope',      label: 'Envelope',             shortLabel: 'Envelope',    icon: <Mail size={13} /> },
+  { id: 'ticket',        label: 'Wedding Ticket',       shortLabel: 'Ticket',      icon: <Ticket size={13} /> },
+  { id: 'enclosure',     label: 'Enclosure Card',       shortLabel: 'Enclosure',   icon: <FileText size={13} />,         optional: true },
+  { id: 'menu',          label: 'Menu',                 shortLabel: 'Menu',        icon: <UtensilsCrossed size={13} /> },
+  { id: 'program',       label: 'Program',              shortLabel: 'Program',     icon: <BookOpen size={13} /> },
+  { id: 'table-numbers', label: 'Table Numbers & Sign', shortLabel: 'Table Nos.',  icon: <Hash size={13} /> },
+  { id: 'swag',          label: 'Wedding Swag',         shortLabel: 'Swag',        icon: <Gift size={13} />,             optional: true },
+  { id: 'review',        label: 'Review',               shortLabel: 'Review',      icon: <CheckCircle size={13} /> },
+]
+
+const TAB_ORDER = MAIN_TABS.map((t) => t.id)
+
+const INVITATION_PANELS: { id: InvitationPanel; label: string; icon: React.ReactNode }[] = [
   { id: 'event',    label: 'Event',    icon: <Users size={16} /> },
   { id: 'details',  label: 'Details',  icon: <CalendarDays size={16} /> },
   { id: 'dress',    label: 'Dress',    icon: <Shirt size={16} /> },
@@ -29,7 +67,6 @@ const PANELS: { id: Panel; label: string; icon: React.ReactNode }[] = [
   { id: 'message',  label: 'Message',  icon: <MessageSquare size={16} /> },
   { id: 'elements', label: 'Elements', icon: <Layers size={16} /> },
   { id: 'theme',    label: 'Theme',    icon: <Palette size={16} /> },
-  { id: 'ticket',   label: 'Ticket',   icon: <Ticket size={16} /> },
 ]
 
 const TICKET_ACCENT_COLORS = [
@@ -42,42 +79,57 @@ const TICKET_ACCENT_COLORS = [
 ]
 
 const FONT_STYLES: { id: FontStyle; label: string; fontFamily: string; fontStyle: string }[] = [
-  { id: 'serif',      label: 'Classic Serif',    fontFamily: "Georgia, 'Times New Roman', serif",            fontStyle: 'normal' },
-  { id: 'script',     label: 'Serif Italic',     fontFamily: "Georgia, 'Times New Roman', serif",            fontStyle: 'italic' },
-  { id: 'playfair',   label: 'Playfair Display', fontFamily: "var(--font-playfair), Georgia, serif",         fontStyle: 'normal' },
-  { id: 'cormorant',  label: 'Cormorant Garant', fontFamily: "var(--font-cormorant), Georgia, serif",        fontStyle: 'italic' },
-  { id: 'dancing',    label: 'Dancing Script',   fontFamily: "var(--font-dancing), cursive",                 fontStyle: 'normal' },
-  { id: 'garamond',   label: 'EB Garamond',      fontFamily: "var(--font-garamond), Georgia, serif",         fontStyle: 'normal' },
+  { id: 'serif',      label: 'Classic Serif',    fontFamily: "Georgia, 'Times New Roman', serif",             fontStyle: 'normal' },
+  { id: 'script',     label: 'Serif Italic',     fontFamily: "Georgia, 'Times New Roman', serif",             fontStyle: 'italic' },
+  { id: 'playfair',   label: 'Playfair Display', fontFamily: "var(--font-playfair), Georgia, serif",          fontStyle: 'normal' },
+  { id: 'cormorant',  label: 'Cormorant Garant', fontFamily: "var(--font-cormorant), Georgia, serif",         fontStyle: 'italic' },
+  { id: 'dancing',    label: 'Dancing Script',   fontFamily: "var(--font-dancing), cursive",                  fontStyle: 'normal' },
+  { id: 'garamond',   label: 'EB Garamond',      fontFamily: "var(--font-garamond), Georgia, serif",          fontStyle: 'normal' },
   { id: 'montserrat', label: 'Montserrat',       fontFamily: "var(--font-montserrat), system-ui, sans-serif", fontStyle: 'normal' },
-  { id: 'modern',     label: 'System Modern',    fontFamily: 'system-ui, -apple-system, sans-serif',         fontStyle: 'normal' },
+  { id: 'modern',     label: 'System Modern',    fontFamily: 'system-ui, -apple-system, sans-serif',          fontStyle: 'normal' },
+]
+
+const SWAG_CATALOG: { id: string; label: string; emoji: string; description: string; unitPrice: number }[] = [
+  { id: 'shirts',     label: 'Shirts',      emoji: '👕', description: 'Custom-printed wedding tees',        unitPrice: 25000 },
+  { id: 'mugs',       label: 'Mugs',        emoji: '☕', description: 'Ceramic keepsake mugs',              unitPrice: 8000  },
+  { id: 'napkins',    label: 'Napkins',      emoji: '🧻', description: 'Monogrammed cocktail napkins',       unitPrice: 3000  },
+  { id: 'tote-bags',  label: 'Tote bags',   emoji: '🛍️', description: 'Canvas tote with monogram',          unitPrice: 12000 },
+  { id: 'koozies',    label: 'Koozies',     emoji: '🥤', description: 'Drink sleeves for the reception',    unitPrice: 5000  },
+  { id: 'fans',       label: 'Fans',        emoji: '🪭', description: 'Printed paper fans for outdoor ceremonies', unitPrice: 4000 },
+  { id: 'matchbooks', label: 'Matchbooks',  emoji: '🔥', description: 'Custom matchbooks with date',        unitPrice: 2500  },
+  { id: 'stickers',   label: 'Stickers',    emoji: '✨', description: 'Die-cut wedding stickers',           unitPrice: 1500  },
 ]
 
 const MESSAGE_MAX = 120
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function CustomiseClient({ product }: { product: CatalogProduct }) {
   const router = useRouter()
   const { addItem } = useCart()
-  const [step, setStep] = useState<Step>('design')
-  const [activePanel, setActivePanel] = useState<Panel>('event')
+  const [activeTab, setActiveTab] = useState<MainTab>('invitation')
+  const [activePanel, setActivePanel] = useState<InvitationPanel>('event')
   const [zoom, setZoom] = useState(1)
   const [canvasVisible, setCanvasVisible] = useState(true)
 
-  // Couple fields — names / date / venue map directly to InvitationVisual
+  const tabNavRef = useRef<HTMLDivElement>(null)
+
+  // Couple fields
   const [celebrant, setCelebrant] = useState('Amani & Neema')
   const [familyIntro, setFamilyIntro] = useState('')
   const [dateISO, setDateISO] = useState('2026-08-22')
   const [time, setTime] = useState('')
   const [venue, setVenue] = useState('Bagamoyo, Tanzania')
 
-  // Reception details (metadata — design team applies to card)
+  // Reception details
   const [receptionVenue, setReceptionVenue] = useState('')
   const [receptionTime, setReceptionTime] = useState('')
 
-  // Dress code + palette swatches (display only — shown on sidebar review)
+  // Dress code + palette swatches
   const [dressCode, setDressCode] = useState('')
   const [palette, setPalette] = useState<string[]>([])
 
-  // RSVP + QR — seed from the card's placeholder for save-the-date designs
+  // RSVP + QR
   const defaultRsvp = (product.treatment === 'save-the-date' || product.treatment === 'save-the-date-photo')
     ? ['+255 795 682 205']
     : ['']
@@ -96,19 +148,55 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
   const [photoOpacity, setPhotoOpacity] = useState(0.85)
   const photoInputRef = useRef<HTMLInputElement>(null)
 
-  // Overlay elements (text, stickers, images placed on card)
+  // Overlay elements
   const [overlayItems, setOverlayItems] = useState<OverlayItem[]>([])
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const elemImageInputRef = useRef<HTMLInputElement>(null)
 
-  // Wedding ticket customisation (boarding-pass-style door-scan ticket)
+  // Product palette selection
+  const [paletteIndex, setPaletteIndex] = useState(0)
+
+  // Wedding ticket customisation
   const [ticketAccentColor, setTicketAccentColor] = useState('#8B7355')
   const [ticketAddress, setTicketAddress] = useState('')
   const [ticketStubLabel, setTicketStubLabel] = useState('BOARDING PASS TO OUR WEDDING')
 
-  // Product palette selection — drives InvitationVisual colour theme
-  const [paletteIndex, setPaletteIndex] = useState(0)
+  // Per-tab notes for the design team
+  const [rsvpCardNotes, setRsvpCardNotes] = useState('')
+  const [envelopeNotes, setEnvelopeNotes] = useState('')
+  const [enclosureNotes, setEnclosureNotes] = useState('')
+  const [menuNotes, setMenuNotes] = useState('')
+  const [programNotes, setProgramNotes] = useState('')
+  const [tableNumbersNotes, setTableNumbersNotes] = useState('')
+  // swagSelections: item id → quantity (absent or 0 = not selected)
+  const [swagSelections, setSwagSelections] = useState<Record<string, number>>({})
+  const [swagNotes, setSwagNotes] = useState('')
+
+  const toggleSwag = (id: string) =>
+    setSwagSelections((prev) => {
+      if (prev[id]) { const next = { ...prev }; delete next[id]; return next }
+      return { ...prev, [id]: 1 }
+    })
+  const setSwagQty = (id: string, q: number) =>
+    setSwagSelections((prev) => q < 1 ? prev : { ...prev, [id]: q })
+
+  const selectedSwagItems = SWAG_CATALOG.filter((s) => (swagSelections[s.id] ?? 0) > 0)
+  const swagTotal = selectedSwagItems.reduce((sum, s) => sum + s.unitPrice * (swagSelections[s.id] ?? 0), 0)
+
+  // Back-print option per card tab — 'same' = print same design on back (+TZS 1,500), 'blank' = leave blank
+  type BackPrint = 'same' | 'blank'
+  const BACK_PRINT_TABS: MainTab[] = ['invitation', 'rsvp-card', 'envelope', 'ticket', 'enclosure', 'menu', 'program', 'table-numbers']
+  const [backPrint, setBackPrint] = useState<Partial<Record<MainTab, BackPrint>>>({})
+  const setBackPrintFor = (tab: MainTab, v: BackPrint) => setBackPrint((prev) => ({ ...prev, [tab]: v }))
+
+  // Quantity per card tab
+  const [qty, setQty] = useState<Partial<Record<MainTab, number>>>({})
+  const setQtyFor = (tab: MainTab, v: number) => setQty((prev) => ({ ...prev, [tab]: Math.max(1, v) }))
+
+  // Front / back side toggle — resets to front when tab changes
+  const [cardSide, setCardSide] = useState<'front' | 'back'>('front')
+  useEffect(() => { setCardSide('front') }, [activeTab])
 
   // Sidebar overlay drawers
   const [drawer, setDrawer] = useState<'contact' | 'tips' | null>(null)
@@ -127,7 +215,15 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
     return () => document.removeEventListener('mousedown', handler)
   }, [confirmLeave])
 
-  const selectedPalette = product.palettes[paletteIndex] ?? product.palettes[0]
+  // Scroll active tab into view
+  useEffect(() => {
+    const nav = tabNavRef.current
+    if (!nav) return
+    const btn = nav.querySelector(`[data-tab="${activeTab}"]`) as HTMLElement | null
+    btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
+  }, [activeTab])
+
+  const selectedPalette = product.palettes[paletteIndex] ?? product.palettes[0]!
 
   const couple = useMemo(
     () => ({
@@ -139,15 +235,13 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
     [celebrant, dateISO, venue, time],
   )
 
+  const dateDisplay = couple.date ? couple.date.replace(/ · /g, ' / ') : '—'
+
   const handleSave = () =>
     toast.success('Draft saved', { description: 'Jump back to this design any time.' })
 
   const handleContinue = () => {
-    const summaryParts = [
-      celebrant && `${celebrant}`,
-      dateISO && dateDisplay,
-      venue,
-    ].filter(Boolean)
+    const summaryParts = [celebrant, dateISO && dateDisplay, venue].filter(Boolean)
     addItem({
       id: product.id,
       name: product.name,
@@ -162,6 +256,15 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
     router.push('/invitations/cart')
   }
 
+  const goNextTab = () => {
+    const idx = TAB_ORDER.indexOf(activeTab)
+    if (idx < TAB_ORDER.length - 1) {
+      setActiveTab(TAB_ORDER[idx + 1]!)
+    } else {
+      handleContinue()
+    }
+  }
+
   const handlePhotoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -173,7 +276,6 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
   const setPaletteAt = (i: number, v: string) => setPalette((p) => p.map((c, idx) => (idx === i ? v : c)))
   const setContactAt = (i: number, v: string) => setRsvpContacts((c) => c.map((x, idx) => (idx === i ? v : x)))
 
-  // Overlay element helpers
   const addTextItem = () => {
     setOverlayItems((prev) => [...prev, {
       id: crypto.randomUUID(), type: 'text', x: 40, y: 40,
@@ -210,10 +312,8 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
     const item = overlayItems.find((it) => it.id === id)
     if (!item) return
     setOverlayItems((prev) => [...prev, {
-      ...item,
-      id: crypto.randomUUID(),
-      x: Math.min(90, item.x + 5),
-      y: Math.min(90, item.y + 5),
+      ...item, id: crypto.randomUUID(),
+      x: Math.min(90, item.x + 5), y: Math.min(90, item.y + 5),
       zIndex: prev.length,
     }])
   }
@@ -239,10 +339,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
     })
   }
 
-  const dateDisplay = couple.date ? couple.date.replace(/ · /g, ' / ') : '—'
-
-  // Which panels have meaningful content filled in
-  const panelDone: Record<Panel, boolean> = {
+  const panelDone: Record<InvitationPanel, boolean> = {
     event:    celebrant.trim().length > 0,
     details:  Boolean(dateISO) && venue.trim().length > 0,
     dress:    Boolean(dressCode.trim()) || palette.length > 0,
@@ -250,46 +347,27 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
     message:  message.trim().length > 0,
     elements: overlayItems.length > 0,
     theme:    true,
-    ticket:   ticketAddress.trim().length > 0 || ticketAccentColor !== '#8B7355',
   }
 
-  const goEdit = (panel: Panel) => {
-    setStep('design')
+  const goEdit = (panel: InvitationPanel) => {
+    setActiveTab('invitation')
     setActivePanel(panel)
   }
 
+  const isReview = activeTab === 'review'
+
   return (
     <div className="flex min-h-screen flex-col bg-[#FAFAF8] text-[#1A1A1A]">
-      {/* ─── Top toolbar ─── */}
+
+      {/* ─── Header ─── */}
       <header className="sticky top-0 z-20 border-b border-gray-200 bg-white">
-        <div className="relative flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
-          {/* Left — product name */}
-          <div className="flex min-w-0 max-w-[40%] items-center sm:w-48">
+
+        {/* Row 1: product name + actions */}
+        <div className="flex items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 max-w-[40%] items-center">
             <p className="truncate text-[13px] font-bold text-gray-900">{product.name}</p>
           </div>
 
-          {/* Center — step tabs */}
-          <nav className="absolute left-1/2 flex -translate-x-1/2 items-center gap-7" aria-label="Steps">
-            {(['design', 'review'] as const).map((s) => {
-              const active = step === s
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setStep(s)}
-                  aria-current={active ? 'step' : undefined}
-                  className={cn(
-                    'border-b-2 pb-1 text-[14px] font-medium capitalize transition',
-                    active ? 'border-[#1A1A1A] text-gray-900' : 'border-transparent text-gray-400 hover:text-gray-700',
-                  )}
-                >
-                  {s}
-                </button>
-              )
-            })}
-          </nav>
-
-          {/* Right — actions */}
           <div className="flex shrink-0 items-center gap-2">
             <button
               type="button"
@@ -299,6 +377,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
             >
               {canvasVisible ? <EyeOff size={16} /> : <Eye size={16} />}
             </button>
+
             <div className="relative" ref={confirmRef}>
               <button
                 type="button"
@@ -344,6 +423,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 </div>
               )}
             </div>
+
             <button
               type="button"
               onClick={handleSave}
@@ -353,10 +433,10 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
             </button>
             <button
               type="button"
-              onClick={step === 'design' ? () => setStep('review') : handleContinue}
+              onClick={isReview ? handleContinue : goNextTab}
               className="rounded-full bg-[#1A1A1A] px-4 py-1.5 text-[12px] font-bold text-white transition hover:bg-black sm:px-5"
             >
-              {step === 'design' ? 'Next' : 'Continue to send'}
+              {isReview ? 'Continue to send' : 'Next'}
             </button>
             <Link
               href={`/invitations/p/${product.id}`}
@@ -367,19 +447,85 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
             </Link>
           </div>
         </div>
+
+        {/* Row 2: scrollable tab bar */}
+        <div
+          ref={tabNavRef}
+          className="flex overflow-x-auto border-t border-gray-100 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          role="tablist"
+          aria-label="Stationery items"
+        >
+          {MAIN_TABS.map((tab) => {
+            const active = activeTab === tab.id
+            return (
+              <button
+                key={tab.id}
+                data-tab={tab.id}
+                role="tab"
+                type="button"
+                aria-selected={active}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  'relative flex shrink-0 items-center gap-1.5 whitespace-nowrap px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.1em] transition',
+                  active
+                    ? 'text-[#1A1A1A] after:absolute after:bottom-0 after:left-0 after:right-0 after:h-[2px] after:bg-[#1A1A1A]'
+                    : 'text-gray-400 hover:text-gray-700',
+                )}
+              >
+                {tab.icon}
+                {tab.shortLabel}
+                {tab.optional && (
+                  <span className={cn(
+                    'rounded-sm px-1 py-px text-[9px] font-bold uppercase tracking-[0.06em]',
+                    active ? 'bg-gray-200 text-gray-600' : 'bg-gray-100 text-gray-400',
+                  )}>
+                    opt
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
       </header>
 
       {/* ─── Editor body ─── */}
       <div className="grid flex-1 grid-cols-1 lg:grid-cols-[340px_1fr]">
-        {/* ─── Left sidebar — controls / review ─── */}
-        <aside className="order-2 flex flex-col border-t border-gray-200 bg-white lg:order-1 lg:border-r lg:border-t-0 lg:h-[calc(100vh-57px)]">
-          <div className="border-b border-gray-200 px-5 pt-4">
-            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500">
-              {step === 'design' ? 'Design' : 'Review'}
-            </p>
-            {step === 'design' && (
+
+        {/* ─── Left sidebar ─── */}
+        <aside className="order-2 flex h-[55vh] flex-col overflow-hidden border-t border-gray-200 bg-white lg:order-1 lg:h-[calc(100vh-101px)] lg:border-r lg:border-t-0">
+
+          {/* Sidebar header */}
+          <div className="shrink-0 border-b border-gray-200 px-5 pt-4 pb-4">
+            <div className="flex items-center justify-between">
+              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-gray-500">
+                {MAIN_TABS.find((t) => t.id === activeTab)?.label}
+              </p>
+
+              {!isReview && (
+                <div className="flex items-center rounded-full border border-gray-200 bg-gray-100 p-0.5">
+                  {(['front', 'back'] as const).map((side) => (
+                    <button
+                      key={side}
+                      type="button"
+                      onClick={() => setCardSide(side)}
+                      aria-pressed={cardSide === side}
+                      className={cn(
+                        'rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-[0.08em] transition',
+                        cardSide === side
+                          ? 'bg-white text-gray-900 shadow-sm'
+                          : 'text-gray-400 hover:text-gray-700',
+                      )}
+                    >
+                      {side}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {activeTab === 'invitation' && (
               <div className="mt-3 grid grid-cols-4 gap-1">
-                {PANELS.map((p) => {
+                {INVITATION_PANELS.map((p) => {
                   const active = activePanel === p.id
                   const done = panelDone[p.id]
                   return (
@@ -405,8 +551,10 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
             )}
           </div>
 
-          <div className="flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
-            {step === 'review' ? (
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-5 sm:p-6">
+
+            {/* ── REVIEW ── */}
+            {isReview && (
               <>
                 <ReviewRow label="Celebrant" value={celebrant} onEdit={() => goEdit('event')} />
                 <ReviewRow label="Date & time" value={`${dateDisplay}${time ? ` · ${time}` : ''}`} onEdit={() => goEdit('details')} />
@@ -447,13 +595,11 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 <ReviewRow
                   label="Ticket colour"
                   value={TICKET_ACCENT_COLORS.find((c) => c.value === ticketAccentColor)?.name ?? 'Custom'}
-                  onEdit={() => goEdit('ticket')}
+                  onEdit={() => setActiveTab('ticket')}
                 >
                   <span className="h-3 w-3 rounded-full ring-1 ring-black/10" style={{ backgroundColor: ticketAccentColor }} />
                 </ReviewRow>
-                {ticketAddress && (
-                  <ReviewRow label="Ticket address" value={ticketAddress} onEdit={() => goEdit('ticket')} />
-                )}
+                {ticketAddress && <ReviewRow label="Ticket address" value={ticketAddress} onEdit={() => setActiveTab('ticket')} />}
                 {photoSrc && (
                   <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                     <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-gray-500">Photo</span>
@@ -465,18 +611,48 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                     </div>
                   </div>
                 )}
+                {rsvpCardNotes && <ReviewRow label="RSVP card notes" value={rsvpCardNotes} onEdit={() => setActiveTab('rsvp-card')} />}
+                {envelopeNotes && <ReviewRow label="Envelope notes" value={envelopeNotes} onEdit={() => setActiveTab('envelope')} />}
+                {enclosureNotes && <ReviewRow label="Enclosure notes" value={enclosureNotes} onEdit={() => setActiveTab('enclosure')} />}
+                {menuNotes && <ReviewRow label="Menu notes" value={menuNotes} onEdit={() => setActiveTab('menu')} />}
+                {programNotes && <ReviewRow label="Program notes" value={programNotes} onEdit={() => setActiveTab('program')} />}
+                {tableNumbersNotes && <ReviewRow label="Table numbers notes" value={tableNumbersNotes} onEdit={() => setActiveTab('table-numbers')} />}
+                {selectedSwagItems.length > 0 && (
+                  <ReviewRow
+                    label="Wedding swag"
+                    value={`${selectedSwagItems.map((s) => `${s.label} ×${swagSelections[s.id]}`).join(', ')} · TZS ${swagTotal.toLocaleString('en-US')}`}
+                    onEdit={() => setActiveTab('swag')}
+                  />
+                )}
+                {(BACK_PRINT_TABS).map((tab) => {
+                  const q = qty[tab]
+                  const bp = backPrint[tab]
+                  if (!q && !bp) return null
+                  const tabLabel = MAIN_TABS.find((t) => t.id === tab)?.label ?? tab
+                  return (
+                    <ReviewRow
+                      key={tab}
+                      label={tabLabel}
+                      value={[q ? `Qty: ${q}` : null, bp === 'same' ? 'Print on back +TZS 1,500' : bp === 'blank' ? 'Blank back' : null].filter(Boolean).join(' · ')}
+                      onEdit={() => setActiveTab(tab)}
+                    />
+                  )
+                })}
                 <p className="rounded-md border border-[#E8D9A7]/60 bg-[#F5EFE3]/60 px-3.5 py-3 text-[12px] leading-snug text-gray-700">
                   Looks good? Continue to send your invite by WhatsApp or SMS, with a live RSVP page for every guest.
                 </p>
               </>
-            ) : (
+            )}
+
+            {/* ── INVITATION CARD ── */}
+            {activeTab === 'invitation' && (
               <>
                 {activePanel === 'event' && (
                   <>
                     <Field label="Celebrant names" hint="The large script line on the card">
                       <Input value={celebrant} onChange={setCelebrant} placeholder="e.g. Amani & Neema" />
                     </Field>
-                    <Field label="Family introduction" hint={'Swahili lead — “Familia ya …”'}>
+                    <Field label="Family introduction" hint={'Swahili lead — "Familia ya …"'}>
                       <textarea
                         value={familyIntro}
                         onChange={(e) => setFamilyIntro(e.target.value)}
@@ -645,7 +821,6 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
 
                 {activePanel === 'elements' && (
                   <>
-                    {/* Add buttons */}
                     <div className="flex gap-2">
                       <button
                         type="button"
@@ -671,7 +846,6 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                       />
                     </div>
 
-                    {/* Sticker grid */}
                     <div>
                       <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">Stickers</p>
                       {STICKERS.map((group) => (
@@ -694,7 +868,6 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                       ))}
                     </div>
 
-                    {/* Items list */}
                     {overlayItems.length > 0 && (
                       <div>
                         <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">
@@ -826,7 +999,12 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                       })()}
                     </Field>
 
-                    <Field label="Couple photo" hint={product.treatment === 'save-the-date-photo' ? 'Shown behind the teal overlay on this design — upload to see the effect' : 'Used as background on photo designs; our team places it on others'}>
+                    <Field
+                      label="Couple photo"
+                      hint={product.treatment === 'save-the-date-photo'
+                        ? 'Shown behind the teal overlay on this design — upload to see the effect'
+                        : 'Used as background on photo designs; our team places it on others'}
+                    >
                       <input
                         ref={photoInputRef}
                         type="file"
@@ -861,8 +1039,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                           onClick={() => photoInputRef.current?.click()}
                           className="flex w-full items-center justify-center gap-2 rounded-md border border-dashed border-gray-300 px-4 py-5 text-[13px] font-semibold text-gray-600 transition hover:border-gray-500 hover:text-gray-900"
                         >
-                          <Upload size={15} />
-                          Upload photo
+                          <Upload size={15} /> Upload photo
                         </button>
                       )}
                     </Field>
@@ -871,10 +1048,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                       <Field label="Photo opacity" hint="How much the colour overlay covers the photo">
                         <div className="flex items-center gap-3">
                           <input
-                            type="range"
-                            min={0}
-                            max={1}
-                            step={0.05}
+                            type="range" min={0} max={1} step={0.05}
                             value={photoOpacity}
                             onChange={(e) => setPhotoOpacity(Number(e.target.value))}
                             aria-label="Photo opacity"
@@ -889,64 +1063,273 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   </>
                 )}
 
-                {activePanel === 'ticket' && (
-                  <>
-                    <p className="text-[12px] leading-relaxed text-gray-600">
-                      Customise the boarding-pass-style wedding ticket your guests receive for door scanning.
-                    </p>
-
-                    <Field label="Stub accent colour" hint="The coloured left-hand stub of the ticket">
-                      <div className="flex flex-wrap gap-2">
-                        {TICKET_ACCENT_COLORS.map((c) => (
-                          <button
-                            key={c.value}
-                            type="button"
-                            onClick={() => setTicketAccentColor(c.value)}
-                            aria-pressed={ticketAccentColor === c.value}
-                            title={c.name}
-                            className={cn(
-                              'flex flex-col items-center gap-1 rounded-md border p-2 transition',
-                              ticketAccentColor === c.value
-                                ? 'border-[#1A1A1A] ring-1 ring-[#1A1A1A]'
-                                : 'border-gray-300 hover:border-gray-500',
-                            )}
-                          >
-                            <span
-                              className="h-8 w-8 rounded-full ring-1 ring-black/10"
-                              style={{ backgroundColor: c.value }}
-                              aria-hidden="true"
-                            />
-                            <span className="text-[10px] font-bold text-gray-700">{c.name}</span>
-                            {ticketAccentColor === c.value && <Check size={11} className="text-[#1A1A1A]" aria-hidden="true" />}
-                          </button>
-                        ))}
-                      </div>
-                    </Field>
-
-                    <Field label="Venue address" hint="Full address printed on the ticket (e.g. 123 Anywhere St., Dar es Salaam)">
-                      <Input value={ticketAddress} onChange={setTicketAddress} placeholder="e.g. 45 Ocean Rd, Dar es Salaam" />
-                    </Field>
-
-                    <Field label="Stub label" hint="Vertical text on the left stub">
-                      <Input value={ticketStubLabel} onChange={setTicketStubLabel} placeholder="BOARDING PASS TO OUR WEDDING" />
-                    </Field>
-                  </>
-                )}
-
                 <div className="flex items-start gap-2.5 rounded-md border border-[#E8D9A7]/60 bg-[#F5EFE3]/60 px-3.5 py-3">
                   <Sparkles size={16} className="mt-0.5 shrink-0 text-[#7A1F2B]" aria-hidden="true" />
                   <p className="text-[12px] leading-snug text-gray-700">
-                    Free design assistance and one round of revisions are included — our team polishes your
-                    card before it goes out.
+                    Free design assistance and one round of revisions are included — our team polishes your card before it goes out.
                   </p>
                 </div>
+                <QuantityField value={qty['invitation'] ?? 50} onChange={(v) => setQtyFor('invitation', v)} />
+                <BackPrintToggle value={backPrint['invitation']} onChange={(v) => setBackPrintFor('invitation', v)} />
               </>
             )}
+
+            {/* ── RSVP CARD ── */}
+            {activeTab === 'rsvp-card' && (
+              <>
+                <StationeryPlaceholder
+                  title="RSVP Card"
+                  description="Our design team will create a matching RSVP card using your invitation details — names, date, and return address included."
+                  icon={<ClipboardCheck size={26} className="text-gray-400" />}
+                />
+                <Field label="Notes for the design team" hint="Any specific preferences for your RSVP card layout">
+                  <NotesArea value={rsvpCardNotes} onChange={setRsvpCardNotes} placeholder="e.g. Include a meal selection checkbox, add a dietary note line…" />
+                </Field>
+                <QuantityField value={qty['rsvp-card'] ?? 50} onChange={(v) => setQtyFor('rsvp-card', v)} />
+                <BackPrintToggle value={backPrint['rsvp-card']} onChange={(v) => setBackPrintFor('rsvp-card', v)} />
+              </>
+            )}
+
+            {/* ── ENVELOPE ── */}
+            {activeTab === 'envelope' && (
+              <>
+                <StationeryPlaceholder
+                  title="Envelope"
+                  description="We'll design a coordinating envelope with your chosen palette and addressing style. Digital addressing is available for bulk print orders."
+                  icon={<Mail size={26} className="text-gray-400" />}
+                />
+                <Field label="Notes for the design team" hint="Addressing preferences, return address, liner details">
+                  <NotesArea value={envelopeNotes} onChange={setEnvelopeNotes} placeholder="e.g. Calligraphy addressing, add a wax seal graphic, cream envelope liner…" />
+                </Field>
+                <QuantityField value={qty['envelope'] ?? 50} onChange={(v) => setQtyFor('envelope', v)} />
+                <BackPrintToggle value={backPrint['envelope']} onChange={(v) => setBackPrintFor('envelope', v)} />
+              </>
+            )}
+
+            {/* ── WEDDING TICKET ── */}
+            {activeTab === 'ticket' && (
+              <>
+                <p className="text-[12px] leading-relaxed text-gray-600">
+                  Customise the boarding-pass-style wedding ticket your guests receive for door scanning.
+                </p>
+
+                <Field label="Stub accent colour" hint="The coloured left-hand stub of the ticket">
+                  <div className="flex flex-wrap gap-2">
+                    {TICKET_ACCENT_COLORS.map((c) => (
+                      <button
+                        key={c.value}
+                        type="button"
+                        onClick={() => setTicketAccentColor(c.value)}
+                        aria-pressed={ticketAccentColor === c.value}
+                        title={c.name}
+                        className={cn(
+                          'flex flex-col items-center gap-1 rounded-md border p-2 transition',
+                          ticketAccentColor === c.value
+                            ? 'border-[#1A1A1A] ring-1 ring-[#1A1A1A]'
+                            : 'border-gray-300 hover:border-gray-500',
+                        )}
+                      >
+                        <span
+                          className="h-8 w-8 rounded-full ring-1 ring-black/10"
+                          style={{ backgroundColor: c.value }}
+                          aria-hidden="true"
+                        />
+                        <span className="text-[10px] font-bold text-gray-700">{c.name}</span>
+                        {ticketAccentColor === c.value && <Check size={11} className="text-[#1A1A1A]" aria-hidden="true" />}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
+                <Field label="Venue address" hint="Full address printed on the ticket (e.g. 123 Anywhere St., Dar es Salaam)">
+                  <Input value={ticketAddress} onChange={setTicketAddress} placeholder="e.g. 45 Ocean Rd, Dar es Salaam" />
+                </Field>
+
+                <Field label="Stub label" hint="Vertical text on the left stub">
+                  <Input value={ticketStubLabel} onChange={setTicketStubLabel} placeholder="BOARDING PASS TO OUR WEDDING" />
+                </Field>
+                <QuantityField value={qty['ticket'] ?? 50} onChange={(v) => setQtyFor('ticket', v)} />
+                <BackPrintToggle value={backPrint['ticket']} onChange={(v) => setBackPrintFor('ticket', v)} />
+              </>
+            )}
+
+            {/* ── ENCLOSURE ── */}
+            {activeTab === 'enclosure' && (
+              <>
+                <StationeryPlaceholder
+                  title="Enclosure Card"
+                  description="An optional insert with extra information — directions, accommodation, registry details, or a note from the couple."
+                  icon={<FileText size={26} className="text-gray-400" />}
+                  optional
+                />
+                <Field label="Notes for the design team" hint="What to include on the enclosure card">
+                  <NotesArea value={enclosureNotes} onChange={setEnclosureNotes} placeholder="e.g. Hotel accommodation details, registry at Jumia and Karibu, directions to venue…" />
+                </Field>
+                <QuantityField value={qty['enclosure'] ?? 50} onChange={(v) => setQtyFor('enclosure', v)} />
+                <BackPrintToggle value={backPrint['enclosure']} onChange={(v) => setBackPrintFor('enclosure', v)} />
+              </>
+            )}
+
+            {/* ── MENU ── */}
+            {activeTab === 'menu' && (
+              <>
+                <StationeryPlaceholder
+                  title="Menu"
+                  description="A printed or digital menu card for each table setting, designed to match your invitation suite."
+                  icon={<UtensilsCrossed size={26} className="text-gray-400" />}
+                />
+                <Field label="Notes for the design team" hint="Courses, dietary notes, or layout preferences">
+                  <NotesArea value={menuNotes} onChange={setMenuNotes} placeholder="e.g. 3-course dinner, include vegetarian options, Swahili and English…" />
+                </Field>
+                <QuantityField value={qty['menu'] ?? 50} onChange={(v) => setQtyFor('menu', v)} />
+                <BackPrintToggle value={backPrint['menu']} onChange={(v) => setBackPrintFor('menu', v)} />
+              </>
+            )}
+
+            {/* ── PROGRAM ── */}
+            {activeTab === 'program' && (
+              <>
+                <StationeryPlaceholder
+                  title="Program"
+                  description="A ceremony or reception program listing the order of events, wedding party, and any readings or songs."
+                  icon={<BookOpen size={26} className="text-gray-400" />}
+                />
+                <Field label="Notes for the design team" hint="Order of events, wedding party names, songs, readings">
+                  <NotesArea value={programNotes} onChange={setProgramNotes} placeholder="e.g. Processional at 4pm, 3 readings, list of bridal party with roles…" />
+                </Field>
+                <QuantityField value={qty['program'] ?? 50} onChange={(v) => setQtyFor('program', v)} />
+                <BackPrintToggle value={backPrint['program']} onChange={(v) => setBackPrintFor('program', v)} />
+              </>
+            )}
+
+            {/* ── TABLE NUMBERS & SIGN ── */}
+            {activeTab === 'table-numbers' && (
+              <>
+                <StationeryPlaceholder
+                  title="Table Numbers & Sign"
+                  description="Matching table number cards and a welcome sign for print, sized for easel or frame display."
+                  icon={<Hash size={26} className="text-gray-400" />}
+                />
+                <Field label="Notes for the design team" hint="Number of tables, sign dimensions, welcome text">
+                  <NotesArea value={tableNumbersNotes} onChange={setTableNumbersNotes} placeholder="e.g. 12 tables, A3 welcome sign, include seating chart reference…" />
+                </Field>
+                <QuantityField value={qty['table-numbers'] ?? 12} onChange={(v) => setQtyFor('table-numbers', v)} />
+                <BackPrintToggle value={backPrint['table-numbers']} onChange={(v) => setBackPrintFor('table-numbers', v)} />
+              </>
+            )}
+
+            {/* ── WEDDING SWAG ── */}
+            {activeTab === 'swag' && (
+              <>
+                {/* Product grid */}
+                <div className="grid grid-cols-2 gap-3">
+                  {SWAG_CATALOG.map((item) => {
+                    const q = swagSelections[item.id] ?? 0
+                    const selected = q > 0
+                    return (
+                      <div
+                        key={item.id}
+                        className={cn(
+                          'flex flex-col overflow-hidden rounded-xl border transition',
+                          selected ? 'border-[#1A1A1A] ring-1 ring-[#1A1A1A]' : 'border-gray-200 hover:border-gray-400',
+                        )}
+                      >
+                        {/* Emoji preview */}
+                        <button
+                          type="button"
+                          onClick={() => toggleSwag(item.id)}
+                          aria-pressed={selected}
+                          className={cn(
+                            'flex h-20 w-full items-center justify-center text-4xl transition',
+                            selected ? 'bg-[#1A1A1A]' : 'bg-gray-50 hover:bg-gray-100',
+                          )}
+                        >
+                          {item.emoji}
+                        </button>
+
+                        {/* Info */}
+                        <div className="flex flex-col gap-1 px-3 py-2.5">
+                          <div className="flex items-start justify-between gap-1">
+                            <p className="text-[12px] font-bold text-gray-900 leading-tight">{item.label}</p>
+                            <button
+                              type="button"
+                              onClick={() => toggleSwag(item.id)}
+                              aria-pressed={selected}
+                              className={cn(
+                                'mt-0.5 h-4 w-4 shrink-0 rounded-full border-2 transition',
+                                selected ? 'border-[#1A1A1A] bg-[#1A1A1A]' : 'border-gray-300',
+                              )}
+                            >
+                              {selected && <Check size={10} className="text-white m-auto mt-px" />}
+                            </button>
+                          </div>
+                          <p className="text-[10px] leading-snug text-gray-400">{item.description}</p>
+                          <p className="text-[11px] font-bold text-gray-700">
+                            TZS {item.unitPrice.toLocaleString('en-US')} <span className="font-normal text-gray-400">/ pc</span>
+                          </p>
+
+                          {/* Qty stepper — visible when selected */}
+                          {selected && (
+                            <div className="mt-1.5 flex items-center gap-1.5 border-t border-gray-100 pt-2">
+                              <button
+                                type="button"
+                                onClick={() => setSwagQty(item.id, q - 1)}
+                                disabled={q <= 1}
+                                className="grid h-6 w-6 shrink-0 place-items-center rounded-md border border-gray-300 text-gray-600 transition hover:bg-gray-50 disabled:opacity-40"
+                              >
+                                <span className="text-[14px] leading-none">−</span>
+                              </button>
+                              <input
+                                type="number"
+                                value={q}
+                                min={1}
+                                onChange={(e) => setSwagQty(item.id, Math.max(1, Number(e.target.value) || 1))}
+                                className="h-6 flex-1 rounded-md border border-gray-300 text-center text-[12px] font-bold tabular-nums focus:border-[#1A1A1A] focus:outline-none"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setSwagQty(item.id, q + 1)}
+                                className="grid h-6 w-6 shrink-0 place-items-center rounded-md border border-gray-300 text-gray-600 transition hover:bg-gray-50"
+                              >
+                                <span className="text-[14px] leading-none">+</span>
+                              </button>
+                            </div>
+                          )}
+
+                          {/* Subtotal */}
+                          {selected && (
+                            <p className="text-[11px] font-bold text-[#5C6B4D]">
+                              = TZS {(item.unitPrice * q).toLocaleString('en-US')}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+
+                {/* Order total */}
+                {selectedSwagItems.length > 0 && (
+                  <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+                    <p className="text-[12px] font-bold text-gray-900">
+                      Swag total ({selectedSwagItems.length} item{selectedSwagItems.length > 1 ? 's' : ''})
+                    </p>
+                    <p className="text-[13px] font-bold text-gray-900">
+                      TZS {swagTotal.toLocaleString('en-US')}
+                    </p>
+                  </div>
+                )}
+
+                <Field label="Notes for the design team" hint="Preferred colours, sizing breakdown, custom text">
+                  <NotesArea value={swagNotes} onChange={setSwagNotes} placeholder="e.g. Shirts: 20×S, 40×M, 20×L — sage green, include wedding date on back…" />
+                </Field>
+              </>
+            )}
+
           </div>
 
           {/* Sidebar footer — helper links */}
-          <div className="relative">
-            {/* Contact drawer */}
+          <div className="relative shrink-0">
             {drawer === 'contact' && (
               <div className="absolute bottom-full left-0 right-0 z-10 border-t border-gray-200 bg-white shadow-[0_-8px_24px_-8px_rgba(0,0,0,0.12)]">
                 <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
@@ -981,7 +1364,6 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
               </div>
             )}
 
-            {/* Tips drawer */}
             {drawer === 'tips' && (
               <div className="absolute bottom-full left-0 right-0 z-10 border-t border-gray-200 bg-white shadow-[0_-8px_24px_-8px_rgba(0,0,0,0.12)]">
                 <div className="flex items-center justify-between border-b border-gray-100 px-5 py-3">
@@ -1027,13 +1409,45 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
           </div>
         </aside>
 
-        {/* ─── Canvas — live preview ─── */}
+        {/* ─── Canvas ─── */}
         <div className={cn(
-          'order-1 flex flex-col bg-[#E9E7E3] lg:order-2 lg:sticky lg:top-[57px] lg:h-[calc(100vh-57px)]',
+          'order-1 flex flex-col bg-[#E9E7E3] lg:order-2 lg:sticky lg:top-[101px] lg:h-[calc(100vh-101px)]',
           !canvasVisible && 'hidden lg:flex',
         )}>
           <div className="flex flex-1 items-center justify-center overflow-auto p-6 sm:p-10">
-            {activePanel === 'ticket' ? (
+
+            {isReview ? (
+              <ReviewCardGrid
+                product={product}
+                couple={couple}
+                selectedPalette={selectedPalette}
+                message={message}
+                messageAttr={messageAttr}
+                fontStyle={fontStyle}
+                photoSrc={photoSrc}
+                photoOpacity={photoOpacity}
+                dressCode={dressCode}
+                rsvpContacts={rsvpContacts}
+                receptionVenue={receptionVenue}
+                receptionTime={receptionTime}
+                celebrant={celebrant}
+                ticketAccentColor={ticketAccentColor}
+                ticketAddress={ticketAddress}
+                ticketStubLabel={ticketStubLabel}
+                dateISO={dateISO}
+                time={time}
+                venue={venue}
+                rsvpCardNotes={rsvpCardNotes}
+                envelopeNotes={envelopeNotes}
+                enclosureNotes={enclosureNotes}
+                menuNotes={menuNotes}
+                programNotes={programNotes}
+                tableNumbersNotes={tableNumbersNotes}
+                swagItems={selectedSwagItems.map((s) => s.label)}
+                swagNotes={swagNotes}
+                onEdit={setActiveTab}
+              />
+            ) : activeTab === 'ticket' && cardSide === 'front' ? (
               <div className="w-full max-w-xl origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
                 <TicketPreview
                   coupleNames={celebrant || 'Amani & Neema'}
@@ -1046,7 +1460,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   stubLabel={ticketStubLabel || 'BOARDING PASS TO OUR WEDDING'}
                 />
               </div>
-            ) : (
+            ) : activeTab === 'invitation' && cardSide === 'front' ? (
               <div className="w-full max-w-sm origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
                 <div ref={cardRef} className="relative aspect-[5/7] overflow-hidden rounded-[4px] bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
                   <InvitationVisual
@@ -1075,29 +1489,526 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   />
                 </div>
               </div>
+            ) : activeTab === 'swag' && selectedSwagItems.length > 0 ? (
+              <SwagPreview
+                items={selectedSwagItems}
+                selections={swagSelections}
+                total={swagTotal}
+                coupleNames={celebrant}
+                palette={selectedPalette}
+              />
+            ) : (
+              <CanvasPlaceholder
+                tab={activeTab}
+                palette={selectedPalette}
+                coupleNames={celebrant}
+                side={cardSide}
+              />
             )}
+
           </div>
 
-          {/* Zoom control */}
-          <div className="flex items-center justify-center gap-3 border-t border-black/5 px-6 py-3">
-            <ZoomOut size={16} className="text-gray-500" aria-hidden="true" />
-            <input
-              type="range"
-              min={0.6}
-              max={1.4}
-              step={0.05}
-              value={zoom}
-              onChange={(e) => setZoom(Number(e.target.value))}
-              aria-label="Zoom preview"
-              className="w-44 accent-[#1A1A1A] sm:w-56"
-            />
-            <ZoomIn size={16} className="text-gray-500" aria-hidden="true" />
-          </div>
+          {/* Zoom control — hidden in review */}
+          {!isReview && (
+            <div className="flex items-center justify-center gap-3 border-t border-black/5 px-6 py-3">
+              <ZoomOut size={16} className="text-gray-500" aria-hidden="true" />
+              <input
+                type="range" min={0.6} max={1.4} step={0.05}
+                value={zoom}
+                onChange={(e) => setZoom(Number(e.target.value))}
+                aria-label="Zoom preview"
+                className="w-44 accent-[#1A1A1A] sm:w-56"
+              />
+              <ZoomIn size={16} className="text-gray-500" aria-hidden="true" />
+            </div>
+          )}
         </div>
       </div>
     </div>
   )
 }
+
+// ─── Review card grid ─────────────────────────────────────────────────────────
+
+type ReviewCardGridProps = {
+  product: CatalogProduct
+  couple: { names: string; date: string; venue: string; time?: string }
+  selectedPalette: { background: string; surface: string; accent: string; textPrimary: string; textSecondary: string; muted: string; name?: string }
+  message: string
+  messageAttr: string
+  fontStyle: FontStyle
+  photoSrc: string | undefined
+  photoOpacity: number
+  dressCode: string
+  rsvpContacts: string[]
+  receptionVenue: string
+  receptionTime: string
+  celebrant: string
+  ticketAccentColor: string
+  ticketAddress: string
+  ticketStubLabel: string
+  dateISO: string
+  time: string
+  venue: string
+  rsvpCardNotes: string
+  envelopeNotes: string
+  enclosureNotes: string
+  menuNotes: string
+  programNotes: string
+  tableNumbersNotes: string
+  swagItems: string[]
+  swagNotes: string
+  onEdit: (tab: MainTab) => void
+}
+
+function ReviewCardGrid(props: ReviewCardGridProps) {
+  const {
+    product, couple, selectedPalette, message, messageAttr, fontStyle,
+    photoSrc, photoOpacity, dressCode, rsvpContacts, receptionVenue, receptionTime,
+    celebrant, ticketAccentColor, ticketAddress, ticketStubLabel, dateISO, time, venue,
+    rsvpCardNotes, envelopeNotes, enclosureNotes, menuNotes, programNotes,
+    tableNumbersNotes, swagItems, swagNotes, onEdit,
+  } = props
+
+  // Cards to show: invitation + ticket always; others only if the user added notes/selections
+  const cards: { tab: MainTab; label: string; alwaysShow: boolean; hasContent: boolean }[] = (
+    [
+      { tab: 'invitation'    as MainTab, label: 'Invitation Card',      alwaysShow: true,  hasContent: true },
+      { tab: 'rsvp-card'     as MainTab, label: 'RSVP Card',            alwaysShow: false, hasContent: !!rsvpCardNotes },
+      { tab: 'envelope'      as MainTab, label: 'Envelope',             alwaysShow: false, hasContent: !!envelopeNotes },
+      { tab: 'ticket'        as MainTab, label: 'Wedding Ticket',       alwaysShow: true,  hasContent: true },
+      { tab: 'enclosure'     as MainTab, label: 'Enclosure Card',       alwaysShow: false, hasContent: !!enclosureNotes },
+      { tab: 'menu'          as MainTab, label: 'Menu',                 alwaysShow: false, hasContent: !!menuNotes },
+      { tab: 'program'       as MainTab, label: 'Program',              alwaysShow: false, hasContent: !!programNotes },
+      { tab: 'table-numbers' as MainTab, label: 'Table Numbers & Sign', alwaysShow: false, hasContent: !!tableNumbersNotes },
+      { tab: 'swag'          as MainTab, label: 'Wedding Swag',         alwaysShow: false, hasContent: swagItems.length > 0 || !!swagNotes },
+    ] as const
+  ).filter((c) => c.alwaysShow || c.hasContent)
+
+  return (
+    <div className="h-full overflow-y-auto px-6 py-8">
+      <div className="grid grid-cols-2 gap-6 sm:gap-8">
+        {cards.map((card) => (
+          <ReviewCardItem
+            key={card.tab}
+            tab={card.tab}
+            label={card.label}
+            product={product}
+            couple={couple}
+            selectedPalette={selectedPalette}
+            message={message}
+            messageAttr={messageAttr}
+            fontStyle={fontStyle}
+            photoSrc={photoSrc}
+            photoOpacity={photoOpacity}
+            dressCode={dressCode}
+            rsvpContacts={rsvpContacts}
+            receptionVenue={receptionVenue}
+            receptionTime={receptionTime}
+            celebrant={celebrant}
+            ticketAccentColor={ticketAccentColor}
+            ticketAddress={ticketAddress}
+            ticketStubLabel={ticketStubLabel}
+            dateISO={dateISO}
+            time={time}
+            venue={venue}
+            onEdit={onEdit}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ReviewCardItem({
+  tab, label, product, couple, selectedPalette, message, messageAttr, fontStyle,
+  photoSrc, photoOpacity, dressCode, rsvpContacts, receptionVenue, receptionTime,
+  celebrant, ticketAccentColor, ticketAddress, ticketStubLabel, dateISO, time, venue,
+  onEdit,
+}: Omit<ReviewCardGridProps, 'rsvpCardNotes' | 'envelopeNotes' | 'enclosureNotes' | 'menuNotes' | 'programNotes' | 'tableNumbersNotes' | 'swagItems' | 'swagNotes'> & {
+  tab: MainTab
+  label: string
+}) {
+  const [side, setSide] = useState<'front' | 'back'>('front')
+  const isTicket = tab === 'ticket'
+
+  return (
+    <div className={cn('flex flex-col gap-3', isTicket && 'col-span-2')}>
+      {/* Card preview */}
+      <div className={cn(
+        'relative overflow-hidden rounded-[4px] shadow-[0_16px_48px_-16px_rgba(0,0,0,0.4)] ring-1 ring-black/8',
+        isTicket ? 'w-full' : 'aspect-[5/7] w-full',
+      )}>
+        {tab === 'ticket' && side === 'front' ? (
+          <TicketPreview
+            coupleNames={celebrant || 'Amani & Neema'}
+            dateISO={dateISO}
+            time={time}
+            venue={venue}
+            address={ticketAddress}
+            rsvpContact={rsvpContacts.filter(Boolean)[0] ?? ''}
+            accentColor={ticketAccentColor}
+            stubLabel={ticketStubLabel || 'BOARDING PASS TO OUR WEDDING'}
+          />
+        ) : tab === 'invitation' && side === 'front' ? (
+          <InvitationVisual
+            treatment={product.treatment}
+            couple={couple}
+            palette={selectedPalette}
+            message={message || undefined}
+            messageAttr={messageAttr || undefined}
+            fontStyle={fontStyle}
+            photoSrc={photoSrc}
+            photoOpacity={photoOpacity}
+            dressCode={dressCode || undefined}
+            rsvpContact={rsvpContacts.filter(Boolean).join('  ·  ') || undefined}
+            receptionVenue={receptionVenue || undefined}
+            receptionTime={receptionTime || undefined}
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center" style={{ backgroundColor: side === 'back' ? selectedPalette.accent : selectedPalette.background }}>
+            <CanvasPlaceholder tab={tab} palette={selectedPalette} coupleNames={celebrant} side={side} />
+          </div>
+        )}
+      </div>
+
+      {/* Label row: card name + front/back toggle + edit */}
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-700">{label}</p>
+        <div className="flex items-center gap-2">
+          {/* Front / Back toggle */}
+          <div className="flex items-center rounded-full border border-gray-200 bg-gray-100 p-0.5">
+            {(['front', 'back'] as const).map((s) => (
+              <button
+                key={s}
+                type="button"
+                onClick={() => setSide(s)}
+                aria-pressed={side === s}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] transition',
+                  side === s ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400 hover:text-gray-600',
+                )}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+          {/* Edit button */}
+          <button
+            type="button"
+            onClick={() => onEdit(tab)}
+            className="flex items-center gap-1 rounded-full border border-gray-300 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-[0.08em] text-gray-600 transition hover:border-gray-500 hover:text-gray-900"
+          >
+            <Pencil size={9} /> Edit
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Swag canvas preview ─────────────────────────────────────────────────────
+
+function SwagPreview({
+  items, selections, total, coupleNames, palette,
+}: {
+  items: typeof SWAG_CATALOG
+  selections: Record<string, number>
+  total: number
+  coupleNames: string
+  palette: { background: string; accent: string; textPrimary: string; textSecondary: string }
+}) {
+  return (
+    <div className="flex w-full max-w-sm flex-col gap-5">
+      {/* Monogram label */}
+      <div
+        className="flex flex-col items-center gap-1 rounded-xl px-5 py-4 text-center"
+        style={{ backgroundColor: palette.background }}
+      >
+        <p className="text-[9px] font-bold uppercase tracking-[0.28em]" style={{ color: palette.textSecondary }}>
+          Wedding Swag
+        </p>
+        <p
+          className="text-[20px] font-bold leading-snug"
+          style={{ color: palette.textPrimary, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: 'italic' }}
+        >
+          {coupleNames || 'Amani & Neema'}
+        </p>
+        <div className="mt-1 h-px w-10 opacity-30" style={{ backgroundColor: palette.accent }} aria-hidden="true" />
+      </div>
+
+      {/* Item cards */}
+      <div className="grid grid-cols-2 gap-3">
+        {items.map((item) => {
+          const q = selections[item.id] ?? 0
+          return (
+            <div
+              key={item.id}
+              className="flex flex-col items-center gap-2 rounded-xl border border-black/8 bg-white px-3 py-4 text-center shadow-[0_4px_16px_-8px_rgba(0,0,0,0.15)]"
+            >
+              <span className="text-4xl leading-none">{item.emoji}</span>
+              <p className="text-[11px] font-bold text-gray-900">{item.label}</p>
+              <div className="flex flex-col items-center gap-0.5">
+                <p className="text-[10px] tabular-nums text-gray-500">×{q}</p>
+                <p className="text-[11px] font-bold" style={{ color: palette.accent }}>
+                  TZS {(item.unitPrice * q).toLocaleString('en-US')}
+                </p>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Total */}
+      <div
+        className="flex items-center justify-between rounded-xl px-4 py-3"
+        style={{ backgroundColor: palette.accent }}
+      >
+        <p className="text-[11px] font-bold uppercase tracking-[0.12em]" style={{ color: palette.background }}>
+          Total
+        </p>
+        <p className="text-[14px] font-bold tabular-nums" style={{ color: palette.background }}>
+          TZS {total.toLocaleString('en-US')}
+        </p>
+      </div>
+    </div>
+  )
+}
+
+// ─── Canvas placeholder for stationery tabs without live preview ──────────────
+
+function CanvasPlaceholder({
+  tab,
+  palette,
+  coupleNames,
+  side = 'front',
+}: {
+  tab: MainTab
+  palette: { background: string; accent: string; textPrimary: string; textSecondary: string; name?: string }
+  coupleNames: string
+  side?: 'front' | 'back'
+}) {
+  const tabMeta = MAIN_TABS.find((t) => t.id === tab)!
+  const isWide = tab === 'envelope'
+  const isSmall = tab === 'rsvp-card' || tab === 'table-numbers'
+  const isLandscape = tab === 'menu' || tab === 'program'
+  const isBack = side === 'back'
+
+  return (
+    <div className="flex flex-col items-center gap-5">
+      <div
+        className={cn(
+          'relative flex origin-center flex-col items-center justify-center overflow-hidden rounded-[4px] shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/10',
+          isLandscape ? 'aspect-[7/5] w-full max-w-md' :
+          isSmall     ? 'aspect-[5/7] w-48' :
+          isWide      ? 'aspect-[5/3] w-full max-w-sm' :
+                        'aspect-[5/7] w-full max-w-xs',
+        )}
+        style={{ backgroundColor: isBack ? palette.accent : palette.background }}
+      >
+        {/* Top rule */}
+        <div
+          className="absolute inset-x-0 top-0 h-1.5"
+          style={{ backgroundColor: isBack ? palette.background : palette.accent, opacity: isBack ? 0.4 : 1 }}
+          aria-hidden="true"
+        />
+
+        {isBack ? (
+          /* Back side — clean, minimal */
+          <div className="flex flex-col items-center gap-4 px-8 py-6 text-center">
+            <div
+              className="flex h-12 w-12 items-center justify-center rounded-full"
+              style={{ backgroundColor: `${palette.background}30` }}
+              aria-hidden="true"
+            >
+              {tabMeta.icon}
+            </div>
+            <p
+              className="text-[20px] font-bold leading-snug"
+              style={{ color: palette.background, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: 'italic' }}
+            >
+              {coupleNames || 'Amani & Neema'}
+            </p>
+            <div className="h-px w-12 opacity-40" style={{ backgroundColor: palette.background }} aria-hidden="true" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.24em]" style={{ color: `${palette.background}99` }}>
+              {tabMeta.label} · Back
+            </p>
+          </div>
+        ) : (
+          /* Front side */
+          <div className="flex flex-col items-center gap-3 px-8 py-6 text-center">
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-full opacity-25"
+              style={{ backgroundColor: palette.accent }}
+              aria-hidden="true"
+            >
+              {tabMeta.icon}
+            </div>
+            <p className="text-[11px] font-bold uppercase tracking-[0.28em]" style={{ color: palette.textSecondary }}>
+              {tabMeta.label}
+            </p>
+            <p
+              className="text-[18px] font-bold leading-snug"
+              style={{ color: palette.textPrimary, fontFamily: "Georgia, 'Times New Roman', serif", fontStyle: 'italic' }}
+            >
+              {coupleNames || 'Amani & Neema'}
+            </p>
+            {tabMeta.optional && (
+              <span
+                className="mt-1 rounded-sm px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em]"
+                style={{ backgroundColor: `${palette.accent}22`, color: palette.textSecondary }}
+              >
+                Optional
+              </span>
+            )}
+          </div>
+        )}
+
+        {/* Bottom rule */}
+        <div
+          className="absolute inset-x-0 bottom-0 h-1"
+          style={{ backgroundColor: isBack ? palette.background : palette.accent, opacity: 0.35 }}
+          aria-hidden="true"
+        />
+      </div>
+      <p className="max-w-xs text-center text-[12px] leading-relaxed text-gray-500">
+        Preview generated by the design team after checkout
+      </p>
+    </div>
+  )
+}
+
+// ─── Quantity field ───────────────────────────────────────────────────────────
+
+function QuantityField({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3">
+      <div>
+        <p className="text-[12px] font-bold text-gray-900">Quantity</p>
+        <p className="text-[11px] text-gray-400">How many copies do you need?</p>
+      </div>
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onChange(value - (value > 10 ? 10 : 1))}
+          aria-label="Decrease quantity"
+          className="grid h-8 w-8 place-items-center rounded-md border border-gray-300 text-gray-700 transition hover:border-gray-500 hover:bg-white disabled:opacity-40"
+          disabled={value <= 1}
+        >
+          <span className="text-[16px] leading-none">−</span>
+        </button>
+        <input
+          type="number"
+          value={value}
+          min={1}
+          onChange={(e) => onChange(Math.max(1, Number(e.target.value) || 1))}
+          aria-label="Quantity"
+          className="h-8 w-16 rounded-md border border-gray-300 text-center text-[14px] font-bold tabular-nums text-gray-900 focus:border-[#1A1A1A] focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
+        />
+        <button
+          type="button"
+          onClick={() => onChange(value + (value >= 100 ? 10 : 1))}
+          aria-label="Increase quantity"
+          className="grid h-8 w-8 place-items-center rounded-md border border-gray-300 text-gray-700 transition hover:border-gray-500 hover:bg-white"
+        >
+          <span className="text-[16px] leading-none">+</span>
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── Back-print option ───────────────────────────────────────────────────────
+
+function BackPrintToggle({
+  value,
+  onChange,
+}: {
+  value: 'same' | 'blank' | undefined
+  onChange: (v: 'same' | 'blank') => void
+}) {
+  return (
+    <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+      <p className="mb-3 text-[12px] font-bold text-gray-900">Back of card</p>
+      <div className="flex flex-col gap-2">
+        {([
+          { v: 'blank', label: 'Leave back blank', sub: 'No additional cost' },
+          { v: 'same',  label: 'Print same on back', sub: '+TZS 1,500 per item' },
+        ] as const).map(({ v, label, sub }) => (
+          <button
+            key={v}
+            type="button"
+            onClick={() => onChange(v)}
+            aria-pressed={value === v}
+            className={cn(
+              'flex items-start gap-3 rounded-md border px-3.5 py-3 text-left transition',
+              value === v
+                ? 'border-[#1A1A1A] bg-white ring-1 ring-[#1A1A1A]'
+                : 'border-gray-200 bg-white hover:border-gray-400',
+            )}
+          >
+            <span className={cn(
+              'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition',
+              value === v ? 'border-[#1A1A1A] bg-[#1A1A1A]' : 'border-gray-300',
+            )}>
+              {value === v && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+            </span>
+            <span>
+              <span className="block text-[13px] font-semibold text-gray-900">{label}</span>
+              <span className={cn(
+                'text-[11px]',
+                v === 'same' ? 'font-bold text-[#5C6B4D]' : 'text-gray-400',
+              )}>{sub}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ─── Stationery info placeholder ──────────────────────────────────────────────
+
+function StationeryPlaceholder({
+  title, description, icon, optional,
+}: {
+  title: string; description: string; icon: React.ReactNode; optional?: boolean
+}) {
+  return (
+    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-5">
+      <div className="flex items-start gap-3">
+        <div className="mt-0.5 shrink-0">{icon}</div>
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <p className="text-[13px] font-bold text-gray-900">{title}</p>
+            {optional && (
+              <span className="rounded-sm bg-gray-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.1em] text-gray-500">
+                Optional
+              </span>
+            )}
+          </div>
+          <p className="mt-1 text-[12px] leading-relaxed text-gray-500">{description}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─── Notes textarea ───────────────────────────────────────────────────────────
+
+function NotesArea({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
+  return (
+    <textarea
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      rows={4}
+      placeholder={placeholder}
+      className="w-full resize-none rounded-md border border-gray-300 px-3.5 py-2.5 text-[14px] leading-relaxed focus:border-[#1A1A1A] focus:outline-none focus:ring-1 focus:ring-[#1A1A1A]"
+    />
+  )
+}
+
+// ─── Ticket preview ───────────────────────────────────────────────────────────
 
 function TicketPreview({
   coupleNames, dateISO, time, venue, address, rsvpContact, accentColor, stubLabel,
@@ -1110,11 +2021,14 @@ function TicketPreview({
     ? new Date(dateISO + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()
     : 'TBD'
   const dateShort = dateISO
-    ? new Date(dateISO + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')
+    ? new Date(dateISO + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : '—'
 
   return (
-    <div className="relative flex w-full overflow-hidden rounded-lg bg-[#FDFCF8] shadow-[0_24px_60px_-16px_rgba(0,0,0,0.35)] ring-1 ring-black/10" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
+    <div
+      className="relative flex w-full overflow-hidden rounded-lg bg-[#FDFCF8] shadow-[0_24px_60px_-16px_rgba(0,0,0,0.35)] ring-1 ring-black/10"
+      style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
+    >
       {/* Left stub */}
       <div className="relative flex w-[13%] shrink-0 flex-col items-center justify-center py-5" style={{ backgroundColor: accentColor }}>
         <p
@@ -1123,7 +2037,6 @@ function TicketPreview({
         >
           {stubLabel}
         </p>
-        {/* Notch cutouts */}
         <span className="absolute -right-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[#E9E7E3]" aria-hidden="true" />
       </div>
 
@@ -1136,37 +2049,31 @@ function TicketPreview({
 
       {/* Main body */}
       <div className="flex min-w-0 flex-1 flex-col gap-2 px-4 py-4">
-        <p className="text-[8px] font-bold tracking-[0.28em] text-gray-500 uppercase">You are invited to the wedding of</p>
+        <p className="text-[8px] font-bold uppercase tracking-[0.28em] text-gray-500">You are invited to the wedding of</p>
 
-        {/* Names */}
         <div className="flex items-center gap-2 border-y border-gray-200 py-2">
-          <span className="flex-1 text-center text-[22px] font-bold uppercase tracking-widest text-gray-900 leading-none">
+          <span className="flex-1 text-center text-[22px] font-bold uppercase leading-none tracking-widest text-gray-900">
             {first?.trim() || 'BRIDE'}
           </span>
-          <span className="shrink-0 text-[11px] italic text-gray-500" style={{ fontFamily: "Georgia, serif", fontStyle: 'italic' }}>and</span>
-          <span className="flex-1 text-center text-[22px] font-bold uppercase tracking-widest text-gray-900 leading-none">
+          <span className="shrink-0 text-[11px] italic text-gray-500" style={{ fontStyle: 'italic' }}>and</span>
+          <span className="flex-1 text-center text-[22px] font-bold uppercase leading-none tracking-widest text-gray-900">
             {second?.trim() || 'GROOM'}
           </span>
         </div>
 
-        {/* Details row */}
-        <div className="grid grid-cols-2 gap-x-4 text-[9px] text-gray-700 uppercase tracking-[0.14em]">
+        <div className="grid grid-cols-2 gap-x-4 text-[9px] uppercase tracking-[0.14em] text-gray-700">
           <p><span className="font-bold">Date:</span> {dateDisplay}</p>
           <p><span className="font-bold">Address:</span> {address || venue || '—'}</p>
           {time && <p><span className="font-bold">Time:</span> {time}</p>}
         </div>
 
-        {/* Barcode */}
         <div className="flex items-end gap-3 pt-1">
           <div className="flex h-7 items-end gap-px">
             {[3,1,2,1,3,2,1,3,1,2,3,1,2,1,3,2,1,2,3,1,2,3,1,2,1,3,2,1,3,1,2,3,1,2,3,1].map((w, i) => (
               <span key={i} className="rounded-[1px] bg-gray-800" style={{ width: w, height: `${55 + (i % 4) * 10}%` }} />
             ))}
           </div>
-          <p
-            className="pb-0.5 text-[18px] leading-none text-gray-400"
-            style={{ fontFamily: "Georgia, serif", fontStyle: 'italic' }}
-          >
+          <p className="pb-0.5 text-[18px] leading-none text-gray-400" style={{ fontStyle: 'italic' }}>
             Save the Date
           </p>
         </div>
@@ -1196,6 +2103,8 @@ function TicketPreview({
   )
 }
 
+// ─── Shared primitives ────────────────────────────────────────────────────────
+
 function Input({ value, onChange, placeholder }: { value: string; onChange: (v: string) => void; placeholder?: string }) {
   return (
     <input
@@ -1219,15 +2128,9 @@ function Field({ label, hint, children }: { label: string; hint?: string; childr
 }
 
 function ReviewRow({
-  label,
-  value,
-  onEdit,
-  children,
+  label, value, onEdit, children,
 }: {
-  label: string
-  value: string
-  onEdit?: () => void
-  children?: React.ReactNode
+  label: string; value: string; onEdit?: () => void; children?: React.ReactNode
 }) {
   return (
     <div className="group flex items-start justify-between gap-4 border-b border-gray-100 pb-3">
