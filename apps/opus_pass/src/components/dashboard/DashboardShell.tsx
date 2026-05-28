@@ -69,7 +69,7 @@ export default function DashboardShell({
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="min-h-screen bg-[#FBF7F2]">
+    <div className="min-h-screen bg-white">
       {/* Sidebar — desktop */}
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-black/[0.06] bg-white px-4 py-6 lg:flex">
         <Link href="/" className="px-2">
