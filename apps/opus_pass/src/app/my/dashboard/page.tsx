@@ -16,11 +16,29 @@ import {
   getCoupleProfile,
   coupleDisplayName,
 } from '@/lib/dashboard/queries'
+import { requireDashboardUser } from '@/lib/dashboard/auth'
+import { createDashboardClient } from '@/lib/dashboard/supabase'
 import { Card, StatCard, SectionTitle, ProgressBar, StatusPill, EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
 import { EVENT_TYPE_LABELS } from '@/lib/dashboard/types'
 
 export const dynamic = 'force-dynamic'
+
+async function seedStarterEventIfEmpty(): Promise<void> {
+  const user = await requireDashboardUser()
+  const admin = createDashboardClient()
+  const { count } = await admin
+    .from('wedding_events')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+  if ((count ?? 0) > 0) return
+  await admin.from('wedding_events').insert({
+    user_id: user.id,
+    name: 'Our wedding',
+    event_type: 'ceremony',
+    sort_order: 0,
+  })
+}
 
 function formatDate(value: string | null): string {
   if (!value) return 'Date TBC'
@@ -32,7 +50,14 @@ function formatDate(value: string | null): string {
   })
 }
 
-export default async function DashboardOverviewPage() {
+interface PageProps {
+  searchParams: Promise<{ seed?: string }>
+}
+
+export default async function DashboardOverviewPage({ searchParams }: PageProps) {
+  const { seed } = await searchParams
+  if (seed === '1') await seedStarterEventIfEmpty()
+
   const [stats, events, guests, profile] = await Promise.all([
     getStats(),
     getEvents(),
