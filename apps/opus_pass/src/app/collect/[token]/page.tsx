@@ -17,14 +17,18 @@ interface CoupleSummary {
 
 async function loadCouple(token: string): Promise<CoupleSummary | null> {
   const supabase = createDashboardClient()
-  const { data: owner } = await supabase
+  const { data: owner, error: ownerErr } = await supabase
     .from('users')
     .select('id')
     .eq('collector_token', token)
     .maybeSingle<{ id: string }>()
+  if (ownerErr) {
+    console.error('[collect] owner lookup failed', ownerErr)
+    throw ownerErr
+  }
   if (!owner) return null
 
-  const { data: profile } = await supabase
+  const { data: profile, error: profileErr } = await supabase
     .from('couple_profiles')
     .select('partner1_name, partner2_name, wedding_date, city')
     .eq('user_id', owner.id)
@@ -34,6 +38,10 @@ async function loadCouple(token: string): Promise<CoupleSummary | null> {
       wedding_date: string | null
       city: string | null
     }>()
+  if (profileErr) {
+    console.error('[collect] couple profile load failed', profileErr)
+    throw profileErr
+  }
 
   const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
   return {

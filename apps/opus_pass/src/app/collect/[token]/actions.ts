@@ -20,11 +20,15 @@ export async function submitCollectorEntry(token: string, input: CollectorEntryI
   if (!cleanName) throw new Error('Name is required')
 
   const supabase = createDashboardClient()
-  const { data: owner } = await supabase
+  const { data: owner, error: ownerErr } = await supabase
     .from('users')
     .select('id')
     .eq('collector_token', token)
     .maybeSingle<{ id: string }>()
+  if (ownerErr) {
+    console.error('[collect] owner lookup failed', ownerErr)
+    throw new Error('Something went wrong — please try again in a moment.')
+  }
   if (!owner) throw new Error('Invalid collector link')
 
   const phone = input.phone?.trim() || null

@@ -74,12 +74,16 @@ export async function loadDashboardHero(slug: DashboardHeroSlug): Promise<Dashbo
   try {
     const { isEnabled: isDraft } = await draftMode()
     const supabase = createSupabaseServerClient()
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('website_page_sections')
       .select('content, draft_content')
       .eq('page_key', DASHBOARD_HERO_PAGE_KEY[slug])
       .eq('section_key', 'hero')
       .maybeSingle()
+    if (error) {
+      console.error(`[opus-pass cms] dashboard-hero (${slug}) query failed`, error)
+      return fallback
+    }
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
       | Partial<DashboardHeroContent>
       | undefined

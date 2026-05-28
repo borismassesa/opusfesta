@@ -348,7 +348,10 @@ export async function recordSend(guestId: string, channel: SendChannel): Promise
     .eq('user_id', user.id)
   if (error) throw new Error(error.message)
 
-  await supabase.from('guest_message_log').insert({ user_id: user.id, guest_contact_id: guestId, channel })
+  const { error: logErr } = await supabase
+    .from('guest_message_log')
+    .insert({ user_id: user.id, guest_contact_id: guestId, channel })
+  if (logErr) throw new Error(logErr.message)
   revalidateDashboard()
 }
 
@@ -400,18 +403,26 @@ export async function submitPublicRsvp(
   const supabase = createDashboardClient()
 
   // Resolve the guest by token; this is the bearer secret gating access.
-  const { data: guest } = await supabase
+  const { data: guest, error: guestErr } = await supabase
     .from('guest_contacts')
     .select('id, max_party_size')
     .eq('public_token', token)
     .maybeSingle<{ id: string; max_party_size: number }>()
+  if (guestErr) {
+    console.error('[public-rsvp] guest lookup failed', guestErr)
+    return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+  }
   if (!guest) return { ok: false, error: 'Invitation not found.' }
 
   // Only allow updates to invitations that belong to this guest.
-  const { data: owned } = await supabase
+  const { data: owned, error: ownedErr } = await supabase
     .from('guest_invitations')
     .select('id')
     .eq('guest_contact_id', guest.id)
+  if (ownedErr) {
+    console.error('[public-rsvp] invitation lookup failed', ownedErr)
+    return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+  }
   const ownedIds = new Set((owned ?? []).map((r) => r.id as string))
 
   const now = new Date().toISOString()

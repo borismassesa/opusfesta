@@ -50,7 +50,9 @@ export async function publishDashboardHero(slug: string): Promise<void> {
     .eq('section_key', SECTION_KEY)
     .single()
   if (loadErr) throw loadErr
-  if (!row?.draft_content) return
+  if (!row?.draft_content) {
+    throw new Error('No draft to publish. Save changes first.')
+  }
 
   const { error } = await supabase
     .from('website_page_sections')
