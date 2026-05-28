@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   Users, CalendarDays, Shirt, QrCode, Palette, Check, Sparkles, Plus, X,
   ZoomIn, ZoomOut, Lightbulb, HelpCircle, Pencil, Eye, EyeOff, LayoutGrid,
-  MessageSquare, Upload, Type, Layers, Text, ChevronUp, ChevronDown,
+  MessageSquare, Upload, Type, Layers, Text, ChevronUp, ChevronDown, Ticket,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
@@ -19,7 +19,7 @@ import type { OverlayItem } from './_overlay-types'
 import { STICKERS } from './_overlay-types'
 
 type Step = 'design' | 'review'
-type Panel = 'event' | 'details' | 'dress' | 'rsvp' | 'message' | 'elements' | 'theme'
+type Panel = 'event' | 'details' | 'dress' | 'rsvp' | 'message' | 'elements' | 'theme' | 'ticket'
 
 const PANELS: { id: Panel; label: string; icon: React.ReactNode }[] = [
   { id: 'event',    label: 'Event',    icon: <Users size={16} /> },
@@ -29,6 +29,16 @@ const PANELS: { id: Panel; label: string; icon: React.ReactNode }[] = [
   { id: 'message',  label: 'Message',  icon: <MessageSquare size={16} /> },
   { id: 'elements', label: 'Elements', icon: <Layers size={16} /> },
   { id: 'theme',    label: 'Theme',    icon: <Palette size={16} /> },
+  { id: 'ticket',   label: 'Ticket',   icon: <Ticket size={16} /> },
+]
+
+const TICKET_ACCENT_COLORS = [
+  { name: 'Gold',      value: '#8B7355' },
+  { name: 'Champagne', value: '#C4A76B' },
+  { name: 'Blush',     value: '#B07070' },
+  { name: 'Navy',      value: '#2B3A5C' },
+  { name: 'Sage',      value: '#5C6B4D' },
+  { name: 'Charcoal',  value: '#3A3A3A' },
 ]
 
 const FONT_STYLES: { id: FontStyle; label: string; fontFamily: string; fontStyle: string }[] = [
@@ -91,6 +101,11 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const cardRef = useRef<HTMLDivElement>(null)
   const elemImageInputRef = useRef<HTMLInputElement>(null)
+
+  // Wedding ticket customisation (boarding-pass-style door-scan ticket)
+  const [ticketAccentColor, setTicketAccentColor] = useState('#8B7355')
+  const [ticketAddress, setTicketAddress] = useState('')
+  const [ticketStubLabel, setTicketStubLabel] = useState('BOARDING PASS TO OUR WEDDING')
 
   // Product palette selection — drives InvitationVisual colour theme
   const [paletteIndex, setPaletteIndex] = useState(0)
@@ -235,6 +250,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
     message:  message.trim().length > 0,
     elements: overlayItems.length > 0,
     theme:    true,
+    ticket:   ticketAddress.trim().length > 0 || ticketAccentColor !== '#8B7355',
   }
 
   const goEdit = (panel: Panel) => {
@@ -428,6 +444,16 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 )}
                 <ReviewRow label="Font" value={FONT_STYLES.find((f) => f.id === fontStyle)?.label ?? fontStyle} onEdit={() => goEdit('theme')} />
                 <ReviewRow label="Palette" value={selectedPalette.name ?? '—'} onEdit={() => goEdit('theme')} />
+                <ReviewRow
+                  label="Ticket colour"
+                  value={TICKET_ACCENT_COLORS.find((c) => c.value === ticketAccentColor)?.name ?? 'Custom'}
+                  onEdit={() => goEdit('ticket')}
+                >
+                  <span className="h-3 w-3 rounded-full ring-1 ring-black/10" style={{ backgroundColor: ticketAccentColor }} />
+                </ReviewRow>
+                {ticketAddress && (
+                  <ReviewRow label="Ticket address" value={ticketAddress} onEdit={() => goEdit('ticket')} />
+                )}
                 {photoSrc && (
                   <div className="flex items-center justify-between border-b border-gray-100 pb-3">
                     <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-gray-500">Photo</span>
@@ -863,6 +889,50 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   </>
                 )}
 
+                {activePanel === 'ticket' && (
+                  <>
+                    <p className="text-[12px] leading-relaxed text-gray-600">
+                      Customise the boarding-pass-style wedding ticket your guests receive for door scanning.
+                    </p>
+
+                    <Field label="Stub accent colour" hint="The coloured left-hand stub of the ticket">
+                      <div className="flex flex-wrap gap-2">
+                        {TICKET_ACCENT_COLORS.map((c) => (
+                          <button
+                            key={c.value}
+                            type="button"
+                            onClick={() => setTicketAccentColor(c.value)}
+                            aria-pressed={ticketAccentColor === c.value}
+                            title={c.name}
+                            className={cn(
+                              'flex flex-col items-center gap-1 rounded-md border p-2 transition',
+                              ticketAccentColor === c.value
+                                ? 'border-[#1A1A1A] ring-1 ring-[#1A1A1A]'
+                                : 'border-gray-300 hover:border-gray-500',
+                            )}
+                          >
+                            <span
+                              className="h-8 w-8 rounded-full ring-1 ring-black/10"
+                              style={{ backgroundColor: c.value }}
+                              aria-hidden="true"
+                            />
+                            <span className="text-[10px] font-bold text-gray-700">{c.name}</span>
+                            {ticketAccentColor === c.value && <Check size={11} className="text-[#1A1A1A]" aria-hidden="true" />}
+                          </button>
+                        ))}
+                      </div>
+                    </Field>
+
+                    <Field label="Venue address" hint="Full address printed on the ticket (e.g. 123 Anywhere St., Dar es Salaam)">
+                      <Input value={ticketAddress} onChange={setTicketAddress} placeholder="e.g. 45 Ocean Rd, Dar es Salaam" />
+                    </Field>
+
+                    <Field label="Stub label" hint="Vertical text on the left stub">
+                      <Input value={ticketStubLabel} onChange={setTicketStubLabel} placeholder="BOARDING PASS TO OUR WEDDING" />
+                    </Field>
+                  </>
+                )}
+
                 <div className="flex items-start gap-2.5 rounded-md border border-[#E8D9A7]/60 bg-[#F5EFE3]/60 px-3.5 py-3">
                   <Sparkles size={16} className="mt-0.5 shrink-0 text-[#7A1F2B]" aria-hidden="true" />
                   <p className="text-[12px] leading-snug text-gray-700">
@@ -963,34 +1033,49 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
           !canvasVisible && 'hidden lg:flex',
         )}>
           <div className="flex flex-1 items-center justify-center overflow-auto p-6 sm:p-10">
-            <div className="w-full max-w-sm origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
-              <div ref={cardRef} className="relative aspect-[5/7] overflow-hidden rounded-[4px] bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
-                <InvitationVisual
-                  treatment={product.treatment}
-                  couple={couple}
-                  palette={selectedPalette}
-                  message={message || undefined}
-                  messageAttr={messageAttr || undefined}
-                  fontStyle={fontStyle}
-                  photoSrc={photoSrc}
-                  photoOpacity={photoOpacity}
-                  dressCode={dressCode || undefined}
-                  rsvpContact={rsvpContacts.filter(Boolean).join('  ·  ') || undefined}
-                  receptionVenue={receptionVenue || undefined}
-                  receptionTime={receptionTime || undefined}
-                />
-                <OverlayEditor
-                  containerRef={cardRef}
-                  items={overlayItems}
-                  selectedId={selectedItemId}
-                  onSelect={setSelectedItemId}
-                  onMove={(id, x, y) => updateOverlayItem(id, { x, y })}
-                  onUpdate={updateOverlayItem}
-                  onDelete={deleteOverlayItem}
-                  onDuplicate={duplicateOverlayItem}
+            {activePanel === 'ticket' ? (
+              <div className="w-full max-w-xl origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
+                <TicketPreview
+                  coupleNames={celebrant || 'Amani & Neema'}
+                  dateISO={dateISO}
+                  time={time}
+                  venue={venue}
+                  address={ticketAddress}
+                  rsvpContact={rsvpContacts.filter(Boolean)[0] ?? ''}
+                  accentColor={ticketAccentColor}
+                  stubLabel={ticketStubLabel || 'BOARDING PASS TO OUR WEDDING'}
                 />
               </div>
-            </div>
+            ) : (
+              <div className="w-full max-w-sm origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
+                <div ref={cardRef} className="relative aspect-[5/7] overflow-hidden rounded-[4px] bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
+                  <InvitationVisual
+                    treatment={product.treatment}
+                    couple={couple}
+                    palette={selectedPalette}
+                    message={message || undefined}
+                    messageAttr={messageAttr || undefined}
+                    fontStyle={fontStyle}
+                    photoSrc={photoSrc}
+                    photoOpacity={photoOpacity}
+                    dressCode={dressCode || undefined}
+                    rsvpContact={rsvpContacts.filter(Boolean).join('  ·  ') || undefined}
+                    receptionVenue={receptionVenue || undefined}
+                    receptionTime={receptionTime || undefined}
+                  />
+                  <OverlayEditor
+                    containerRef={cardRef}
+                    items={overlayItems}
+                    selectedId={selectedItemId}
+                    onSelect={setSelectedItemId}
+                    onMove={(id, x, y) => updateOverlayItem(id, { x, y })}
+                    onUpdate={updateOverlayItem}
+                    onDelete={deleteOverlayItem}
+                    onDuplicate={duplicateOverlayItem}
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Zoom control */}
@@ -1008,6 +1093,103 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
             />
             <ZoomIn size={16} className="text-gray-500" aria-hidden="true" />
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TicketPreview({
+  coupleNames, dateISO, time, venue, address, rsvpContact, accentColor, stubLabel,
+}: {
+  coupleNames: string; dateISO: string; time: string; venue: string; address: string
+  rsvpContact: string; accentColor: string; stubLabel: string
+}) {
+  const [first, second] = coupleNames.split(/\s*&\s*/)
+  const dateDisplay = dateISO
+    ? new Date(dateISO + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()
+    : 'TBD'
+  const dateShort = dateISO
+    ? new Date(dateISO + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }).replace(/\//g, '/')
+    : '—'
+
+  return (
+    <div className="relative flex w-full overflow-hidden rounded-lg bg-[#FDFCF8] shadow-[0_24px_60px_-16px_rgba(0,0,0,0.35)] ring-1 ring-black/10" style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}>
+      {/* Left stub */}
+      <div className="relative flex w-[13%] shrink-0 flex-col items-center justify-center py-5" style={{ backgroundColor: accentColor }}>
+        <p
+          className="select-none text-[9px] font-bold tracking-[0.22em] text-white"
+          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', overflow: 'hidden', maxHeight: '90%' }}
+        >
+          {stubLabel}
+        </p>
+        {/* Notch cutouts */}
+        <span className="absolute -right-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[#E9E7E3]" aria-hidden="true" />
+      </div>
+
+      {/* Perforated edge */}
+      <div className="flex w-[3px] shrink-0 flex-col items-center justify-around py-2" aria-hidden="true">
+        {Array.from({ length: 18 }).map((_, i) => (
+          <span key={i} className="h-1 w-0.5 rounded-full bg-gray-300" />
+        ))}
+      </div>
+
+      {/* Main body */}
+      <div className="flex min-w-0 flex-1 flex-col gap-2 px-4 py-4">
+        <p className="text-[8px] font-bold tracking-[0.28em] text-gray-500 uppercase">You are invited to the wedding of</p>
+
+        {/* Names */}
+        <div className="flex items-center gap-2 border-y border-gray-200 py-2">
+          <span className="flex-1 text-center text-[22px] font-bold uppercase tracking-widest text-gray-900 leading-none">
+            {first?.trim() || 'BRIDE'}
+          </span>
+          <span className="shrink-0 text-[11px] italic text-gray-500" style={{ fontFamily: "Georgia, serif", fontStyle: 'italic' }}>and</span>
+          <span className="flex-1 text-center text-[22px] font-bold uppercase tracking-widest text-gray-900 leading-none">
+            {second?.trim() || 'GROOM'}
+          </span>
+        </div>
+
+        {/* Details row */}
+        <div className="grid grid-cols-2 gap-x-4 text-[9px] text-gray-700 uppercase tracking-[0.14em]">
+          <p><span className="font-bold">Date:</span> {dateDisplay}</p>
+          <p><span className="font-bold">Address:</span> {address || venue || '—'}</p>
+          {time && <p><span className="font-bold">Time:</span> {time}</p>}
+        </div>
+
+        {/* Barcode */}
+        <div className="flex items-end gap-3 pt-1">
+          <div className="flex h-7 items-end gap-px">
+            {[3,1,2,1,3,2,1,3,1,2,3,1,2,1,3,2,1,2,3,1,2,3,1,2,1,3,2,1,3,1,2,3,1,2,3,1].map((w, i) => (
+              <span key={i} className="rounded-[1px] bg-gray-800" style={{ width: w, height: `${55 + (i % 4) * 10}%` }} />
+            ))}
+          </div>
+          <p
+            className="pb-0.5 text-[18px] leading-none text-gray-400"
+            style={{ fontFamily: "Georgia, serif", fontStyle: 'italic' }}
+          >
+            Save the Date
+          </p>
+        </div>
+      </div>
+
+      {/* Perforated edge */}
+      <div className="flex w-[3px] shrink-0 flex-col items-center justify-around py-2" aria-hidden="true">
+        {Array.from({ length: 18 }).map((_, i) => (
+          <span key={i} className="h-1 w-0.5 rounded-full bg-gray-300" />
+        ))}
+      </div>
+
+      {/* Right mini-stub */}
+      <div className="relative flex w-[18%] shrink-0 flex-col items-center justify-center gap-3 px-2 py-4 text-center">
+        <span className="absolute -left-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[#E9E7E3]" aria-hidden="true" />
+        <div>
+          <p className="text-[7px] font-bold uppercase tracking-[0.18em] text-gray-500">Save the Date</p>
+          <p className="mt-0.5 text-[11px] font-bold tabular-nums text-gray-900">{dateShort}</p>
+        </div>
+        <div>
+          <p className="text-[13px]" aria-hidden="true">🤍</p>
+          <p className="text-[8px] font-bold uppercase tracking-[0.14em]" style={{ color: accentColor }}>RSVP</p>
+          <p className="mt-0.5 text-[8px] tabular-nums text-gray-700">{rsvpContact || '+255 7XX XXX XXX'}</p>
         </div>
       </div>
     </div>

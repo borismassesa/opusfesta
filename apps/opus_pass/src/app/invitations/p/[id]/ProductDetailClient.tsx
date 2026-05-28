@@ -402,6 +402,17 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
                 description="Send an OpusFesta host to your venue. We scan each guest's invite QR code at the entrance and tick them off your live guest list in real time — no clipboards, no chaos."
                 priceLabel={`TZS ${DOOR_SCAN_SERVICE_PRICE.toLocaleString('en-US')} flat fee per event`}
               />
+              {doorScan && (
+                <div className="rounded-xl border border-[#C9A84C] bg-[#FFFAF0] px-4 py-3.5 flex gap-3 items-start">
+                  <span className="text-[20px] leading-none mt-0.5">🎟️</span>
+                  <div>
+                    <p className="text-[13px] font-bold text-[#7A5C1E] mb-0.5">You&apos;ll receive wedding tickets</p>
+                    <p className="text-[12px] text-[#7A5C1E] leading-relaxed">
+                      Each guest will get a personalised <strong>boarding-pass-style wedding ticket</strong> with their name, event details, and a unique QR code — just like the example above. Our host scans it at the door for seamless entry.
+                    </p>
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Order summary */}
@@ -457,7 +468,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
               <span aria-hidden className="text-[#7A1F2B] text-lg leading-none mt-0.5">✦</span>
               <div className="text-[13px] leading-snug">
                 <p className="font-bold text-gray-900">Free revisions if your plans change.</p>
-                <Link href="#" className="text-gray-700 underline underline-offset-2 hover:text-gray-900">
+                <Link href="/terms" className="text-gray-700 underline underline-offset-2 hover:text-gray-900">
                   See full details
                 </Link>
               </div>
