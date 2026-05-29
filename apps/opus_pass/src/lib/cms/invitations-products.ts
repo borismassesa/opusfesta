@@ -23,20 +23,27 @@ type ProductRow = {
 }
 
 function rowToProduct(row: ProductRow): CatalogProduct {
+  const bundled = findProductById(row.id)
   return {
-    id: row.id,
-    slug: row.slug,
-    category: row.category,
-    name: row.name,
-    designer: row.designer,
-    priceWas: row.price_was ?? undefined,
-    priceNow: row.price_now,
+    // Local-only fields that live in the bundled data (not in the DB schema yet)
+    palettes:     bundled?.palettes     ?? [],
+    designImage:  bundled?.designImage,
+    content:      bundled?.content,
+    themeId:      bundled?.themeId,
+    // CMS fields — these override the bundled equivalents
+    id:               row.id,
+    slug:             row.slug,
+    category:         row.category,
+    name:             row.name,
+    designer:         row.designer,
+    priceWas:         row.price_was ?? undefined,
+    priceNow:         row.price_now,
     digitalUnitPrice: row.digital_unit_price,
-    freeSample: row.free_sample,
-    swatches: Array.isArray(row.swatches) ? row.swatches : [],
-    treatment: row.treatment as Treatment,
-    imageUrl: row.image_url || undefined,
-    gallery: Array.isArray(row.gallery) ? row.gallery.filter(Boolean) : [],
+    freeSample:       row.free_sample,
+    swatches:         Array.isArray(row.swatches) ? row.swatches : (bundled?.swatches ?? []),
+    treatment:        row.treatment as Treatment,
+    imageUrl:         row.image_url || undefined,
+    gallery:          Array.isArray(row.gallery) ? row.gallery.filter(Boolean) : [],
   }
 }
 

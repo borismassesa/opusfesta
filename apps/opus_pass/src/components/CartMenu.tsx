@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { toast } from 'sonner'
 import { ShoppingBag, X, ArrowRight } from 'lucide-react'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { useCart } from '@/components/providers/CartProvider'
@@ -124,16 +123,13 @@ export default function CartMenu() {
                       TZS {subtotal.toLocaleString('en-US')}
                     </span>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setOpen(false)
-                      toast.info('Checkout is coming soon — your cart is saved.')
-                    }}
+                  <Link
+                    href="/invitations/cart"
+                    onClick={() => setOpen(false)}
                     className="inline-flex w-full items-center justify-center rounded-full bg-(--accent) px-6 py-3 text-[13px] font-extrabold uppercase tracking-[0.08em] text-(--on-accent) transition hover:bg-(--accent-hover)"
                   >
                     Checkout
-                  </button>
+                  </Link>
                   <Link
                     href="/invitations"
                     onClick={() => setOpen(false)}

@@ -1,0 +1,36 @@
+{
+  "treatment": "save-the-date-photo",
+  "swatches": ["#00a79d", "#0F2535", "#7A3B2E"],
+  "palettes": [
+    {
+      "label": "Teal & Gold",
+      "swatch": "#00a79d",
+      "background": "#00a79d",
+      "surface": "#00a79d",
+      "accent": "#6fc7b0",
+      "textPrimary": "#ffffff",
+      "textSecondary": "#ffffff",
+      "muted": "rgba(255,255,255,0.65)"
+    },
+    {
+      "label": "Ocean Night",
+      "swatch": "#0F2535",
+      "background": "#0F2535",
+      "surface": "#0F2535",
+      "accent": "#7EBFB5",
+      "textPrimary": "#EDF5F4",
+      "textSecondary": "#7EBFB5",
+      "muted": "rgba(126,191,181,0.55)"
+    },
+    {
+      "label": "Coral Terracotta",
+      "swatch": "#7A3B2E",
+      "background": "#7A3B2E",
+      "surface": "#7A3B2E",
+      "accent": "#E8A87C",
+      "textPrimary": "#FDF0E8",
+      "textSecondary": "#E8A87C",
+      "muted": "rgba(232,168,124,0.65)"
+    }
+  ]
+}
