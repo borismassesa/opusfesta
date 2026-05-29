@@ -1,0 +1,63 @@
+<svg
+  xmlns="http://www.w3.org/2000/svg"
+  viewBox="0 0 300 400"
+  width="100%"
+  height="100%"
+  preserveAspectRatio="xMidYMid meet"
+>
+  <rect id="Background" width="300" height="400" fill="var(--iv-bg, #7A1F2B)" />
+
+  <rect
+    id="Decorative"
+    x="14" y="14"
+    width="272" height="372"
+    fill="none"
+    stroke="var(--iv-acc, #C8A35C)"
+    stroke-width="2"
+  />
+
+  <text
+    x="150" y="160"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="10"
+    letter-spacing="3"
+    fill="var(--iv-acc, #C8A35C)"
+  >- KARIBU -</text>
+
+  <g id="Names">
+    <text
+      x="150" y="196"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-family="Georgia, 'Times New Roman', serif"
+      font-size="17"
+      fill="var(--iv-tp, #F5EFE3)"
+    >Amani &amp; Neema</text>
+  </g>
+
+  <g id="Date">
+    <text
+      x="150" y="220"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-family="Georgia, 'Times New Roman', serif"
+      font-size="9"
+      letter-spacing="2.2"
+      fill="var(--iv-ts, #C8A35C)"
+    >22 - 08 - 2026</text>
+  </g>
+
+  <g id="Venue">
+    <text
+      x="150" y="237"
+      text-anchor="middle"
+      dominant-baseline="middle"
+      font-family="Georgia, 'Times New Roman', serif"
+      font-size="7"
+      letter-spacing="2.2"
+      fill="var(--iv-mut, #A8864A)"
+    >BAGAMOYO, TANZANIA</text>
+  </g>
+</svg>

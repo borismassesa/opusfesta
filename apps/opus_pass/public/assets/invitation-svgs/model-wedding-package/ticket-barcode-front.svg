@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 612 198">
+  <defs>
+    <style>
+      .st0 { font-family: Computersaysno, 'Computer says no'; font-size: 13.47px; fill: var(--iv-mut, #6a5640); }
+      .st1 { font-family: Computersaysno, 'Computer says no'; font-size: 13.47px; letter-spacing: .2em; fill: var(--iv-ts, #ab8d53); }
+      .st2 { font-family: Computersaysno, 'Computer says no'; font-size: 22.83px; letter-spacing: .1em; fill: var(--iv-ts, #ab8d53); }
+      .st3 { font-family: Computersaysno, 'Computer says no'; font-size: 11.07px; fill: var(--iv-ts, #ab8d53); }
+      .st4 { font-family: Computersaysno, 'Computer says no'; font-size: 7px; fill: var(--iv-ts, #ab8d53); }
+      .st5 { font-family: Computersaysno, 'Computer says no'; font-size: 14px; fill: var(--iv-ts, #ab8d53); }
+      .st6 { font-family: Computersaysno, 'Computer says no'; font-size: 27.75px; fill: var(--iv-tp, #3a2d1f); }
+      .st7 { font-family: Computersaysno, 'Computer says no'; font-size: 13.47px; fill: var(--iv-mut, #6a5640); }
+      .st8 { font-family: Computersaysno, 'Computer says no'; font-size: 9px; fill: #fff; }
+      .st9 { fill: var(--iv-bg, #f5f0ea); }
+      .st10 { fill: var(--iv-acc, #ab8d53); }
+      .st11 { font-family: AnastasiaScript, AnastasiaScript; font-size: 35.95px; fill: var(--iv-acc, #ab8d53); }
+      .st12 { font-family: AnastasiaScript, AnastasiaScript; font-size: 27.54px; fill: var(--iv-acc, #ab8d53); }
+      .st13 { fill: #eee; }
+      .st14 { fill: #fff; }
+      .st15, .st16, .st17, .st18, .st19 { fill: none; }
+      .st15, .st16, .st18 { stroke: var(--iv-acc, #ab8d53); }
+      .st15, .st17, .st18, .st19 { stroke-linecap: round; stroke-linejoin: round; stroke-width: 2px; }
+      .st15, .st19 { stroke-dasharray: 0 8.19; }
+      .st16 { stroke-width: .75px; }
+      .st17, .st19 { stroke: var(--iv-mut, #6a5641); }
+      .st20 { isolation: isolate; }
+      .st21 { opacity: 0; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <g id="Background">
+    <rect class="st9" width="612" height="198"/>
+  </g>
+
+  <!-- Stub: left accent-colour panel -->
+  <g id="Stub">
+    <path class="st10" d="M67.63,28.13v141.84c-6.59,0-11.92,5.34-11.92,11.92,0,.73.07,1.45.2,2.15h-21.42c-9.37,0-16.96-7.59-16.96-16.95V33.16c0-9.36,7.59-16.95,16.96-16.95h21.22c0,6.59,5.33,11.92,11.92,11.92Z"/>
+  </g>
+
+  <!-- Stub_Label: vertical rotated text on the left stub -->
+  <g id="Stub_Label">
+    <text class="st8" transform="translate(41.09 149.63) rotate(-90)"><tspan x="0" y="0">ACCESS PASS TO OUR</tspan><tspan x="30.94" y="10.8">WEDDING</tspan></text>
+    <path class="st14" d="M45.65,134.85c1.29.78,2.55.23,3.22-.46l3.9-4.06-3.88-3.98c-.72-.65-1.48-.89-2.33-.76-1.17.19-2.08,1.16-2.21,2.35-.08.73.13,1.44.59,1.99.12.15.26.28.41.4-.17.14-.33.3-.47.48-.48.64-.67,1.44-.53,2.22.14.74.62,1.4,1.3,1.81Z"/>
+    <path class="st14" d="M45.65,73.86c1.29.78,2.55.23,3.22-.46l3.9-4.06-3.88-3.98c-.72-.65-1.48-.89-2.33-.76-1.17.19-2.08,1.16-2.21,2.35-.08.73.13,1.44.59,1.99.12.15.26.28.41.4-.17.14-.33.3-.47.48-.48.64-.67,1.44-.53,2.22.14.74.62,1.4,1.3,1.81Z"/>
+  </g>
+
+  <!-- Ticket body (white panel) -->
+  <g id="Ticket_Body">
+    <path class="st14" d="M594.92,33.16v133.93c0,9.36-7.59,16.95-16.95,16.95h-115.52c.13-.7.2-1.42.2-2.15,0-6.58-5.34-11.92-11.93-11.92s-11.92,5.34-11.92,11.92c0,.73.07,1.45.2,2.15H79.35c.13-.7.2-1.42.2-2.15,0-6.58-5.34-11.92-11.92-11.92V28.13c6.58,0,11.92-5.33,11.92-11.92h359.25c0,6.59,5.34,11.92,11.92,11.92s11.93-5.33,11.93-11.92h115.32c9.36,0,16.95,7.59,16.95,16.95Z"/>
+  </g>
+
+  <!-- Ticket_Stub_Tear: perforated dashed tear-lines (Decorative) -->
+  <g id="Ticket_Stub_Tear">
+    <g>
+      <line class="st17" x1="67.63" y1="29.43" x2="67.63" y2="29.43"/>
+      <line class="st19" x1="67.63" y1="37.62" x2="67.63" y2="164.58"/>
+      <line class="st17" x1="67.63" y1="168.68" x2="67.63" y2="168.68"/>
+    </g>
+    <g>
+      <line class="st18" x1="451.36" y1="29.43" x2="451.36" y2="29.43"/>
+      <line class="st15" x1="451.36" y1="37.62" x2="451.36" y2="164.58"/>
+      <line class="st18" x1="451.36" y1="168.68" x2="451.36" y2="168.68"/>
+    </g>
+  </g>
+
+  <!-- Decorative: divider lines and ornaments -->
+  <g id="Decorative">
+    <line class="st16" x1="72.6" y1="51.16" x2="447.05" y2="51.03"/>
+    <line class="st16" x1="226.72" y1="95.19" x2="227.02" y2="57.12"/>
+    <line class="st16" x1="292.63" y1="95.19" x2="292.92" y2="57.12"/>
+    <line class="st16" x1="72.6" y1="99.9" x2="447.05" y2="99"/>
+    <line class="st16" x1="72.6" y1="144.68" x2="447.05" y2="143.78"/>
+    <rect class="st21" x="72.6" y="50.65" width="374.46" height=".88"/>
+    <rect class="st21" x="226.35" y="57.12" width="1.05" height="38.07"/>
+    <rect class="st21" x="292.25" y="57.12" width="1.05" height="38.07"/>
+    <rect class="st21" x="72.6" y="98.62" width="374.46" height="1.65"/>
+    <rect class="st21" x="72.6" y="143.4" width="374.46" height="1.65"/>
+    <path class="st10" d="M473.86,107.84c-1.79,2.94-.53,5.8,1.05,7.32l9.24,8.87,9.05-8.83c1.47-1.63,2.03-3.37,1.72-5.3-.43-2.67-2.63-4.74-5.35-5.04-1.67-.18-3.28.29-4.53,1.34-.34.28-.64.6-.9.94-.31-.39-.68-.74-1.09-1.06-1.45-1.1-3.29-1.53-5.05-1.2-1.67.32-3.18,1.4-4.12,2.96Z"/>
+  </g>
+
+  <!-- Event_Title -->
+  <g id="Event_Title">
+    <text class="st5" transform="translate(118.97 41.25)"><tspan x="0" y="0">YOU ARE INVITED TO THE WEDDING OF</tspan></text>
+    <g class="st20">
+      <text class="st11" transform="translate(238.87 174.65)"><tspan x="0" y="0">Save the Date</tspan></text>
+    </g>
+    <text class="st7" transform="translate(470.9 59.31)"><tspan x="0" y="0">SAVE THE DATE</tspan></text>
+  </g>
+
+  <!-- Ticket_Title: couple names -->
+  <g id="Ticket_Title">
+    <text class="st6" transform="translate(92.28 88.57)"><tspan x="0" y="0">CLAUDIA</tspan></text>
+    <text class="st12" transform="translate(236.91 80.94)"><tspan x="0" y="0">and</tspan></text>
+    <text class="st6" transform="translate(323.04 88.57)"><tspan x="0" y="0">DANIEL</tspan></text>
+  </g>
+
+  <!-- Ticket_Date -->
+  <g id="Ticket_Date">
+    <text class="st4" transform="translate(89.54 115.97)"><tspan x="0" y="0">DATE: 02 OCTOBER, 2024</tspan></text>
+    <text class="st1" transform="translate(470.9 77.63)"><tspan x="0" y="0">02/10/2024</tspan></text>
+  </g>
+
+  <!-- Ticket_Time -->
+  <g id="Ticket_Time">
+    <text class="st4" transform="translate(89.54 133.87)"><tspan x="0" y="0">TIME: 8:20PM</tspan></text>
+  </g>
+
+  <!-- Ticket_Venue -->
+  <g id="Ticket_Venue">
+    <text class="st3" transform="translate(265.68 115.3)"><tspan x="0" y="0">ADDRESS: 123 ANYWHERE ST.</tspan><tspan x="58.81" y="13.29">ANY CITY</tspan></text>
+  </g>
+
+  <!-- Ticket_Gate -->
+  <g id="Ticket_Gate">
+    <text class="st4" transform="translate(89.54 155)"><tspan x="0" y="0">GATE: A</tspan></text>
+  </g>
+
+  <!-- Rsvp_Contact -->
+  <g id="Rsvp_Contact">
+    <text class="st2" transform="translate(500.71 124.03)"><tspan x="0" y="0">RSVP</tspan></text>
+    <text class="st0" transform="translate(470.9 145.84)"><tspan x="0" y="0">+123-456-7890</tspan></text>
+    <text class="st0" transform="translate(470.9 162.97)"><tspan x="0" y="0">+123-456-7890</tspan></text>
+  </g>
+
+  <!-- Barcode_Placeholder -->
+  <g id="Barcode_Placeholder">
+    <rect class="st13" x="86.8" y="150.51" width="148.54" height="21.76"/>
+    <text class="st4" transform="translate(127.02 180.56)"><tspan x="0" y="0">77568855334355</tspan></text>
+  </g>
+</svg>
