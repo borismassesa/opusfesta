@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Area,
   AreaChart,
@@ -35,12 +35,23 @@ function ChartFrame({
   empty?: boolean
   children: React.ReactNode
 }) {
-  // Recharts' ResponsiveContainer can't measure its parent during SSR, so it
-  // renders at -1×-1 and logs a width/height warning on every server render.
-  // Defer the chart to the client; the fixed-height frame holds the space so
-  // there's no layout shift on hydration.
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => setMounted(true), [])
+  // Recharts' ResponsiveContainer logs a "width(-1) height(-1)" warning if it
+  // renders before its parent has a measured size (SSR, or the first client
+  // paint before the ResizeObserver fires, or while inside a hidden panel).
+  // Gate the chart on a real, non-zero measured size so it never renders at -1.
+  const frameRef = useRef<HTMLDivElement>(null)
+  const [ready, setReady] = useState(false)
+  useEffect(() => {
+    const el = frameRef.current
+    if (!el) return
+    const check = () => {
+      if (el.clientWidth > 0 && el.clientHeight > 0) setReady(true)
+    }
+    check()
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
 
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
@@ -50,13 +61,13 @@ function ChartFrame({
           {hint && <p className="mt-0.5 text-xs text-gray-500">{hint}</p>}
         </div>
       </header>
-      <div className="h-[260px] w-full">
+      <div ref={frameRef} className="h-[260px] w-full">
         {empty ? (
           <div className="flex h-full items-center justify-center">
             <p className="text-xs text-gray-400">No data yet</p>
           </div>
         ) : (
-          mounted && children
+          ready && children
         )}
       </div>
     </div>
