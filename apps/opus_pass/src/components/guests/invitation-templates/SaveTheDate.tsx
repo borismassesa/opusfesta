@@ -2,7 +2,7 @@ import type { TemplateProps } from './_types'
 
 export function SaveTheDate({
   names, date, venue, palette,
-  time, dressCode, rsvpContact, receptionVenue, receptionTime, sectionStyles,
+  time, dressCode, rsvpContact, receptionVenue, receptionTime, sectionStyles, dressCodeColors,
 }: TemplateProps) {
   const vars = {
     '--iv-bg':  palette.background,
@@ -21,6 +21,8 @@ export function SaveTheDate({
   const dateFW    = sectionStyles?.date?.fontWeight ?? 'normal'
   const venueScale = sectionStyles?.venue?.scale ?? 1
   const venueFW   = sectionStyles?.venue?.fontWeight ?? 'normal'
+
+  const dot = (i: number, fallback: string) => dressCodeColors?.[i] ?? fallback
 
   // Shift lower content down when reception row is present
   const dressY  = hasReception ? 543 : 524.65
@@ -145,9 +147,9 @@ export function SaveTheDate({
       >
         <tspan x="0" y="0">{dressCode ? `Dress Code · ${dressCode}` : 'Dress Code'}</tspan>
       </text>
-      <circle cx="340" cy={circleY} r="7" fill="#f0d497" />
-      <circle cx="357" cy={circleY} r="7" fill="#f096b1" />
-      <circle cx="374" cy={circleY} r="7" fill="#7bbc7e" />
+      <circle cx="340" cy={circleY} r="7" fill={dot(0, '#f0d497')} />
+      <circle cx="357" cy={circleY} r="7" fill={dot(1, '#f096b1')} />
+      <circle cx="374" cy={circleY} r="7" fill={dot(2, '#7bbc7e')} />
 
       {/* ── RSVP ── */}
       {rsvpContact && (

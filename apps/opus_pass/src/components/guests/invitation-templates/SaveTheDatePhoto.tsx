@@ -1,9 +1,10 @@
 import type { TemplateProps } from './_types'
+import { resolveFont } from './_types'
 
 export function SaveTheDatePhoto({
   names, date, venue, palette,
   time, dressCode, rsvpContact, receptionVenue, receptionTime,
-  photoSrc, photoOpacity = 0.85, sectionStyles,
+  photoSrc, photoOpacity = 0.85, fontStyle, sectionStyles, dressCodeColors,
 }: TemplateProps & { photoSrc?: string; photoOpacity?: number }) {
   const vars = {
     '--iv-bg':  palette.background,
@@ -18,10 +19,20 @@ export function SaveTheDatePhoto({
   const line2 = parts[1]
   const hasReception = Boolean(receptionVenue || receptionTime)
 
-  const dateScale  = sectionStyles?.date?.scale ?? 1
-  const dateFW     = sectionStyles?.date?.fontWeight ?? 'normal'
-  const venueScale = sectionStyles?.venue?.scale ?? 1
-  const venueFW    = sectionStyles?.venue?.fontWeight ?? 'normal'
+  const font       = resolveFont(fontStyle)
+  const nameScale  = sectionStyles?.names?.scale        ?? 1
+  const nameFW     = sectionStyles?.names?.fontWeight   ?? '700'
+  const dateScale  = sectionStyles?.date?.scale         ?? 1
+  const dateFW     = sectionStyles?.date?.fontWeight    ?? 'normal'
+  const venueScale = sectionStyles?.venue?.scale        ?? 1
+  const venueFW    = sectionStyles?.venue?.fontWeight   ?? 'normal'
+  const timeScale  = sectionStyles?.time?.scale         ?? 1
+  const timeFW     = sectionStyles?.time?.fontWeight    ?? 'normal'
+  const dressScale = sectionStyles?.dressCode?.scale    ?? 1
+  const dressFW    = sectionStyles?.dressCode?.fontWeight ?? 'normal'
+  const recepScale = sectionStyles?.reception?.scale    ?? 1
+
+  const dot = (i: number, fallback: string) => dressCodeColors?.[i] ?? fallback
 
   const dressY  = hasReception ? 543 : 524.65
   const circleY = hasReception ? 539 : 520.74
@@ -117,7 +128,7 @@ export function SaveTheDatePhoto({
       </text>
 
       {/* ── Intro ── */}
-      <text transform="translate(151.68 359.81)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="15" fill="var(--iv-tp)">
+      <text transform="translate(151.68 359.81)" style={font.bodyStyle} fontSize="15" fill="var(--iv-tp)">
         <tspan x="0" y="0">for the wedding of</tspan>
       </text>
 
@@ -125,40 +136,40 @@ export function SaveTheDatePhoto({
       <g data-section="names">
         {line2 ? (
           <>
-            <text transform="translate(110.37 389.15)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="24.32" fontWeight="700" fill="var(--iv-tp)">
+            <text transform="translate(110.37 389.15)" style={font.namesStyle} fontSize={24.32 * nameScale} fontWeight={nameFW} fill="var(--iv-tp)">
               <tspan x="0" y="0">{line1.toUpperCase()}</tspan>
             </text>
-            <text transform="translate(110.37 418)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="24.32" fontWeight="700" fill="var(--iv-tp)">
+            <text transform="translate(110.37 418)" style={font.namesStyle} fontSize={24.32 * nameScale} fontWeight={nameFW} fill="var(--iv-tp)">
               <tspan x="0" y="0">&amp; {line2.toUpperCase()}</tspan>
             </text>
           </>
         ) : (
-          <text transform="translate(110.37 389.15)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="24.32" fontWeight="700" fill="var(--iv-tp)">
+          <text transform="translate(110.37 389.15)" style={font.namesStyle} fontSize={24.32 * nameScale} fontWeight={nameFW} fill="var(--iv-tp)">
             <tspan x="0" y="0">{names.toUpperCase()}</tspan>
           </text>
         )}
       </g>
 
       {/* ── Date ── */}
-      <text data-section="date" transform="translate(181.86 438.76)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize={15.98 * dateScale} fontWeight={dateFW} fill="var(--iv-tp)">
+      <text data-section="date" transform="translate(181.86 438.76)" style={font.bodyStyle} fontSize={15.98 * dateScale} fontWeight={dateFW} fill="var(--iv-tp)">
         <tspan x="0" y="0">{date}</tspan>
       </text>
 
       {/* ── Venue ── */}
-      <text data-section="venue" transform="translate(134.53 455.73)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize={13 * venueScale} fontWeight={venueFW} fill="var(--iv-tp)">
+      <text data-section="venue" transform="translate(134.53 455.73)" style={font.bodyStyle} fontSize={13 * venueScale} fontWeight={venueFW} fill="var(--iv-tp)">
         <tspan x="0" y="0">{venue}</tspan>
       </text>
 
       {/* ── Time ── */}
       {time && (
-        <text data-section="time" transform="translate(172 472)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="12" fill="var(--iv-mut)">
+        <text data-section="time" transform="translate(172 472)" style={font.bodyStyle} fontSize={12 * timeScale} fontWeight={timeFW} fill="var(--iv-mut)">
           <tspan x="0" y="0">{time}</tspan>
         </text>
       )}
 
       {/* ── Reception ── */}
       {hasReception && (
-        <text data-section="reception" transform="translate(120 490)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="11" fill="var(--iv-mut)">
+        <text data-section="reception" transform="translate(120 490)" style={font.bodyStyle} fontSize={11 * recepScale} fill="var(--iv-mut)">
           <tspan x="0" y="0">
             Reception{receptionVenue ? ` · ${receptionVenue}` : ''}{receptionTime ? ` · ${receptionTime}` : ''}
           </tspan>
@@ -169,22 +180,23 @@ export function SaveTheDatePhoto({
       <text
         data-section="dressCode"
         transform={`translate(135.78 ${dressY})`}
-        fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif"
-        fontSize="13.33"
+        style={font.bodyStyle}
+        fontSize={13.33 * dressScale}
+        fontWeight={dressFW}
         fill="var(--iv-tp)"
       >
         <tspan x="0" y="0">{dressCode ? `Dress Code · ${dressCode}` : 'Dress Code'}</tspan>
       </text>
-      <circle cx="340" cy={circleY} r="7" fill="#f0d497" />
-      <circle cx="357" cy={circleY} r="7" fill="#f096b1" />
-      <circle cx="374" cy={circleY} r="7" fill="#7bbc7e" />
+      <circle cx="340" cy={circleY} r="7" fill={dot(0, '#f0d497')} />
+      <circle cx="357" cy={circleY} r="7" fill={dot(1, '#f096b1')} />
+      <circle cx="374" cy={circleY} r="7" fill={dot(2, '#7bbc7e')} />
 
       {/* ── RSVP ── */}
       {rsvpContact && (
         <text
           data-section="rsvpContact"
           transform={`translate(120 ${rsvpY})`}
-          fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif"
+          style={font.bodyStyle}
           fontSize="12.28"
           fill="var(--iv-tp)"
         >

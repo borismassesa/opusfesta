@@ -26,7 +26,9 @@ export type SectionStyles = {
   time?: SectionStyle
   venue?: SectionStyle
   dressCode?: SectionStyle
+  reception?: SectionStyle
   message?: SectionStyle
+  messageAttr?: SectionStyle
 }
 
 export type TemplateProps = {
@@ -41,6 +43,8 @@ export type TemplateProps = {
   receptionTime?: string
   message?: string
   messageAttr?: string
+  familyIntro?: string
+  dressCodeColors?: string[]
   fontStyle?: FontStyle
   sectionStyles?: SectionStyles
 }

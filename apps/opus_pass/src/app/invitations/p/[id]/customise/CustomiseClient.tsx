@@ -779,6 +779,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                           <Input value={receptionTime} onChange={setReceptionTime} placeholder="e.g. 7:00 PM" />
                         </Field>
                       </div>
+                      <TextStyleBar sectionKey="reception" sectionStyles={sectionStyles} onUpdate={updateSectionStyle} />
                     </div>
                   </>
                 )}
@@ -861,6 +862,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                           </button>
                         )}
                       </div>
+                      <TextStyleBar sectionKey="rsvpContact" sectionStyles={sectionStyles} onUpdate={updateSectionStyle} />
                     </Field>
                     <Field label="QR entry label" hint="Tagged on the QR code at the door">
                       <div className="flex gap-2">
@@ -907,6 +909,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                     </Field>
                     <Field label="Attribution" hint="e.g. — 1 Corinthians 13:4">
                       <Input value={messageAttr} onChange={setMessageAttr} placeholder="— Source or author" />
+                      <TextStyleBar sectionKey="messageAttr" sectionStyles={sectionStyles} onUpdate={updateSectionStyle} />
                     </Field>
                   </>
                 )}
@@ -1594,6 +1597,9 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 message={message}
                 messageAttr={messageAttr}
                 fontStyle={fontStyle}
+                sectionStyles={sectionStyles}
+                familyIntro={familyIntro}
+                dressCodeColors={palette}
                 photoSrc={photoSrc}
                 photoOpacity={photoOpacity}
                 dressCode={dressCode}
@@ -1649,6 +1655,8 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                     rsvpContact={rsvpContacts.filter(Boolean).join('  ·  ') || undefined}
                     receptionVenue={receptionVenue || undefined}
                     receptionTime={receptionTime || undefined}
+                    familyIntro={familyIntro || undefined}
+                    dressCodeColors={palette.length > 0 ? palette : undefined}
                   />
                   <CardClickLayer
                     containerRef={cardRef}
@@ -1717,6 +1725,9 @@ type ReviewCardGridProps = {
   message: string
   messageAttr: string
   fontStyle: FontStyle
+  sectionStyles: SectionStyles
+  familyIntro: string
+  dressCodeColors: string[]
   photoSrc: string | undefined
   photoOpacity: number
   dressCode: string
@@ -1745,6 +1756,7 @@ type ReviewCardGridProps = {
 function ReviewCardGrid(props: ReviewCardGridProps) {
   const {
     product, couple, selectedPalette, message, messageAttr, fontStyle,
+    sectionStyles, familyIntro, dressCodeColors,
     photoSrc, photoOpacity, dressCode, rsvpContacts, receptionVenue, receptionTime,
     celebrant, ticketAccentColor, ticketAddress, ticketStubLabel, guestCode, dateISO, time, venue,
     rsvpCardNotes, envelopeNotes, enclosureNotes, menuNotes, programNotes,
@@ -1780,6 +1792,9 @@ function ReviewCardGrid(props: ReviewCardGridProps) {
             message={message}
             messageAttr={messageAttr}
             fontStyle={fontStyle}
+            sectionStyles={sectionStyles}
+            familyIntro={familyIntro}
+            dressCodeColors={dressCodeColors}
             photoSrc={photoSrc}
             photoOpacity={photoOpacity}
             dressCode={dressCode}
@@ -1804,6 +1819,7 @@ function ReviewCardGrid(props: ReviewCardGridProps) {
 
 function ReviewCardItem({
   tab, label, product, couple, selectedPalette, message, messageAttr, fontStyle,
+  sectionStyles, familyIntro, dressCodeColors,
   photoSrc, photoOpacity, dressCode, rsvpContacts, receptionVenue, receptionTime,
   celebrant, ticketAccentColor, ticketAddress, ticketStubLabel, guestCode, dateISO, time, venue,
   onEdit,
@@ -1841,6 +1857,9 @@ function ReviewCardItem({
             message={message || undefined}
             messageAttr={messageAttr || undefined}
             fontStyle={fontStyle}
+            sectionStyles={sectionStyles}
+            familyIntro={familyIntro || undefined}
+            dressCodeColors={dressCodeColors.length > 0 ? dressCodeColors : undefined}
             photoSrc={photoSrc}
             photoOpacity={photoOpacity}
             dressCode={dressCode || undefined}

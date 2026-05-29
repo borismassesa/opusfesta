@@ -1,7 +1,7 @@
 import type { TemplateProps } from './_types'
 import { resolveFont, applySectionStyle } from './_types'
 
-export function CulturalRed({ names, date, venue, palette, message, messageAttr, fontStyle, sectionStyles }: TemplateProps) {
+export function CulturalRed({ names, date, venue, palette, message, messageAttr, fontStyle, sectionStyles, familyIntro }: TemplateProps) {
   const vars = {
     '--iv-bg': palette.background,
     '--iv-acc': palette.accent,
@@ -15,6 +15,7 @@ export function CulturalRed({ names, date, venue, palette, message, messageAttr,
   const line1 = parts[0] ?? names
   const line2 = parts[1]
 
+  const fa = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 10 }, sectionStyles?.familyIntro)
   const na = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 16 }, sectionStyles?.names)
   const da = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 9  }, sectionStyles?.date)
   const va = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 7  }, sectionStyles?.venue)
@@ -31,11 +32,12 @@ export function CulturalRed({ names, date, venue, palette, message, messageAttr,
       {/* Gold border */}
       <rect x="14" y="14" width="272" height="372" fill="none" stroke="var(--iv-acc)" strokeWidth="2" />
       <text
-        x="150" y="160"
-        textAnchor="middle" dominantBaseline="middle"
-        fontFamily="Georgia, 'Times New Roman', serif" fontSize="10" letterSpacing="3"
+        data-section="familyIntro"
+        x={fa.x} y="160"
+        textAnchor={fa.textAnchor} dominantBaseline="middle"
+        style={font.bodyStyle} fontSize={fa.fontSize} fontWeight={fa.fontWeight} letterSpacing="2"
         fill="var(--iv-acc)"
-      >— KARIBU —</text>
+      >{familyIntro || '— KARIBU —'}</text>
       <g data-section="names">
         {line2 ? (
           <>
@@ -47,9 +49,9 @@ export function CulturalRed({ names, date, venue, palette, message, messageAttr,
         )}
       </g>
       <text x="135" y={line2 ? '226' : '216'} textAnchor="middle" dominantBaseline="middle" fontSize="8" fill="var(--iv-acc)">✦</text>
-      <text data-section="date" x={da.x} y={line2 ? '226' : '216'} textAnchor={da.textAnchor} dominantBaseline="middle" fontFamily="inherit" fontSize={da.fontSize} fontWeight={da.fontWeight} letterSpacing="2.2" fill="var(--iv-ts)">{date}</text>
+      <text data-section="date" x={da.x} y={line2 ? '226' : '216'} textAnchor={da.textAnchor} dominantBaseline="middle" style={font.bodyStyle} fontSize={da.fontSize} fontWeight={da.fontWeight} letterSpacing="2.2" fill="var(--iv-ts)">{date}</text>
       <text x="165" y={line2 ? '226' : '216'} textAnchor="middle" dominantBaseline="middle" fontSize="8" fill="var(--iv-acc)">✦</text>
-      <text data-section="venue" x={va.x} y={line2 ? '242' : '232'} textAnchor={va.textAnchor} dominantBaseline="middle" fontFamily="inherit" fontSize={va.fontSize} fontWeight={va.fontWeight} letterSpacing="2.2" fill="var(--iv-mut)">{venue.toUpperCase()}</text>
+      <text data-section="venue" x={va.x} y={line2 ? '242' : '232'} textAnchor={va.textAnchor} dominantBaseline="middle" style={font.bodyStyle} fontSize={va.fontSize} fontWeight={va.fontWeight} letterSpacing="2.2" fill="var(--iv-mut)">{venue.toUpperCase()}</text>
       {message && (
         <g data-section="message">
           <line x1="100" y1="280" x2="200" y2="280" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.7" />

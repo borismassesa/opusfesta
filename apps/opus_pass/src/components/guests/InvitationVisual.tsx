@@ -52,6 +52,8 @@ export function InvitationVisual({
   rsvpContact,
   receptionVenue,
   receptionTime,
+  familyIntro,
+  dressCodeColors,
 }: {
   treatment: Treatment
   couple?: Couple
@@ -66,10 +68,12 @@ export function InvitationVisual({
   rsvpContact?: string
   receptionVenue?: string
   receptionTime?: string
+  familyIntro?: string
+  dressCodeColors?: string[]
 }) {
   const { names, date, venue, time } = couple
   const p = palette ?? PREVIEW_PALETTES[treatment]
-  const shared = { names, date, venue, time, palette: p, message, messageAttr, fontStyle, sectionStyles, dressCode, rsvpContact, receptionVenue, receptionTime }
+  const shared = { names, date, venue, time, palette: p, message, messageAttr, fontStyle, sectionStyles, dressCode, rsvpContact, receptionVenue, receptionTime, familyIntro, dressCodeColors }
 
   switch (treatment) {
     case 'classic-serif':  return <ClassicSerif  {...shared} />

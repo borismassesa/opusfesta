@@ -231,3 +231,31 @@ Existing treatments: `classic-serif`, `minimal-line`, `modern-block`, `floral-bo
 Hand the completed checklist to Claude and run `/invitation-template`. The skill handles all conversion steps: SVG → TSX component, token substitution, camelCase attributes, registration in `index.ts` / `InvitationVisual.tsx`, and the product data entry.
 
 For multi-piece suites, run the skill once per piece SVG. The invitation card is always first — it establishes the treatment name and palette that all other pieces inherit. Ticket, RSVP card, envelope, and remaining pieces can be converted in any order afterwards.
+
+---
+
+## Model packages
+
+These two templates are the canonical reference implementations. Study them before starting a new design.
+
+### Heritage Crown Karibu (`cultural-red`)
+
+- **Artboard:** 300 × 400 px
+- **Default font:** Georgian serif (`serif`)
+- **Editable sections (`data-section` keys):** `familyIntro`, `names`, `date`, `venue`, `message`
+- **Palette variants:** 4 — Heritage Red, Gold, Ivory, Onyx
+- **Palette JSON:** `public/assets/invitation-svgs/cultural-red.palettes.json`
+- **Fixed decorative colours:** none — all fills use `var(--iv-*)` tokens
+- **Notes:** `familyIntro` renders in the accent colour; empty value falls back to `— KARIBU —`. All text sections respond to the font picker and scale/weight overrides.
+
+### Teal Fiesta Photo Save the Date (`save-the-date-photo`)
+
+- **Artboard:** 419.53 × 595.28 px
+- **Default font:** Josefin Sans / system sans-serif (bodyStyle); Yellowtail (decorative title — not picker-controlled)
+- **Editable sections (`data-section` keys):** `names`, `date`, `venue`, `time`, `reception`, `dressCode`, `rsvpContact`
+- **Photo window:** background image with user-controlled overlay opacity
+- **Palette variants:** 3 — Teal & Gold, Ocean Night, Coral Terracotta
+- **Palette JSON:** `public/assets/invitation-svgs/card-template-4.palettes.json`
+- **Dress code colour dots:** three circles at cx 340/357/374 driven by `dressCodeColors` prop; fallbacks are `#f0d497`, `#f096b1`, `#7bbc7e`
+- **Fixed decorative colours:** corner rects, flower petals, heart fills — intentionally hardcoded, not palette-driven
+- **Notes:** All text sections respond to the font picker and scale/weight overrides. Alignment overrides are not supported (template uses `transform="translate(...)"` positioning).
