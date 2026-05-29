@@ -240,7 +240,8 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
 
   // Wedding ticket customisation
   const [ticketAccentColor, setTicketAccentColor] = useState('#8B7355')
-  const [ticketAddress, setTicketAddress] = useState('')
+  const [ticketAddress, setTicketAddress] = useState(venue)
+  const ticketAddressEdited = useRef(false)
   const [ticketStubLabel, setTicketStubLabel] = useState('BOARDING PASS TO OUR WEDDING')
   const [sampleGuestCode, setSampleGuestCode] = useState(() => generateGuestCode())
 
@@ -275,6 +276,11 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
   // Quantity per card tab
   const [qty, setQty] = useState<Partial<Record<MainTab, number>>>({})
   const setQtyFor = (tab: MainTab, v: number) => setQty((prev) => ({ ...prev, [tab]: Math.max(1, v) }))
+
+  // Keep ticketAddress in sync with ceremony venue unless the user has manually overridden it
+  useEffect(() => {
+    if (!ticketAddressEdited.current) setTicketAddress(venue)
+  }, [venue])
 
   // Front / back side toggle — resets to front when tab changes
   const [cardSide, setCardSide] = useState<'front' | 'back'>('front')
@@ -1261,8 +1267,12 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   </div>
                 </Field>
 
-                <Field label="Venue address" hint="Full address printed on the ticket (e.g. 123 Anywhere St., Dar es Salaam)">
-                  <Input value={ticketAddress} onChange={setTicketAddress} placeholder="e.g. 45 Ocean Rd, Dar es Salaam" />
+                <Field label="Venue address" hint="Auto-filled from your ceremony venue — edit here to override">
+                  <Input
+                    value={ticketAddress}
+                    onChange={(v) => { ticketAddressEdited.current = true; setTicketAddress(v) }}
+                    placeholder="e.g. 45 Ocean Rd, Dar es Salaam"
+                  />
                 </Field>
 
                 <Field label="Stub label" hint="Vertical text on the left stub">
