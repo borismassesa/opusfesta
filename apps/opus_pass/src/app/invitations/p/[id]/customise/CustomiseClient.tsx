@@ -165,15 +165,6 @@ function generateGuestCode(): string {
   return Array.from({ length: 8 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('')
 }
 
-// Encode a guest code string into bar widths for a barcode-style visual
-function codeToBarWidths(code: string): number[] {
-  const bars: number[] = []
-  for (const ch of code) {
-    const v = ch.charCodeAt(0)
-    bars.push(1, (v & 3) + 1, 1, ((v >> 2) & 3) + 1, 1)
-  }
-  return bars
-}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -239,6 +230,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
   const [paletteIndex, setPaletteIndex] = useState(0)
 
   // Wedding ticket customisation
+  const [ticketType, setTicketType] = useState<'qr' | 'barcode'>(product.treatment === 'ticket-barcode' ? 'barcode' : 'qr')
   const [ticketAccentColor, setTicketAccentColor] = useState('#8B7355')
   const [ticketAddress, setTicketAddress] = useState(venue)
   const ticketAddressEdited = useRef(false)
@@ -1239,6 +1231,32 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   })()}
                 </div>
 
+                <Field label="Ticket type" hint="Choose between a QR code or barcode scan ticket">
+                  <div className="flex gap-3">
+                    {([
+                      { id: 'qr' as const,      label: 'QR Code',  hint: 'Modern square QR' },
+                      { id: 'barcode' as const,  label: 'Barcode',  hint: 'Classic linear scan' },
+                    ] as const).map((opt) => (
+                      <button
+                        key={opt.id}
+                        type="button"
+                        onClick={() => setTicketType(opt.id)}
+                        aria-pressed={ticketType === opt.id}
+                        className={cn(
+                          'flex flex-1 flex-col items-center gap-1 rounded-md border p-3 text-center transition',
+                          ticketType === opt.id
+                            ? 'border-[#1A1A1A] ring-1 ring-[#1A1A1A] bg-white'
+                            : 'border-gray-300 hover:border-gray-500 bg-gray-50',
+                        )}
+                      >
+                        <span className="text-[12px] font-bold text-gray-900">{opt.label}</span>
+                        <span className="text-[10px] text-gray-500">{opt.hint}</span>
+                        {ticketType === opt.id && <Check size={11} className="text-[#1A1A1A]" aria-hidden="true" />}
+                      </button>
+                    ))}
+                  </div>
+                </Field>
+
                 <Field label="Stub accent colour" hint="The coloured left-hand stub of the ticket">
                   <div className="flex flex-wrap gap-2">
                     {TICKET_ACCENT_COLORS.map((c) => (
@@ -1617,6 +1635,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 receptionVenue={receptionVenue}
                 receptionTime={receptionTime}
                 celebrant={celebrant}
+                ticketType={ticketType}
                 ticketAccentColor={ticketAccentColor}
                 ticketAddress={ticketAddress}
                 ticketStubLabel={ticketStubLabel}
@@ -1636,17 +1655,16 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
               />
             ) : activeTab === 'ticket' && cardSide === 'front' ? (
               <div className="w-full max-w-xl origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
-                <TicketSvg
+                <TicketSvgFile
+                  type={ticketType}
+                  accentColor={ticketAccentColor}
                   coupleNames={celebrant || 'Amani & Neema'}
                   dateISO={dateISO}
                   time={time}
-                  venue={venue}
                   address={ticketAddress}
                   message={message}
                   rsvpContacts={rsvpContacts.filter(Boolean)}
-                  stubLabel={ticketStubLabel || 'BOARDING PASS TO OUR WEDDING'}
-                  accentColor={ticketAccentColor}
-                  photoSrc={photoSrc}
+                  stubLabel={ticketStubLabel || 'ACCESS PASS TO OUR WEDDING'}
                 />
               </div>
             ) : activeTab === 'invitation' && cardSide === 'front' ? (
@@ -1746,6 +1764,7 @@ type ReviewCardGridProps = {
   receptionVenue: string
   receptionTime: string
   celebrant: string
+  ticketType: 'qr' | 'barcode'
   ticketAccentColor: string
   ticketAddress: string
   ticketStubLabel: string
@@ -1769,7 +1788,7 @@ function ReviewCardGrid(props: ReviewCardGridProps) {
     product, couple, selectedPalette, message, messageAttr, fontStyle,
     sectionStyles, familyIntro, dressCodeColors,
     photoSrc, photoOpacity, dressCode, rsvpContacts, receptionVenue, receptionTime,
-    celebrant, ticketAccentColor, ticketAddress, ticketStubLabel, guestCode, dateISO, time, venue,
+    celebrant, ticketType, ticketAccentColor, ticketAddress, ticketStubLabel, guestCode, dateISO, time, venue,
     rsvpCardNotes, envelopeNotes, enclosureNotes, menuNotes, programNotes,
     tableNumbersNotes, swagItems, swagNotes, onEdit,
   } = props
@@ -1813,6 +1832,7 @@ function ReviewCardGrid(props: ReviewCardGridProps) {
             receptionVenue={receptionVenue}
             receptionTime={receptionTime}
             celebrant={celebrant}
+            ticketType={ticketType}
             ticketAccentColor={ticketAccentColor}
             ticketAddress={ticketAddress}
             ticketStubLabel={ticketStubLabel}
@@ -1832,7 +1852,7 @@ function ReviewCardItem({
   tab, label, product, couple, selectedPalette, message, messageAttr, fontStyle,
   sectionStyles, familyIntro, dressCodeColors,
   photoSrc, photoOpacity, dressCode, rsvpContacts, receptionVenue, receptionTime,
-  celebrant, ticketAccentColor, ticketAddress, ticketStubLabel, guestCode, dateISO, time, venue,
+  celebrant, ticketType, ticketAccentColor, ticketAddress, ticketStubLabel, dateISO, time,
   onEdit,
 }: Omit<ReviewCardGridProps, 'rsvpCardNotes' | 'envelopeNotes' | 'enclosureNotes' | 'menuNotes' | 'programNotes' | 'tableNumbersNotes' | 'swagItems' | 'swagNotes'> & {
   tab: MainTab
@@ -1849,17 +1869,16 @@ function ReviewCardItem({
         isTicket ? 'w-full' : 'aspect-[5/7] w-full',
       )}>
         {tab === 'ticket' && side === 'front' ? (
-          <TicketSvg
+          <TicketSvgFile
+            type={ticketType}
+            accentColor={ticketAccentColor}
             coupleNames={celebrant || 'Amani & Neema'}
             dateISO={dateISO}
             time={time}
-            venue={venue}
             address={ticketAddress}
             message={message}
             rsvpContacts={rsvpContacts.filter(Boolean)}
-            stubLabel={ticketStubLabel || 'BOARDING PASS TO OUR WEDDING'}
-            accentColor={ticketAccentColor}
-            photoSrc={photoSrc}
+            stubLabel={ticketStubLabel || 'ACCESS PASS TO OUR WEDDING'}
           />
         ) : tab === 'invitation' && side === 'front' ? (
           <InvitationVisual
@@ -2259,341 +2278,130 @@ function NotesArea({ value, onChange, placeholder }: { value: string; onChange: 
   )
 }
 
-// ─── Inline ticket SVG with dynamic data ─────────────────────────────────────
+// ─── Ticket SVG file preview ──────────────────────────────────────────────────
 
-function TicketSvg({
-  coupleNames, dateISO, time, venue, address, message, rsvpContacts, stubLabel, accentColor = '#ab8d53', photoSrc,
-}: {
-  coupleNames: string; dateISO: string; time: string; venue: string; address: string
-  message: string; rsvpContacts: string[]; stubLabel: string; accentColor?: string; photoSrc?: string
-}) {
-  const [first, second] = coupleNames.split(/\s*&\s*/)
-  const firstName = (first?.trim() || 'BRIDE').toUpperCase()
-  const secondName = (second?.trim() || 'GROOM').toUpperCase()
-  const dateDisplay = dateISO
-    ? new Date(dateISO + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()
-    : 'TBD'
-  const addressLine = address || venue || '—'
-  const rsvp1 = rsvpContacts[0] || '+255 7XX XXX XXX'
-  const rsvp2 = rsvpContacts[1] || rsvp1
-  const attribution = `— ${first?.trim() || 'Bride'} & ${second?.trim() || 'Groom'}`
-  const messageText = message || 'We are delighted to invite you to our special day.'
-
-  const acc = accentColor
-  const mono = "'Courier New', monospace"
-  const tw = { fill: 'none', stroke: acc, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const, strokeWidth: 2 }
-  const td = { ...tw, strokeDasharray: '0 8.19' }
-  const tmuted = { ...tw, stroke: `${acc}99` }
-  const tmdash = { ...tmuted, strokeDasharray: '0 8.19' }
-
-  const qrImg = photoSrc ?? '/assets/logo/opusfesta-logo-black.svg'
-
-  return (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 612 198" className="w-full rounded-lg shadow-[0_24px_60px_-16px_rgba(0,0,0,0.35)]">
-      <defs>
-        <clipPath id="qr-clip">
-          <rect x="512.1" y="89.22" width="27" height="27" rx="2"/>
-        </clipPath>
-      </defs>
-      <rect fill="#f5f0ea" width="612" height="198"/>
-
-      {/* Stub */}
-      <path fill={acc} d="M67.63,28.13v141.84c-6.59,0-11.92,5.34-11.92,11.92,0,.73.07,1.45.2,2.15h-21.42c-9.37,0-16.96-7.59-16.96-16.95V33.16c0-9.36,7.59-16.95,16.96-16.95h21.22c0,6.59,5.33,11.92,11.92,11.92Z"/>
-
-      {/* Stub label */}
-      <text style={{ fontSize: 9, fontFamily: mono, fill: '#fff' }} transform="translate(41.09 149.63) rotate(-90)">
-        <tspan x="0" y="0">{stubLabel.length > 22 ? stubLabel.slice(0, 22) : stubLabel}</tspan>
-      </text>
-      <path fill="#fff" d="M45.65,134.85c1.29.78,2.55.23,3.22-.46l3.9-4.06-3.88-3.98c-.72-.65-1.48-.89-2.33-.76-1.17.19-2.08,1.16-2.21,2.35-.08.73.13,1.44.59,1.99.12.15.26.28.41.4-.17.14-.33.3-.47.48-.48.64-.67,1.44-.53,2.22.14.74.62,1.4,1.3,1.81Z"/>
-      <path fill="#fff" d="M45.65,73.86c1.29.78,2.55.23,3.22-.46l3.9-4.06-3.88-3.98c-.72-.65-1.48-.89-2.33-.76-1.17.19-2.08,1.16-2.21,2.35-.08.73.13,1.44.59,1.99.12.15.26.28.41.4-.17.14-.33.3-.47.48-.48.64-.67,1.44-.53,2.22.14.74.62,1.4,1.3,1.81Z"/>
-
-      {/* Ticket body */}
-      <path fill="#fff" d="M594.92,33.16v133.93c0,9.36-7.59,16.95-16.95,16.95h-115.52c.13-.7.2-1.42.2-2.15,0-6.58-5.34-11.92-11.93-11.92s-11.92,5.34-11.92,11.92c0,.73.07,1.45.2,2.15H79.35c.13-.7.2-1.42.2-2.15,0-6.58-5.34-11.92-11.92-11.92V28.13c6.58,0,11.92-5.33,11.92-11.92h359.25c0,6.59,5.34,11.92,11.92,11.92s11.93-5.33,11.93-11.92h115.32c9.36,0,16.95,7.59,16.95,16.95Z"/>
-
-      {/* Tear lines */}
-      <line style={tmuted} x1="67.63" y1="29.43" x2="67.63" y2="29.43"/>
-      <line style={tmdash} x1="67.63" y1="37.62" x2="67.63" y2="164.58"/>
-      <line style={tmuted} x1="67.63" y1="168.68" x2="67.63" y2="168.68"/>
-      <line style={tw} x1="451.36" y1="29.43" x2="451.36" y2="29.43"/>
-      <line style={td} x1="451.36" y1="37.62" x2="451.36" y2="164.58"/>
-      <line style={tw} x1="451.36" y1="168.68" x2="451.36" y2="168.68"/>
-
-      {/* Dividers */}
-      <line style={{ fill: 'none', stroke: acc, strokeWidth: 0.75 }} x1="72.6" y1="51.16" x2="447.05" y2="51.03"/>
-      <line style={{ fill: 'none', stroke: acc, strokeWidth: 0.75 }} x1="226.72" y1="95.19" x2="227.02" y2="57.12"/>
-      <line style={{ fill: 'none', stroke: acc, strokeWidth: 0.75 }} x1="292.63" y1="95.19" x2="292.92" y2="57.12"/>
-      <line style={{ fill: 'none', stroke: acc, strokeWidth: 0.75 }} x1="72.6" y1="99.78" x2="447.05" y2="99.64"/>
-      <line style={{ fill: 'none', stroke: acc, strokeWidth: 0.75 }} x1="72.6" y1="143.75" x2="447.05" y2="143.62"/>
-
-      {/* Header */}
-      <text style={{ fontSize: 14, fontFamily: mono, fill: acc }} transform="translate(118.97 41.25)"><tspan x="0" y="0">YOU ARE INVITED TO THE WEDDING OF</tspan></text>
-
-      {/* Couple names */}
-      <text style={{ fontSize: 22, fontFamily: mono, fill: '#3a2d1f', letterSpacing: '0.12em' }} textAnchor="middle" transform="translate(152 88.57)"><tspan x="0" y="0">{firstName}</tspan></text>
-      <text style={{ fontSize: 27.54, fontFamily: 'Georgia, serif', fontStyle: 'italic', fill: acc }} transform="translate(236.91 80.94)"><tspan x="0" y="0">and</tspan></text>
-      <text style={{ fontSize: 22, fontFamily: mono, fill: '#3a2d1f', letterSpacing: '0.12em' }} textAnchor="middle" transform="translate(370 88.57)"><tspan x="0" y="0">{secondName}</tspan></text>
-
-      {/* Date */}
-      <text style={{ fontSize: 7, fontFamily: mono, fill: acc }} transform="translate(89.54 115.97)"><tspan x="0" y="0">DATE: {dateDisplay}</tspan></text>
-
-      {/* Time */}
-      {time && <text style={{ fontSize: 7, fontFamily: mono, fill: acc }} transform="translate(89.54 133.87)"><tspan x="0" y="0">TIME: {time}</tspan></text>}
-
-      {/* Address */}
-      <text style={{ fontSize: 11.07, fontFamily: mono, fill: acc }} transform="translate(265.68 115.3)"><tspan x="0" y="0">{addressLine.slice(0, 32)}</tspan></text>
-
-      {/* Message */}
-      <text style={{ fontSize: 7, fontFamily: mono, fill: acc }} transform="translate(265.68 136)"><tspan x="0" y="0">{messageText.slice(0, 52)}</tspan></text>
-
-      {/* Gate */}
-      <text style={{ fontSize: 7, fontFamily: mono, fill: acc }} transform="translate(89.54 155)"><tspan x="0" y="0">GATE: A</tspan></text>
-
-      {/* Attribution */}
-      <text style={{ fontSize: 10.16, fontFamily: mono, fill: `${acc}cc` }} transform="translate(89.54 164)"><tspan x="0" y="0">{attribution}</tspan></text>
-
-      {/* RSVP */}
-      <text style={{ fontSize: 12.14, letterSpacing: '0.1em', fontFamily: mono, fill: acc }} transform="translate(269.14 169.92)"><tspan x="0" y="0">RSVP</tspan></text>
-      <line style={{ fill: 'none', stroke: acc, strokeMiterlimit: 10 }} x1="261.83" y1="175.56" x2="261.83" y2="154.02"/>
-      <line style={{ fill: 'none', stroke: acc, strokeMiterlimit: 10 }} x1="306" y1="175.56" x2="306" y2="154.02"/>
-      <text style={{ fontSize: 10.16, fontFamily: mono, fill: `${acc}cc` }} transform="translate(336.69 162.38)"><tspan x="0" y="0">{rsvp1}</tspan></text>
-      <text style={{ fontSize: 10.16, fontFamily: mono, fill: `${acc}cc` }} transform="translate(337 174.15)"><tspan x="0" y="0">{rsvp2}</tspan></text>
-
-      {/* Decorative label */}
-      <text style={{ fontSize: 27.54, fontFamily: 'Georgia, serif', fontStyle: 'italic', fill: acc }} transform="translate(98.05 171.59)"><tspan x="0" y="0">Save the Date</tspan></text>
-
-      {/* QR placeholder border */}
-      <path style={{ fill: 'none', stroke: acc, strokeMiterlimit: 10 }} d="M471.48,48.6h108.24v108.24h-108.24V48.6Z"/>
-
-      {/* Center logo clearing — white bg + image inset */}
-      <rect x="512.1" y="89.22" width="27" height="27" fill="#fff" rx="2"/>
-      <image
-        href={qrImg}
-        x={photoSrc ? 512.1 : 514.6}
-        y={photoSrc ? 89.22 : 94}
-        width={photoSrc ? 27 : 22}
-        height={photoSrc ? 27 : 17}
-        preserveAspectRatio={photoSrc ? 'xMidYMid slice' : 'xMidYMid meet'}
-        clipPath="url(#qr-clip)"
-      />
-      <polygon fill="#010101" points="523.96 120.76 530.52 120.76 530.52 117.48 517.4 117.48 517.4 120.76 514.12 120.76 514.12 117.48 510.84 117.48 510.84 124.04 523.96 124.04 523.96 120.76"/>
-      <rect fill="#010101" x="517.4" y="114.2" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="510.84" y="130.6" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="514.12" y="84.68" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="537.08" y="117.48" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="543.64" y="120.76" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="550.2" y="117.48" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="540.36" y="130.6" width="6.56" height="3.28"/>
-      <polygon fill="#010101" points="553.48 124.04 550.2 124.04 550.2 127.32 540.36 127.32 540.36 124.04 530.52 124.04 530.52 127.32 527.24 127.32 527.24 124.04 523.96 124.04 523.96 130.6 553.48 130.6 553.48 124.04"/>
-      <rect fill="#010101" x="530.52" y="104.36" width="13.12" height="3.28"/>
-      <rect fill="#010101" x="530.52" y="130.6" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="530.52" y="133.88" width="3.28" height="6.56"/>
-      <polygon fill="#010101" points="517.4 127.32 514.12 127.32 514.12 124.04 510.84 124.04 510.84 130.6 520.68 130.6 520.68 124.04 517.4 124.04 517.4 127.32"/>
-      <rect fill="#010101" x="517.4" y="130.6" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="507.56" y="91.24" width="3.28" height="3.28"/>
-      <polygon fill="#010101" points="514.12 94.52 517.4 94.52 517.4 97.8 520.68 97.8 520.68 91.24 514.12 91.24 514.12 94.52"/>
-      <rect fill="#010101" x="504.28" y="94.52" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="501" y="91.24" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="497.72" y="104.36" width="3.28" height="3.28"/>
-      <polygon fill="#010101" points="504.28 101.08 504.28 97.8 501 97.8 501 104.36 510.84 104.36 510.84 101.08 504.28 101.08"/>
-      <rect fill="#010101" x="507.56" y="104.36" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="504.28" y="78.12" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="504.28" y="71.56" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="504.28" y="65" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="487.88" y="97.8" width="9.84" height="3.28"/>
-      <rect fill="#010101" x="494.44" y="87.96" width="19.68" height="3.28"/>
-      <rect fill="#010101" x="510.84" y="94.52" width="3.28" height="3.28"/>
-      <polygon fill="#010101" points="520.68 110.92 517.4 110.92 517.4 107.64 514.12 107.64 514.12 110.92 510.84 110.92 510.84 107.64 504.28 107.64 504.28 110.92 507.56 110.92 507.56 114.2 523.96 114.2 523.96 110.92 537.08 110.92 537.08 107.64 520.68 107.64 520.68 110.92"/>
-      <rect fill="#010101" x="530.52" y="114.2" width="22.96" height="3.28"/>
-      <rect fill="#010101" x="520.68" y="74.84" width="6.56" height="3.28"/>
-      <rect fill="#010101" x="517.4" y="71.56" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="530.52" y="74.84" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="527.24" y="71.56" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="514.12" y="78.12" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="537.08" y="78.12" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="537.08" y="81.4" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="497.72" y="114.2" width="9.84" height="3.28"/>
-      <rect fill="#010101" x="543.64" y="65" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="520.68" y="84.68" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="543.64" y="78.12" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="537.08" y="71.56" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="530.52" y="87.96" width="6.56" height="3.28"/>
-      <rect fill="#010101" x="523.96" y="78.12" width="6.56" height="3.28"/>
-      <rect fill="#010101" x="543.64" y="71.56" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="517.4" y="81.4" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="523.96" y="81.4" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="510.84" y="74.84" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="510.84" y="81.4" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="540.36" y="87.96" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="527.24" y="84.68" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="530.52" y="81.4" width="3.28" height="3.28"/>
-      <polygon fill="#010101" points="533.8 71.56 540.36 71.56 540.36 65 537.08 65 537.08 68.28 533.8 68.28 533.8 71.56"/>
-      <rect fill="#010101" x="537.08" y="61.72" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="530.52" y="61.72" width="3.28" height="3.28"/>
-      <polygon fill="#010101" points="520.68 65 517.4 65 517.4 68.28 514.12 68.28 514.12 65 510.84 65 510.84 71.56 520.68 71.56 520.68 65"/>
-      <rect fill="#010101" x="510.84" y="61.72" width="6.56" height="3.28"/>
-      <rect fill="#010101" x="527.24" y="68.28" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="563.32" y="78.12" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="560.04" y="130.6" width="6.56" height="3.28"/>
-      <rect fill="#010101" x="556.76" y="114.2" width="6.56" height="3.28"/>
-      <rect fill="#010101" x="517.4" y="104.36" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="510.84" y="140.44" width="6.56" height="3.28"/>
-      <polygon fill="#010101" points="546.92 107.64 540.36 107.64 540.36 114.2 550.2 114.2 550.2 110.92 546.92 110.92 546.92 107.64"/>
-      <rect fill="#010101" x="556.76" y="117.48" width="6.56" height="3.28"/>
-      <rect fill="#010101" x="563.32" y="120.76" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="553.48" y="140.44" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="523.96" y="133.88" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="517.4" y="133.88" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="563.32" y="140.44" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="527.24" y="140.44" width="6.56" height="3.28"/>
-      <polygon fill="#010101" points="550.2 110.92 553.48 110.92 553.48 114.2 560.04 114.2 560.04 110.92 563.32 110.92 563.32 114.2 566.6 114.2 566.6 107.64 550.2 107.64 550.2 110.92"/>
-      <rect fill="#010101" x="537.08" y="140.44" width="3.28" height="3.28"/>
-      <polygon fill="#010101" points="550.2 137.16 540.36 137.16 540.36 140.44 553.48 140.44 553.48 137.16 556.76 137.16 556.76 140.44 566.6 140.44 566.6 133.88 550.2 133.88 550.2 137.16"/>
-      <rect fill="#010101" x="563.32" y="71.56" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="550.2" y="71.56" width="9.84" height="6.56"/>
-      <rect fill="#010101" x="550.2" y="68.28" width="9.84" height="3.28"/>
-      <rect fill="#010101" x="543.64" y="61.72" width="22.96" height="3.28"/>
-      <rect fill="#010101" x="563.32" y="65" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="543.64" y="81.4" width="22.96" height="3.28"/>
-      <rect fill="#010101" x="550.2" y="104.36" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="556.76" y="87.96" width="9.84" height="3.28"/>
-      <rect fill="#010101" x="563.32" y="94.52" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="560.04" y="104.36" width="3.28" height="3.28"/>
-      <polygon fill="#010101" points="530.52 101.08 533.8 101.08 533.8 104.36 537.08 104.36 537.08 101.08 543.64 101.08 543.64 104.36 550.2 104.36 550.2 101.08 563.32 101.08 563.32 104.36 566.6 104.36 566.6 97.8 530.52 97.8 530.52 101.08"/>
-      <polygon fill="#010101" points="563.32 91.24 546.92 91.24 546.92 94.52 543.64 94.52 543.64 91.24 540.36 91.24 540.36 94.52 537.08 94.52 537.08 91.24 523.96 91.24 523.96 97.8 530.52 97.8 530.52 94.52 533.8 94.52 533.8 97.8 550.2 97.8 550.2 94.52 553.48 94.52 553.48 97.8 556.76 97.8 556.76 94.52 563.32 94.52 563.32 91.24"/>
-      <rect fill="#010101" x="550.2" y="87.96" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="560.04" y="124.04" width="6.56" height="6.56"/>
-      <rect fill="#010101" x="484.6" y="104.36" width="6.56" height="3.28"/>
-      <rect fill="#010101" x="484.6" y="81.4" width="22.96" height="3.28"/>
-      <rect fill="#010101" x="484.6" y="78.12" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="484.6" y="140.44" width="22.96" height="3.28"/>
-      <rect fill="#010101" x="484.6" y="94.52" width="3.28" height="3.28"/>
-      <polygon fill="#010101" points="491.16 97.8 494.44 97.8 494.44 94.52 497.72 94.52 497.72 91.24 487.88 91.24 487.88 94.52 491.16 94.52 491.16 97.8"/>
-      <rect fill="#010101" x="484.6" y="87.96" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="484.6" y="65" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="520.68" y="87.96" width="6.56" height="3.28"/>
-      <polygon fill="#010101" points="514.12 101.08 517.4 101.08 517.4 104.36 527.24 104.36 527.24 97.8 514.12 97.8 514.12 101.08"/>
-      <rect fill="#010101" x="484.6" y="61.72" width="22.96" height="3.28"/>
-      <rect fill="#010101" x="491.16" y="71.56" width="9.84" height="6.56"/>
-      <rect fill="#010101" x="491.16" y="68.28" width="9.84" height="3.28"/>
-      <rect fill="#010101" x="484.6" y="71.56" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="491.16" y="133.88" width="9.84" height="3.28"/>
-      <rect fill="#010101" x="491.16" y="130.6" width="9.84" height="3.28"/>
-      <rect fill="#010101" x="484.6" y="124.04" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="491.16" y="127.32" width="9.84" height="3.28"/>
-      <rect fill="#010101" x="484.6" y="130.6" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="484.6" y="133.88" width="3.28" height="6.56"/>
-      <polygon fill="#010101" points="487.88 110.92 497.72 110.92 497.72 107.64 484.6 107.64 484.6 114.2 487.88 114.2 487.88 110.92"/>
-      <rect fill="#010101" x="504.28" y="124.04" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="484.6" y="114.2" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="491.16" y="114.2" width="3.28" height="3.28"/>
-      <rect fill="#010101" x="484.6" y="120.76" width="22.96" height="3.28"/>
-      <rect fill="#010101" x="504.28" y="133.88" width="3.28" height="6.56"/>
-      <rect fill="#010101" x="504.28" y="130.6" width="3.28" height="3.28"/>
-    </svg>
-  )
+// Replaces text content of the nth <text> inside a named SVG group, collapsing to one tspan
+function setSvgGroupText(doc: Document, groupId: string, textIndex: number, value: string) {
+  const g = doc.getElementById(groupId)
+  if (!g) return
+  const texts = g.querySelectorAll('text')
+  const el = texts[textIndex]
+  if (!el) return
+  const tspans = el.querySelectorAll('tspan')
+  if (tspans.length > 0) {
+    tspans[0].textContent = value
+    for (let i = 1; i < tspans.length; i++) tspans[i].parentNode?.removeChild(tspans[i])
+  } else {
+    el.textContent = value
+  }
 }
 
-// ─── Ticket preview ───────────────────────────────────────────────────────────
-
-function TicketPreview({
-  coupleNames, dateISO, time, venue, address, rsvpContact, accentColor, stubLabel, guestCode,
-}: {
-  coupleNames: string; dateISO: string; time: string; venue: string; address: string
-  rsvpContact: string; accentColor: string; stubLabel: string; guestCode: string
-}) {
+function injectTicketData(
+  rawSvg: string,
+  type: 'qr' | 'barcode',
+  coupleNames: string, dateISO: string, time: string,
+  address: string, message: string, rsvpContacts: string[], stubLabel: string,
+): string {
   const [first, second] = coupleNames.split(/\s*&\s*/)
+  const firstName  = (first?.trim()  || 'BRIDE').toUpperCase()
+  const secondName = (second?.trim() || 'GROOM').toUpperCase()
   const dateDisplay = dateISO
     ? new Date(dateISO + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase()
     : 'TBD'
   const dateShort = dateISO
     ? new Date(dateISO + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : '—'
-  const barWidths = codeToBarWidths(guestCode)
+  const attribution = `— ${first?.trim() || 'Bride'} & ${second?.trim() || 'Groom'}`
+  const rsvp1 = rsvpContacts[0] || '+255 7XX XXX XXX'
+  const rsvp2 = rsvpContacts[1] || rsvp1
+
+  const parser = new DOMParser()
+  const doc = parser.parseFromString(rawSvg, 'image/svg+xml')
+
+  // Couple names (texts[0]=first name, texts[1]="and", texts[2]=second name)
+  setSvgGroupText(doc, 'Ticket_Title', 0, firstName)
+  setSvgGroupText(doc, 'Ticket_Title', 2, secondName)
+
+  // Date
+  setSvgGroupText(doc, 'Ticket_Date', 0, `DATE: ${dateDisplay}`)
+  if (type === 'barcode') setSvgGroupText(doc, 'Ticket_Date', 1, dateShort)
+
+  // Time — hide group if empty
+  const timeG = doc.getElementById('Ticket_Time')
+  if (timeG) {
+    if (time) {
+      setSvgGroupText(doc, 'Ticket_Time', 0, `TIME: ${time}`)
+    } else {
+      timeG.setAttribute('visibility', 'hidden')
+    }
+  }
+
+  // Venue / address (auto-populated from ceremony venue)
+  setSvgGroupText(doc, 'Ticket_Venue', 0, `ADDRESS: ${(address || '').slice(0, 28)}`)
+
+  // Personal message
+  setSvgGroupText(doc, 'Message', 0, (message || 'We are delighted to invite you to our special day.').slice(0, 52))
+
+  // Attribution
+  setSvgGroupText(doc, 'Attribution', 0, attribution)
+
+  // RSVP contacts — auto-populated from invitation RSVP contacts
+  // texts[0] = "RSVP" label, texts[1] = first number, texts[2] = second number
+  setSvgGroupText(doc, 'Rsvp_Contact', 1, rsvp1)
+  setSvgGroupText(doc, 'Rsvp_Contact', 2, rsvp2)
+
+  // Stub label
+  setSvgGroupText(doc, 'Stub_Label', 0, (stubLabel || 'ACCESS PASS TO OUR WEDDING').slice(0, 26))
+
+  return new XMLSerializer().serializeToString(doc.documentElement)
+}
+
+function TicketSvgFile({
+  type, accentColor, coupleNames, dateISO, time, address, message, rsvpContacts, stubLabel,
+}: {
+  type: 'qr' | 'barcode'
+  accentColor: string
+  coupleNames: string
+  dateISO: string
+  time: string
+  address: string
+  message: string
+  rsvpContacts: string[]
+  stubLabel: string
+}) {
+  const [rawSvg, setRawSvg] = useState('')
+  const src = type === 'qr'
+    ? '/assets/invitation-svgs/model-wedding-package/ticket-front.svg'
+    : '/assets/invitation-svgs/model-wedding-package/ticket-barcode-front.svg'
+
+  // Fetch the SVG template once per type switch — no re-fetch on data changes
+  useEffect(() => {
+    fetch(src)
+      .then((r) => r.text())
+      .then((text) => setRawSvg(text.replace(/<\?xml[^?]*\?>/, '')))
+  }, [src])
+
+  // Inject live data whenever rawSvg or any data prop changes — no network call needed
+  const html = useMemo(
+    () => rawSvg ? injectTicketData(rawSvg, type, coupleNames, dateISO, time, address, message, rsvpContacts, stubLabel) : '',
+    [rawSvg, type, coupleNames, dateISO, time, address, message, rsvpContacts, stubLabel],
+  )
 
   return (
     <div
-      className="relative flex w-full overflow-hidden rounded-lg bg-[#FDFCF8] shadow-[0_24px_60px_-16px_rgba(0,0,0,0.35)] ring-1 ring-black/10"
-      style={{ fontFamily: "Georgia, 'Times New Roman', serif" }}
-    >
-      {/* Left stub */}
-      <div className="relative flex w-[13%] shrink-0 flex-col items-center justify-center py-5" style={{ backgroundColor: accentColor }}>
-        <p
-          className="select-none text-[9px] font-bold tracking-[0.22em] text-white"
-          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)', whiteSpace: 'nowrap', overflow: 'hidden', maxHeight: '90%' }}
-        >
-          {stubLabel}
-        </p>
-        <span className="absolute -right-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[#E9E7E3]" aria-hidden="true" />
-      </div>
-
-      {/* Perforated edge */}
-      <div className="flex w-[3px] shrink-0 flex-col items-center justify-around py-2" aria-hidden="true">
-        {Array.from({ length: 18 }).map((_, i) => (
-          <span key={i} className="h-1 w-0.5 rounded-full bg-gray-300" />
-        ))}
-      </div>
-
-      {/* Main body */}
-      <div className="flex min-w-0 flex-1 flex-col gap-2 px-4 py-4">
-        <p className="text-[8px] font-bold uppercase tracking-[0.28em] text-gray-500">You are invited to the wedding of</p>
-
-        <div className="flex items-center gap-2 border-y border-gray-200 py-2">
-          <span className="flex-1 text-center text-[22px] font-bold uppercase leading-none tracking-widest text-gray-900">
-            {first?.trim() || 'BRIDE'}
-          </span>
-          <span className="shrink-0 text-[11px] italic text-gray-500" style={{ fontStyle: 'italic' }}>and</span>
-          <span className="flex-1 text-center text-[22px] font-bold uppercase leading-none tracking-widest text-gray-900">
-            {second?.trim() || 'GROOM'}
-          </span>
-        </div>
-
-        <div className="grid grid-cols-2 gap-x-4 text-[9px] uppercase tracking-[0.14em] text-gray-700">
-          <p><span className="font-bold">Date:</span> {dateDisplay}</p>
-          <p><span className="font-bold">Address:</span> {address || venue || '—'}</p>
-          {time && <p><span className="font-bold">Time:</span> {time}</p>}
-        </div>
-
-        {/* Barcode encoding the guest code */}
-        <div className="flex flex-col gap-1 pt-1">
-          <div className="flex h-8 items-end gap-px" aria-label={`Guest code barcode: ${guestCode}`} role="img">
-            {barWidths.map((w, i) => (
-              <span
-                key={i}
-                className="rounded-[1px] bg-gray-900"
-                style={{ width: w * 1.5, height: `${50 + (i % 5) * 10}%` }}
-              />
-            ))}
-          </div>
-          <p className="font-mono text-[8px] font-bold tracking-[0.22em] text-gray-500">{guestCode}</p>
-        </div>
-      </div>
-
-      {/* Perforated edge */}
-      <div className="flex w-[3px] shrink-0 flex-col items-center justify-around py-2" aria-hidden="true">
-        {Array.from({ length: 18 }).map((_, i) => (
-          <span key={i} className="h-1 w-0.5 rounded-full bg-gray-300" />
-        ))}
-      </div>
-
-      {/* Right mini-stub */}
-      <div className="relative flex w-[18%] shrink-0 flex-col items-center justify-center gap-3 px-2 py-4 text-center">
-        <span className="absolute -left-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[#E9E7E3]" aria-hidden="true" />
-        <div>
-          <p className="text-[7px] font-bold uppercase tracking-[0.18em] text-gray-500">Door entry</p>
-          <p className="mt-0.5 font-mono text-[10px] font-bold tabular-nums text-gray-900">{guestCode}</p>
-        </div>
-        <div>
-          <p className="text-[13px]" aria-hidden="true">🤍</p>
-          <p className="text-[8px] font-bold uppercase tracking-[0.14em]" style={{ color: accentColor }}>RSVP</p>
-          <p className="mt-0.5 text-[8px] tabular-nums text-gray-700">{rsvpContact || '+255 7XX XXX XXX'}</p>
-        </div>
-        <div>
-          <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-gray-400">{dateShort}</p>
-        </div>
-      </div>
-    </div>
+      className="w-full"
+      style={{
+        '--iv-acc': accentColor,
+        '--iv-bg': '#f5f0ea',
+        '--iv-ts': accentColor,
+        '--iv-tp': '#3a2d1f',
+        '--iv-mut': `${accentColor}cc`,
+      } as React.CSSProperties}
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   )
 }
+
 
 // ─── Card click-to-edit hotspot layer ────────────────────────────────────────
 
