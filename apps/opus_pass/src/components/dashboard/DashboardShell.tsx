@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { UserButton } from '@clerk/nextjs'
 import {
   LayoutDashboard,
   Users,
@@ -57,13 +58,9 @@ function NavLinks({ onNavigate }: { onNavigate?: () => void }) {
 
 export default function DashboardShell({
   coupleName,
-  userEmail,
-  userInitial,
   children,
 }: {
   coupleName: string
-  userEmail: string
-  userInitial: string
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
@@ -88,7 +85,10 @@ export default function DashboardShell({
           >
             <ExternalLink className="h-4 w-4" /> Browse designs
           </Link>
-          <AccountFooter email={userEmail} initial={userInitial} />
+          <div className="flex items-center gap-3 px-3 pt-1">
+            <UserButton appearance={{ elements: { avatarBox: 'w-8 h-8' } }} />
+            <span className="text-sm text-[#1A1A1A]/60">Account</span>
+          </div>
         </div>
       </aside>
 
@@ -103,12 +103,7 @@ export default function DashboardShell({
           <Menu className="h-5 w-5" />
         </button>
         <Logo className="text-xl" />
-        <span
-          className="flex h-8 w-8 items-center justify-center rounded-full bg-[#C9A0DC]/25 text-xs font-bold text-[#8e57b3]"
-          aria-hidden="true"
-        >
-          {userInitial}
-        </span>
+        <UserButton appearance={{ elements: { avatarBox: 'w-8 h-8' } }} />
       </header>
 
       {/* Drawer — mobile */}
@@ -133,8 +128,9 @@ export default function DashboardShell({
             <div className="mt-6">
               <NavLinks onNavigate={() => setOpen(false)} />
             </div>
-            <div className="mt-6 border-t border-black/[0.06] pt-4">
-              <AccountFooter email={userEmail} initial={userInitial} />
+            <div className="mt-6 flex items-center gap-3 border-t border-black/[0.06] pt-4">
+              <UserButton appearance={{ elements: { avatarBox: 'w-8 h-8' } }} />
+              <span className="text-sm text-[#1A1A1A]/60">Account</span>
             </div>
           </div>
         </div>
@@ -144,22 +140,6 @@ export default function DashboardShell({
       <main className="lg:pl-64">
         <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10">{children}</div>
       </main>
-    </div>
-  )
-}
-
-function AccountFooter({ email, initial }: { email: string; initial: string }) {
-  return (
-    <div className="flex items-center gap-3 px-3 pt-1">
-      <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C9A0DC]/25 text-xs font-bold text-[#8e57b3]"
-        aria-hidden="true"
-      >
-        {initial}
-      </span>
-      <span className="min-w-0 flex-1 truncate text-xs text-[#1A1A1A]/60" title={email}>
-        {email}
-      </span>
     </div>
   )
 }

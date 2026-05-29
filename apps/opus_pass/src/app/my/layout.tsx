@@ -6,14 +6,8 @@ import { getCoupleProfile, coupleDisplayName } from '@/lib/dashboard/queries'
 export const dynamic = 'force-dynamic'
 
 export default async function MyLayout({ children }: { children: ReactNode }) {
-  const user = await requireDashboardUser('/my/dashboard')
+  // Provision/guard the signed-in couple (Clerk middleware enforces auth on /my).
+  await requireDashboardUser()
   const profile = await getCoupleProfile()
-  const coupleName = coupleDisplayName(profile)
-  const initial = (user.name ?? user.email).charAt(0).toUpperCase()
-
-  return (
-    <DashboardShell coupleName={coupleName} userEmail={user.email} userInitial={initial}>
-      {children}
-    </DashboardShell>
-  )
+  return <DashboardShell coupleName={coupleDisplayName(profile)}>{children}</DashboardShell>
 }
