@@ -15,10 +15,10 @@ export function MinimalLine({ names, date, venue, palette, message, messageAttr,
   const line1 = parts[0] ?? names
   const line2 = parts[1]
 
-  const na = applySectionStyle({ x: 20, textAnchor: 'start', fontSize: 18 }, sectionStyles?.names)
-  const da = applySectionStyle({ x: 20, textAnchor: 'start', fontSize: 9  }, sectionStyles?.date)
-  const va = applySectionStyle({ x: 20, textAnchor: 'start', fontSize: 8  }, sectionStyles?.venue)
-  const ma = applySectionStyle({ x: 20, textAnchor: 'start', fontSize: 7  }, sectionStyles?.message)
+  const na = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 18 }, sectionStyles?.names)
+  const da = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 9  }, sectionStyles?.date)
+  const va = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 8  }, sectionStyles?.venue)
+  const ma = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 7  }, sectionStyles?.message)
 
   return (
     <svg
@@ -30,8 +30,8 @@ export function MinimalLine({ names, date, venue, palette, message, messageAttr,
       <rect width="300" height="400" fill="var(--iv-bg)" />
       <line x1="20" y1="30" x2="280" y2="30" stroke="var(--iv-acc)" strokeWidth="1" />
       <text
-        x="20" y="170"
-        dominantBaseline="middle"
+        x="150" y="170"
+        textAnchor="middle" dominantBaseline="middle"
         fontFamily="inherit" fontSize="7" letterSpacing="3"
         fill="var(--iv-mut)"
       >TOGETHER WITH THEIR FAMILIES</text>
@@ -76,7 +76,7 @@ export function MinimalLine({ names, date, venue, palette, message, messageAttr,
       >{venue.toUpperCase()}</text>
       {message && (
         <g data-section="message">
-          <line x1="20" y1="275" x2="120" y2="275" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
+          <line x1="100" y1="275" x2="200" y2="275" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
           <text
             x={ma.x} y="289"
             textAnchor={ma.textAnchor} dominantBaseline="middle"

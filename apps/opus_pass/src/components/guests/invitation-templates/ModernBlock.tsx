@@ -15,9 +15,9 @@ export function ModernBlock({ names, date, venue, palette, message, messageAttr,
   const line1 = parts[0] ?? names
   const line2 = parts[1]
 
-  const na = applySectionStyle({ x: 20, textAnchor: 'start', fontSize: 16 }, sectionStyles?.names)
-  const da = applySectionStyle({ x: 20, textAnchor: 'start', fontSize: 7  }, sectionStyles?.date)
-  const ma = applySectionStyle({ x: 20, textAnchor: 'start', fontSize: 7  }, sectionStyles?.message)
+  const na = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 16 }, sectionStyles?.names)
+  const da = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 7  }, sectionStyles?.date)
+  const ma = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 7  }, sectionStyles?.message)
   const namesFW = sectionStyles?.names?.fontWeight ?? (font.namesStyle.fontStyle === 'italic' ? 'normal' : '900')
   const isItalic = font.namesStyle.fontStyle === 'italic'
 
@@ -49,8 +49,8 @@ export function ModernBlock({ names, date, venue, palette, message, messageAttr,
         )}
       </g>
       <text
-        x="20" y="378"
-        dominantBaseline="middle"
+        x="150" y="378"
+        textAnchor="middle" dominantBaseline="middle"
         fontFamily="inherit" fontSize="8" letterSpacing="2.2"
         fill="var(--iv-mut)"
       >{venue.toUpperCase()}</text>

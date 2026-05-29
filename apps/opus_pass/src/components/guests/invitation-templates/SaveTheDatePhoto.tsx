@@ -128,7 +128,7 @@ export function SaveTheDatePhoto({
       </text>
 
       {/* ── Intro ── */}
-      <text transform="translate(151.68 359.81)" style={font.bodyStyle} fontSize="15" fill="var(--iv-tp)">
+      <text transform="translate(209.76 359.81)" textAnchor="middle" style={font.bodyStyle} fontSize="15" fill="var(--iv-tp)">
         <tspan x="0" y="0">for the wedding of</tspan>
       </text>
 
@@ -136,40 +136,40 @@ export function SaveTheDatePhoto({
       <g data-section="names">
         {line2 ? (
           <>
-            <text transform="translate(110.37 389.15)" style={font.namesStyle} fontSize={24.32 * nameScale} fontWeight={nameFW} fill="var(--iv-tp)">
+            <text transform="translate(209.76 389.15)" textAnchor="middle" style={font.namesStyle} fontSize={24.32 * nameScale} fontWeight={nameFW} fill="var(--iv-tp)">
               <tspan x="0" y="0">{line1.toUpperCase()}</tspan>
             </text>
-            <text transform="translate(110.37 418)" style={font.namesStyle} fontSize={24.32 * nameScale} fontWeight={nameFW} fill="var(--iv-tp)">
+            <text transform="translate(209.76 418)" textAnchor="middle" style={font.namesStyle} fontSize={24.32 * nameScale} fontWeight={nameFW} fill="var(--iv-tp)">
               <tspan x="0" y="0">&amp; {line2.toUpperCase()}</tspan>
             </text>
           </>
         ) : (
-          <text transform="translate(110.37 389.15)" style={font.namesStyle} fontSize={24.32 * nameScale} fontWeight={nameFW} fill="var(--iv-tp)">
+          <text transform="translate(209.76 389.15)" textAnchor="middle" style={font.namesStyle} fontSize={24.32 * nameScale} fontWeight={nameFW} fill="var(--iv-tp)">
             <tspan x="0" y="0">{names.toUpperCase()}</tspan>
           </text>
         )}
       </g>
 
       {/* ── Date ── */}
-      <text data-section="date" transform="translate(181.86 438.76)" style={font.bodyStyle} fontSize={15.98 * dateScale} fontWeight={dateFW} fill="var(--iv-tp)">
+      <text data-section="date" transform="translate(209.76 438.76)" textAnchor="middle" style={font.bodyStyle} fontSize={15.98 * dateScale} fontWeight={dateFW} fill="var(--iv-tp)">
         <tspan x="0" y="0">{date}</tspan>
       </text>
 
       {/* ── Venue ── */}
-      <text data-section="venue" transform="translate(134.53 455.73)" style={font.bodyStyle} fontSize={13 * venueScale} fontWeight={venueFW} fill="var(--iv-tp)">
+      <text data-section="venue" transform="translate(209.76 455.73)" textAnchor="middle" style={font.bodyStyle} fontSize={13 * venueScale} fontWeight={venueFW} fill="var(--iv-tp)">
         <tspan x="0" y="0">{venue}</tspan>
       </text>
 
       {/* ── Time ── */}
       {time && (
-        <text data-section="time" transform="translate(172 472)" style={font.bodyStyle} fontSize={12 * timeScale} fontWeight={timeFW} fill="var(--iv-mut)">
+        <text data-section="time" transform="translate(209.76 472)" textAnchor="middle" style={font.bodyStyle} fontSize={12 * timeScale} fontWeight={timeFW} fill="var(--iv-mut)">
           <tspan x="0" y="0">{time}</tspan>
         </text>
       )}
 
       {/* ── Reception ── */}
       {hasReception && (
-        <text data-section="reception" transform="translate(120 490)" style={font.bodyStyle} fontSize={11 * recepScale} fill="var(--iv-mut)">
+        <text data-section="reception" transform="translate(209.76 490)" textAnchor="middle" style={font.bodyStyle} fontSize={11 * recepScale} fill="var(--iv-mut)">
           <tspan x="0" y="0">
             Reception{receptionVenue ? ` · ${receptionVenue}` : ''}{receptionTime ? ` · ${receptionTime}` : ''}
           </tspan>
@@ -179,7 +179,8 @@ export function SaveTheDatePhoto({
       {/* ── Dress code ── */}
       <text
         data-section="dressCode"
-        transform={`translate(135.78 ${dressY})`}
+        transform={`translate(209.76 ${dressY})`}
+        textAnchor="middle"
         style={font.bodyStyle}
         fontSize={13.33 * dressScale}
         fontWeight={dressFW}
@@ -195,7 +196,8 @@ export function SaveTheDatePhoto({
       {rsvpContact && (
         <text
           data-section="rsvpContact"
-          transform={`translate(120 ${rsvpY})`}
+          transform={`translate(209.76 ${rsvpY})`}
+          textAnchor="middle"
           style={font.bodyStyle}
           fontSize="12.28"
           fill="var(--iv-tp)"
