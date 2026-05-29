@@ -1,7 +1,7 @@
 import type { TemplateProps } from './_types'
-import { resolveFont } from './_types'
+import { resolveFont, applySectionStyle } from './_types'
 
-export function NavyGold({ names, date, venue, palette, message, messageAttr, fontStyle }: TemplateProps) {
+export function NavyGold({ names, date, venue, palette, message, messageAttr, fontStyle, sectionStyles }: TemplateProps) {
   const vars = {
     '--iv-bg': palette.background,
     '--iv-acc': palette.accent,
@@ -14,6 +14,11 @@ export function NavyGold({ names, date, venue, palette, message, messageAttr, fo
   const parts = names.split(/\s*&\s*/)
   const line1 = parts[0] ?? names
   const line2 = parts[1]
+
+  const na = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 17 }, sectionStyles?.names)
+  const da = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 9  }, sectionStyles?.date)
+  const va = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 7  }, sectionStyles?.venue)
+  const ma = applySectionStyle({ x: 150, textAnchor: 'middle', fontSize: 7  }, sectionStyles?.message)
 
   return (
     <svg
@@ -33,20 +38,20 @@ export function NavyGold({ names, date, venue, palette, message, messageAttr, fo
       <g data-section="names">
         {line2 ? (
           <>
-            <text x="150" y="190" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="17" fill="var(--iv-tp)">{line1}</text>
-            <text x="150" y="210" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="17" fill="var(--iv-tp)">&amp; {line2}</text>
+            <text x={na.x} y="190" textAnchor={na.textAnchor} dominantBaseline="middle" style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight} fill="var(--iv-tp)">{line1}</text>
+            <text x={na.x} y="210" textAnchor={na.textAnchor} dominantBaseline="middle" style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight} fill="var(--iv-tp)">&amp; {line2}</text>
           </>
         ) : (
-          <text x="150" y="200" textAnchor="middle" dominantBaseline="middle" style={font.namesStyle} fontSize="17" fill="var(--iv-tp)">{names}</text>
+          <text x={na.x} y="200" textAnchor={na.textAnchor} dominantBaseline="middle" style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight} fill="var(--iv-tp)">{names}</text>
         )}
       </g>
-      <text data-section="date" x="150" y={line2 ? '232' : '222'} textAnchor="middle" dominantBaseline="middle" fontFamily="inherit" fontSize="9" letterSpacing="2.2" fill="var(--iv-ts)">{date}</text>
-      <text data-section="venue" x="150" y={line2 ? '248' : '238'} textAnchor="middle" dominantBaseline="middle" fontFamily="inherit" fontSize="7" letterSpacing="2.2" fill="var(--iv-mut)">{venue.toUpperCase()}</text>
+      <text data-section="date" x={da.x} y={line2 ? '232' : '222'} textAnchor={da.textAnchor} dominantBaseline="middle" fontFamily="inherit" fontSize={da.fontSize} fontWeight={da.fontWeight} letterSpacing="2.2" fill="var(--iv-ts)">{date}</text>
+      <text data-section="venue" x={va.x} y={line2 ? '248' : '238'} textAnchor={va.textAnchor} dominantBaseline="middle" fontFamily="inherit" fontSize={va.fontSize} fontWeight={va.fontWeight} letterSpacing="2.2" fill="var(--iv-mut)">{venue.toUpperCase()}</text>
       {message && (
         <g data-section="message">
           <line x1="100" y1="285" x2="200" y2="285" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
-          <text x="150" y="299" textAnchor="middle" dominantBaseline="middle" style={font.bodyStyle} fontSize="7" fill="var(--iv-ts)">{message}</text>
-          {messageAttr && <text x="150" y="313" textAnchor="middle" dominantBaseline="middle" style={font.bodyStyle} fontSize="6" fill="var(--iv-mut)">{messageAttr}</text>}
+          <text x={ma.x} y="299" textAnchor={ma.textAnchor} dominantBaseline="middle" style={font.bodyStyle} fontSize={ma.fontSize} fontWeight={ma.fontWeight} fill="var(--iv-ts)">{message}</text>
+          {messageAttr && <text x={ma.x} y="313" textAnchor={ma.textAnchor} dominantBaseline="middle" style={font.bodyStyle} fontSize={Math.round(ma.fontSize * 0.86 * 10) / 10} fill="var(--iv-mut)">{messageAttr}</text>}
         </g>
       )}
     </svg>

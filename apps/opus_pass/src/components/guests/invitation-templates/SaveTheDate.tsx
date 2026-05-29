@@ -2,7 +2,7 @@ import type { TemplateProps } from './_types'
 
 export function SaveTheDate({
   names, date, venue, palette,
-  time, dressCode, rsvpContact, receptionVenue, receptionTime,
+  time, dressCode, rsvpContact, receptionVenue, receptionTime, sectionStyles,
 }: TemplateProps) {
   const vars = {
     '--iv-bg':  palette.background,
@@ -16,6 +16,11 @@ export function SaveTheDate({
   const line1 = parts[0] ?? names
   const line2 = parts[1]
   const hasReception = Boolean(receptionVenue || receptionTime)
+
+  const dateScale = sectionStyles?.date?.scale ?? 1
+  const dateFW    = sectionStyles?.date?.fontWeight ?? 'normal'
+  const venueScale = sectionStyles?.venue?.scale ?? 1
+  const venueFW   = sectionStyles?.venue?.fontWeight ?? 'normal'
 
   // Shift lower content down when reception row is present
   const dressY  = hasReception ? 543 : 524.65
@@ -105,12 +110,12 @@ export function SaveTheDate({
       </g>
 
       {/* ── Date ── */}
-      <text data-section="date" transform="translate(181.86 438.76)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="15.98" fill="var(--iv-tp)">
+      <text data-section="date" transform="translate(181.86 438.76)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize={15.98 * dateScale} fontWeight={dateFW} fill="var(--iv-tp)">
         <tspan x="0" y="0">{date}</tspan>
       </text>
 
       {/* ── Venue ── */}
-      <text data-section="venue" transform="translate(134.53 455.73)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize="13" fill="var(--iv-tp)">
+      <text data-section="venue" transform="translate(134.53 455.73)" fontFamily="'Josefin Sans','Trebuchet MS',system-ui,sans-serif" fontSize={13 * venueScale} fontWeight={venueFW} fill="var(--iv-tp)">
         <tspan x="0" y="0">{venue}</tspan>
       </text>
 
