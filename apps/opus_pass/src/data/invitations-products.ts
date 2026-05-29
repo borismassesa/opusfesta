@@ -192,10 +192,31 @@ export const PRODUCTS: CatalogProduct[] = [
     ],
   },
   { id: 'p22', category: 'Save the Dates', designer: 'Mzimbazi Studio', name: 'Teal Fiesta Photo Save the Date Cards', priceNow: 110000, digitalUnitPrice: 10000, freeSample: true, swatches: ['#00a79d', '#0F2535', '#7A3B2E'], treatment: 'save-the-date-photo',
+    designImage: '/assets/invitation-svgs/model-wedding-package/save-the-date-front.svg',
+    gallery: ['/assets/invitation-svgs/model-wedding-package/save-the-date-back.svg'],
     palettes: [
       { name: 'Teal & Gold',      background: '#00a79d', surface: '#00a79d', accent: '#6fc7b0', textPrimary: '#ffffff', textSecondary: '#ffffff', muted: 'rgba(255,255,255,0.65)' },
       { name: 'Ocean Night',      background: '#0F2535', surface: '#0F2535', accent: '#7EBFB5', textPrimary: '#EDF5F4', textSecondary: '#7EBFB5', muted: 'rgba(126,191,181,0.55)' },
       { name: 'Coral Terracotta', background: '#7A3B2E', surface: '#7A3B2E', accent: '#E8A87C', textPrimary: '#FDF0E8', textSecondary: '#E8A87C', muted: 'rgba(232,168,124,0.65)' },
+    ],
+  },
+
+  { id: 'p23', category: 'Event Tickets',  designer: 'Mzimbazi Studio', name: 'Heritage Script Wedding Event Ticket',           priceNow: 85000, digitalUnitPrice: 7000, freeSample: true,  swatches: ['#f5f0ea','#1A1208','#F5EFE3','#1A1A1A'], treatment: 'ticket',
+    designImage: '/assets/invitation-svgs/model-wedding-package/ticket-front.svg',
+    palettes: [
+      { name: 'Parchment & Gold', background: '#f5f0ea', surface: '#ffffff', accent: '#ab8d53', textPrimary: '#3a2d1f', textSecondary: '#ab8d53', muted: 'rgba(106,86,64,0.8)' },
+      { name: 'Midnight Gold',    background: '#1A1208', surface: '#ffffff', accent: '#C8A35C', textPrimary: '#FBF5E8', textSecondary: '#C8A35C', muted: 'rgba(200,163,92,0.75)' },
+      { name: 'Ivory & Crimson',  background: '#F5EFE3', surface: '#ffffff', accent: '#7A1F2B', textPrimary: '#1A1A1A', textSecondary: '#7A1F2B', muted: 'rgba(122,31,43,0.7)' },
+      { name: 'Onyx & Gold',      background: '#1A1A1A', surface: '#ffffff', accent: '#C8A35C', textPrimary: '#F5EFE3', textSecondary: '#C8A35C', muted: 'rgba(200,163,92,0.7)' },
+    ],
+  },
+  { id: 'p24', category: 'Event Tickets',  designer: 'Mzimbazi Studio', name: 'Heritage Script Wedding Event Ticket with Barcode', priceNow: 90000, digitalUnitPrice: 7000, freeSample: true,  swatches: ['#f5f0ea','#1A1208','#F5EFE3','#1A1A1A'], treatment: 'ticket-barcode',
+    designImage: '/assets/invitation-svgs/model-wedding-package/ticket-barcode-front.svg',
+    palettes: [
+      { name: 'Parchment & Gold', background: '#f5f0ea', surface: '#ffffff', accent: '#ab8d53', textPrimary: '#3a2d1f', textSecondary: '#ab8d53', muted: 'rgba(106,86,64,0.8)' },
+      { name: 'Midnight Gold',    background: '#1A1208', surface: '#ffffff', accent: '#C8A35C', textPrimary: '#FBF5E8', textSecondary: '#C8A35C', muted: 'rgba(200,163,92,0.75)' },
+      { name: 'Ivory & Crimson',  background: '#F5EFE3', surface: '#ffffff', accent: '#7A1F2B', textPrimary: '#1A1A1A', textSecondary: '#7A1F2B', muted: 'rgba(122,31,43,0.7)' },
+      { name: 'Onyx & Gold',      background: '#1A1A1A', surface: '#ffffff', accent: '#C8A35C', textPrimary: '#F5EFE3', textSecondary: '#C8A35C', muted: 'rgba(200,163,92,0.7)' },
     ],
   },
 ]

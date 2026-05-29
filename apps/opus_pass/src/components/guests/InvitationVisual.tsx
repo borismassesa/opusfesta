@@ -9,6 +9,7 @@ export type Treatment =
   | 'classic-serif' | 'minimal-line' | 'modern-block'  | 'floral-border'
   | 'navy-gold'     | 'blush-frame'  | 'sage-panel'    | 'cultural-red'
   | 'arch-script'   | 'photo-overlay'| 'save-the-date' | 'save-the-date-photo'
+  | 'ticket'        | 'ticket-barcode'
 
 export type Couple = { names: string; date: string; venue: string; time?: string }
 
@@ -36,6 +37,8 @@ const PREVIEW_PALETTES: Record<Treatment, InvitationPalette> = {
   'photo-overlay':  { background: 'transparent', surface: 'rgba(0,0,0,0.35)', accent: 'rgba(255,255,255,0.6)', textPrimary: '#FFFFFF', textSecondary: 'rgba(255,255,255,0.8)', muted: 'rgba(255,255,255,0.7)' },
   'save-the-date':       { background: '#00a79d', surface: '#00a79d', accent: '#6fc7b0', textPrimary: '#ffffff', textSecondary: '#ffffff', muted: 'rgba(255,255,255,0.65)' },
   'save-the-date-photo': { background: '#00a79d', surface: '#00a79d', accent: '#6fc7b0', textPrimary: '#ffffff', textSecondary: '#ffffff', muted: 'rgba(255,255,255,0.65)' },
+  'ticket':              { background: '#f5f0ea', surface: '#ffffff', accent: '#ab8d53', textPrimary: '#3a2d1f', textSecondary: '#ab8d53', muted: 'rgba(106,86,64,0.8)' },
+  'ticket-barcode':      { background: '#f5f0ea', surface: '#ffffff', accent: '#ab8d53', textPrimary: '#3a2d1f', textSecondary: '#ab8d53', muted: 'rgba(106,86,64,0.8)' },
 }
 
 export function InvitationVisual({
@@ -88,5 +91,10 @@ export function InvitationVisual({
     case 'photo-overlay':  return <PhotoOverlay  {...shared} photoSrc={photoSrc} />
     case 'save-the-date':       return <SaveTheDate      {...shared} />
     case 'save-the-date-photo': return <SaveTheDatePhoto {...shared} photoSrc={photoSrc} photoOpacity={photoOpacity} />
+    case 'ticket':
+    case 'ticket-barcode':
+      // Ticket products render via designImage SVG — this fallback is used only in contexts
+      // that render a treatment preview without a designImage (e.g. catalog grid).
+      return <ClassicSerif {...shared} />
   }
 }
