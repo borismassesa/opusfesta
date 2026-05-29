@@ -27,6 +27,7 @@ export type SectionStyles = {
   venue?: SectionStyle
   dressCode?: SectionStyle
   reception?: SectionStyle
+  rsvpContact?: SectionStyle
   message?: SectionStyle
   messageAttr?: SectionStyle
 }
