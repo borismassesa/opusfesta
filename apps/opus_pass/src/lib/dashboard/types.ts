@@ -122,3 +122,96 @@ export const RSVP_STATUS_LABELS: Record<RsvpStatus, string> = {
   maybe: 'Maybe',
 }
 
+// ──────────────────────────────── Pledges ("michango") ────────────────────────────────
+
+export type PledgeStatus = 'invited' | 'pledged' | 'partial' | 'paid' | 'declined'
+export type CardStatus = 'none' | 'preparing' | 'prepared' | 'sent'
+export type AttendanceAnswer = 'yes' | 'no' | 'maybe'
+export type ReminderCadence = 'none' | 'weekly' | 'biweekly'
+export type PaymentMethod =
+  | 'mpesa'
+  | 'tigopesa'
+  | 'airtel'
+  | 'halopesa'
+  | 'cash'
+  | 'bank'
+  | 'other'
+
+export interface EventPledge {
+  id: string
+  guest_contact_id: string
+  pledged_amount: number
+  amount_received: number
+  currency: string
+  promised_date: string | null
+  status: PledgeStatus
+  payment_method: PaymentMethod | null
+  will_attend: AttendanceAnswer | null
+  card_status: CardStatus
+  reminder_cadence: ReminderCadence
+  next_reminder_at: string | null
+  last_reminded_at: string | null
+  reminder_count: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+/** A pledge enriched with the contributor's contact details for dashboard rows. */
+export interface PledgeWithContact extends EventPledge {
+  full_name: string
+  email: string | null
+  phone: string | null
+  whatsapp_phone: string | null
+  group_tag: string | null
+  /** The contributor's personal RSVP token (so we can deep-link their RSVP). */
+  public_token: string
+}
+
+export interface PledgeStats {
+  totalPledges: number
+  totalPledged: number
+  totalReceived: number
+  outstanding: number
+  paidCount: number
+  attendingCount: number
+  cardsToPrepare: number
+}
+
+export const PLEDGE_STATUS_LABELS: Record<PledgeStatus, string> = {
+  invited: 'Awaiting pledge',
+  pledged: 'Pledged',
+  partial: 'Partly paid',
+  paid: 'Paid',
+  declined: 'Declined',
+}
+
+export const CARD_STATUS_LABELS: Record<CardStatus, string> = {
+  none: 'No card yet',
+  preparing: 'Preparing',
+  prepared: 'Ready',
+  sent: 'Sent',
+}
+
+export const ATTENDANCE_LABELS: Record<AttendanceAnswer, string> = {
+  yes: 'Coming',
+  no: 'Not coming',
+  maybe: 'Maybe',
+}
+
+export const CADENCE_LABELS: Record<ReminderCadence, string> = {
+  none: 'No reminders',
+  weekly: 'Weekly',
+  biweekly: 'Every 2 weeks',
+}
+
+export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
+  mpesa: 'M-Pesa',
+  tigopesa: 'Tigo Pesa',
+  airtel: 'Airtel Money',
+  halopesa: 'HaloPesa',
+  cash: 'Cash',
+  bank: 'Bank transfer',
+  other: 'Other',
+}
+

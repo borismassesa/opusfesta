@@ -30,6 +30,50 @@ export function collectorShareMessage(coupleNames: string, link: string): string
   )
 }
 
+/** Path to the couple's public self-pledge page. */
+export function pledgePath(token: string): string {
+  return `/pledge/${token}`
+}
+
+/** Absolute self-pledge URL given a browser/runtime origin. */
+export function pledgeUrl(origin: string, token: string): string {
+  return `${origin.replace(/\/$/, '')}${pledgePath(token)}`
+}
+
+/** Bilingual (SW/EN) initial ask sent to invite someone to pledge. */
+export function pledgeRequestMessage(coupleNames: string, link: string): string {
+  return (
+    `Habari! 💚 ${coupleNames} wanaandaa harusi yao na wangependa mchango wako. ` +
+    `Tafadhali weka kiasi unachoweza kuchangia hapa: ${link}\n` +
+    `\n` +
+    `Hi! ${coupleNames} are preparing their wedding and would value your contribution. ` +
+    `Please pledge what you can here: ${link}`
+  )
+}
+
+/** Bilingual (SW/EN) follow-up reminder for a pledge that's still owing.
+ *  Optionally appends the couple's "how to pay" instructions. */
+export function pledgeReminderMessage(
+  coupleNames: string,
+  contributorName: string,
+  amountLabel: string,
+  dueLabel: string | null,
+  paymentInstructions?: string | null,
+): string {
+  const firstName = contributorName.split(/\s+/)[0] || contributorName
+  const dueSw = dueLabel ? ` kabla ya ${dueLabel}` : ''
+  const dueEn = dueLabel ? ` by ${dueLabel}` : ''
+  const pay = paymentInstructions?.trim() ? `\n\nMalipo / How to pay:\n${paymentInstructions.trim()}` : ''
+  return (
+    `Habari ${firstName}! 💚 Ni kumbusho la upole kuhusu mchango wako wa ${amountLabel} ` +
+    `kwa harusi ya ${coupleNames}${dueSw}. Asante sana kwa msaada wako!\n` +
+    `\n` +
+    `Hi ${firstName}! A gentle reminder about your pledge of ${amountLabel} ` +
+    `for ${coupleNames}'s wedding${dueEn}. Thank you so much for your support!` +
+    pay
+  )
+}
+
 /** Normalize a phone number to digits + leading country code for wa.me / sms. */
 export function normalizePhone(raw: string | null | undefined): string | null {
   if (!raw) return null

@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Heart } from 'lucide-react'
+import { Heart, Wallet } from 'lucide-react'
 import { Card, SectionTitle } from '@/components/dashboard/primitives'
 import { Button, Field, inputClass } from '@/components/dashboard/controls'
 import { upsertCoupleProfile } from '@/lib/dashboard/actions'
@@ -15,6 +15,8 @@ export default function SettingsForm({ profile }: { profile: CoupleProfileLite |
     wedding_date: profile?.wedding_date ?? '',
     whatsapp_phone: profile?.whatsapp_phone ?? '',
     city: profile?.city ?? '',
+    pledge_payment_instructions: profile?.pledge_payment_instructions ?? '',
+    pledge_goal_amount: profile?.pledge_goal_amount ? String(profile.pledge_goal_amount) : '',
   })
   const [pending, startTransition] = useTransition()
 
@@ -31,6 +33,8 @@ export default function SettingsForm({ profile }: { profile: CoupleProfileLite |
           wedding_date: form.wedding_date || null,
           whatsapp_phone: form.whatsapp_phone || null,
           city: form.city || null,
+          pledge_payment_instructions: form.pledge_payment_instructions || null,
+          pledge_goal_amount: form.pledge_goal_amount ? Number(form.pledge_goal_amount) : null,
         })
         toast.success('Profile saved')
       } catch (err) {
@@ -97,13 +101,61 @@ export default function SettingsForm({ profile }: { profile: CoupleProfileLite |
               placeholder="07XX XXX XXX"
             />
           </Field>
-          <div className="pt-2">
-            <Button onClick={save} disabled={pending}>
-              {pending ? 'Saving…' : 'Save changes'}
-            </Button>
-          </div>
         </div>
       </Card>
+
+      <Card className="p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-black/[0.05] text-[#1A1A1A]/70">
+            <Wallet className="h-5 w-5" />
+          </span>
+          <div>
+            <h3 className="font-semibold text-[#1A1A1A]">Pledge collection</h3>
+            <p className="text-sm text-[#1A1A1A]/55">How contributors pay you — shown on your pledge link and reminders</p>
+          </div>
+        </div>
+
+        <div className="grid max-w-xl gap-4">
+          <Field
+            label="Fundraising goal (optional)"
+            hint="Set a target and the Reports tab shows progress toward it. Leave blank for no goal."
+          >
+            <div className="relative">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-[#1A1A1A]/45">
+                TSh
+              </span>
+              <input
+                type="number"
+                min={0}
+                step={1000}
+                inputMode="numeric"
+                className={`${inputClass} pl-12`}
+                value={form.pledge_goal_amount}
+                onChange={(e) => setForm({ ...form, pledge_goal_amount: e.target.value })}
+                placeholder="e.g. 5000000"
+              />
+            </div>
+          </Field>
+          <Field
+            label="How to pay (mobile money / bank)"
+            hint="e.g. M-Pesa Lipa Namba 1234567 (Name) · Tigo Pesa 0712 345 678 · Airtel Money 0786 …"
+          >
+            <textarea
+              rows={4}
+              className={inputClass}
+              value={form.pledge_payment_instructions}
+              onChange={(e) => setForm({ ...form, pledge_payment_instructions: e.target.value })}
+              placeholder={'M-Pesa: Lipa Namba 1234567 (Boris Massesa)\nTigo Pesa: 0712 345 678\nAirtel Money: 0786 000 111'}
+            />
+          </Field>
+        </div>
+      </Card>
+
+      <div className="pt-2">
+        <Button onClick={save} disabled={pending}>
+          {pending ? 'Saving…' : 'Save changes'}
+        </Button>
+      </div>
     </div>
   )
 }

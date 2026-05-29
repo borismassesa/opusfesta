@@ -14,12 +14,15 @@ import {
   Link2,
   Upload,
   MessageCircle,
+  Mail,
+  Smartphone,
   X,
   ClipboardSignature,
   ArrowUp,
   ArrowDown,
   CalendarHeart,
   Copy,
+  Palette,
 } from 'lucide-react'
 import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
 import { Button, ConfirmDialog, Slideover, Tabs, Field, inputClass } from '@/components/dashboard/controls'
@@ -34,7 +37,7 @@ import {
   recordSend,
   type GuestInput,
 } from '@/lib/dashboard/actions'
-import { inviteMessage, rsvpUrl, whatsappShareUrl } from '@/lib/dashboard/share'
+import { emailShareUrl, inviteMessage, rsvpUrl, smsShareUrl, whatsappShareUrl } from '@/lib/dashboard/share'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type {
   ChildEntry,
@@ -440,6 +443,23 @@ export default function GuestsManager({
     recordSend(g.id, 'whatsapp').catch(() => {})
   }
 
+  function sendEmail(g: GuestWithInvitations) {
+    const link = rsvpUrl(window.location.origin, g.public_token)
+    const msg = inviteMessage(coupleName, g.full_name, link)
+    const url = emailShareUrl(g, `You're invited — ${coupleName}`, msg)
+    window.location.href = url
+    recordSend(g.id, 'email').catch(() => {})
+  }
+
+  function sendSms(g: GuestWithInvitations) {
+    const link = rsvpUrl(window.location.origin, g.public_token)
+    const msg = inviteMessage(coupleName, g.full_name, link)
+    const url = smsShareUrl(g, msg)
+    window.location.href = url
+    recordSend(g.id, 'sms').catch(() => {})
+  }
+
+
   function pickImportFile() {
     fileInputRef.current?.click()
   }
@@ -504,7 +524,7 @@ export default function GuestsManager({
       {initialGuests.length > 0 ? (
         <div className="grid gap-3 lg:grid-cols-2">
           <Card className="px-5 py-4">
-            <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="grid grid-cols-3 divide-x divide-black/[0.12] text-center">
               <Stat value={initialGuests.length} label="Guests" />
               <Stat value={headCounts.adults} label="Adults" />
               <Stat value={headCounts.children} label="Children" />
@@ -537,13 +557,21 @@ export default function GuestsManager({
                   )}
                 </div>
                 {collectorToken ? (
-                  <button
-                    type="button"
-                    onClick={copyCollectorLink}
-                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-black/[0.18] bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
-                  >
-                    <Copy className="h-3.5 w-3.5" /> Copy link
-                  </button>
+                  <div className="flex shrink-0 items-center gap-2">
+                    <Link
+                      href="/my/dashboard/guests/customize"
+                      className="inline-flex items-center gap-1.5 rounded-full bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
+                    >
+                      <Palette className="h-3.5 w-3.5" /> Customize
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={copyCollectorLink}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.18] bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
+                    >
+                      <Copy className="h-3.5 w-3.5" /> Copy link
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
@@ -728,18 +756,11 @@ export default function GuestsManager({
                     <button
                       type="button"
                       onClick={toggleSort}
-                      className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55 hover:text-[#1A1A1A]"
+                      aria-label={`Sort by name, currently ${sortDir === 'asc' ? 'ascending' : 'descending'}`}
+                      className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55 hover:text-[#1A1A1A]"
                     >
                       Name
-                      {sortDir === 'asc' ? (
-                        <ArrowUp className="h-3 w-3" />
-                      ) : (
-                        <ArrowDown className="h-3 w-3" />
-                      )}
                     </button>
-                    <p className="mt-0.5 text-[11px] font-normal normal-case tracking-normal text-[#1A1A1A]/45">
-                      {filtered.length} {filtered.length === 1 ? 'guest' : 'guests'}
-                    </p>
                   </th>
                   <th scope="col" className="py-3 pr-4">
                     <span className="text-xs font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
@@ -886,56 +907,80 @@ export default function GuestsManager({
                         )}
                       </td>
                       <td className="py-3.5 pr-4">
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1.5 text-xs font-medium',
-                            sent ? 'text-[#1A1A1A]' : 'text-[#1A1A1A]/50',
-                          )}
-                        >
-                          <span
-                            className={cn(
-                              'h-2 w-2 rounded-full',
-                              sent ? 'bg-emerald-500' : 'bg-neutral-300',
-                            )}
-                            aria-hidden="true"
-                          />
-                          {sent ? `Yes · ${g.invite_count}×` : 'No'}
-                        </span>
+                        {sent ? (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#9FE870]/25 px-2.5 py-1 text-xs font-medium text-[#3f6b1f]">
+                            <Check className="h-3 w-3" />
+                            Sent{g.invite_count > 1 ? ` · ${g.invite_count}×` : ''}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center rounded-full bg-black/[0.05] px-2.5 py-1 text-xs font-medium text-[#1A1A1A]/55">
+                            Not sent
+                          </span>
+                        )}
                       </td>
                       <td className="py-3.5 pr-3 text-right">
-                        <div className="inline-flex gap-1">
-                          {g.whatsapp_phone || g.phone ? (
+                        <div className="inline-flex flex-col items-end gap-1">
+                          {/* Upper row — send the invite */}
+                          <div className="inline-flex gap-1">
+                            <button
+                              onClick={() => sendEmail(g)}
+                              disabled={!g.email}
+                              aria-label="Send invite by email"
+                              title={g.email ? 'Send invite by email' : 'No email on file'}
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </button>
                             <button
                               onClick={() => sendWhatsApp(g)}
+                              disabled={!g.whatsapp_phone && !g.phone}
                               aria-label="Send invite on WhatsApp"
-                              title="Send invite on WhatsApp"
-                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#25D366] hover:bg-[#25D366]/10"
+                              title={
+                                g.whatsapp_phone || g.phone
+                                  ? 'Send invite on WhatsApp'
+                                  : 'No phone on file'
+                              }
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#25D366] hover:bg-[#25D366]/10 disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
                             >
                               <MessageCircle className="h-4 w-4" />
                             </button>
-                          ) : null}
-                          <button
-                            onClick={() => copyLink(g)}
-                            aria-label="Copy RSVP link"
-                            title="Copy RSVP link"
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A]"
-                          >
-                            <Link2 className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => openEdit(g)}
-                            aria-label="Edit"
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/50 hover:bg-black/[0.05]"
-                          >
-                            <Pencil className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={() => setPendingDelete(g)}
-                            aria-label="Remove"
-                            className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
+                            <button
+                              onClick={() => sendSms(g)}
+                              disabled={!g.phone && !g.whatsapp_phone}
+                              aria-label="Send invite by SMS"
+                              title={
+                                g.phone || g.whatsapp_phone ? 'Send invite by SMS' : 'No phone on file'
+                              }
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A] disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:bg-transparent"
+                            >
+                              <Smartphone className="h-4 w-4" />
+                            </button>
+                          </div>
+                          {/* Lower row — row tools */}
+                          <div className="inline-flex gap-1">
+                            <button
+                              onClick={() => copyLink(g)}
+                              aria-label="Copy RSVP link"
+                              title="Copy RSVP link"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/60 hover:bg-black/[0.05] hover:text-[#1A1A1A]"
+                            >
+                              <Link2 className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => openEdit(g)}
+                              aria-label="Edit"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/50 hover:bg-black/[0.05]"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => setPendingDelete(g)}
+                              aria-label="Remove"
+                              className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 hover:bg-rose-50"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
                         </div>
                       </td>
                     </tr>
@@ -1179,6 +1224,12 @@ function GuestSubNav({
           Contact Collector
         </button>
       ) : null}
+      <Link
+        href="/my/dashboard/pledges"
+        className="-mb-[9px] inline-flex items-center gap-1.5 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]"
+      >
+        Pledges <ArrowUp className="h-3 w-3 rotate-45" aria-hidden="true" />
+      </Link>
       <Link
         href="/my/dashboard/rsvps"
         className="-mb-[9px] inline-flex items-center gap-1.5 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]"
