@@ -3,8 +3,10 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Plus, Save, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { PaletteEditor } from '@/components/cms/PaletteEditor'
+import { SvgInspector } from '@/components/cms/SvgInspector'
 import {
   PRODUCT_CATEGORIES,
   PRODUCT_TREATMENTS,
@@ -53,7 +55,10 @@ export default function ProductEditor({
     if (!slug) return setError('Slug is required.')
     if (!product.price_now || product.price_now <= 0) return setError('Price must be greater than 0.')
 
-    const record: InvitationProductRecord = { ...product, id, slug }
+    // Derive swatches from palette accent values; fall back to existing swatches if no palettes set.
+    const swatches =
+      product.palettes.length > 0 ? product.palettes.map((p) => p.accent) : product.swatches
+    const record: InvitationProductRecord = { ...product, id, slug, swatches }
 
     startTransition(async () => {
       try {
@@ -176,17 +181,32 @@ export default function ProductEditor({
 
         {/* Card design */}
         <Card title="Card design">
-          <ImageUploadField
-            label="Card artwork (hero)"
-            value={product.image_url}
-            onChange={(v) => set('image_url', v)}
-            pathPrefix={IMAGE_PREFIX}
-            previewAspect="aspect-[5/7]"
-            previewWidth="max-w-[180px]"
-            accept="svg"
-          />
+          <div>
+            <ImageUploadField
+              label="Front design (hero)"
+              value={product.image_url}
+              onChange={(v) => set('image_url', v)}
+              pathPrefix={IMAGE_PREFIX}
+              previewAspect="aspect-[5/7]"
+              previewWidth="max-w-[180px]"
+              accept="svg"
+            />
+            <SvgInspector url={product.image_url} />
+          </div>
+          <div>
+            <ImageUploadField
+              label="Back design (optional)"
+              value={product.back_image_url}
+              onChange={(v) => set('back_image_url', v)}
+              pathPrefix={IMAGE_PREFIX}
+              previewAspect="aspect-[5/7]"
+              previewWidth="max-w-[180px]"
+              accept="svg"
+            />
+            <SvgInspector url={product.back_image_url} />
+          </div>
           <p className="text-[11px] text-gray-500 -mt-1">
-            Upload an SVG of the card design. When attached it replaces the built-in CSS design on the product page. Leave empty to use the CSS design below.
+            Upload SVGs for the card design. When front is attached it replaces the built-in CSS design. Leave empty to use the CSS design below.
           </p>
           <Field label="Built-in design (fallback)">
             <select value={product.treatment} onChange={(e) => set('treatment', e.target.value as InvitationProductRecord['treatment'])} className={inputCls}>
@@ -200,7 +220,10 @@ export default function ProductEditor({
 
         {/* Colours */}
         <Card title="Design colours">
-          <SwatchEditor value={product.swatches} onChange={(v) => set('swatches', v)} />
+          <p className="text-[11px] text-gray-500 -mt-2">
+            Each palette has 6 colour roles. The accent colour is used as the swatch dot in the catalog.
+          </p>
+          <PaletteEditor value={product.palettes} onChange={(v) => set('palettes', v)} />
         </Card>
 
         {/* Visibility */}
@@ -245,50 +268,6 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   )
 }
 
-function SwatchEditor({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  const update = (i: number, hex: string) => onChange(value.map((c, idx) => (idx === i ? hex : c)))
-  const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i))
-  const add = () => onChange([...value, '#A6B89A'])
-
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {value.map((c, i) => (
-          <div key={i} className="flex items-center gap-1.5 rounded-lg border border-gray-200 pl-1.5 pr-1 py-1">
-            <input
-              type="color"
-              value={/^#[0-9a-fA-F]{6}$/.test(c) ? c : '#000000'}
-              onChange={(e) => update(i, e.target.value)}
-              className="h-6 w-6 cursor-pointer rounded border-0 bg-transparent p-0"
-              aria-label={`Swatch ${i + 1} colour`}
-            />
-            <input
-              value={c}
-              onChange={(e) => update(i, e.target.value)}
-              className="w-[78px] text-xs tabular-nums text-gray-700 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => remove(i)}
-              className="p-0.5 text-gray-400 hover:text-red-600 rounded"
-              aria-label={`Remove swatch ${i + 1}`}
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={add}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7E5896] hover:text-[#5d3a78] px-2.5 py-1.5 rounded-lg border border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        Add colour
-      </button>
-    </div>
-  )
-}
 
 function GalleryEditor({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const update = (i: number, url: string) => onChange(value.map((u, idx) => (idx === i ? url : u)))

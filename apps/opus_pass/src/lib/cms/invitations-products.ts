@@ -1,6 +1,7 @@
 import 'server-only'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import type { Treatment } from '@/components/guests/InvitationVisual'
+import type { InvitationPalette } from '@/components/guests/invitation-templates/_types'
 import { PRODUCTS, findProductById, type CatalogProduct } from '@/data/invitations-products'
 
 // Shape of a row in the website_invitations_products table.
@@ -15,8 +16,10 @@ type ProductRow = {
   digital_unit_price: number
   free_sample: boolean
   swatches: string[] | null
+  palettes: InvitationPalette[] | null
   treatment: string
   image_url: string | null
+  back_image_url: string | null
   gallery: string[] | null
   published: boolean
   sort_order: number
@@ -24,9 +27,13 @@ type ProductRow = {
 
 function rowToProduct(row: ProductRow): CatalogProduct {
   const bundled = findProductById(row.id)
+  // Use DB palettes when the designer has populated them; fall back to bundled data.
+  const palettes =
+    Array.isArray(row.palettes) && row.palettes.length > 0
+      ? row.palettes
+      : (bundled?.palettes ?? [])
   return {
-    // Local-only fields that live in the bundled data (not in the DB schema yet)
-    palettes:     bundled?.palettes     ?? [],
+    palettes,
     designImage:  bundled?.designImage,
     content:      bundled?.content,
     themeId:      bundled?.themeId,

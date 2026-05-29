@@ -19,7 +19,17 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function CustomiseProductPage({ params }: { params: Promise<Params> }) {
   const { id } = await params
-  const product = await loadInvitationProduct(id)
+  const [product, ticketProduct] = await Promise.all([
+    loadInvitationProduct(id),
+    // Load p23 (QR ticket) to get the admin-configured accent colour options.
+    loadInvitationProduct('p23'),
+  ])
   if (!product) return notFound()
-  return <CustomiseClient product={product} />
+
+  const ticketAccentOptions =
+    ticketProduct && ticketProduct.palettes.length > 0
+      ? ticketProduct.palettes.map((p) => ({ name: p.name ?? p.accent, value: p.accent }))
+      : undefined
+
+  return <CustomiseClient product={product} ticketAccentOptions={ticketAccentOptions} />
 }

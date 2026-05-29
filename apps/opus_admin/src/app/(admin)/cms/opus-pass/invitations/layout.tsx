@@ -19,6 +19,7 @@ import {
   Send,
   Sparkles,
   Star,
+  Ticket,
   Trash2,
   type LucideIcon,
 } from 'lucide-react'
@@ -53,6 +54,14 @@ const sections: Section[] = [
     href: '/cms/opus-pass/invitations/products',
     status: 'live',
     description: 'Invitation card catalog — artwork, prices, designer and details per card.',
+  },
+  {
+    key: 'ticket',
+    label: 'Wedding Ticket',
+    icon: Ticket,
+    href: '/cms/opus-pass/ticket',
+    status: 'live',
+    description: 'Upload the wedding ticket SVG and configure accent colour options.',
   },
   {
     key: 'categories',
