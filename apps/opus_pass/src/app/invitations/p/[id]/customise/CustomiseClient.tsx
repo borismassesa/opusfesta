@@ -324,16 +324,18 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
 
   const handleContinue = () => {
     const summaryParts = [celebrant, dateISO && dateDisplay, venue].filter(Boolean)
+    const invitationQty = qty['invitation'] ?? 50
+    const orderTotal = product.digitalUnitPrice * invitationQty
     addItem({
       id: product.id,
       name: product.name,
       designer: product.designer,
       treatment: product.treatment,
       summary: summaryParts.join(' · '),
-      total: product.digitalUnitPrice * 150,
+      total: orderTotal,
     })
     toast.success('Added to cart', {
-      description: `${product.name} — TZS ${(product.digitalUnitPrice * 150).toLocaleString('en-US')}`,
+      description: `${product.name} — TZS ${orderTotal.toLocaleString('en-US')}`,
     })
     router.push('/invitations/cart')
   }
@@ -841,7 +843,8 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                             <button
                               type="button"
                               onClick={() => setRsvpContacts((list) => list.filter((_, idx) => idx !== i))}
-                              className="shrink-0 text-gray-400 hover:text-gray-900"
+                              disabled={rsvpContacts.length <= 1}
+                              className="shrink-0 text-gray-400 hover:text-gray-900 disabled:opacity-30 disabled:cursor-not-allowed"
                               aria-label={`Remove contact ${i + 1}`}
                             >
                               <X size={16} />
@@ -2070,7 +2073,7 @@ function QuantityField({ value, onChange }: { value: number; onChange: (v: numbe
       <div className="flex items-center gap-1">
         <button
           type="button"
-          onClick={() => onChange(value - (value > 10 ? 10 : 1))}
+          onClick={() => onChange(value - (value > 100 ? 10 : 1))}
           aria-label="Decrease quantity"
           className="grid h-8 w-8 place-items-center rounded-md border border-gray-300 text-gray-700 transition hover:border-gray-500 hover:bg-white disabled:opacity-40"
           disabled={value <= 1}
@@ -2114,24 +2117,26 @@ function BackPrintToggle({
         {([
           { v: 'blank', label: 'Leave back blank', sub: 'No additional cost' },
           { v: 'same',  label: 'Print same on back', sub: '+TZS 1,500 per item' },
-        ] as const).map(({ v, label, sub }) => (
+        ] as const).map(({ v, label, sub }) => {
+          const selected = (value ?? 'blank') === v
+          return (
           <button
             key={v}
             type="button"
             onClick={() => onChange(v)}
-            aria-pressed={value === v}
+            aria-pressed={selected}
             className={cn(
               'flex items-start gap-3 rounded-md border px-3.5 py-3 text-left transition',
-              value === v
+              selected
                 ? 'border-[#1A1A1A] bg-white ring-1 ring-[#1A1A1A]'
                 : 'border-gray-200 bg-white hover:border-gray-400',
             )}
           >
             <span className={cn(
               'mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition',
-              value === v ? 'border-[#1A1A1A] bg-[#1A1A1A]' : 'border-gray-300',
+              selected ? 'border-[#1A1A1A] bg-[#1A1A1A]' : 'border-gray-300',
             )}>
-              {value === v && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
+              {selected && <span className="h-1.5 w-1.5 rounded-full bg-white" />}
             </span>
             <span>
               <span className="block text-[13px] font-semibold text-gray-900">{label}</span>
@@ -2141,7 +2146,8 @@ function BackPrintToggle({
               )}>{sub}</span>
             </span>
           </button>
-        ))}
+        )})}
+
       </div>
     </div>
   )
@@ -2386,7 +2392,7 @@ function CardClickLayer({
     const ro = new ResizeObserver(measure)
     ro.observe(container)
     const mo = new MutationObserver(measure)
-    mo.observe(container, { subtree: true, characterData: true, childList: true, attributes: false })
+    mo.observe(container, { subtree: true, childList: true, attributes: false })
     return () => { ro.disconnect(); mo.disconnect() }
   }, [containerRef])
 

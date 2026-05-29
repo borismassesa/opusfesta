@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useEffect } from 'react'
+import { useRef, useState } from 'react'
 import { motion } from 'motion/react'
 import {
   Trash2, RotateCcw, RotateCw, ChevronUp, ChevronDown,
@@ -35,12 +35,12 @@ export function OverlayEditor({
     if (!el) return
     const rect = el.getBoundingClientRect()
     const pct = (v: number, dim: number) => Math.min(100, Math.max(0, (v / dim) * 100))
-    onMove(id, pct(x - rect.left, rect.width), pct(y - rect.top, rect.height))
+    onMove(id, pct(x - (rect.left + window.scrollX), rect.width), pct(y - (rect.top + window.scrollY), rect.height))
   }
 
   return (
     <div
-      className="absolute inset-0 pointer-events-none"
+      className="absolute inset-0"
       onClick={() => onSelect(null)}
     >
       {/* Per-item inline toolbar (shown above selected item) */}
@@ -174,10 +174,6 @@ function TextOverlayEditor({
     },
   })
 
-  useEffect(() => {
-    return () => { editor?.destroy() }
-  }, [editor])
-
   return (
     <EditorContent
       editor={editor}
@@ -206,6 +202,7 @@ function OverlayItemView({
 
   return (
     <motion.div
+      key={`${item.id}-${Math.round(item.x)}-${Math.round(item.y)}`}
       drag={!editing}
       dragMomentum={false}
       dragConstraints={containerRef}
@@ -230,41 +227,43 @@ function OverlayItemView({
         rotate: item.rotation,
         opacity: item.opacity,
         zIndex: item.zIndex + 10,
-        transform: 'translate(-50%, -50%)',
       }}
     >
-      {item.type === 'text' && (
-        editing ? (
-          <TextOverlayEditor
-            item={item}
-            onUpdate={onUpdate}
-            onStopEditing={() => setEditing(false)}
-          />
-        ) : (
+      {/* Inner wrapper handles centering — kept separate so Framer's transform compositing doesn't clobber it */}
+      <div style={{ transform: 'translate(-50%, -50%)' }}>
+        {item.type === 'text' && (
+          editing ? (
+            <TextOverlayEditor
+              item={item}
+              onUpdate={onUpdate}
+              onStopEditing={() => setEditing(false)}
+            />
+          ) : (
+            <span
+              className="block whitespace-pre-wrap text-center leading-snug"
+              style={{ fontSize: item.fontSize, color: item.color }}
+            >
+              {item.content}
+            </span>
+          )
+        )}
+        {item.type === 'sticker' && (
           <span
-            className="block whitespace-pre-wrap text-center leading-snug"
-            style={{ fontSize: item.fontSize, color: item.color }}
+            className="block leading-none"
+            style={{ fontSize: item.fontSize * 2 }}
           >
             {item.content}
           </span>
-        )
-      )}
-      {item.type === 'sticker' && (
-        <span
-          className="block leading-none"
-          style={{ fontSize: item.fontSize * 2 }}
-        >
-          {item.content}
-        </span>
-      )}
-      {item.type === 'image' && (
-        <img
-          src={item.content}
-          alt="Overlay image"
-          draggable={false}
-          className="block max-h-20 max-w-[5rem] rounded object-cover ring-1 ring-black/10"
-        />
-      )}
+        )}
+        {item.type === 'image' && (
+          <img
+            src={item.content}
+            alt="Overlay image"
+            draggable={false}
+            className="block max-h-20 max-w-[5rem] rounded object-cover ring-1 ring-black/10"
+          />
+        )}
+      </div>
     </motion.div>
   )
 }
