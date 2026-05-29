@@ -107,9 +107,19 @@
     <text class="st5" transform="translate(265.68 115.3)"><tspan x="0" y="0">ADDRESS: 123 ANYWHERE ST.</tspan><tspan x="58.81" y="13.29">ANY CITY</tspan></text>
   </g>
 
+  <!-- Message: couple's personal message, right column row 3 -->
+  <g id="Message">
+    <text class="st7" transform="translate(265.68 136)"><tspan x="0" y="0">We are delighted to invite you to our special day.</tspan></text>
+  </g>
+
   <!-- Ticket_Gate -->
   <g id="Ticket_Gate">
     <text class="st7" transform="translate(89.54 155)"><tspan x="0" y="0">GATE: A</tspan></text>
+  </g>
+
+  <!-- Attribution: message sign-off -->
+  <g id="Attribution">
+    <text class="st6" transform="translate(89.54 164)"><tspan x="0" y="0">— Claudia &amp; Daniel</tspan></text>
   </g>
 
   <!-- Rsvp_Contact -->

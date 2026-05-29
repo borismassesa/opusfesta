@@ -173,17 +173,24 @@
   <g id="Venue">
     <text class="st6" transform="translate(134.53 463.73)"><tspan x="0" y="0">The Royal Palace Hotel</tspan></text>
   </g>
+  <g id="Message">
+    <text style="font-family: CaviarDreams, CaviarDreams; font-size: 10px; fill: #fff;" transform="translate(209.76 499)" text-anchor="middle"><tspan x="0" y="0">Together with their families they invite</tspan></text>
+    <text style="font-family: CaviarDreams, CaviarDreams; font-size: 10px; fill: #fff;" transform="translate(209.76 512)" text-anchor="middle"><tspan x="0" y="0">you to celebrate their special day.</tspan></text>
+  </g>
+  <g id="Attribution">
+    <text style="font-family: CaviarDreams, CaviarDreams; font-size: 9px; fill: rgba(255,255,255,0.6);" transform="translate(209.76 522)" text-anchor="middle"><tspan x="0" y="0">— Romeo &amp; Juliet</tspan></text>
+  </g>
   <g id="Dress_code">
     <g>
-      <text class="st11" transform="translate(135.78 524.65)"><tspan x="0" y="0">Dress Code</tspan></text>
+      <text class="st11" transform="translate(135.78 538.65)"><tspan x="0" y="0">Dress Code</tspan></text>
       <g>
-        <circle class="st17" cx="211.54" cy="520.74" r="8.22"/>
-        <circle class="st19" cx="231.21" cy="520.74" r="8.22"/>
-        <circle class="st18" cx="250.88" cy="520.74" r="8.22"/>
+        <circle class="st17" cx="211.54" cy="534.74" r="8.22"/>
+        <circle class="st19" cx="231.21" cy="534.74" r="8.22"/>
+        <circle class="st18" cx="250.88" cy="534.74" r="8.22"/>
       </g>
     </g>
   </g>
   <g id="Rsvp">
-    <text class="st12" transform="translate(145.98 555.59)"><tspan class="st14" x="0" y="0">RSVP </tspan><tspan class="st21" x="28.64" y="0"></tspan><tspan class="st14" x="34.26" y="0" xml:space="preserve"> +255 795 682 205</tspan></text>
+    <text class="st12" transform="translate(145.98 569.59)"><tspan class="st14" x="0" y="0">RSVP </tspan><tspan class="st21" x="28.64" y="0"></tspan><tspan class="st14" x="34.26" y="0" xml:space="preserve"> +255 795 682 205</tspan></text>
   </g>
 </svg>
