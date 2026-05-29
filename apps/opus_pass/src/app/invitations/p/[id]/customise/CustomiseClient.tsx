@@ -101,7 +101,79 @@ const SWAG_CATALOG: { id: string; label: string; emoji: string; description: str
   { id: 'stickers',   label: 'Stickers',    emoji: '✨', description: 'Die-cut wedding stickers',           unitPrice: 1500  },
 ]
 
+const PIECE_SPECS: Record<string, { size: string; includes: string[]; backNote?: string }> = {
+  'invitation': {
+    size: '300 × 400 px',
+    includes: ['Couple names', 'Date & time', 'Venue', 'Reception (if set)', 'Dress code', 'RSVP contact', 'Quote / verse'],
+    backNote: 'Optional back print available (+TZS 1,500)',
+  },
+  'rsvp-card': {
+    size: '300 × 200 px · A6 landscape',
+    includes: ['Couple names', 'Reply-by date', 'RSVP contact', 'Meal selection (optional)', 'Dietary note line'],
+    backNote: 'Optional back print available (+TZS 1,500)',
+  },
+  'envelope': {
+    size: '400 × 280 px · C5 landscape',
+    includes: ['Guest address area', 'Return address', 'Palette motif / border', 'Liner graphic (back flap)', 'Seal placeholder'],
+    backNote: 'Liner design on back flap included',
+  },
+  'ticket': {
+    size: '560 × 200 px · Boarding-pass landscape',
+    includes: ['Couple names', 'Date & time', 'Venue & address', 'Stub accent colour', 'Barcode / QR entry code', 'RSVP contact'],
+    backNote: 'Optional back print available (+TZS 1,500)',
+  },
+  'enclosure': {
+    size: '300 × 200 px',
+    includes: ['Directions / map link', 'Accommodation details', 'Registry information', 'Note from the couple'],
+    backNote: 'Optional back print available (+TZS 1,500)',
+  },
+  'menu': {
+    size: '300 × 400 px',
+    includes: ['Course list (from your notes)', 'Vegetarian / dietary markers', 'Couple names & date', 'Palette motif'],
+    backNote: 'Optional back print available (+TZS 1,500)',
+  },
+  'program': {
+    size: '300 × 400 px',
+    includes: ['Order of events', 'Bridal party list with roles', 'Songs / readings', 'Couple names & date'],
+    backNote: 'Optional back print available (+TZS 1,500)',
+  },
+  'table-numbers': {
+    size: 'Table card: 150 × 100 px · Sign: A2 (420 × 594 px)',
+    includes: ['Table number cards (qty from your count)', 'Welcome sign with couple names & date', 'Seating-chart reference (if requested)'],
+    backNote: 'Optional back print available (+TZS 1,500)',
+  },
+}
+
+const SWAG_PRINT_SPECS: Record<string, { size: string; notes: string }> = {
+  shirts:     { size: 'Chest print: 25 × 25 cm',     notes: 'DTG / screen-print · include sizing breakdown in notes' },
+  mugs:       { size: 'Wrap: 21 × 9 cm',             notes: 'Sublimation · 5 mm safe zone each side' },
+  napkins:    { size: '25 × 25 cm (folded 12.5 × 12.5)', notes: 'Single-colour preferred' },
+  'tote-bags':{ size: 'Front panel: 30 × 30 cm',     notes: 'Natural canvas · 2 cm border' },
+  koozies:    { size: 'Wrap: 21 × 8 cm',             notes: 'Standard can koozie template' },
+  fans:       { size: '20 × 20 cm fan face',          notes: 'Include fold guide if applicable' },
+  matchbooks: { size: 'Cover: 5 × 3.5 cm',           notes: 'Cover + inside-cover layout' },
+  stickers:   { size: 'Die-cut · supply path',        notes: '0.5 mm bleed · white underbase layer' },
+}
+
 const MESSAGE_MAX = 120
+
+// ─── Guest code helpers ───────────────────────────────────────────────────────
+
+const CODE_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
+
+function generateGuestCode(): string {
+  return Array.from({ length: 8 }, () => CODE_CHARS[Math.floor(Math.random() * CODE_CHARS.length)]).join('')
+}
+
+// Encode a guest code string into bar widths for a barcode-style visual
+function codeToBarWidths(code: string): number[] {
+  const bars: number[] = []
+  for (const ch of code) {
+    const v = ch.charCodeAt(0)
+    bars.push(1, (v & 3) + 1, 1, ((v >> 2) & 3) + 1, 1)
+  }
+  return bars
+}
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
@@ -170,6 +242,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
   const [ticketAccentColor, setTicketAccentColor] = useState('#8B7355')
   const [ticketAddress, setTicketAddress] = useState('')
   const [ticketStubLabel, setTicketStubLabel] = useState('BOARDING PASS TO OUR WEDDING')
+  const [sampleGuestCode, setSampleGuestCode] = useState(() => generateGuestCode())
 
   // Per-tab notes for the design team
   const [rsvpCardNotes, setRsvpCardNotes] = useState('')
@@ -1098,6 +1171,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   title="RSVP Card"
                   description="Our design team will create a matching RSVP card using your invitation details — names, date, and return address included."
                   icon={<ClipboardCheck size={26} className="text-gray-400" />}
+                  spec={PIECE_SPECS['rsvp-card']}
                 />
                 <Field label="Notes for the design team" hint="Any specific preferences for your RSVP card layout">
                   <NotesArea value={rsvpCardNotes} onChange={setRsvpCardNotes} placeholder="e.g. Include a meal selection checkbox, add a dietary note line…" />
@@ -1114,6 +1188,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   title="Envelope"
                   description="We'll design a coordinating envelope with your chosen palette and addressing style. Digital addressing is available for bulk print orders."
                   icon={<Mail size={26} className="text-gray-400" />}
+                  spec={PIECE_SPECS['envelope']}
                 />
                 <Field label="Notes for the design team" hint="Addressing preferences, return address, liner details">
                   <NotesArea value={envelopeNotes} onChange={setEnvelopeNotes} placeholder="e.g. Calligraphy addressing, add a wax seal graphic, cream envelope liner…" />
@@ -1126,9 +1201,31 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
             {/* ── WEDDING TICKET ── */}
             {activeTab === 'ticket' && (
               <>
-                <p className="text-[12px] leading-relaxed text-gray-600">
-                  Customise the boarding-pass-style wedding ticket your guests receive for door scanning.
-                </p>
+                <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-4 space-y-2.5">
+                  <p className="text-[12px] leading-relaxed text-gray-600">
+                    Customise the boarding-pass-style wedding ticket your guests receive for door scanning.
+                  </p>
+                  {(() => {
+                    const spec = PIECE_SPECS['ticket']!
+                    return (
+                      <div className="border-t border-gray-200 pt-2.5 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-gray-400 w-14 shrink-0">Size</span>
+                          <span className="rounded bg-gray-200 px-2 py-0.5 font-mono text-[10px] text-gray-700">{spec.size}</span>
+                        </div>
+                        <div className="flex items-start gap-2">
+                          <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-gray-400 w-14 shrink-0 pt-0.5">Includes</span>
+                          <div className="flex flex-wrap gap-1">
+                            {spec.includes.map((field) => (
+                              <span key={field} className="rounded-sm border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-600">{field}</span>
+                            ))}
+                          </div>
+                        </div>
+                        {spec.backNote && <p className="text-[10px] leading-snug text-gray-400">{spec.backNote}</p>}
+                      </div>
+                    )
+                  })()}
+                </div>
 
                 <Field label="Stub accent colour" hint="The coloured left-hand stub of the ticket">
                   <div className="flex flex-wrap gap-2">
@@ -1165,6 +1262,32 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 <Field label="Stub label" hint="Vertical text on the left stub">
                   <Input value={ticketStubLabel} onChange={setTicketStubLabel} placeholder="BOARDING PASS TO OUR WEDDING" />
                 </Field>
+
+                <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[12px] font-bold text-gray-900">Guest invite code</p>
+                      <p className="mt-0.5 text-[11px] leading-relaxed text-gray-500">
+                        Each ticket gets a unique 8-character code and barcode for door scanning. The preview shows a sample — real codes are generated when you send invitations.
+                      </p>
+                      <p
+                        className="mt-2 font-mono text-[15px] font-bold tracking-[0.22em] text-gray-900"
+                        aria-label={`Sample guest code: ${sampleGuestCode}`}
+                      >
+                        {sampleGuestCode}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setSampleGuestCode(generateGuestCode())}
+                      aria-label="Generate new sample code"
+                      className="mt-0.5 shrink-0 rounded-md border border-gray-300 px-2.5 py-1.5 text-[11px] font-bold text-gray-600 transition hover:border-gray-500 hover:text-gray-900"
+                    >
+                      Shuffle
+                    </button>
+                  </div>
+                </div>
+
                 <QuantityField value={qty['ticket'] ?? 50} onChange={(v) => setQtyFor('ticket', v)} />
                 <BackPrintToggle value={backPrint['ticket']} onChange={(v) => setBackPrintFor('ticket', v)} />
               </>
@@ -1178,6 +1301,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   description="An optional insert with extra information — directions, accommodation, registry details, or a note from the couple."
                   icon={<FileText size={26} className="text-gray-400" />}
                   optional
+                  spec={PIECE_SPECS['enclosure']}
                 />
                 <Field label="Notes for the design team" hint="What to include on the enclosure card">
                   <NotesArea value={enclosureNotes} onChange={setEnclosureNotes} placeholder="e.g. Hotel accommodation details, registry at Jumia and Karibu, directions to venue…" />
@@ -1194,6 +1318,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   title="Menu"
                   description="A printed or digital menu card for each table setting, designed to match your invitation suite."
                   icon={<UtensilsCrossed size={26} className="text-gray-400" />}
+                  spec={PIECE_SPECS['menu']}
                 />
                 <Field label="Notes for the design team" hint="Courses, dietary notes, or layout preferences">
                   <NotesArea value={menuNotes} onChange={setMenuNotes} placeholder="e.g. 3-course dinner, include vegetarian options, Swahili and English…" />
@@ -1210,6 +1335,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   title="Program"
                   description="A ceremony or reception program listing the order of events, wedding party, and any readings or songs."
                   icon={<BookOpen size={26} className="text-gray-400" />}
+                  spec={PIECE_SPECS['program']}
                 />
                 <Field label="Notes for the design team" hint="Order of events, wedding party names, songs, readings">
                   <NotesArea value={programNotes} onChange={setProgramNotes} placeholder="e.g. Processional at 4pm, 3 readings, list of bridal party with roles…" />
@@ -1226,6 +1352,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   title="Table Numbers & Sign"
                   description="Matching table number cards and a welcome sign for print, sized for easel or frame display."
                   icon={<Hash size={26} className="text-gray-400" />}
+                  spec={PIECE_SPECS['table-numbers']}
                 />
                 <Field label="Notes for the design team" hint="Number of tables, sign dimensions, welcome text">
                   <NotesArea value={tableNumbersNotes} onChange={setTableNumbersNotes} placeholder="e.g. 12 tables, A3 welcome sign, include seating chart reference…" />
@@ -1334,6 +1461,29 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                     <p className="text-[13px] font-bold text-gray-900">
                       TZS {swagTotal.toLocaleString('en-US')}
                     </p>
+                  </div>
+                )}
+
+                {/* Print specs for selected swag */}
+                {selectedSwagItems.length > 0 && (
+                  <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-4 space-y-2">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-gray-400">Print specs</p>
+                    <div className="divide-y divide-gray-200">
+                      {selectedSwagItems.map((item) => {
+                        const ps = SWAG_PRINT_SPECS[item.id]
+                        if (!ps) return null
+                        return (
+                          <div key={item.id} className="flex items-start gap-3 py-2.5 first:pt-0 last:pb-0">
+                            <span className="text-[16px] leading-none mt-0.5 shrink-0">{item.emoji}</span>
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-bold text-gray-800">{item.label}</p>
+                              <p className="font-mono text-[10px] text-gray-500">{ps.size}</p>
+                              <p className="text-[10px] text-gray-400">{ps.notes}</p>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
                   </div>
                 )}
 
@@ -1451,6 +1601,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 ticketAccentColor={ticketAccentColor}
                 ticketAddress={ticketAddress}
                 ticketStubLabel={ticketStubLabel}
+                guestCode={sampleGuestCode}
                 dateISO={dateISO}
                 time={time}
                 venue={venue}
@@ -1475,6 +1626,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                   rsvpContact={rsvpContacts.filter(Boolean)[0] ?? ''}
                   accentColor={ticketAccentColor}
                   stubLabel={ticketStubLabel || 'BOARDING PASS TO OUR WEDDING'}
+                  guestCode={sampleGuestCode}
                 />
               </div>
             ) : activeTab === 'invitation' && cardSide === 'front' ? (
@@ -1572,6 +1724,7 @@ type ReviewCardGridProps = {
   ticketAccentColor: string
   ticketAddress: string
   ticketStubLabel: string
+  guestCode: string
   dateISO: string
   time: string
   venue: string
@@ -1590,7 +1743,7 @@ function ReviewCardGrid(props: ReviewCardGridProps) {
   const {
     product, couple, selectedPalette, message, messageAttr, fontStyle,
     photoSrc, photoOpacity, dressCode, rsvpContacts, receptionVenue, receptionTime,
-    celebrant, ticketAccentColor, ticketAddress, ticketStubLabel, dateISO, time, venue,
+    celebrant, ticketAccentColor, ticketAddress, ticketStubLabel, guestCode, dateISO, time, venue,
     rsvpCardNotes, envelopeNotes, enclosureNotes, menuNotes, programNotes,
     tableNumbersNotes, swagItems, swagNotes, onEdit,
   } = props
@@ -1634,6 +1787,7 @@ function ReviewCardGrid(props: ReviewCardGridProps) {
             ticketAccentColor={ticketAccentColor}
             ticketAddress={ticketAddress}
             ticketStubLabel={ticketStubLabel}
+            guestCode={guestCode}
             dateISO={dateISO}
             time={time}
             venue={venue}
@@ -1648,7 +1802,7 @@ function ReviewCardGrid(props: ReviewCardGridProps) {
 function ReviewCardItem({
   tab, label, product, couple, selectedPalette, message, messageAttr, fontStyle,
   photoSrc, photoOpacity, dressCode, rsvpContacts, receptionVenue, receptionTime,
-  celebrant, ticketAccentColor, ticketAddress, ticketStubLabel, dateISO, time, venue,
+  celebrant, ticketAccentColor, ticketAddress, ticketStubLabel, guestCode, dateISO, time, venue,
   onEdit,
 }: Omit<ReviewCardGridProps, 'rsvpCardNotes' | 'envelopeNotes' | 'enclosureNotes' | 'menuNotes' | 'programNotes' | 'tableNumbersNotes' | 'swagItems' | 'swagNotes'> & {
   tab: MainTab
@@ -1674,6 +1828,7 @@ function ReviewCardItem({
             rsvpContact={rsvpContacts.filter(Boolean)[0] ?? ''}
             accentColor={ticketAccentColor}
             stubLabel={ticketStubLabel || 'BOARDING PASS TO OUR WEDDING'}
+            guestCode={guestCode}
           />
         ) : tab === 'invitation' && side === 'front' ? (
           <InvitationVisual
@@ -1995,12 +2150,16 @@ function BackPrintToggle({
 // ─── Stationery info placeholder ──────────────────────────────────────────────
 
 function StationeryPlaceholder({
-  title, description, icon, optional,
+  title, description, icon, optional, spec,
 }: {
-  title: string; description: string; icon: React.ReactNode; optional?: boolean
+  title: string
+  description: string
+  icon: React.ReactNode
+  optional?: boolean
+  spec?: { size: string; includes: string[]; backNote?: string }
 }) {
   return (
-    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-5">
+    <div className="rounded-lg border border-dashed border-gray-300 bg-gray-50 px-4 py-5 space-y-3">
       <div className="flex items-start gap-3">
         <div className="mt-0.5 shrink-0">{icon}</div>
         <div className="min-w-0">
@@ -2015,6 +2174,36 @@ function StationeryPlaceholder({
           <p className="mt-1 text-[12px] leading-relaxed text-gray-500">{description}</p>
         </div>
       </div>
+
+      {spec && (
+        <div className="border-t border-gray-200 pt-3 space-y-2.5">
+          {/* Print size */}
+          <div className="flex items-center gap-2">
+            <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-gray-400 w-14 shrink-0">Size</span>
+            <span className="rounded bg-gray-200 px-2 py-0.5 font-mono text-[10px] text-gray-700">{spec.size}</span>
+          </div>
+
+          {/* Included fields */}
+          <div className="flex items-start gap-2">
+            <span className="text-[9px] font-bold uppercase tracking-[0.16em] text-gray-400 w-14 shrink-0 pt-0.5">Includes</span>
+            <div className="flex flex-wrap gap-1">
+              {spec.includes.map((field) => (
+                <span
+                  key={field}
+                  className="rounded-sm border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-600"
+                >
+                  {field}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          {/* Back note */}
+          {spec.backNote && (
+            <p className="text-[10px] leading-snug text-gray-400">{spec.backNote}</p>
+          )}
+        </div>
+      )}
     </div>
   )
 }
@@ -2036,10 +2225,10 @@ function NotesArea({ value, onChange, placeholder }: { value: string; onChange: 
 // ─── Ticket preview ───────────────────────────────────────────────────────────
 
 function TicketPreview({
-  coupleNames, dateISO, time, venue, address, rsvpContact, accentColor, stubLabel,
+  coupleNames, dateISO, time, venue, address, rsvpContact, accentColor, stubLabel, guestCode,
 }: {
   coupleNames: string; dateISO: string; time: string; venue: string; address: string
-  rsvpContact: string; accentColor: string; stubLabel: string
+  rsvpContact: string; accentColor: string; stubLabel: string; guestCode: string
 }) {
   const [first, second] = coupleNames.split(/\s*&\s*/)
   const dateDisplay = dateISO
@@ -2048,6 +2237,7 @@ function TicketPreview({
   const dateShort = dateISO
     ? new Date(dateISO + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' })
     : '—'
+  const barWidths = codeToBarWidths(guestCode)
 
   return (
     <div
@@ -2092,15 +2282,18 @@ function TicketPreview({
           {time && <p><span className="font-bold">Time:</span> {time}</p>}
         </div>
 
-        <div className="flex items-end gap-3 pt-1">
-          <div className="flex h-7 items-end gap-px">
-            {[3,1,2,1,3,2,1,3,1,2,3,1,2,1,3,2,1,2,3,1,2,3,1,2,1,3,2,1,3,1,2,3,1,2,3,1].map((w, i) => (
-              <span key={i} className="rounded-[1px] bg-gray-800" style={{ width: w, height: `${55 + (i % 4) * 10}%` }} />
+        {/* Barcode encoding the guest code */}
+        <div className="flex flex-col gap-1 pt-1">
+          <div className="flex h-8 items-end gap-px" aria-label={`Guest code barcode: ${guestCode}`} role="img">
+            {barWidths.map((w, i) => (
+              <span
+                key={i}
+                className="rounded-[1px] bg-gray-900"
+                style={{ width: w * 1.5, height: `${50 + (i % 5) * 10}%` }}
+              />
             ))}
           </div>
-          <p className="pb-0.5 text-[18px] leading-none text-gray-400" style={{ fontStyle: 'italic' }}>
-            Save the Date
-          </p>
+          <p className="font-mono text-[8px] font-bold tracking-[0.22em] text-gray-500">{guestCode}</p>
         </div>
       </div>
 
@@ -2115,13 +2308,16 @@ function TicketPreview({
       <div className="relative flex w-[18%] shrink-0 flex-col items-center justify-center gap-3 px-2 py-4 text-center">
         <span className="absolute -left-2.5 top-1/2 h-5 w-5 -translate-y-1/2 rounded-full bg-[#E9E7E3]" aria-hidden="true" />
         <div>
-          <p className="text-[7px] font-bold uppercase tracking-[0.18em] text-gray-500">Save the Date</p>
-          <p className="mt-0.5 text-[11px] font-bold tabular-nums text-gray-900">{dateShort}</p>
+          <p className="text-[7px] font-bold uppercase tracking-[0.18em] text-gray-500">Door entry</p>
+          <p className="mt-0.5 font-mono text-[10px] font-bold tabular-nums text-gray-900">{guestCode}</p>
         </div>
         <div>
           <p className="text-[13px]" aria-hidden="true">🤍</p>
           <p className="text-[8px] font-bold uppercase tracking-[0.14em]" style={{ color: accentColor }}>RSVP</p>
           <p className="mt-0.5 text-[8px] tabular-nums text-gray-700">{rsvpContact || '+255 7XX XXX XXX'}</p>
+        </div>
+        <div>
+          <p className="text-[7px] font-bold uppercase tracking-[0.12em] text-gray-400">{dateShort}</p>
         </div>
       </div>
     </div>

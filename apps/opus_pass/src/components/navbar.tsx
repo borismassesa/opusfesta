@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import Image from 'next/image'
+import { useEffect, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import CartMenu from '@/components/CartMenu'
@@ -20,7 +21,7 @@ import {
   BookOpen,
   PenLine,
   Monitor,
-  Image,
+  Image as ImageIcon,
   Share2,
 } from 'lucide-react'
 
@@ -133,7 +134,7 @@ const navItems: Array<{
         title: 'Resources',
         links: [
           { Icon: Monitor, label: 'Website Examples' },
-          { Icon: Image, label: 'Photo Gallery Tips' },
+          { Icon: ImageIcon, label: 'Photo Gallery Tips' },
           { Icon: Share2, label: 'Sharing with Guests' },
         ],
       },
@@ -148,6 +149,21 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
   const activeItem = activeMenu ? navItems.find((i) => i.label === activeMenu) ?? null : null
+
+  const hamburgerRef = useRef<HTMLButtonElement>(null)
+  const mobileCloseRef = useRef<HTMLButtonElement>(null)
+
+  // Body lock + focus management for mobile nav
+  useEffect(() => {
+    if (!mobileOpen) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    mobileCloseRef.current?.focus()
+    return () => {
+      document.body.style.overflow = prev
+      hamburgerRef.current?.focus()
+    }
+  }, [mobileOpen])
 
   const closeMobile = () => {
     setMobileOpen(false)
@@ -180,9 +196,11 @@ export default function Navbar() {
               <button
                 key={item.label}
                 onMouseEnter={() => setActiveMenu(item.label)}
+                onFocus={() => setActiveMenu(item.label)}
+                onClick={() => setActiveMenu((v) => v === item.label ? null : item.label)}
                 aria-expanded={activeMenu === item.label}
                 aria-haspopup="true"
-                className={`px-4 py-2.5 rounded-full transition-colors whitespace-nowrap ${
+                className={`px-4 py-2.5 rounded-full transition-colors whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
                   activeMenu === item.label
                     ? 'bg-(--accent) text-(--on-accent)'
                     : 'text-gray-700 hover:bg-gray-100'
@@ -206,7 +224,8 @@ export default function Navbar() {
             Browse designs
           </Link>
           <button
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 lg:hidden sm:h-10 sm:w-10"
+            ref={hamburgerRef}
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 lg:hidden sm:h-10 sm:w-10 outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             onClick={() => setMobileOpen((v) => !v)}
           >
@@ -222,12 +241,13 @@ export default function Navbar() {
 
             {/* Featured card */}
             <div className="w-[260px] shrink-0 rounded-2xl overflow-hidden flex flex-col border border-gray-200 shadow-md bg-white">
-              <div className="h-36 overflow-hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+              <div className="relative h-36 overflow-hidden">
+                <Image
                   src={activeItem.card.image}
                   alt=""
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="260px"
+                  className="object-cover"
                 />
               </div>
               <div className="p-5 flex flex-col flex-1">
@@ -287,12 +307,13 @@ export default function Navbar() {
                 <div className="grid grid-cols-2 gap-2">
                   {activeItem.photoGrid.map((item) => (
                     <a key={item.label} href={item.href ?? '#'} className="group flex flex-col gap-1.5">
-                      <div className="rounded-xl overflow-hidden h-[88px] border border-gray-200">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img
+                      <div className="relative rounded-xl overflow-hidden h-[88px] border border-gray-200">
+                        <Image
                           src={item.image}
-                          alt={item.label}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          alt=""
+                          fill
+                          sizes="120px"
+                          className="object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
                       <span className="font-semibold text-xs text-[#1A1A1A] leading-tight px-0.5">
@@ -310,10 +331,12 @@ export default function Navbar() {
 
       {/* ── Mobile: full-screen menu ── */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Navigation menu"
         className={`lg:hidden fixed inset-0 bg-white z-50 flex flex-col transition-transform duration-300 ease-in-out ${
           mobileOpen ? 'translate-y-0' : '-translate-y-full'
         }`}
-        aria-label="Navigation menu"
       >
         {/* Header — changes based on which panel is active */}
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100 shrink-0">
@@ -332,8 +355,9 @@ export default function Navbar() {
             </Link>
           )}
           <button
+            ref={mobileCloseRef}
             onClick={closeMobile}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
             aria-label="Close menu"
           >
             <X size={18} />
@@ -394,11 +418,12 @@ export default function Navbar() {
                   <div className="flex-1 overflow-y-auto px-4 pb-6">
                     {/* Featured image banner */}
                     <div className="relative rounded-2xl overflow-hidden h-36 mb-5">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
+                      <Image
                         src={item.card.image}
                         alt=""
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="100vw"
+                        className="object-cover"
                       />
                       <div className="absolute inset-0 bg-linear-to-t from-black/70 via-black/20 to-transparent" />
                       <div className="absolute bottom-0 left-0 right-0 px-4 py-4">

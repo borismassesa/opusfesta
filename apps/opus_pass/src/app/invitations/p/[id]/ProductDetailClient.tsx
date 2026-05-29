@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Check, CheckCircle2, ChevronDown, ChevronRight, MessageCircle, Printer, SlidersHorizontal, Smile, Truck, X } from 'lucide-react'
@@ -183,7 +183,21 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
                     {digitalQty.toLocaleString('en-US')} selected
                   </p>
                 </div>
-                <div className="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="Number of guests">
+                <div
+                  className="flex flex-wrap items-center gap-2"
+                  role="radiogroup"
+                  aria-label="Number of guests"
+                  onKeyDown={(e) => {
+                    const idx = DIGITAL_QTY_OPTIONS.indexOf(digitalQty)
+                    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                      e.preventDefault()
+                      setDigitalQty(DIGITAL_QTY_OPTIONS[(idx + 1) % DIGITAL_QTY_OPTIONS.length])
+                    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                      e.preventDefault()
+                      setDigitalQty(DIGITAL_QTY_OPTIONS[(idx - 1 + DIGITAL_QTY_OPTIONS.length) % DIGITAL_QTY_OPTIONS.length])
+                    }
+                  }}
+                >
                   {DIGITAL_QTY_OPTIONS.map((n) => {
                     const active = digitalQty === n
                     return (
@@ -192,6 +206,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
                         type="button"
                         role="radio"
                         aria-checked={active}
+                        tabIndex={active || (!DIGITAL_QTY_OPTIONS.includes(digitalQty) && n === DIGITAL_QTY_OPTIONS[0]) ? 0 : -1}
                         onClick={() => setDigitalQty(n)}
                         className={cn(
                           'min-w-[60px] rounded-md border px-3.5 py-2 text-[13px] font-semibold transition tabular-nums',
@@ -252,7 +267,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
                     type="button"
                     onClick={() => setSelectedColor(i)}
                     title={c}
-                    aria-label={`Colour ${i + 1}: ${c}`}
+                    aria-label={product.palettes[i]?.name ?? c}
                     aria-pressed={selectedColor === i}
                     className={cn(
                       'h-9 w-9 rounded-full border transition',
@@ -278,7 +293,7 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
               />
               {doorScan && (
                 <div className="rounded-xl border border-[#C9A84C] bg-[#FFFAF0] px-4 py-3.5 flex gap-3 items-start">
-                  <span className="text-[20px] leading-none mt-0.5">🎟️</span>
+                  <span className="text-[20px] leading-none mt-0.5" aria-hidden="true">🎟️</span>
                   <div>
                     <p className="text-[13px] font-bold text-[#7A5C1E] mb-0.5">You&apos;ll receive wedding tickets</p>
                     <p className="text-[12px] text-[#7A5C1E] leading-relaxed">
@@ -766,12 +781,14 @@ function Accordion({
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
+  const panelId = useId()
   return (
     <div className="border-b border-gray-200">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
+        aria-controls={panelId}
         className="flex w-full items-center justify-between gap-4 py-4 text-left text-[15px] font-medium text-gray-900"
       >
         {title}
@@ -780,11 +797,17 @@ function Accordion({
           aria-hidden="true"
         />
       </button>
-      {open && (
-        <div className="pb-5 text-[14px] text-gray-700 space-y-2 leading-relaxed">
-          {children}
+      <div
+        id={panelId}
+        role="region"
+        className={cn('grid transition-[grid-template-rows] duration-200', open ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]')}
+      >
+        <div className="overflow-hidden">
+          <div className="pb-5 text-[14px] text-gray-700 space-y-2 leading-relaxed">
+            {children}
+          </div>
         </div>
-      )}
+      </div>
     </div>
   )
 }

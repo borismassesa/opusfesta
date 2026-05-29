@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -56,11 +58,11 @@ export function ProductInfo({
             key={`${product.id}-sw-${i}`}
             type="button"
             title={c}
-            aria-label={`Color variant ${i + 1}`}
+            aria-label={c}
             aria-pressed={selectedSwatch === i}
             onClick={onSwatchSelect ? (e) => { e.preventDefault(); onSwatchSelect(i) } : undefined}
             className={cn(
-              'h-5 w-5 rounded-full border shadow-sm transition-transform hover:scale-110',
+              'h-7 w-7 rounded-full border shadow-sm transition-transform hover:scale-110',
               selectedSwatch === i
                 ? 'border-[#1A1A1A] ring-2 ring-offset-1 ring-[#1A1A1A]'
                 : 'border-black/15',
@@ -99,8 +101,10 @@ export function ProductInfo({
       ) : (
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           {unitWas && (
-            <span className="text-[11px] text-[#1A1A1A]/45 line-through">
-              TZS {unitWas.toLocaleString('en-US')}
+            <span aria-label={`Was TZS ${unitWas.toLocaleString('en-US')}`}>
+              <span aria-hidden="true" className="text-[11px] text-[#1A1A1A]/45 line-through">
+                TZS {unitWas.toLocaleString('en-US')}
+              </span>
             </span>
           )}
           <span className="text-[15px] sm:text-[16px] font-bold text-[#1A1A1A]">
