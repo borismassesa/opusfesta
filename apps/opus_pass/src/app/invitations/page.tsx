@@ -7,6 +7,7 @@ import { loadInvitationsFeaturesContent } from '@/lib/cms/invitations-features'
 import { loadInvitationsFeaturedSuiteContent } from '@/lib/cms/invitations-featured-suite'
 import { loadInvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
 import { loadInvitationsEditorsPicksContent } from '@/lib/cms/invitations-editors-picks'
+import { InvitationShowcase } from '@/components/home/InvitationShowcase'
 import InvitationsLandingClient from './InvitationsLandingClient'
 
 export const metadata: Metadata = {
@@ -37,6 +38,7 @@ export default async function InvitationsLandingPage() {
         faqs={faqs}
         editorsPicks={editorsPicks}
       />
+      <InvitationShowcase />
     </>
   )
 }
