@@ -7,7 +7,7 @@ import { ArrowRight, Check as CheckIcon, ChevronLeft, ChevronRight, Heart, Slide
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { PROMO_CODE, ProductInfo } from '@/components/guests/productInfo'
-import { PRODUCTS, type CatalogProduct } from '@/data/invitations-products'
+import type { CatalogProduct } from '@/data/invitations-products'
 import { useScrollCarousel } from '@/hooks/useScrollCarousel'
 import { useBodyLock } from '@/hooks/useBodyLock'
 import type { InvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-banner'
@@ -15,11 +15,7 @@ import type { InvitationsStyleStripContent } from '@/lib/cms/invitations-style-s
 import type { InvitationsExploreStylesContent } from '@/lib/cms/invitations-explore-styles'
 import type { InvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-free-website-promo'
 
-// Re-export the catalog dataset so existing imports of `../catalog/InvitationsCatalogClient`
-// keep resolving. Canonical source now lives in /data/invitations-products.ts so server
-// components (e.g. /invitations/p/[id]/page.tsx) can import the values cleanly without
-// going through the 'use client' boundary.
-export { PRODUCTS, type CatalogProduct }
+export type { CatalogProduct }
 type Product = CatalogProduct
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -102,7 +98,7 @@ const PAGE_SIZE = 12
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function InvitationsCatalogClient({
-  products = PRODUCTS,
+  products = [],
   title = 'Wedding Invitations',
   subtitle = 'A handpicked edit of digital invitation designs, browse by style.',
   promoBanner,

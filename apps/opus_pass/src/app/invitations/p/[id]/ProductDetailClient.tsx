@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils'
 import { InvitationVisual, COUPLE_DEFAULT } from '@/components/guests/InvitationVisual'
 import { MockupCarousel } from '@/components/guests/MockupCarousel'
 import { PACK_QTY, PROMO_CODE } from '@/components/guests/productInfo'
-import { PRODUCTS, type CatalogProduct } from '@/data/invitations-products'
+import type { CatalogProduct } from '@/data/invitations-products'
 import { useCart } from '@/components/providers/CartProvider'
 
 // Pricing model:
@@ -41,7 +41,7 @@ const DIGITAL_QTY_OPTIONS = [50, 100, 150, 200, 300, 500]
 const PAPER_QTY_OPTIONS = [10, 25, 50, 100, 150, 200]
 
 
-export default function ProductDetailClient({ product }: { product: CatalogProduct }) {
+export default function ProductDetailClient({ product, allProducts, mockupImages, mockupScenes }: { product: CatalogProduct; allProducts: CatalogProduct[]; mockupImages?: Record<string, string>; mockupScenes?: { id: string; label: string }[] }) {
   const customiseHref = `/invitations/p/${product.id}/customise`
   const router = useRouter()
   const { addItem } = useCart()
@@ -77,8 +77,8 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
   const paperTypeLabel = PAPER_TYPES.find((p) => p.id === paperType)?.label ?? 'Standard card'
   const paperFinishLabel = PAPER_FINISHES.find((f) => f.id === paperFinish)?.label ?? 'Matte lamination'
 
-  const sameCategory = PRODUCTS.filter((p) => p.id !== product.id && p.category === product.category)
-  const others = PRODUCTS.filter((p) => p.id !== product.id && p.category !== product.category)
+  const sameCategory = allProducts.filter((p) => p.id !== product.id && p.category === product.category)
+  const others = allProducts.filter((p) => p.id !== product.id && p.category !== product.category)
   const recommendations = [...sameCategory, ...others].slice(0, 4)
 
   const cartSummary = [
@@ -131,6 +131,8 @@ export default function ProductDetailClient({ product }: { product: CatalogProdu
               treatment={product.treatment}
               couple={COUPLE_DEFAULT}
               designImage={product.designImage}
+              mockupImages={mockupImages}
+              scenes={mockupScenes}
               palette={(() => {
                 const safeIndex = product.palettes.length > 0 ? Math.max(0, Math.min(selectedColor, product.palettes.length - 1)) : 0
                 return product.palettes[safeIndex]

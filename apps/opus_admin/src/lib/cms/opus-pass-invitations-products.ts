@@ -27,6 +27,8 @@ export const PRODUCT_TREATMENTS = [
   'photo-overlay',
   'ticket',
   'ticket-barcode',
+  'save-the-date',
+  'save-the-date-photo',
 ] as const
 
 export type ProductTreatment = (typeof PRODUCT_TREATMENTS)[number]
