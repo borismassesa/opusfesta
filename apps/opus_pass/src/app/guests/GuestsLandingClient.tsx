@@ -63,7 +63,7 @@ function HeroBanner() {
               </p>
               <div className="mt-9 sm:mt-10 flex flex-wrap items-center gap-x-5 gap-y-3">
                 <Link
-                  href="/my/dashboard?seed=1"
+                  href="/sign-up?redirect_url=%2Fmy%2Fdashboard%3Fseed%3D1"
                   className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
                 >
                   Start your guest list
@@ -153,7 +153,7 @@ const SMALL_CARDS: Array<{
   {
     title: 'English & Kiswahili',
     cta: 'RSVP in both',
-    href: '/my/dashboard?seed=1',
+    href: '/sign-up?redirect_url=%2Fmy%2Fdashboard%3Fseed%3D1',
     image: '/assets/images/ring_piano.jpg',
   },
 ]

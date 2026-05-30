@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import type { ReactNode } from 'react'
+import { ClerkProvider } from '@clerk/nextjs'
 import { Yellowtail, Playfair_Display, Cormorant_Garamond, Dancing_Script, Montserrat, EB_Garamond } from 'next/font/google'
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
 import ToastProvider from '@/components/providers/ToastProvider'
@@ -37,13 +38,15 @@ export default function RootLayout({ children }: { children: ReactNode }) {
   ].join(' ')
 
   return (
-    <html lang="en" className={`bg-white ${fontVars}`}>
-      <body className="bg-white">
-        <CartProvider>
-          <SmoothScrollProvider>{children}</SmoothScrollProvider>
-        </CartProvider>
-        <ToastProvider />
-      </body>
-    </html>
+    <ClerkProvider>
+      <html lang="en" className={`bg-white ${fontVars}`}>
+        <body className="bg-white">
+          <CartProvider>
+            <SmoothScrollProvider>{children}</SmoothScrollProvider>
+          </CartProvider>
+          <ToastProvider />
+        </body>
+      </html>
+    </ClerkProvider>
   )
 }
