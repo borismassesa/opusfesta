@@ -28,12 +28,14 @@ const inputCls =
   'w-full px-2 py-1.5 bg-white border border-gray-200 rounded text-xs text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-1 focus:ring-[#C9A0DC] focus:border-transparent'
 
 export function PaletteEditor({
-  value,
+  value: valueProp,
   onChange,
 }: {
-  value: InvitationPalette[]
+  value: InvitationPalette[] | undefined | null
   onChange: (v: InvitationPalette[]) => void
 }) {
+  const value = valueProp ?? []
+
   function updatePalette(i: number, patch: Partial<InvitationPalette>) {
     onChange(value.map((p, idx) => (idx === i ? { ...p, ...patch } : p)))
   }

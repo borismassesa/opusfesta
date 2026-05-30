@@ -2363,6 +2363,12 @@ function injectTicketData(
   return new XMLSerializer().serializeToString(doc.documentElement)
 }
 
+const STORAGE_BASE = 'https://ppdapuqehwlfwofbpbvb.supabase.co/storage/v1/object/public/website-media'
+const TICKET_SVG_URLS = {
+  qr:      `${STORAGE_BASE}/invitation-svgs/model-wedding-package/ticket-front.svg`,
+  barcode: `${STORAGE_BASE}/invitation-svgs/model-wedding-package/ticket-barcode-front.svg`,
+}
+
 function TicketSvgFile({
   type, accentColor, coupleNames, dateISO, time, address, message, rsvpContacts, stubLabel,
 }: {
@@ -2377,9 +2383,7 @@ function TicketSvgFile({
   stubLabel: string
 }) {
   const [rawSvg, setRawSvg] = useState('')
-  const src = type === 'qr'
-    ? '/assets/invitation-svgs/model-wedding-package/ticket-front.svg'
-    : '/assets/invitation-svgs/model-wedding-package/ticket-barcode-front.svg'
+  const src = TICKET_SVG_URLS[type]
 
   // Fetch the SVG template once per type switch — no re-fetch on data changes
   useEffect(() => {
