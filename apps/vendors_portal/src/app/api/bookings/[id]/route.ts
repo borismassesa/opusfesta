@@ -19,6 +19,41 @@ const MUTABLE_FIELDS = new Set([
   'cancellation_reason', 'cancelled_at',
 ])
 
+// Fields whose accepted value must look like an ISO date / time. Without
+// these guards a vendor could PATCH any string into event_date and break
+// downstream date math (or pollute the audit timeline). Wider booking-conflict
+// checks would be ideal but are out of scope; format validation is the minimum.
+const DATE_FIELDS = new Set(['event_date', 'balance_due_date'])
+const TIME_FIELDS = new Set(['start_time', 'end_time'])
+const TIMESTAMP_FIELDS = new Set(['contract_sent_at', 'slot_held_until', 'last_message_at', 'cancelled_at'])
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/
+
+/** Returns an error string if invalid, else null. */
+function validateMutableField(field: string, value: unknown): string | null {
+  if (value === null) return null // explicit clear
+  if (DATE_FIELDS.has(field)) {
+    if (typeof value !== 'string' || !DATE_RE.test(value)) {
+      return `${field} must be YYYY-MM-DD`
+    }
+    if (Number.isNaN(new Date(`${value}T00:00:00`).getTime())) {
+      return `${field} is not a valid date`
+    }
+  }
+  if (TIME_FIELDS.has(field)) {
+    if (typeof value !== 'string' || !TIME_RE.test(value)) {
+      return `${field} must be HH:MM (or HH:MM:SS)`
+    }
+  }
+  if (TIMESTAMP_FIELDS.has(field)) {
+    if (typeof value !== 'string' || Number.isNaN(new Date(value).getTime())) {
+      return `${field} must be an ISO 8601 timestamp`
+    }
+  }
+  return null
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -103,7 +138,10 @@ export async function PATCH(
   if (body.internal_status !== undefined) update.internal_status = body.internal_status
 
   for (const field of MUTABLE_FIELDS) {
-    if (body[field] !== undefined) update[field] = body[field]
+    if (body[field] === undefined) continue
+    const err = validateMutableField(field, body[field])
+    if (err) return NextResponse.json({ error: err }, { status: 400 })
+    update[field] = body[field]
   }
 
   // Append a timeline entry if provided.
