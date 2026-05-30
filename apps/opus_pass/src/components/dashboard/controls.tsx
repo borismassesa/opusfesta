@@ -273,14 +273,25 @@ export function Field({
   label,
   children,
   hint,
+  required,
+  hintInline,
 }: {
   label: string
   children: ReactNode
   hint?: string
+  required?: boolean
+  /** Right-aligned slot on the label row — for actions like "Reset address →". */
+  hintInline?: ReactNode
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 block text-sm font-medium text-[#1A1A1A]/80">{label}</span>
+      <span className="mb-1.5 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-[#1A1A1A]/80">
+          {label}
+          {required ? <span className="ml-0.5 text-rose-500">*</span> : null}
+        </span>
+        {hintInline ? <span className="text-xs">{hintInline}</span> : null}
+      </span>
       {children}
       {hint ? <span className="mt-1 block text-xs text-[#1A1A1A]/45">{hint}</span> : null}
     </label>

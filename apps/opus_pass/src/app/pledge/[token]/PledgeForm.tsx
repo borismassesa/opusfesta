@@ -2,15 +2,16 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Send, CheckCircle2 } from 'lucide-react'
-import { submitCollectorEntry } from './actions'
+import { Send, CheckCircle2, Wallet } from 'lucide-react'
+import { submitPublicPledge } from './actions'
 import {
-  resolveCollectorPage,
+  resolvePledgePage,
   COVER_TONES,
   accentInk,
   PLEDGE_PREVIEW_MESSAGE,
   PLEDGE_PREVIEW_READY,
   type PledgePageConfig,
+  type PledgePaymentMethod,
 } from '@/lib/dashboard/pledge-page'
 
 interface Props {
@@ -18,6 +19,8 @@ interface Props {
   coupleName: string
   weddingDate: string | null
   city: string | null
+  paymentInstructions: string | null
+  paymentMethods: PledgePaymentMethod[]
   config: PledgePageConfig
 }
 
@@ -32,14 +35,26 @@ function dotDate(value: string | null): string | null {
 const fieldClass =
   'block w-full rounded-xl border border-black/[0.12] bg-white px-4 py-3 text-[15px] text-[#1A1A1A] placeholder:text-[#1A1A1A]/30 transition focus:border-[#C9A0DC] focus:outline-none focus:ring-2 focus:ring-[#C9A0DC]/25'
 
-export default function CollectorForm({ token, coupleName, weddingDate, city, config }: Props) {
+export default function PledgeForm({
+  token,
+  coupleName,
+  weddingDate,
+  city,
+  paymentInstructions,
+  paymentMethods,
+  config,
+}: Props) {
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
+  const [amount, setAmount] = useState('')
+  const [promisedDate, setPromisedDate] = useState('')
+  const [message, setMessage] = useState('')
   const [done, setDone] = useState(false)
   const [pending, startTransition] = useTransition()
 
-  // Live preview: apply config pushed via postMessage from the customize editor.
+  // Live preview: when embedded in the customize editor, apply config pushed via
+  // postMessage so edits show in real time without saving.
   const [override, setOverride] = useState<PledgePageConfig | null>(null)
   useEffect(() => {
     function onMessage(e: MessageEvent) {
@@ -53,7 +68,7 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
     return () => window.removeEventListener('message', onMessage)
   }, [])
 
-  const cfg = resolveCollectorPage(override ?? config)
+  const cfg = resolvePledgePage(override ?? config)
   const tone = COVER_TONES[cfg.coverTone]
   const hasCover = Boolean(cfg.coverImageUrl)
   const onAccent = accentInk(cfg.accent)
@@ -64,6 +79,7 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
     .map((p) => p.trim())
     .filter(Boolean)
 
+  // Cover colors flip to light when a photo backs the panel.
   const ink = hasCover ? '#FFFFFF' : tone.ink
   const soft = hasCover ? 'rgba(255,255,255,0.82)' : tone.soft
   const rule = hasCover ? 'rgba(255,255,255,0.6)' : tone.rule
@@ -82,23 +98,30 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
       toast.error('Please enter your name')
       return
     }
+    if (!(Number(amount) > 0)) {
+      toast.error('Please enter the amount you can pledge')
+      return
+    }
     startTransition(async () => {
       try {
-        await submitCollectorEntry(token, {
+        await submitPublicPledge(token, {
           full_name: name.trim(),
           phone: phone.trim() || null,
           email: email.trim() || null,
+          amount: Number(amount),
+          promised_date: promisedDate || null,
+          message: message.trim() || null,
         })
         setDone(true)
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Could not save your info')
+        toast.error(err instanceof Error ? err.message : 'Could not save your pledge')
       }
     })
   }
 
   return (
     <div className="min-h-screen bg-white lg:grid lg:grid-cols-2">
-      {/* ── Decorative cover ── */}
+      {/* ── Decorative cover — "save the date" ── */}
       <aside
         className="relative flex min-h-[360px] flex-col justify-center overflow-hidden px-8 py-14 sm:min-h-[420px] lg:sticky lg:top-0 lg:h-screen lg:px-14"
         style={{ ...coverStyle, color: ink }}
@@ -165,11 +188,13 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
           {done ? (
             <div className="text-center lg:py-10">
               <CheckCircle2 className="mx-auto h-12 w-12 text-[#3f6b1f]" />
-              <h2 className="mt-4 font-serif text-3xl text-[#1A1A1A]">Thank you! 💚</h2>
+              <h2 className="mt-4 font-serif text-3xl text-[#1A1A1A]">Asante sana! 💚</h2>
               <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-[#1A1A1A]/60">
-                {coupleName} have your details. You’ll receive your invitation and RSVP link by WhatsApp
-                soon.
+                {coupleName} have received your pledge. They’ll be in touch with the details.
               </p>
+              {paymentMethods.length || paymentInstructions?.trim() ? (
+                <PayCard methods={paymentMethods} instructions={paymentInstructions} />
+              ) : null}
             </div>
           ) : (
             <>
@@ -181,6 +206,10 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
                 {cfg.intro}
               </p>
 
+              {paymentMethods.length || paymentInstructions?.trim() ? (
+                <PayCard methods={paymentMethods} instructions={paymentInstructions} />
+              ) : null}
+
               <form onSubmit={submit} className="mt-8 space-y-5">
                 <Field label="Your name" required accent={cfg.accent}>
                   <input
@@ -189,6 +218,33 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="Asha Mussa"
+                    className={fieldClass}
+                  />
+                </Field>
+
+                <Field label="Amount you’d like to pledge" required accent={cfg.accent}>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#1A1A1A]/35">
+                      TZS
+                    </span>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      inputMode="numeric"
+                      value={amount}
+                      onChange={(e) => setAmount(e.target.value)}
+                      placeholder="100,000"
+                      className={`${fieldClass} pl-[3.25rem]`}
+                    />
+                  </div>
+                </Field>
+
+                <Field label="When can you pay by?">
+                  <input
+                    type="date"
+                    value={promisedDate}
+                    onChange={(e) => setPromisedDate(e.target.value)}
                     className={fieldClass}
                   />
                 </Field>
@@ -213,6 +269,16 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
                     />
                   </Field>
                 </div>
+
+                <Field label="A note for the couple">
+                  <textarea
+                    rows={2}
+                    value={message}
+                    onChange={(e) => setMessage(e.target.value)}
+                    placeholder="Hongera! Anything you’d like to add…"
+                    className={fieldClass}
+                  />
+                </Field>
 
                 <button
                   type="submit"
@@ -274,9 +340,51 @@ function Field({
     <label className="block">
       <span className="mb-1.5 block text-[13px] font-medium text-[#1A1A1A]/70">
         {label}
-        {required ? <span style={{ color: accent ?? '#b97fd0' }}> *</span> : null}
+        {required ? (
+          <span style={{ color: accent ?? '#b97fd0' }}> *</span>
+        ) : null}
       </span>
       {children}
     </label>
+  )
+}
+
+function PayCard({
+  methods,
+  instructions,
+}: {
+  methods: PledgePaymentMethod[]
+  instructions: string | null
+}) {
+  const filled = methods.filter((m) => m.label?.trim() || m.value?.trim())
+  return (
+    <div className="mt-6 rounded-2xl border border-[#9FE870]/40 bg-[#F3FAEC] p-4 text-left">
+      <div className="flex items-center gap-2">
+        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#9FE870]/30 text-[#3f6b1f]">
+          <Wallet className="h-3.5 w-3.5" />
+        </span>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#3f6b1f]">How to pay</p>
+      </div>
+      {filled.length ? (
+        <ul className="mt-3 space-y-2.5">
+          {filled.map((m, i) => (
+            <li key={i} className="text-sm leading-snug">
+              <span className="text-[#1A1A1A]/75">
+                {m.label?.trim() ? <span className="font-semibold text-[#1A1A1A]">{m.label.trim()}</span> : null}
+                {m.label?.trim() && m.value?.trim() ? ', ' : ''}
+                {m.value?.trim() ? (
+                  <span className="font-bold tracking-wide text-[#3f6b1f]">{m.value.trim()}</span>
+                ) : null}
+              </span>
+              {m.name?.trim() ? <div className="text-xs italic text-[#1A1A1A]/60">{m.name.trim()}</div> : null}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[#1A1A1A]/75">
+          {(instructions ?? '').trim()}
+        </p>
+      )}
+    </div>
   )
 }
