@@ -106,6 +106,47 @@ export async function createCmsMediaUploadUrl(input: {
   }
 }
 
+// Mints a signed upload URL for a fixed, pre-determined storage path.
+// The PUT must set x-upsert: true to overwrite the existing file.
+export async function createCmsMediaFixedUploadUrl(input: {
+  storagePath: string
+  mimeType: string
+  sizeBytes: number
+}): Promise<CmsMediaUploadUrlResult> {
+  await requireAdminRole(CMS_UPLOAD_ROLES)
+  if (input.mimeType !== SVG_MIME) {
+    return { ok: false, error: 'Only SVG files are allowed for this field.' }
+  }
+  if (!Number.isFinite(input.sizeBytes) || input.sizeBytes <= 0) {
+    return { ok: false, error: 'Missing file size.' }
+  }
+  if (input.sizeBytes > MAX_BYTES) {
+    return {
+      ok: false,
+      error: `File is over the 500 MB limit (${(input.sizeBytes / 1024 / 1024).toFixed(1)} MB).`,
+    }
+  }
+  const supabase = createSupabaseAdminClient()
+  const signed = await supabase.storage
+    .from('website-media')
+    .createSignedUploadUrl(input.storagePath, { upsert: true })
+  if (signed.error || !signed.data) {
+    return {
+      ok: false,
+      error: `Signed upload URL failed: ${signed.error?.message ?? 'unknown'}`,
+    }
+  }
+  const publicUrl = supabase.storage.from('website-media').getPublicUrl(input.storagePath)
+  return {
+    ok: true,
+    uploadUrl: signed.data.signedUrl,
+    token: signed.data.token,
+    publicUrl: publicUrl.data.publicUrl,
+    path: input.storagePath,
+    mediaType: 'image',
+  }
+}
+
 function extFromMime(mime: string): string | null {
   if (mime === 'image/jpeg') return 'jpg'
   if (mime === 'image/png') return 'png'

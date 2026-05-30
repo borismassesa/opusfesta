@@ -1,6 +1,6 @@
 'use client'
 
-import { createCmsMediaUploadUrl } from './upload-media'
+import { createCmsMediaUploadUrl, createCmsMediaFixedUploadUrl } from './upload-media'
 
 export type UploadedMedia = { url: string; type: 'image' | 'video' }
 
@@ -48,4 +48,29 @@ export async function uploadCmsMedia(
     )
   }
   return { url: minted.publicUrl, type: minted.mediaType }
+}
+
+// Uploads a file to a fixed, pre-determined storage path, overwriting whatever is there.
+export async function uploadCmsMediaToFixedPath(
+  file: File,
+  storagePath: string,
+): Promise<UploadedMedia> {
+  const minted = await createCmsMediaFixedUploadUrl({
+    storagePath,
+    mimeType: file.type,
+    sizeBytes: file.size,
+  })
+  if (!minted.ok) throw new Error(minted.error)
+
+  const put = await fetch(minted.uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': file.type, 'x-upsert': 'true' },
+    body: file,
+  })
+  if (!put.ok) {
+    const body = await put.text().catch(() => '')
+    const detail = body ? ': ' + body.slice(0, 120) : ''
+    throw new Error(`Storage rejected upload (${put.status}${detail})`)
+  }
+  return { url: minted.publicUrl, type: 'image' }
 }
