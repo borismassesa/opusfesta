@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 419.53 595.28">
+  <!--
+    Back card — Save the Date (Model Wedding Package)
+    Palette matches save-the-date-front.svg exactly:
+      Teal:  #00a79d / #6fc7b0   Gold: #f0d497   Pink: #f096b1   Green: #7bbc7e
+    CSS classes mirror the front card (Illustrator export conventions).
+  -->
+  <defs>
+    <style>
+      /* Strokes */
+      .st1 { stroke: #6fc7b0; }
+      .st1, .st2, .st3, .st4, .st5 { fill: none; }
+      .st1, .st2, .st4, .st5 { stroke-miterlimit: 10; }
+      .st2 { stroke: #fff; }
+      .st4 { stroke: #f096b1; }
+      .st5 { stroke: #f0d497; }
+
+      /* Fills */
+      .st6, .st7, .st8, .st9, .st10, .st11, .st12, .st13 { fill: #fff; }
+      .st15 { opacity: .41; }
+      .st15, .st16 { fill: #6fc7b0; }
+      .st17 { fill: #f0d497; }
+      .st18 { fill: #7bbc7e; }
+      .st19 { fill: #f096b1; }
+      .st20 { fill: #00a79d; }
+
+      /* Transparency panel */
+      .st0 { opacity: .85; }
+
+      /* Typography */
+      .st6, .st9, .st11, .st14 { font-family: CaviarDreams, CaviarDreams; }
+      .st8, .st10 { font-family: Yellowtail, 'EOFCC K+ Yellowtail'; }
+      .st13 {
+        font-family: CaviarDreams-Bold, TVQOEG+CaviarDreams-Bold;
+        font-size: 24.32px;
+        font-weight: 700;
+      }
+      .st6  { font-size: 15.98px; }
+      .st9  { font-size: 15px; }
+      .st10 { font-size: 29.13px; }
+      .st11 { font-size: 13.33px; }
+      .st12 { font-size: 12.28px; }
+      .st8  { font-size: 65px; }
+    </style>
+  </defs>
+
+  <!-- ═══════════════════════════════════════════
+       BACKGROUND
+       Solid teal — no photo on back card
+  ════════════════════════════════════════════════ -->
+  <g id="Background">
+    <rect class="st20" x="0" y="0" width="419.53" height="595.28"/>
+
+    <!-- Corner accent squares (mirrored from front — green top-left, gold top-right, teal bottom-right) -->
+    <rect class="st18" x="0"      y="0"      width="52.77" height="52.77"/>
+    <rect class="st17" x="366.76" y="0"      width="52.77" height="52.77"/>
+    <rect class="st16" x="0"      y="524.8"  width="53.44" height="30.54"/>
+
+    <!-- Inset corner outlines -->
+    <rect class="st2"  x="39.07"  y="39.07"  width="26.09" height="26.09"/>
+    <rect class="st4"  x="354.47" y="24.62"  width="26.09" height="26.09"/>
+    <rect class="st1"  x="13.07"  y="511.75" width="26.09" height="26.09"/>
+
+    <!-- Decorative large heart (top-right panel) — mirrors front st16 large heart -->
+    <path class="st16" d="M315.9,192.14l-6.5-6.5c-3.59-3.59-9.4-3.59-12.99,0h0c-3.59,3.59-3.59,9.4,0,12.99l19.49,19.49,19.49-19.49c3.59-3.59,3.59-9.4,0-12.99h0c-3.59-3.59-9.4-3.59-12.99,0l-6.5,6.5Z"/>
+    <!-- Gold heart (top-left panel) -->
+    <path class="st17" d="M103.63,66.24l-4.46-4.46c-2.46-2.46-6.45-2.46-8.92,0h0c-2.46,2.46-2.46,6.45,0,8.92l13.37,13.37,13.37-13.37c2.46-2.46,2.46-6.45,0-8.92h0c-2.46-2.46-6.45-2.46-8.92,0l-4.46,4.46Z"/>
+  </g>
+
+  <!-- ═══════════════════════════════════════════
+       TOP DECORATIVE FRAME
+       L-bracket + zigzag border (mirrors front)
+  ════════════════════════════════════════════════ -->
+  <g id="TopFrame">
+    <!-- L-bracket border top -->
+    <polyline class="st2" points="327.63 220 327.63 72 109.88 72"/>
+    <line class="st2" x1="327.63" y1="72" x2="91.9" y2="72"/>
+    <polyline class="st2" points="91.9 82 91.9 72 327.63 72"/>
+
+    <!-- Teal semi-transparent central panel -->
+    <rect class="st15" x="55" y="72" width="309.53" height="220"/>
+
+    <!-- Zigzag separator (identical to front footer zigzag) -->
+    <polyline class="st1" points="35.15 292 43.23 300 51.31 292 59.39 300 67.47 292 75.55 300 83.64 292 91.72 300 99.8 292 107.88 300 115.96 292 124.04 300 132.12 292 140.2 300 148.28 292 156.36 300 164.44 292 172.52 300 180.6 292 188.68 300 196.76 292 204.84 300 212.92 292 221 300 229.08 292 237.16 300 245.24 292 253.32 300 261.4 292 269.48 300 277.56 292 285.64 300 293.72 292 301.8 300 309.88 292 317.96 300 326.04 292 334.12 300 342.2 292 350.28 300 358.36 292 366.44 300 374.52 292 382.6 300 384.83 292"/>
+  </g>
+
+  <!-- ═══════════════════════════════════════════
+       MONOGRAM SECTION
+       Script initials in framed circle
+  ════════════════════════════════════════════════ -->
+  <g id="Monogram">
+    <circle class="st2" cx="209.77" cy="186" r="76" stroke-width="1"/>
+    <circle class="st1" cx="209.77" cy="186" r="68" stroke-width="0.75"/>
+    <text class="st8" text-anchor="middle" x="209.77" y="218">R &amp; J</text>
+    <!-- Small pink heart above monogram -->
+    <path class="st19" d="M209.77,110.12l-3.19-3.19c-1.76-1.76-4.61-1.76-6.38,0h0c-1.76,1.76-1.76,4.61,0,6.38l9.56,9.56,9.56-9.56c1.76-1.76,1.76-4.61,0-6.38h0c-1.76-1.76-4.61-1.76-6.38,0l-3.19,3.19Z"/>
+  </g>
+
+  <!-- ═══════════════════════════════════════════
+       EVENT DETAILS SECTION
+  ════════════════════════════════════════════════ -->
+  <g id="EventDetails">
+    <!-- Section header -->
+    <text style="font-family: CaviarDreams, CaviarDreams; font-size: 9px; fill: #f0d497; letter-spacing: 3px;" text-anchor="middle" x="209.77" y="318">─── EVENT DETAILS ───</text>
+
+    <!-- Date -->
+    <text class="st11" text-anchor="middle" x="209.77" y="346" letter-spacing="1.5">DATE</text>
+    <text class="st9"  text-anchor="middle" x="209.77" y="364">Saturday, 18th August 2018</text>
+
+    <!-- Dot separator -->
+    <circle class="st17" cx="209.77" cy="374" r="2.5"/>
+
+    <!-- Time -->
+    <text class="st11" text-anchor="middle" x="209.77" y="391" letter-spacing="1.5">TIME</text>
+    <text class="st9"  text-anchor="middle" x="209.77" y="409">Ceremony at 5:00 PM · Reception to follow</text>
+
+    <!-- Dot separator -->
+    <circle class="st19" cx="209.77" cy="419" r="2.5"/>
+
+    <!-- Venue -->
+    <text class="st11" text-anchor="middle" x="209.77" y="436" letter-spacing="1.5">VENUE</text>
+    <text class="st9"  text-anchor="middle" x="209.77" y="454">The Royal Palace Hotel</text>
+    <text style="font-family: CaviarDreams, CaviarDreams; font-size: 11px; fill: rgba(255,255,255,0.7);" text-anchor="middle" x="209.77" y="469">123 Harbour Road, Dar es Salaam</text>
+
+    <!-- Dot separator -->
+    <circle class="st18" cx="209.77" cy="479" r="2.5"/>
+
+    <!-- Dress code -->
+    <text class="st11" text-anchor="middle" x="209.77" y="496" letter-spacing="1.5">DRESS CODE</text>
+    <circle class="st17" cx="185.54" cy="511" r="8.22"/>
+    <circle class="st19" cx="209.77" cy="511" r="8.22"/>
+    <circle class="st18" cx="234"    cy="511" r="8.22"/>
+  </g>
+
+  <!-- ═══════════════════════════════════════════
+       RSVP + CONTACT SECTION
+  ════════════════════════════════════════════════ -->
+  <g id="RSVP">
+    <!-- Separator zigzag (mirrors front bottom motif) -->
+    <polyline class="st1" points="35.15 530 43.23 522 51.31 530 59.39 522 67.47 530 75.55 522 83.64 530 91.72 522 99.8 530 107.88 522 115.96 530 124.04 522 132.12 530 140.2 522 148.28 530 156.36 522 164.44 530 172.52 522 180.6 530 188.68 522 196.76 530 204.84 522 212.92 530 221 522 229.08 530 237.16 522 245.24 530 253.32 522 261.4 530 269.48 522 277.56 530 285.64 522 293.72 530 301.8 522 309.88 530 317.96 522 326.04 530 334.12 522 342.2 530 350.28 522 358.36 530 366.44 522 374.52 530 382.6 522 384.83 530"/>
+
+    <text style="font-family: CaviarDreams, CaviarDreams; font-size: 9px; fill: #f0d497; letter-spacing: 3px;" text-anchor="middle" x="209.77" y="549">─── KINDLY RSVP BY 1 JULY 2018 ───</text>
+
+    <text class="st12" text-anchor="middle" x="209.77" y="566">+255 795 682 205</text>
+    <text style="font-family: CaviarDreams, CaviarDreams; font-size: 11px; fill: #f096b1;" text-anchor="middle" x="209.77" y="581">rsvp@royalwedding2018.co.tz</text>
+    <text style="font-family: CaviarDreams, CaviarDreams; font-size: 10px; fill: rgba(255,255,255,0.6);" text-anchor="middle" x="209.77" y="593">www.royalwedding2018.co.tz</text>
+  </g>
+
+  <!-- ═══════════════════════════════════════════
+       SIDE HEART MOTIFS (mirror front card hearts)
+  ════════════════════════════════════════════════ -->
+  <g id="SideHearts">
+    <!-- Left column hearts -->
+    <line class="st5" x1="31.54" y1="320" x2="31.54" y2="370"/>
+    <path class="st7" d="M22.79,300c-1.04,4.08-2.54,10.05-4.26,17.21-1.96,8.16,2.32,17.4,13.01,17.4,9.97,0,14.36-8.03,13.32-15.72-8.8-11.09-17.02-16.44-22.08-18.89Z"/>
+    <path class="st19" d="M40.29,300c1.04,4.08,2.54,10.05,4.26,17.21,1.96,8.16-2.32,17.4-13.01,17.4-4.98,0-8.57-2.01-10.79-4.97-3.38-4.53-2.61-10.94,1.18-15.14,7.36-8.16,14.03-12.39,18.36-14.5Z"/>
+
+    <!-- Right column hearts -->
+    <line class="st5" x1="388" y1="320" x2="388" y2="370"/>
+    <path class="st7" d="M379.25,300c-1.04,4.08-2.54,10.05-4.26,17.21-1.96,8.16,2.32,17.4,13.01,17.4,9.97,0,14.36-8.03,13.32-15.72-8.8-11.09-17.02-16.44-22.08-18.89Z"/>
+    <path class="st18" d="M396.75,300c1.04,4.08,2.54,10.05,4.26,17.21,1.96,8.16-2.32,17.4-13.01,17.4-4.98,0-8.57-2.01-10.79-4.97-3.38-4.53-2.61-10.94,1.18-15.14,7.36-8.16,14.03-12.39,18.36-14.5Z"/>
+  </g>
+</svg>

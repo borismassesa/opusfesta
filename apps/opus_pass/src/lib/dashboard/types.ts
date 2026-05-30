@@ -214,4 +214,3 @@ export const PAYMENT_METHOD_LABELS: Record<PaymentMethod, string> = {
   bank: 'Bank transfer',
   other: 'Other',
 }
-

@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
@@ -27,10 +29,16 @@ export type Product = {
 
 export function ProductInfo({
   product,
+  href,
   showPromo = true,
+  selectedSwatch,
+  onSwatchSelect,
 }: {
   product: Product
+  href?: string
   showPromo?: boolean
+  selectedSwatch?: number
+  onSwatchSelect?: (index: number) => void
 }) {
   const unitNow = Math.round(product.priceNow / PACK_QTY / 10) * 10
   const unitWas = product.priceWas
@@ -46,10 +54,20 @@ export function ProductInfo({
       {/* Color swatches — bigger (20px) with hover scale + hex tooltip */}
       <div className="mt-3 flex items-center gap-2">
         {product.swatches.slice(0, 4).map((c, i) => (
-          <span
+          <button
             key={`${product.id}-sw-${i}`}
+            type="button"
             title={c}
-            className="h-5 w-5 rounded-full border border-black/15 shadow-sm transition-transform hover:scale-110"
+            aria-label={c}
+            aria-pressed={selectedSwatch === i}
+            onClick={onSwatchSelect ? (e) => { e.preventDefault(); onSwatchSelect(i) } : undefined}
+            className={cn(
+              'h-7 w-7 rounded-full border shadow-sm transition-transform hover:scale-110',
+              selectedSwatch === i
+                ? 'border-[#1A1A1A] ring-2 ring-offset-1 ring-[#1A1A1A]'
+                : 'border-black/15',
+              onSwatchSelect ? 'cursor-pointer' : 'cursor-default',
+            )}
             style={{ backgroundColor: c }}
           />
         ))}
@@ -65,7 +83,11 @@ export function ProductInfo({
 
       {/* Title — bigger and bolder, capped at 2 lines for consistent card heights */}
       <p className="mt-1 text-[15px] sm:text-[16px] font-bold text-[#1A1A1A] leading-snug line-clamp-2">
-        <Link href="#" className="hover:underline underline-offset-2">{product.name}</Link>
+        {href ? (
+          <span className="group-hover/pick:underline underline-offset-2">{product.name}</span>
+        ) : (
+          <Link href={`/invitations/p/${product.id}`} className="hover:underline underline-offset-2">{product.name}</Link>
+        )}
       </p>
 
       {/* Pricing — digital per-card is primary when present; falls back to paper per-pack */}
@@ -79,8 +101,10 @@ export function ProductInfo({
       ) : (
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           {unitWas && (
-            <span className="text-[11px] text-[#1A1A1A]/45 line-through">
-              TZS {unitWas.toLocaleString('en-US')}
+            <span aria-label={`Was TZS ${unitWas.toLocaleString('en-US')}`}>
+              <span aria-hidden="true" className="text-[11px] text-[#1A1A1A]/45 line-through">
+                TZS {unitWas.toLocaleString('en-US')}
+              </span>
             </span>
           )}
           <span className="text-[15px] sm:text-[16px] font-bold text-[#1A1A1A]">

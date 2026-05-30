@@ -1,8 +1,4 @@
-'use client'
-
 import Link from 'next/link'
-import { useRef } from 'react'
-import { motion, useScroll, useTransform } from 'motion/react'
 import Reveal from '@/components/ui/Reveal'
 
 type FooterLink = { label: string; href: string }
@@ -20,11 +16,10 @@ const columns: FooterColumn[] = [
   {
     title: 'Templates',
     links: [
-      { label: 'Save the Dates', href: '/invitations/catalog' },
-      { label: 'Wedding Invitations', href: '/invitations/catalog' },
-      { label: 'Kitchen Party', href: '/invitations/catalog' },
-      { label: 'Send-Off Cards', href: '/invitations/catalog' },
-      { label: 'Kadi za Michango', href: '/invitations/catalog' },
+      { label: 'Save the Dates', href: '/invitations/save-the-date' },
+      { label: 'Wedding Invitations', href: '/invitations/wedding' },
+      { label: 'Send-Off & Kitchen Party', href: '/invitations/send-off' },
+      { label: 'Kadi za Michango', href: '/invitations/kadi-za-michango' },
     ],
   },
   {
@@ -48,10 +43,6 @@ const columns: FooterColumn[] = [
 ]
 
 export default function Footer() {
-  const watermarkRef = useRef(null)
-  const { scrollYProgress } = useScroll({ target: watermarkRef, offset: ['start end', 'end start'] })
-  const y = useTransform(scrollYProgress, [0, 1], [30, -30])
-
   return (
     <footer className="bg-white pt-20 pb-12 px-6 border-t border-gray-200">
       <div className="max-w-6xl mx-auto">
@@ -74,16 +65,29 @@ export default function Footer() {
           ))}
         </Reveal>
 
-        {/* Watermark — parallax bounded within footer */}
-        <div ref={watermarkRef} className="relative mb-8 py-8 -mx-6 overflow-hidden flex justify-center">
-          <motion.p
-            style={{ y }}
+        {/* Watermark — CSS parallax, decorative only */}
+        <div className="relative mb-8 py-8 -mx-6 overflow-hidden flex justify-center">
+          <p
             aria-hidden="true"
-            className="pointer-events-none whitespace-nowrap select-none text-center text-[14vw] md:text-[11vw] lg:text-[9vw] xl:text-[8.2vw] 2xl:text-[7.4vw] font-serif font-bold leading-none text-gray-100"
+            className="footer-watermark pointer-events-none whitespace-nowrap select-none text-center text-[14vw] md:text-[11vw] lg:text-[9vw] xl:text-[8.2vw] 2xl:text-[7.4vw] font-serif font-bold leading-none text-gray-100"
           >
             OpusPass
-          </motion.p>
+          </p>
         </div>
+
+        <style>{`
+          @keyframes footer-drift {
+            from { transform: translateY(30px); }
+            to   { transform: translateY(-30px); }
+          }
+          .footer-watermark {
+            animation: footer-drift linear both;
+            animation-timeline: scroll(root);
+          }
+          @media (prefers-reduced-motion: reduce) {
+            .footer-watermark { animation: none; }
+          }
+        `}</style>
 
         <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between md:gap-0 mt-8 pt-8 border-t border-gray-100 text-xs text-gray-400">
           <div className="flex gap-6">

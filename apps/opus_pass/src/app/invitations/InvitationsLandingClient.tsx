@@ -1,13 +1,11 @@
-'use client'
-
-import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, ChevronDown, ChevronLeft, ChevronRight, Heart, Play } from 'lucide-react'
+import { Heart, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { ProductInfo, type Product } from '@/components/guests/productInfo'
-import type { InvitationCategoryCms } from '@/lib/cms/invitations-categories'
+import { ShopByCategoryCarousel } from './ShopByCategoryCarousel'
+import { FAQItem } from './FAQAccordion'
 import type { InvitationsHeroContent } from '@/lib/cms/invitations-hero'
 import type { InvitationsCategoriesContent } from '@/lib/cms/invitations-categories'
 import type { InvitationsFeaturesContent, InvitationsFeatureCard } from '@/lib/cms/invitations-features'
@@ -51,7 +49,7 @@ export default function InvitationsLandingClient({
               {categories.description}
             </p>
           </div>
-          <ShopByCategory categories={categories.categories} />
+          <ShopByCategoryCarousel categories={categories.categories} />
         </div>
       </section>
       <SectionDivider />
@@ -96,6 +94,7 @@ function HeroBanner({ hero }: { hero: InvitationsHeroContent }) {
                 src={hero.right_image_url}
                 alt={hero.right_image_alt}
                 fill
+                priority
                 sizes="42vw"
                 style={{
                   objectFit: hero.right_image_fit || 'cover',
@@ -139,6 +138,7 @@ function HeroBanner({ hero }: { hero: InvitationsHeroContent }) {
                     src={hero.right_image_url}
                     alt={hero.right_image_alt}
                     fill
+                    priority
                     sizes="100vw"
                     style={{
                       objectFit: hero.right_image_fit || 'cover',
@@ -148,14 +148,12 @@ function HeroBanner({ hero }: { hero: InvitationsHeroContent }) {
                 </div>
               ) : (
                 <>
-                  {/* Pearls — decorative diagonal */}
-                  <div className="absolute top-0 left-0 right-0 h-2 hidden md:block">
-                    <div className="flex gap-[3px]">
-                      {Array.from({ length: 80 }).map((_, i) => (
-                        <span key={i} className="block h-2 w-2 rounded-full bg-gradient-to-br from-white to-[#E8D9A7]/60 shadow-sm" />
-                      ))}
-                    </div>
-                  </div>
+                  {/* Pearls — decorative row */}
+                  <div
+                    aria-hidden="true"
+                    className="absolute top-0 left-0 right-0 h-2 hidden md:block"
+                    style={{ background: 'repeating-linear-gradient(90deg, #E8D9A7 0px, #E8D9A7 8px, transparent 8px, transparent 14px)' }}
+                  />
 
                   {/* Couple portrait */}
                   <div className="absolute right-[8%] top-[6%] w-[28%] aspect-[3/4] overflow-hidden rounded-sm shadow-md rotate-[-4deg] bg-white">
@@ -194,19 +192,6 @@ function HeroBanner({ hero }: { hero: InvitationsHeroContent }) {
 // ─────────────────────────────────────────────────────────────────────────────
 //  SECTION SHELL + DIVIDER
 // ─────────────────────────────────────────────────────────────────────────────
-
-function Section({ title, children, bottomClass = '' }: { title: string; children: React.ReactNode; bottomClass?: string }) {
-  return (
-    <section className="px-4 sm:px-6">
-      <div className={cn('mx-auto max-w-7xl pt-10 sm:pt-14', bottomClass)}>
-        <h2 className="text-center text-[18px] sm:text-[22px] md:text-[26px] font-extrabold tracking-tight text-[#1A1A1A] mb-7 sm:mb-9">
-          {title}
-        </h2>
-        {children}
-      </div>
-    </section>
-  )
-}
 
 function SectionDivider() {
   return (
@@ -319,110 +304,6 @@ function FeatureVisualEnvelope() {
         <div className="absolute top-2 right-2 w-[28px] h-[34px] bg-white border border-gray-200 rounded-sm flex items-center justify-center">
           <span className="text-[7px] font-bold text-[#7A1F2B]">TZ</span>
         </div>
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  SHOP BY CATEGORY — circular-photo grid, same pattern as /attire-and-rings
-// ─────────────────────────────────────────────────────────────────────────────
-
-// SHOP_BY_CATEGORY now lives in /src/data/invitations-categories.ts so the dynamic
-// /invitations/[category] route can reuse the same slug + matcher data.
-
-function ShopByCategory({ categories }: { categories: InvitationCategoryCms[] }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [progress, setProgress] = useState(0)
-
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const update = () => {
-      const max = el.scrollWidth - el.clientWidth
-      setProgress(max > 0 ? (el.scrollLeft / max) * 100 : 0)
-    }
-    update()
-    el.addEventListener('scroll', update, { passive: true })
-    const ro = new ResizeObserver(update)
-    ro.observe(el)
-    return () => {
-      el.removeEventListener('scroll', update)
-      ro.disconnect()
-    }
-  }, [])
-
-  // Advance / retreat by one "page" — exactly the visible width + one gap so the
-  // next 5 tiles align flush to the left edge instead of stopping mid-card.
-  const pageSize = (el: HTMLDivElement) => {
-    const gap = parseFloat(getComputedStyle(el).columnGap || '0') || 0
-    return el.clientWidth + gap
-  }
-
-  const scrollNext = () => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollBy({ left: pageSize(el), behavior: 'smooth' })
-  }
-
-  const scrollPrev = () => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollBy({ left: -pageSize(el), behavior: 'smooth' })
-  }
-
-  return (
-    <div>
-      <div className="relative group">
-      <div
-        ref={scrollRef}
-        className="flex gap-5 sm:gap-6 md:gap-8 overflow-x-auto pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
-      >
-        {categories.map((cat) => (
-          <Link
-            key={cat.slug}
-            href={`/invitations/${cat.slug}`}
-            className="group flex flex-col items-center text-center shrink-0 snap-start w-[110px] sm:w-[130px] md:w-[calc((100%-128px)/5)]"
-          >
-            <div className="aspect-square w-full overflow-hidden rounded-full bg-white ring-1 ring-gray-200 mb-3 transition-shadow group-hover:shadow-md">
-              <img
-                src={cat.img}
-                alt={cat.alt}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-              />
-            </div>
-            <span className="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-gray-800 group-hover:underline leading-tight">
-              {cat.label}
-              <ArrowRight size={14} className="shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden="true" />
-            </span>
-          </Link>
-        ))}
-      </div>
-
-        {/* Left-side scroll-prev chevron — md+ only, visible on row hover, hidden at start */}
-        {progress > 1 && (
-          <button
-            type="button"
-            onClick={scrollPrev}
-            aria-label="Scroll left"
-            className="hidden md:grid absolute top-[35px] lg:top-[61px] xl:top-[86px] left-[-50px] h-12 w-12 place-items-center rounded-full bg-[#1A1A1A] shadow-lg hover:bg-black z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200"
-          >
-            <ChevronLeft className="h-6 w-6 text-white" />
-          </button>
-        )}
-
-        {/* Right-side scroll-next chevron — md+ only, visible on row hover, hidden at end */}
-        {progress < 99 && (
-          <button
-            type="button"
-            onClick={scrollNext}
-            aria-label="Scroll right"
-            className="hidden md:grid absolute top-[35px] lg:top-[61px] xl:top-[86px] right-[-50px] h-12 w-12 place-items-center rounded-full bg-[#1A1A1A] shadow-lg hover:bg-black z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200"
-          >
-            <ChevronRight className="h-6 w-6 text-white" />
-          </button>
-        )}
       </div>
     </div>
   )
@@ -552,7 +433,7 @@ function PickVisual({ pick }: { pick: InvitationsEditorsPicksPick }) {
 
 function pickToProduct(pick: InvitationsEditorsPicksPick): Product {
   return {
-    id: pick.id,
+    id: pick.product_id ?? pick.id,
     category: pick.category,
     name: pick.name,
     priceWas: pick.price_was,
@@ -583,18 +464,21 @@ function EditorsPicks({ rows: cmsRows }: { rows: InvitationsEditorsPicksContent[
                 align={row.align}
               />
             </div>
-            {row.picks.map((p) => (
-              <div key={p.id} className="flex flex-col">
-                <PickCard
-                  overlay={p.overlay === 'play' ? <PlayIcon /> : p.overlay === 'heart' ? <HeartIcon /> : undefined}
-                  background={p.background}
-                  badge={p.badge}
-                >
-                  <PickVisual pick={p} />
-                </PickCard>
-                <ProductInfo product={pickToProduct(p)} showPromo={false} />
-              </div>
-            ))}
+            {row.picks.map((p) => {
+              const productHref = `/invitations/p/${p.product_id ?? p.id}`
+              return (
+                <Link key={p.id} href={productHref} className="flex flex-col group/pick">
+                  <PickCard
+                    overlay={p.overlay === 'play' ? <PlayIcon /> : p.overlay === 'heart' ? <HeartIcon /> : undefined}
+                    background={p.background}
+                    badge={p.badge}
+                  >
+                    <PickVisual pick={p} />
+                  </PickCard>
+                  <ProductInfo product={pickToProduct(p)} href={productHref} showPromo={false} />
+                </Link>
+              )
+            })}
           </div>
         ))}
       </div>
@@ -745,31 +629,5 @@ function FAQs({ content }: { content: InvitationsFaqsContent }) {
   )
 }
 
-function FAQItem({ q, a }: { q: string; a: string }) {
-  const [open, setOpen] = useState(false)
-  return (
-    <div className="border-b border-gray-200 last:border-b-0">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        className="flex w-full items-center justify-between gap-4 py-5 sm:py-6 text-left"
-      >
-        <span className="text-[15px] sm:text-[17px] font-medium text-gray-900">{q}</span>
-        <ChevronDown
-          className={cn(
-            'h-5 w-5 text-gray-600 shrink-0 transition-transform duration-200',
-            open && 'rotate-180',
-          )}
-          aria-hidden="true"
-        />
-      </button>
-      {open && (
-        <p className="pb-5 sm:pb-6 pr-12 text-[14px] sm:text-[15px] text-gray-700 leading-relaxed">
-          {a}
-        </p>
-      )}
-    </div>
-  )
-}
+
 

@@ -1,0 +1,261 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 612 198">
+  <defs>
+    <style>
+      .st0 { fill: var(--iv-bg, #f5f0ea); }
+      .st1 { font-size: 27.66px; fill: var(--iv-acc, #ab8d53); font-family: AnastasiaScript, AnastasiaScript; }
+      .st2 { fill: var(--iv-acc, #ab8d53); }
+      .st3 { font-size: 27.54px; fill: var(--iv-acc, #ab8d53); font-family: AnastasiaScript, AnastasiaScript; }
+      .st4 { font-size: 12.14px; letter-spacing: .1em; font-family: Computersaysno, 'Computer says no'; fill: var(--iv-ts, #ab8d53); }
+      .st5 { font-size: 11.07px; font-family: Computersaysno, 'Computer says no'; fill: var(--iv-ts, #ab8d53); }
+      .st6 { font-size: 10.16px; font-family: Computersaysno, 'Computer says no'; fill: var(--iv-mut, rgba(171,141,83,0.8)); }
+      .st7 { font-size: 7px; font-family: Computersaysno, 'Computer says no'; fill: var(--iv-ts, #ab8d53); }
+      .st8 { font-size: 14px; font-family: Computersaysno, 'Computer says no'; fill: var(--iv-ts, #ab8d53); }
+      .st9 { font-size: 27.75px; font-family: Computersaysno, 'Computer says no'; fill: var(--iv-tp, #3a2d1f); }
+      .st10 { font-size: 9px; font-family: Computersaysno, 'Computer says no'; fill: #fff; }
+      .st11 { fill: #fff; }
+      .st12, .st13, .st14, .st15, .st16, .st17, .st18 { fill: none; }
+      .st13, .st14, .st15, .st17 { stroke: var(--iv-acc, #ab8d53); }
+      .st13, .st16, .st17, .st18 { stroke-linecap: round; stroke-linejoin: round; stroke-width: 2px; }
+      .st13, .st18 { stroke-dasharray: 0 8.19; }
+      .st15 { stroke-width: .75px; }
+      .st16, .st18 { stroke: var(--iv-mut, #6a5641); }
+      .st14 { stroke-miterlimit: 10; stroke: var(--iv-acc, #ab8d53); }
+      .st19 { isolation: isolate; }
+      .st20 { opacity: 0; }
+      .st21 { fill: var(--iv-tp, #010101); }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <g id="Background">
+    <rect class="st0" width="612" height="198"/>
+  </g>
+
+  <!-- Stub: left accent-colour panel -->
+  <g id="Stub">
+    <path class="st2" d="M67.63,28.13v141.84c-6.59,0-11.92,5.34-11.92,11.92,0,.73.07,1.45.2,2.15h-21.42c-9.37,0-16.96-7.59-16.96-16.95V33.16c0-9.36,7.59-16.95,16.96-16.95h21.22c0,6.59,5.33,11.92,11.92,11.92Z"/>
+  </g>
+
+  <!-- Stub_Label: vertical rotated text on the left stub -->
+  <g id="Stub_Label">
+    <text class="st10" transform="translate(41.09 149.63) rotate(-90)"><tspan x="0" y="0">ACCESS PASS TO OUR</tspan><tspan x="30.94" y="10.8">WEDDING</tspan></text>
+    <!-- Arrow ornaments on stub -->
+    <path class="st11" d="M45.65,134.85c1.29.78,2.55.23,3.22-.46l3.9-4.06-3.88-3.98c-.72-.65-1.48-.89-2.33-.76-1.17.19-2.08,1.16-2.21,2.35-.08.73.13,1.44.59,1.99.12.15.26.28.41.4-.17.14-.33.3-.47.48-.48.64-.67,1.44-.53,2.22.14.74.62,1.4,1.3,1.81Z"/>
+    <path class="st11" d="M45.65,73.86c1.29.78,2.55.23,3.22-.46l3.9-4.06-3.88-3.98c-.72-.65-1.48-.89-2.33-.76-1.17.19-2.08,1.16-2.21,2.35-.08.73.13,1.44.59,1.99.12.15.26.28.41.4-.17.14-.33.3-.47.48-.48.64-.67,1.44-.53,2.22.14.74.62,1.4,1.3,1.81Z"/>
+  </g>
+
+  <!-- Ticket body (white panel) -->
+  <g id="Ticket_Body">
+    <path class="st11" d="M594.92,33.16v133.93c0,9.36-7.59,16.95-16.95,16.95h-115.52c.13-.7.2-1.42.2-2.15,0-6.58-5.34-11.92-11.93-11.92s-11.92,5.34-11.92,11.92c0,.73.07,1.45.2,2.15H79.35c.13-.7.2-1.42.2-2.15,0-6.58-5.34-11.92-11.92-11.92V28.13c6.58,0,11.92-5.33,11.92-11.92h359.25c0,6.59,5.34,11.92,11.92,11.92s11.93-5.33,11.93-11.92h115.32c9.36,0,16.95,7.59,16.95,16.95Z"/>
+  </g>
+
+  <!-- Ticket_Stub_Tear: perforated dashed tear-lines (Decorative) -->
+  <g id="Ticket_Stub_Tear">
+    <g>
+      <line class="st16" x1="67.63" y1="29.43" x2="67.63" y2="29.43"/>
+      <line class="st18" x1="67.63" y1="37.62" x2="67.63" y2="164.58"/>
+      <line class="st16" x1="67.63" y1="168.68" x2="67.63" y2="168.68"/>
+    </g>
+    <g>
+      <line class="st17" x1="451.36" y1="29.43" x2="451.36" y2="29.43"/>
+      <line class="st13" x1="451.36" y1="37.62" x2="451.36" y2="164.58"/>
+      <line class="st17" x1="451.36" y1="168.68" x2="451.36" y2="168.68"/>
+    </g>
+  </g>
+
+  <!-- Decorative: divider lines -->
+  <g id="Decorative">
+    <line class="st15" x1="72.6" y1="51.16" x2="447.05" y2="51.03"/>
+    <line class="st15" x1="226.72" y1="95.19" x2="227.02" y2="57.12"/>
+    <line class="st15" x1="292.63" y1="95.19" x2="292.92" y2="57.12"/>
+    <line class="st12" x1="72.6" y1="51.16" x2="447.05" y2="51.16"/>
+    <line class="st15" x1="72.6" y1="99.78" x2="447.05" y2="99.64"/>
+    <line class="st15" x1="72.6" y1="143.75" x2="447.05" y2="143.62"/>
+    <rect class="st20" x="226.35" y="57.12" width="1.05" height="38.07"/>
+    <rect class="st20" x="292.25" y="57.12" width="1.05" height="38.07"/>
+  </g>
+
+  <!-- Event_Title: "YOU ARE INVITED TO THE WEDDING OF" header -->
+  <g id="Event_Title">
+    <text class="st8" transform="translate(118.97 41.25)"><tspan x="0" y="0">YOU ARE INVITED TO THE WEDDING OF</tspan></text>
+  </g>
+
+  <!-- Ticket_Title: couple names (Bride + "and" + Groom) -->
+  <g id="Ticket_Title">
+    <g class="st19">
+      <text class="st9" transform="translate(89.54 88.57)"><tspan x="0" y="0">CLAUDIA</tspan></text>
+    </g>
+    <text class="st3" transform="translate(236.91 80.94)"><tspan x="0" y="0">and</tspan></text>
+    <g class="st19">
+      <text class="st9" transform="translate(324.49 88.57)"><tspan x="0" y="0">DANIEL</tspan></text>
+    </g>
+  </g>
+
+  <!-- Ticket_Date -->
+  <g id="Ticket_Date">
+    <text class="st7" transform="translate(89.54 115.97)"><tspan x="0" y="0">DATE: 02 OCTOBER, 2024</tspan></text>
+  </g>
+
+  <!-- Ticket_Time -->
+  <g id="Ticket_Time">
+    <text class="st7" transform="translate(89.54 133.87)"><tspan x="0" y="0">TIME: 8:20PM</tspan></text>
+  </g>
+
+  <!-- Ticket_Venue + Ticket_Address (combined in middle column) -->
+  <g id="Ticket_Venue">
+    <text class="st5" transform="translate(265.68 115.3)"><tspan x="0" y="0">ADDRESS: 123 ANYWHERE ST.</tspan><tspan x="58.81" y="13.29">ANY CITY</tspan></text>
+  </g>
+
+  <!-- Message: couple's personal message, right column row 3 -->
+  <g id="Message">
+    <text class="st7" transform="translate(265.68 136)"><tspan x="0" y="0">We are delighted to invite you to our special day.</tspan></text>
+  </g>
+
+  <!-- Ticket_Gate -->
+  <g id="Ticket_Gate">
+    <text class="st7" transform="translate(89.54 155)"><tspan x="0" y="0">GATE: A</tspan></text>
+  </g>
+
+  <!-- Attribution: message sign-off -->
+  <g id="Attribution">
+    <text class="st6" transform="translate(89.54 164)"><tspan x="0" y="0">— Claudia &amp; Daniel</tspan></text>
+  </g>
+
+  <!-- Rsvp_Contact -->
+  <g id="Rsvp_Contact">
+    <text class="st4" transform="translate(269.14 169.92)"><tspan x="0" y="0">RSVP</tspan></text>
+    <line class="st14" x1="261.83" y1="175.56" x2="261.83" y2="154.02"/>
+    <line class="st14" x1="306" y1="175.56" x2="306" y2="154.02"/>
+    <text class="st6" transform="translate(336.69 162.38)"><tspan x="0" y="0">+123-456-7890</tspan></text>
+    <text class="st6" transform="translate(337 174.15)"><tspan x="0" y="0">+123-456-7890</tspan></text>
+  </g>
+
+  <!-- Save the Date label (Decorative label at bottom of stub area) -->
+  <g id="Decorative_Label">
+    <g class="st19">
+      <text class="st1" transform="translate(98.05 171.59)"><tspan x="0" y="0">Save the Date</tspan></text>
+    </g>
+  </g>
+
+  <!-- Qr_Placeholder: QR code area on right section -->
+  <g id="Qr_Placeholder">
+    <path class="st14" d="M471.48,48.6h108.24v108.24h-108.24V48.6Z"/>
+    <g>
+      <polygon class="st21" points="523.96 120.76 530.52 120.76 530.52 117.48 517.4 117.48 517.4 120.76 514.12 120.76 514.12 117.48 510.84 117.48 510.84 124.04 523.96 124.04 523.96 120.76"/>
+      <rect class="st21" x="517.4" y="114.2" width="3.28" height="3.28"/>
+      <rect class="st21" x="510.84" y="130.6" width="3.28" height="3.28"/>
+      <rect class="st21" x="514.12" y="84.68" width="3.28" height="3.28"/>
+      <rect class="st21" x="537.08" y="117.48" width="3.28" height="6.56"/>
+      <rect class="st21" x="543.64" y="120.76" width="3.28" height="3.28"/>
+      <rect class="st21" x="550.2" y="117.48" width="3.28" height="6.56"/>
+      <rect class="st21" x="540.36" y="130.6" width="6.56" height="3.28"/>
+      <polygon class="st21" points="553.48 124.04 550.2 124.04 550.2 127.32 540.36 127.32 540.36 124.04 530.52 124.04 530.52 127.32 527.24 127.32 527.24 124.04 523.96 124.04 523.96 130.6 553.48 130.6 553.48 124.04"/>
+      <rect class="st21" x="530.52" y="104.36" width="13.12" height="3.28"/>
+      <rect class="st21" x="530.52" y="130.6" width="3.28" height="3.28"/>
+      <rect class="st21" x="530.52" y="133.88" width="3.28" height="6.56"/>
+      <polygon class="st21" points="517.4 127.32 514.12 127.32 514.12 124.04 510.84 124.04 510.84 130.6 520.68 130.6 520.68 124.04 517.4 124.04 517.4 127.32"/>
+      <rect class="st21" x="517.4" y="130.6" width="3.28" height="3.28"/>
+      <rect class="st21" x="507.56" y="91.24" width="3.28" height="3.28"/>
+      <polygon class="st21" points="514.12 94.52 517.4 94.52 517.4 97.8 520.68 97.8 520.68 91.24 514.12 91.24 514.12 94.52"/>
+      <rect class="st21" x="504.28" y="94.52" width="3.28" height="3.28"/>
+      <rect class="st21" x="501" y="91.24" width="3.28" height="3.28"/>
+      <rect class="st21" x="497.72" y="104.36" width="3.28" height="3.28"/>
+      <polygon class="st21" points="504.28 101.08 504.28 97.8 501 97.8 501 104.36 510.84 104.36 510.84 101.08 504.28 101.08"/>
+      <rect class="st21" x="507.56" y="104.36" width="3.28" height="3.28"/>
+      <rect class="st21" x="504.28" y="78.12" width="3.28" height="3.28"/>
+      <rect class="st21" x="504.28" y="71.56" width="3.28" height="6.56"/>
+      <rect class="st21" x="504.28" y="65" width="3.28" height="6.56"/>
+      <rect class="st21" x="487.88" y="97.8" width="9.84" height="3.28"/>
+      <rect class="st21" x="494.44" y="87.96" width="19.68" height="3.28"/>
+      <rect class="st21" x="510.84" y="94.52" width="3.28" height="3.28"/>
+      <polygon class="st21" points="520.68 110.92 517.4 110.92 517.4 107.64 514.12 107.64 514.12 110.92 510.84 110.92 510.84 107.64 504.28 107.64 504.28 110.92 507.56 110.92 507.56 114.2 523.96 114.2 523.96 110.92 537.08 110.92 537.08 107.64 520.68 107.64 520.68 110.92"/>
+      <rect class="st21" x="530.52" y="114.2" width="22.96" height="3.28"/>
+      <rect class="st21" x="520.68" y="74.84" width="6.56" height="3.28"/>
+      <rect class="st21" x="517.4" y="71.56" width="3.28" height="3.28"/>
+      <rect class="st21" x="530.52" y="74.84" width="3.28" height="3.28"/>
+      <rect class="st21" x="527.24" y="71.56" width="3.28" height="3.28"/>
+      <rect class="st21" x="514.12" y="78.12" width="3.28" height="3.28"/>
+      <rect class="st21" x="537.08" y="78.12" width="3.28" height="3.28"/>
+      <rect class="st21" x="537.08" y="81.4" width="3.28" height="6.56"/>
+      <rect class="st21" x="497.72" y="114.2" width="9.84" height="3.28"/>
+      <rect class="st21" x="543.64" y="65" width="3.28" height="6.56"/>
+      <rect class="st21" x="520.68" y="84.68" width="3.28" height="3.28"/>
+      <rect class="st21" x="543.64" y="78.12" width="3.28" height="3.28"/>
+      <rect class="st21" x="537.08" y="71.56" width="3.28" height="6.56"/>
+      <rect class="st21" x="530.52" y="87.96" width="6.56" height="3.28"/>
+      <rect class="st21" x="523.96" y="78.12" width="6.56" height="3.28"/>
+      <rect class="st21" x="543.64" y="71.56" width="3.28" height="6.56"/>
+      <rect class="st21" x="517.4" y="81.4" width="3.28" height="3.28"/>
+      <rect class="st21" x="523.96" y="81.4" width="3.28" height="3.28"/>
+      <rect class="st21" x="510.84" y="74.84" width="3.28" height="3.28"/>
+      <rect class="st21" x="510.84" y="81.4" width="3.28" height="3.28"/>
+      <rect class="st21" x="540.36" y="87.96" width="3.28" height="3.28"/>
+      <rect class="st21" x="527.24" y="84.68" width="3.28" height="3.28"/>
+      <rect class="st21" x="530.52" y="81.4" width="3.28" height="3.28"/>
+      <polygon class="st21" points="533.8 71.56 540.36 71.56 540.36 65 537.08 65 537.08 68.28 533.8 68.28 533.8 71.56"/>
+      <rect class="st21" x="537.08" y="61.72" width="3.28" height="3.28"/>
+      <rect class="st21" x="530.52" y="61.72" width="3.28" height="3.28"/>
+      <polygon class="st21" points="520.68 65 517.4 65 517.4 68.28 514.12 68.28 514.12 65 510.84 65 510.84 71.56 520.68 71.56 520.68 65"/>
+      <rect class="st21" x="510.84" y="61.72" width="6.56" height="3.28"/>
+      <rect class="st21" x="527.24" y="68.28" width="3.28" height="3.28"/>
+      <rect class="st21" x="563.32" y="78.12" width="3.28" height="3.28"/>
+      <rect class="st21" x="560.04" y="130.6" width="6.56" height="3.28"/>
+      <rect class="st21" x="556.76" y="114.2" width="6.56" height="3.28"/>
+      <rect class="st21" x="517.4" y="104.36" width="3.28" height="3.28"/>
+      <rect class="st21" x="510.84" y="140.44" width="6.56" height="3.28"/>
+      <polygon class="st21" points="546.92 107.64 540.36 107.64 540.36 114.2 550.2 114.2 550.2 110.92 546.92 110.92 546.92 107.64"/>
+      <rect class="st21" x="556.76" y="117.48" width="6.56" height="3.28"/>
+      <rect class="st21" x="563.32" y="120.76" width="3.28" height="3.28"/>
+      <rect class="st21" x="553.48" y="140.44" width="3.28" height="3.28"/>
+      <rect class="st21" x="523.96" y="133.88" width="3.28" height="3.28"/>
+      <rect class="st21" x="517.4" y="133.88" width="3.28" height="3.28"/>
+      <rect class="st21" x="563.32" y="140.44" width="3.28" height="3.28"/>
+      <rect class="st21" x="527.24" y="140.44" width="6.56" height="3.28"/>
+      <polygon class="st21" points="550.2 110.92 553.48 110.92 553.48 114.2 560.04 114.2 560.04 110.92 563.32 110.92 563.32 114.2 566.6 114.2 566.6 107.64 550.2 107.64 550.2 110.92"/>
+      <rect class="st21" x="537.08" y="140.44" width="3.28" height="3.28"/>
+      <polygon class="st21" points="550.2 137.16 540.36 137.16 540.36 140.44 553.48 140.44 553.48 137.16 556.76 137.16 556.76 140.44 566.6 140.44 566.6 133.88 550.2 133.88 550.2 137.16"/>
+      <rect class="st21" x="563.32" y="71.56" width="3.28" height="6.56"/>
+      <rect class="st21" x="550.2" y="71.56" width="9.84" height="6.56"/>
+      <rect class="st21" x="550.2" y="68.28" width="9.84" height="3.28"/>
+      <rect class="st21" x="543.64" y="61.72" width="22.96" height="3.28"/>
+      <rect class="st21" x="563.32" y="65" width="3.28" height="6.56"/>
+      <rect class="st21" x="543.64" y="81.4" width="22.96" height="3.28"/>
+      <rect class="st21" x="550.2" y="104.36" width="3.28" height="3.28"/>
+      <rect class="st21" x="556.76" y="87.96" width="9.84" height="3.28"/>
+      <rect class="st21" x="563.32" y="94.52" width="3.28" height="3.28"/>
+      <rect class="st21" x="560.04" y="104.36" width="3.28" height="3.28"/>
+      <polygon class="st21" points="530.52 101.08 533.8 101.08 533.8 104.36 537.08 104.36 537.08 101.08 543.64 101.08 543.64 104.36 550.2 104.36 550.2 101.08 563.32 101.08 563.32 104.36 566.6 104.36 566.6 97.8 530.52 97.8 530.52 101.08"/>
+      <polygon class="st21" points="563.32 91.24 546.92 91.24 546.92 94.52 543.64 94.52 543.64 91.24 540.36 91.24 540.36 94.52 537.08 94.52 537.08 91.24 523.96 91.24 523.96 97.8 530.52 97.8 530.52 94.52 533.8 94.52 533.8 97.8 550.2 97.8 550.2 94.52 553.48 94.52 553.48 97.8 556.76 97.8 556.76 94.52 563.32 94.52 563.32 91.24"/>
+      <rect class="st21" x="550.2" y="87.96" width="3.28" height="3.28"/>
+      <rect class="st21" x="560.04" y="124.04" width="6.56" height="6.56"/>
+      <rect class="st21" x="484.6" y="104.36" width="6.56" height="3.28"/>
+      <rect class="st21" x="484.6" y="81.4" width="22.96" height="3.28"/>
+      <rect class="st21" x="484.6" y="78.12" width="3.28" height="3.28"/>
+      <rect class="st21" x="484.6" y="140.44" width="22.96" height="3.28"/>
+      <rect class="st21" x="484.6" y="94.52" width="3.28" height="3.28"/>
+      <polygon class="st21" points="491.16 97.8 494.44 97.8 494.44 94.52 497.72 94.52 497.72 91.24 487.88 91.24 487.88 94.52 491.16 94.52 491.16 97.8"/>
+      <rect class="st21" x="484.6" y="87.96" width="3.28" height="3.28"/>
+      <rect class="st21" x="484.6" y="65" width="3.28" height="6.56"/>
+      <rect class="st21" x="520.68" y="87.96" width="6.56" height="3.28"/>
+      <polygon class="st21" points="514.12 101.08 517.4 101.08 517.4 104.36 527.24 104.36 527.24 97.8 514.12 97.8 514.12 101.08"/>
+      <rect class="st21" x="484.6" y="61.72" width="22.96" height="3.28"/>
+      <rect class="st21" x="491.16" y="71.56" width="9.84" height="6.56"/>
+      <rect class="st21" x="491.16" y="68.28" width="9.84" height="3.28"/>
+      <rect class="st21" x="484.6" y="71.56" width="3.28" height="6.56"/>
+      <rect class="st21" x="491.16" y="133.88" width="9.84" height="3.28"/>
+      <rect class="st21" x="491.16" y="130.6" width="9.84" height="3.28"/>
+      <rect class="st21" x="484.6" y="124.04" width="3.28" height="6.56"/>
+      <rect class="st21" x="491.16" y="127.32" width="9.84" height="3.28"/>
+      <rect class="st21" x="484.6" y="130.6" width="3.28" height="3.28"/>
+      <rect class="st21" x="484.6" y="133.88" width="3.28" height="6.56"/>
+      <polygon class="st21" points="487.88 110.92 497.72 110.92 497.72 107.64 484.6 107.64 484.6 114.2 487.88 114.2 487.88 110.92"/>
+      <rect class="st21" x="504.28" y="124.04" width="3.28" height="6.56"/>
+      <rect class="st21" x="484.6" y="114.2" width="3.28" height="3.28"/>
+      <rect class="st21" x="491.16" y="114.2" width="3.28" height="3.28"/>
+      <rect class="st21" x="484.6" y="120.76" width="22.96" height="3.28"/>
+      <rect class="st21" x="504.28" y="133.88" width="3.28" height="6.56"/>
+      <rect class="st21" x="504.28" y="130.6" width="3.28" height="3.28"/>
+    </g>
+  </g>
+</svg>

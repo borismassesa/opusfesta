@@ -1,12 +1,15 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Check, ChevronLeft, ChevronRight, Heart, SlidersHorizontal, Upload, X } from 'lucide-react'
+import Image from 'next/image'
+import { ArrowRight, Check as CheckIcon, ChevronLeft, ChevronRight, Heart, SlidersHorizontal, Upload, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { PROMO_CODE, ProductInfo } from '@/components/guests/productInfo'
 import { PRODUCTS, type CatalogProduct } from '@/data/invitations-products'
+import { useScrollCarousel } from '@/hooks/useScrollCarousel'
+import { useBodyLock } from '@/hooks/useBodyLock'
 import type { InvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-banner'
 import type { InvitationsStyleStripContent } from '@/lib/cms/invitations-style-strip'
 import type { InvitationsExploreStylesContent } from '@/lib/cms/invitations-explore-styles'
@@ -18,6 +21,81 @@ import type { InvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-f
 // going through the 'use client' boundary.
 export { PRODUCTS, type CatalogProduct }
 type Product = CatalogProduct
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  FILTER STATE
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type CommittedFilters = {
+  priceRange: string
+  customLow: string
+  customHigh: string
+  colors: string[]
+  styles: string[]
+  formats: string[]
+  printEdges: string[]
+  foil: string
+  seasons: string[]
+  photoCount: string[]
+}
+
+const EMPTY_FILTERS: CommittedFilters = {
+  priceRange: 'any',
+  customLow: '',
+  customHigh: '',
+  colors: [],
+  styles: [],
+  formats: [],
+  printEdges: [],
+  foil: 'any',
+  seasons: [],
+  photoCount: [],
+}
+
+const COLOR_THEMES: { label: string; color: string }[] = [
+  { label: 'Blue',   color: '#1E2D54' },
+  { label: 'Gold',   color: '#C8A35C' },
+  { label: 'Green',  color: '#A6B89A' },
+  { label: 'White',  color: '#FFFFFF' },
+  { label: 'Purple', color: '#7A4F8E' },
+  { label: 'Red',    color: '#7A1F2B' },
+  { label: 'Pink',   color: '#F5DCE2' },
+  { label: 'Beige',  color: '#F5EFE3' },
+  { label: 'Orange', color: '#E89B5C' },
+  { label: 'Black',  color: '#1A1A1A' },
+]
+
+function applyFilters(products: Product[], f: CommittedFilters): Product[] {
+  return products.filter((p) => {
+    // Price filter — operates on priceNow (product data)
+    if (f.priceRange !== 'any') {
+      const price = p.priceNow
+      if (f.priceRange === 'under-50k' && price >= 50000) return false
+      if (f.priceRange === '50k-100k' && (price < 50000 || price > 100000)) return false
+      if (f.priceRange === '100k-150k' && (price < 100000 || price > 150000)) return false
+      if (f.priceRange === '150k-200k' && (price < 150000 || price > 200000)) return false
+      if (f.priceRange === 'over-200k' && price <= 200000) return false
+      if (f.priceRange === 'custom') {
+        const low = parseInt(f.customLow, 10)
+        const high = parseInt(f.customHigh, 10)
+        if (!isNaN(low) && price < low) return false
+        if (!isNaN(high) && price > high) return false
+      }
+    }
+    // Color filter — match selected theme hex values against product swatches
+    if (f.colors.length > 0) {
+      const productSwatches = new Set((p.swatches ?? []).map((s) => s.toLowerCase()))
+      const matchedAny = f.colors.some((label) => {
+        const hex = COLOR_THEMES.find((c) => c.label === label)?.color.toLowerCase()
+        return hex ? productSwatches.has(hex) : false
+      })
+      if (!matchedAny) return false
+    }
+    return true
+  })
+}
+
+const PAGE_SIZE = 12
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PAGE
@@ -48,6 +126,19 @@ export default function InvitationsCatalogClient({
       else next.add(id)
       return next
     })
+
+  const [filters, setFilters] = useState<CommittedFilters>(EMPTY_FILTERS)
+  const [page, setPage] = useState(1)
+
+  // Reset to page 1 whenever filters or source products change
+  useEffect(() => setPage(1), [filters, products])
+
+  const filteredProducts = useMemo(() => applyFilters(products, filters), [products, filters])
+  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE))
+  const pagedProducts = useMemo(
+    () => filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filteredProducts, page],
+  )
 
   return (
     <div className="bg-[#FAFAF8] text-[#1A1A1A]">
@@ -86,14 +177,14 @@ export default function InvitationsCatalogClient({
       <div className="px-4 sm:px-6">
         <div className="mx-auto max-w-7xl pt-8 sm:pt-10">
           <div className="flex flex-wrap items-center gap-3 mb-6 sm:mb-8">
-            <InvitationsFilterDrawer />
+            <InvitationsFilterDrawer filters={filters} onApply={setFilters} />
           </div>
           <ProductGrid
-            products={products}
+            products={pagedProducts}
             favourites={favourites}
             onToggleFavourite={toggleFavourite}
           />
-          <Pagination />
+          <Pagination page={page} totalPages={totalPages} onPage={setPage} />
         </div>
       </div>
 
@@ -113,42 +204,7 @@ export default function InvitationsCatalogClient({
 type StyleStripItem = InvitationsStyleStripContent['items'][number]
 
 function CategoryStrip({ items }: { items: StyleStripItem[] }) {
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [progress, setProgress] = useState(0)
-
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const update = () => {
-      const max = el.scrollWidth - el.clientWidth
-      setProgress(max > 0 ? (el.scrollLeft / max) * 100 : 0)
-    }
-    update()
-    el.addEventListener('scroll', update, { passive: true })
-    const ro = new ResizeObserver(update)
-    ro.observe(el)
-    return () => {
-      el.removeEventListener('scroll', update)
-      ro.disconnect()
-    }
-  }, [])
-
-  const pageSize = (el: HTMLDivElement) => {
-    const gap = parseFloat(getComputedStyle(el).columnGap || '0') || 0
-    return el.clientWidth + gap
-  }
-
-  const scrollNext = () => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollBy({ left: pageSize(el), behavior: 'smooth' })
-  }
-
-  const scrollPrev = () => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollBy({ left: -pageSize(el), behavior: 'smooth' })
-  }
+  const { scrollRef, progress, scrollNext, scrollPrev } = useScrollCarousel()
 
   return (
     <div className="px-4 sm:px-6">
@@ -165,11 +221,13 @@ function CategoryStrip({ items }: { items: StyleStripItem[] }) {
                 href={cat.href ?? '/invitations/catalog'}
                 className="group/tile flex flex-col items-center text-center shrink-0 snap-start w-[110px] sm:w-[130px] md:w-[calc((100%-128px)/5)]"
               >
-                <div className="aspect-square w-full overflow-hidden rounded-full bg-white ring-1 ring-gray-200 mb-3 transition-shadow group-hover/tile:shadow-md">
-                  <img
+                <div className="relative aspect-square w-full overflow-hidden rounded-full bg-white ring-1 ring-gray-200 mb-3 transition-shadow group-hover/tile:shadow-md">
+                  <Image
                     src={cat.img}
                     alt={cat.alt}
-                    className="w-full h-full object-cover group-hover/tile:scale-105 transition-transform duration-500"
+                    fill
+                    sizes="(min-width: 768px) 20vw, 130px"
+                    className="object-cover group-hover/tile:scale-105 transition-transform duration-500"
                   />
                 </div>
                 <span className="inline-flex items-center gap-1 text-xs md:text-sm font-medium text-gray-800 group-hover/tile:underline leading-tight">
@@ -180,27 +238,25 @@ function CategoryStrip({ items }: { items: StyleStripItem[] }) {
             ))}
           </div>
 
-          {/* Left-side scroll-prev chevron — md+, hover-visible, hidden at start */}
           {progress > 1 && (
             <button
               type="button"
               onClick={scrollPrev}
               aria-label="Scroll left"
-              className="hidden md:grid absolute top-[35px] lg:top-[61px] xl:top-[86px] left-[-50px] h-12 w-12 place-items-center rounded-full bg-[#1A1A1A] shadow-lg hover:bg-black z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200"
+              className="hidden md:grid absolute top-1/2 -translate-y-1/2 left-2 h-10 w-10 place-items-center rounded-full bg-[#1A1A1A]/80 shadow-lg hover:bg-[#1A1A1A] z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200"
             >
-              <ChevronLeft className="h-6 w-6 text-white" />
+              <ChevronLeft className="h-5 w-5 text-white" />
             </button>
           )}
 
-          {/* Right-side scroll-next chevron — md+, hover-visible, hidden at end */}
           {progress < 99 && (
             <button
               type="button"
               onClick={scrollNext}
               aria-label="Scroll right"
-              className="hidden md:grid absolute top-[35px] lg:top-[61px] xl:top-[86px] right-[-50px] h-12 w-12 place-items-center rounded-full bg-[#1A1A1A] shadow-lg hover:bg-black z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200"
+              className="hidden md:grid absolute top-1/2 -translate-y-1/2 right-2 h-10 w-10 place-items-center rounded-full bg-[#1A1A1A]/80 shadow-lg hover:bg-[#1A1A1A] z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200"
             >
-              <ChevronRight className="h-6 w-6 text-white" />
+              <ChevronRight className="h-5 w-5 text-white" />
             </button>
           )}
         </div>
@@ -232,18 +288,6 @@ const FOIL_OPTIONS = [
   { id: 'yes', label: 'Yes — foil-pressed' },
   { id: 'no',  label: 'No foil' },
 ]
-const COLOR_THEMES: { label: string; color: string }[] = [
-  { label: 'Blue',   color: '#1E2D54' },
-  { label: 'Gold',   color: '#C8A35C' },
-  { label: 'Green',  color: '#A6B89A' },
-  { label: 'White',  color: '#FFFFFF' },
-  { label: 'Purple', color: '#7A4F8E' },
-  { label: 'Red',    color: '#7A1F2B' },
-  { label: 'Pink',   color: '#F5DCE2' },
-  { label: 'Beige',  color: '#F5EFE3' },
-  { label: 'Orange', color: '#E89B5C' },
-  { label: 'Black',  color: '#1A1A1A' },
-]
 
 function FilterSection({
   title,
@@ -263,7 +307,7 @@ function FilterSection({
   )
 }
 
-function Check_Box({
+function FilterCheckbox({
   id,
   label,
   checked,
@@ -349,31 +393,36 @@ function ColorSwatchPicker({
   )
 }
 
-function InvitationsFilterDrawer() {
+function InvitationsFilterDrawer({
+  filters,
+  onApply,
+}: {
+  filters: CommittedFilters
+  onApply: (f: CommittedFilters) => void
+}) {
   const [open, setOpen] = useState(false)
-  const [priceRange, setPriceRange] = useState('any')
-  const [customLow, setCustomLow] = useState('')
-  const [customHigh, setCustomHigh] = useState('')
-  const [styles, setStyles] = useState<Set<string>>(new Set())
-  const [formats, setFormats] = useState<Set<string>>(new Set())
-  const [printEdges, setPrintEdges] = useState<Set<string>>(new Set())
-  const [colors, setColors] = useState<Set<string>>(new Set())
-  const [foil, setFoil] = useState('any')
-  const [seasons, setSeasons] = useState<Set<string>>(new Set())
-  const [photoCount, setPhotoCount] = useState<Set<string>>(new Set())
+
+  // Internal draft state — committed only on Apply
+  const [priceRange, setPriceRange] = useState(filters.priceRange)
+  const [customLow, setCustomLow] = useState(filters.customLow)
+  const [customHigh, setCustomHigh] = useState(filters.customHigh)
+  const [styles, setStyles] = useState<Set<string>>(new Set(filters.styles))
+  const [formats, setFormats] = useState<Set<string>>(new Set(filters.formats))
+  const [printEdges, setPrintEdges] = useState<Set<string>>(new Set(filters.printEdges))
+  const [colors, setColors] = useState<Set<string>>(new Set(filters.colors))
+  const [foil, setFoil] = useState(filters.foil)
+  const [seasons, setSeasons] = useState<Set<string>>(new Set(filters.seasons))
+  const [photoCount, setPhotoCount] = useState<Set<string>>(new Set(filters.photoCount))
+
+  useBodyLock(open)
 
   useEffect(() => {
     if (!open) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
     window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = prev
-      window.removeEventListener('keydown', onKey)
-    }
+    return () => window.removeEventListener('keydown', onKey)
   }, [open])
 
   const toggle = (set: Set<string>, val: string, setter: (s: Set<string>) => void) => {
@@ -394,6 +443,23 @@ function InvitationsFilterDrawer() {
     setFoil('any')
     setSeasons(new Set())
     setPhotoCount(new Set())
+    onApply(EMPTY_FILTERS)
+  }
+
+  const apply = () => {
+    onApply({
+      priceRange,
+      customLow,
+      customHigh,
+      colors: [...colors],
+      styles: [...styles],
+      formats: [...formats],
+      printEdges: [...printEdges],
+      foil,
+      seasons: [...seasons],
+      photoCount: [...photoCount],
+    })
+    setOpen(false)
   }
 
   return (
@@ -437,7 +503,7 @@ function InvitationsFilterDrawer() {
             type="button"
             onClick={() => setOpen(false)}
             aria-label="Close filters"
-            className="w-10 h-10 rounded-full ring-2 ring-[var(--accent-hover,#b97fd0)] flex items-center justify-center bg-white text-gray-700 hover:bg-gray-50 transition"
+            className="w-10 h-10 rounded-full ring-2 ring-[var(--accent-hover)] flex items-center justify-center bg-white text-gray-700 hover:bg-gray-50 transition"
           >
             <X size={20} />
           </button>
@@ -489,14 +555,14 @@ function InvitationsFilterDrawer() {
                 onClick={() => setPriceRange('custom')}
                 className="w-9 h-9 rounded-full bg-gray-100 text-gray-700 flex items-center justify-center hover:bg-gray-200 transition"
               >
-                <Check size={16} />
+                <CheckIcon size={16} />
               </button>
             </div>
           </FilterSection>
 
           <FilterSection title="Style">
             {STYLES.map((s) => (
-              <Check_Box
+              <FilterCheckbox
                 key={s}
                 id={`style-${s}`}
                 label={s}
@@ -508,7 +574,7 @@ function InvitationsFilterDrawer() {
 
           <FilterSection title="Format">
             {FORMATS.map((f) => (
-              <Check_Box
+              <FilterCheckbox
                 key={f}
                 id={`fmt-${f}`}
                 label={f}
@@ -520,7 +586,7 @@ function InvitationsFilterDrawer() {
 
           <FilterSection title="Print edges">
             {PRINT_EDGES.map((e) => (
-              <Check_Box
+              <FilterCheckbox
                 key={e}
                 id={`edge-${e}`}
                 label={e}
@@ -553,7 +619,7 @@ function InvitationsFilterDrawer() {
 
           <FilterSection title="Season">
             {SEASONS.map((s) => (
-              <Check_Box
+              <FilterCheckbox
                 key={s}
                 id={`season-${s}`}
                 label={s}
@@ -565,7 +631,7 @@ function InvitationsFilterDrawer() {
 
           <FilterSection title="Number of photos">
             {PHOTO_COUNTS.map((p) => (
-              <Check_Box
+              <FilterCheckbox
                 key={p}
                 id={`photo-${p}`}
                 label={p}
@@ -586,7 +652,7 @@ function InvitationsFilterDrawer() {
           </button>
           <button
             type="button"
-            onClick={() => setOpen(false)}
+            onClick={apply}
             className="bg-gray-900 text-white text-sm font-semibold px-6 py-2.5 rounded-full hover:bg-gray-800 transition"
           >
             Apply
@@ -666,6 +732,10 @@ function ProductCard({
   favourited: boolean
   onToggleFavourite: () => void
 }) {
+  const [selectedSwatch, setSelectedSwatch] = useState(0)
+
+  const activePalette = product.palettes?.[selectedSwatch]
+
   return (
     <div className="group flex flex-col">
       <Link
@@ -675,10 +745,9 @@ function ProductCard({
         {/* Zoom-on-hover wrapper around the invitation visual */}
         <span className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.04]">
           {product.imageUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+            <Image src={product.imageUrl} alt="" fill sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" className="object-cover" />
           ) : (
-            <InvitationVisual treatment={product.treatment} />
+            <InvitationVisual treatment={product.treatment} palette={activePalette} />
           )}
         </span>
 
@@ -696,15 +765,8 @@ function ProductCard({
           <Heart className={cn('h-3.5 w-3.5', favourited ? 'fill-[#7A1F2B] text-[#7A1F2B]' : 'text-[#1A1A1A]')} />
         </button>
 
-        {/* "Customise" CTA — fades + slides up on hover */}
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute left-1/2 -translate-x-1/2 bottom-3 inline-flex items-center rounded-full bg-[#1A1A1A] text-white px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.12em] shadow-lg opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition duration-300"
-        >
-          Customise
-        </span>
       </Link>
-      <ProductInfo product={product} />
+      <ProductInfo product={product} selectedSwatch={selectedSwatch} onSwatchSelect={setSelectedSwatch} />
     </div>
   )
 }
@@ -713,28 +775,64 @@ function ProductCard({
 //  PAGINATION
 // ─────────────────────────────────────────────────────────────────────────────
 
-function Pagination() {
-  const pages = [1, 2, 3, 4, 5]
+function Pagination({
+  page,
+  totalPages,
+  onPage,
+}: {
+  page: number
+  totalPages: number
+  onPage: (p: number) => void
+}) {
+  if (totalPages <= 1) return null
+
+  // For 7 or fewer pages show all; beyond that show an ellipsis window around current page
+  const pages: Array<number | 'ellipsis'> = []
+  if (totalPages <= 7) {
+    for (let i = 1; i <= totalPages; i++) pages.push(i)
+  } else {
+    pages.push(1)
+    if (page > 3) pages.push('ellipsis')
+    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i)
+    if (page < totalPages - 2) pages.push('ellipsis')
+    pages.push(totalPages)
+  }
+
   return (
     <nav aria-label="Pagination" className="mt-10 sm:mt-14 flex items-center justify-center gap-2">
-      {pages.map((p) => (
-        <button
-          key={p}
-          type="button"
-          aria-current={p === 1 ? 'page' : undefined}
-          className={cn(
-            'h-8 w-8 grid place-items-center rounded-full text-[13px] transition',
-            p === 1
-              ? 'bg-[#1A1A1A] text-white'
-              : 'text-[#1A1A1A] hover:bg-gray-100',
-          )}
-        >
-          {p}
-        </button>
-      ))}
       <button
         type="button"
-        className="ml-2 inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] text-[#1A1A1A] hover:bg-gray-100"
+        disabled={page === 1}
+        onClick={() => onPage(page - 1)}
+        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] text-[#1A1A1A] hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+      >
+        ← Prev
+      </button>
+
+      {pages.map((p, i) =>
+        p === 'ellipsis' ? (
+          <span key={`ellipsis-${i}`} className="px-1 text-[13px] text-gray-400">…</span>
+        ) : (
+          <button
+            key={p}
+            type="button"
+            onClick={() => onPage(p)}
+            aria-current={p === page ? 'page' : undefined}
+            className={cn(
+              'h-8 w-8 grid place-items-center rounded-full text-[13px] transition',
+              p === page ? 'bg-[#1A1A1A] text-white' : 'text-[#1A1A1A] hover:bg-gray-100',
+            )}
+          >
+            {p}
+          </button>
+        ),
+      )}
+
+      <button
+        type="button"
+        disabled={page === totalPages}
+        onClick={() => onPage(page + 1)}
+        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] text-[#1A1A1A] hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
       >
         Next →
       </button>
@@ -802,10 +900,12 @@ function FreeWebsitePromo({ content }: { content: InvitationsFreeWebsitePromoCon
           </div>
           <div className="relative h-[200px] sm:h-[240px] md:h-[280px]">
             {content.image_url ? (
-              <img
+              <Image
                 src={content.image_url}
                 alt={content.image_alt}
-                className="absolute inset-0 w-full h-full object-cover rounded-md"
+                fill
+                sizes="(min-width: 768px) 50vw, 100vw"
+                className="object-cover rounded-md"
               />
             ) : (
               <div className="absolute inset-0 flex items-center justify-center">
