@@ -1,10 +1,14 @@
 import 'server-only'
 import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
+import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import type {
   DashboardStats,
+  EventPledge,
   GuestInvitation,
   GuestWithInvitations,
+  PledgeStats,
+  PledgeWithContact,
   WeddingEvent,
 } from './types'
 
@@ -102,12 +106,182 @@ export async function getStats(): Promise<DashboardStats> {
   }
 }
 
+// ──────────────────────────────── Pledges ────────────────────────────────
+
+/** Fields selected from guest_contacts to enrich each pledge row. */
+interface PledgeContactRow {
+  id: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  whatsapp_phone: string | null
+  group_tag: string | null
+  public_token: string
+}
+
+export async function getPledges(): Promise<PledgeWithContact[]> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const [{ data: pledges, error: pErr }, { data: contacts, error: cErr }] = await Promise.all([
+    supabase
+      .from('event_pledges')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
+    supabase
+      .from('guest_contacts')
+      .select('id, full_name, email, phone, whatsapp_phone, group_tag, public_token')
+      .eq('user_id', user.id),
+  ])
+  if (pErr) throw new Error(pErr.message)
+  if (cErr) throw new Error(cErr.message)
+
+  const byId = new Map<string, PledgeContactRow>(
+    ((contacts ?? []) as PledgeContactRow[]).map((c) => [c.id, c]),
+  )
+
+  return ((pledges ?? []) as EventPledge[]).map((p) => {
+    const c = byId.get(p.guest_contact_id)
+    return {
+      ...p,
+      pledged_amount: Number(p.pledged_amount),
+      amount_received: Number(p.amount_received),
+      full_name: c?.full_name ?? 'Contributor',
+      email: c?.email ?? null,
+      phone: c?.phone ?? null,
+      whatsapp_phone: c?.whatsapp_phone ?? null,
+      group_tag: c?.group_tag ?? null,
+      public_token: c?.public_token ?? '',
+    }
+  })
+}
+
+export async function getPledgeStats(): Promise<PledgeStats> {
+  const pledges = await getPledges()
+  let totalPledged = 0
+  let totalReceived = 0
+  let paidCount = 0
+  let attendingCount = 0
+  let cardsToPrepare = 0
+
+  for (const p of pledges) {
+    if (p.status !== 'declined') totalPledged += p.pledged_amount
+    totalReceived += p.amount_received
+    if (p.status === 'paid') paidCount += 1
+    if (p.will_attend === 'yes') attendingCount += 1
+    // Card prep queue: they paid, confirmed they're coming, card not yet sent.
+    if (p.status === 'paid' && p.will_attend === 'yes' && p.card_status !== 'sent') {
+      cardsToPrepare += 1
+    }
+  }
+
+  return {
+    totalPledges: pledges.length,
+    totalPledged,
+    totalReceived,
+    outstanding: Math.max(0, totalPledged - totalReceived),
+    paidCount,
+    attendingCount,
+    cardsToPrepare,
+  }
+}
+
+/** The signed-in couple's public self-pledge token (shareable via WhatsApp). */
+export async function getMyPledgeToken(): Promise<string | null> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('users')
+    .select('pledge_token')
+    .eq('id', user.id)
+    .maybeSingle<{ pledge_token: string | null }>()
+  return data?.pledge_token ?? null
+}
+
+/** Public, token-scoped couple summary for the self-pledge page (no auth). */
+export interface PublicPledgeCouple {
+  coupleName: string
+  weddingDate: string | null
+  city: string | null
+  paymentInstructions: string | null
+  paymentMethods: PledgePaymentMethod[]
+  pageConfig: PledgePageConfig
+}
+
+export async function getPublicPledgeCouple(token: string): Promise<PublicPledgeCouple | null> {
+  const supabase = createDashboardClient()
+  const { data: owner, error: ownerErr } = await supabase
+    .from('users')
+    .select('id')
+    .eq('pledge_token', token)
+    .maybeSingle<{ id: string }>()
+  if (ownerErr) {
+    console.error('[pledge] owner lookup failed', ownerErr)
+    throw ownerErr
+  }
+  if (!owner) return null
+
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select(
+      'partner1_name, partner2_name, wedding_date, city, pledge_payment_instructions, pledge_payment_methods, pledge_page',
+    )
+    .eq('user_id', owner.id)
+    .maybeSingle<{
+      partner1_name: string | null
+      partner2_name: string | null
+      wedding_date: string | null
+      city: string | null
+      pledge_payment_instructions: string | null
+      pledge_payment_methods: PledgePaymentMethod[] | null
+      pledge_page: PledgePageConfig | null
+    }>()
+
+  const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  return {
+    coupleName: names.length ? names.join(' & ') : 'The Couple',
+    weddingDate: profile?.wedding_date ?? null,
+    city: profile?.city ?? null,
+    paymentInstructions: profile?.pledge_payment_instructions ?? null,
+    paymentMethods: profile?.pledge_payment_methods ?? [],
+    pageConfig: profile?.pledge_page ?? {},
+  }
+}
+
+/** The signed-in couple's saved pledge-page customizations (for the editor). */
+export async function getMyPledgePageConfig(): Promise<PledgePageConfig> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('couple_profiles')
+    .select('pledge_page')
+    .eq('user_id', user.id)
+    .maybeSingle<{ pledge_page: PledgePageConfig | null }>()
+  return data?.pledge_page ?? {}
+}
+
+/** The signed-in couple's saved Contact Collector page customizations. */
+export async function getMyCollectorPageConfig(): Promise<PledgePageConfig> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('couple_profiles')
+    .select('collector_page')
+    .eq('user_id', user.id)
+    .maybeSingle<{ collector_page: PledgePageConfig | null }>()
+  return data?.collector_page ?? {}
+}
+
 export interface CoupleProfileLite {
   partner1_name: string | null
   partner2_name: string | null
   wedding_date: string | null
   whatsapp_phone: string | null
   city: string | null
+  pledge_payment_instructions: string | null
+  pledge_payment_methods: PledgePaymentMethod[] | null
+  pledge_goal_amount: number | null
 }
 
 export async function getCoupleProfile(): Promise<CoupleProfileLite | null> {
@@ -115,7 +289,9 @@ export async function getCoupleProfile(): Promise<CoupleProfileLite | null> {
   const supabase = createDashboardClient()
   const { data } = await supabase
     .from('couple_profiles')
-    .select('partner1_name, partner2_name, wedding_date, whatsapp_phone, city')
+    .select(
+      'partner1_name, partner2_name, wedding_date, whatsapp_phone, city, pledge_payment_instructions, pledge_payment_methods, pledge_goal_amount',
+    )
     .eq('user_id', user.id)
     .maybeSingle<CoupleProfileLite>()
   return data ?? null

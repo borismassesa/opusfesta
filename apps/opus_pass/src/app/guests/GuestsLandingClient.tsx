@@ -111,17 +111,17 @@ const MEDIUM_CARDS: Array<{
   image: string
 }> = [
   {
-    eyebrow: 'Trending Now',
-    title: 'Animated Invitations',
-    cta: 'Browse Designs',
-    href: '/invitations',
+    eyebrow: 'Free forever',
+    title: 'Guest list',
+    cta: 'Build your list',
+    href: '/my/dashboard/guests',
     image: '/assets/images/cutesy_couple.jpg',
   },
   {
-    eyebrow: 'Plan Together',
-    title: 'Wedding Websites',
-    cta: 'Build Your Site',
-    href: '/websites',
+    eyebrow: 'Plan together',
+    title: 'Events',
+    cta: 'Add your events',
+    href: '/my/dashboard/events',
     image: '/assets/images/coupleswithpiano.jpg',
   },
 ]
@@ -133,21 +133,21 @@ const SMALL_CARDS: Array<{
   image: string
 }> = [
   {
-    title: 'Live RSVPs',
-    cta: 'Track Replies',
-    href: '/my/dashboard?seed=1',
+    title: 'Send invites',
+    cta: 'Send now',
+    href: '/my/dashboard/invitations',
     image: '/assets/images/churchcouples.jpg',
   },
   {
-    title: 'Seating Charts',
-    cta: 'Arrange Tables',
-    href: '/guests',
+    title: 'RSVPs',
+    cta: 'Track replies',
+    href: '/my/dashboard/rsvps',
     image: '/assets/images/couples_together.jpg',
   },
   {
-    title: 'Save the Dates',
-    cta: 'Send Early',
-    href: '/invitations',
+    title: 'Contact Collector',
+    cta: 'Collect details',
+    href: '/my/dashboard/guests',
     image: '/assets/images/bride_umbrella.jpg',
   },
   {

@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation'
 import { createDashboardClient } from '@/lib/dashboard/supabase'
+import type { PledgePageConfig } from '@/lib/dashboard/pledge-page'
 import CollectorForm from './CollectorForm'
 
 export const dynamic = 'force-dynamic'
@@ -13,6 +14,7 @@ interface CoupleSummary {
   coupleName: string
   weddingDate: string | null
   city: string | null
+  config: PledgePageConfig
 }
 
 async function loadCouple(token: string): Promise<CoupleSummary | null> {
@@ -30,13 +32,14 @@ async function loadCouple(token: string): Promise<CoupleSummary | null> {
 
   const { data: profile, error: profileErr } = await supabase
     .from('couple_profiles')
-    .select('partner1_name, partner2_name, wedding_date, city')
+    .select('partner1_name, partner2_name, wedding_date, city, collector_page')
     .eq('user_id', owner.id)
     .maybeSingle<{
       partner1_name: string | null
       partner2_name: string | null
       wedding_date: string | null
       city: string | null
+      collector_page: PledgePageConfig | null
     }>()
   if (profileErr) {
     console.error('[collect] couple profile load failed', profileErr)
@@ -49,6 +52,7 @@ async function loadCouple(token: string): Promise<CoupleSummary | null> {
     coupleName: names.length ? names.join(' & ') : 'The Couple',
     weddingDate: profile?.wedding_date ?? null,
     city: profile?.city ?? null,
+    config: profile?.collector_page ?? {},
   }
 }
 
@@ -62,6 +66,7 @@ export default async function CollectorPage({ params }: PageProps) {
       coupleName={couple.coupleName}
       weddingDate={couple.weddingDate}
       city={couple.city}
+      config={couple.config}
     />
   )
 }

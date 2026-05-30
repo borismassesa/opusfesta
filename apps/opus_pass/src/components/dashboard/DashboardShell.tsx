@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   LayoutDashboard,
+  HandCoins,
   Users,
   CalendarHeart,
   Send,
@@ -20,6 +21,7 @@ import { cn } from '@/lib/utils'
 
 const NAV = [
   { href: '/my/dashboard', label: 'Overview', icon: LayoutDashboard },
+  { href: '/my/dashboard/pledges', label: 'Pledges', icon: HandCoins },
   { href: '/my/dashboard/guests', label: 'Guest list', icon: Users },
   { href: '/my/dashboard/events', label: 'Events', icon: CalendarHeart },
   { href: '/my/dashboard/invitations', label: 'Send invites', icon: Send },
@@ -142,7 +144,7 @@ export default function DashboardShell({
 
       {/* Content */}
       <main className="lg:pl-64">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-10 lg:py-10">{children}</div>
+        <div className="mx-auto max-w-[1600px] px-3 py-6 sm:px-4 lg:px-6 lg:py-8">{children}</div>
       </main>
     </div>
   )

@@ -1,7 +1,13 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
-export type DashboardHeroSlug = 'home' | 'invitations' | 'guests' | 'rsvps' | 'website'
+export type DashboardHeroSlug =
+  | 'home'
+  | 'pledges'
+  | 'invitations'
+  | 'guests'
+  | 'rsvps'
+  | 'website'
 
 export type DashboardHeroMediaType = 'image' | 'video' | 'none'
 
@@ -19,6 +25,15 @@ export const DASHBOARD_HERO_FALLBACKS: Record<DashboardHeroSlug, DashboardHeroCo
     eyebrow: 'Dashboard',
     title: 'Welcome back',
     subtitle: "Plan, send and track everything in one place. Here's how your wedding is shaping up.",
+    media_url: '',
+    media_type: 'none',
+    media_alt: '',
+  },
+  pledges: {
+    eyebrow: 'Pledges',
+    title: 'Contributions & pledges',
+    subtitle:
+      'Invite people to pledge, chase follow-ups, record who has paid, then confirm who’s coming.',
     media_url: '',
     media_type: 'none',
     media_alt: '',
@@ -60,6 +75,7 @@ export const DASHBOARD_HERO_FALLBACKS: Record<DashboardHeroSlug, DashboardHeroCo
 
 export const DASHBOARD_HERO_PAGE_KEY: Record<DashboardHeroSlug, string> = {
   home: 'opus-pass-dashboard-home',
+  pledges: 'opus-pass-dashboard-pledges',
   invitations: 'opus-pass-dashboard-invitations',
   guests: 'opus-pass-dashboard-guests',
   rsvps: 'opus-pass-dashboard-rsvps',
