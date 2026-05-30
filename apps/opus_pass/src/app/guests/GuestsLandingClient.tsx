@@ -5,7 +5,6 @@ import Link from 'next/link'
 import Image from 'next/image'
 import {
   ChevronDown, Clock, Send, FileDown, Printer, Share2, ClipboardCheck,
-  MapPin, SlidersHorizontal, Link2, UserCheck, MessageCircle, BellRing, Gift,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -20,7 +19,6 @@ export default function GuestsLandingClient() {
       <HeroBanner />
       <CollectionGrid />
       <SpreadTheJoy />
-      <TurnIntoRsvp />
       <FAQs />
     </div>
   )
@@ -290,112 +288,6 @@ function SpreadTheJoy() {
         </div>
       </div>
     </section>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  TURN INTO RSVP — headline + feature list on the left, a decorative RSVP
-//  invitation mock on the right.
-// ─────────────────────────────────────────────────────────────────────────────
-
-const RSVP_FEATURES: Array<{ icon: LucideIcon; text: string }> = [
-  { icon: MapPin, text: 'Add maps, gift registries, and extras to your RSVP' },
-  { icon: SlidersHorizontal, text: 'Set RSVP rules like deadlines, guest limits, and more' },
-  { icon: Link2, text: 'Share it seamlessly with a link or QR code' },
-  { icon: UserCheck, text: 'Guests RSVP in one click' },
-  { icon: MessageCircle, text: 'Communicate easily with your guests' },
-  { icon: BellRing, text: 'Track responses in real time and get email notifications' },
-]
-
-function TurnIntoRsvp() {
-  return (
-    <section className="px-4 sm:px-6 pt-20 sm:pt-28">
-      <div className="mx-auto grid max-w-7xl grid-cols-1 items-center gap-12 lg:grid-cols-2 lg:gap-16">
-        {/* Left — headline + features */}
-        <div>
-          <h2 className="text-4xl font-black leading-[1.08] tracking-tight text-[#1A1A1A] sm:text-5xl lg:text-[3.4rem]">
-            Turn any invitation into an online{' '}
-            <span className="text-[#3C9A5F]">RSVP</span>
-          </h2>
-          <ul className="mt-9 border-t border-gray-200 sm:mt-11">
-            {RSVP_FEATURES.map(({ icon: Icon, text }) => (
-              <li key={text} className="flex items-center gap-4 border-b border-gray-200 py-5">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gray-100 text-[#1A1A1A]">
-                  <Icon size={18} strokeWidth={1.75} aria-hidden="true" />
-                </span>
-                <span className="text-[15px] text-gray-700 sm:text-base">{text}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Right — decorative RSVP mock (hidden from assistive tech: fake invite copy is purely visual) */}
-        <div className="order-first lg:order-last" aria-hidden="true">
-          <RsvpInviteMock />
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function RsvpPill({ label, mark, color }: { label: string; mark: string; color: string }) {
-  return (
-    <span
-      className="inline-flex items-center gap-2 rounded-full border-[1.5px] bg-white px-3.5 py-2 text-[12px] font-bold text-[#1A1A1A] shadow-md"
-      style={{ borderColor: color }}
-    >
-      {label}
-      <span style={{ color }}>{mark}</span>
-    </span>
-  )
-}
-
-function RsvpChip({ icon: Icon, label, className }: { icon: LucideIcon; label: string; className?: string }) {
-  return (
-    <span
-      className={cn(
-        'absolute inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-[11px] font-bold text-[#1A1A1A] shadow-md ring-1 ring-black/5',
-        className,
-      )}
-    >
-      <Icon size={13} strokeWidth={2} className="text-[#5C6B4D]" aria-hidden="true" />
-      {label}
-    </span>
-  )
-}
-
-function RsvpInviteMock() {
-  return (
-    <div className="relative mx-auto aspect-square w-full max-w-md overflow-hidden rounded-3xl bg-[#E3F1E8] p-5 sm:p-6">
-      {/* soft decorative blobs */}
-      <span className="absolute -right-6 -top-6 h-24 w-24 rounded-full bg-[#9FE870]/30" aria-hidden="true" />
-      <span className="absolute -bottom-8 -left-8 h-28 w-28 rounded-full bg-[#F5DCE2]/60" aria-hidden="true" />
-
-      {/* Yes / Maybe / No pills */}
-      <div className="relative z-20 flex flex-wrap justify-center gap-2">
-        <RsvpPill label="Yes" mark="✓" color="#5BA86F" />
-        <RsvpPill label="Maybe" mark="?" color="#C99A2E" />
-        <RsvpPill label="No" mark="✕" color="#A04450" />
-      </div>
-
-      {/* Invitation card */}
-      <div className="relative z-0 mx-auto mt-5 w-[76%] overflow-hidden rounded-lg bg-white shadow-xl ring-1 ring-black/5">
-        <div className="bg-gradient-to-br from-[#F5EFE3] to-[#EAF2EC] px-5 py-9 text-center">
-          <p className="text-[10px] uppercase tracking-[0.28em] text-[#5C6B4D]">You&rsquo;re invited</p>
-          <p className="mt-3 font-serif text-2xl italic text-[#1A1A1A]">Amani &amp; Neema</p>
-          <div className="mx-auto my-3 h-px w-10 bg-[#5C6B4D]/40" />
-          <p className="text-[11px] tracking-[0.2em] text-[#1A1A1A]/70">SAT · 22 · 08 · 2026 · 4PM</p>
-          <p className="mt-6 text-[13px] font-extrabold tracking-[0.2em] text-[#5C6B4D]">PLEASE RSVP!</p>
-          <p className="mt-1 text-[10px] text-[#1A1A1A]/50">opus.pass/amani-neema</p>
-        </div>
-      </div>
-
-      {/* Floating chips */}
-      <RsvpChip icon={Link2} label="Customize link" className="left-2 top-[40%]" />
-      <RsvpChip icon={MapPin} label="Location" className="left-4 bottom-[16%]" />
-      <RsvpChip icon={Gift} label="Gift registry" className="right-2 top-[38%]" />
-      <RsvpChip icon={ClipboardCheck} label="Attendance" className="right-3 bottom-[20%]" />
-    </div>
   )
 }
 
