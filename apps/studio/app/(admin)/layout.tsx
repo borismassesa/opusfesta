@@ -6,6 +6,7 @@ import { getCurrentStudioAccess } from '@/lib/admin-auth'
 
 export const metadata = {
   title: 'Admin | OpusStudio',
+  robots: { index: false, follow: false },
 }
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {

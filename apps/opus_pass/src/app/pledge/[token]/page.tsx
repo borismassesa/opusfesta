@@ -1,8 +1,13 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getPublicPledgeCouple } from '@/lib/dashboard/queries'
 import PledgeForm from './PledgeForm'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 interface PageProps {
   params: Promise<{ token: string }>

@@ -52,7 +52,10 @@ import PdpHero from '@/components/attire-and-rings/PdpHero'
 import ProductReviewsSection from '@/components/attire-and-rings/ProductReviewsSection'
 import ExpandableText from '@/components/attire-and-rings/ExpandableText'
 import { BRIDAL_CATEGORIES, getBridalCategory } from '@/lib/bridal-categories'
+import JsonLd from '@/components/JsonLd'
 import { generateProduct, listProducts, generateAllParams } from '@/lib/bridal-products'
+
+const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opusfesta.com'
 
 type Params = Promise<{ category: string; id: string }>
 
@@ -60,9 +63,16 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   const { category, id } = await params
   const p = generateProduct(category, Number(id))
   if (!p) return { title: 'Product | OpusFesta' }
+  const description = `${p.name} from ${p.vendor.name}, ${p.vendor.location}. ${p.description.slice(0, 140)}`
   return {
     title: `${p.name} — ${p.vendor.name} | OpusFesta`,
-    description: `${p.name} from ${p.vendor.name}, ${p.vendor.location}. ${p.description.slice(0, 140)}`,
+    description,
+    openGraph: {
+      title: `${p.name} — ${p.vendor.name} | OpusFesta`,
+      description,
+      images: [{ url: p.img, alt: p.name }],
+      type: 'website',
+    },
   }
 }
 
@@ -81,8 +91,20 @@ export default async function ProductDetailPage({ params }: { params: Params }) 
   const youMayLike = listProducts(category, 10, productId + 130)
   const relatedTrends = product.category.subTrends
 
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: BASE },
+      { '@type': 'ListItem', position: 2, name: 'Bridal Collection', item: `${BASE}/attire-and-rings/bridal-collection` },
+      { '@type': 'ListItem', position: 3, name: product.category.name, item: `${BASE}/attire-and-rings/bridal-collection/${category}` },
+      { '@type': 'ListItem', position: 4, name: product.name, item: `${BASE}/attire-and-rings/bridal-collection/${category}/p/${id}` },
+    ],
+  }
+
   return (
     <>
+      <JsonLd data={breadcrumbSchema} />
       <Navbar />
 
       <main className="bg-white text-gray-900 font-sans">

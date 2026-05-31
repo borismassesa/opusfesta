@@ -13,9 +13,15 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { id } = await params
   const product = findProductById(id)
   if (!product) return { title: 'Product not found | OpusFesta' }
+  const description = `${product.name} — ${product.category} by ${product.designer}. Bilingual digital invitation, sent by WhatsApp or SMS.`
   return {
     title: `${product.name} | OpusFesta`,
-    description: `${product.name} — ${product.category} by ${product.designer}. Bilingual digital invitation, sent by WhatsApp or SMS.`,
+    description,
+    openGraph: {
+      title: `${product.name} | OpusFesta`,
+      description,
+      type: 'website',
+    },
   }
 }
 

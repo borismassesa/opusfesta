@@ -1,9 +1,14 @@
+import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import DashboardShell from '@/components/dashboard/DashboardShell'
 import { requireDashboardUser } from '@/lib/dashboard/auth'
 import { getCoupleProfile, coupleDisplayName } from '@/lib/dashboard/queries'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default async function MyLayout({ children }: { children: ReactNode }) {
   const user = await requireDashboardUser('/my/dashboard')

@@ -6,6 +6,7 @@ import './globals.css'
 export const metadata: Metadata = {
   title: 'OpusFesta for Vendors',
   description: 'Manage your OpusFesta storefront, leads, and bookings.',
+  robots: { index: false, follow: false },
 }
 
 export const dynamic = 'force-dynamic'

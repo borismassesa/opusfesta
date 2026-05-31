@@ -14,6 +14,13 @@ export const metadata: Metadata = {
   title: 'OpusPass — Your wedding, in one digital pass',
   description:
     'Digital invitations, live RSVP tracking, and a beautiful wedding website — all in one pass. Free to start. Built for couples in Tanzania.',
+  openGraph: {
+    title: 'OpusPass — Your wedding, in one digital pass',
+    description:
+      'Digital invitations, live RSVP tracking, and a beautiful wedding website — all in one pass.',
+    images: [{ url: '/assets/images/churchcouples.jpg', width: 1200, height: 630, alt: 'OpusPass — Wedding Invitations in Tanzania' }],
+    type: 'website',
+  },
 }
 
 export default async function HomePage() {
