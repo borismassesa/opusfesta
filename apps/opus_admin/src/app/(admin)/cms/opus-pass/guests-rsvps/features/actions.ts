@@ -3,12 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateOpusPass } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import type { OpusPassStationeryContent } from '@/lib/cms/opus-pass-stationery'
+import type { OpusPassGuestsFeaturesContent } from '@/lib/cms/opus-pass-guests-features'
 
-const PAGE_KEY = 'opus-pass-homepage'
-const SECTION_KEY = 'stationery'
+const PAGE_KEY = 'opus-pass-guests'
+const SECTION_KEY = 'features'
 
-export async function saveOpusPassStationeryDraft(draft: OpusPassStationeryContent): Promise<void> {
+export async function saveOpusPassGuestsFeaturesDraft(
+  draft: OpusPassGuestsFeaturesContent,
+): Promise<void> {
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -17,10 +19,10 @@ export async function saveOpusPassStationeryDraft(draft: OpusPassStationeryConte
       { onConflict: 'page_key,section_key', ignoreDuplicates: false }
     )
   if (error) throw error
-  revalidatePath('/cms/opus-pass/homepage/stationery')
+  revalidatePath('/cms/opus-pass/guests-rsvps/features')
 }
 
-export async function publishOpusPassStationery(): Promise<void> {
+export async function publishOpusPassGuestsFeatures(): Promise<void> {
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -38,11 +40,11 @@ export async function publishOpusPassStationery(): Promise<void> {
     .eq('section_key', SECTION_KEY)
   if (error) throw error
 
-  revalidatePath('/cms/opus-pass/homepage/stationery')
-  await revalidateOpusPass('/')
+  revalidatePath('/cms/opus-pass/guests-rsvps/features')
+  await revalidateOpusPass('/guests-and-rsvp')
 }
 
-export async function discardOpusPassStationeryDraft(): Promise<void> {
+export async function discardOpusPassGuestsFeaturesDraft(): Promise<void> {
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -50,5 +52,5 @@ export async function discardOpusPassStationeryDraft(): Promise<void> {
     .eq('page_key', PAGE_KEY)
     .eq('section_key', SECTION_KEY)
   if (error) throw error
-  revalidatePath('/cms/opus-pass/homepage/stationery')
+  revalidatePath('/cms/opus-pass/guests-rsvps/features')
 }

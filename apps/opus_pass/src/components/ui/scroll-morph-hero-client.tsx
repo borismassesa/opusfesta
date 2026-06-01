@@ -2,10 +2,13 @@
 
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
+import type { InvitationsHeroContent } from '@/lib/cms/invitations-hero'
 
-// Branded placeholder shown while the (client-only) animated hero loads — the
-// title + buttons in their resting position, so there's never a blank white
-// screen. The animated cards fade in around them once the chunk arrives.
+// Branded placeholder shown only during the brief chunk-load window, before the
+// client-only animated hero mounts. It uses the default copy (a client
+// component can't import the loader's FALLBACK — that pulls in next/headers —
+// and next/dynamic's `loading` can't receive props). The real, CMS-driven
+// headline + buttons render inside the animated hero once it mounts.
 function HeroPlaceholder() {
   return (
     <div className="h-[230vh] w-full bg-white">
@@ -40,6 +43,6 @@ const ScrollMorphHero = dynamic(() => import('@/components/ui/scroll-morph-hero'
   loading: () => <HeroPlaceholder />,
 })
 
-export default function ScrollMorphHeroClient() {
-  return <ScrollMorphHero />
+export default function ScrollMorphHeroClient({ hero }: { hero: InvitationsHeroContent }) {
+  return <ScrollMorphHero hero={hero} />
 }

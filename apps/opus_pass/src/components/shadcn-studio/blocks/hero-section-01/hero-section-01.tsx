@@ -5,52 +5,27 @@ import Image from 'next/image'
 
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-
-// Real couple photos reused for the "trusted by" avatar cluster.
-const HERO_AVATARS = [
-  '/assets/images/cutesy_couple.jpg',
-  '/assets/images/authentic_couple.jpg',
-  '/assets/images/couples_together.jpg',
-  '/assets/images/beautiful_bride.jpg',
-]
+import type { GuestsHeroContent } from '@/lib/cms/guests-hero'
 
 // Scattered Pinterest-style collage for the hero's right column. Positions and
 // sizes are percentages of a square container so the whole arrangement scales.
-const COLLAGE: { src: string; alt: string; className: string; priority?: boolean }[] = [
-  {
-    src: '/assets/images/flowers_pinky.jpg',
-    alt: 'Wedding flowers',
-    className: 'left-[6%] top-[1%] lg:-top-[23%] w-[34%] aspect-[5/4]',
-  },
-  {
-    src: '/assets/images/bridering.jpg',
-    alt: 'Wedding rings',
-    className: 'right-[2%] top-[2%] lg:-top-[24%] w-[22%] aspect-square',
-  },
-  {
-    src: '/assets/images/cutesy_couple.jpg',
-    alt: 'A couple celebrating with their guests',
-    className: 'left-1/2 top-[15%] lg:top-[1%] w-[47%] -translate-x-1/2 aspect-[4/5] z-20',
-    priority: true,
-  },
-  {
-    src: '/assets/images/hand_rings.jpg',
-    alt: 'Hands with wedding rings',
-    className: 'right-0 top-[32%] lg:top-[18%] w-[23%] aspect-[3/4]',
-  },
-  {
-    src: '/assets/images/authentic_couple.jpg',
-    alt: 'Couple portrait',
-    className: 'left-[1%] bottom-[2%] lg:bottom-[16%] w-[33%] aspect-[3/4]',
-  },
-  {
-    src: '/assets/images/coupleswithpiano.jpg',
-    alt: 'Couple at the piano',
-    className: 'right-[3%] bottom-[1%] lg:bottom-[15%] w-[32%] aspect-[5/4]',
-  },
+// Image src/alt come from CMS content (by index); the layout stays fixed here.
+const COLLAGE_LAYOUT: { className: string; priority?: boolean }[] = [
+  { className: 'left-[6%] top-[1%] lg:-top-[23%] w-[34%] aspect-[5/4]' },
+  { className: 'right-[2%] top-[2%] lg:-top-[24%] w-[22%] aspect-square' },
+  { className: 'left-1/2 top-[15%] lg:top-[1%] w-[47%] -translate-x-1/2 aspect-[4/5] z-20', priority: true },
+  { className: 'right-0 top-[32%] lg:top-[18%] w-[23%] aspect-[3/4]' },
+  { className: 'left-[1%] bottom-[2%] lg:bottom-[16%] w-[33%] aspect-[3/4]' },
+  { className: 'right-[3%] bottom-[1%] lg:bottom-[15%] w-[32%] aspect-[5/4]' },
 ]
 
-const HeroSection = () => {
+const HeroSection = ({ content }: { content: GuestsHeroContent }) => {
+  const collage = COLLAGE_LAYOUT.map((layout, i) => ({
+    ...layout,
+    src: content.collage[i]?.src ?? '',
+    alt: content.collage[i]?.alt ?? '',
+  })).filter((c) => c.src)
+
   return (
     <section className="relative">
       {/* Soft brand wash + blurred blobs (clipped here so the section itself can
@@ -65,11 +40,9 @@ const HeroSection = () => {
         {/* ── Left: copy ── */}
         <div className="text-center lg:text-left">
           <h1 className="text-4xl font-black leading-[1.08] tracking-tight text-balance text-[#1A1A1A] sm:text-5xl lg:text-6xl">
-            Your guest list,
-            <br />
-            replying in{' '}
+            {content.headline_lead}{' '}
             <span className="relative inline-block whitespace-nowrap">
-              <span className="relative z-10">real time</span>
+              <span className="relative z-10">{content.headline_highlight}</span>
               <span
                 aria-hidden
                 className="absolute inset-x-0 bottom-1 -z-0 h-3.5 -rotate-1 rounded-sm bg-[#C9A0DC]/55 sm:bottom-1.5 sm:h-4"
@@ -78,48 +51,46 @@ const HeroSection = () => {
           </h1>
 
           <p className="mx-auto mt-6 max-w-xl text-base leading-relaxed text-[#1A1A1A]/65 sm:text-lg lg:mx-0">
-            Send digital invitations by WhatsApp or SMS and watch the{' '}
-            <span className="font-semibold text-[#1A1A1A]">&ldquo;Joyful yes&rdquo;</span> replies roll
-            in — a free guest list and bilingual RSVP page in English &amp; Swahili.
+            {content.description}
           </p>
 
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3 lg:justify-start">
             <Button size="lg" asChild>
-              <Link href="/sign-up?redirect_url=%2Fmy%2Fdashboard%3Fseed%3D1">
-                Start your guest list
-              </Link>
+              <Link href={content.primary_cta_href}>{content.primary_cta_label}</Link>
             </Button>
             <Button size="lg" variant="outline" asChild>
-              <Link href="#collection">See how it works</Link>
+              <Link href={content.secondary_cta_href}>{content.secondary_cta_label}</Link>
             </Button>
           </div>
 
           {/* Trust cluster */}
-          <div className="mt-9 flex items-center justify-center gap-3 lg:justify-start">
-            <div className="flex -space-x-2.5">
-              {HERO_AVATARS.map((src, i) => (
-                <span
-                  key={src}
-                  className="relative inline-block h-9 w-9 overflow-hidden rounded-full ring-2 ring-white shadow-sm"
-                  style={{ zIndex: HERO_AVATARS.length - i }}
-                >
-                  <Image src={src} alt="" fill sizes="36px" className="object-cover" />
-                </span>
-              ))}
+          {content.avatars.length > 0 && (
+            <div className="mt-9 flex items-center justify-center gap-3 lg:justify-start">
+              <div className="flex -space-x-2.5">
+                {content.avatars.map((src, i) => (
+                  <span
+                    key={`${src}-${i}`}
+                    className="relative inline-block h-9 w-9 overflow-hidden rounded-full ring-2 ring-white shadow-sm"
+                    style={{ zIndex: content.avatars.length - i }}
+                  >
+                    <Image src={src} alt="" fill sizes="36px" className="object-cover" />
+                  </span>
+                ))}
+              </div>
+              <p className="text-left text-[13px] leading-tight text-[#1A1A1A]/65">
+                <span className="font-bold text-[#1A1A1A]">{content.trust_lead}</span>
+                <br />
+                {content.trust_rest}
+              </p>
             </div>
-            <p className="text-left text-[13px] leading-tight text-[#1A1A1A]/65">
-              <span className="font-bold text-[#1A1A1A]">Trusted by 500+</span>
-              <br />
-              Tanzanian couples
-            </p>
-          </div>
+          )}
         </div>
 
         {/* ── Right: scattered photo collage ── */}
         <div className="relative mx-auto aspect-square w-full max-w-md lg:max-w-none">
-          {COLLAGE.map((card) => (
+          {collage.map((card, i) => (
             <div
-              key={card.src}
+              key={`${card.src}-${i}`}
               className={cn(
                 'absolute overflow-hidden rounded-2xl bg-white shadow-[0_18px_45px_-20px_rgba(0,0,0,0.4)] ring-1 ring-black/[0.05] sm:rounded-3xl',
                 card.className,
