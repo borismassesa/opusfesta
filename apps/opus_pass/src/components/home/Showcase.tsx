@@ -100,7 +100,7 @@ export async function Showcase() {
                           className="animate-pill-pop inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2.5 text-sm font-bold text-[#1A1A1A] shadow-[0_12px_30px_-8px_rgba(0,0,0,0.45)] ring-1 ring-black/[0.05]"
                         >
                           <ArrowUpRight className="h-4 w-4" />
-                          Visit
+                          {content.pills.visit_label}
                         </span>
                       </span>
                     ) : null}
@@ -116,7 +116,7 @@ export async function Showcase() {
                           className="animate-pill-pop block w-[210px] rounded-3xl bg-white p-4 shadow-[0_22px_45px_-15px_rgba(0,0,0,0.4)] ring-1 ring-black/[0.05]"
                         >
                           <p className="text-lg font-extrabold tracking-tight text-[#1A1A1A]">
-                            Performance
+                            {content.pills.stat_title}
                           </p>
                           <div className="relative mt-3 h-10">
                             <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-[#1A1A1A]/35" />
@@ -128,14 +128,14 @@ export async function Showcase() {
                               <path
                                 d="M2,48 C38,44 52,30 88,28 C120,26 138,12 198,4"
                                 fill="none"
-                                stroke="#9FE870"
+                                stroke={content.accent_color}
                                 strokeWidth="4"
                                 strokeLinecap="round"
                                 strokeLinejoin="round"
                               />
                             </svg>
                             <span className="absolute bottom-0 left-0 text-xs font-semibold text-[#1A1A1A]/55">
-                              Sales
+                              {content.pills.stat_label}
                             </span>
                           </div>
                         </span>
@@ -153,9 +153,12 @@ export async function Showcase() {
                           className="animate-pill-pop inline-flex items-center gap-3 rounded-full bg-white py-2.5 pr-2.5 pl-5 shadow-[0_16px_35px_-10px_rgba(0,0,0,0.4)] ring-1 ring-black/[0.05]"
                         >
                           <span className="whitespace-nowrap text-base font-extrabold text-[#1A1A1A]">
-                            Live RSVPs
+                            {content.pills.toggle_label}
                           </span>
-                          <span className="inline-flex h-6 w-10 shrink-0 items-center rounded-full bg-[#9FE870] px-0.5">
+                          <span
+                            className="inline-flex h-6 w-10 shrink-0 items-center rounded-full px-0.5"
+                            style={{ backgroundColor: content.accent_color }}
+                          >
                             <span className="ml-auto h-5 w-5 rounded-full bg-white shadow" />
                           </span>
                         </span>
@@ -174,8 +177,11 @@ export async function Showcase() {
                     {content.caption.title}
                   </h3>
                   <div className="mt-3 flex items-center gap-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#9FE870] text-sm font-extrabold text-[#1A1A1A]">
-                      O.
+                    <span
+                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-[#1A1A1A]"
+                      style={{ backgroundColor: content.accent_color }}
+                    >
+                      {content.caption.badge}
                     </span>
                     <span className="leading-tight">
                       <span className="block text-sm font-bold text-[#1A1A1A]">

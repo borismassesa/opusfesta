@@ -26,6 +26,8 @@ export default async function OpusPassHomepageShowcaseEditorPage() {
           stored.images && Array.isArray(stored.images) && stored.images.length > 0
             ? stored.images
             : OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK.images,
+        pills: { ...OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK.pills, ...stored.pills },
+        accent_color: stored.accent_color || OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK.accent_color,
       }
     : OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK
   const hasDraft = !!row?.draft_content

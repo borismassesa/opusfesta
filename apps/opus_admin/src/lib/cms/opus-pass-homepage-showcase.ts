@@ -7,11 +7,21 @@ export type OpusPassHomepageShowcaseCaption = {
   title: string
   by: string
   brand: string
+  badge: string
+}
+
+export type OpusPassHomepageShowcasePills = {
+  visit_label: string
+  stat_title: string
+  stat_label: string
+  toggle_label: string
 }
 
 export type OpusPassHomepageShowcaseContent = {
   caption: OpusPassHomepageShowcaseCaption
   images: OpusPassHomepageShowcaseImage[]
+  pills: OpusPassHomepageShowcasePills
+  accent_color: string
 }
 
 export type OpusPassHomepageShowcaseRow = {
@@ -29,6 +39,7 @@ export const OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK: OpusPassHomepageShowcaseConte
     title: 'Your big day, beautifully shared',
     by: 'Created with',
     brand: 'OpusPass',
+    badge: 'O.',
   },
   images: [
     { src: '/assets/images/bride_umbrella.jpg', alt: 'Bride with umbrella' },
@@ -39,4 +50,11 @@ export const OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK: OpusPassHomepageShowcaseConte
     { src: '/assets/images/brideincar.jpg', alt: 'Bride in the car' },
     { src: '/assets/images/flowers_pinky.jpg', alt: 'Wedding flowers' },
   ],
+  pills: {
+    visit_label: 'Visit',
+    stat_title: 'Performance',
+    stat_label: 'Sales',
+    toggle_label: 'Live RSVPs',
+  },
+  accent_color: '#9FE870',
 }

@@ -9,27 +9,32 @@ export type HomepageHeroContent = {
   primary_cta_href: string
   secondary_cta_label: string
   secondary_cta_href: string
-  main_image_url: string
-  card_image_url: string
-  card_heading: string
-  card_link_label: string
-  card_href: string
+  // New design (shared LandingHero): trust badge + "As featured in" press strip.
+  trust_count: string
+  rating: string
+  avatars: string[]
+  featured_in: string[]
 }
 
 export const HOMEPAGE_HERO_FALLBACK: HomepageHeroContent = {
   headline_line_1: 'Your whole wedding day',
   headline_line_2: 'one beautiful pass',
   description:
-    'OpusPass is where couples plan, invite and celebrate. From digital invitations and live RSVPs to your guest list, events and a free wedding website, manage every moment of your big day in one place. Sign up for a free account to start inviting your guests in minutes.',
+    'Digital invitations, live RSVP tracking, and a beautiful wedding website — all in one pass. Free to start, bilingual in Swahili and English, and built for couples in Tanzania.',
   primary_cta_label: 'Get started',
   primary_cta_href: '/sign-up',
   secondary_cta_label: 'Browse invitations',
   secondary_cta_href: '/invitations',
-  main_image_url: '/assets/images/cutesy_couple.jpg',
-  card_image_url: '/assets/images/mauzo_crew.jpg',
-  card_heading: 'See RSVPs roll in live',
-  card_link_label: 'Explore guests & RSVPs',
-  card_href: '/guests-and-rsvp',
+  trust_count: '1000+',
+  rating: '4.5',
+  avatars: [
+    '/assets/images/cutesy_couple.jpg',
+    '/assets/images/churchcouples.jpg',
+    '/assets/images/coupleswithpiano.jpg',
+    '/assets/images/authentic_couple.jpg',
+    '/assets/images/mauzo_crew.jpg',
+  ],
+  featured_in: ['The Citizen', 'Clouds FM', 'Bongo5', 'JamiiForums'],
 }
 
 export async function loadHomepageHeroContent(): Promise<HomepageHeroContent> {
@@ -49,7 +54,29 @@ export async function loadHomepageHeroContent(): Promise<HomepageHeroContent> {
       | Partial<HomepageHeroContent>
       | undefined
     if (stored) {
-      return { ...HOMEPAGE_HERO_FALLBACK, ...stored }
+      // Map fields explicitly (not a blind spread) so legacy keys from older
+      // schemas — main_image_url, card_* from the old two-card hero — never leak
+      // into the rendered payload.
+      const F = HOMEPAGE_HERO_FALLBACK
+      return {
+        headline_line_1: stored.headline_line_1 ?? F.headline_line_1,
+        headline_line_2: stored.headline_line_2 ?? F.headline_line_2,
+        description: stored.description ?? F.description,
+        primary_cta_label: stored.primary_cta_label ?? F.primary_cta_label,
+        primary_cta_href: stored.primary_cta_href ?? F.primary_cta_href,
+        secondary_cta_label: stored.secondary_cta_label ?? F.secondary_cta_label,
+        secondary_cta_href: stored.secondary_cta_href ?? F.secondary_cta_href,
+        trust_count: stored.trust_count ?? F.trust_count,
+        rating: stored.rating ?? F.rating,
+        avatars:
+          stored.avatars && Array.isArray(stored.avatars) && stored.avatars.length > 0
+            ? stored.avatars
+            : F.avatars,
+        featured_in:
+          stored.featured_in && Array.isArray(stored.featured_in) && stored.featured_in.length > 0
+            ? stored.featured_in
+            : F.featured_in,
+      }
     }
     return HOMEPAGE_HERO_FALLBACK
   } catch (err) {

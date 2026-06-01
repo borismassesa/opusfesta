@@ -7,8 +7,10 @@ import { cn } from '@/lib/utils'
 import { Sparkles as SparkleField } from '@/components/ui/sparkles'
 
 // Shared hero used by both the OpusPass home page and the /websites landing
-// page so the two stay visually identical. Only the fields below are needed —
-// any richer CMS content type (homepage / websites hero) satisfies it.
+// page so the two stay visually identical. The first 7 fields are required; the
+// rest are optional — pages that omit them fall back to the defaults below, so
+// /websites keeps the built-in trust badge & press strip while the homepage CMS
+// can override them.
 export type LandingHeroContent = {
   headline_line_1: string
   headline_line_2: string
@@ -17,9 +19,13 @@ export type LandingHeroContent = {
   primary_cta_href: string
   secondary_cta_label: string
   secondary_cta_href: string
+  trust_count?: string
+  rating?: string
+  avatars?: string[]
+  featured_in?: string[]
 }
 
-// Real couple photos reused for the hero "trusted by" avatar cluster.
+// Default couple photos for the "trusted by" avatar cluster.
 const HERO_AVATARS = [
   '/assets/images/cutesy_couple.jpg',
   '/assets/images/churchcouples.jpg',
@@ -28,13 +34,15 @@ const HERO_AVATARS = [
   '/assets/images/mauzo_crew.jpg',
 ]
 
-// "As featured in" wordmarks. Rendered as grayscale type until real logo assets
-// are supplied — drop SVGs into /public and swap to <Image> when available.
-const FEATURED_IN: { name: string; className: string }[] = [
-  { name: 'The Citizen', className: 'font-serif italic' },
-  { name: 'Clouds FM', className: 'font-extrabold tracking-tight' },
-  { name: 'Bongo5', className: 'font-black' },
-  { name: 'JamiiForums', className: 'font-bold tracking-tight' },
+// Default "As featured in" press names.
+const FEATURED_IN_DEFAULT = ['The Citizen', 'Clouds FM', 'Bongo5', 'JamiiForums']
+
+// Cycling typographic treatments applied to the press names by index.
+const FEATURED_STYLES = [
+  'font-serif italic',
+  'font-extrabold tracking-tight',
+  'font-black',
+  'font-bold tracking-tight',
 ]
 
 export function LandingHero({ content: HERO }: { content: LandingHeroContent }) {
@@ -44,17 +52,25 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
   const line1Head = line1LastSpace === -1 ? '' : line1.slice(0, line1LastSpace + 1)
   const line1LastWord = line1LastSpace === -1 ? line1 : line1.slice(line1LastSpace + 1)
 
+  const avatars = HERO.avatars && HERO.avatars.length > 0 ? HERO.avatars : HERO_AVATARS
+  const featured = HERO.featured_in && HERO.featured_in.length > 0 ? HERO.featured_in : FEATURED_IN_DEFAULT
+  const trustCount = HERO.trust_count ?? '1000+'
+  const ratingValue = HERO.rating ?? '4.5'
+  const ratingNum = Number.parseFloat(ratingValue) || 4.5
+  const fullStars = Math.floor(ratingNum)
+  const hasHalf = ratingNum - fullStars >= 0.5
+
   return (
     <section className="px-2 sm:px-3 pt-10 sm:pt-14 md:pt-16">
       <div className="mx-auto max-w-5xl text-center">
         {/* Trust badge — avatar cluster + star rating */}
         <div className="flex items-center justify-center gap-3">
           <div className="flex -space-x-2.5">
-            {HERO_AVATARS.map((src, i) => (
+            {avatars.map((src, i) => (
               <span
-                key={src}
+                key={`${src}-${i}`}
                 className="relative inline-block h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-full ring-2 ring-white shadow-sm"
-                style={{ zIndex: HERO_AVATARS.length - i }}
+                style={{ zIndex: avatars.length - i }}
               >
                 <Image src={src} alt="" fill sizes="40px" className="object-cover" />
               </span>
@@ -65,17 +81,17 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
               <div
                 className="flex items-center gap-0.5 text-[#F59E0B]"
                 role="img"
-                aria-label="Rated 4.5 out of 5"
+                aria-label={`Rated ${ratingValue} out of 5`}
               >
-                {[0, 1, 2, 3].map((i) => (
+                {Array.from({ length: fullStars }).map((_, i) => (
                   <Star key={i} size={15} className="fill-current" strokeWidth={0} />
                 ))}
-                <StarHalf size={15} className="fill-current" strokeWidth={0} />
+                {hasHalf && <StarHalf size={15} className="fill-current" strokeWidth={0} />}
               </div>
-              <span className="text-[13px] font-extrabold text-[#1A1A1A]">4.5</span>
+              <span className="text-[13px] font-extrabold text-[#1A1A1A]">{ratingValue}</span>
             </div>
             <p className="mt-0.5 text-[12px] sm:text-[13px] leading-tight text-[#1A1A1A]/70">
-              Trusted by <span className="font-extrabold text-[#1A1A1A]">1000+</span> couples
+              Trusted by <span className="font-extrabold text-[#1A1A1A]">{trustCount}</span> couples
             </p>
           </div>
         </div>
@@ -121,12 +137,12 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
               As featured in
             </p>
             <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:gap-x-10">
-              {FEATURED_IN.map(({ name, className }) => (
+              {featured.map((name, i) => (
                 <span
-                  key={name}
+                  key={`${name}-${i}`}
                   className={cn(
                     'text-lg sm:text-xl text-[#1A1A1A]/40 transition-colors hover:text-[#1A1A1A]/70',
-                    className,
+                    FEATURED_STYLES[i % FEATURED_STYLES.length],
                   )}
                 >
                   {name}

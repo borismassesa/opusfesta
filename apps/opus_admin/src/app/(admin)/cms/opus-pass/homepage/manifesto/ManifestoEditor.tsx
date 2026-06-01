@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition } from 'react'
 import type { OpusPassHomepageManifestoContent } from '@/lib/cms/opus-pass-homepage-manifesto'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
+import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardOpusPassHomepageManifestoDraft,
@@ -18,12 +20,42 @@ type Props = {
 const inputCls =
   'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</span>
+      <div className="flex items-baseline justify-between mb-1.5">
+        <span className="text-xs font-semibold text-gray-600">{label}</span>
+        {hint && <span className="text-[11px] text-gray-400">{hint}</span>}
+      </div>
       {children}
     </label>
+  )
+}
+
+function CharCount({ value, max }: { value: string; max: number }) {
+  const len = (value ?? '').length
+  const over = len > max
+  const near = !over && len > max * 0.85
+  return (
+    <span className={cn('tabular-nums font-medium', over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400')}>
+      {len}/{max}
+    </span>
+  )
+}
+
+function InlineImg({ src }: { src: string }) {
+  if (!src) {
+    return (
+      <span className="inline-block h-[1.05em] w-[0.85em] -translate-y-[0.08em] rounded-[0.18em] border border-dashed border-gray-300 align-middle" />
+    )
+  }
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={resolveOpusPassAssetUrl(src)}
+      alt=""
+      className="inline-block h-[1.05em] w-[0.85em] -translate-y-[0.08em] rounded-[0.18em] object-cover align-middle shadow-sm ring-1 ring-black/10"
+    />
   )
 }
 
@@ -106,7 +138,7 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
           segments (in order), the inline “RSVP” pill, and the three inline images.
         </p>
 
-        <Field label="Segment 1 (after the logo mark)">
+        <Field label="Segment 1 (after the logo mark)" hint={<CharCount value={draft.segment_1} max={80} />}>
           <textarea
             rows={2}
             value={draft.segment_1}
@@ -114,7 +146,7 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
             className={inputCls}
           />
         </Field>
-        <Field label="Inline pill label">
+        <Field label="Inline pill label" hint={<CharCount value={draft.pill_label} max={12} />}>
           <input
             type="text"
             value={draft.pill_label}
@@ -122,7 +154,7 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
             className={inputCls}
           />
         </Field>
-        <Field label="Segment 2">
+        <Field label="Segment 2" hint={<CharCount value={draft.segment_2} max={120} />}>
           <textarea
             rows={2}
             value={draft.segment_2}
@@ -140,7 +172,7 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
             previewWidth="max-w-[80px]"
           />
         </FieldGroup>
-        <Field label="Segment 3">
+        <Field label="Segment 3" hint={<CharCount value={draft.segment_3} max={80} />}>
           <textarea
             rows={2}
             value={draft.segment_3}
@@ -158,7 +190,7 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
             previewWidth="max-w-[80px]"
           />
         </FieldGroup>
-        <Field label="Segment 4">
+        <Field label="Segment 4" hint={<CharCount value={draft.segment_4} max={80} />}>
           <textarea
             rows={2}
             value={draft.segment_4}
@@ -176,7 +208,7 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
             previewWidth="max-w-[80px]"
           />
         </FieldGroup>
-        <Field label="Segment 5 (closing)">
+        <Field label="Segment 5 (closing)" hint={<CharCount value={draft.segment_5} max={40} />}>
           <input
             type="text"
             value={draft.segment_5}
@@ -191,14 +223,14 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
           <span className="text-xs text-gray-400">Approximate</span>
         </div>
-        <p className="text-center text-base font-black leading-relaxed text-[#1A1A1A]">
+        <p className="text-center text-base font-black leading-[1.7] text-[#1A1A1A]">
           {draft.segment_1}{' '}
           <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700 align-middle">
             {draft.pill_label} ✓
           </span>{' '}
-          {draft.segment_2} <span className="text-gray-400">▢</span> {draft.segment_3}{' '}
-          <span className="text-gray-400">▢</span> {draft.segment_4}{' '}
-          <span className="text-gray-400">▢</span> {draft.segment_5}
+          {draft.segment_2} <InlineImg src={draft.invite_image_url} /> {draft.segment_3}{' '}
+          <InlineImg src={draft.guest_image_url} /> {draft.segment_4}{' '}
+          <InlineImg src={draft.place_image_url} /> {draft.segment_5}
         </p>
       </div>
     </div>

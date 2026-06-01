@@ -10,6 +10,15 @@ export type HomepageShowcaseCaption = {
   title: string
   by: string
   brand: string
+  badge: string
+}
+
+// Text on the floating decorative pills (positions/animation are fixed design).
+export type HomepageShowcasePills = {
+  visit_label: string
+  stat_title: string
+  stat_label: string
+  toggle_label: string
 }
 
 export type HomepageShowcaseContent = {
@@ -17,6 +26,9 @@ export type HomepageShowcaseContent = {
   // Flat list of photo cards in render order; the masonry layout and decorative
   // pills are fixed in the component and map to these images by index.
   images: HomepageShowcaseImage[]
+  pills: HomepageShowcasePills
+  // Accent colour (hex) for the badge circle, stat chart line and toggle pill.
+  accent_color: string
 }
 
 export const HOMEPAGE_SHOWCASE_FALLBACK: HomepageShowcaseContent = {
@@ -24,6 +36,7 @@ export const HOMEPAGE_SHOWCASE_FALLBACK: HomepageShowcaseContent = {
     title: 'Your big day, beautifully shared',
     by: 'Created with',
     brand: 'OpusPass',
+    badge: 'O.',
   },
   images: [
     { src: '/assets/images/bride_umbrella.jpg', alt: 'Bride with umbrella' },
@@ -34,6 +47,13 @@ export const HOMEPAGE_SHOWCASE_FALLBACK: HomepageShowcaseContent = {
     { src: '/assets/images/brideincar.jpg', alt: 'Bride in the car' },
     { src: '/assets/images/flowers_pinky.jpg', alt: 'Wedding flowers' },
   ],
+  pills: {
+    visit_label: 'Visit',
+    stat_title: 'Performance',
+    stat_label: 'Sales',
+    toggle_label: 'Live RSVPs',
+  },
+  accent_color: '#9FE870',
 }
 
 export async function loadHomepageShowcaseContent(): Promise<HomepageShowcaseContent> {
@@ -59,6 +79,8 @@ export async function loadHomepageShowcaseContent(): Promise<HomepageShowcaseCon
           stored.images && Array.isArray(stored.images) && stored.images.length > 0
             ? stored.images
             : HOMEPAGE_SHOWCASE_FALLBACK.images,
+        pills: { ...HOMEPAGE_SHOWCASE_FALLBACK.pills, ...stored.pills },
+        accent_color: stored.accent_color || HOMEPAGE_SHOWCASE_FALLBACK.accent_color,
       }
     }
     return HOMEPAGE_SHOWCASE_FALLBACK
