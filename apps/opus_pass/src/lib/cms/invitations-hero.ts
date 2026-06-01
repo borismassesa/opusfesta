@@ -1,38 +1,45 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
+/** One circular "wedding moment" chip in the morph-hero suite strip. */
+export type InvitationsHeroSuiteCategory = {
+  id: string
+  label: string
+  /** Screen-reader alt text for the chip image. */
+  alt: string
+  /** Image URL — an uploaded asset URL or a local `/assets/...` path. */
+  image: string
+}
+
 export type InvitationsHeroContent = {
-  headline_line_1: string
-  headline_line_2: string
-  description: string
+  /** Lead line shown over the morphing card ring before it hands off. */
+  intro_headline: string
   primary_cta_label: string
   primary_cta_href: string
   secondary_cta_label: string
   secondary_cta_href: string
-  background_color: string
-  /** When set, replaces the built-in flat-lay arrangement on the right. */
-  right_image_url: string
-  right_image_alt: string
-  /** How the image fills the banner area: 'cover' crops to fill, 'contain' fits the whole image. */
-  right_image_fit: 'cover' | 'contain'
-  /** CSS object-position focal point (e.g. 'center', 'left top') — which part stays visible when cropped. */
-  right_image_position: string
+  /** Heading for the suite strip revealed once the cards settle. */
+  suite_heading: string
+  suite_body: string
+  suite_categories: InvitationsHeroSuiteCategory[]
 }
 
 export const INVITATIONS_HERO_FALLBACK: InvitationsHeroContent = {
-  headline_line_1: 'Invites worth saving.',
-  headline_line_2: 'RSVPs worth tracking.',
-  description:
-    "Designer-worthy digital invitations that won't break your budget. Premium, personalised designs for every wedding moment, customisable in Swahili and English. FREE matching website with bilingual RSVP page included.",
-  primary_cta_label: 'Browse all designs',
+  intro_headline: 'Invitations for every celebration.',
+  primary_cta_label: 'Browse designs',
   primary_cta_href: '/invitations/catalog',
-  secondary_cta_label: 'See pricing',
-  secondary_cta_href: '/invitations/catalog',
-  background_color: '#FAE6E9',
-  right_image_url: '',
-  right_image_alt: '',
-  right_image_fit: 'cover',
-  right_image_position: 'center',
+  secondary_cta_label: 'Get started free',
+  secondary_cta_href: '/sign-up',
+  suite_heading: 'Invitations for Every Moment',
+  suite_body:
+    'Pick one design once, and every card across your day matches your suite. No mixing fonts, no clashing palettes, no last-minute hunt for matching paper.',
+  suite_categories: [
+    { id: 'save-the-date', label: 'Save the Date', alt: 'Save the Date', image: '/assets/images/bridering.jpg' },
+    { id: 'wedding', label: 'Wedding', alt: 'Wedding ceremony', image: '/assets/images/churchcouples.jpg' },
+    { id: 'send-off', label: 'Send-Off', alt: 'Send-Off', image: '/assets/images/brideincar.jpg' },
+    { id: 'kitchen-party', label: 'Kitchen Party', alt: 'Kitchen Party — bridal shower florals', image: '/assets/images/flowers_pinky.jpg' },
+    { id: 'michango-vikao', label: 'Kadi za Michango & Vikao', alt: 'Kadi za Michango & Vikao', image: '/assets/images/mauzo_crew.jpg' },
+  ],
 }
 
 export async function loadInvitationsHeroContent(): Promise<InvitationsHeroContent> {
@@ -52,7 +59,15 @@ export async function loadInvitationsHeroContent(): Promise<InvitationsHeroConte
       | Partial<InvitationsHeroContent>
       | undefined
     if (stored) {
-      return { ...INVITATIONS_HERO_FALLBACK, ...stored }
+      return {
+        ...INVITATIONS_HERO_FALLBACK,
+        ...stored,
+        // Keep a usable strip even if a saved draft omitted/emptied the array.
+        suite_categories:
+          stored.suite_categories && stored.suite_categories.length > 0
+            ? stored.suite_categories
+            : INVITATIONS_HERO_FALLBACK.suite_categories,
+      }
     }
     return INVITATIONS_HERO_FALLBACK
   } catch (err) {

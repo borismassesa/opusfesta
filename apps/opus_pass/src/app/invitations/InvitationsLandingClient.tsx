@@ -6,6 +6,7 @@ import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { ProductInfo, type Product } from '@/components/guests/productInfo'
 import { FAQItem } from './FAQAccordion'
 import ScrollMorphHero from '@/components/ui/scroll-morph-hero-client'
+import type { InvitationsHeroContent } from '@/lib/cms/invitations-hero'
 import type { InvitationsFeaturesContent, InvitationsFeatureCard } from '@/lib/cms/invitations-features'
 import type { InvitationsFeaturedSuiteContent } from '@/lib/cms/invitations-featured-suite'
 import type { InvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
@@ -20,12 +21,14 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function InvitationsLandingClient({
+  hero,
   features,
   featuredSuite,
   faqs,
   editorsPicks,
   testimonials,
 }: {
+  hero: InvitationsHeroContent
   features: InvitationsFeaturesContent
   featuredSuite: InvitationsFeaturedSuiteContent
   faqs: InvitationsFaqsContent
@@ -34,7 +37,7 @@ export default function InvitationsLandingClient({
 }) {
   return (
     <div className="bg-white text-[#1A1A1A]">
-      <ScrollMorphHero />
+      <ScrollMorphHero hero={hero} />
       <EditorsPicks rows={editorsPicks.rows} />
       <SectionDivider />
       <section className="px-4 sm:px-6">
