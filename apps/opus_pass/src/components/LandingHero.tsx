@@ -52,11 +52,16 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
   const line1Head = line1LastSpace === -1 ? '' : line1.slice(0, line1LastSpace + 1)
   const line1LastWord = line1LastSpace === -1 ? line1 : line1.slice(line1LastSpace + 1)
 
-  const avatars = HERO.avatars && HERO.avatars.length > 0 ? HERO.avatars : HERO_AVATARS
-  const featured = HERO.featured_in && HERO.featured_in.length > 0 ? HERO.featured_in : FEATURED_IN_DEFAULT
+  // Drop blank entries an editor may have added — an empty avatar src would
+  // otherwise crash next/image, taking down both the home and /websites pages.
+  const avatarList = (HERO.avatars ?? []).filter((s) => s.trim())
+  const avatars = avatarList.length > 0 ? avatarList : HERO_AVATARS
+  const featuredList = (HERO.featured_in ?? []).filter((f) => f.trim())
+  const featured = featuredList.length > 0 ? featuredList : FEATURED_IN_DEFAULT
   const trustCount = HERO.trust_count ?? '1000+'
   const ratingValue = HERO.rating ?? '4.5'
-  const ratingNum = Number.parseFloat(ratingValue) || 4.5
+  const parsedRating = Number.parseFloat(ratingValue)
+  const ratingNum = Number.isFinite(parsedRating) ? Math.min(5, Math.max(0, parsedRating)) : 4.5
   const fullStars = Math.floor(ratingNum)
   const hasHalf = ratingNum - fullStars >= 0.5
 
