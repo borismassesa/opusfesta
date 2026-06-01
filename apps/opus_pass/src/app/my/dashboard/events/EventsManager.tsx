@@ -1,21 +1,30 @@
 'use client'
 
-import { useEffect, useMemo, useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import {
-  CalendarHeart,
+  ArrowRight,
+  ArrowLeft,
+  CalendarDays,
+  ChevronDown,
+  ChevronRight,
   MapPin,
+  Pencil,
   Plus,
   Trash2,
   Clock,
   Globe2,
-  Sparkles,
 } from 'lucide-react'
 import { Card } from '@/components/dashboard/primitives'
 import { Button, ConfirmDialog, Field, inputClass } from '@/components/dashboard/controls'
 import { cn } from '@/lib/utils'
 import { createEvent, updateEvent, deleteEvent, type EventInput } from '@/lib/dashboard/actions'
-import { EVENT_TYPE_LABELS, type EventType, type WeddingEvent } from '@/lib/dashboard/types'
+import {
+  EVENT_TYPE_LABELS,
+  eventTypeLabel,
+  type EventType,
+  type WeddingEvent,
+} from '@/lib/dashboard/types'
 
 const EVENT_TYPES = Object.keys(EVENT_TYPE_LABELS) as EventType[]
 const NAME_MAX = 100
@@ -27,6 +36,8 @@ const NOTE_MAX = 1000
 type FormState = {
   name: string
   event_type: EventType
+  /** Free-text label used when event_type is 'other'. */
+  custom_type: string
   startDate: string
   startTime: string
   endDate: string
@@ -44,7 +55,8 @@ type FormState = {
 
 const EMPTY_FORM: FormState = {
   name: '',
-  event_type: 'ceremony',
+  event_type: 'wedding',
+  custom_type: '',
   startDate: '',
   startTime: '',
   endDate: '',
@@ -83,9 +95,11 @@ function combineLocal(date: string, time: string): string | null {
 function fromEvent(e: WeddingEvent): FormState {
   const start = splitLocal(e.starts_at)
   const end = splitLocal(e.ends_at)
+  const known = e.event_type in EVENT_TYPE_LABELS
   return {
     name: e.name,
-    event_type: e.event_type,
+    event_type: known ? e.event_type : 'other',
+    custom_type: known ? '' : e.event_type,
     startDate: start.date,
     startTime: start.time,
     endDate: end.date,
@@ -103,9 +117,13 @@ function fromEvent(e: WeddingEvent): FormState {
 }
 
 function toPayload(f: FormState): EventInput {
+  const event_type =
+    f.event_type === 'other' && f.custom_type.trim()
+      ? (f.custom_type.trim() as EventType)
+      : f.event_type
   return {
     name: f.name.trim(),
-    event_type: f.event_type,
+    event_type,
     description: f.description.trim() || null,
     venue_name: f.venue_name.trim() || null,
     address: f.address.trim() || null,
@@ -118,6 +136,19 @@ function toPayload(f: FormState): EventInput {
     collect_meal_choice: f.collect_meal_choice,
     meal_options: f.collect_meal_choice ? f.meal_options.filter((m) => m.trim()) : [],
   }
+}
+
+function formatStartsAt(iso: string | null): string | null {
+  if (!iso) return null
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return null
+  return d.toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
 }
 
 function formatWhen(date: string, time: string): string | null {
@@ -138,13 +169,13 @@ function formatWhen(date: string, time: string): string | null {
 type SelectedId = string | 'new'
 
 export default function EventsManager({ initialEvents }: { initialEvents: WeddingEvent[] }) {
-  const [selectedId, setSelectedId] = useState<SelectedId>(
-    initialEvents[0]?.id ?? 'new',
+  // Top-level view: the list of events, or the create/edit form.
+  const [view, setView] = useState<'list' | 'form'>(
+    initialEvents.length ? 'list' : 'form',
   )
-  const [form, setForm] = useState<FormState>(
-    initialEvents[0] ? fromEvent(initialEvents[0]) : EMPTY_FORM,
-  )
-  const [original, setOriginal] = useState<FormState>(form)
+  const [selectedId, setSelectedId] = useState<SelectedId>('new')
+  const [form, setForm] = useState<FormState>(EMPTY_FORM)
+  const [original, setOriginal] = useState<FormState>(EMPTY_FORM)
   const [pendingDelete, setPendingDelete] = useState<WeddingEvent | null>(null)
   const [pending, startTransition] = useTransition()
 
@@ -153,22 +184,39 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
     [initialEvents, selectedId],
   )
 
-  // Re-hydrate the form whenever the user switches event tabs.
-  useEffect(() => {
-    const next = editing ? fromEvent(editing) : EMPTY_FORM
-    setForm(next)
-    setOriginal(next)
-  }, [editing, selectedId])
-
   const dirty = useMemo(() => JSON.stringify(form) !== JSON.stringify(original), [form, original])
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((prev) => ({ ...prev, [key]: value }))
   }
 
-  function selectEvent(id: SelectedId) {
-    if (dirty && !confirm('You have unsaved changes. Discard them?')) return
+  // Block navigation away from a form with unsaved edits.
+  function guardDirty() {
+    return view !== 'form' || !dirty || confirm('You have unsaved changes. Discard them?')
+  }
+
+  function openList() {
+    if (!guardDirty()) return
+    setView('list')
+  }
+
+  function openNew() {
+    if (!guardDirty()) return
+    setSelectedId('new')
+    setForm(EMPTY_FORM)
+    setOriginal(EMPTY_FORM)
+    setView('form')
+  }
+
+  function openEvent(id: string) {
+    if (!guardDirty()) return
+    const event = initialEvents.find((e) => e.id === id)
+    if (!event) return
+    const next = fromEvent(event)
     setSelectedId(id)
+    setForm(next)
+    setOriginal(next)
+    setView('form')
   }
 
   function resetAddress() {
@@ -189,10 +237,12 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
         } else {
           await createEvent(payload)
           toast.success('Event added')
-          // After create, hop onto the newest event tab. Server-revalidated list
-          // arrives on the next render via initialEvents; for now sit on 'new'
-          // until the page revalidates and the new id appears.
+          setSelectedId('new')
+          setForm(EMPTY_FORM)
+          setOriginal(EMPTY_FORM)
         }
+        // Drop back to the list so the saved event is visible right away.
+        setView('list')
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Something went wrong')
       }
@@ -207,9 +257,13 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
         await deleteEvent(target.id)
         toast.success('Event deleted')
         setPendingDelete(null)
-        // Fall back to the first remaining event, or the new-event tab.
-        const next = initialEvents.find((e) => e.id !== target.id)
-        setSelectedId(next?.id ?? 'new')
+        // If the deleted event was open in the form, return to the list.
+        if (selectedId === target.id) {
+          setSelectedId('new')
+          setForm(EMPTY_FORM)
+          setOriginal(EMPTY_FORM)
+          setView('list')
+        }
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not delete')
       }
@@ -230,17 +284,33 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
         </p>
       </header>
 
+      <ViewTabs
+        view={view}
+        isNew={selectedId === 'new'}
+        count={initialEvents.length}
+        onList={openList}
+        onCreate={openNew}
+      />
+
+      {view === 'list' ? (
+        <EventList
+          events={initialEvents}
+          onEdit={openEvent}
+          onCreate={openNew}
+          onDelete={(e) => setPendingDelete(e)}
+        />
+      ) : (
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_28rem]">
         {/* ──────────────────────── Left: editor ──────────────────────── */}
         <div className="min-w-0 space-y-6">
-          <EventTabs
-            events={initialEvents}
-            selectedId={selectedId}
-            onSelect={selectEvent}
-            onAdd={() => selectEvent('new')}
-          />
-
           <div className="space-y-1.5">
+            <button
+              type="button"
+              onClick={openList}
+              className="mb-1 inline-flex items-center gap-1.5 text-sm font-medium text-[#1A1A1A]/55 transition-colors hover:text-[#1A1A1A]"
+            >
+              <ArrowLeft className="h-3.5 w-3.5" /> All events
+            </button>
             <h2 className="text-xl font-semibold text-[#1A1A1A]">
               {editing ? editing.name || 'Untitled event' : 'New event'}
             </h2>
@@ -252,17 +322,29 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
           {/* Event type + name */}
           <div className="space-y-4">
             <Field label="Event type" required>
-              <select
-                className={inputClass}
-                value={form.event_type}
-                onChange={(e) => set('event_type', e.target.value as EventType)}
-              >
-                {EVENT_TYPES.map((t) => (
-                  <option key={t} value={t}>
-                    {EVENT_TYPE_LABELS[t]}
-                  </option>
-                ))}
-              </select>
+              <div className="relative">
+                <select
+                  className={cn(inputClass, 'appearance-none pr-10')}
+                  value={form.event_type}
+                  onChange={(e) => set('event_type', e.target.value as EventType)}
+                >
+                  {EVENT_TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {EVENT_TYPE_LABELS[t]}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/45" />
+              </div>
+              {form.event_type === 'other' ? (
+                <input
+                  className={cn(inputClass, 'mt-2')}
+                  value={form.custom_type}
+                  onChange={(e) => set('custom_type', e.target.value)}
+                  maxLength={NAME_MAX}
+                  placeholder="Name this event type (e.g. Welcome Dinner)"
+                />
+              ) : null}
             </Field>
 
             <Field label="Event name" required>
@@ -432,6 +514,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
           <PromoCard />
         </aside>
       </div>
+      )}
 
       <ConfirmDialog
         open={pendingDelete !== null}
@@ -448,50 +531,165 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
 
 // ---------------------------------------------------------------- subcomponents
 
-function EventTabs({
+function ViewTabs({
+  view,
+  isNew,
+  count,
+  onList,
+  onCreate,
+}: {
+  view: 'list' | 'form'
+  isNew: boolean
+  count: number
+  onList: () => void
+  onCreate: () => void
+}) {
+  const tabs = [
+    {
+      id: 'list',
+      label: 'Event list',
+      icon: CalendarDays,
+      badge: count,
+      active: view === 'list',
+      onClick: onList,
+    },
+    {
+      id: 'create',
+      label: 'Create event',
+      icon: Plus,
+      badge: 0,
+      active: view === 'form' && isNew,
+      onClick: onCreate,
+    },
+  ]
+  return (
+    <nav
+      role="tablist"
+      aria-label="Event views"
+      className="-mx-4 flex flex-wrap items-center gap-x-6 gap-y-2 overflow-x-auto border-b border-black/[0.06] px-4 pb-2 sm:mx-0 sm:px-0"
+    >
+      {tabs.map(({ id, label, icon: Icon, badge, active, onClick }) => (
+        <button
+          key={id}
+          type="button"
+          role="tab"
+          aria-selected={active}
+          onClick={onClick}
+          className={cn(
+            '-mb-[9px] inline-flex items-center gap-2 border-b-2 pb-2.5 text-sm transition-colors',
+            active
+              ? 'border-[#1A1A1A] font-semibold text-[#1A1A1A]'
+              : 'border-transparent font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]',
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+          {badge ? (
+            <span
+              className={cn(
+                'inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-[10px] font-semibold tabular-nums',
+                active ? 'bg-[#1A1A1A] text-white' : 'bg-black/[0.06] text-[#1A1A1A]/70',
+              )}
+            >
+              {badge}
+            </span>
+          ) : null}
+        </button>
+      ))}
+    </nav>
+  )
+}
+
+function EventList({
   events,
-  selectedId,
-  onSelect,
-  onAdd,
+  onEdit,
+  onCreate,
+  onDelete,
 }: {
   events: WeddingEvent[]
-  selectedId: SelectedId
-  onSelect: (id: SelectedId) => void
-  onAdd: () => void
+  onEdit: (id: string) => void
+  onCreate: () => void
+  onDelete: (e: WeddingEvent) => void
 }) {
+  if (!events.length) {
+    return (
+      <div className="rounded-2xl border border-dashed border-black/[0.14] bg-black/[0.015] px-6 py-14 text-center">
+        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#F0DFF6] text-[#5d3a78]">
+          <CalendarDays className="h-5 w-5" />
+        </span>
+        <h3 className="mt-4 text-base font-semibold text-[#1A1A1A]">No events yet</h3>
+        <p className="mx-auto mt-1 max-w-sm text-sm text-[#1A1A1A]/60">
+          Add your ceremony, reception, send-off and everything in between. Each one gets
+          its own RSVP link.
+        </p>
+        <button
+          type="button"
+          onClick={onCreate}
+          className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[#1A1A1A] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black"
+        >
+          <Plus className="h-4 w-4" /> Create your first event
+        </button>
+      </div>
+    )
+  }
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-2.5">
       {events.map((e) => {
-        const active = selectedId === e.id
+        const when = formatStartsAt(e.starts_at)
+        const meta = [eventTypeLabel(e.event_type), when, e.venue_name].filter(Boolean)
         return (
-          <button
+          <div
             key={e.id}
-            type="button"
-            onClick={() => onSelect(e.id)}
-            className={cn(
-              'inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-medium transition-colors',
-              active
-                ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white'
-                : 'border-black/[0.12] bg-white text-[#1A1A1A] hover:bg-black/[0.03]',
-            )}
+            className="group flex items-center gap-3 rounded-2xl border border-black/[0.08] bg-white p-3.5 transition-colors hover:border-black/[0.16]"
           >
-            <span className="max-w-[12ch] truncate">{e.name || 'Untitled event'}</span>
-          </button>
+            <button
+              type="button"
+              onClick={() => onEdit(e.id)}
+              className="flex min-w-0 flex-1 items-center gap-3.5 text-left"
+            >
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-[#F0DFF6] text-[#5d3a78]">
+                <CalendarDays className="h-5 w-5" />
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-2">
+                  <span className="truncate font-semibold text-[#1A1A1A]">
+                    {e.name || 'Untitled event'}
+                  </span>
+                  {e.is_public ? (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-black/[0.05] px-2 py-0.5 text-[10px] font-medium text-[#1A1A1A]/70">
+                      <Globe2 className="h-3 w-3" /> Public
+                    </span>
+                  ) : (
+                    <span className="rounded-full bg-black/[0.05] px-2 py-0.5 text-[10px] font-medium text-[#1A1A1A]/55">
+                      Hidden
+                    </span>
+                  )}
+                </span>
+                <span className="mt-0.5 block truncate text-xs text-[#1A1A1A]/55">
+                  {meta.join(' · ')}
+                </span>
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onEdit(e.id)}
+              aria-label="Edit event"
+              className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#1A1A1A]/55 transition-colors hover:bg-black/[0.04] hover:text-[#1A1A1A] sm:inline-flex"
+            >
+              <Pencil className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(e)}
+              aria-label="Delete event"
+              className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#1A1A1A]/55 transition-colors hover:bg-rose-50 hover:text-rose-600 sm:inline-flex"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            <ChevronRight className="h-4 w-4 shrink-0 text-[#1A1A1A]/30 sm:hidden" />
+          </div>
         )
       })}
-      <button
-        type="button"
-        onClick={onAdd}
-        className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border border-dashed px-4 py-2 text-sm font-medium transition-colors',
-          selectedId === 'new'
-            ? 'border-[#C9A0DC] bg-[#F0DFF6] text-[#5d3a78]'
-            : 'border-black/[0.18] text-[#1A1A1A]/70 hover:border-[#C9A0DC] hover:text-[#5d3a78]',
-        )}
-      >
-        <Plus className="h-3.5 w-3.5" />
-        {selectedId === 'new' ? 'New event' : 'Add event'}
-      </button>
     </div>
   )
 }
@@ -630,8 +828,9 @@ function PreviewCard({
       </div>
       <div className="space-y-4 p-5">
         <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-[#1A1A1A]/55">
-          <span className="inline-flex h-2 w-2 rounded-full bg-[#C9A0DC]" />
-          {EVENT_TYPE_LABELS[form.event_type]}
+          {form.event_type === 'other' && form.custom_type.trim()
+            ? form.custom_type.trim()
+            : EVENT_TYPE_LABELS[form.event_type]}
           {form.is_public ? (
             <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-black/[0.05] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[#1A1A1A]/70">
               <Globe2 className="h-3 w-3" /> Visible to guests
@@ -702,28 +901,35 @@ function PreviewCard({
   )
 }
 
+function WhatsAppGlyph({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden className={className}>
+      <path d="M.057 24l1.687-6.163a11.867 11.867 0 01-1.587-5.946C.16 5.335 5.495 0 12.05 0a11.817 11.817 0 018.413 3.488 11.824 11.824 0 013.48 8.414c-.003 6.557-5.338 11.892-11.893 11.892a11.9 11.9 0 01-5.688-1.448L.057 24zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884a9.825 9.825 0 001.516 5.26l-.999 3.648 3.74-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413z" />
+    </svg>
+  )
+}
+
 function PromoCard() {
   return (
-    <Card className="overflow-hidden bg-[#F0DFF6] p-5">
-      <div className="flex items-start gap-3">
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/70 text-[#5d3a78]">
-          <Sparkles className="h-4 w-4" />
+    <Card className="overflow-hidden p-0">
+      <div className="flex items-center gap-2.5 border-b border-black/[0.06] px-5 py-3">
+        <WhatsAppGlyph className="h-4 w-4 text-[#25D366]" />
+        <span className="text-xs font-medium uppercase tracking-wide text-[#1A1A1A]/55">
+          Sharing
         </span>
-        <div className="min-w-0">
-          <h4 className="text-sm font-semibold text-[#1A1A1A]">
-            Share each event by WhatsApp
-          </h4>
-          <p className="mt-1 text-xs leading-relaxed text-[#1A1A1A]/70">
-            Every guest gets a personal RSVP link for each event you create. Send it via
-            WhatsApp, SMS or email from the Guest list.
-          </p>
-          <a
-            href="/my/dashboard/guests"
-            className="mt-3 inline-flex items-center gap-1 rounded-full bg-[#5d3a78] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#4b2f63]"
-          >
-            <CalendarHeart className="h-3.5 w-3.5" /> Go to guest list
-          </a>
-        </div>
+      </div>
+      <div className="p-5">
+        <p className="text-sm leading-relaxed text-[#1A1A1A]/75">
+          Each event has its own RSVP link. Send it on WhatsApp, SMS or email and
+          guests reply per event — you can see every response in the guest list.
+        </p>
+        <a
+          href="/my/dashboard/guests"
+          className="group mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#5d3a78]"
+        >
+          Open guest list
+          <ArrowRight className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5" />
+        </a>
       </div>
     </Card>
   )

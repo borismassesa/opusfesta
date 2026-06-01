@@ -49,7 +49,7 @@ export const HOMEPAGE_STATIONERY_FALLBACK: HomepageStationeryContent = {
       description:
         'Skip the handwriting hassle and let us send your invites by WhatsApp or SMS. Track delivery and RSVPs in real time.',
       cta_label: 'Get started',
-      cta_href: '/guests',
+      cta_href: '/guests-and-rsvp',
       image: '/assets/images/churchcouples.jpg',
       visual: 'envelopes',
     },

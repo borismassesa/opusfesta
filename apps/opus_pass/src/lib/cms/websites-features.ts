@@ -45,7 +45,7 @@ export const WEBSITES_FEATURES_FALLBACK: WebsitesFeaturesContent = {
       title: 'Keep RSVPs simple',
       body: 'Guests RSVP straight from your site. Meal choices, plus-ones and dietary notes flow into your guest dashboard live.',
       cta_label: 'See the RSVP flow',
-      cta_href: '/guests',
+      cta_href: '/guests-and-rsvp',
       visual: 'rsvp',
       image_url: '',
     },

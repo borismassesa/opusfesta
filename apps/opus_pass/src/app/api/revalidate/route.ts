@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 
-const ALLOWED_EXACT = new Set(['/', '/invitations', '/guests', '/websites'])
+const ALLOWED_EXACT = new Set(['/', '/invitations', '/guests-and-rsvp', '/websites'])
 
 function isAllowed(path: string): boolean {
   return ALLOWED_EXACT.has(path)

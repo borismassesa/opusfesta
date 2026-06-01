@@ -21,7 +21,7 @@ import { createDashboardClient } from '@/lib/dashboard/supabase'
 import { Card, StatCard, SectionTitle, ProgressBar, StatusPill, EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
-import { EVENT_TYPE_LABELS } from '@/lib/dashboard/types'
+import { eventTypeLabel } from '@/lib/dashboard/types'
 
 export const dynamic = 'force-dynamic'
 
@@ -36,7 +36,7 @@ async function seedStarterEventIfEmpty(): Promise<void> {
   await admin.from('wedding_events').insert({
     user_id: user.id,
     name: 'Our wedding',
-    event_type: 'ceremony',
+    event_type: 'wedding',
     sort_order: 0,
   })
 }
@@ -209,7 +209,7 @@ export default async function DashboardOverviewPage({ searchParams }: PageProps)
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-semibold text-[#1A1A1A]">{e.name}</p>
                         <p className="text-xs text-[#1A1A1A]/55">
-                          {EVENT_TYPE_LABELS[e.event_type]} · {formatDate(e.starts_at)}
+                          {eventTypeLabel(e.event_type)} · {formatDate(e.starts_at)}
                           {e.venue_name ? ` · ${e.venue_name}` : ''}
                         </p>
                       </div>

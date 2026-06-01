@@ -17,10 +17,10 @@ export type HomepageHeroContent = {
 }
 
 export const HOMEPAGE_HERO_FALLBACK: HomepageHeroContent = {
-  headline_line_1: 'Your Wedding,',
-  headline_line_2: 'One Beautiful Pass',
+  headline_line_1: 'Your whole wedding day',
+  headline_line_2: 'one beautiful pass',
   description:
-    'Send digital invites cards, track RSVPs live, and share a wedding website  all from one place',
+    'OpusPass is where couples plan, invite and celebrate. From digital invitations and live RSVPs to your guest list, events and a free wedding website, manage every moment of your big day in one place. Sign up for a free account to start inviting your guests in minutes.',
   primary_cta_label: 'Get started',
   primary_cta_href: '/sign-up',
   secondary_cta_label: 'Browse invitations',
@@ -29,7 +29,7 @@ export const HOMEPAGE_HERO_FALLBACK: HomepageHeroContent = {
   card_image_url: '/assets/images/mauzo_crew.jpg',
   card_heading: 'See RSVPs roll in live',
   card_link_label: 'Explore guests & RSVPs',
-  card_href: '/guests',
+  card_href: '/guests-and-rsvp',
 }
 
 export async function loadHomepageHeroContent(): Promise<HomepageHeroContent> {

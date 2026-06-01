@@ -9,7 +9,7 @@ const columns: FooterColumn[] = [
     title: 'Products',
     links: [
       { label: 'Invitations', href: '/invitations' },
-      { label: "Guests & RSVP's", href: '/guests' },
+      { label: "Guests & RSVP's", href: '/guests-and-rsvp' },
       { label: 'Wedding Website', href: '/websites' },
     ],
   },

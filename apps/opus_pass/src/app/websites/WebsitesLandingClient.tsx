@@ -1,20 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
   ArrowRight,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Link as LinkIcon,
   Sparkles,
-  Star,
   Users,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { LandingHero } from '@/components/LandingHero'
 import type { WebsitesHeroContent } from '@/lib/cms/websites-hero'
 import type {
   WebsitesDesignsContent,
@@ -45,121 +43,24 @@ export default function WebsitesLandingClient({
   sellingPoints,
   features,
   faqs,
+  testimonials,
 }: {
   hero: WebsitesHeroContent
   designs: WebsitesDesignsContent
   sellingPoints: WebsitesSellingPointsContent
   features: WebsitesFeaturesContent
   faqs: WebsitesFaqsContent
+  testimonials?: React.ReactNode
 }) {
   return (
     <div className="bg-white text-[#1A1A1A]">
-      <HeroBanner content={hero} />
+      <LandingHero content={hero} />
       <DesignsPicker content={designs} />
       <SellingPoints content={sellingPoints} />
       <FeatureRow content={features} />
+      {testimonials}
       <FAQs content={faqs} />
     </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  HERO — sage backdrop with overlapping device mockups (echoes /invitations
-//  flat-lay but swapped for laptop + phone showing live website preview)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function HeroBanner({ content: HERO }: { content: WebsitesHeroContent }) {
-  return (
-    <section className="px-4 sm:px-6 pt-4 sm:pt-6">
-      <div className="mx-auto max-w-7xl">
-        <div
-          className="relative overflow-hidden rounded-md min-h-[260px] sm:min-h-[340px] md:min-h-[420px]"
-          style={{ backgroundColor: HERO.background_color }}
-        >
-          {/* Subtle dot texture, same idiom as /invitations */}
-          <div
-            className="absolute inset-0 opacity-[0.18] pointer-events-none"
-            style={{
-              backgroundImage: 'radial-gradient(circle at 1px 1px, #5C6B4D 0.6px, transparent 0)',
-              backgroundSize: '6px 6px',
-            }}
-          />
-
-          <div className="relative grid grid-cols-1 md:grid-cols-12 items-center gap-6 md:gap-4 p-6 sm:p-10 md:p-14">
-            {/* Copy */}
-            <div className="md:col-span-7 lg:col-span-7">
-              <h1 className="text-[1.8rem] sm:text-[2.2rem] md:text-[2.6rem] lg:text-[2.9rem] font-black uppercase tracking-tighter leading-[1.15] text-[#1A1A1A]">
-                {HERO.headline_line_1}
-                <br />
-                {HERO.headline_line_2}
-              </h1>
-              <p className="mt-6 sm:mt-7 text-[16px] sm:text-[17px] md:text-[18px] lg:text-[19px] text-[#1A1A1A]/80 leading-[1.7]">
-                {HERO.description}
-              </p>
-              <div className="mt-9 sm:mt-10 flex flex-wrap items-center gap-x-5 gap-y-3">
-                <Link
-                  href={HERO.primary_cta_href}
-                  className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
-                >
-                  {HERO.primary_cta_label}
-                </Link>
-                <Link
-                  href={HERO.secondary_cta_href}
-                  className="text-[13px] sm:text-[14px] font-semibold text-[#1A1A1A] underline underline-offset-[6px] decoration-[#1A1A1A]/40 hover:decoration-[#1A1A1A]"
-                >
-                  {HERO.secondary_cta_label} <span aria-hidden>→</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* Right side — uploaded image when set, otherwise the built-in laptop + phone mockup */}
-            <div className="md:col-span-5 lg:col-span-5 relative h-[220px] sm:h-[300px] md:h-[360px]">
-              {HERO.right_image_url ? (
-                <div className="relative h-full w-full overflow-hidden rounded-md shadow-md">
-                  <Image
-                    src={HERO.right_image_url}
-                    alt={HERO.right_image_alt}
-                    fill
-                    sizes="(min-width: 768px) 40vw, 100vw"
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <>
-                  {/* Laptop frame */}
-                  <div className="absolute left-0 top-[10%] w-[88%] aspect-[16/10] rounded-md shadow-xl bg-[#1A1A1A] p-[6px] rotate-[-3deg]">
-                    <div className="relative h-full w-full overflow-hidden rounded-sm bg-white">
-                      <WebsitePreview treatment="botanical-sage" />
-                    </div>
-                  </div>
-                  {/* Phone frame */}
-                  <div className="absolute right-[2%] bottom-[2%] w-[28%] aspect-[9/19] rounded-2xl shadow-xl bg-[#1A1A1A] p-[5px] rotate-[6deg]">
-                    <div className="relative h-full w-full overflow-hidden rounded-[14px] bg-white">
-                      <div className="absolute top-[6px] left-1/2 -translate-x-1/2 w-[36%] h-[10px] bg-[#1A1A1A] rounded-b-md z-10" />
-                      <WebsitePreview treatment="modern-blush" compact />
-                    </div>
-                  </div>
-                  {/* Pearl strip — decorative */}
-                  <div className="absolute right-[6%] top-[2%] hidden md:flex gap-[3px]">
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <span
-                        key={i}
-                        className="block h-1.5 w-1.5 rounded-full bg-gradient-to-br from-white to-[#9FE870]/40 shadow-sm"
-                      />
-                    ))}
-                  </div>
-                  {/* Tiny "site live" sticker */}
-                  <div className="absolute left-[8%] bottom-[2%] hidden sm:flex items-center gap-1.5 bg-white border border-gray-200 rounded-sm px-2.5 py-1 rotate-[-2deg] shadow-sm">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#9FE870]" />
-                    <p className="text-[9px] uppercase tracking-[0.22em] font-bold text-[#1A1A1A]">Live RSVPs</p>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   )
 }
 
@@ -240,15 +141,6 @@ function DesignsPicker({ content }: { content: WebsitesDesignsContent }) {
               </Link>
             )
           })}
-        </div>
-
-        <div className="mt-8 sm:mt-10 text-center">
-          <Link
-            href="/sign-up"
-            className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] font-extrabold uppercase tracking-[0.12em]"
-          >
-            Explore more designs
-          </Link>
         </div>
       </div>
     </section>
