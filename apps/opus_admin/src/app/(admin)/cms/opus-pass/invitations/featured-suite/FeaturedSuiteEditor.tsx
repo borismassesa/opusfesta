@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { Plus, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
 import type { OpusPassInvitationsFeaturedSuiteContent } from '@/lib/cms/opus-pass-invitations-featured-suite'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
@@ -59,6 +59,15 @@ export default function FeaturedSuiteEditor({ initial, hasDraft: initialHasDraft
 
   const removeTrust = (idx: number) =>
     setDraft((d) => ({ ...d, trust_strip: d.trust_strip.filter((_, i) => i !== idx) }))
+
+  const moveTrust = (idx: number, delta: number) =>
+    setDraft((d) => {
+      const next = [...d.trust_strip]
+      const target = idx + delta
+      if (target < 0 || target >= next.length) return d
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return { ...d, trust_strip: next }
+    })
 
   const runAction = (job: () => Promise<void>) =>
     startTransition(async () => {
@@ -202,6 +211,24 @@ export default function FeaturedSuiteEditor({ initial, hasDraft: initialHasDraft
                 placeholder="e.g. Share via WhatsApp & SMS"
                 className={inputCls}
               />
+              <button
+                type="button"
+                onClick={() => moveTrust(idx, -1)}
+                disabled={idx === 0}
+                className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 shrink-0"
+                aria-label="Move item up"
+              >
+                <ArrowUp className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => moveTrust(idx, 1)}
+                disabled={idx === draft.trust_strip.length - 1}
+                className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 shrink-0"
+                aria-label="Move item down"
+              >
+                <ArrowDown className="w-4 h-4" />
+              </button>
               <button
                 type="button"
                 onClick={() => removeTrust(idx)}

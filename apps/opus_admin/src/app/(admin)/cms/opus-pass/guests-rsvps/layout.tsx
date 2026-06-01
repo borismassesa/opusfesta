@@ -6,17 +6,12 @@ import { usePathname } from 'next/navigation'
 import {
   Eye,
   ExternalLink,
-  Heart,
-  Images,
-  Info,
+  HelpCircle,
   LayoutPanelTop,
-  MessageSquareQuote,
-  Quote,
   Save,
   Send,
-  ShieldCheck,
+  Share2,
   Sparkles,
-  Star,
   Trash2,
   type LucideIcon,
 } from 'lucide-react'
@@ -24,7 +19,7 @@ import { cn } from '@/lib/utils'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { EditorActionsProvider, useEditorActions } from './EditorActionsContext'
-import { getOpusPassPreviewUrl } from './preview-action'
+import { getOpusPassGuestsPreviewUrl } from './preview-action'
 
 type Section = {
   key: string
@@ -40,85 +35,45 @@ const sections: Section[] = [
     key: 'hero',
     label: 'Hero',
     icon: Sparkles,
-    href: '/cms/opus-pass/homepage/hero',
+    href: '/cms/opus-pass/guests-rsvps/hero',
     status: 'live',
-    description: 'Headline, subhead, CTAs and the two-card hero composition.',
-  },
-  {
-    key: 'showcase',
-    label: 'Photo Showcase',
-    icon: Images,
-    href: '/cms/opus-pass/homepage/showcase',
-    status: 'live',
-    description: 'Pinterest-style photo masonry — the photos and the caption card.',
-  },
-  {
-    key: 'why-opus-pass',
-    label: 'Why OpusPass',
-    icon: Heart,
-    href: '/cms/opus-pass/homepage/why-opus-pass',
-    status: 'live',
-    description: 'Headline, photo with floating chips, and the "planning that feels effortless" copy + buttons.',
+    description: 'Top banner — headline, description, CTAs, trust cluster and the photo collage.',
   },
   {
     key: 'features',
-    label: 'Features',
-    icon: Star,
-    href: '/cms/opus-pass/homepage/features',
-    status: 'live',
-    description: 'Built for every wedding moment — section header plus alternating feature blocks.',
-  },
-  {
-    key: 'manifesto',
-    label: 'Manifesto',
-    icon: Quote,
-    href: '/cms/opus-pass/homepage/manifesto',
-    status: 'live',
-    description: 'Brand statement sentence — editable text segments plus the inline images.',
-  },
-  {
-    key: 'stationery',
-    label: 'Wedding Suite',
+    label: 'Feature Grid',
     icon: LayoutPanelTop,
-    href: '/cms/opus-pass/homepage/stationery',
+    href: '/cms/opus-pass/guests-rsvps/features',
     status: 'live',
-    description: 'Three cream service cards: Design Assistance, Matching Website, Guest Messaging.',
+    description: 'Bento feature grid header plus the RSVPs / Events / Pledges card copy.',
   },
   {
-    key: 'promises',
-    label: 'Quality Promises',
-    icon: ShieldCheck,
-    href: '/cms/opus-pass/homepage/promises',
+    key: 'spread-the-joy',
+    label: 'Spread the Joy',
+    icon: Share2,
+    href: '/cms/opus-pass/guests-rsvps/spread-the-joy',
     status: 'live',
-    description: 'Four-pillar trust strip with icons, titles and short descriptions.',
+    description: 'Ways to share an invitation — icon, title and copy per share method.',
   },
   {
-    key: 'testimonials',
-    label: 'Testimonials',
-    icon: MessageSquareQuote,
-    href: '/cms/opus-pass/homepage/testimonials',
+    key: 'faqs',
+    label: 'FAQs',
+    icon: HelpCircle,
+    href: '/cms/opus-pass/guests-rsvps/faqs',
     status: 'live',
-    description: 'Two-column vertical-scroll wall of couple testimonials with avatars, stars and contrast cards.',
-  },
-  {
-    key: 'info',
-    label: 'About OpusPass',
-    icon: Info,
-    href: '/cms/opus-pass/homepage/info',
-    status: 'live',
-    description: 'Lavender about section with three paragraphs and CTA.',
+    description: 'Guests & RSVPs FAQs — section heading plus add/remove Q&A pairs.',
   },
 ]
 
-export default function OpusPassHomepageCmsLayout({ children }: { children: ReactNode }) {
+export default function OpusPassGuestsRsvpsCmsLayout({ children }: { children: ReactNode }) {
   return (
     <EditorActionsProvider>
-      <OpusPassHomepageCmsShell>{children}</OpusPassHomepageCmsShell>
+      <OpusPassGuestsRsvpsCmsShell>{children}</OpusPassGuestsRsvpsCmsShell>
     </EditorActionsProvider>
   )
 }
 
-function OpusPassHomepageCmsShell({ children }: { children: ReactNode }) {
+function OpusPassGuestsRsvpsCmsShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const opusPassUrl = process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'
   const activeSection = sections.find((s) => s.href && pathname.startsWith(s.href)) ?? sections[0]
@@ -140,7 +95,7 @@ function OpusPassHomepageCmsShell({ children }: { children: ReactNode }) {
         <EditorActionButtons />
         <PreviewDraftButton />
         <a
-          href={opusPassUrl}
+          href={`${opusPassUrl}/guests-and-rsvp`}
           target="_blank"
           rel="noopener noreferrer"
           className="flex items-center gap-2 text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
@@ -280,7 +235,7 @@ function PreviewDraftButton() {
   const [pending, startTransition] = useTransition()
   const openPreview = () =>
     startTransition(async () => {
-      const url = await getOpusPassPreviewUrl('/')
+      const url = await getOpusPassGuestsPreviewUrl('/guests-and-rsvp')
       if (!url) {
         console.warn('OPUS_PASS_PREVIEW_TOKEN env var missing — preview disabled.')
         window.alert('Preview unavailable: OPUS_PASS_PREVIEW_TOKEN is not configured on this environment.')
