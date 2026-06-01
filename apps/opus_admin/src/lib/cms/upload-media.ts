@@ -13,6 +13,11 @@ import { createSupabaseAdminClient } from '@/lib/supabase'
 // Actions are reachable as RPC endpoints regardless of route layout.
 
 const CMS_UPLOAD_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
+// SVGs can carry inline <script> and event handlers. The public Storage URL
+// is reachable directly, so a malicious SVG served from `*.supabase.co` could
+// be used to phish. Limit SVG uploads to elevated roles until we sanitize
+// server-side. See: tracking note in the storage-allow-svg migration.
+const CMS_SVG_UPLOAD_ROLES: AdminAccessRole[] = ['owner', 'admin']
 
 const IMAGE_MIME = new Set([
   'image/jpeg',
@@ -48,9 +53,11 @@ export async function createCmsMediaUploadUrl(input: {
   sizeBytes: number
   kind: 'image' | 'svg' | 'video' | 'media'
 }): Promise<CmsMediaUploadUrlResult> {
-  await requireAdminRole(CMS_UPLOAD_ROLES)
-  const isImage = IMAGE_MIME.has(input.mimeType)
   const isSvg = input.mimeType === SVG_MIME
+  // Gate on actual mime, not declared `kind`, so an editor can't smuggle an
+  // SVG by claiming `kind: 'image'`.
+  await requireAdminRole(isSvg ? CMS_SVG_UPLOAD_ROLES : CMS_UPLOAD_ROLES)
+  const isImage = IMAGE_MIME.has(input.mimeType)
   const isVideo = VIDEO_MIME.has(input.mimeType)
   if (input.kind === 'image' && !isImage) {
     return { ok: false, error: 'Only JPEG, PNG, WebP, GIF, AVIF, or SVG images are allowed.' }

@@ -29,10 +29,10 @@ type NavLink = { label: string; href?: string; Icon?: LucideIcon; subLinks?: str
 type PhotoGridItem = { label: string; image: string; href?: string }
 
 const guestsPhotoGrid: PhotoGridItem[] = [
-  { label: 'Guest List', image: '/assets/images/mauzo_crew.jpg', href: '/guests' },
-  { label: 'RSVP Tracking', image: '/assets/images/churchcouples.jpg', href: '/guests' },
+  { label: 'Guest List', image: '/assets/images/mauzo_crew.jpg', href: '/guests-and-rsvp' },
+  { label: 'RSVP Tracking', image: '/assets/images/churchcouples.jpg', href: '/guests-and-rsvp' },
   { label: 'Invitations', image: '/assets/images/cutesy_couple.jpg', href: '/invitations' },
-  { label: 'Seating Plan', image: '/assets/images/couples_together.jpg', href: '/guests' },
+  { label: 'Seating Plan', image: '/assets/images/couples_together.jpg', href: '/guests-and-rsvp' },
 ]
 
 const websitesPhotoGrid: PhotoGridItem[] = [
@@ -87,16 +87,16 @@ const navItems: Array<{
       title: 'GUESTS & RSVPS',
       description: 'Send digital invites by WhatsApp or SMS and watch RSVPs roll in live.',
       linkText: 'Manage your guests',
-      href: '/guests',
+      href: '/guests-and-rsvp',
     },
     columns: [
       {
         title: 'Manage',
         links: [
-          { Icon: Users, label: 'Guest List Manager', href: '/guests' },
-          { Icon: CheckCircle2, label: 'RSVP Tracking', href: '/guests' },
-          { Icon: Share2, label: 'WhatsApp & SMS Send', href: '/guests' },
-          { Icon: MapPin, label: 'Seating Chart', href: '/guests' },
+          { Icon: Users, label: 'Guest List Manager', href: '/guests-and-rsvp' },
+          { Icon: CheckCircle2, label: 'RSVP Tracking', href: '/guests-and-rsvp' },
+          { Icon: Share2, label: 'WhatsApp & SMS Send', href: '/guests-and-rsvp' },
+          { Icon: MapPin, label: 'Seating Chart', href: '/guests-and-rsvp' },
         ],
       },
       {

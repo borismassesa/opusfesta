@@ -5,8 +5,8 @@ import { loadWebsitesHeroContent } from '@/lib/cms/websites-hero'
 import { loadWebsitesDesignsContent } from '@/lib/cms/websites-designs'
 import { loadWebsitesSellingPointsContent } from '@/lib/cms/websites-selling-points'
 import { loadWebsitesFeaturesContent } from '@/lib/cms/websites-features'
-import { loadWebsitesTestimonialsContent } from '@/lib/cms/websites-testimonials'
 import { loadWebsitesFaqsContent } from '@/lib/cms/websites-faqs'
+import { InvitationShowcase } from '@/components/home/InvitationShowcase'
 import WebsitesLandingClient from './WebsitesLandingClient'
 
 export const metadata: Metadata = {
@@ -16,14 +16,13 @@ export const metadata: Metadata = {
 }
 
 export default async function WebsitesLandingPage() {
-  const [{ isEnabled: isDraft }, hero, designs, sellingPoints, features, testimonials, faqs] =
+  const [{ isEnabled: isDraft }, hero, designs, sellingPoints, features, faqs] =
     await Promise.all([
       draftMode(),
       loadWebsitesHeroContent(),
       loadWebsitesDesignsContent(),
       loadWebsitesSellingPointsContent(),
       loadWebsitesFeaturesContent(),
-      loadWebsitesTestimonialsContent(),
       loadWebsitesFaqsContent(),
     ])
   return (
@@ -34,8 +33,8 @@ export default async function WebsitesLandingPage() {
         designs={designs}
         sellingPoints={sellingPoints}
         features={features}
-        testimonials={testimonials}
         faqs={faqs}
+        testimonials={<InvitationShowcase />}
       />
     </>
   )

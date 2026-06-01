@@ -1,9 +1,9 @@
 export type EventType =
-  | 'ceremony'
-  | 'reception'
-  | 'engagement'
-  | 'rehearsal'
+  | 'wedding'
   | 'send_off'
+  | 'kitchen_party'
+  | 'engagement'
+  | 'reception'
   | 'other'
 
 export type RsvpStatus = 'pending' | 'attending' | 'declined' | 'maybe'
@@ -107,12 +107,20 @@ export interface DashboardStats {
 }
 
 export const EVENT_TYPE_LABELS: Record<EventType, string> = {
-  ceremony: 'Ceremony',
-  reception: 'Reception',
+  wedding: 'Wedding',
+  send_off: 'Send-Off',
+  kitchen_party: 'Kitchen Party',
   engagement: 'Engagement',
-  rehearsal: 'Rehearsal',
-  send_off: 'Send-off',
+  reception: 'Reception',
   other: 'Other',
+}
+
+/**
+ * Display label for a stored `event_type`. Known types map to their label;
+ * a custom "Other" value (free text typed by the couple) is shown verbatim.
+ */
+export function eventTypeLabel(value: string): string {
+  return EVENT_TYPE_LABELS[value as EventType] ?? value
 }
 
 export const RSVP_STATUS_LABELS: Record<RsvpStatus, string> = {

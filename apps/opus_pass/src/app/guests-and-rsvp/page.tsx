@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
 import { PreviewBanner } from '@/components/PreviewBanner'
+import { InvitationShowcase } from '@/components/home/InvitationShowcase'
 import GuestsLandingClient from './GuestsLandingClient'
 
 export const metadata: Metadata = {
@@ -14,7 +15,7 @@ export default async function GuestsLandingPage() {
   return (
     <>
       {isDraft && <PreviewBanner />}
-      <GuestsLandingClient />
+      <GuestsLandingClient testimonials={<InvitationShowcase />} />
     </>
   )
 }

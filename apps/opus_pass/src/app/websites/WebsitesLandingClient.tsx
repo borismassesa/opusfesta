@@ -1,20 +1,18 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
   ArrowRight,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Link as LinkIcon,
   Sparkles,
-  Star,
   Users,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { LandingHero } from '@/components/LandingHero'
 import type { WebsitesHeroContent } from '@/lib/cms/websites-hero'
 import type {
   WebsitesDesignsContent,
@@ -25,7 +23,6 @@ import type {
   WebsitesFeaturesContent,
   WebsitesFeatureIcon,
 } from '@/lib/cms/websites-features'
-import type { WebsitesTestimonialsContent } from '@/lib/cms/websites-testimonials'
 import type { WebsitesFaqsContent } from '@/lib/cms/websites-faqs'
 
 type DesignTemplate = WebsitesDesignItem
@@ -45,125 +42,25 @@ export default function WebsitesLandingClient({
   designs,
   sellingPoints,
   features,
-  testimonials,
   faqs,
+  testimonials,
 }: {
   hero: WebsitesHeroContent
   designs: WebsitesDesignsContent
   sellingPoints: WebsitesSellingPointsContent
   features: WebsitesFeaturesContent
-  testimonials: WebsitesTestimonialsContent
   faqs: WebsitesFaqsContent
+  testimonials?: React.ReactNode
 }) {
   return (
     <div className="bg-white text-[#1A1A1A]">
-      <HeroBanner content={hero} />
+      <LandingHero content={hero} />
       <DesignsPicker content={designs} />
       <SellingPoints content={sellingPoints} />
       <FeatureRow content={features} />
-      <Testimonials content={testimonials} />
+      {testimonials}
       <FAQs content={faqs} />
     </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  HERO — sage backdrop with overlapping device mockups (echoes /invitations
-//  flat-lay but swapped for laptop + phone showing live website preview)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function HeroBanner({ content: HERO }: { content: WebsitesHeroContent }) {
-  return (
-    <section className="px-4 sm:px-6 pt-4 sm:pt-6">
-      <div className="mx-auto max-w-7xl">
-        <div
-          className="relative overflow-hidden rounded-md min-h-[260px] sm:min-h-[340px] md:min-h-[420px]"
-          style={{ backgroundColor: HERO.background_color }}
-        >
-          {/* Subtle dot texture, same idiom as /invitations */}
-          <div
-            className="absolute inset-0 opacity-[0.18] pointer-events-none"
-            style={{
-              backgroundImage: 'radial-gradient(circle at 1px 1px, #5C6B4D 0.6px, transparent 0)',
-              backgroundSize: '6px 6px',
-            }}
-          />
-
-          <div className="relative grid grid-cols-1 md:grid-cols-12 items-center gap-6 md:gap-4 p-6 sm:p-10 md:p-14">
-            {/* Copy */}
-            <div className="md:col-span-7 lg:col-span-7">
-              <h1 className="text-[1.8rem] sm:text-[2.2rem] md:text-[2.6rem] lg:text-[2.9rem] font-black uppercase tracking-tighter leading-[1.15] text-[#1A1A1A]">
-                {HERO.headline_line_1}
-                <br />
-                {HERO.headline_line_2}
-              </h1>
-              <p className="mt-6 sm:mt-7 text-[16px] sm:text-[17px] md:text-[18px] lg:text-[19px] text-[#1A1A1A]/80 leading-[1.7]">
-                {HERO.description}
-              </p>
-              <div className="mt-9 sm:mt-10 flex flex-wrap items-center gap-x-5 gap-y-3">
-                <Link
-                  href={HERO.primary_cta_href}
-                  className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
-                >
-                  {HERO.primary_cta_label}
-                </Link>
-                <Link
-                  href={HERO.secondary_cta_href}
-                  className="text-[13px] sm:text-[14px] font-semibold text-[#1A1A1A] underline underline-offset-[6px] decoration-[#1A1A1A]/40 hover:decoration-[#1A1A1A]"
-                >
-                  {HERO.secondary_cta_label} <span aria-hidden>→</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* Right side — uploaded image when set, otherwise the built-in laptop + phone mockup */}
-            <div className="md:col-span-5 lg:col-span-5 relative h-[220px] sm:h-[300px] md:h-[360px]">
-              {HERO.right_image_url ? (
-                <div className="relative h-full w-full overflow-hidden rounded-md shadow-md">
-                  <Image
-                    src={HERO.right_image_url}
-                    alt={HERO.right_image_alt}
-                    fill
-                    sizes="(min-width: 768px) 40vw, 100vw"
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <>
-                  {/* Laptop frame */}
-                  <div className="absolute left-0 top-[10%] w-[88%] aspect-[16/10] rounded-md shadow-xl bg-[#1A1A1A] p-[6px] rotate-[-3deg]">
-                    <div className="relative h-full w-full overflow-hidden rounded-sm bg-white">
-                      <WebsitePreview treatment="botanical-sage" />
-                    </div>
-                  </div>
-                  {/* Phone frame */}
-                  <div className="absolute right-[2%] bottom-[2%] w-[28%] aspect-[9/19] rounded-2xl shadow-xl bg-[#1A1A1A] p-[5px] rotate-[6deg]">
-                    <div className="relative h-full w-full overflow-hidden rounded-[14px] bg-white">
-                      <div className="absolute top-[6px] left-1/2 -translate-x-1/2 w-[36%] h-[10px] bg-[#1A1A1A] rounded-b-md z-10" />
-                      <WebsitePreview treatment="modern-blush" compact />
-                    </div>
-                  </div>
-                  {/* Pearl strip — decorative */}
-                  <div className="absolute right-[6%] top-[2%] hidden md:flex gap-[3px]">
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <span
-                        key={i}
-                        className="block h-1.5 w-1.5 rounded-full bg-gradient-to-br from-white to-[#9FE870]/40 shadow-sm"
-                      />
-                    ))}
-                  </div>
-                  {/* Tiny "site live" sticker */}
-                  <div className="absolute left-[8%] bottom-[2%] hidden sm:flex items-center gap-1.5 bg-white border border-gray-200 rounded-sm px-2.5 py-1 rotate-[-2deg] shadow-sm">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#9FE870]" />
-                    <p className="text-[9px] uppercase tracking-[0.22em] font-bold text-[#1A1A1A]">Live RSVPs</p>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   )
 }
 
@@ -244,15 +141,6 @@ function DesignsPicker({ content }: { content: WebsitesDesignsContent }) {
               </Link>
             )
           })}
-        </div>
-
-        <div className="mt-8 sm:mt-10 text-center">
-          <Link
-            href="/sign-up"
-            className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] font-extrabold uppercase tracking-[0.12em]"
-          >
-            Explore more designs
-          </Link>
         </div>
       </div>
     </section>
@@ -403,177 +291,6 @@ function SellingPoints({ content }: { content: WebsitesSellingPointsContent }) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  TESTIMONIALS — brutalist OpusFesta carousel: huge uppercase title +
-//  prev/next arrow controls on the left, scrolling dark/purple cards on the right.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Testimonials({ content }: { content: WebsitesTestimonialsContent }) {
-  const TESTIMONIALS = content.items
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const [progress, setProgress] = useState(0)
-
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
-    const update = () => {
-      const max = el.scrollWidth - el.clientWidth
-      setProgress(max > 0 ? (el.scrollLeft / max) * 100 : 0)
-    }
-    update()
-    el.addEventListener('scroll', update, { passive: true })
-    const ro = new ResizeObserver(update)
-    ro.observe(el)
-    return () => {
-      el.removeEventListener('scroll', update)
-      ro.disconnect()
-    }
-  }, [])
-
-  const pageSize = (el: HTMLDivElement) => {
-    const gap = parseFloat(getComputedStyle(el).columnGap || '0') || 0
-    return Math.min(el.clientWidth, 380 + gap)
-  }
-
-  const scrollNext = () => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollBy({ left: pageSize(el), behavior: 'smooth' })
-  }
-
-  const scrollPrev = () => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollBy({ left: -pageSize(el), behavior: 'smooth' })
-  }
-
-  const atStart = progress < 1
-  const atEnd = progress > 99
-
-  return (
-    <section className="px-4 sm:px-6 pt-24 sm:pt-32 md:pt-40">
-      <div className="mx-auto max-w-7xl">
-        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.7fr)] gap-10 lg:gap-12 items-start">
-          {/* Title + arrow controls */}
-          <div className="lg:pt-2">
-            <h2 className="text-5xl sm:text-6xl md:text-[5rem] lg:text-[4.75rem] xl:text-[5.5rem] font-bold uppercase tracking-tight leading-[0.95] text-[#1A1A1A]">
-              {content.heading}
-            </h2>
-            <div className="mt-8 sm:mt-10 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={scrollPrev}
-                aria-label="Previous testimonial"
-                disabled={atStart}
-                className={cn(
-                  'grid h-12 w-12 place-items-center rounded-full transition-colors',
-                  atStart
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-[#1A1A1A] text-white hover:bg-black',
-                )}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-              <button
-                type="button"
-                onClick={scrollNext}
-                aria-label="Next testimonial"
-                disabled={atEnd}
-                className={cn(
-                  'grid h-12 w-12 place-items-center rounded-full transition-colors',
-                  atEnd
-                    ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                    : 'bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)]',
-                )}
-              >
-                <ChevronRight className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          {/* Carousel — overflows the container on the right for a peek effect */}
-          <div className="-mr-4 sm:-mr-6 overflow-hidden">
-            <div
-              ref={scrollRef}
-              className="flex gap-4 sm:gap-5 overflow-x-auto snap-x snap-mandatory pb-4 [&::-webkit-scrollbar]:hidden"
-              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
-            >
-              {TESTIMONIALS.map((t) => (
-                <TestimonialCard key={t.id} t={t} />
-              ))}
-              {/* Spacer so the last card scrolls fully into view */}
-              <div aria-hidden className="shrink-0 w-1 sm:w-3" />
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
-
-function TestimonialCard({
-  t,
-}: {
-  t: WebsitesTestimonialsContent['items'][number]
-}) {
-  const isDark = t.variant === 'dark'
-  return (
-    <article
-      className={cn(
-        'snap-start shrink-0 w-[300px] sm:w-[360px] rounded-2xl p-6 sm:p-7 flex flex-col min-h-[320px] sm:min-h-[340px]',
-        isDark ? 'bg-[#1A1A1A] text-white' : 'bg-[var(--accent)] text-[#1A1A1A]',
-      )}
-    >
-      {/* Stars */}
-      <div className="flex items-center gap-0.5 text-amber-400 mb-5">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <Star
-            key={i}
-            size={18}
-            className={i < t.rating ? 'fill-current' : 'fill-transparent'}
-            strokeWidth={i < t.rating ? 0 : 1.5}
-          />
-        ))}
-      </div>
-
-      {/* Quote */}
-      <p className="text-[15px] sm:text-base font-semibold leading-snug flex-1">
-        &ldquo;{t.quote}&rdquo;
-      </p>
-
-      {/* Divider */}
-      <div className={cn('mt-6 h-px', isDark ? 'bg-white/15' : 'bg-black/15')} />
-
-      {/* Footer: avatar + name + location + role pill */}
-      <div className="mt-5 flex items-center gap-3">
-        <div className="relative w-10 h-10 rounded-full overflow-hidden shrink-0">
-          <Image src={t.avatar} alt="" fill sizes="40px" className="object-cover" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-bold leading-tight truncate">{t.name}</p>
-          <p
-            className={cn(
-              'text-xs mt-0.5 truncate',
-              isDark ? 'text-white/55' : 'text-[#1A1A1A]/60',
-            )}
-          >
-            {t.location}
-          </p>
-        </div>
-        <span
-          className={cn(
-            'shrink-0 px-3 py-1.5 rounded-full text-[11px] font-bold',
-            isDark
-              ? 'bg-[var(--accent)] text-[var(--on-accent)]'
-              : 'bg-white text-[#1A1A1A]',
-          )}
-        >
-          {t.role}
-        </span>
-      </div>
-    </article>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  FAQS — accordion (identical pattern to /invitations FAQs)
