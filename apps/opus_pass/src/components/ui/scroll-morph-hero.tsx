@@ -4,15 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion'
-
-// Invitation suite categories revealed once the cards hand off.
-const SUITE_CATEGORIES: { label: string; alt: string; image: string }[] = [
-  { label: 'Save the Date', alt: 'Save the Date', image: '/assets/images/bridering.jpg' },
-  { label: 'Wedding', alt: 'Wedding ceremony', image: '/assets/images/churchcouples.jpg' },
-  { label: 'Send-Off', alt: 'Send-Off', image: '/assets/images/brideincar.jpg' },
-  { label: 'Kitchen Party', alt: 'Kitchen Party — bridal shower florals', image: '/assets/images/flowers_pinky.jpg' },
-  { label: 'Kadi za Michango & Vikao', alt: 'Kadi za Michango & Vikao', image: '/assets/images/mauzo_crew.jpg' },
-]
+import type { InvitationsHeroContent } from '@/lib/cms/invitations-hero'
 
 // --- Types ---
 export type AnimationPhase = 'scatter' | 'line' | 'circle' | 'bottom-strip'
@@ -107,7 +99,7 @@ const IMAGES = [
 
 const lerp = (start: number, end: number, t: number) => start * (1 - t) + end * t
 
-export default function ScrollMorphHero() {
+export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent }) {
   const [introPhase, setIntroPhase] = useState<AnimationPhase>('scatter')
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
   const containerRef = useRef<HTMLDivElement>(null)
@@ -238,7 +230,7 @@ export default function ScrollMorphHero() {
             transition={{ duration: 1 }}
             className="text-2xl font-semibold tracking-tight text-gray-800 md:text-4xl"
           >
-            Invitations for every celebration.
+            {hero.intro_headline}
           </motion.h1>
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -252,16 +244,16 @@ export default function ScrollMorphHero() {
             className="mt-7 flex flex-wrap items-center justify-center gap-3"
           >
             <Link
-              href="/invitations/catalog"
+              href={hero.primary_cta_href}
               className="inline-flex items-center rounded-full bg-[#1A1A1A] px-7 py-3 text-sm font-bold text-white transition-colors hover:bg-black"
             >
-              Browse designs
+              {hero.primary_cta_label}
             </Link>
             <Link
-              href="/sign-up"
+              href={hero.secondary_cta_href}
               className="inline-flex items-center rounded-full border border-[#1A1A1A]/20 bg-white px-7 py-3 text-sm font-bold text-[#1A1A1A] transition-colors hover:border-[#1A1A1A]"
             >
-              Get started free
+              {hero.secondary_cta_label}
             </Link>
           </motion.div>
         </div>
@@ -274,19 +266,18 @@ export default function ScrollMorphHero() {
           <div className="mx-auto max-w-7xl">
             <div className="mb-8 text-center sm:mb-10">
               <h2 className="mb-4 font-serif text-2xl font-medium text-gray-900 md:text-3xl lg:text-4xl">
-                Invitations for Every Moment
+                {hero.suite_heading}
               </h2>
               <p className="mx-auto max-w-2xl text-sm leading-relaxed text-gray-700 md:text-base">
-                Pick one design once, and every card across your day matches your suite. No mixing
-                fonts, no clashing palettes, no last-minute hunt for matching paper.
+                {hero.suite_body}
               </p>
             </div>
             <div className="flex flex-wrap justify-center gap-5 sm:gap-6 md:flex-nowrap md:gap-8">
-              {SUITE_CATEGORIES.map((cat) => (
+              {hero.suite_categories.map((cat) => (
                 <Link
-                  key={cat.label}
+                  key={cat.id}
                   href="/invitations/catalog"
-                  className="group flex w-[110px] shrink-0 flex-col items-center text-center sm:w-[130px] md:w-[calc((100%-128px)/5)]"
+                  className="group flex w-[110px] shrink-0 flex-col items-center text-center sm:w-[130px] md:w-auto md:flex-1 md:basis-0 md:min-w-0 md:max-w-[200px]"
                 >
                   <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-full bg-white ring-1 ring-gray-200 transition-shadow group-hover:shadow-md">
                     {/* eslint-disable-next-line @next/next/no-img-element */}

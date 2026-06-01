@@ -90,10 +90,11 @@ export default function Footer() {
         `}</style>
 
         <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between md:gap-0 mt-8 pt-8 border-t border-gray-100 text-xs text-gray-400">
-          <div className="flex gap-6">
+          <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 md:justify-start">
             <Link href="/terms" className="hover:text-[#1A1A1A] transition-colors">Terms of Use</Link>
             <Link href="/privacy" className="hover:text-[#1A1A1A] transition-colors">Privacy Policy</Link>
-            <Link href="/accessibility" className="hover:text-[#1A1A1A] transition-colors">Accessibility</Link>
+            <Link href="/cookies" className="hover:text-[#1A1A1A] transition-colors">Cookie Policy</Link>
+            <Link href="/copyright" className="hover:text-[#1A1A1A] transition-colors">Copyright</Link>
           </div>
           <span>© 2026 OpusPass. All rights reserved.</span>
           <div className="flex gap-4">

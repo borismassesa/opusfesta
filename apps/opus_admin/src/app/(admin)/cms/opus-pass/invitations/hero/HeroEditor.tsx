@@ -1,9 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
-import { Trash2 } from 'lucide-react'
-import type { OpusPassInvitationsHeroContent } from '@/lib/cms/opus-pass-invitations-hero'
+import { useEffect, useState, useTransition } from 'react'
+import { ArrowRight, ChevronsDownUp, ChevronsUpDown, Plus } from 'lucide-react'
+import type {
+  OpusPassInvitationsHeroContent,
+  OpusPassInvitationsHeroSuiteCategory,
+} from '@/lib/cms/opus-pass-invitations-hero'
 import { cn } from '@/lib/utils'
+import { CollapsibleCard } from '@/components/cms/CollapsibleCard'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { useEditorActions } from '../EditorActionsContext'
@@ -42,101 +46,6 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
   )
 }
 
-function FitToggle({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      className={cn(
-        'flex-1 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors',
-        active
-          ? 'border-[#C9A0DC] bg-[#C9A0DC]/15 text-gray-900'
-          : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300',
-      )}
-    >
-      {label}
-    </button>
-  )
-}
-
-function parseObjectPosition(value: string): { x: number; y: number } {
-  if (!value || value === 'center') return { x: 50, y: 50 }
-  const pct = value.match(/(-?\d+(?:\.\d+)?)%\s+(-?\d+(?:\.\d+)?)%/)
-  if (pct) return { x: Number(pct[1]), y: Number(pct[2]) }
-  let x = 50
-  let y = 50
-  for (const token of value.split(/\s+/)) {
-    if (token === 'left') x = 0
-    else if (token === 'right') x = 100
-    else if (token === 'top') y = 0
-    else if (token === 'bottom') y = 100
-  }
-  return { x, y }
-}
-
-function FocalPointPicker({
-  src,
-  fit,
-  value,
-  onChange,
-}: {
-  src: string
-  fit: 'cover' | 'contain'
-  value: string
-  onChange: (v: string) => void
-}) {
-  const ref = useRef<HTMLDivElement>(null)
-  const [dragging, setDragging] = useState(false)
-  const { x, y } = parseObjectPosition(value)
-
-  const apply = (clientX: number, clientY: number) => {
-    const el = ref.current
-    if (!el) return
-    const rect = el.getBoundingClientRect()
-    const px = Math.min(100, Math.max(0, ((clientX - rect.left) / rect.width) * 100))
-    const py = Math.min(100, Math.max(0, ((clientY - rect.top) / rect.height) * 100))
-    onChange(`${Math.round(px)}% ${Math.round(py)}%`)
-  }
-
-  return (
-    <div className="space-y-2">
-      <div
-        ref={ref}
-        onPointerDown={(e) => {
-          e.currentTarget.setPointerCapture(e.pointerId)
-          setDragging(true)
-          apply(e.clientX, e.clientY)
-        }}
-        onPointerMove={(e) => {
-          if (dragging) apply(e.clientX, e.clientY)
-        }}
-        onPointerUp={(e) => {
-          setDragging(false)
-          e.currentTarget.releasePointerCapture(e.pointerId)
-        }}
-        className="relative w-full max-w-sm aspect-[6/5] overflow-hidden rounded-lg border border-gray-200 bg-gray-50 cursor-crosshair select-none touch-none"
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={src}
-          alt=""
-          draggable={false}
-          className="absolute inset-0 h-full w-full pointer-events-none"
-          style={{ objectFit: fit, objectPosition: `${x}% ${y}%` }}
-        />
-        <div
-          className="absolute h-6 w-6 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[#C9A0DC]/40 ring-2 ring-[#C9A0DC] shadow pointer-events-none"
-          style={{ left: `${x}%`, top: `${y}%` }}
-        />
-      </div>
-      <p className="text-[11px] text-gray-400">
-        Drag the dot to choose what stays in view when the banner crops the image.
-      </p>
-    </div>
-  )
-}
-
 function CharCount({ value, max }: { value: string; max: number }) {
   const len = (value ?? '').length
   const over = len > max
@@ -148,6 +57,10 @@ function CharCount({ value, max }: { value: string; max: number }) {
   )
 }
 
+function randomCategoryId(): string {
+  return `cat-${Math.random().toString(36).slice(2, 9)}`
+}
+
 export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props) {
   const [draft, setDraft] = useState<OpusPassInvitationsHeroContent>(initial)
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
@@ -156,10 +69,49 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
   const [error, setError] = useState<string | null>(null)
   const { bind, unbind } = useEditorActions()
 
+  // Per-category expand state (first one open by default).
+  const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0]))
+  const toggle = (idx: number) =>
+    setExpanded((s) => {
+      const next = new Set(s)
+      if (next.has(idx)) next.delete(idx)
+      else next.add(idx)
+      return next
+    })
+  const expandAll = () => setExpanded(new Set(draft.suite_categories.map((_, i) => i)))
+  const collapseAll = () => setExpanded(new Set())
+
   const set = <K extends keyof OpusPassInvitationsHeroContent>(
     key: K,
     value: OpusPassInvitationsHeroContent[K],
   ) => setDraft((d) => ({ ...d, [key]: value }))
+
+  const setCategory = (idx: number, patch: Partial<OpusPassInvitationsHeroSuiteCategory>) =>
+    setDraft((d) => ({
+      ...d,
+      suite_categories: d.suite_categories.map((c, i) => (i === idx ? { ...c, ...patch } : c)),
+    }))
+
+  const addCategory = () =>
+    setDraft((d) => ({
+      ...d,
+      suite_categories: [
+        ...d.suite_categories,
+        { id: randomCategoryId(), label: '', alt: '', image: '' },
+      ],
+    }))
+
+  const removeCategory = (idx: number) =>
+    setDraft((d) => ({ ...d, suite_categories: d.suite_categories.filter((_, i) => i !== idx) }))
+
+  const moveCategory = (idx: number, delta: number) =>
+    setDraft((d) => {
+      const next = [...d.suite_categories]
+      const target = idx + delta
+      if (target < 0 || target >= next.length) return d
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return { ...d, suite_categories: next }
+    })
 
   const runAction = (job: () => Promise<void>) =>
     startTransition(async () => {
@@ -212,45 +164,34 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start pb-12">
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] space-y-5">
-        <h3 className="text-[15px] font-semibold text-gray-900">Hero content</h3>
+        <div>
+          <h3 className="text-[15px] font-semibold text-gray-900">Animated hero</h3>
+          <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+            The invitation cards swirl into a ring, then hand off to the suite strip below. You can
+            edit the lead headline, both buttons, and the &ldquo;every moment&rdquo; strip — the
+            animation itself stays fixed.
+          </p>
+        </div>
 
-        <FieldGroup label="Headline">
-          <Field label="Line 1" hint={<CharCount value={draft.headline_line_1} max={60} />}>
+        <FieldGroup label="Intro overlay">
+          <Field label="Headline" hint={<CharCount value={draft.intro_headline} max={60} />}>
             <input
               type="text"
-              value={draft.headline_line_1}
-              onChange={(e) => set('headline_line_1', e.target.value)}
-              placeholder="Invites worth saving."
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Line 2" hint={<CharCount value={draft.headline_line_2} max={60} />}>
-            <input
-              type="text"
-              value={draft.headline_line_2}
-              onChange={(e) => set('headline_line_2', e.target.value)}
-              placeholder="RSVPs worth tracking."
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Description" hint={<CharCount value={draft.description} max={400} />}>
-            <textarea
-              rows={4}
-              value={draft.description}
-              onChange={(e) => set('description', e.target.value)}
-              placeholder="Designer-worthy digital invitations…"
+              value={draft.intro_headline}
+              onChange={(e) => set('intro_headline', e.target.value)}
+              placeholder="Invitations for every celebration."
               className={inputCls}
             />
           </Field>
         </FieldGroup>
 
-        <FieldGroup label="Primary CTA (filled)">
+        <FieldGroup label="Primary CTA (filled button)">
           <Field label="Label" hint={<CharCount value={draft.primary_cta_label} max={30} />}>
             <input
               type="text"
               value={draft.primary_cta_label}
               onChange={(e) => set('primary_cta_label', e.target.value)}
-              placeholder="Browse all designs"
+              placeholder="Browse designs"
               className={inputCls}
             />
           </Field>
@@ -265,13 +206,13 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
           </Field>
         </FieldGroup>
 
-        <FieldGroup label="Secondary CTA (underline link)">
+        <FieldGroup label="Secondary CTA (outline button)">
           <Field label="Label" hint={<CharCount value={draft.secondary_cta_label} max={30} />}>
             <input
               type="text"
               value={draft.secondary_cta_label}
               onChange={(e) => set('secondary_cta_label', e.target.value)}
-              placeholder="See pricing"
+              placeholder="Get started free"
               className={inputCls}
             />
           </Field>
@@ -280,99 +221,112 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
               type="text"
               value={draft.secondary_cta_href}
               onChange={(e) => set('secondary_cta_href', e.target.value)}
-              placeholder="/invitations/catalog"
+              placeholder="/sign-up"
               className={inputCls}
             />
           </Field>
         </FieldGroup>
 
-        <FieldGroup label="Banner background">
-          <Field label="Background colour (hex)">
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={draft.background_color}
-                onChange={(e) => set('background_color', e.target.value)}
-                className="w-10 h-10 rounded border border-gray-200 p-0 overflow-hidden cursor-pointer"
-              />
-              <input
-                type="text"
-                value={draft.background_color}
-                onChange={(e) => set('background_color', e.target.value)}
-                placeholder="#FAE6E9"
-                className={`${inputCls} flex-1 font-mono text-[12px]`}
-              />
-              <button
-                type="button"
-                onClick={() => set('background_color', '#FAE6E9')}
-                className="p-1 text-gray-400 hover:text-gray-700 shrink-0"
-                title="Reset to default (#FAE6E9)"
-                aria-label="Reset background colour"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </Field>
-        </FieldGroup>
-
-        <FieldGroup label="Right-side banner image">
-          <p className="text-[11px] text-gray-500 leading-relaxed">
-            Optional — when set, replaces the built-in flat-lay arrangement of invitations on the
-            right side of the banner.
-          </p>
-          <ImageUploadField
-            label="Image"
-            value={draft.right_image_url}
-            onChange={(v) => set('right_image_url', v)}
-            pathPrefix="opus-pass/invitations/hero"
-            previewAspect="aspect-[4/3]"
-            previewWidth="max-w-xs"
-          />
-          <Field label="Alt text (for screen readers)">
+        <FieldGroup label="Suite strip">
+          <Field label="Heading" hint={<CharCount value={draft.suite_heading} max={60} />}>
             <input
               type="text"
-              value={draft.right_image_alt}
-              onChange={(e) => set('right_image_alt', e.target.value)}
-              placeholder="Couple admiring a stack of wedding invitations"
+              value={draft.suite_heading}
+              onChange={(e) => set('suite_heading', e.target.value)}
+              placeholder="Invitations for Every Moment"
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Body" hint={<CharCount value={draft.suite_body} max={260} />}>
+            <textarea
+              rows={3}
+              value={draft.suite_body}
+              onChange={(e) => set('suite_body', e.target.value)}
+              placeholder="Pick one design once, and every card across your day matches your suite…"
               className={inputCls}
             />
           </Field>
 
-          {draft.right_image_url && (
-            <>
-              <Field label="Image fit" hint="How the image fills the banner">
-                <div className="flex gap-2">
-                  <FitToggle
-                    active={draft.right_image_fit !== 'contain'}
-                    onClick={() => set('right_image_fit', 'cover')}
-                    label="Fill (crop)"
-                  />
-                  <FitToggle
-                    active={draft.right_image_fit === 'contain'}
-                    onClick={() => set('right_image_fit', 'contain')}
-                    label="Fit whole image"
-                  />
-                </div>
-              </Field>
-              {draft.right_image_fit !== 'contain' && (
-                <Field label="Focal point" hint="Click or drag on the image">
-                  <FocalPointPicker
-                    src={resolveOpusPassAssetUrl(draft.right_image_url)}
-                    fit={draft.right_image_fit || 'cover'}
-                    value={draft.right_image_position || 'center'}
-                    onChange={(v) => set('right_image_position', v)}
+          <div className="flex items-center justify-between pt-1">
+            <span className="text-xs font-semibold text-gray-600">
+              Moments ({draft.suite_categories.length})
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                onClick={expandAll}
+                className="flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-gray-800 px-2 py-1 rounded-md hover:bg-gray-50"
+              >
+                <ChevronsUpDown className="w-3.5 h-3.5" /> Expand
+              </button>
+              <button
+                type="button"
+                onClick={collapseAll}
+                className="flex items-center gap-1 text-[11px] font-medium text-gray-500 hover:text-gray-800 px-2 py-1 rounded-md hover:bg-gray-50"
+              >
+                <ChevronsDownUp className="w-3.5 h-3.5" /> Collapse
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            {draft.suite_categories.map((cat, idx) => (
+              <CollapsibleCard
+                key={cat.id}
+                index={idx}
+                title={cat.label || 'New moment'}
+                collapsed={!expanded.has(idx)}
+                onToggle={() => toggle(idx)}
+                onMoveUp={() => moveCategory(idx, -1)}
+                onMoveDown={() => moveCategory(idx, 1)}
+                onRemove={() => removeCategory(idx)}
+                disableMoveUp={idx === 0}
+                disableMoveDown={idx === draft.suite_categories.length - 1}
+              >
+                <Field label="Label" hint={<CharCount value={cat.label} max={40} />}>
+                  <input
+                    type="text"
+                    value={cat.label}
+                    onChange={(e) => setCategory(idx, { label: e.target.value })}
+                    placeholder="Save the Date"
+                    className={inputCls}
                   />
                 </Field>
-              )}
-            </>
-          )}
+                <ImageUploadField
+                  label="Photo"
+                  value={cat.image}
+                  onChange={(v) => setCategory(idx, { image: v })}
+                  pathPrefix="opus-pass/invitations/hero"
+                  previewAspect="aspect-square"
+                  previewWidth="max-w-[160px]"
+                />
+                <Field label="Alt text (for screen readers)">
+                  <input
+                    type="text"
+                    value={cat.alt}
+                    onChange={(e) => setCategory(idx, { alt: e.target.value })}
+                    placeholder="Save the Date"
+                    className={inputCls}
+                  />
+                </Field>
+              </CollapsibleCard>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            onClick={addCategory}
+            className="flex items-center justify-center gap-1.5 w-full px-3 py-2 rounded-lg border border-dashed border-gray-300 text-sm font-medium text-gray-500 hover:border-[#C9A0DC] hover:text-gray-800 transition-colors"
+          >
+            <Plus className="w-4 h-4" /> Add moment
+          </button>
         </FieldGroup>
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <span className="text-xs text-gray-400">Approximate · animation not shown</span>
         </div>
         <HeroPreview content={draft} />
       </div>
@@ -382,51 +336,51 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
 
 function HeroPreview({ content }: { content: OpusPassInvitationsHeroContent }) {
   return (
-    <div
-      className="relative overflow-hidden rounded-md p-5"
-      style={{
-        backgroundColor: content.background_color || '#FAE6E9',
-        backgroundImage:
-          'radial-gradient(circle at 1px 1px, #B7A88E66 0.6px, transparent 0)',
-        backgroundSize: '6px 6px',
-      }}
-    >
-      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-        <div className="sm:col-span-7">
-          <h1 className="text-lg sm:text-xl font-black uppercase tracking-tighter leading-[1.15] text-[#1A1A1A]">
-            {content.headline_line_1 || 'Headline line 1'}
-            <br />
-            {content.headline_line_2 || 'Headline line 2'}
-          </h1>
-          <p className="mt-3 text-[11px] sm:text-xs text-[#1A1A1A]/80 leading-relaxed line-clamp-5">
-            {content.description}
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center rounded-full bg-[#C9A0DC] text-[#1A1A1A] px-4 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.1em]">
-              {content.primary_cta_label || 'Primary CTA'}
-            </span>
-            <span className="text-[10px] font-semibold text-[#1A1A1A] underline underline-offset-[4px] decoration-[#1A1A1A]/40">
-              {content.secondary_cta_label || 'Secondary CTA'} →
-            </span>
-          </div>
+    <div className="space-y-6">
+      {/* Intro overlay */}
+      <div className="relative overflow-hidden rounded-md bg-white border border-gray-100 px-5 py-8 text-center">
+        <h1 className="text-base sm:text-lg font-semibold tracking-tight text-gray-800">
+          {content.intro_headline || 'Headline'}
+        </h1>
+        <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+          <span className="inline-flex items-center rounded-full bg-[#1A1A1A] px-4 py-1.5 text-[10px] font-bold text-white">
+            {content.primary_cta_label || 'Primary CTA'}
+          </span>
+          <span className="inline-flex items-center rounded-full border border-[#1A1A1A]/20 bg-white px-4 py-1.5 text-[10px] font-bold text-[#1A1A1A]">
+            {content.secondary_cta_label || 'Secondary CTA'}
+          </span>
         </div>
-        <div className="sm:col-span-5 relative aspect-[4/3] sm:aspect-auto sm:min-h-[140px] rounded-md overflow-hidden bg-white/30">
-          {content.right_image_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={resolveOpusPassAssetUrl(content.right_image_url)}
-              alt={content.right_image_alt}
-              className="absolute inset-0 w-full h-full"
-              style={{
-                objectFit: content.right_image_fit || 'cover',
-                objectPosition: content.right_image_position || 'center',
-              }}
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-[9px] uppercase tracking-wider text-gray-500 text-center px-2">
-              Built-in flat-lay arrangement
+      </div>
+
+      {/* Suite strip */}
+      <div className="rounded-md bg-white border border-gray-100 px-4 py-6">
+        <div className="text-center mb-5">
+          <h2 className="font-serif text-base font-medium text-gray-900">
+            {content.suite_heading || 'Suite heading'}
+          </h2>
+          <p className="mx-auto mt-2 max-w-md text-[11px] leading-relaxed text-gray-600 line-clamp-3">
+            {content.suite_body}
+          </p>
+        </div>
+        <div className="flex flex-wrap justify-center gap-3">
+          {content.suite_categories.map((cat) => (
+            <div key={cat.id} className="flex w-[72px] flex-col items-center text-center">
+              <div className="relative mb-1.5 aspect-square w-full overflow-hidden rounded-full bg-gray-100 ring-1 ring-gray-200">
+                {cat.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={resolveOpusPassAssetUrl(cat.image)}
+                    alt={cat.alt}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                ) : null}
+              </div>
+              <span className="inline-flex items-center gap-0.5 text-[9px] font-medium leading-tight text-gray-800">
+                {cat.label || 'Moment'}
+                <ArrowRight size={10} className="shrink-0" aria-hidden="true" />
+              </span>
             </div>
-          )}
+          ))}
         </div>
       </div>
     </div>

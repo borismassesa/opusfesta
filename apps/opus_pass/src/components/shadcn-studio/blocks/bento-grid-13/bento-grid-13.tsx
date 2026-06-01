@@ -14,6 +14,7 @@ import TargetVisibilityRippleBg from '@/components/shadcn-studio/blocks/bento-gr
 import RegularUpdatesCard from '@/components/shadcn-studio/blocks/bento-grid-13/regular-updates-card'
 import Link from 'next/link'
 import { UsersRoundIcon, ArrowUpRightIcon, ArrowDownLeftIcon, MailCheckIcon, UserIcon, PlusIcon, ChurchIcon, UtensilsIcon, CoffeeIcon, GiftIcon, HeartIcon, ArrowRightIcon } from 'lucide-react'
+import type { GuestsFeaturesContent } from '@/lib/cms/guests-features'
 
 const rsvpData = [
   {
@@ -42,16 +43,19 @@ const rsvpData = [
   }
 ]
 
-const BentoGrid = () => {
+const BentoGrid = ({ content }: { content: GuestsFeaturesContent }) => {
+  const cardMap = new Map(content.cards.map((c) => [c.id, c]))
+  const rsvps = cardMap.get('rsvps')
+  const events = cardMap.get('events')
+  const pledges = cardMap.get('pledges')
   return (
     <section data-shadcn-scope className='py-8 sm:py-12 lg:py-16'>
       <div className='mx-auto mb-10 max-w-2xl px-4 text-center sm:mb-14 sm:px-6 lg:px-8'>
         <h2 className='font-serif text-3xl font-medium text-gray-900 md:text-4xl lg:text-5xl'>
-          Everything your guests need, in one place
+          {content.heading}
         </h2>
         <p className='mt-4 text-sm text-gray-600 md:text-base'>
-          From digital invites and live RSVPs to events, seating and pledges. Every guest detail of your big day,
-          managed in one beautiful dashboard.
+          {content.description}
         </p>
       </div>
       <div className='mx-auto grid max-w-7xl grid-cols-1 gap-6 px-4 sm:px-6 md:grid-cols-2 lg:px-8 xl:grid-cols-3'>
@@ -143,7 +147,7 @@ const BentoGrid = () => {
                   transition={{ duration: 0.5 }}
                   className='text-2xl font-semibold'
                 >
-                  RSVPs
+                  {rsvps?.title}
                 </MotionPreset>
                 <MotionPreset
                   component='p'
@@ -153,14 +157,13 @@ const BentoGrid = () => {
                   transition={{ duration: 0.5 }}
                   className='text-muted-foreground text-lg'
                 >
-                  See how your guests are replying: attending, maybe and declined, and who still needs a gentle
-                  reminder, all at a glance.
+                  {rsvps?.description}
                 </MotionPreset>
                 <Link
-                  href='/my/dashboard/rsvps'
+                  href={rsvps?.cta_href ?? '#'}
                   className='group mt-1 inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-[#b97fd0] transition-colors hover:text-[#9a5fb5]'
                 >
-                  Track RSVPs
+                  {rsvps?.cta_label}
                   <ArrowRightIcon className='size-4 transition-transform group-hover:translate-x-1' />
                 </Link>
               </CardContent>
@@ -343,7 +346,7 @@ const BentoGrid = () => {
                   transition={{ duration: 0.5 }}
                   className='text-2xl font-semibold'
                 >
-                  Events
+                  {events?.title}
                 </MotionPreset>
 
                 <MotionPreset
@@ -355,13 +358,13 @@ const BentoGrid = () => {
                   transition={{ duration: 0.5 }}
                   className='text-muted-foreground text-lg'
                 >
-                  Create every event on your big day: ceremony, reception, send-off and more, each with its own details and guests.
+                  {events?.description}
                 </MotionPreset>
                 <Link
-                  href='/my/dashboard/events'
+                  href={events?.cta_href ?? '#'}
                   className='group mt-1 inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-[#b97fd0] transition-colors hover:text-[#9a5fb5]'
                 >
-                  Manage events
+                  {events?.cta_label}
                   <ArrowRightIcon className='size-4 transition-transform group-hover:translate-x-1' />
                 </Link>
               </CardContent>
@@ -577,7 +580,7 @@ const BentoGrid = () => {
                   transition={{ duration: 0.5 }}
                   className='text-2xl font-semibold'
                 >
-                  Pledges
+                  {pledges?.title}
                 </MotionPreset>
 
                 <MotionPreset
@@ -589,14 +592,13 @@ const BentoGrid = () => {
                   transition={{ duration: 0.5 }}
                   className='text-muted-foreground text-lg'
                 >
-                  See who&rsquo;s pledged, how much and when. One clear ledger of every contribution promised toward
-                  your big day.
+                  {pledges?.description}
                 </MotionPreset>
                 <Link
-                  href='/my/dashboard/guests'
+                  href={pledges?.cta_href ?? '#'}
                   className='group mt-1 inline-flex w-fit items-center gap-1.5 text-sm font-semibold text-[#b97fd0] transition-colors hover:text-[#9a5fb5]'
                 >
-                  View pledges
+                  {pledges?.cta_label}
                   <ArrowRightIcon className='size-4 transition-transform group-hover:translate-x-1' />
                 </Link>
               </CardContent>

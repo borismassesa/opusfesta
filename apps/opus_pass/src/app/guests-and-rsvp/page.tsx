@@ -2,6 +2,10 @@ import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
 import { PreviewBanner } from '@/components/PreviewBanner'
 import { InvitationShowcase } from '@/components/home/InvitationShowcase'
+import { loadGuestsHeroContent } from '@/lib/cms/guests-hero'
+import { loadGuestsFeaturesContent } from '@/lib/cms/guests-features'
+import { loadGuestsSpreadContent } from '@/lib/cms/guests-spread-the-joy'
+import { loadGuestsFaqsContent } from '@/lib/cms/guests-faqs'
 import GuestsLandingClient from './GuestsLandingClient'
 
 export const metadata: Metadata = {
@@ -12,10 +16,22 @@ export const metadata: Metadata = {
 
 export default async function GuestsLandingPage() {
   const { isEnabled: isDraft } = await draftMode()
+  const [hero, features, spread, faqs] = await Promise.all([
+    loadGuestsHeroContent(),
+    loadGuestsFeaturesContent(),
+    loadGuestsSpreadContent(),
+    loadGuestsFaqsContent(),
+  ])
   return (
     <>
       {isDraft && <PreviewBanner />}
-      <GuestsLandingClient testimonials={<InvitationShowcase />} />
+      <GuestsLandingClient
+        hero={hero}
+        features={features}
+        spread={spread}
+        faqs={faqs}
+        testimonials={<InvitationShowcase />}
+      />
     </>
   )
 }

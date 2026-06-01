@@ -6,11 +6,10 @@ export type OpusPassHeroContent = {
   primary_cta_href: string
   secondary_cta_label: string
   secondary_cta_href: string
-  main_image_url: string
-  card_image_url: string
-  card_heading: string
-  card_link_label: string
-  card_href: string
+  trust_count: string
+  rating: string
+  avatars: string[]
+  featured_in: string[]
 }
 
 export type OpusPassHeroRow = {
@@ -24,17 +23,22 @@ export type OpusPassHeroRow = {
 }
 
 export const OPUS_PASS_HERO_FALLBACK: OpusPassHeroContent = {
-  headline_line_1: 'Your Wedding,',
-  headline_line_2: 'One Beautiful Pass',
+  headline_line_1: 'Your whole wedding day',
+  headline_line_2: 'one beautiful pass',
   description:
-    'Send digital invites cards, track RSVPs live, and share a wedding website  all from one place',
+    'Digital invitations, live RSVP tracking, and a beautiful wedding website — all in one pass. Free to start, bilingual in Swahili and English, and built for couples in Tanzania.',
   primary_cta_label: 'Get started',
   primary_cta_href: '/sign-up',
   secondary_cta_label: 'Browse invitations',
   secondary_cta_href: '/invitations',
-  main_image_url: '/assets/images/cutesy_couple.jpg',
-  card_image_url: '/assets/images/mauzo_crew.jpg',
-  card_heading: 'See RSVPs roll in live',
-  card_link_label: 'Explore guests & RSVPs',
-  card_href: '/guests',
+  trust_count: '1000+',
+  rating: '4.5',
+  avatars: [
+    '/assets/images/cutesy_couple.jpg',
+    '/assets/images/churchcouples.jpg',
+    '/assets/images/coupleswithpiano.jpg',
+    '/assets/images/authentic_couple.jpg',
+    '/assets/images/mauzo_crew.jpg',
+  ],
+  featured_in: ['The Citizen', 'Clouds FM', 'Bongo5', 'JamiiForums'],
 }

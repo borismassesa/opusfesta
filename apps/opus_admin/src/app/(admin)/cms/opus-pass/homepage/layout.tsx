@@ -6,9 +6,10 @@ import { usePathname } from 'next/navigation'
 import {
   Eye,
   ExternalLink,
-  Info,
-  LayoutPanelTop,
+  Heart,
+  Images,
   MessageSquareQuote,
+  Quote,
   Save,
   Send,
   ShieldCheck,
@@ -32,6 +33,7 @@ type Section = {
   description?: string
 }
 
+// Order mirrors the live homepage render order (apps/opus_pass/src/app/page.tsx).
 const sections: Section[] = [
   {
     key: 'hero',
@@ -39,7 +41,23 @@ const sections: Section[] = [
     icon: Sparkles,
     href: '/cms/opus-pass/homepage/hero',
     status: 'live',
-    description: 'Headline, subhead, CTAs and the two-card hero composition.',
+    description: 'Centred headline, trust badge, CTAs and the “As featured in” press strip.',
+  },
+  {
+    key: 'showcase',
+    label: 'Photo Showcase',
+    icon: Images,
+    href: '/cms/opus-pass/homepage/showcase',
+    status: 'live',
+    description: 'Pinterest-style photo masonry — photos, caption card, pill labels and accent colour.',
+  },
+  {
+    key: 'why-opus-pass',
+    label: 'Why OpusPass',
+    icon: Heart,
+    href: '/cms/opus-pass/homepage/why-opus-pass',
+    status: 'live',
+    description: 'Headline, photo with floating chips, and the "planning that feels effortless" copy + buttons.',
   },
   {
     key: 'features',
@@ -50,22 +68,6 @@ const sections: Section[] = [
     description: 'Built for every wedding moment — section header plus alternating feature blocks.',
   },
   {
-    key: 'stationery',
-    label: 'Wedding Suite',
-    icon: LayoutPanelTop,
-    href: '/cms/opus-pass/homepage/stationery',
-    status: 'live',
-    description: 'Three cream service cards: Design Assistance, Matching Website, Guest Messaging.',
-  },
-  {
-    key: 'promises',
-    label: 'Quality Promises',
-    icon: ShieldCheck,
-    href: '/cms/opus-pass/homepage/promises',
-    status: 'live',
-    description: 'Four-pillar trust strip with icons, titles and short descriptions.',
-  },
-  {
     key: 'testimonials',
     label: 'Testimonials',
     icon: MessageSquareQuote,
@@ -74,12 +76,20 @@ const sections: Section[] = [
     description: 'Two-column vertical-scroll wall of couple testimonials with avatars, stars and contrast cards.',
   },
   {
-    key: 'info',
-    label: 'About OpusPass',
-    icon: Info,
-    href: '/cms/opus-pass/homepage/info',
+    key: 'manifesto',
+    label: 'Manifesto',
+    icon: Quote,
+    href: '/cms/opus-pass/homepage/manifesto',
     status: 'live',
-    description: 'Lavender about section with three paragraphs and CTA.',
+    description: 'Brand statement sentence — editable text segments plus the inline images.',
+  },
+  {
+    key: 'promises',
+    label: 'Quality Promises',
+    icon: ShieldCheck,
+    href: '/cms/opus-pass/homepage/promises',
+    status: 'live',
+    description: 'Four-pillar trust strip with icons, titles and short descriptions.',
   },
 ]
 
