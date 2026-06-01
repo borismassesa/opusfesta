@@ -8,12 +8,11 @@ import {
   ChevronDown,
   Link as LinkIcon,
   Sparkles,
-  Star,
-  StarHalf,
   Users,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { LandingHero } from '@/components/LandingHero'
 import type { WebsitesHeroContent } from '@/lib/cms/websites-hero'
 import type {
   WebsitesDesignsContent,
@@ -33,24 +32,6 @@ const FEATURE_ICONS: Record<WebsitesFeatureIcon, LucideIcon> = {
   users: Users,
   link: LinkIcon,
 }
-
-// Real couple photos reused for the hero "trusted by" avatar cluster.
-const HERO_AVATARS = [
-  '/assets/images/cutesy_couple.jpg',
-  '/assets/images/churchcouples.jpg',
-  '/assets/images/coupleswithpiano.jpg',
-  '/assets/images/authentic_couple.jpg',
-  '/assets/images/mauzo_crew.jpg',
-]
-
-// "As featured in" wordmarks. Rendered as grayscale type until real logo assets
-// are supplied — drop SVGs into /public and swap to <Image> when available.
-const FEATURED_IN: { name: string; className: string }[] = [
-  { name: 'The Citizen', className: 'font-serif italic' },
-  { name: 'Clouds FM', className: 'font-extrabold tracking-tight' },
-  { name: 'Bongo5', className: 'font-black' },
-  { name: 'JamiiForums', className: 'font-bold tracking-tight' },
-]
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PAGE
@@ -73,7 +54,7 @@ export default function WebsitesLandingClient({
 }) {
   return (
     <div className="bg-white text-[#1A1A1A]">
-      <HeroBanner content={hero} />
+      <LandingHero content={hero} />
       <DesignsPicker content={designs} />
       <SellingPoints content={sellingPoints} />
       <FeatureRow content={features} />
@@ -82,119 +63,6 @@ export default function WebsitesLandingClient({
     </div>
   )
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  HERO — centered, "build at warp speed" idiom: trust avatars, oversized
-//  headline with an accent-underlined word, and CTAs.
-// ─────────────────────────────────────────────────────────────────────────────
-
-function HeroBanner({ content: HERO }: { content: WebsitesHeroContent }) {
-  // Underline only the last word of line 1 (echoes the reference's accented word).
-  const line1 = HERO.headline_line_1.trim()
-  const line1LastSpace = line1.lastIndexOf(' ')
-  const line1Head = line1LastSpace === -1 ? '' : line1.slice(0, line1LastSpace + 1)
-  const line1LastWord = line1LastSpace === -1 ? line1 : line1.slice(line1LastSpace + 1)
-
-  return (
-    <section className="px-2 sm:px-3 pt-10 sm:pt-14 md:pt-16">
-      <div className="mx-auto max-w-5xl text-center">
-        {/* Trust badge — avatar cluster + star rating */}
-        <div className="flex items-center justify-center gap-3">
-          <div className="flex -space-x-2.5">
-            {HERO_AVATARS.map((src, i) => (
-              <span
-                key={src}
-                className="relative inline-block h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-full ring-2 ring-white shadow-sm"
-                style={{ zIndex: HERO_AVATARS.length - i }}
-              >
-                <Image
-                  src={src}
-                  alt=""
-                  fill
-                  sizes="40px"
-                  className="object-cover"
-                />
-              </span>
-            ))}
-          </div>
-          <div className="text-left">
-            <div className="flex items-center gap-1.5">
-              <div
-                className="flex items-center gap-0.5 text-[#F59E0B]"
-                role="img"
-                aria-label="Rated 4.5 out of 5"
-              >
-                {[0, 1, 2, 3].map((i) => (
-                  <Star key={i} size={15} className="fill-current" strokeWidth={0} />
-                ))}
-                <StarHalf size={15} className="fill-current" strokeWidth={0} />
-              </div>
-              <span className="text-[13px] font-extrabold text-[#1A1A1A]">4.5</span>
-            </div>
-            <p className="mt-0.5 text-[12px] sm:text-[13px] leading-tight text-[#1A1A1A]/70">
-              Trusted by <span className="font-extrabold text-[#1A1A1A]">1000+</span> couples
-            </p>
-          </div>
-        </div>
-
-        {/* Headline — line 1's last word carries the underline accent, line 2 the ⚡ */}
-        <h1 className="mt-7 sm:mt-8 text-[2.1rem] sm:text-[3rem] md:text-[3.6rem] lg:text-[4rem] font-black tracking-tight leading-[1.08] text-[#1A1A1A]">
-          {line1Head}
-          <span className="underline decoration-[#1A1A1A] decoration-[6px] underline-offset-[8px]">
-            {line1LastWord}
-          </span>
-          <br />
-          {HERO.headline_line_2}{' '}
-          <span aria-hidden>⚡</span>
-        </h1>
-
-        {/* Subheading */}
-        <p className="mx-auto mt-6 sm:mt-7 max-w-2xl text-[16px] sm:text-[18px] md:text-[19px] leading-[1.7] text-[#1A1A1A]/70">
-          {HERO.description}
-        </p>
-
-        {/* CTAs */}
-        <div className="mt-9 sm:mt-10 flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
-          <Link
-            href={HERO.primary_cta_href}
-            className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
-          >
-            {HERO.primary_cta_label}
-          </Link>
-          <Link
-            href={HERO.secondary_cta_href}
-            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-6 py-3 text-[13px] sm:text-[14px] font-semibold text-[#1A1A1A] hover:border-gray-300 hover:bg-gray-50"
-          >
-            {HERO.secondary_cta_label}
-            <ArrowRight size={15} aria-hidden="true" />
-          </Link>
-        </div>
-
-        {/* As featured in — grayscale press wordmarks */}
-        <div className="mt-12 sm:mt-14">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#1A1A1A]/40">
-            As featured in
-          </p>
-          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:gap-x-12">
-            {FEATURED_IN.map(({ name, className }) => (
-              <span
-                key={name}
-                className={cn(
-                  'text-lg sm:text-xl text-[#1A1A1A]/35 transition-colors hover:text-[#1A1A1A]/60',
-                  className,
-                )}
-              >
-                {name}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
-    </section>
-  )
-}
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  DESIGNS PICKER — tabbed template grid (echoes The Knot's design picker)

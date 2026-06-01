@@ -4,6 +4,11 @@
   --accent: #C9A0DC;
   --accent-hover: #b97fd0;
   --on-accent: #1A1A1A;
+
+  /* "Sparkle horizon" tokens (Sparkles component / "As featured in" section).
+     Soft lavender glow with vivid violet particles so they read on the white page. */
+  --gradient-color: #C9A0DC;
+  --sparkles-color: #8350E8;
 }
 
 /* Tailwind utility for on-accent text */

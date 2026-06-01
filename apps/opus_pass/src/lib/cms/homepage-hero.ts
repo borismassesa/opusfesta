@@ -17,8 +17,8 @@ export type HomepageHeroContent = {
 }
 
 export const HOMEPAGE_HERO_FALLBACK: HomepageHeroContent = {
-  headline_line_1: 'Your Wedding,',
-  headline_line_2: 'One Beautiful Pass',
+  headline_line_1: 'Your whole wedding day',
+  headline_line_2: 'one beautiful pass',
   description:
     'OpusPass is where couples plan, invite and celebrate. From digital invitations and live RSVPs to your guest list, events and a free wedding website, manage every moment of your big day in one place. Sign up for a free account to start inviting your guests in minutes.',
   primary_cta_label: 'Get started',
