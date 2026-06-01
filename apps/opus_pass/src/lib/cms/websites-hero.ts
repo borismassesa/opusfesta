@@ -16,8 +16,8 @@ export type WebsitesHeroContent = {
 }
 
 export const WEBSITES_HERO_FALLBACK: WebsitesHeroContent = {
-  headline_line_1: 'Your wedding website,',
-  headline_line_2: 'ready in minutes.',
+  headline_line_1: 'Create your wedding website',
+  headline_line_2: 'in just minutes',
   description:
     "Build a beautiful wedding website to share details, collect RSVPs and link your registry — all in one place. Free with every OpusPass, bilingual in Swahili and English.",
   primary_cta_label: 'Start your website',

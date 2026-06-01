@@ -4,6 +4,8 @@ import { createSupabaseServerClient } from '@/lib/supabase'
 export type HomepageFeatureBlock = {
   id: string
   reverse: boolean
+  /** Optional video URL. When set, the card plays a video instead of the image. */
+  media_video?: string
   media_main: string
   media_secondary: string
   media_overlay: string
@@ -33,6 +35,7 @@ export const HOMEPAGE_FEATURES_FALLBACK: HomepageFeaturesContent = {
   blocks: [
     {
       id: 'invitations', reverse: false,
+      media_video: '/assets/videos/happy_couples.mov',
       media_main: '/assets/images/cutesy_couple.jpg',
       media_secondary: '/assets/images/flowers_pinky.jpg',
       media_overlay: '/assets/images/authentic_couple.jpg',
@@ -52,8 +55,8 @@ export const HOMEPAGE_FEATURES_FALLBACK: HomepageFeaturesContent = {
       headline_line_1: 'Your guest list', headline_line_2: 'and live RSVPs',
       body: 'Manage your guest list, send invites by WhatsApp or SMS, and watch responses come in live. Send reminders, finalise seating, no spreadsheets needed.',
       pills: ['Guest list', 'Live RSVPs', 'Auto reminders', 'Seating chart'],
-      primary_cta_label: 'Manage guests', primary_cta_href: '/guests',
-      secondary_cta_label: 'How it works', secondary_cta_href: '/guests',
+      primary_cta_label: 'Manage guests', primary_cta_href: '/guests-and-rsvp',
+      secondary_cta_label: 'How it works', secondary_cta_href: '/guests-and-rsvp',
     },
     {
       id: 'website', reverse: false,

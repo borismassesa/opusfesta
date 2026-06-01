@@ -34,8 +34,8 @@ export default async function WebsitesLandingPage() {
         sellingPoints={sellingPoints}
         features={features}
         faqs={faqs}
+        testimonials={<InvitationShowcase />}
       />
-      <InvitationShowcase />
     </>
   )
 }

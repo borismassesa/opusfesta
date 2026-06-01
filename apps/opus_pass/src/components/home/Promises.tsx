@@ -16,7 +16,7 @@ const ICON_MAP: Record<PromiseIconKey, LucideIcon> = {
 export async function Promises() {
   const content = await loadHomepagePromisesContent()
   return (
-    <section className="px-6 py-16 max-w-6xl mx-auto border-t border-gray-200">
+    <section className="px-6 pt-4 pb-20 sm:pb-24 max-w-6xl mx-auto">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
         {content.items.map((item) => {
           const Icon = ICON_MAP[item.icon] ?? Sparkles

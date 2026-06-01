@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import { CalendarHeart, MapPin, Clock, Check, PartyPopper, Heart } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import { submitPublicRsvp, type PublicRsvpResponse } from '@/lib/dashboard/actions'
-import { EVENT_TYPE_LABELS, type RsvpStatus } from '@/lib/dashboard/types'
+import { eventTypeLabel, type RsvpStatus } from '@/lib/dashboard/types'
 import type { PublicRsvpData } from '@/lib/dashboard/queries'
 
 const inputClass =
@@ -131,7 +131,7 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
                   <div className="min-w-0">
                     <h3 className="text-lg font-semibold text-[#1A1A1A]">{e.name}</h3>
                     <p className="text-xs uppercase tracking-wide text-[#8e57b3]">
-                      {EVENT_TYPE_LABELS[e.event_type]}
+                      {eventTypeLabel(e.event_type)}
                     </p>
                     <div className="mt-2 space-y-1 text-sm text-[#1A1A1A]/60">
                       <p className="flex items-center gap-2">

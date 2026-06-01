@@ -1,16 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import {
   ArrowRight,
   ChevronDown,
-  ChevronLeft,
-  ChevronRight,
   Link as LinkIcon,
   Sparkles,
   Star,
+  StarHalf,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -35,6 +34,24 @@ const FEATURE_ICONS: Record<WebsitesFeatureIcon, LucideIcon> = {
   link: LinkIcon,
 }
 
+// Real couple photos reused for the hero "trusted by" avatar cluster.
+const HERO_AVATARS = [
+  '/assets/images/cutesy_couple.jpg',
+  '/assets/images/churchcouples.jpg',
+  '/assets/images/coupleswithpiano.jpg',
+  '/assets/images/authentic_couple.jpg',
+  '/assets/images/mauzo_crew.jpg',
+]
+
+// "As featured in" wordmarks. Rendered as grayscale type until real logo assets
+// are supplied — drop SVGs into /public and swap to <Image> when available.
+const FEATURED_IN: { name: string; className: string }[] = [
+  { name: 'The Citizen', className: 'font-serif italic' },
+  { name: 'Clouds FM', className: 'font-extrabold tracking-tight' },
+  { name: 'Bongo5', className: 'font-black' },
+  { name: 'JamiiForums', className: 'font-bold tracking-tight' },
+]
+
 // ─────────────────────────────────────────────────────────────────────────────
 //  PAGE
 // ─────────────────────────────────────────────────────────────────────────────
@@ -45,12 +62,14 @@ export default function WebsitesLandingClient({
   sellingPoints,
   features,
   faqs,
+  testimonials,
 }: {
   hero: WebsitesHeroContent
   designs: WebsitesDesignsContent
   sellingPoints: WebsitesSellingPointsContent
   features: WebsitesFeaturesContent
   faqs: WebsitesFaqsContent
+  testimonials?: React.ReactNode
 }) {
   return (
     <div className="bg-white text-[#1A1A1A]">
@@ -58,110 +77,124 @@ export default function WebsitesLandingClient({
       <DesignsPicker content={designs} />
       <SellingPoints content={sellingPoints} />
       <FeatureRow content={features} />
+      {testimonials}
       <FAQs content={faqs} />
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  HERO — sage backdrop with overlapping device mockups (echoes /invitations
-//  flat-lay but swapped for laptop + phone showing live website preview)
+//  HERO — centered, "build at warp speed" idiom: trust avatars, oversized
+//  headline with an accent-underlined word, and CTAs.
 // ─────────────────────────────────────────────────────────────────────────────
 
 function HeroBanner({ content: HERO }: { content: WebsitesHeroContent }) {
+  // Underline only the last word of line 1 (echoes the reference's accented word).
+  const line1 = HERO.headline_line_1.trim()
+  const line1LastSpace = line1.lastIndexOf(' ')
+  const line1Head = line1LastSpace === -1 ? '' : line1.slice(0, line1LastSpace + 1)
+  const line1LastWord = line1LastSpace === -1 ? line1 : line1.slice(line1LastSpace + 1)
+
   return (
-    <section className="px-4 sm:px-6 pt-4 sm:pt-6">
-      <div className="mx-auto max-w-7xl">
-        <div
-          className="relative overflow-hidden rounded-md min-h-[260px] sm:min-h-[340px] md:min-h-[420px]"
-          style={{ backgroundColor: HERO.background_color }}
-        >
-          {/* Subtle dot texture, same idiom as /invitations */}
-          <div
-            className="absolute inset-0 opacity-[0.18] pointer-events-none"
-            style={{
-              backgroundImage: 'radial-gradient(circle at 1px 1px, #5C6B4D 0.6px, transparent 0)',
-              backgroundSize: '6px 6px',
-            }}
-          />
-
-          <div className="relative grid grid-cols-1 md:grid-cols-12 items-center gap-6 md:gap-4 p-6 sm:p-10 md:p-14">
-            {/* Copy */}
-            <div className="md:col-span-7 lg:col-span-7">
-              <h1 className="text-[1.8rem] sm:text-[2.2rem] md:text-[2.6rem] lg:text-[2.9rem] font-black uppercase tracking-tighter leading-[1.15] text-[#1A1A1A]">
-                {HERO.headline_line_1}
-                <br />
-                {HERO.headline_line_2}
-              </h1>
-              <p className="mt-6 sm:mt-7 text-[16px] sm:text-[17px] md:text-[18px] lg:text-[19px] text-[#1A1A1A]/80 leading-[1.7]">
-                {HERO.description}
-              </p>
-              <div className="mt-9 sm:mt-10 flex flex-wrap items-center gap-x-5 gap-y-3">
-                <Link
-                  href={HERO.primary_cta_href}
-                  className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
-                >
-                  {HERO.primary_cta_label}
-                </Link>
-                <Link
-                  href={HERO.secondary_cta_href}
-                  className="text-[13px] sm:text-[14px] font-semibold text-[#1A1A1A] underline underline-offset-[6px] decoration-[#1A1A1A]/40 hover:decoration-[#1A1A1A]"
-                >
-                  {HERO.secondary_cta_label} <span aria-hidden>→</span>
-                </Link>
+    <section className="px-2 sm:px-3 pt-10 sm:pt-14 md:pt-16">
+      <div className="mx-auto max-w-5xl text-center">
+        {/* Trust badge — avatar cluster + star rating */}
+        <div className="flex items-center justify-center gap-3">
+          <div className="flex -space-x-2.5">
+            {HERO_AVATARS.map((src, i) => (
+              <span
+                key={src}
+                className="relative inline-block h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-full ring-2 ring-white shadow-sm"
+                style={{ zIndex: HERO_AVATARS.length - i }}
+              >
+                <Image
+                  src={src}
+                  alt=""
+                  fill
+                  sizes="40px"
+                  className="object-cover"
+                />
+              </span>
+            ))}
+          </div>
+          <div className="text-left">
+            <div className="flex items-center gap-1.5">
+              <div
+                className="flex items-center gap-0.5 text-[#F59E0B]"
+                role="img"
+                aria-label="Rated 4.5 out of 5"
+              >
+                {[0, 1, 2, 3].map((i) => (
+                  <Star key={i} size={15} className="fill-current" strokeWidth={0} />
+                ))}
+                <StarHalf size={15} className="fill-current" strokeWidth={0} />
               </div>
+              <span className="text-[13px] font-extrabold text-[#1A1A1A]">4.5</span>
             </div>
+            <p className="mt-0.5 text-[12px] sm:text-[13px] leading-tight text-[#1A1A1A]/70">
+              Trusted by <span className="font-extrabold text-[#1A1A1A]">1000+</span> couples
+            </p>
+          </div>
+        </div>
 
-            {/* Right side — uploaded image when set, otherwise the built-in laptop + phone mockup */}
-            <div className="md:col-span-5 lg:col-span-5 relative h-[220px] sm:h-[300px] md:h-[360px]">
-              {HERO.right_image_url ? (
-                <div className="relative h-full w-full overflow-hidden rounded-md shadow-md">
-                  <Image
-                    src={HERO.right_image_url}
-                    alt={HERO.right_image_alt}
-                    fill
-                    sizes="(min-width: 768px) 40vw, 100vw"
-                    className="object-cover"
-                  />
-                </div>
-              ) : (
-                <>
-                  {/* Laptop frame */}
-                  <div className="absolute left-0 top-[10%] w-[88%] aspect-[16/10] rounded-md shadow-xl bg-[#1A1A1A] p-[6px] rotate-[-3deg]">
-                    <div className="relative h-full w-full overflow-hidden rounded-sm bg-white">
-                      <WebsitePreview treatment="botanical-sage" />
-                    </div>
-                  </div>
-                  {/* Phone frame */}
-                  <div className="absolute right-[2%] bottom-[2%] w-[28%] aspect-[9/19] rounded-2xl shadow-xl bg-[#1A1A1A] p-[5px] rotate-[6deg]">
-                    <div className="relative h-full w-full overflow-hidden rounded-[14px] bg-white">
-                      <div className="absolute top-[6px] left-1/2 -translate-x-1/2 w-[36%] h-[10px] bg-[#1A1A1A] rounded-b-md z-10" />
-                      <WebsitePreview treatment="modern-blush" compact />
-                    </div>
-                  </div>
-                  {/* Pearl strip — decorative */}
-                  <div className="absolute right-[6%] top-[2%] hidden md:flex gap-[3px]">
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <span
-                        key={i}
-                        className="block h-1.5 w-1.5 rounded-full bg-gradient-to-br from-white to-[#9FE870]/40 shadow-sm"
-                      />
-                    ))}
-                  </div>
-                  {/* Tiny "site live" sticker */}
-                  <div className="absolute left-[8%] bottom-[2%] hidden sm:flex items-center gap-1.5 bg-white border border-gray-200 rounded-sm px-2.5 py-1 rotate-[-2deg] shadow-sm">
-                    <span className="h-1.5 w-1.5 rounded-full bg-[#9FE870]" />
-                    <p className="text-[9px] uppercase tracking-[0.22em] font-bold text-[#1A1A1A]">Live RSVPs</p>
-                  </div>
-                </>
-              )}
-            </div>
+        {/* Headline — line 1's last word carries the underline accent, line 2 the ⚡ */}
+        <h1 className="mt-7 sm:mt-8 text-[2.1rem] sm:text-[3rem] md:text-[3.6rem] lg:text-[4rem] font-black tracking-tight leading-[1.08] text-[#1A1A1A]">
+          {line1Head}
+          <span className="underline decoration-[#1A1A1A] decoration-[6px] underline-offset-[8px]">
+            {line1LastWord}
+          </span>
+          <br />
+          {HERO.headline_line_2}{' '}
+          <span aria-hidden>⚡</span>
+        </h1>
+
+        {/* Subheading */}
+        <p className="mx-auto mt-6 sm:mt-7 max-w-2xl text-[16px] sm:text-[18px] md:text-[19px] leading-[1.7] text-[#1A1A1A]/70">
+          {HERO.description}
+        </p>
+
+        {/* CTAs */}
+        <div className="mt-9 sm:mt-10 flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
+          <Link
+            href={HERO.primary_cta_href}
+            className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
+          >
+            {HERO.primary_cta_label}
+          </Link>
+          <Link
+            href={HERO.secondary_cta_href}
+            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-6 py-3 text-[13px] sm:text-[14px] font-semibold text-[#1A1A1A] hover:border-gray-300 hover:bg-gray-50"
+          >
+            {HERO.secondary_cta_label}
+            <ArrowRight size={15} aria-hidden="true" />
+          </Link>
+        </div>
+
+        {/* As featured in — grayscale press wordmarks */}
+        <div className="mt-12 sm:mt-14">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#1A1A1A]/40">
+            As featured in
+          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:gap-x-12">
+            {FEATURED_IN.map(({ name, className }) => (
+              <span
+                key={name}
+                className={cn(
+                  'text-lg sm:text-xl text-[#1A1A1A]/35 transition-colors hover:text-[#1A1A1A]/60',
+                  className,
+                )}
+              >
+                {name}
+              </span>
+            ))}
           </div>
         </div>
       </div>
+
     </section>
   )
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  DESIGNS PICKER — tabbed template grid (echoes The Knot's design picker)
@@ -240,15 +273,6 @@ function DesignsPicker({ content }: { content: WebsitesDesignsContent }) {
               </Link>
             )
           })}
-        </div>
-
-        <div className="mt-8 sm:mt-10 text-center">
-          <Link
-            href="/sign-up"
-            className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] font-extrabold uppercase tracking-[0.12em]"
-          >
-            Explore more designs
-          </Link>
         </div>
       </div>
     </section>

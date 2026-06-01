@@ -1,5 +1,4 @@
 import Link from 'next/link'
-import Reveal from '@/components/ui/Reveal'
 import { loadHomepageFeaturesContent, type HomepageFeatureBlock } from '@/lib/cms/homepage-features'
 
 function FeatureBlockSection({ block }: { block: HomepageFeatureBlock }) {
@@ -7,41 +6,40 @@ function FeatureBlockSection({ block }: { block: HomepageFeatureBlock }) {
 
   return (
     <div className={`flex flex-col ${reverseClass} items-center gap-10 sm:gap-14 md:gap-16`}>
-      <Reveal
-        direction={block.reverse ? 'right' : 'left'}
-        className="order-2 md:order-0 flex-1 w-full grid grid-cols-2 grid-rows-2 gap-2 sm:gap-3 h-[260px] sm:h-[340px] md:h-[440px]"
-      >
-        <div className="row-span-2 rounded-xl sm:rounded-2xl overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={block.media_main} alt="" className="w-full h-full object-cover object-top scale-105" />
+      <div className="order-2 md:order-0 flex-1 w-full">
+        <div className="relative h-[260px] w-full overflow-hidden rounded-2xl bg-gray-100 shadow-sm ring-1 ring-black/[0.04] sm:h-[340px] sm:rounded-3xl md:h-[440px]">
+          {block.media_video ? (
+            <video
+              src={block.media_video}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={block.media_main} alt="" className="h-full w-full object-cover" />
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 sm:p-6">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">
+                  {block.overlay_eyebrow}
+                </p>
+                <p className="mt-1 font-serif text-lg font-medium leading-tight text-white sm:text-xl">
+                  {block.overlay_caption_line_1}
+                  <br />
+                  {block.overlay_caption_line_2}
+                </p>
+              </div>
+            </>
+          )}
         </div>
-        <div className="rounded-xl sm:rounded-2xl overflow-hidden">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={block.media_secondary} alt="" className="w-full h-full object-cover" />
-        </div>
-        <div className="rounded-xl sm:rounded-2xl overflow-hidden relative">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={block.media_overlay} alt="" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-linear-to-t from-black/70 to-transparent" />
-          <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4">
-            <p className="text-white/70 text-[9px] sm:text-[10px] font-semibold uppercase tracking-[0.18em]">
-              {block.overlay_eyebrow}
-            </p>
-            <p className="text-white text-sm sm:text-base font-serif font-medium leading-tight mt-0.5">
-              {block.overlay_caption_line_1}
-              <br />
-              {block.overlay_caption_line_2}
-            </p>
-          </div>
-        </div>
-      </Reveal>
+      </div>
 
-      <Reveal
-        direction={block.reverse ? 'left' : 'right'}
-        className="order-1 md:order-0 flex-1 text-center md:text-left"
-        delay={0.1}
-      >
-        <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-bold leading-tight mb-4 sm:mb-5 text-gray-900">
+      <div className="order-1 md:order-0 flex-1 text-center md:text-left">
+        <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-bold leading-tight mb-4 sm:mb-5 text-[#1A1A1A]">
           {block.headline_line_1}
           <br />
           {block.headline_line_2}
@@ -59,7 +57,7 @@ function FeatureBlockSection({ block }: { block: HomepageFeatureBlock }) {
         <div className="flex flex-wrap justify-center md:justify-start gap-3">
           <Link
             href={block.primary_cta_href}
-            className="inline-flex items-center bg-gray-900 hover:bg-gray-800 text-white px-6 py-3 rounded-full font-medium transition-colors text-sm sm:text-base shadow-sm"
+            className="inline-flex items-center bg-[#1A1A1A] hover:bg-black text-white px-6 py-3 rounded-full font-medium transition-colors text-sm sm:text-base shadow-sm"
           >
             {block.primary_cta_label}
           </Link>
@@ -70,7 +68,7 @@ function FeatureBlockSection({ block }: { block: HomepageFeatureBlock }) {
             {block.secondary_cta_label}
           </Link>
         </div>
-      </Reveal>
+      </div>
     </div>
   )
 }
@@ -79,14 +77,14 @@ export async function Features() {
   const content = await loadHomepageFeaturesContent()
   return (
     <section className="py-12 sm:py-16 md:py-20 px-4 lg:px-8 max-w-7xl mx-auto">
-      <Reveal direction="up" className="text-center mb-10 sm:mb-14 md:mb-16">
-        <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold leading-tight text-gray-900">
+      <div className="text-center mb-10 sm:mb-14 md:mb-16">
+        <h2 className="text-3xl md:text-4xl lg:text-5xl font-serif font-bold leading-tight text-[#1A1A1A]">
           {content.header_title}
         </h2>
         <p className="text-base text-gray-600 mt-4 sm:mt-5 max-w-xl mx-auto leading-relaxed">
           {content.header_description}
         </p>
-      </Reveal>
+      </div>
 
       <div className="space-y-16 sm:space-y-20 md:space-y-24">
         {content.blocks.map((block) => (

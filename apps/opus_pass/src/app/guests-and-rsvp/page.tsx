@@ -15,8 +15,7 @@ export default async function GuestsLandingPage() {
   return (
     <>
       {isDraft && <PreviewBanner />}
-      <GuestsLandingClient />
-      <InvitationShowcase />
+      <GuestsLandingClient testimonials={<InvitationShowcase />} />
     </>
   )
 }

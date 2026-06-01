@@ -4,10 +4,8 @@ import { Heart, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { ProductInfo, type Product } from '@/components/guests/productInfo'
-import { ShopByCategoryCarousel } from './ShopByCategoryCarousel'
 import { FAQItem } from './FAQAccordion'
-import type { InvitationsHeroContent } from '@/lib/cms/invitations-hero'
-import type { InvitationsCategoriesContent } from '@/lib/cms/invitations-categories'
+import ScrollMorphHero from '@/components/ui/scroll-morph-hero-client'
 import type { InvitationsFeaturesContent, InvitationsFeatureCard } from '@/lib/cms/invitations-features'
 import type { InvitationsFeaturedSuiteContent } from '@/lib/cms/invitations-featured-suite'
 import type { InvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
@@ -22,37 +20,21 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function InvitationsLandingClient({
-  hero,
-  categories,
   features,
   featuredSuite,
   faqs,
   editorsPicks,
+  testimonials,
 }: {
-  hero: InvitationsHeroContent
-  categories: InvitationsCategoriesContent
   features: InvitationsFeaturesContent
   featuredSuite: InvitationsFeaturedSuiteContent
   faqs: InvitationsFaqsContent
   editorsPicks: InvitationsEditorsPicksContent
+  testimonials?: React.ReactNode
 }) {
   return (
     <div className="bg-white text-[#1A1A1A]">
-      <HeroBanner hero={hero} />
-      <section className="px-4 sm:px-6">
-        <div className="mx-auto max-w-7xl pt-10 sm:pt-14">
-          <div className="text-center mb-8 sm:mb-10">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-gray-900 mb-4">
-              {categories.heading}
-            </h2>
-            <p className="max-w-2xl mx-auto text-sm md:text-base text-gray-700 leading-relaxed">
-              {categories.description}
-            </p>
-          </div>
-          <ShopByCategoryCarousel categories={categories.categories} />
-        </div>
-      </section>
-      <SectionDivider />
+      <ScrollMorphHero />
       <EditorsPicks rows={editorsPicks.rows} />
       <SectionDivider />
       <section className="px-4 sm:px-6">
@@ -67,125 +49,9 @@ export default function InvitationsLandingClient({
       </section>
       <SectionDivider />
       <FeaturedSuite content={featuredSuite} />
+      {testimonials}
       <FAQs content={faqs} />
     </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  HERO BANNER
-// ─────────────────────────────────────────────────────────────────────────────
-
-function HeroBanner({ hero }: { hero: InvitationsHeroContent }) {
-  return (
-    <section className="px-4 sm:px-6 pt-4 sm:pt-6">
-      <div className="mx-auto max-w-7xl">
-        <div
-          className="relative overflow-hidden rounded-md min-h-[260px] sm:min-h-[340px] md:min-h-[400px]"
-          style={{ backgroundColor: hero.background_color || '#FAE6E9' }}
-        >
-          {/* Linen-y texture using subtle radial dots */}
-          <div className="absolute inset-0 opacity-[0.18] pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at 1px 1px, #B7A88E 0.6px, transparent 0)', backgroundSize: '6px 6px' }} />
-
-          {/* Uploaded hero image — bleeds flush to the top/right edges of the banner on desktop */}
-          {hero.right_image_url && (
-            <div className="hidden md:block absolute inset-y-0 right-0 w-5/12">
-              <Image
-                src={hero.right_image_url}
-                alt={hero.right_image_alt}
-                fill
-                priority
-                sizes="42vw"
-                style={{
-                  objectFit: hero.right_image_fit || 'cover',
-                  objectPosition: hero.right_image_position || 'center',
-                }}
-              />
-            </div>
-          )}
-
-          <div className="relative grid grid-cols-1 md:grid-cols-12 items-center gap-6 md:gap-4 p-6 sm:p-10 md:p-14">
-            {/* Copy */}
-            <div className="md:col-span-7 lg:col-span-7">
-              <h1 className="text-[1.8rem] sm:text-[2.2rem] md:text-[2.6rem] lg:text-[2.9rem] font-black uppercase tracking-tighter leading-[1.15] text-[#1A1A1A]">
-                {hero.headline_line_1}<br />{hero.headline_line_2}
-              </h1>
-              <p className="mt-6 sm:mt-7 text-[16px] sm:text-[17px] md:text-[18px] lg:text-[19px] text-[#1A1A1A]/80 leading-[1.7]">
-                {hero.description}
-              </p>
-              <div className="mt-9 sm:mt-10 flex flex-wrap items-center gap-x-5 gap-y-3">
-                <Link
-                  href={hero.primary_cta_href}
-                  className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
-                >
-                  {hero.primary_cta_label}
-                </Link>
-                <Link
-                  href={hero.secondary_cta_href}
-                  className="text-[13px] sm:text-[14px] font-semibold text-[#1A1A1A] underline underline-offset-[6px] decoration-[#1A1A1A]/40 hover:decoration-[#1A1A1A]"
-                >
-                  {hero.secondary_cta_label} <span aria-hidden>→</span>
-                </Link>
-              </div>
-            </div>
-
-            {/* Right side — uploaded image if present, otherwise the built-in flat-lay */}
-            <div className="md:col-span-5 lg:col-span-5 relative h-[200px] sm:h-[280px] md:h-auto">
-              {hero.right_image_url ? (
-                /* Mobile: rounded card. Desktop bleed is handled by the absolute image above. */
-                <div className="md:hidden relative h-full w-full overflow-hidden rounded-md shadow-md">
-                  <Image
-                    src={hero.right_image_url}
-                    alt={hero.right_image_alt}
-                    fill
-                    priority
-                    sizes="100vw"
-                    style={{
-                      objectFit: hero.right_image_fit || 'cover',
-                      objectPosition: hero.right_image_position || 'center',
-                    }}
-                  />
-                </div>
-              ) : (
-                <>
-                  {/* Pearls — decorative row */}
-                  <div
-                    aria-hidden="true"
-                    className="absolute top-0 left-0 right-0 h-2 hidden md:block"
-                    style={{ background: 'repeating-linear-gradient(90deg, #E8D9A7 0px, #E8D9A7 8px, transparent 8px, transparent 14px)' }}
-                  />
-
-                  {/* Couple portrait */}
-                  <div className="absolute right-[8%] top-[6%] w-[28%] aspect-[3/4] overflow-hidden rounded-sm shadow-md rotate-[-4deg] bg-white">
-                    <Image src="/assets/images/cutesy_couple.jpg" alt="" fill sizes="200px" className="object-cover" />
-                  </div>
-
-                  {/* Invitation: Modern block */}
-                  <div className="absolute left-0 top-[30%] w-[34%] aspect-[3/4] shadow-md rotate-[-3deg]">
-                    <div className="absolute inset-0"><InvitationVisual treatment="modern-block" /></div>
-                  </div>
-
-                  {/* Invitation: Floral border */}
-                  <div className="absolute left-[28%] top-[15%] w-[30%] aspect-[3/4] shadow-md rotate-[2deg]">
-                    <div className="absolute inset-0"><InvitationVisual treatment="floral-border" /></div>
-                  </div>
-
-                  {/* Invitation: Navy gold */}
-                  <div className="absolute right-[2%] top-[55%] w-[32%] aspect-[3/4] shadow-md rotate-[5deg]">
-                    <div className="absolute inset-0"><InvitationVisual treatment="navy-gold" /></div>
-                  </div>
-
-                  {/* Small stationery label sticker */}
-                  <div className="absolute right-[42%] bottom-[2%] hidden sm:block bg-white border border-gray-200 rounded-sm px-3 py-1 rotate-[-2deg] shadow-sm">
-                    <p className="text-[9px] uppercase tracking-[0.22em] font-bold text-[#1A1A1A]">Bagamoyo Modern</p>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
   )
 }
 
@@ -445,7 +311,7 @@ function pickToProduct(pick: InvitationsEditorsPicksPick): Product {
 function EditorsPicks({ rows: cmsRows }: { rows: InvitationsEditorsPicksContent['rows'] }) {
   return (
     <section className="px-4 sm:px-6">
-      <div className="mx-auto max-w-7xl pt-10 sm:pt-14 space-y-12 sm:space-y-14 md:space-y-16">
+      <div className="mx-auto max-w-7xl pt-4 sm:pt-6 space-y-12 sm:space-y-14 md:space-y-16">
         {cmsRows.map((row) => (
           <div
             key={row.id}
