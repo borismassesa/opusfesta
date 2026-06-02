@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { UserButton, useUser } from '@clerk/nextjs'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
@@ -177,17 +177,17 @@ const navItems: Array<{
       title: 'WEDDING INVITATIONS',
       description: 'Designer-worthy digital invitations for every wedding moment, sent by WhatsApp or SMS.',
       linkText: 'Browse all designs',
-      href: '/invitations',
+      href: '/opuspass/invitations',
     },
     columns: [
       {
         title: 'Browse',
         links: [
-          { Icon: Users, label: 'All Designs', href: '/invitations/catalog' },
-          { Icon: CheckCircle2, label: 'Save the Dates', href: '/invitations/catalog' },
-          { Icon: MessageCircle, label: 'Wedding Invitations', href: '/invitations/catalog' },
-          { Icon: MapPin, label: 'Send-Off & Kitchen Party', href: '/invitations/catalog' },
-          { Icon: Heart, label: 'Kadi za Michango', href: '/invitations/catalog' },
+          { Icon: Users, label: 'All Designs', href: '/opuspass/invitations/catalog' },
+          { Icon: CheckCircle2, label: 'Save the Dates', href: '/opuspass/invitations/catalog' },
+          { Icon: MessageCircle, label: 'Wedding Invitations', href: '/opuspass/invitations/catalog' },
+          { Icon: MapPin, label: 'Send-Off & Kitchen Party', href: '/opuspass/invitations/catalog' },
+          { Icon: Heart, label: 'Kadi za Michango', href: '/opuspass/invitations/catalog' },
         ],
       },
       {
@@ -199,16 +199,46 @@ const navItems: Array<{
       },
     ],
     photoGridTitle: 'Wedding Paper',
-    photoGrid: guestsPhotoGrid.map((item) => ({ ...item, href: '/invitations' })),
+    photoGrid: guestsPhotoGrid.map((item) => ({ ...item, href: '/opuspass/invitations' })),
   },
   {
-    label: 'Websites',
+    label: 'Guests & RSVP',
+    card: {
+      image: 'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=800&q=80',
+      title: 'GUESTS & RSVP',
+      description: 'Collect RSVPs in real time, manage your guest list and track every response in one place.',
+      linkText: 'Manage guests & RSVPs',
+      href: '/opuspass/guests-and-rsvp',
+    },
+    columns: [
+      {
+        title: 'Features',
+        links: [
+          { Icon: Users, label: 'Guest List Manager', href: '/opuspass/guests-and-rsvp' },
+          { Icon: CheckCircle2, label: 'Live RSVP Tracking', href: '/opuspass/guests-and-rsvp' },
+          { Icon: MessageCircle, label: 'WhatsApp & SMS Invites', href: '/opuspass/guests-and-rsvp' },
+          { Icon: CalendarCheck, label: 'Seating Plan', href: '/opuspass/guests-and-rsvp' },
+        ],
+      },
+      {
+        title: 'Resources',
+        links: [
+          { Icon: PenLine, label: 'RSVP Wording Ideas', href: '/advice-and-ideas' },
+          { Icon: BookOpen, label: 'Guest List Tips', href: '/advice-and-ideas' },
+        ],
+      },
+    ],
+    photoGridTitle: 'Guest Tools',
+    photoGrid: guestsPhotoGrid.map((item) => ({ ...item, href: '/opuspass/guests-and-rsvp' })),
+  },
+  {
+    label: 'Wedding Website',
     card: {
       image: 'https://images.unsplash.com/photo-1461301214746-1e109215d6d3?auto=format&fit=crop&w=800&q=80',
       title: 'WEDDING WEBSITES',
       description: 'Build a beautiful wedding website in minutes and share it with your guests.',
       linkText: 'Create your website',
-      href: '/websites',
+      href: '/opuspass/websites',
     },
     columns: [
       {
@@ -299,6 +329,35 @@ const navItems: Array<{
     photoGrid: attirePhotoGrid,
   },
 ]
+
+// Links into the opus_pass zone (/opuspass/*) must use a plain <a>: it is a
+// separate Next.js app behind a rewrite, so client-side <Link> routing cannot
+// cross the zone boundary. Internal opus_website links keep using <Link>.
+function NavAnchor({
+  href,
+  className,
+  onClick,
+  children,
+}: {
+  href?: string
+  className?: string
+  onClick?: () => void
+  children: ReactNode
+}) {
+  const target = href ?? '#'
+  if (target.startsWith('/opuspass')) {
+    return (
+      <a href={target} className={className} onClick={onClick}>
+        {children}
+      </a>
+    )
+  }
+  return (
+    <Link href={target} className={className} onClick={onClick}>
+      {children}
+    </Link>
+  )
+}
 
 export default function Navbar() {
   const { isSignedIn, isLoaded } = useUser()
@@ -412,13 +471,13 @@ export default function Navbar() {
                 <p className="text-gray-500 text-xs font-medium mb-5 leading-relaxed">
                   {activeItem.card.description}
                 </p>
-                <Link
+                <NavAnchor
                   href={getNavHref(activeItem.card.href)}
                   className="mt-auto inline-flex items-center gap-2 text-[#1A1A1A] font-bold text-sm hover:gap-3 transition-all group"
                 >
                   {activeItem.card.linkText}
                   <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                </Link>
+                </NavAnchor>
 
               </div>
             </div>
@@ -433,7 +492,7 @@ export default function Navbar() {
                   <ul className="space-y-0.5">
                     {col.links.map((link, lIdx) => (
                       <li key={lIdx}>
-                        <Link
+                        <NavAnchor
                           href={getNavHref(link.href)}
                           className="flex items-center gap-3 px-3 py-2 rounded-xl group hover:bg-white transition-colors"
                         >
@@ -445,7 +504,7 @@ export default function Navbar() {
                           <span className="font-semibold text-sm text-[#1A1A1A] leading-tight whitespace-nowrap group-hover:text-[#1A1A1A]">
                             {link.label}
                           </span>
-                        </Link>
+                        </NavAnchor>
                       </li>
                     ))}
                   </ul>
@@ -631,14 +690,14 @@ export default function Navbar() {
                         <p className="text-white text-xs font-medium leading-snug mb-2 opacity-90">
                           {item.card.description}
                         </p>
-                        <Link
+                        <NavAnchor
                           href={getNavHref(item.card.href)}
                           onClick={closeMobile}
                           className="inline-flex items-center gap-1.5 bg-white text-[#1A1A1A] text-xs font-bold px-3 py-1.5 rounded-full"
                         >
                           {item.card.linkText}
                           <ArrowRight size={11} />
-                        </Link>
+                        </NavAnchor>
                       </div>
                     </div>
 
@@ -651,7 +710,7 @@ export default function Navbar() {
                         <ul className="flex flex-col gap-0.5">
                           {col.links.map((link, lIdx) => (
                             <li key={lIdx}>
-                              <Link
+                              <NavAnchor
                                 href={getNavHref(link.href)}
                                 onClick={closeMobile}
                                 className="flex items-center gap-3 px-3 py-3 rounded-xl bg-gray-50 hover:bg-gray-100 active:bg-gray-200 transition-colors"
@@ -663,7 +722,7 @@ export default function Navbar() {
                                 )}
                                 <span className="text-sm font-semibold text-[#1A1A1A] flex-1">{link.label}</span>
                                 <ChevronDown size={14} className="-rotate-90 text-gray-300 shrink-0" />
-                              </Link>
+                              </NavAnchor>
                             </li>
                           ))}
                         </ul>
