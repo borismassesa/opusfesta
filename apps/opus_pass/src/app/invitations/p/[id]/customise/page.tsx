@@ -57,20 +57,11 @@ async function loadCoupleProfile(userId: string): Promise<CoupleProfile | null> 
   const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
   if (!names.length && !profile?.wedding_date && !profile?.city && !ceremony) return null
 
-  // Derive ceremony time (HH:MM) from starts_at if present
-  let ceremonyTime: string | null = null
-  if (ceremony?.starts_at) {
-    const d = new Date(ceremony.starts_at)
-    const h = d.getUTCHours().toString().padStart(2, '0')
-    const m = d.getUTCMinutes().toString().padStart(2, '0')
-    ceremonyTime = `${h}:${m}`
-  }
-
   return {
     coupleNames: names.join(' & ') || null,
     weddingDate: profile?.wedding_date ?? null,
-    city: ceremony?.city ?? ceremony?.venue_name ?? profile?.city ?? null,
-    ceremonyTime,
+    venue: ceremony?.venue_name ?? ceremony?.city ?? profile?.city ?? null,
+    ceremonyStartsAt: ceremony?.starts_at ?? null,
     dressCode: ceremony?.dress_code ?? null,
   }
 }

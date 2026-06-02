@@ -172,8 +172,8 @@ function generateGuestCode(): string {
 export type CoupleProfile = {
   coupleNames: string | null
   weddingDate: string | null
-  city: string | null
-  ceremonyTime: string | null
+  venue: string | null
+  ceremonyStartsAt: string | null
   dressCode: string | null
 }
 
@@ -201,8 +201,14 @@ export default function CustomiseClient({
   const [celebrant, setCelebrant] = useState(coupleProfile?.coupleNames ?? 'Amani & Neema')
   const [familyIntro, setFamilyIntro] = useState('')
   const [dateISO, setDateISO] = useState(coupleProfile?.weddingDate ?? '2026-08-22')
-  const [time, setTime] = useState(coupleProfile?.ceremonyTime ?? '')
-  const [venue, setVenue] = useState(coupleProfile?.city ?? 'Bagamoyo, Tanzania')
+  const [time, setTime] = useState(() => {
+    if (coupleProfile?.ceremonyStartsAt) {
+      const d = new Date(coupleProfile.ceremonyStartsAt)
+      return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
+    }
+    return ''
+  })
+  const [venue, setVenue] = useState(coupleProfile?.venue ?? 'Bagamoyo, Tanzania')
 
   // Reception details
   const [receptionVenue, setReceptionVenue] = useState('')
@@ -281,12 +287,12 @@ export default function CustomiseClient({
         const svgRsvp   = extractText('#Rsvp')
 
         // Apply: profile wins where it has a value, SVG fills the rest.
-        if (!coupleProfile?.coupleNames  && svgNames) setCelebrant(svgNames)
-        if (!coupleProfile?.ceremonyTime && svgTime)  setTime(svgTime)
-        if (!coupleProfile?.city         && svgVenue) setVenue(svgVenue)
-        if (!coupleProfile?.dressCode    && svgDressCode) setDressCode(svgDressCode)
+        if (!coupleProfile?.coupleNames    && svgNames) setCelebrant(svgNames)
+        if (!coupleProfile?.ceremonyStartsAt && svgTime)  setTime(svgTime)
+        if (!coupleProfile?.venue          && svgVenue) setVenue(svgVenue)
+        if (!coupleProfile?.dressCode      && svgDressCode) setDressCode(svgDressCode)
         if (svgIntro) setFamilyIntro(svgIntro)
-        if (svgRsvp && rsvpContacts.every((c) => !c)) setRsvpContacts([svgRsvp])
+        if (svgRsvp) setRsvpContacts((prev) => prev.every((c) => !c) ? [svgRsvp] : prev)
 
         if (!coupleProfile?.weddingDate && svgDate) {
           // SVG dates may be formatted as DD · MM · YYYY — convert back to YYYY-MM-DD
@@ -1842,18 +1848,27 @@ export default function CustomiseClient({
             ) : activeTab === 'invitation' && cardSide === 'front' ? (
               <div className="w-full max-w-sm origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
                 <div ref={cardRef} className="relative aspect-[5/7] overflow-hidden rounded-[4px] bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
-                  <div
-                    className="absolute inset-0"
-                    style={{
-                      '--iv-bg':   selectedPalette.background,
-                      '--iv-surf': selectedPalette.surface,
-                      '--iv-acc':  selectedPalette.accent,
-                      '--iv-tp':   selectedPalette.textPrimary,
-                      '--iv-ts':   selectedPalette.textSecondary,
-                      '--iv-mut':  selectedPalette.muted,
-                    } as React.CSSProperties}
-                    dangerouslySetInnerHTML={{ __html: renderedSvg ?? '' }}
-                  />
+                  {renderedSvg ? (
+                    <div
+                      className="absolute inset-0"
+                      style={{
+                        '--iv-bg':   selectedPalette.background,
+                        '--iv-surf': selectedPalette.surface,
+                        '--iv-acc':  selectedPalette.accent,
+                        '--iv-tp':   selectedPalette.textPrimary,
+                        '--iv-ts':   selectedPalette.textSecondary,
+                        '--iv-mut':  selectedPalette.muted,
+                      } as React.CSSProperties}
+                      dangerouslySetInnerHTML={{ __html: renderedSvg }}
+                    />
+                  ) : (
+                    <div
+                      className="absolute inset-0 flex items-center justify-center"
+                      style={{ backgroundColor: selectedPalette.background }}
+                    >
+                      <span className="text-[11px] font-medium text-gray-400">Loading design…</span>
+                    </div>
+                  )}
                   <CardClickLayer
                     containerRef={cardRef}
                     onEdit={(panel) => {
@@ -2050,7 +2065,7 @@ function ReviewCardItem({
             rsvpContacts={rsvpContacts.filter(Boolean)}
             stubLabel={ticketStubLabel || 'ACCESS PASS TO OUR WEDDING'}
           />
-        ) : tab === 'invitation' && side === 'front' ? (
+        ) : tab === 'invitation' && side === 'front' && designSvg ? (
           <div
             className="absolute inset-0"
             style={{
@@ -2061,7 +2076,7 @@ function ReviewCardItem({
               '--iv-ts':   selectedPalette.textSecondary,
               '--iv-mut':  selectedPalette.muted,
             } as React.CSSProperties}
-            dangerouslySetInnerHTML={{ __html: designSvg ?? '' }}
+            dangerouslySetInnerHTML={{ __html: designSvg }}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center" style={{ backgroundColor: side === 'back' ? selectedPalette.accent : selectedPalette.background }}>
