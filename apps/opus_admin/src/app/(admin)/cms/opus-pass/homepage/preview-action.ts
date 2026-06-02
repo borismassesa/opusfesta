@@ -7,5 +7,6 @@ export async function getOpusPassPreviewUrl(redirectPath: string = '/'): Promise
   const token = process.env.OPUS_PASS_PREVIEW_TOKEN
   if (!token) return null
   const safePath = ALLOWED_REDIRECTS.has(redirectPath) ? redirectPath : '/'
-  return `${url}/api/preview/enable?token=${encodeURIComponent(token)}&redirect=${encodeURIComponent(safePath)}`
+  // opus_pass runs under basePath '/opuspass' — the preview API lives there.
+  return `${url}/opuspass/api/preview/enable?token=${encodeURIComponent(token)}&redirect=${encodeURIComponent(safePath)}`
 }

@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { motion, useScroll, useTransform, useSpring, useMotionValue } from 'framer-motion'
+import { assetPath } from '@/lib/asset-path'
 import type { InvitationsHeroContent } from '@/lib/cms/invitations-hero'
 
 // --- Types ---
@@ -51,7 +52,7 @@ function FlipCard({ src, index, target }: FlipCardProps) {
           style={{ backfaceVisibility: 'hidden' }}
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={src} alt={`Invitation design ${index + 1}`} className="h-full w-full object-cover" />
+          <img src={assetPath(src)} alt={`Invitation design ${index + 1}`} className="h-full w-full object-cover" />
           <div className="absolute inset-0 bg-black/10 transition-colors group-hover:bg-transparent" />
         </div>
 
@@ -282,7 +283,7 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
                   <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-full bg-white ring-1 ring-gray-200 transition-shadow group-hover:shadow-md">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={cat.image}
+                      src={assetPath(cat.image)}
                       alt={cat.alt}
                       className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                     />

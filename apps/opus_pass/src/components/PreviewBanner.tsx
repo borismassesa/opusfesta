@@ -8,7 +8,8 @@ export function PreviewBanner() {
 
   const exit = () =>
     startTransition(async () => {
-      await fetch('/api/preview/disable', { method: 'POST' })
+      // basePath ('/opuspass') is NOT applied to raw fetch() — prefix explicitly.
+      await fetch('/opuspass/api/preview/disable', { method: 'POST' })
       window.location.reload()
     })
 

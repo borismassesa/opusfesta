@@ -62,7 +62,8 @@ export default function OpusPassDashboardCmsLayout({ children }: { children: Rea
 
 function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
-  const opusPassUrl = process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'
+  // opus_pass is mounted under basePath '/opuspass'.
+  const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}/opuspass`
   const activeSlug = slugFromPath(pathname)
 
   useSetPageHeading({

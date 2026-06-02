@@ -95,7 +95,7 @@ const sections: LegalSection[] = [
       <p>
         We use cookies and similar technologies to keep you signed in, remember your
         preferences and understand how the Service is used. You can control these — see
-        our <a href="/cookies">Cookie Policy</a> for details.
+        our <a href="/opuspass/cookies">Cookie Policy</a> for details.
       </p>
     ),
   },

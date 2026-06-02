@@ -4,6 +4,7 @@ import {
   loadHomepageTestimonialsContent,
   type HomepageTestimonialItem,
 } from '@/lib/cms/homepage-testimonials'
+import { assetPath } from '@/lib/asset-path'
 
 // Match the testimonial card design from /websites — dark/purple alternating
 // cards with a divider line, sans-serif quote and a role pill on the right.
@@ -35,7 +36,7 @@ function TestimonialCard({ t, index }: { t: HomepageTestimonialItem; index: numb
       <div className="mt-4 flex items-center gap-3">
         <div className="w-10 h-10 shrink-0 rounded-full overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={t.avatar} alt="" className="w-full h-full object-cover" />
+          <img src={assetPath(t.avatar)} alt="" className="w-full h-full object-cover" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-bold leading-tight truncate">{t.name}</p>

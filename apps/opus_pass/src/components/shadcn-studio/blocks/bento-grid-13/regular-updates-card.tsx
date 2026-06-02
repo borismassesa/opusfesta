@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { MotionPreset } from '@/components/ui/motion-preset'
 import { NumberTicker } from '@/components/ui/number-ticker'
+import { assetPath } from '@/lib/asset-path'
 
 import RegularUpdatesRippleBg from '@/components/shadcn-studio/blocks/bento-grid-13/regular-updates-ripple-bg'
 
@@ -118,7 +119,7 @@ const RegularUpdatesCard = () => {
         </div>
         <RegularUpdatesRippleBg className='text-border pointer-events-none size-118 select-none' />
         <img
-          src='/assets/logo/opusfesta-logo-mark.png'
+          src={assetPath('/assets/logo/opusfesta-logo-mark.png')}
           alt='OpusFesta'
           className='absolute top-1/2 size-30 -translate-y-1/2 object-contain'
         />
@@ -154,7 +155,7 @@ const RegularUpdatesCard = () => {
             </div>
 
             <img
-              src={notification.productImage}
+              src={assetPath(notification.productImage)}
               alt={notification.productAlt}
               className='size-13 rounded-lg object-cover'
             />
