@@ -41,48 +41,48 @@ export function MinimalLine({ names, date, venue, palette, message, messageAttr,
             <text
               x={na.x} y="198"
               textAnchor={na.textAnchor} dominantBaseline="middle"
-              style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight}
-              fill="var(--iv-tp)"
-            >{line1}</text>
+              style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight}
+              fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}
+            >{na.uppercase ? line1.toUpperCase() : line1}</text>
             <text
               x={na.x} y="220"
               textAnchor={na.textAnchor} dominantBaseline="middle"
-              style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight}
-              fill="var(--iv-tp)"
-            >&amp; {line2}</text>
+              style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight}
+              fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}
+            >&amp; {na.uppercase ? line2.toUpperCase() : line2}</text>
           </>
         ) : (
           <text
             x={na.x} y="208"
             textAnchor={na.textAnchor} dominantBaseline="middle"
-            style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight}
-            fill="var(--iv-tp)"
-          >{names}</text>
+            style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight}
+            fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}
+          >{na.uppercase ? names.toUpperCase() : names}</text>
         )}
       </g>
       <text
         data-section="date"
         x={da.x} y={line2 ? '242' : '232'}
         textAnchor={da.textAnchor} dominantBaseline="middle"
-        fontFamily="inherit" fontSize={da.fontSize} fontWeight={da.fontWeight} letterSpacing="2.2"
-        fill="var(--iv-ts)"
-      >{date.toUpperCase()}</text>
+        fontFamily="inherit" fontSize={da.fontSize} fontWeight={da.fontWeight} fontStyle={da.fontStyle} letterSpacing={da.letterSpacing ?? 2.2}
+        fill={da.fill ?? 'var(--iv-ts)'} opacity={da.opacity}
+      >{da.uppercase === false ? date : date.toUpperCase()}</text>
       <text
         data-section="venue"
         x={va.x} y={line2 ? '258' : '248'}
         textAnchor={va.textAnchor} dominantBaseline="middle"
-        fontFamily="inherit" fontSize={va.fontSize} fontWeight={va.fontWeight} letterSpacing="1.5"
-        fill="var(--iv-mut)"
-      >{venue.toUpperCase()}</text>
+        fontFamily="inherit" fontSize={va.fontSize} fontWeight={va.fontWeight} fontStyle={va.fontStyle} letterSpacing={va.letterSpacing ?? 1.5}
+        fill={va.fill ?? 'var(--iv-mut)'} opacity={va.opacity}
+      >{va.uppercase === false ? venue : venue.toUpperCase()}</text>
       {message && (
         <g data-section="message">
           <line x1="100" y1="275" x2="200" y2="275" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
           <text
             x={ma.x} y="289"
             textAnchor={ma.textAnchor} dominantBaseline="middle"
-            style={font.bodyStyle} fontSize={ma.fontSize} fontWeight={ma.fontWeight}
-            fill="var(--iv-ts)"
-          >{message}</text>
+            style={{ ...font.bodyStyle, ...(ma.fontStyle && { fontStyle: ma.fontStyle }) }} fontSize={ma.fontSize} fontWeight={ma.fontWeight}
+            fill={ma.fill ?? 'var(--iv-ts)'} opacity={ma.opacity}
+          >{ma.uppercase ? message.toUpperCase() : message}</text>
           {messageAttr && (
             <text
               x={ma.x} y="303"

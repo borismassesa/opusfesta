@@ -741,7 +741,7 @@ function ProductCard({
         {/* Zoom-on-hover wrapper around the invitation visual */}
         <span className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.04]">
           {product.imageUrl ? (
-            <Image src={product.imageUrl} alt="" fill sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" className="object-cover" />
+            <Image src={product.imageUrl} alt="" fill sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" className="object-cover" unoptimized />
           ) : (
             <InvitationVisual treatment={product.treatment} palette={activePalette} />
           )}
