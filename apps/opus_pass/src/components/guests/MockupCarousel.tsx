@@ -45,7 +45,7 @@ function InviteCard({
   className?: string
   style?: React.CSSProperties
 }) {
-  const svgHtml = designSvgProp ?? null
+  const svgHtml = designSvgProp ? sanitizeSvg(designSvgProp) : null
 
   const paletteVars = palette
     ? ({
