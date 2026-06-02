@@ -48,6 +48,16 @@ export const PRODUCT_CATEGORIES = [
   'Event Tickets',
 ] as const
 
+export type InvitationPalette = {
+  name: string
+  background: string
+  surface: string
+  accent: string
+  textPrimary: string
+  textSecondary: string
+  muted: string
+}
+
 export type InvitationProductRecord = {
   id: string
   slug: string
@@ -96,7 +106,7 @@ export function emptyInvitationProduct(
     price_now: 0,
     digital_unit_price: 10000,
     free_sample: true,
-    swatches: ['#F5EFE3', '#1A1A1A', '#A6B89A'],
+    swatches: [],
     palettes: [],
     treatment: 'classic-serif',
     image_url: '',
