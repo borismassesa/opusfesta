@@ -2,20 +2,20 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { Heart } from 'lucide-react'
+import DOMPurify from 'dompurify'
 import { cn } from '@/lib/utils'
 import { assetPath } from '@/lib/asset-path'
 import { InvitationVisual, COUPLE_DEFAULT, type Treatment, type Couple, type InvitationPalette } from '@/components/guests/InvitationVisual'
 
-// Defense-in-depth for the inlined SVG: require an SVG/XML prefix and strip the
-// obvious script vectors. This is NOT full sanitization — before wiring designImage
-// to any untrusted source (CMS/storage), replace with DOMPurify (svg profile).
+// CMS-uploaded SVGs (designImage) are untrusted. Sanitize with DOMPurify's SVG
+// profile before injecting via dangerouslySetInnerHTML — it strips <script>,
+// event handlers, <foreignObject>, javascript: refs and other vectors a regex
+// strip would miss. Runs client-side only (called from a useEffect).
 function sanitizeSvg(text: string): string | null {
   const t = text.trimStart()
   if (!t.startsWith('<svg') && !t.startsWith('<?xml')) return null
-  return t
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-    .replace(/(?:href|xlink:href)\s*=\s*(["'])\s*javascript:[^"']*\1/gi, '')
+  const clean = DOMPurify.sanitize(t, { USE_PROFILES: { svg: true, svgFilters: true } })
+  return clean || null
 }
 
 type SceneId = 'flat-lay' | 'dark-studio' | 'paper-stack' | 'envelope' | 'phone'
@@ -91,9 +91,13 @@ function InviteCard({
   )
 }
 
-function FlatLayScene({ treatment, couple, designImage, palette }: SceneProps) {
+function FlatLayScene({ treatment, couple, designImage, palette, mockupImages }: SceneProps) {
+  const bg = mockupImages?.['flat-lay']
   return (
-    <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: '#EDE9E1' }}>
+    <div
+      className="absolute inset-0 flex items-center justify-center"
+      style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: '#EDE9E1' }}
+    >
       <InviteCard
         treatment={treatment}
         couple={couple}
@@ -106,9 +110,13 @@ function FlatLayScene({ treatment, couple, designImage, palette }: SceneProps) {
   )
 }
 
-function DarkStudioScene({ treatment, couple, designImage, palette }: SceneProps) {
+function DarkStudioScene({ treatment, couple, designImage, palette, mockupImages }: SceneProps) {
+  const bg = mockupImages?.['dark-studio']
   return (
-    <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: '#111111' }}>
+    <div
+      className="absolute inset-0 flex items-center justify-center"
+      style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: '#111111' }}
+    >
       <InviteCard
         treatment={treatment}
         couple={couple}
@@ -121,9 +129,13 @@ function DarkStudioScene({ treatment, couple, designImage, palette }: SceneProps
   )
 }
 
-function PaperStackScene({ treatment, couple, designImage, palette }: SceneProps) {
+function PaperStackScene({ treatment, couple, designImage, palette, mockupImages }: SceneProps) {
+  const bg = mockupImages?.['paper-stack']
   return (
-    <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: '#E8E3DB' }}>
+    <div
+      className="absolute inset-0 flex items-center justify-center"
+      style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: '#E8E3DB' }}
+    >
       <div className="relative w-[60%]" style={{ aspectRatio: '3/4' }}>
         {/* Back cards */}
         <div className="absolute inset-0" style={{ transform: 'rotate(5deg)', opacity: 0.8 }}>
@@ -141,9 +153,13 @@ function PaperStackScene({ treatment, couple, designImage, palette }: SceneProps
   )
 }
 
-function EnvelopeScene({ treatment, couple, designImage, palette }: SceneProps) {
+function EnvelopeScene({ treatment, couple, designImage, palette, mockupImages }: SceneProps) {
+  const bg = mockupImages?.['envelope']
   return (
-    <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: '#F5EFE3' }}>
+    <div
+      className="absolute inset-0 flex items-center justify-center"
+      style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: '#F5EFE3' }}
+    >
       <div className="relative" style={{ width: '72%' }}>
         {/* Envelope body — overflow-hidden only applies to the envelope itself */}
         <div
@@ -180,9 +196,13 @@ function EnvelopeScene({ treatment, couple, designImage, palette }: SceneProps) 
   )
 }
 
-function PhoneScene({ treatment, couple, designImage, palette }: SceneProps) {
+function PhoneScene({ treatment, couple, designImage, palette, mockupImages }: SceneProps) {
+  const bg = mockupImages?.['phone']
   return (
-    <div className="absolute inset-0 flex items-center justify-center" style={{ backgroundColor: '#1A1A1A' }}>
+    <div
+      className="absolute inset-0 flex items-center justify-center"
+      style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: '#1A1A1A' }}
+    >
       {/* Phone bezel */}
       <div
         className="relative rounded-[20px] overflow-hidden"
@@ -226,6 +246,27 @@ type SceneProps = {
   couple: Couple
   designImage?: string
   palette?: InvitationPalette
+  mockupImages?: Record<string, string>
+  sceneId?: string
+}
+
+function GenericScene({ treatment, couple, designImage, palette, mockupImages, sceneId }: SceneProps) {
+  const bg = sceneId ? mockupImages?.[sceneId] : undefined
+  return (
+    <div
+      className="absolute inset-0 flex items-center justify-center"
+      style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: '#F0EDE8' }}
+    >
+      <InviteCard
+        treatment={treatment}
+        couple={couple}
+        designImage={designImage}
+        palette={palette}
+        className="w-[62%] rounded-sm"
+        style={{ boxShadow: '0 20px 60px -10px rgba(0,0,0,0.3)' }}
+      />
+    </div>
+  )
 }
 
 const SCENE_COMPONENTS: Record<SceneId, React.ComponentType<SceneProps>> = {
@@ -241,6 +282,8 @@ export function MockupCarousel({
   couple = COUPLE_DEFAULT,
   designImage,
   palette,
+  mockupImages,
+  scenes: scenesProp,
   onFavourite,
   favourited = false,
 }: {
@@ -248,18 +291,22 @@ export function MockupCarousel({
   couple?: Couple
   designImage?: string
   palette?: InvitationPalette
+  mockupImages?: Record<string, string>
+  scenes?: { id: string; label: string }[]
   onFavourite?: () => void
   favourited?: boolean
 }) {
-  const [active, setActive] = useState<SceneId>('flat-lay')
-  const ActiveScene = SCENE_COMPONENTS[active]
-  const sceneProps: SceneProps = { treatment, couple, designImage, palette }
+  const scenesToShow = scenesProp && scenesProp.length > 0 ? scenesProp : SCENES
+  const [active, setActive] = useState<string>(scenesToShow[0]?.id ?? 'flat-lay')
+
+  const ActiveSceneComponent = SCENE_COMPONENTS[active as SceneId] ?? GenericScene
+  const sceneProps: SceneProps = { treatment, couple, designImage, palette, mockupImages, sceneId: active }
 
   return (
     <div>
       {/* Main view — 7:6 (not square) so the thumbnail strip stays in view */}
       <div className="relative aspect-[7/6] bg-white rounded-md shadow-md overflow-hidden">
-        <ActiveScene {...sceneProps} />
+        <ActiveSceneComponent {...sceneProps} />
 
         {onFavourite && (
           <button
@@ -275,9 +322,9 @@ export function MockupCarousel({
       </div>
 
       {/* Thumbnail strip */}
-      <div className="mt-4 grid grid-cols-5 gap-2">
-        {SCENES.map((scene) => {
-          const ThumbScene = SCENE_COMPONENTS[scene.id]
+      <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: `repeat(${scenesToShow.length}, minmax(0, 1fr))` }}>
+        {scenesToShow.map((scene) => {
+          const ThumbComponent = SCENE_COMPONENTS[scene.id as SceneId] ?? GenericScene
           const isActive = active === scene.id
           return (
             <button
@@ -291,7 +338,7 @@ export function MockupCarousel({
                 isActive ? 'ring-2 ring-gray-400 ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-400',
               )}
             >
-              <ThumbScene {...sceneProps} />
+              <ThumbComponent {...sceneProps} sceneId={scene.id} />
             </button>
           )
         })}

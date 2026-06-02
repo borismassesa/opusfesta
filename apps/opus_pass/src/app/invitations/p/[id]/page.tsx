@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { loadInvitationProduct } from '@/lib/cms/invitations-products'
+import { loadInvitationProduct, loadInvitationProducts } from '@/lib/cms/invitations-products'
+import { loadMockupCarouselImages } from '@/lib/cms/mockup-carousel'
 import ProductDetailClient from './ProductDetailClient'
 
 export const dynamic = 'force-dynamic'
@@ -19,7 +20,18 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function ProductDetailPage({ params }: { params: Promise<Params> }) {
   const { id } = await params
-  const product = await loadInvitationProduct(id)
+  const [product, allProducts, mockup] = await Promise.all([
+    loadInvitationProduct(id),
+    loadInvitationProducts(),
+    loadMockupCarouselImages(),
+  ])
   if (!product) return notFound()
-  return <ProductDetailClient product={product} />
+  return (
+    <ProductDetailClient
+      product={product}
+      allProducts={allProducts}
+      mockupImages={mockup.images}
+      mockupScenes={mockup.scenes}
+    />
+  )
 }

@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server'
 import { revalidatePath } from 'next/cache'
 
-const ALLOWED_EXACT = new Set(['/', '/invitations', '/guests-and-rsvp', '/websites'])
+const ALLOWED_EXACT = new Set(['/', '/invitations', '/invitations/catalog', '/guests-and-rsvp', '/websites'])
+const ALLOWED_LAYOUT = new Set(['/invitations/p'])
 
 function isAllowed(path: string): boolean {
-  return ALLOWED_EXACT.has(path)
+  return ALLOWED_EXACT.has(path) || ALLOWED_LAYOUT.has(path)
 }
 
 export async function POST(request: Request) {
@@ -22,6 +23,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'unknown_path', path }, { status: 400 })
   }
 
-  revalidatePath(path)
+  if (ALLOWED_LAYOUT.has(path)) {
+    revalidatePath(path, 'layout')
+  } else {
+    revalidatePath(path)
+  }
   return NextResponse.json({ revalidated: true, path })
 }

@@ -12,7 +12,6 @@ import {
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-import { assetPath } from '@/lib/asset-path'
 import { useCart } from '@/components/providers/CartProvider'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import type { FontStyle, SectionStyles } from '@/components/guests/InvitationVisual'
@@ -71,7 +70,7 @@ const INVITATION_PANELS: { id: InvitationPanel; label: string; icon: React.React
   { id: 'theme',    label: 'Theme',    icon: <Palette size={16} /> },
 ]
 
-const TICKET_ACCENT_COLORS = [
+const DEFAULT_ticketAccentColors = [
   { name: 'Gold',      value: '#8B7355' },
   { name: 'Champagne', value: '#C4A76B' },
   { name: 'Blush',     value: '#B07070' },
@@ -169,7 +168,13 @@ function generateGuestCode(): string {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 
-export default function CustomiseClient({ product }: { product: CatalogProduct }) {
+export default function CustomiseClient({
+  product,
+  ticketAccentOptions,
+}: {
+  product: CatalogProduct
+  ticketAccentOptions?: { name: string; value: string }[]
+}) {
   const router = useRouter()
   const { addItem } = useCart()
   const [activeTab, setActiveTab] = useState<MainTab>('invitation')
@@ -231,8 +236,9 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
   const [paletteIndex, setPaletteIndex] = useState(0)
 
   // Wedding ticket customisation
+  const ticketAccentColors = ticketAccentOptions ?? DEFAULT_ticketAccentColors
   const [ticketType, setTicketType] = useState<'qr' | 'barcode'>(product.treatment === 'ticket-barcode' ? 'barcode' : 'qr')
-  const [ticketAccentColor, setTicketAccentColor] = useState('#8B7355')
+  const [ticketAccentColor, setTicketAccentColor] = useState(() => ticketAccentColors[0]?.value ?? '#8B7355')
   const [ticketAddress, setTicketAddress] = useState(venue)
   const ticketAddressEdited = useRef(false)
   const [ticketStubLabel, setTicketStubLabel] = useState('BOARDING PASS TO OUR WEDDING')
@@ -677,7 +683,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
                 <ReviewRow label="Palette" value={selectedPalette.name ?? '—'} onEdit={() => goEdit('theme')} />
                 <ReviewRow
                   label="Ticket colour"
-                  value={TICKET_ACCENT_COLORS.find((c) => c.value === ticketAccentColor)?.name ?? 'Custom'}
+                  value={ticketAccentColors.find((c) => c.value === ticketAccentColor)?.name ?? 'Custom'}
                   onEdit={() => setActiveTab('ticket')}
                 >
                   <span className="h-3 w-3 rounded-full ring-1 ring-black/10" style={{ backgroundColor: ticketAccentColor }} />
@@ -1260,7 +1266,7 @@ export default function CustomiseClient({ product }: { product: CatalogProduct }
 
                 <Field label="Stub accent colour" hint="The coloured left-hand stub of the ticket">
                   <div className="flex flex-wrap gap-2">
-                    {TICKET_ACCENT_COLORS.map((c) => (
+                    {ticketAccentColors.map((c) => (
                       <button
                         key={c.value}
                         type="button"
@@ -2357,6 +2363,12 @@ function injectTicketData(
   return new XMLSerializer().serializeToString(doc.documentElement)
 }
 
+const STORAGE_BASE = 'https://ppdapuqehwlfwofbpbvb.supabase.co/storage/v1/object/public/website-media'
+const TICKET_SVG_URLS = {
+  qr:      `${STORAGE_BASE}/invitation-svgs/model-wedding-package/ticket-front.svg`,
+  barcode: `${STORAGE_BASE}/invitation-svgs/model-wedding-package/ticket-barcode-front.svg`,
+}
+
 function TicketSvgFile({
   type, accentColor, coupleNames, dateISO, time, address, message, rsvpContacts, stubLabel,
 }: {
@@ -2371,9 +2383,7 @@ function TicketSvgFile({
   stubLabel: string
 }) {
   const [rawSvg, setRawSvg] = useState('')
-  const src = assetPath(type === 'qr'
-    ? '/assets/invitation-svgs/model-wedding-package/ticket-front.svg'
-    : '/assets/invitation-svgs/model-wedding-package/ticket-barcode-front.svg')
+  const src = TICKET_SVG_URLS[type]
 
   // Fetch the SVG template once per type switch — no re-fetch on data changes
   useEffect(() => {

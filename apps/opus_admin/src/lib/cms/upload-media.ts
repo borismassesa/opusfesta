@@ -34,6 +34,10 @@ const MAX_BYTES = 500 * 1024 * 1024 // matches the website-media bucket cap
 // Path-prefix sanity: lowercase segments, no leading slash, no '..'. Stops a
 // malformed prefix from writing into another section's namespace.
 const PREFIX_PATTERN = /^[a-z0-9][a-z0-9/_-]*[a-z0-9]$/
+// Full fixed storage path (prefix + filename.ext): same safety as PREFIX_PATTERN
+// but allows a dotted file extension. Must start alphanumeric (no leading slash)
+// and end in an extension; '..' is rejected separately at the call site.
+const FIXED_PATH_PATTERN = /^[a-z0-9][a-z0-9/_-]*\.[a-z0-9]+$/i
 
 export type CmsMediaUploadUrlResult =
   | {
@@ -110,6 +114,54 @@ export async function createCmsMediaUploadUrl(input: {
     publicUrl: publicUrl.data.publicUrl,
     path,
     mediaType: isVideo ? 'video' : 'image',
+  }
+}
+
+// Mints a signed upload URL for a fixed, pre-determined storage path.
+// The PUT must set x-upsert: true to overwrite the existing file.
+export async function createCmsMediaFixedUploadUrl(input: {
+  storagePath: string
+  mimeType: string
+  sizeBytes: number
+}): Promise<CmsMediaUploadUrlResult> {
+  await requireAdminRole(CMS_UPLOAD_ROLES)
+  if (input.mimeType !== SVG_MIME) {
+    return { ok: false, error: 'Only SVG files are allowed for this field.' }
+  }
+  // Validate the client-supplied storage path: reject traversal/absolute paths so
+  // a caller can't mint a signed URL outside the intended area of the bucket
+  // (overwriting another product's asset, the hero image, etc.). Relative,
+  // safe-charset, with a file extension only.
+  if (input.storagePath.includes('..') || !FIXED_PATH_PATTERN.test(input.storagePath)) {
+    return { ok: false, error: 'Invalid storage path.' }
+  }
+  if (!Number.isFinite(input.sizeBytes) || input.sizeBytes <= 0) {
+    return { ok: false, error: 'Missing file size.' }
+  }
+  if (input.sizeBytes > MAX_BYTES) {
+    return {
+      ok: false,
+      error: `File is over the 500 MB limit (${(input.sizeBytes / 1024 / 1024).toFixed(1)} MB).`,
+    }
+  }
+  const supabase = createSupabaseAdminClient()
+  const signed = await supabase.storage
+    .from('website-media')
+    .createSignedUploadUrl(input.storagePath, { upsert: true })
+  if (signed.error || !signed.data) {
+    return {
+      ok: false,
+      error: `Signed upload URL failed: ${signed.error?.message ?? 'unknown'}`,
+    }
+  }
+  const publicUrl = supabase.storage.from('website-media').getPublicUrl(input.storagePath)
+  return {
+    ok: true,
+    uploadUrl: signed.data.signedUrl,
+    token: signed.data.token,
+    publicUrl: publicUrl.data.publicUrl,
+    path: input.storagePath,
+    mediaType: 'image',
   }
 }
 
