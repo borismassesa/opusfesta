@@ -160,5 +160,6 @@ values
  240,true)
 on conflict (id) do update set
   palettes         = excluded.palettes,
+  -- image_url is a text column; '' means unset. gallery is a jsonb array; '[]' means empty.
   image_url        = case when website_invitations_products.image_url = '' then excluded.image_url else website_invitations_products.image_url end,
   gallery          = case when website_invitations_products.gallery = '[]'::jsonb then excluded.gallery else website_invitations_products.gallery end;
