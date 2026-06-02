@@ -8,11 +8,21 @@ import { SignIn, ClerkLoaded, ClerkLoading } from '@clerk/nextjs'
 // set up — clerk-js never initialises, <ClerkLoaded> never mounts, and the
 // page is blank. This wrapper shows a spinner while loading and, after a grace
 // period, a clear "unavailable" message with a retry instead of a dead page.
+//
+// Trade-off: <SignIn> renders inside <ClerkLoaded>, so it no longer SSRs — a
+// reachable Clerk shows the spinner for its init time (~200–600ms) before the
+// form. Acceptable for a low-traffic admin login, and the win (no blank page on
+// failure) outweighs it. The "stalled" message only paints while <ClerkLoading>
+// is still mounted, so once Clerk loads it disappears regardless of the timer;
+// the 15s threshold is deliberately well beyond a slow-mobile cold load so the
+// message reflects a genuine failure, not just a slow-but-successful init.
+const STALL_THRESHOLD_MS = 15000
+
 export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) {
   const [stalled, setStalled] = useState(false)
 
   useEffect(() => {
-    const t = setTimeout(() => setStalled(true), 8000)
+    const t = setTimeout(() => setStalled(true), STALL_THRESHOLD_MS)
     return () => clearTimeout(t)
   }, [])
 
