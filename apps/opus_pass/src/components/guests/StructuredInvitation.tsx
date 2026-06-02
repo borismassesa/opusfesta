@@ -238,10 +238,9 @@ export function resolveProductInvitation(p: {
   category: string
   treatment: string
   content?: InvitationContent
-  themeId?: string
 }): ResolvedInvitation | null {
   const theme =
-    WEDDING_THEMES.find((t) => t.id === (p.themeId ?? TREATMENT_THEME_ID[p.treatment])) ?? WEDDING_THEMES[0]
+    WEDDING_THEMES.find((t) => t.id === TREATMENT_THEME_ID[p.treatment]) ?? WEDDING_THEMES[0]
   if (p.content) return { content: p.content, theme }
   const eventType = CATEGORY_EVENT_TYPE[p.category]
   if (!eventType) return null

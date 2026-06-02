@@ -4,7 +4,6 @@ import type { Treatment } from '@/components/guests/InvitationVisual'
 import type { InvitationPalette } from '@/components/guests/invitation-templates/_types'
 import type { CatalogProduct } from '@/data/invitations-products'
 
-// Shape of a row in the website_invitations_products table.
 type ProductRow = {
   id: string
   slug: string
