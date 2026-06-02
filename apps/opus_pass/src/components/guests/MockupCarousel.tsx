@@ -32,6 +32,7 @@ function InviteCard({
   treatment,
   couple,
   designImage,
+  designSvg: designSvgProp,
   palette,
   className,
   style,
@@ -39,25 +40,12 @@ function InviteCard({
   treatment: Treatment
   couple: Couple
   designImage?: string
+  designSvg?: string
   palette?: InvitationPalette
   className?: string
   style?: React.CSSProperties
 }) {
-  const [svgHtml, setSvgHtml] = useState<string | null>(null)
-  const prevUrl = useRef<string | undefined>(undefined)
-
-  useEffect(() => {
-    if (!designImage) return
-    if (designImage === prevUrl.current) return
-    prevUrl.current = designImage
-    // designImage is a raw local path (/assets/...) from product data; resolve it
-    // against basePath so it loads under /opuspass (and through the opus_website
-    // proxy) instead of 404ing at the origin root. assetPath() no-ops remote URLs.
-    fetch(assetPath(designImage))
-      .then((r) => r.text())
-      .then((text) => setSvgHtml(sanitizeSvg(text)))
-      .catch(() => setSvgHtml(null))
-  }, [designImage])
+  const svgHtml = designSvgProp ? sanitizeSvg(designSvgProp) : null
 
   const paletteVars = palette
     ? ({
@@ -70,12 +58,11 @@ function InviteCard({
       } as React.CSSProperties)
     : undefined
 
-  if (designImage && svgHtml) {
+  if (svgHtml) {
     return (
       <div
         className={cn('relative aspect-[3/4] overflow-hidden', className)}
         style={{ ...paletteVars, ...style }}
-        // SVG is fetched from Supabase Storage (controlled by us) — palette vars cascade into it
         dangerouslySetInnerHTML={{ __html: svgHtml }}
       />
     )
@@ -91,7 +78,7 @@ function InviteCard({
   )
 }
 
-function FlatLayScene({ treatment, couple, designImage, palette, mockupImages }: SceneProps) {
+function FlatLayScene({ treatment, couple, designImage, designSvg, palette, mockupImages }: SceneProps) {
   const bg = mockupImages?.['flat-lay']
   return (
     <div
@@ -102,6 +89,7 @@ function FlatLayScene({ treatment, couple, designImage, palette, mockupImages }:
         treatment={treatment}
         couple={couple}
         designImage={designImage}
+        designSvg={designSvg}
         palette={palette}
         className="w-[62%] rounded-sm"
         style={{ transform: 'rotate(-3deg)', boxShadow: '0 20px 60px -10px rgba(0,0,0,0.35), 0 8px 20px -8px rgba(0,0,0,0.2)' }}
@@ -110,7 +98,7 @@ function FlatLayScene({ treatment, couple, designImage, palette, mockupImages }:
   )
 }
 
-function DarkStudioScene({ treatment, couple, designImage, palette, mockupImages }: SceneProps) {
+function DarkStudioScene({ treatment, couple, designImage, designSvg, palette, mockupImages }: SceneProps) {
   const bg = mockupImages?.['dark-studio']
   return (
     <div
@@ -121,6 +109,7 @@ function DarkStudioScene({ treatment, couple, designImage, palette, mockupImages
         treatment={treatment}
         couple={couple}
         designImage={designImage}
+        designSvg={designSvg}
         palette={palette}
         className="w-[62%] rounded-sm"
         style={{ boxShadow: '0 24px 64px -8px rgba(0,0,0,0.8), 0 8px 24px -8px rgba(0,0,0,0.6)' }}
@@ -129,7 +118,7 @@ function DarkStudioScene({ treatment, couple, designImage, palette, mockupImages
   )
 }
 
-function PaperStackScene({ treatment, couple, designImage, palette, mockupImages }: SceneProps) {
+function PaperStackScene({ treatment, couple, designImage, designSvg, palette, mockupImages }: SceneProps) {
   const bg = mockupImages?.['paper-stack']
   return (
     <div
@@ -139,21 +128,21 @@ function PaperStackScene({ treatment, couple, designImage, palette, mockupImages
       <div className="relative w-[60%]" style={{ aspectRatio: '3/4' }}>
         {/* Back cards */}
         <div className="absolute inset-0" style={{ transform: 'rotate(5deg)', opacity: 0.8 }}>
-          <InviteCard treatment={treatment} couple={couple} designImage={designImage} palette={palette} className="w-full rounded-sm" />
+          <InviteCard treatment={treatment} couple={couple} designImage={designImage} designSvg={designSvg} palette={palette} className="w-full rounded-sm" />
         </div>
         <div className="absolute inset-0" style={{ transform: 'rotate(2deg)', opacity: 0.9 }}>
-          <InviteCard treatment={treatment} couple={couple} designImage={designImage} palette={palette} className="w-full rounded-sm" />
+          <InviteCard treatment={treatment} couple={couple} designImage={designImage} designSvg={designSvg} palette={palette} className="w-full rounded-sm" />
         </div>
         {/* Front card */}
         <div className="absolute inset-0" style={{ transform: 'rotate(-1deg)', boxShadow: '0 16px 48px -8px rgba(0,0,0,0.25)' }}>
-          <InviteCard treatment={treatment} couple={couple} designImage={designImage} palette={palette} className="w-full rounded-sm" />
+          <InviteCard treatment={treatment} couple={couple} designImage={designImage} designSvg={designSvg} palette={palette} className="w-full rounded-sm" />
         </div>
       </div>
     </div>
   )
 }
 
-function EnvelopeScene({ treatment, couple, designImage, palette, mockupImages }: SceneProps) {
+function EnvelopeScene({ treatment, couple, designImage, designSvg, palette, mockupImages }: SceneProps) {
   const bg = mockupImages?.['envelope']
   return (
     <div
@@ -186,6 +175,7 @@ function EnvelopeScene({ treatment, couple, designImage, palette, mockupImages }
             treatment={treatment}
             couple={couple}
             designImage={designImage}
+            designSvg={designSvg}
             palette={palette}
             className="w-full rounded-t-sm"
             style={{ boxShadow: '0 -8px 24px -4px rgba(0,0,0,0.12)' }}
@@ -196,7 +186,7 @@ function EnvelopeScene({ treatment, couple, designImage, palette, mockupImages }
   )
 }
 
-function PhoneScene({ treatment, couple, designImage, palette, mockupImages }: SceneProps) {
+function PhoneScene({ treatment, couple, designImage, designSvg, palette, mockupImages }: SceneProps) {
   const bg = mockupImages?.['phone']
   return (
     <div
@@ -225,6 +215,7 @@ function PhoneScene({ treatment, couple, designImage, palette, mockupImages }: S
               treatment={treatment}
               couple={couple}
               designImage={designImage}
+              designSvg={designSvg}
               palette={palette}
               className="absolute inset-0 w-full h-full"
             />
@@ -245,12 +236,13 @@ type SceneProps = {
   treatment: Treatment
   couple: Couple
   designImage?: string
+  designSvg?: string
   palette?: InvitationPalette
   mockupImages?: Record<string, string>
   sceneId?: string
 }
 
-function GenericScene({ treatment, couple, designImage, palette, mockupImages, sceneId }: SceneProps) {
+function GenericScene({ treatment, couple, designImage, designSvg, palette, mockupImages, sceneId }: SceneProps) {
   const bg = sceneId ? mockupImages?.[sceneId] : undefined
   return (
     <div
@@ -261,6 +253,7 @@ function GenericScene({ treatment, couple, designImage, palette, mockupImages, s
         treatment={treatment}
         couple={couple}
         designImage={designImage}
+        designSvg={designSvg}
         palette={palette}
         className="w-[62%] rounded-sm"
         style={{ boxShadow: '0 20px 60px -10px rgba(0,0,0,0.3)' }}
@@ -281,6 +274,7 @@ export function MockupCarousel({
   treatment,
   couple = COUPLE_DEFAULT,
   designImage,
+  designSvg,
   palette,
   mockupImages,
   scenes: scenesProp,
@@ -290,6 +284,7 @@ export function MockupCarousel({
   treatment: Treatment
   couple?: Couple
   designImage?: string
+  designSvg?: string
   palette?: InvitationPalette
   mockupImages?: Record<string, string>
   scenes?: { id: string; label: string }[]
@@ -299,8 +294,25 @@ export function MockupCarousel({
   const scenesToShow = scenesProp && scenesProp.length > 0 ? scenesProp : SCENES
   const [active, setActive] = useState<string>(scenesToShow[0]?.id ?? 'flat-lay')
 
+  // If the server didn't prefetch the SVG (oversized file), fetch it once here
+  // so it's shared across all scene switches instead of re-fetching per mount.
+  const [fetchedSvg, setFetchedSvg] = useState<string | null>(null)
+  const prevUrl = useRef<string | undefined>(undefined)
+  useEffect(() => {
+    if (designSvg) return
+    if (!designImage) return
+    if (designImage === prevUrl.current) return
+    prevUrl.current = designImage
+    fetch(assetPath(designImage))
+      .then((r) => r.text())
+      .then((text) => setFetchedSvg(sanitizeSvg(text)))
+      .catch(() => setFetchedSvg(null))
+  }, [designImage, designSvg])
+
+  const resolvedSvg = designSvg ?? fetchedSvg
+
   const ActiveSceneComponent = SCENE_COMPONENTS[active as SceneId] ?? GenericScene
-  const sceneProps: SceneProps = { treatment, couple, designImage, palette, mockupImages, sceneId: active }
+  const sceneProps: SceneProps = { treatment, couple, designImage, designSvg: resolvedSvg ?? undefined, palette, mockupImages, sceneId: active }
 
   return (
     <div>
