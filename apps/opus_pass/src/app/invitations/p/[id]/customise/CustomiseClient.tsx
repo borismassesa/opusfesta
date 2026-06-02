@@ -13,8 +13,9 @@ import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import { useCart } from '@/components/providers/CartProvider'
-import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import type { FontStyle, SectionStyles } from '@/components/guests/InvitationVisual'
+import { assetPath } from '@/lib/asset-path'
+import DOMPurify from 'dompurify'
 import type { SectionStyle } from '@/components/guests/invitation-templates/_types'
 import type { CatalogProduct } from '@/data/invitations-products'
 import { OverlayEditor } from './OverlayEditor'
@@ -166,14 +167,26 @@ function generateGuestCode(): string {
 }
 
 
+// ─── Types ────────────────────────────────────────────────────────────────────
+
+export type CoupleProfile = {
+  coupleNames: string | null
+  weddingDate: string | null
+  city: string | null
+  ceremonyTime: string | null
+  dressCode: string | null
+}
+
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function CustomiseClient({
   product,
   ticketAccentOptions,
+  coupleProfile,
 }: {
   product: CatalogProduct
   ticketAccentOptions?: { name: string; value: string }[]
+  coupleProfile?: CoupleProfile | null
 }) {
   const router = useRouter()
   const { addItem } = useCart()
@@ -184,19 +197,19 @@ export default function CustomiseClient({
 
   const tabNavRef = useRef<HTMLDivElement>(null)
 
-  // Couple fields
-  const [celebrant, setCelebrant] = useState('Amani & Neema')
+  // Couple fields — seeded from user's couple profile when signed in
+  const [celebrant, setCelebrant] = useState(coupleProfile?.coupleNames ?? 'Amani & Neema')
   const [familyIntro, setFamilyIntro] = useState('')
-  const [dateISO, setDateISO] = useState('2026-08-22')
-  const [time, setTime] = useState('')
-  const [venue, setVenue] = useState('Bagamoyo, Tanzania')
+  const [dateISO, setDateISO] = useState(coupleProfile?.weddingDate ?? '2026-08-22')
+  const [time, setTime] = useState(coupleProfile?.ceremonyTime ?? '')
+  const [venue, setVenue] = useState(coupleProfile?.city ?? 'Bagamoyo, Tanzania')
 
   // Reception details
   const [receptionVenue, setReceptionVenue] = useState('')
   const [receptionTime, setReceptionTime] = useState('')
 
   // Dress code + palette swatches
-  const [dressCode, setDressCode] = useState('')
+  const [dressCode, setDressCode] = useState(coupleProfile?.dressCode ?? '')
   const [palette, setPalette] = useState<string[]>([])
 
   // RSVP + QR
@@ -234,6 +247,154 @@ export default function CustomiseClient({
 
   // Product palette selection
   const [paletteIndex, setPaletteIndex] = useState(0)
+
+  // Fetch design SVG client-side (mirrors MockupCarousel fallback) so basePath
+  // and Supabase storage URLs are resolved correctly in the browser.
+  // When no couple profile is present we also extract the SVG's existing text
+  // to pre-populate the form fields with the template's placeholder values.
+  const [designSvg, setDesignSvg] = useState<string | null>(null)
+  useEffect(() => {
+    if (!product.imageUrl) return
+    fetch(assetPath(product.imageUrl))
+      .then((r) => r.text())
+      .then((text) => {
+        const t = text.trimStart()
+        if (!t.startsWith('<svg') && !t.startsWith('<?xml')) return
+        const sanitized = DOMPurify.sanitize(t, { USE_PROFILES: { svg: true, svgFilters: true } })
+        setDesignSvg(sanitized)
+
+        // Extract text from named layers to seed form fields.
+        // Profile values take precedence field-by-field — SVG fills in what the profile lacks.
+        const parser = new DOMParser()
+        const doc = parser.parseFromString(sanitized, 'image/svg+xml')
+
+        const extractText = (selector: string) =>
+          doc.querySelector(selector)?.querySelector('text')?.textContent?.trim() ?? ''
+
+        const svgDressCode = extractText('#Dress_code')
+
+        const svgNames  = extractText('#Names')
+        const svgDate   = extractText('#Date')
+        const svgTime   = extractText('#Time')
+        const svgVenue  = extractText('#Venue')
+        const svgIntro  = extractText('#Intro')
+        const svgRsvp   = extractText('#Rsvp')
+
+        // Apply: profile wins where it has a value, SVG fills the rest.
+        if (!coupleProfile?.coupleNames  && svgNames) setCelebrant(svgNames)
+        if (!coupleProfile?.ceremonyTime && svgTime)  setTime(svgTime)
+        if (!coupleProfile?.city         && svgVenue) setVenue(svgVenue)
+        if (!coupleProfile?.dressCode    && svgDressCode) setDressCode(svgDressCode)
+        if (svgIntro) setFamilyIntro(svgIntro)
+        if (svgRsvp && rsvpContacts.every((c) => !c)) setRsvpContacts([svgRsvp])
+
+        if (!coupleProfile?.weddingDate && svgDate) {
+          // SVG dates may be formatted as DD · MM · YYYY — convert back to YYYY-MM-DD
+          const parts = svgDate.split(/[\s·\/\-]+/).filter(Boolean)
+          if (parts.length === 3) {
+            const [d, m, y] = parts
+            const iso = `${y}-${m!.padStart(2, '0')}-${d!.padStart(2, '0')}`
+            if (!Number.isNaN(Date.parse(iso))) setDateISO(iso)
+          }
+        }
+      })
+      .catch(() => null)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [product.imageUrl])
+
+  // Inject user-edited field values into the SVG's named layers so the canvas
+  // reflects live edits. Each named group (#Names, #Date, etc.) gets its
+  // <text> element's content replaced with the current state value.
+  const renderedSvg = useMemo(() => {
+    if (!designSvg || typeof document === 'undefined') return designSvg
+
+    const parser = new DOMParser()
+    const doc = parser.parseFromString(designSvg, 'image/svg+xml')
+
+    const patchText = (selector: string, value: string) => {
+      if (!value) return
+      const group = doc.querySelector(selector)
+      if (!group) return
+      const textEl = group.tagName.toLowerCase() === 'text' ? group : group.querySelector('text')
+      if (textEl) textEl.textContent = value
+    }
+
+    // Names — when the template uses separate tspans for each partner name with
+    // a styled & in between, only update the name tspans.
+    // The & tspan in Illustrator SVGs often has fill:none from a shared shape
+    // class (e.g. .st1), making it invisible in the browser. Force fill:inherit
+    // so it reads the fill from the parent <text> element instead.
+    const namesGroup = doc.querySelector('#Names')
+    if (namesGroup && celebrant) {
+      const textEl = namesGroup.querySelector('text')
+      if (textEl) {
+        const tspans = Array.from(textEl.querySelectorAll('tspan'))
+        const parts = celebrant.split(/\s*&\s*/)
+        if (tspans.length >= 3 && parts.length === 2) {
+          tspans[0]!.textContent = parts[0]!.trim()
+          // Illustrator shape classes (e.g. .st1) set fill:none which hides text.
+          // Inline fill="inherit" overrides that so the & adopts the text colour.
+          tspans[1]!.setAttribute('fill', 'inherit')
+          tspans[2]!.textContent = parts[1]!.trim()
+        } else if (tspans.length === 1) {
+          tspans[0]!.textContent = celebrant
+        } else {
+          textEl.textContent = celebrant
+        }
+      }
+    }
+
+    const formattedDate = dateISO ? dateISO.split('-').reverse().join(' · ') : ''
+    patchText('#Date text', formattedDate)
+    patchText('#Time text', time)
+    patchText('#Venue text', venue)
+    patchText('#Intro text', familyIntro)
+    patchText('#Dress_code text', dressCode)
+
+    const rsvpVal = rsvpContacts.filter(Boolean).join(' · ')
+    patchText('#Rsvp text', rsvpVal)
+
+    // Apply per-section style overrides to the SVG text elements.
+    const LETTER_SPACING_MAP: Record<string, string> = {
+      tight: '-0.04em', normal: '0', wide: '0.1em', wider: '0.2em',
+    }
+    const SECTION_SELECTORS: Partial<Record<keyof SectionStyles, string[]>> = {
+      names:       ['#Names text'],
+      familyIntro: ['#Intro text'],
+      date:        ['#Date text'],
+      time:        ['#Time text'],
+      venue:       ['#Venue text'],
+      dressCode:   ['#Dress_code text'],
+      rsvpContact: ['#Rsvp text'],
+      message:     ['#Message text'],
+      messageAttr: ['#MessageAttr text'],
+    }
+    for (const [key, selectors] of Object.entries(SECTION_SELECTORS) as [keyof SectionStyles, string[]][]) {
+      const style = sectionStyles[key]
+      if (!style) continue
+      for (const sel of selectors) {
+        const textEl = doc.querySelector(sel)
+        if (!textEl) continue
+        if (style.italic !== undefined)
+          textEl.setAttribute('font-style', style.italic ? 'italic' : 'normal')
+        if (style.fontWeight !== undefined)
+          textEl.setAttribute('font-weight', style.fontWeight)
+        if (style.letterSpacing !== undefined)
+          textEl.setAttribute('letter-spacing', LETTER_SPACING_MAP[style.letterSpacing] ?? '0')
+        if (style.color)
+          textEl.setAttribute('fill', style.color)
+        if (style.opacity !== undefined)
+          textEl.setAttribute('opacity', String(style.opacity))
+        if (style.uppercase && textEl.textContent)
+          textEl.textContent = textEl.textContent.toUpperCase()
+      }
+    }
+
+    // Serialize without a second DOMPurify pass — the SVG was already sanitized
+    // on fetch. Re-sanitizing mangled &amp; entities in text nodes.
+    const serializer = new XMLSerializer()
+    return serializer.serializeToString(doc.documentElement)
+  }, [designSvg, celebrant, dateISO, time, venue, familyIntro, dressCode, rsvpContacts, sectionStyles])
 
   // Wedding ticket customisation
   const ticketAccentColors = ticketAccentOptions ?? DEFAULT_ticketAccentColors
@@ -310,7 +471,10 @@ export default function CustomiseClient({
     btn?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' })
   }, [activeTab])
 
-  const selectedPalette = product.palettes[paletteIndex] ?? product.palettes[0]!
+  const selectedPalette = product.palettes[paletteIndex] ?? product.palettes[0] ?? {
+    background: '#FFFFFF', surface: '#FFFFFF', accent: '#1A1A1A',
+    textPrimary: '#1A1A1A', textSecondary: '#6B6B6B', muted: '#8D8D8D',
+  }
 
   const couple = useMemo(
     () => ({
@@ -1266,9 +1430,9 @@ export default function CustomiseClient({
 
                 <Field label="Stub accent colour" hint="The coloured left-hand stub of the ticket">
                   <div className="flex flex-wrap gap-2">
-                    {ticketAccentColors.map((c) => (
+                    {ticketAccentColors.map((c, i) => (
                       <button
-                        key={c.value}
+                        key={`${c.value}-${i}`}
                         type="button"
                         onClick={() => setTicketAccentColor(c.value)}
                         aria-pressed={ticketAccentColor === c.value}
@@ -1658,6 +1822,7 @@ export default function CustomiseClient({
                 tableNumbersNotes={tableNumbersNotes}
                 swagItems={selectedSwagItems.map((s) => s.label)}
                 swagNotes={swagNotes}
+                designSvg={renderedSvg}
                 onEdit={setActiveTab}
               />
             ) : activeTab === 'ticket' && cardSide === 'front' ? (
@@ -1677,22 +1842,17 @@ export default function CustomiseClient({
             ) : activeTab === 'invitation' && cardSide === 'front' ? (
               <div className="w-full max-w-sm origin-center transition-transform" style={{ transform: `scale(${zoom})` }}>
                 <div ref={cardRef} className="relative aspect-[5/7] overflow-hidden rounded-[4px] bg-white shadow-[0_24px_60px_-20px_rgba(0,0,0,0.45)] ring-1 ring-black/5">
-                  <InvitationVisual
-                    treatment={product.treatment}
-                    couple={couple}
-                    palette={selectedPalette}
-                    message={message || undefined}
-                    messageAttr={messageAttr || undefined}
-                    fontStyle={fontStyle}
-                    sectionStyles={sectionStyles}
-                    photoSrc={photoSrc}
-                    photoOpacity={photoOpacity}
-                    dressCode={dressCode || undefined}
-                    rsvpContact={rsvpContacts.filter(Boolean).join('  ·  ') || undefined}
-                    receptionVenue={receptionVenue || undefined}
-                    receptionTime={receptionTime || undefined}
-                    familyIntro={familyIntro || undefined}
-                    dressCodeColors={palette.length > 0 ? palette : undefined}
+                  <div
+                    className="absolute inset-0"
+                    style={{
+                      '--iv-bg':   selectedPalette.background,
+                      '--iv-surf': selectedPalette.surface,
+                      '--iv-acc':  selectedPalette.accent,
+                      '--iv-tp':   selectedPalette.textPrimary,
+                      '--iv-ts':   selectedPalette.textSecondary,
+                      '--iv-mut':  selectedPalette.muted,
+                    } as React.CSSProperties}
+                    dangerouslySetInnerHTML={{ __html: renderedSvg ?? '' }}
                   />
                   <CardClickLayer
                     containerRef={cardRef}
@@ -1787,6 +1947,7 @@ type ReviewCardGridProps = {
   tableNumbersNotes: string
   swagItems: string[]
   swagNotes: string
+  designSvg?: string | null
   onEdit: (tab: MainTab) => void
 }
 
@@ -1797,7 +1958,7 @@ function ReviewCardGrid(props: ReviewCardGridProps) {
     photoSrc, photoOpacity, dressCode, rsvpContacts, receptionVenue, receptionTime,
     celebrant, ticketType, ticketAccentColor, ticketAddress, ticketStubLabel, guestCode, dateISO, time, venue,
     rsvpCardNotes, envelopeNotes, enclosureNotes, menuNotes, programNotes,
-    tableNumbersNotes, swagItems, swagNotes, onEdit,
+    tableNumbersNotes, swagItems, swagNotes, designSvg, onEdit,
   } = props
 
   // Cards to show: invitation + ticket always; others only if the user added notes/selections
@@ -1847,6 +2008,7 @@ function ReviewCardGrid(props: ReviewCardGridProps) {
             dateISO={dateISO}
             time={time}
             venue={venue}
+            designSvg={designSvg}
             onEdit={onEdit}
           />
         ))}
@@ -1860,6 +2022,7 @@ function ReviewCardItem({
   sectionStyles, familyIntro, dressCodeColors,
   photoSrc, photoOpacity, dressCode, rsvpContacts, receptionVenue, receptionTime,
   celebrant, ticketType, ticketAccentColor, ticketAddress, ticketStubLabel, dateISO, time,
+  designSvg,
   onEdit,
 }: Omit<ReviewCardGridProps, 'rsvpCardNotes' | 'envelopeNotes' | 'enclosureNotes' | 'menuNotes' | 'programNotes' | 'tableNumbersNotes' | 'swagItems' | 'swagNotes'> & {
   tab: MainTab
@@ -1888,22 +2051,17 @@ function ReviewCardItem({
             stubLabel={ticketStubLabel || 'ACCESS PASS TO OUR WEDDING'}
           />
         ) : tab === 'invitation' && side === 'front' ? (
-          <InvitationVisual
-            treatment={product.treatment}
-            couple={couple}
-            palette={selectedPalette}
-            message={message || undefined}
-            messageAttr={messageAttr || undefined}
-            fontStyle={fontStyle}
-            sectionStyles={sectionStyles}
-            familyIntro={familyIntro || undefined}
-            dressCodeColors={dressCodeColors.length > 0 ? dressCodeColors : undefined}
-            photoSrc={photoSrc}
-            photoOpacity={photoOpacity}
-            dressCode={dressCode || undefined}
-            rsvpContact={rsvpContacts.filter(Boolean).join('  ·  ') || undefined}
-            receptionVenue={receptionVenue || undefined}
-            receptionTime={receptionTime || undefined}
+          <div
+            className="absolute inset-0"
+            style={{
+              '--iv-bg':   selectedPalette.background,
+              '--iv-surf': selectedPalette.surface,
+              '--iv-acc':  selectedPalette.accent,
+              '--iv-tp':   selectedPalette.textPrimary,
+              '--iv-ts':   selectedPalette.textSecondary,
+              '--iv-mut':  selectedPalette.muted,
+            } as React.CSSProperties}
+            dangerouslySetInnerHTML={{ __html: designSvg ?? '' }}
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center" style={{ backgroundColor: side === 'back' ? selectedPalette.accent : selectedPalette.background }}>
@@ -2526,84 +2684,163 @@ function TextStyleBar({
   const activeScale = s?.scale ?? 1
   const activeAlign = s?.align
   const isBold = s?.fontWeight === 'bold'
-  const hasOverride = s?.scale !== undefined || s?.fontWeight !== undefined || s?.align !== undefined
+  const isItalic = s?.italic ?? false
+  const isUppercase = s?.uppercase ?? false
+  const activeSpacing = s?.letterSpacing
+  const activeColor = s?.color ?? ''
+  const activeOpacity = s?.opacity ?? 1
+
+  const hasOverride = !!(s?.scale !== undefined || s?.fontWeight || s?.align ||
+    s?.italic || s?.uppercase || s?.letterSpacing || s?.color || s?.opacity !== undefined)
+
+  const toggle = <K extends keyof SectionStyle>(k: K, on: SectionStyle[K], off: SectionStyle[K]) =>
+    onUpdate(sectionKey, { [k]: (s?.[k] === on ? off : on) } as Partial<SectionStyle>)
 
   return (
-    <div className="mt-1.5 flex items-center gap-1.5 flex-wrap">
-      {/* Size */}
-      {([0.75, 1, 1.25, 1.5] as const).map((scale) => {
-        const label = scale === 0.75 ? 'S' : scale === 1 ? 'M' : scale === 1.25 ? 'L' : 'XL'
-        return (
-          <button
-            key={scale}
-            type="button"
-            onClick={() => onUpdate(sectionKey, { scale })}
-            aria-pressed={activeScale === scale}
+    <div className="mt-2 space-y-1.5 rounded-md border border-gray-100 bg-gray-50 px-2.5 py-2">
+
+      {/* Row 1: size + alignment */}
+      <div className="flex items-center gap-1 flex-wrap">
+        {([0.75, 1, 1.25, 1.5] as const).map((scale) => {
+          const label = scale === 0.75 ? 'S' : scale === 1 ? 'M' : scale === 1.25 ? 'L' : 'XL'
+          return (
+            <button key={scale} type="button"
+              onClick={() => onUpdate(sectionKey, { scale })}
+              aria-pressed={activeScale === scale}
+              className={cn(
+                'h-6 w-7 rounded border text-[10px] font-bold transition',
+                activeScale === scale ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-gray-200 text-gray-500 hover:border-gray-400',
+              )}
+            >{label}</button>
+          )
+        })}
+
+        <span className="mx-0.5 h-4 w-px bg-gray-200" aria-hidden="true" />
+
+        {([
+          { value: 'left' as const,   icon: <AlignLeft   size={10} /> },
+          { value: 'center' as const, icon: <AlignCenter size={10} /> },
+          { value: 'right' as const,  icon: <AlignRight  size={10} /> },
+        ]).map(({ value, icon }) => (
+          <button key={value} type="button"
+            onClick={() => onUpdate(sectionKey, { align: activeAlign === value ? undefined : value })}
+            aria-pressed={activeAlign === value}
+            aria-label={`Align ${value}`}
             className={cn(
-              'h-6 w-7 rounded border text-[10px] font-bold transition',
-              activeScale === scale
-                ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white'
-                : 'border-gray-200 text-gray-500 hover:border-gray-400',
+              'flex h-6 w-7 items-center justify-center rounded border transition',
+              activeAlign === value ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-gray-200 text-gray-500 hover:border-gray-400',
             )}
-          >
-            {label}
-          </button>
-        )
-      })}
+          >{icon}</button>
+        ))}
+      </div>
 
-      <span className="mx-0.5 h-4 w-px bg-gray-200" aria-hidden="true" />
-
-      {/* Alignment */}
-      {([
-        { value: 'left'   as const, icon: <AlignLeft   size={10} /> },
-        { value: 'center' as const, icon: <AlignCenter size={10} /> },
-        { value: 'right'  as const, icon: <AlignRight  size={10} /> },
-      ]).map(({ value, icon }) => (
-        <button
-          key={value}
-          type="button"
-          onClick={() => onUpdate(sectionKey, { align: activeAlign === value ? undefined : value })}
-          aria-pressed={activeAlign === value}
-          aria-label={`Align ${value}`}
+      {/* Row 2: weight / style / case */}
+      <div className="flex items-center gap-1 flex-wrap">
+        <button type="button"
+          onClick={() => onUpdate(sectionKey, { fontWeight: isBold ? 'normal' : 'bold' })}
+          aria-pressed={isBold}
+          aria-label={isBold ? 'Remove bold' : 'Bold'}
           className={cn(
-            'flex h-6 w-7 items-center justify-center rounded border transition',
-            activeAlign === value
-              ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white'
-              : 'border-gray-200 text-gray-500 hover:border-gray-400',
+            'h-6 w-7 rounded border text-[11px] font-black transition',
+            isBold ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-gray-200 text-gray-700 hover:border-gray-400',
           )}
-        >
-          {icon}
-        </button>
-      ))}
+        >B</button>
 
-      <span className="mx-0.5 h-4 w-px bg-gray-200" aria-hidden="true" />
+        <button type="button"
+          onClick={() => toggle('italic', true, false)}
+          aria-pressed={isItalic}
+          aria-label={isItalic ? 'Remove italic' : 'Italic'}
+          className={cn(
+            'h-6 w-7 rounded border text-[11px] font-bold italic transition',
+            isItalic ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-gray-200 text-gray-700 hover:border-gray-400',
+          )}
+        >I</button>
 
-      {/* Bold */}
-      <button
-        type="button"
-        onClick={() => onUpdate(sectionKey, { fontWeight: isBold ? 'normal' : 'bold' })}
-        aria-pressed={isBold}
-        aria-label={isBold ? 'Remove bold' : 'Bold'}
-        className={cn(
-          'h-6 w-7 rounded border text-[11px] font-black transition',
-          isBold
-            ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white'
-            : 'border-gray-200 text-gray-700 hover:border-gray-400',
-        )}
-      >
-        B
-      </button>
+        <button type="button"
+          onClick={() => toggle('uppercase', true, false)}
+          aria-pressed={isUppercase}
+          aria-label={isUppercase ? 'Remove uppercase' : 'Uppercase'}
+          className={cn(
+            'h-6 rounded border px-1.5 text-[9px] font-black tracking-[0.06em] transition',
+            isUppercase ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-gray-200 text-gray-700 hover:border-gray-400',
+          )}
+        >AA</button>
 
-      {/* Reset — only when overrides are active */}
+        <span className="mx-0.5 h-4 w-px bg-gray-200" aria-hidden="true" />
+
+        {/* Letter spacing */}
+        {([
+          { value: 'tight'  as const, label: 'A·' },
+          { value: 'normal' as const, label: 'A·  ·' },
+          { value: 'wide'   as const, label: 'A·   ·' },
+          { value: 'wider'  as const, label: 'A·    ·' },
+        ]).map(({ value, label }) => (
+          <button key={value} type="button"
+            onClick={() => onUpdate(sectionKey, { letterSpacing: activeSpacing === value ? undefined : value })}
+            aria-pressed={activeSpacing === value}
+            aria-label={`Letter spacing: ${value}`}
+            title={`Spacing: ${value}`}
+            className={cn(
+              'h-6 rounded border px-1.5 font-mono text-[9px] tracking-tight transition',
+              activeSpacing === value ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-gray-200 text-gray-500 hover:border-gray-400',
+            )}
+          >{label}</button>
+        ))}
+      </div>
+
+      {/* Row 3: colour + opacity */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Colour</label>
+          <div className="relative flex h-6 w-10 overflow-hidden rounded border border-gray-300 hover:border-gray-500">
+            <input
+              type="color"
+              value={activeColor || '#1A1A1A'}
+              onChange={(e) => onUpdate(sectionKey, { color: e.target.value })}
+              aria-label="Text colour"
+              className="absolute inset-0 h-10 w-14 -translate-x-1 -translate-y-1 cursor-pointer border-0 bg-transparent p-0 opacity-0"
+            />
+            <span
+              className="pointer-events-none absolute inset-0 rounded"
+              style={{ backgroundColor: activeColor || 'transparent', border: activeColor ? 'none' : '1px dashed #d1d5db' }}
+            />
+            {!activeColor && <span className="m-auto text-[9px] text-gray-400">+</span>}
+          </div>
+          {activeColor && (
+            <button type="button"
+              onClick={() => onUpdate(sectionKey, { color: undefined })}
+              aria-label="Clear colour"
+              className="text-gray-400 hover:text-gray-700"
+            ><X size={11} /></button>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <label className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">Opacity</label>
+          <input
+            type="range" min={0.1} max={1} step={0.05}
+            value={activeOpacity}
+            onChange={(e) => onUpdate(sectionKey, { opacity: Number(e.target.value) })}
+            aria-label="Text opacity"
+            className="w-20 accent-[#1A1A1A]"
+          />
+          <span className="w-7 text-right font-mono text-[10px] text-gray-500">
+            {Math.round(activeOpacity * 100)}%
+          </span>
+        </div>
+      </div>
+
+      {/* Reset */}
       {hasOverride && (
-        <button
-          type="button"
-          onClick={() => onUpdate(sectionKey, { scale: undefined, fontWeight: undefined, align: undefined })}
-          aria-label="Reset styles"
-          className="ml-1 text-[10px] font-semibold text-gray-400 underline underline-offset-2 hover:text-gray-600"
-        >
-          Reset
-        </button>
+        <button type="button"
+          onClick={() => onUpdate(sectionKey, {
+            scale: undefined, fontWeight: undefined, align: undefined,
+            italic: undefined, uppercase: undefined, letterSpacing: undefined,
+            color: undefined, opacity: undefined,
+          })}
+          aria-label="Reset all style overrides"
+          className="text-[10px] font-semibold text-gray-400 underline underline-offset-2 hover:text-gray-600"
+        >Reset</button>
       )}
     </div>
   )

@@ -1,7 +1,9 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { loadInvitationProduct } from '@/lib/cms/invitations-products'
-import CustomiseClient from './CustomiseClient'
+import { getDashboardUser } from '@/lib/dashboard/auth'
+import { createDashboardClient } from '@/lib/dashboard/supabase'
+import CustomiseClient, { type CoupleProfile } from './CustomiseClient'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,12 +19,68 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   }
 }
 
+async function loadCoupleProfile(userId: string): Promise<CoupleProfile | null> {
+  const supabase = createDashboardClient()
+
+  const [profileResult, eventResult] = await Promise.all([
+    supabase
+      .from('couple_profiles')
+      .select('partner1_name, partner2_name, wedding_date, city')
+      .eq('user_id', userId)
+      .maybeSingle<{
+        partner1_name: string | null
+        partner2_name: string | null
+        wedding_date: string | null
+        city: string | null
+      }>(),
+    // Fetch the ceremony event for venue, time, and dress code
+    supabase
+      .from('wedding_events')
+      .select('venue_name, city, starts_at, dress_code')
+      .eq('user_id', userId)
+      .eq('event_type', 'ceremony')
+      .order('sort_order', { ascending: true })
+      .limit(1)
+      .maybeSingle<{
+        venue_name: string | null
+        city: string | null
+        starts_at: string | null
+        dress_code: string | null
+      }>(),
+  ])
+
+  const profile = profileResult.data
+  const ceremony = eventResult.data
+
+  if (!profile && !ceremony) return null
+
+  const names = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  if (!names.length && !profile?.wedding_date && !profile?.city && !ceremony) return null
+
+  // Derive ceremony time (HH:MM) from starts_at if present
+  let ceremonyTime: string | null = null
+  if (ceremony?.starts_at) {
+    const d = new Date(ceremony.starts_at)
+    const h = d.getUTCHours().toString().padStart(2, '0')
+    const m = d.getUTCMinutes().toString().padStart(2, '0')
+    ceremonyTime = `${h}:${m}`
+  }
+
+  return {
+    coupleNames: names.join(' & ') || null,
+    weddingDate: profile?.wedding_date ?? null,
+    city: ceremony?.city ?? ceremony?.venue_name ?? profile?.city ?? null,
+    ceremonyTime,
+    dressCode: ceremony?.dress_code ?? null,
+  }
+}
+
 export default async function CustomiseProductPage({ params }: { params: Promise<Params> }) {
   const { id } = await params
-  const [product, ticketProduct] = await Promise.all([
+  const [product, ticketProduct, user] = await Promise.all([
     loadInvitationProduct(id),
-    // Load p23 (QR ticket) to get the admin-configured accent colour options.
     loadInvitationProduct('p23'),
+    getDashboardUser(),
   ])
   if (!product) return notFound()
 
@@ -31,5 +89,13 @@ export default async function CustomiseProductPage({ params }: { params: Promise
       ? ticketProduct.palettes.map((p) => ({ name: p.name ?? p.accent, value: p.accent }))
       : undefined
 
-  return <CustomiseClient product={product} ticketAccentOptions={ticketAccentOptions} />
+  const coupleProfile = user ? await loadCoupleProfile(user.id) : null
+
+  return (
+    <CustomiseClient
+      product={product}
+      ticketAccentOptions={ticketAccentOptions}
+      coupleProfile={coupleProfile}
+    />
+  )
 }
