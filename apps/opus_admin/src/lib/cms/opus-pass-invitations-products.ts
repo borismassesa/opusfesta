@@ -3,7 +3,7 @@
 
 // Kept in sync with InvitationPalette in opus_pass/_types.ts — no cross-app import.
 export type InvitationPalette = {
-  name?: string
+  name: string
   background: string
   surface: string
   accent: string
@@ -96,7 +96,7 @@ export function emptyInvitationProduct(
     price_now: 0,
     digital_unit_price: 10000,
     free_sample: true,
-    swatches: ['#F5EFE3', '#1A1A1A', '#A6B89A'],
+    swatches: [],
     palettes: [],
     treatment: 'classic-serif',
     image_url: '',
