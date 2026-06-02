@@ -3,11 +3,11 @@
 -- PRODUCTS array. designImage is derived from image_url at runtime — no separate column.
 
 alter table website_invitations_products
-  add column if not exists palettes  jsonb not null default '[]'::jsonb,
+  add column if not exists palettes  jsonb not null default '[]'::jsonb;
 
 -- Upsert all 24 products with full data (palettes + gallery).
--- ON CONFLICT UPDATE overwrites so admin edits to name/price are preserved but
--- palette data from this seed wins for any row that already exists.
+-- ON CONFLICT UPDATE only backfills palettes; image_url and gallery are only
+-- updated when the existing value is empty so admin uploads are preserved.
 insert into website_invitations_products
   (id, slug, name, designer, category, price_was, price_now, digital_unit_price,
    free_sample, swatches, treatment, image_url, gallery, palettes, sort_order, published)
@@ -159,17 +159,6 @@ values
  '[{"name":"Parchment & Gold","background":"#f5f0ea","surface":"#ffffff","accent":"#ab8d53","textPrimary":"#3a2d1f","textSecondary":"#ab8d53","muted":"rgba(106,86,64,0.8)"},{"name":"Midnight Gold","background":"#1A1208","surface":"#ffffff","accent":"#C8A35C","textPrimary":"#FBF5E8","textSecondary":"#C8A35C","muted":"rgba(200,163,92,0.75)"},{"name":"Ivory & Crimson","background":"#F5EFE3","surface":"#ffffff","accent":"#7A1F2B","textPrimary":"#1A1A1A","textSecondary":"#7A1F2B","muted":"rgba(122,31,43,0.7)"},{"name":"Onyx & Gold","background":"#1A1A1A","surface":"#ffffff","accent":"#C8A35C","textPrimary":"#F5EFE3","textSecondary":"#C8A35C","muted":"rgba(200,163,92,0.7)"}]',
  240,true)
 on conflict (id) do update set
-  name             = excluded.name,
-  designer         = excluded.designer,
-  category         = excluded.category,
-  price_was        = excluded.price_was,
-  price_now        = excluded.price_now,
-  digital_unit_price = excluded.digital_unit_price,
-  free_sample      = excluded.free_sample,
-  swatches         = excluded.swatches,
-  treatment        = excluded.treatment,
-  image_url        = excluded.image_url,
-  gallery          = excluded.gallery,
   palettes         = excluded.palettes,
-  sort_order       = excluded.sort_order,
-  published        = excluded.published;
+  image_url        = case when website_invitations_products.image_url = '' then excluded.image_url else website_invitations_products.image_url end,
+  gallery          = case when website_invitations_products.gallery = '[]'::jsonb then excluded.gallery else website_invitations_products.gallery end;
