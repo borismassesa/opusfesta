@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import { createBookingFromInquiry } from '@/lib/booking-from-inquiry'
+import { notifyLeadEventEmail } from '@/lib/email/notify-leads-bookings'
 
 const ALLOWED_STATUSES = ['responded', 'accepted', 'declined', 'closed'] as const
 type AllowedStatus = (typeof ALLOWED_STATUSES)[number]
@@ -110,6 +111,24 @@ export async function PATCH(
   if (error) {
     console.error('[inquiries] update failed', error)
     return NextResponse.json({ error: 'Update failed. Please try again.' }, { status: 500 })
+  }
+
+  if (status) {
+    const statusLabelMap: Record<AllowedStatus, string> = {
+      responded: 'Response sent',
+      accepted: 'Offer accepted',
+      declined: 'Offer declined',
+      closed: 'Lead closed',
+    }
+    notifyLeadEventEmail({
+      recipientEmail: existing.email,
+      recipientName: existing.name,
+      vendorName: state.vendor.businessName,
+      inquiryId: existing.id,
+      statusLabel: statusLabelMap[status as AllowedStatus],
+      eventDate: existing.proposal_event_date,
+      amountTzs: existing.proposal_counter_amount ?? existing.proposal_invoice_amount,
+    }).catch((err) => console.error('[inquiries] notify email threw', err))
   }
 
   // Promote to booking pipeline when vendor marks the inquiry as accepted.
