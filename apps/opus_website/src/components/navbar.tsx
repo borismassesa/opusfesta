@@ -261,7 +261,7 @@ const navItems: Array<{
       },
     ],
     photoGridTitle: 'Website Ideas',
-    photoGrid: websitesPhotoGrid,
+    photoGrid: websitesPhotoGrid.map((item) => ({ ...item, href: '/opuspass/websites' })),
   },
   {
     label: 'Advice & Ideas',
