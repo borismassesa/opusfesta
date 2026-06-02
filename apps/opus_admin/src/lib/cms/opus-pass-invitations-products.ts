@@ -3,7 +3,7 @@
 
 // Kept in sync with InvitationPalette in opus_pass/_types.ts — no cross-app import.
 export type InvitationPalette = {
-  name?: string
+  name: string
   background: string
   surface: string
   accent: string
@@ -47,16 +47,6 @@ export const PRODUCT_CATEGORIES = [
   'Welcome Signs',
   'Event Tickets',
 ] as const
-
-export type InvitationPalette = {
-  name: string
-  background: string
-  surface: string
-  accent: string
-  textPrimary: string
-  textSecondary: string
-  muted: string
-}
 
 export type InvitationProductRecord = {
   id: string
