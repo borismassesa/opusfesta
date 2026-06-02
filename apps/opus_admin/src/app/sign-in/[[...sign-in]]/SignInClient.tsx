@@ -39,6 +39,13 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
               formButtonPrimary: 'bg-[#C9A0DC] hover:bg-[#b97fd0] text-[#1A1A1A]',
               // Hide Clerk's footer (dev-mode branding + "Secured by Clerk").
               footer: 'hidden',
+              // Admin access is gated by admin_whitelist (email), so social
+              // sign-in adds no value — hide the OAuth buttons and the "or"
+              // divider, leaving email-only. NOTE: this is cosmetic; for full
+              // removal also disable Apple/Google under Clerk → SSO connections.
+              socialButtons: 'hidden',
+              socialButtonsBlockButton: 'hidden',
+              dividerRow: 'hidden',
             },
           }}
         />
