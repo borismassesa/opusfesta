@@ -17,6 +17,11 @@ export type SectionStyle = {
   scale?: 0.75 | 1 | 1.25 | 1.5   // font-size multiplier
   fontWeight?: 'normal' | 'bold'
   align?: 'left' | 'center' | 'right'
+  italic?: boolean
+  uppercase?: boolean
+  letterSpacing?: 'tight' | 'normal' | 'wide' | 'wider'
+  color?: string
+  opacity?: number
 }
 
 export type SectionStyles = {
