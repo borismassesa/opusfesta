@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { assetPath } from '@/lib/asset-path'
 import { InvitationVisual, COUPLE_DEFAULT, type Treatment, type Couple, type InvitationPalette } from '@/components/guests/InvitationVisual'
 
 // Defense-in-depth for the inlined SVG: require an SVG/XML prefix and strip the
@@ -49,7 +50,10 @@ function InviteCard({
     if (!designImage) return
     if (designImage === prevUrl.current) return
     prevUrl.current = designImage
-    fetch(designImage)
+    // designImage is a raw local path (/assets/...) from product data; resolve it
+    // against basePath so it loads under /opuspass (and through the opus_website
+    // proxy) instead of 404ing at the origin root. assetPath() no-ops remote URLs.
+    fetch(assetPath(designImage))
       .then((r) => r.text())
       .then((text) => setSvgHtml(sanitizeSvg(text)))
       .catch(() => setSvgHtml(null))
@@ -110,7 +114,7 @@ function DarkStudioScene({ treatment, couple, designImage, palette }: SceneProps
         couple={couple}
         designImage={designImage}
         palette={palette}
-        className="w-[64%] rounded-sm"
+        className="w-[62%] rounded-sm"
         style={{ boxShadow: '0 24px 64px -8px rgba(0,0,0,0.8), 0 8px 24px -8px rgba(0,0,0,0.6)' }}
       />
     </div>
@@ -253,8 +257,8 @@ export function MockupCarousel({
 
   return (
     <div>
-      {/* Main view */}
-      <div className="relative aspect-[3/4] bg-white rounded-md shadow-md overflow-hidden">
+      {/* Main view — 7:6 (not square) so the thumbnail strip stays in view */}
+      <div className="relative aspect-[7/6] bg-white rounded-md shadow-md overflow-hidden">
         <ActiveScene {...sceneProps} />
 
         {onFavourite && (
@@ -268,10 +272,6 @@ export function MockupCarousel({
             <Heart className={cn('h-4 w-4', favourited ? 'fill-[#7A1F2B] text-[#7A1F2B]' : 'text-[#1A1A1A]')} />
           </button>
         )}
-
-        <span className="absolute left-4 bottom-4 inline-flex items-center rounded-full bg-white/95 backdrop-blur px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-gray-700 z-10">
-          {SCENES.find((s) => s.id === active)?.label}
-        </span>
       </div>
 
       {/* Thumbnail strip */}
@@ -288,7 +288,7 @@ export function MockupCarousel({
               onClick={() => setActive(scene.id)}
               className={cn(
                 'relative aspect-[3/4] rounded-sm overflow-hidden transition',
-                isActive ? 'ring-2 ring-[#1A1A1A]' : 'ring-1 ring-gray-200 hover:ring-gray-400',
+                isActive ? 'ring-2 ring-gray-400 ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-400',
               )}
             >
               <ThumbScene {...sceneProps} />

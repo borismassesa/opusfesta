@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
+import { assetPath } from '@/lib/asset-path'
 import { useCart } from '@/components/providers/CartProvider'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import type { FontStyle, SectionStyles } from '@/components/guests/InvitationVisual'
@@ -2370,9 +2371,9 @@ function TicketSvgFile({
   stubLabel: string
 }) {
   const [rawSvg, setRawSvg] = useState('')
-  const src = type === 'qr'
+  const src = assetPath(type === 'qr'
     ? '/assets/invitation-svgs/model-wedding-package/ticket-front.svg'
-    : '/assets/invitation-svgs/model-wedding-package/ticket-barcode-front.svg'
+    : '/assets/invitation-svgs/model-wedding-package/ticket-barcode-front.svg')
 
   // Fetch the SVG template once per type switch — no re-fetch on data changes
   useEffect(() => {

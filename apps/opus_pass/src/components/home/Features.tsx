@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { loadHomepageFeaturesContent, type HomepageFeatureBlock } from '@/lib/cms/homepage-features'
+import { assetPath } from '@/lib/asset-path'
 
 function FeatureBlockSection({ block }: { block: HomepageFeatureBlock }) {
   const reverseClass = block.reverse ? 'md:flex-row-reverse' : 'md:flex-row'
@@ -10,7 +11,7 @@ function FeatureBlockSection({ block }: { block: HomepageFeatureBlock }) {
         <div className="relative h-[260px] w-full overflow-hidden rounded-2xl bg-gray-100 shadow-sm ring-1 ring-black/[0.04] sm:h-[340px] sm:rounded-3xl md:h-[440px]">
           {block.media_video ? (
             <video
-              src={block.media_video}
+              src={assetPath(block.media_video)}
               autoPlay
               muted
               loop
@@ -21,7 +22,7 @@ function FeatureBlockSection({ block }: { block: HomepageFeatureBlock }) {
           ) : (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={block.media_main} alt="" className="h-full w-full object-cover" />
+              <img src={assetPath(block.media_main)} alt="" className="h-full w-full object-cover" />
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent" />
               <div className="pointer-events-none absolute inset-x-0 bottom-0 p-5 sm:p-6">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/70">

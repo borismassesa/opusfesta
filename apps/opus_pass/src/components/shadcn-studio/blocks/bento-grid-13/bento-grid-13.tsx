@@ -6,6 +6,7 @@ import { MotionPreset } from '@/components/ui/motion-preset'
 import { Magnetic } from '@/components/ui/magnet-effect'
 
 import { cn } from '@/lib/utils'
+import { assetPath } from '@/lib/asset-path'
 
 import StatCard from '@/components/shadcn-studio/blocks/bento-grid-13/stat-card'
 import GoalAndTargetCard from '@/components/shadcn-studio/blocks/bento-grid-13/goal-and-target-card'
@@ -423,7 +424,7 @@ const BentoGrid = ({ content }: { content: GuestsFeaturesContent }) => {
                   <div className='flex w-58 items-center gap-3 rounded-xl border py-1.5 pr-3 pl-2 hover:shadow-md'>
                     <Avatar className='size-9.5 rounded-[12px] after:border-0'>
                       <AvatarImage
-                        src='/assets/images/cutesy_couple.jpg'
+                        src={assetPath('/assets/images/cutesy_couple.jpg')}
                         alt='Neema Abdallah'
                         className='rounded-[12px]'
                       />
@@ -439,7 +440,7 @@ const BentoGrid = ({ content }: { content: GuestsFeaturesContent }) => {
                   <div className='flex w-58 items-center gap-3 rounded-xl border py-1.5 pr-3 pl-2 hover:shadow-md'>
                     <Avatar className='size-9.5 rounded-[12px] after:border-0'>
                       <AvatarImage
-                        src='/assets/images/churchcouples.jpg'
+                        src={assetPath('/assets/images/churchcouples.jpg')}
                         alt='Amani Mushi'
                         className='rounded-[12px]'
                       />
@@ -455,7 +456,7 @@ const BentoGrid = ({ content }: { content: GuestsFeaturesContent }) => {
                   <div className='flex w-58 items-center gap-3 rounded-xl border py-1.5 pr-3 pl-2 hover:shadow-md'>
                     <Avatar className='size-9.5 rounded-[12px] after:border-0'>
                       <AvatarImage
-                        src='/assets/images/coupleswithpiano.jpg'
+                        src={assetPath('/assets/images/coupleswithpiano.jpg')}
                         alt='Bakari Temu'
                         className='rounded-[12px]'
                       />
@@ -473,7 +474,7 @@ const BentoGrid = ({ content }: { content: GuestsFeaturesContent }) => {
                   <div className='flex w-58 items-center gap-3 rounded-xl border py-1.5 pr-3 pl-2 hover:shadow-md'>
                     <Avatar className='size-9.5 rounded-[12px] after:border-0'>
                       <AvatarImage
-                        src='/assets/images/authentic_couple.jpg'
+                        src={assetPath('/assets/images/authentic_couple.jpg')}
                         alt='Joyce Paulo'
                         className='rounded-[12px]'
                       />
@@ -489,7 +490,7 @@ const BentoGrid = ({ content }: { content: GuestsFeaturesContent }) => {
                   <div className='flex w-58 items-center gap-3 rounded-xl border py-1.5 pr-3 pl-2 hover:shadow-md'>
                     <Avatar className='size-9.5 rounded-[12px] after:border-0'>
                       <AvatarImage
-                        src='/assets/images/couples_together.jpg'
+                        src={assetPath('/assets/images/couples_together.jpg')}
                         alt='Faith Rwegasira'
                         className='rounded-[12px]'
                       />
@@ -505,7 +506,7 @@ const BentoGrid = ({ content }: { content: GuestsFeaturesContent }) => {
                   <div className='flex w-58 items-center gap-3 rounded-xl border py-1.5 pr-3 pl-2 hover:shadow-md'>
                     <Avatar className='size-9.5 rounded-[12px] after:border-0'>
                       <AvatarImage
-                        src='/assets/images/beautiful_bride.jpg'
+                        src={assetPath('/assets/images/beautiful_bride.jpg')}
                         alt='Daniel Lyimo'
                         className='rounded-[12px]'
                       />
@@ -523,7 +524,7 @@ const BentoGrid = ({ content }: { content: GuestsFeaturesContent }) => {
                   <div className='flex w-58 items-center gap-3 rounded-xl border py-1.5 pr-3 pl-2 hover:shadow-md'>
                     <Avatar className='size-9.5 rounded-[12px] after:border-0'>
                       <AvatarImage
-                        src='/assets/images/beautyinbride.jpg'
+                        src={assetPath('/assets/images/beautyinbride.jpg')}
                         alt='Grace Mremi'
                         className='rounded-[12px]'
                       />
@@ -539,7 +540,7 @@ const BentoGrid = ({ content }: { content: GuestsFeaturesContent }) => {
                   <div className='flex w-58 items-center gap-3 rounded-xl border py-1.5 pr-3 pl-2 hover:shadow-md'>
                     <Avatar className='size-9.5 rounded-[12px] after:border-0'>
                       <AvatarImage
-                        src='/assets/images/bride_umbrella.jpg'
+                        src={assetPath('/assets/images/bride_umbrella.jpg')}
                         alt='Peter Kessy'
                         className='rounded-[12px]'
                       />
@@ -555,7 +556,7 @@ const BentoGrid = ({ content }: { content: GuestsFeaturesContent }) => {
                   <div className='flex w-58 items-center gap-3 rounded-xl border py-1.5 pr-3 pl-2 hover:shadow-md'>
                     <Avatar className='size-9.5 rounded-[12px] after:border-0'>
                       <AvatarImage
-                        src='/assets/images/brideincar.jpg'
+                        src={assetPath('/assets/images/brideincar.jpg')}
                         alt='Asha Ndossi'
                         className='rounded-[12px]'
                       />

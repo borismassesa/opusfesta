@@ -1,11 +1,12 @@
 'use server'
 
-const ALLOWED_REDIRECTS = new Set(['/', '/invitations', '/guests', '/websites'])
+const ALLOWED_REDIRECTS = new Set(['/', '/invitations', '/guests-and-rsvp', '/websites'])
 
 export async function getOpusPassPreviewUrl(redirectPath: string = '/'): Promise<string | null> {
   const url = process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'
   const token = process.env.OPUS_PASS_PREVIEW_TOKEN
   if (!token) return null
   const safePath = ALLOWED_REDIRECTS.has(redirectPath) ? redirectPath : '/'
-  return `${url}/api/preview/enable?token=${encodeURIComponent(token)}&redirect=${encodeURIComponent(safePath)}`
+  // opus_pass runs under basePath '/opuspass' — the preview API lives there.
+  return `${url}/opuspass/api/preview/enable?token=${encodeURIComponent(token)}&redirect=${encodeURIComponent(safePath)}`
 }
