@@ -41,7 +41,7 @@ const DIGITAL_QTY_OPTIONS = [50, 100, 150, 200, 300, 500]
 const PAPER_QTY_OPTIONS = [10, 25, 50, 100, 150, 200]
 
 
-export default function ProductDetailClient({ product, allProducts, mockupImages, mockupScenes }: { product: CatalogProduct; allProducts: CatalogProduct[]; mockupImages?: Record<string, string>; mockupScenes?: { id: string; label: string }[] }) {
+export default function ProductDetailClient({ product, allProducts, mockupImages, mockupScenes, designSvg }: { product: CatalogProduct; allProducts: CatalogProduct[]; mockupImages?: Record<string, string>; mockupScenes?: { id: string; label: string }[]; designSvg?: string | null }) {
   const customiseHref = `/invitations/p/${product.id}/customise`
   const router = useRouter()
   const { addItem } = useCart()
@@ -131,6 +131,7 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
               treatment={product.treatment}
               couple={COUPLE_DEFAULT}
               designImage={product.designImage}
+              designSvg={designSvg ?? undefined}
               mockupImages={mockupImages}
               scenes={mockupScenes}
               palette={(() => {
@@ -257,29 +258,31 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
               </ul>
             </div>
 
-            {/* Design colour — always relevant */}
-            <ConfigGroup title="Design colour" value={(() => {
-              const safeIndex = product.palettes.length > 0 ? Math.max(0, Math.min(selectedColor, product.palettes.length - 1)) : -1
-              return safeIndex >= 0 ? product.palettes[safeIndex]?.name ?? `Swatch ${selectedColor + 1}` : `Swatch ${selectedColor + 1}`
-            })()}>
-              <div className="flex flex-wrap gap-2.5">
-                {product.swatches.map((c, i) => (
-                  <button
-                    key={`${product.id}-c-${i}`}
-                    type="button"
-                    onClick={() => setSelectedColor(i)}
-                    title={c}
-                    aria-label={product.palettes[i]?.name ?? c}
-                    aria-pressed={selectedColor === i}
-                    className={cn(
-                      'h-9 w-9 rounded-full border transition',
-                      selectedColor === i ? 'ring-2 ring-offset-2 ring-[#1A1A1A] border-white' : 'border-gray-300 hover:border-gray-500',
-                    )}
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </div>
-            </ConfigGroup>
+            {/* Design colour — only shown when the product has multiple swatches */}
+            {product.swatches.length > 1 && (
+              <ConfigGroup title="Design colour" value={(() => {
+                const safeIndex = Math.max(0, Math.min(selectedColor, product.palettes.length - 1))
+                return product.palettes[safeIndex]?.name ?? `Swatch ${selectedColor + 1}`
+              })()}>
+                <div className="flex flex-wrap gap-2.5">
+                  {product.swatches.map((c, i) => (
+                    <button
+                      key={`${product.id}-c-${i}`}
+                      type="button"
+                      onClick={() => setSelectedColor(i)}
+                      title={c}
+                      aria-label={product.palettes[i]?.name ?? c}
+                      aria-pressed={selectedColor === i}
+                      className={cn(
+                        'h-9 w-9 rounded-full border transition',
+                        selectedColor === i ? 'ring-2 ring-offset-2 ring-[#1A1A1A] border-white' : 'border-gray-300 hover:border-gray-500',
+                      )}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </ConfigGroup>
+            )}
 
             {/* ─── Optional add-ons ─── */}
             <div className="border-t border-gray-200 pt-6">
