@@ -41,20 +41,20 @@ export function SagePanel({ names, date, venue, palette, message, messageAttr, f
       <g data-section="names">
         {line2 ? (
           <>
-            <text x={na.x} y="196" textAnchor={na.textAnchor} dominantBaseline="middle" style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight} fill="var(--iv-tp)">{line1}</text>
-            <text x={na.x} y="215" textAnchor={na.textAnchor} dominantBaseline="middle" style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight} fill="var(--iv-tp)">&amp; {line2}</text>
+            <text x={na.x} y="196" textAnchor={na.textAnchor} dominantBaseline="middle" style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight} fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}>{na.uppercase ? line1.toUpperCase() : line1}</text>
+            <text x={na.x} y="215" textAnchor={na.textAnchor} dominantBaseline="middle" style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight} fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}>&amp; {na.uppercase ? line2.toUpperCase() : line2}</text>
           </>
         ) : (
-          <text x={na.x} y="205" textAnchor={na.textAnchor} dominantBaseline="middle" style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight} fill="var(--iv-tp)">{names}</text>
+          <text x={na.x} y="205" textAnchor={na.textAnchor} dominantBaseline="middle" style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight} fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}>{na.uppercase ? names.toUpperCase() : names}</text>
         )}
       </g>
       <line x1="188" y1={line2 ? '228' : '218'} x2="212" y2={line2 ? '228' : '218'} stroke="var(--iv-acc)" strokeWidth="1" />
-      <text data-section="date" x={da.x} y={line2 ? '242' : '232'} textAnchor={da.textAnchor} dominantBaseline="middle" fontFamily="inherit" fontSize={da.fontSize} fontWeight={da.fontWeight} letterSpacing="2.2" fill="var(--iv-ts)">{date}</text>
-      <text data-section="venue" x={va.x} y={line2 ? '258' : '248'} textAnchor={va.textAnchor} dominantBaseline="middle" fontFamily="inherit" fontSize={va.fontSize} fontWeight={va.fontWeight} letterSpacing="1.8" fill="var(--iv-mut)">{venue.toUpperCase()}</text>
+      <text data-section="date" x={da.x} y={line2 ? '242' : '232'} textAnchor={da.textAnchor} dominantBaseline="middle" fontFamily="inherit" fontSize={da.fontSize} fontWeight={da.fontWeight} fontStyle={da.fontStyle} letterSpacing={da.letterSpacing ?? 2.2} fill={da.fill ?? 'var(--iv-ts)'} opacity={da.opacity}>{da.uppercase ? date.toUpperCase() : date}</text>
+      <text data-section="venue" x={va.x} y={line2 ? '258' : '248'} textAnchor={va.textAnchor} dominantBaseline="middle" fontFamily="inherit" fontSize={va.fontSize} fontWeight={va.fontWeight} fontStyle={va.fontStyle} letterSpacing={va.letterSpacing ?? 1.8} fill={va.fill ?? 'var(--iv-mut)'} opacity={va.opacity}>{va.uppercase === false ? venue : venue.toUpperCase()}</text>
       {message && (
         <g data-section="message">
           <line x1="137" y1="292" x2="263" y2="292" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
-          <text x={ma.x} y="306" textAnchor={ma.textAnchor} dominantBaseline="middle" style={font.bodyStyle} fontSize={ma.fontSize} fontWeight={ma.fontWeight} fill="var(--iv-ts)">{message}</text>
+          <text x={ma.x} y="306" textAnchor={ma.textAnchor} dominantBaseline="middle" style={{ ...font.bodyStyle, ...(ma.fontStyle && { fontStyle: ma.fontStyle }) }} fontSize={ma.fontSize} fontWeight={ma.fontWeight} fill={ma.fill ?? 'var(--iv-ts)'} opacity={ma.opacity}>{ma.uppercase ? message.toUpperCase() : message}</text>
           {messageAttr && <text x={ma.x} y="320" textAnchor={ma.textAnchor} dominantBaseline="middle" style={font.bodyStyle} fontSize={Math.round(ma.fontSize * 0.86 * 10) / 10} fill="var(--iv-mut)">{messageAttr}</text>}
         </g>
       )}

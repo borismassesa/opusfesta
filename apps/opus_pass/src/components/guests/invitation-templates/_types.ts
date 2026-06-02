@@ -65,6 +65,24 @@ export type SvgTextAttrs = {
   textAnchor: SvgAlign
   fontSize: number
   fontWeight: 'normal' | 'bold'
+  /** Explicit italic override; undefined → let the template/font decide */
+  fontStyle?: 'normal' | 'italic'
+  /** Mapped from SectionStyle.letterSpacing; undefined → keep template default */
+  letterSpacing?: number
+  /** Hex color override; undefined → keep template default fill */
+  fill?: string
+  /** 0–1 opacity override; undefined → no override */
+  opacity?: number
+  /** true → force uppercase; false → force no-uppercase; undefined → template default */
+  uppercase?: boolean
+}
+
+/** SectionStyle.letterSpacing token → SVG user-unit value */
+const LETTER_SPACING_MAP: Record<NonNullable<SectionStyle['letterSpacing']>, number> = {
+  tight:  -0.5,
+  normal:  0,
+  wide:    1.5,
+  wider:   3,
 }
 
 /**
@@ -78,10 +96,15 @@ export function applySectionStyle(defaults: SvgDefaults, style?: SectionStyle): 
   if (style?.align === 'center') { x = 150; textAnchor = 'middle' }
   if (style?.align === 'right')  { x = 280; textAnchor = 'end' }
 
-  const fontSize = Math.round(defaults.fontSize * (style?.scale ?? 1) * 10) / 10
-  const fontWeight = style?.fontWeight ?? 'normal'
+  const fontSize     = Math.round(defaults.fontSize * (style?.scale ?? 1) * 10) / 10
+  const fontWeight   = style?.fontWeight ?? 'normal'
+  const fontStyle    = style?.italic != null ? (style.italic ? 'italic' : 'normal') : undefined
+  const letterSpacing = style?.letterSpacing != null ? LETTER_SPACING_MAP[style.letterSpacing] : undefined
+  const fill         = style?.color
+  const opacity      = style?.opacity
+  const uppercase    = style?.uppercase
 
-  return { x, textAnchor, fontSize, fontWeight }
+  return { x, textAnchor, fontSize, fontWeight, fontStyle, letterSpacing, fill, opacity, uppercase }
 }
 
 // ─── Font resolution ──────────────────────────────────────────────────────────
