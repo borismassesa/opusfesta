@@ -1,9 +1,14 @@
+import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createDashboardClient } from '@/lib/dashboard/supabase'
 import type { PledgePageConfig } from '@/lib/dashboard/pledge-page'
 import CollectorForm from './CollectorForm'
 
 export const dynamic = 'force-dynamic'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 interface PageProps {
   params: Promise<{ token: string }>

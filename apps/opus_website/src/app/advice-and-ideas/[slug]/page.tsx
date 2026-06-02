@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import { ArrowRight, Clock } from 'lucide-react'
+import JsonLd from '@/components/JsonLd'
 import ReadingProgress from '@/components/advice-ideas/ReadingProgress'
 import ArticleToc from '@/components/advice-ideas/ArticleToc'
 import SearchForm from '@/components/advice-ideas/SearchForm'
@@ -91,8 +92,38 @@ export default async function AdviceIdeasDetailPage({
     avatarUrl: mappedAuthor.avatarUrl || post.authorAvatarUrl,
   }
 
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opusfesta.com'
+
+  const articleSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: post.title,
+    description: post.description,
+    image: heroThumb(post),
+    datePublished: post.date,
+    author: { '@type': 'Person', name: author.name },
+    publisher: {
+      '@type': 'Organization',
+      name: 'OpusFesta',
+      logo: { '@type': 'ImageObject', url: `${base}/assets/logo/opusfesta-logo-black.png` },
+    },
+    url: `${base}/advice-and-ideas/${post.slug}`,
+  }
+
+  const breadcrumbSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: base },
+      { '@type': 'ListItem', position: 2, name: 'Ideas & Advice', item: `${base}/advice-and-ideas` },
+      { '@type': 'ListItem', position: 3, name: post.title, item: `${base}/advice-and-ideas/${post.slug}` },
+    ],
+  }
+
   return (
     <article className="bg-white text-[#1A1A1A]">
+      <JsonLd data={articleSchema} />
+      <JsonLd data={breadcrumbSchema} />
       <ReadingProgress />
       <ArticleToc items={tocItems} />
       <ArticleShareRail title={post.title} slug={post.slug} />

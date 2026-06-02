@@ -1,5 +1,10 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { draftMode } from 'next/headers';
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+};
 import { loadDocument } from '@/lib/cms/documents';
 import { getContentType } from '@/lib/cms/types';
 import ArticleRenderer from '@/components/cms/render/ArticleRenderer';

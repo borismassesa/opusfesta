@@ -1,6 +1,11 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
 import { SignOutButton } from '@clerk/nextjs'
+
+export const metadata: Metadata = {
+  robots: { index: false, follow: false },
+}
 
 export default function NoAccessPage() {
   return (

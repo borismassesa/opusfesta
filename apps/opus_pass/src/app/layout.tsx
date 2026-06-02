@@ -5,7 +5,13 @@ import { Yellowtail, Playfair_Display, Cormorant_Garamond, Dancing_Script, Monts
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
 import ToastProvider from '@/components/providers/ToastProvider'
 import { CartProvider } from '@/components/providers/CartProvider'
+import JsonLd from '@/components/JsonLd'
 import './globals.css'
+
+// opus_pass is indexed on its own standalone subdomain, and runs under the
+// /opuspass basePath there too — so the canonical base includes the prefix.
+// Override per-env with NEXT_PUBLIC_APP_URL (e.g. https://opuspass.opusfesta.com/opuspass).
+const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com/opuspass'
 
 const yellowtail   = Yellowtail(       { weight: '400',         subsets: ['latin'], variable: '--font-yellowtail',  display: 'swap' })
 const playfair     = Playfair_Display( { weight: ['400','700'], subsets: ['latin'], variable: '--font-playfair',   display: 'swap' })
@@ -15,10 +21,18 @@ const montserrat   = Montserrat(       { weight: ['400','700'], subsets: ['latin
 const garamond     = EB_Garamond(      { weight: ['400','700'], subsets: ['latin'], variable: '--font-garamond',   display: 'swap' })
 
 export const metadata: Metadata = {
-  title: 'OpusFesta — Plan Your Perfect Wedding',
+  title: 'OpusPass — Your wedding, in one digital pass',
   description:
-    'Everything you need to plan your wedding, all in one place. Discover venues, connect with vendors, manage your registry.',
-  metadataBase: new URL(process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3006'),
+    'Digital invitations, live RSVP tracking, and a beautiful wedding website — all in one pass. Free to start. Built for couples in Tanzania.',
+  metadataBase: new URL(BASE),
+  openGraph: {
+    siteName: 'OpusPass',
+    locale: 'en_TZ',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+  },
 }
 
 export const viewport: Viewport = {
@@ -37,10 +51,19 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     garamond.variable,
   ].join(' ')
 
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'OpusPass',
+    url: BASE,
+    description: 'Digital invitations, RSVP tracking, and wedding websites for couples in Tanzania.',
+  }
+
   return (
     <ClerkProvider>
       <html lang="en" className={`bg-white ${fontVars}`}>
         <body className="bg-white">
+          <JsonLd data={organizationSchema} />
           <CartProvider>
             <SmoothScrollProvider>{children}</SmoothScrollProvider>
           </CartProvider>

@@ -8,6 +8,7 @@ import { loadInvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
 import { loadInvitationsEditorsPicksContent } from '@/lib/cms/invitations-editors-picks'
 import { InvitationShowcase } from '@/components/home/InvitationShowcase'
 import InvitationsLandingClient from './InvitationsLandingClient'
+import JsonLd from '@/components/JsonLd'
 
 export const metadata: Metadata = {
   title: 'Wedding Invitations | OpusPass',
@@ -25,8 +26,21 @@ export default async function InvitationsLandingPage() {
       loadInvitationsFaqsContent(),
       loadInvitationsEditorsPicksContent(),
     ])
+  const faqSchema = faqs.items.length
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: faqs.items.map((item) => ({
+          '@type': 'Question',
+          name: item.question,
+          acceptedAnswer: { '@type': 'Answer', text: item.answer },
+        })),
+      }
+    : null
+
   return (
     <>
+      {faqSchema && <JsonLd data={faqSchema} />}
       {isDraft && <PreviewBanner />}
       <InvitationsLandingClient
         hero={hero}

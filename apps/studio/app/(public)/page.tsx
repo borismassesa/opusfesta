@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import HomePageShell from '@/components/HomePageShell';
 import HeroSection from '@/components/HeroSection';
 import FeaturedProjects from '@/components/FeaturedProjects';
@@ -17,6 +18,18 @@ import {
   getSettings,
   getPageSections,
 } from '@/lib/data-access';
+
+export const metadata: Metadata = {
+  title: 'OpusStudio — Wedding Photography & Videography in Tanzania',
+  description:
+    'OpusStudio captures your most defining moments. Wedding photography, videography, and cinematic storytelling for couples across Tanzania.',
+  openGraph: {
+    title: 'OpusStudio — Wedding Photography & Videography in Tanzania',
+    description:
+      'OpusStudio captures your most defining moments. Wedding photography, videography, and cinematic storytelling for couples across Tanzania.',
+    type: 'website',
+  },
+}
 
 export default async function Home() {
   const [services, projects, testimonials, faqs, settings, sections] = await Promise.all([

@@ -1,8 +1,11 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import VendorDetailPage from '@/components/vendors/VendorDetailPage'
+import JsonLd from '@/components/JsonLd'
 import { getVendor } from '@/lib/vendors'
 import { getVendorFromDb } from '@/lib/vendors-db'
+
+const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opusfesta.com'
 
 // Read the vendor from Supabase, falling back to the hardcoded seed list
 // (apps/opus_website/src/lib/vendors.ts) for slugs not yet in the DB. ISR
@@ -32,6 +35,14 @@ export async function generateMetadata({
   return {
     title: `${vendor.name} | OpusFesta Vendors`,
     description: vendor.excerpt,
+    openGraph: {
+      title: `${vendor.name} | OpusFesta`,
+      description: vendor.excerpt,
+      images: vendor.heroMedia?.src
+        ? [{ url: vendor.heroMedia.src, alt: vendor.heroMedia.alt }]
+        : [],
+      type: 'profile',
+    },
   }
 }
 
@@ -47,5 +58,45 @@ export default async function VendorSlugPage({
     notFound()
   }
 
-  return <VendorDetailPage vendor={vendor} />
+  const localBusinessSchema: Record<string, unknown> = {
+    '@context': 'https://schema.org',
+    '@type': 'LocalBusiness',
+    name: vendor.name,
+    description: vendor.excerpt,
+    url: `${BASE}/vendors/${vendor.slug}`,
+    priceRange: vendor.priceRange,
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: vendor.city,
+      addressCountry: 'TZ',
+      ...(vendor.location?.address ? { streetAddress: vendor.location.address } : {}),
+    },
+    ...(vendor.heroMedia?.src ? { image: vendor.heroMedia.src } : {}),
+    ...(vendor.location?.lat && vendor.location?.lng
+      ? { geo: { '@type': 'GeoCoordinates', latitude: vendor.location.lat, longitude: vendor.location.lng } }
+      : {}),
+    ...(vendor.rating && vendor.reviewCount
+      ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: vendor.rating, reviewCount: vendor.reviewCount, bestRating: 5, worstRating: 1 } }
+      : {}),
+  }
+
+  const faqSchema = vendor.faqs?.length
+    ? {
+        '@context': 'https://schema.org',
+        '@type': 'FAQPage',
+        mainEntity: vendor.faqs.map((f) => ({
+          '@type': 'Question',
+          name: f.question,
+          acceptedAnswer: { '@type': 'Answer', text: f.answer },
+        })),
+      }
+    : null
+
+  return (
+    <>
+      <JsonLd data={localBusinessSchema} />
+      {faqSchema && <JsonLd data={faqSchema} />}
+      <VendorDetailPage vendor={vendor} />
+    </>
+  )
 }
