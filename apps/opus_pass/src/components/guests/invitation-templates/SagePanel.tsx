@@ -41,11 +41,29 @@ export function SagePanel({ names, date, venue, palette, message, messageAttr, f
       <g data-section="names">
         {line2 ? (
           <>
-            <text x={na.x} y="196" textAnchor={na.textAnchor} dominantBaseline="middle" style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight} fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}>{na.uppercase ? line1.toUpperCase() : line1}</text>
-            <text x={na.x} y="215" textAnchor={na.textAnchor} dominantBaseline="middle" style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight} fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}>&amp; {na.uppercase ? line2.toUpperCase() : line2}</text>
+            <text
+              x={na.x} y="196"
+              textAnchor={na.textAnchor} dominantBaseline="middle"
+              style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }}
+              fontSize={na.fontSize} fontWeight={na.fontWeight}
+              fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}
+            >{na.uppercase ? line1.toUpperCase() : line1}</text>
+            <text
+              x={na.x} y="215"
+              textAnchor={na.textAnchor} dominantBaseline="middle"
+              style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }}
+              fontSize={na.fontSize} fontWeight={na.fontWeight}
+              fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}
+            >&amp; {na.uppercase ? line2.toUpperCase() : line2}</text>
           </>
         ) : (
-          <text x={na.x} y="205" textAnchor={na.textAnchor} dominantBaseline="middle" style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight} fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}>{na.uppercase ? names.toUpperCase() : names}</text>
+          <text
+            x={na.x} y="205"
+            textAnchor={na.textAnchor} dominantBaseline="middle"
+            style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }}
+            fontSize={na.fontSize} fontWeight={na.fontWeight}
+            fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}
+          >{na.uppercase ? names.toUpperCase() : names}</text>
         )}
       </g>
       <line x1="188" y1={line2 ? '228' : '218'} x2="212" y2={line2 ? '228' : '218'} stroke="var(--iv-acc)" strokeWidth="1" />

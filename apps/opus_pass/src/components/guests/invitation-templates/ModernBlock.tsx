@@ -39,6 +39,7 @@ export function ModernBlock({ names, date, venue, palette, message, messageAttr,
       <rect x="0" y="300" width="300" height="100" fill="var(--iv-surf)" />
       <text data-section="date" x={da.x} y="316" textAnchor={da.textAnchor} dominantBaseline="middle" fontFamily="inherit" fontSize={da.fontSize} fontWeight={da.fontWeight} fontStyle={da.fontStyle} letterSpacing={da.letterSpacing ?? 3} fill={da.fill ?? 'var(--iv-ts)'} opacity={da.opacity}>{da.uppercase === false ? date : date.toUpperCase()}</text>
       <g data-section="names">
+        {/* Template default: uppercase for non-italic fonts; sectionStyle.uppercase overrides when set */}
         {line2 ? (
           <>
             <text x={na.x} y="338" textAnchor={na.textAnchor} dominantBaseline="middle" style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={namesFW} fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity} letterSpacing={na.letterSpacing ?? -0.5}>{(na.uppercase ?? !isItalic) ? line1.toUpperCase() : line1}</text>
