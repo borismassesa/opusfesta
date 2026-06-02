@@ -1,6 +1,7 @@
 import { Check } from 'lucide-react'
 
 import { loadHomepageManifestoContent } from '@/lib/cms/homepage-manifesto'
+import { assetPath } from '@/lib/asset-path'
 
 export async function Manifesto() {
   const content = await loadHomepageManifestoContent()
@@ -10,7 +11,7 @@ export async function Manifesto() {
         {/* Brand mark */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="/assets/logo/opusfesta-logo-mark.png"
+          src={assetPath('/assets/logo/opusfesta-logo-mark.png')}
           alt="OpusFesta"
           className="mr-1 inline-block h-[0.95em] w-[0.95em] -translate-y-[0.05em] align-middle"
         />{' '}
@@ -24,21 +25,21 @@ export async function Manifesto() {
         {/* Inline thumbnail */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={content.invite_image_url}
+          src={assetPath(content.invite_image_url)}
           alt=""
           className="inline-block h-[1.05em] w-[0.85em] -translate-y-[0.08em] rounded-[0.18em] object-cover align-middle shadow-sm ring-1 ring-black/10"
         />{' '}
         {content.segment_3}{' '}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={content.guest_image_url}
+          src={assetPath(content.guest_image_url)}
           alt=""
           className="inline-block h-[1.05em] w-[0.85em] -translate-y-[0.08em] rounded-[0.18em] object-cover align-middle shadow-sm ring-1 ring-black/10"
         />{' '}
         {content.segment_4}{' '}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={content.place_image_url}
+          src={assetPath(content.place_image_url)}
           alt=""
           className="inline-block h-[1.05em] w-[0.85em] -translate-y-[0.08em] rounded-[0.18em] object-cover align-middle shadow-sm ring-1 ring-black/10"
         />{' '}

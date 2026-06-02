@@ -11,6 +11,10 @@ type RevalidateTarget = {
   label: string
   url: string | undefined
   secret: string | undefined
+  // Multi-zone basePath of the target app (e.g. '/opuspass'). The /api/revalidate
+  // route is served under this prefix, so we prepend it to the endpoint URL.
+  // revalidatePath() itself still receives the app-internal path (no basePath).
+  basePath?: string
 }
 
 async function revalidateTarget(target: RevalidateTarget, paths: string[]): Promise<void> {
@@ -24,7 +28,7 @@ async function revalidateTarget(target: RevalidateTarget, paths: string[]): Prom
   }
 
   const requests = paths.map(async (path) => {
-    const endpoint = `${target.url}/api/revalidate?path=${encodeURIComponent(path)}`
+    const endpoint = `${target.url}${target.basePath ?? ''}/api/revalidate?path=${encodeURIComponent(path)}`
     try {
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -71,6 +75,7 @@ export async function revalidateOpusPass(...paths: string[]): Promise<void> {
       label: 'opus_pass',
       url: process.env.NEXT_PUBLIC_OPUS_PASS_URL,
       secret: process.env.OPUS_PASS_REVALIDATE_SECRET,
+      basePath: '/opuspass',
     },
     paths.length ? paths : ['/']
   )
