@@ -33,10 +33,11 @@ function clerkError(err: unknown, fallback: string): string {
 }
 
 const inputClass =
-  'w-full rounded-lg border border-gray-300 bg-white px-3.5 py-2.5 text-[15px] text-[#1A1A1A] outline-none transition focus:border-[#1A1A1A] focus:ring-1 focus:ring-[#1A1A1A] placeholder:text-gray-400'
+  'w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-[15px] text-[#1A1A1A] outline-none transition focus:border-[#1A1A1A] focus:ring-2 focus:ring-[#1A1A1A]/10 placeholder:text-gray-400'
 const buttonClass =
-  'flex w-full items-center justify-center gap-2 rounded-lg bg-[#1A1A1A] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black disabled:opacity-60'
-const labelClass = 'mb-1.5 block text-sm font-medium text-[#1A1A1A]'
+  'flex w-full items-center justify-center rounded-lg bg-[#1A1A1A] py-3 text-sm font-semibold text-white transition-colors hover:bg-black disabled:cursor-not-allowed disabled:opacity-60'
+const labelClass = 'mb-2 block text-sm font-medium text-[#1A1A1A]'
+const linkClass = 'font-medium text-[#1A1A1A] underline-offset-2 hover:underline disabled:opacity-60'
 
 export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) {
   const { isLoaded, signIn, setActive } = useSignIn()
@@ -153,35 +154,40 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
     setError(null)
   }
 
+  const subtitle =
+    step === 'code'
+      ? `Enter the code we sent to ${email}.`
+      : step === 'password'
+        ? 'Enter your password to continue.'
+        : 'Welcome back — sign in to continue.'
+
   return (
     <div className="grid min-h-screen lg:grid-cols-2">
       {/* ── Left: our custom form (white) ── */}
-      <div className="flex flex-col bg-white px-6 py-10 sm:px-12">
-        <Logo className="h-7 w-auto" />
+      <div className="flex min-h-screen flex-col bg-white">
+        <div className="flex flex-1 flex-col justify-center px-8 py-12 sm:px-12 lg:px-20">
+          <div className="mx-auto w-full max-w-[400px]">
+            <Logo className="h-8 w-auto" />
 
-        <div className="flex flex-1 items-center justify-center py-10">
-          <div className="w-full max-w-sm">
-            <h1 className="text-2xl font-bold text-[#1A1A1A]">Sign in to OpusFesta Admin</h1>
-            <p className="mt-1.5 text-sm text-gray-500">
-              {step === 'code'
-                ? `Enter the code we sent to ${email}.`
-                : 'Welcome back — sign in to continue.'}
-            </p>
+            <h1 className="mt-12 text-[28px] font-bold leading-tight tracking-tight text-[#1A1A1A]">
+              Sign in to OpusFesta Admin
+            </h1>
+            <p className="mt-2 text-[15px] text-gray-500">{subtitle}</p>
 
             {!isLoaded ? (
-              <div className="py-12 text-center">
+              <div className="py-14 text-center">
                 {stalled ? (
                   <>
                     <p className="text-sm font-medium text-[#1A1A1A]">
                       Sign-in is temporarily unavailable
                     </p>
-                    <p className="mt-2 text-sm text-gray-500">
+                    <p className="mx-auto mt-2 max-w-xs text-sm text-gray-500">
                       We couldn&rsquo;t reach the authentication service. Please try again.
                     </p>
                     <button
                       type="button"
                       onClick={() => window.location.reload()}
-                      className={`mt-4 ${buttonClass}`}
+                      className={`mt-5 ${buttonClass}`}
                     >
                       Retry
                     </button>
@@ -195,9 +201,12 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
                 )}
               </div>
             ) : (
-              <div className="mt-8">
+              <div className="mt-9">
                 {error && (
-                  <p className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600" role="alert">
+                  <p
+                    className="mb-5 rounded-lg border border-red-100 bg-red-50 px-3.5 py-2.5 text-sm text-red-600"
+                    role="alert"
+                  >
                     {error}
                   </p>
                 )}
@@ -252,7 +261,7 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
                         Use a different email
                       </button>
                       {canUseCode && (
-                        <button type="button" onClick={sendCode} disabled={busy} className="font-medium text-[#1A1A1A] hover:underline">
+                        <button type="button" onClick={sendCode} disabled={busy} className={linkClass}>
                           Email me a code instead
                         </button>
                       )}
@@ -275,7 +284,7 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
                         value={code}
                         onChange={(e) => setCode(e.target.value)}
                         placeholder="Enter the 6-digit code"
-                        className={inputClass}
+                        className={`${inputClass} tracking-[0.3em]`}
                       />
                     </div>
                     <button type="submit" disabled={busy} className={buttonClass}>
@@ -285,40 +294,46 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
                       <button type="button" onClick={resetToEmail} className="text-gray-500 hover:text-[#1A1A1A]">
                         Use a different email
                       </button>
-                      <button type="button" onClick={sendCode} disabled={busy} className="font-medium text-[#1A1A1A] hover:underline">
+                      <button type="button" onClick={sendCode} disabled={busy} className={linkClass}>
                         Resend code
                       </button>
                     </div>
                   </form>
                 )}
+
+                <p className="mt-8 text-center text-xs leading-relaxed text-gray-400">
+                  Restricted to OpusFesta staff. Access is granted by invitation.
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        <footer className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-400">
-          <span>© OpusFesta. All rights reserved.</span>
-          <span className="flex items-center gap-4">
-            <a href="https://opusfesta.com/privacy-policy" className="hover:text-gray-600">
-              Privacy Policy
-            </a>
-            <a href="https://opusfesta.com/terms-of-use" className="hover:text-gray-600">
-              Terms &amp; Conditions
-            </a>
-          </span>
-        </footer>
+        <div className="px-8 pb-8 sm:px-12 lg:px-20">
+          <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-gray-400">
+            <span>© OpusFesta. All rights reserved.</span>
+            <span className="flex items-center gap-5">
+              <a href="https://opusfesta.com/privacy-policy" className="hover:text-gray-600">
+                Privacy Policy
+              </a>
+              <a href="https://opusfesta.com/terms-of-use" className="hover:text-gray-600">
+                Terms &amp; Conditions
+              </a>
+            </span>
+          </div>
+        </div>
       </div>
 
       {/* ── Right: dark feature panel (hidden on small screens) ── */}
       <div className="relative hidden overflow-hidden bg-[#0E0E10] lg:block">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={PANEL_IMAGE} alt="" className="absolute inset-0 h-full w-full object-cover" />
-        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
+        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-12 xl:p-16">
-          <h2 className="max-w-md text-3xl font-bold leading-tight text-white xl:text-4xl">
+          <h2 className="max-w-md text-3xl font-bold leading-tight text-white xl:text-[40px] xl:leading-[1.1]">
             Run every celebration from one place
           </h2>
-          <p className="mt-4 max-w-md text-sm leading-relaxed text-white/70">
+          <p className="mt-4 max-w-md text-sm leading-relaxed text-white/75">
             Manage content, vendors, reviews, and operations across the OpusFesta
             platform — all from one console.
           </p>
