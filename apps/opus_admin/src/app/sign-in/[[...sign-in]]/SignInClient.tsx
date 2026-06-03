@@ -130,9 +130,10 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
         <img
           src={PANEL_IMAGE}
           alt=""
-          className="absolute inset-0 h-full w-full object-cover opacity-35"
+          className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0E0E10] via-[#0E0E10]/80 to-[#0E0E10]/40" />
+        {/* Light scrim only at the bottom so the caption stays legible. */}
+        <div className="absolute inset-x-0 bottom-0 h-1/2 bg-gradient-to-t from-black/60 to-transparent" />
         <div className="absolute inset-x-0 bottom-0 p-12 xl:p-16">
           <h2 className="max-w-md text-3xl font-bold leading-tight text-white xl:text-4xl">
             Run every celebration from one place
