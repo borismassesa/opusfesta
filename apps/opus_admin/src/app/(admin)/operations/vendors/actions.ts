@@ -1993,5 +1993,8 @@ export async function mergeVendors(input: {
 
   revalidatePath('/operations/vendors')
   revalidatePath(`/operations/vendors/${survivorId}`)
+  // Drop the loser's cached detail route too — its row is gone on success, and
+  // if step 3 ever fails mid-way this keeps a stale page from lingering.
+  revalidatePath(`/operations/vendors/${loserId}`)
   return { ok: true }
 }
