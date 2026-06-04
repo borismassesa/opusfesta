@@ -5,6 +5,9 @@ const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
   '/api/webhooks(.*)',
+  // Phone-handoff identity capture — authorized by a signed token in the URL,
+  // not a Clerk session (the phone scanning the QR isn't logged in).
+  '/verify/capture(.*)',
 ])
 
 export default clerkMiddleware(

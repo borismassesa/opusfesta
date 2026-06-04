@@ -49,15 +49,24 @@ async function loadVerificationProgress(
   ])
 
   const docs = docsRes.data ?? []
-  const tin = docs.find((d) => d.doc_type === 'tin_certificate') ?? null
+  const byType = (t: string) => docs.find((d) => d.doc_type === t) ?? null
+  const tin = byType('tin_certificate')
   const license =
     docs.find(
       (d) =>
         d.doc_type === 'business_license' ||
         d.doc_type === 'sole_proprietor_declaration',
     ) ?? null
+  const idFront = byType('national_id_front')
+  const idBack = byType('national_id_back')
+  const selfie = byType('selfie_liveness')
 
   return {
+    nationalId: {
+      front: idFront ? { status: idFront.status } : null,
+      back: idBack ? { status: idBack.status } : null,
+      selfie: selfie ? { status: selfie.status } : null,
+    },
     tin: tin ? { status: tin.status } : null,
     license: license ? { status: license.status } : null,
     agreementSigned: !!agreementRes.data,

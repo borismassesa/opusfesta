@@ -6,11 +6,13 @@ import { useRouter } from 'next/navigation'
 import { SignOutButton } from '@clerk/nextjs'
 import {
   AlertCircle,
+  ArrowRight,
   Check,
   ClipboardCheck,
   Clock,
   FileSignature,
   FileText,
+  IdCard,
   LogOut,
   type LucideIcon,
   PenLine,
@@ -25,6 +27,7 @@ import {
   type VerifyDocType,
 } from './actions'
 import { SignaturePad } from './SignaturePad'
+import NationalIdStep from './NationalIdStep'
 
 export type VerifyDocSlot = {
   docType: VerifyDocType
@@ -61,6 +64,9 @@ export type AgreementBusinessDefaults = {
 type Props = {
   status: 'verification_pending' | 'needs_corrections'
   slots: VerifyDocSlot[]
+  /** National ID (front + back) + liveness selfie progress — the required
+   *  identity step. TIN + business license in `slots` are optional. */
+  nationalId: { front: boolean; back: boolean; selfie: boolean }
   agreement: {
     version: string
     signedAt: string
@@ -93,6 +99,7 @@ function isSlotDone(slot: VerifyDocSlot): boolean {
 export default function VerifyClient({
   status,
   slots,
+  nationalId,
   agreement,
   agreementBody,
   agreementPdfUrl,
@@ -101,32 +108,38 @@ export default function VerifyClient({
 }: Props) {
   const isCorrection = status === 'needs_corrections'
 
-  // Progressive disclosure: only ONE verification step is active at a time.
-  // Earlier steps collapse to a compact "done" row; later steps render as a
-  // compact "locked" row until their gate opens. This keeps the page focused
-  // on the next concrete action instead of a wall of three forms.
+  // Required identity step: National ID front + back + a liveness selfie. This
+  // is the gate — TIN certificate and business license (in `slots`) are now
+  // OPTIONAL and live in a skippable step after identity.
+  const idComplete = nationalId.front && nationalId.back && nationalId.selfie
+
   const tinSlot = slots[0]
   const licenseSlot = slots[1]
   const tinDone = isSlotDone(tinSlot)
   const licenseDone = isSlotDone(licenseSlot)
   const agreementSigned = !!agreement
 
-  const tinMode: StepMode = tinDone ? 'done' : 'active'
-  const licenseMode: StepMode = !tinDone
+  const [skippedOptional, setSkippedOptional] = useState(false)
+
+  const idMode: StepMode = idComplete ? 'done' : 'active'
+
+  // Optional docs come right after identity. Adding one or skipping resolves
+  // the step; a signature already in progress also counts (returning vendor).
+  const optionalResolved = skippedOptional || agreementSigned
+  const optionalMode: StepMode = !idComplete
     ? 'locked'
-    : licenseDone
+    : optionalResolved
       ? 'done'
       : 'active'
+
+  // Agreement unlocks once identity is verified AND the optional step is
+  // resolved (added or skipped).
   const agreementMode: StepMode =
-    !tinDone || !licenseDone
+    !idComplete || !optionalResolved
       ? 'locked'
       : agreementSigned
         ? 'done'
         : 'active'
-
-  const completedSteps =
-    (tinDone ? 1 : 0) + (licenseDone ? 1 : 0) + (agreementSigned ? 1 : 0)
-  const totalSteps = 3
 
   // Build the visual timeline rendered above the active form. We model 5
   // steps total — Application (always done), TIN, License, Agreement, Under
@@ -149,9 +162,6 @@ export default function VerifyClient({
     action?: ReactNode
   }
 
-  const tinDocStatus = tinSlot.currentDoc?.status
-  const licenseDocStatus = licenseSlot.currentDoc?.status
-
   const journey: JourneyStep[] = [
     {
       icon: ClipboardCheck,
@@ -162,48 +172,70 @@ export default function VerifyClient({
       doneLabel: 'Submitted',
     },
     {
-      icon: FileText,
-      title: 'TIN certificate',
-      mode: tinMode,
+      icon: IdCard,
+      title: 'Identity verification',
+      mode: idMode,
       description:
-        tinMode === 'done'
-          ? tinDocStatus === 'approved'
-            ? 'Approved by OpusFesta admin.'
-            : `Uploaded ${tinSlot.currentDoc ? formatRelative(tinSlot.currentDoc.uploadedAt) : 'recently'}. Awaiting admin review.`
-          : 'Upload your TRA TIN certificate.',
-      doneLabel:
-        tinDocStatus === 'approved' ? 'Approved' : 'Awaiting review',
-      activeLabel:
-        tinDocStatus === 'rejected' ? 'Needs fix' : 'In progress',
-      activeTone: tinDocStatus === 'rejected' ? 'rose' : 'purple',
+        idMode === 'done'
+          ? 'National ID (front + back) and liveness selfie captured. Awaiting admin review.'
+          : 'Take a photo of the front and back of your Tanzania National ID (NIDA), then a quick selfie to confirm it’s you.',
+      doneLabel: 'Awaiting review',
+      activeLabel: 'In progress',
+      activeTone: 'purple',
       action:
-        tinMode === 'active' ? (
-          <DocumentUploadActions slot={tinSlot} isCorrection={isCorrection} />
+        idMode === 'active' ? (
+          <NationalIdStep
+            initialFront={nationalId.front}
+            initialBack={nationalId.back}
+            initialSelfie={nationalId.selfie}
+          />
         ) : undefined,
     },
     {
       icon: FileText,
-      title: 'Business license',
-      mode: licenseMode,
+      title: 'Optional documents',
+      mode: optionalMode,
       description:
-        licenseMode === 'done'
-          ? licenseDocStatus === 'approved'
-            ? 'Approved by OpusFesta admin.'
-            : `Uploaded ${licenseSlot.currentDoc ? formatRelative(licenseSlot.currentDoc.uploadedAt) : 'recently'}. Awaiting admin review.`
-          : licenseMode === 'active'
-            ? 'Upload your BRELA registration, council license, or sole-proprietor declaration.'
-            : 'Unlocks once your TIN certificate is uploaded.',
-      doneLabel:
-        licenseDocStatus === 'approved' ? 'Approved' : 'Awaiting review',
-      activeLabel:
-        licenseDocStatus === 'rejected' ? 'Needs fix' : 'In progress',
-      activeTone: licenseDocStatus === 'rejected' ? 'rose' : 'purple',
+        optionalMode === 'done'
+          ? tinDone || licenseDone
+            ? 'Optional documents added — thanks, this helps speed up review.'
+            : 'Skipped for now. Your National ID alone is enough to get approved.'
+          : optionalMode === 'active'
+            ? 'Not required to get approved — your National ID is enough. Adding your TIN or business license builds trust and can speed up review.'
+            : 'Unlocks once your identity is verified.',
+      doneLabel: tinDone || licenseDone ? 'Added' : 'Skipped',
+      activeLabel: 'Optional',
+      activeTone: 'purple',
       action:
-        licenseMode === 'active' ? (
-          <DocumentUploadActions
-            slot={licenseSlot}
-            isCorrection={isCorrection}
-          />
+        optionalMode === 'active' ? (
+          <div className="mt-3 space-y-3">
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 px-4">
+              <OptionalDoc
+                title="TRA TIN certificate"
+                description="Your tax ID certificate from the Tanzania Revenue Authority."
+                slot={tinSlot}
+                done={tinDone}
+                isCorrection={isCorrection}
+              />
+              <OptionalDoc
+                title="Business license"
+                description="BRELA registration, council license, or a sole-proprietor declaration."
+                slot={licenseSlot}
+                done={licenseDone}
+                isCorrection={isCorrection}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setSkippedOptional(true)}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-600 transition-colors hover:text-gray-900"
+            >
+              {tinDone || licenseDone
+                ? 'Continue to agreement'
+                : 'Skip to agreement'}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ) : undefined,
     },
     {
@@ -217,7 +249,9 @@ export default function VerifyClient({
             : 'Signed.'
           : agreementMode === 'active'
             ? 'Read and e-sign the OpusFesta Mkataba wa Watoa Huduma. This is the legally binding agreement, separate from the Vendor Vows pledge.'
-            : 'Unlocks once both business documents are uploaded.',
+            : !idComplete
+              ? 'Unlocks once your identity is verified.'
+              : 'Add the optional documents above, or skip, to continue.',
       doneLabel: 'Signed',
       activeLabel: 'In progress',
       activeTone: 'purple',
@@ -240,7 +274,7 @@ export default function VerifyClient({
   ]
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#FBF7FC] via-[#FDFDFD] to-[#FDFDFD] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <header className="px-6 sm:px-10 py-5 border-b border-gray-100/80 bg-white/70 backdrop-blur flex items-center justify-between">
         <Link href="/" aria-label="OpusFesta home" className="block">
           <Logo className="h-7 w-auto" />
@@ -263,23 +297,7 @@ export default function VerifyClient({
       <main className="flex-1 px-4 sm:px-6 py-10 sm:py-12">
         <div className="max-w-3xl mx-auto">
           <div className="text-center">
-            {/* Hero pill is reserved for the `needs_corrections` variant —
-                that's a different signal (admin bounced something back) and
-                worth flagging. The default "verification needed" pill was
-                redundant with the headline + the timeline below, so it's
-                gone. */}
-            {isCorrection && (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] px-3 py-1.5 rounded-full border bg-rose-50 text-rose-700 border-rose-200">
-                <AlertCircle className="w-3 h-3" />
-                Action required
-              </span>
-            )}
-            <h1
-              className={cn(
-                'text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]',
-                isCorrection ? 'mt-5' : '',
-              )}
-            >
+            <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]">
               {isCorrection
                 ? 'Re-upload the documents we flagged'
                 : 'Verify your business'}
@@ -317,7 +335,8 @@ export default function VerifyClient({
                 Your verification journey
               </h2>
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                {completedSteps + 1}/{totalSteps + 2} complete
+                {journey.filter((s) => s.mode === 'done').length}/
+                {journey.length} complete
               </span>
             </div>
 
@@ -444,6 +463,64 @@ export default function VerifyClient({
           </footer>
         </div>
       </main>
+    </div>
+  )
+}
+
+/**
+ * One optional document row (TIN / business license). Reuses
+ * DocumentUploadActions for the upload UI, wrapped with an icon, an "Optional"
+ * tag, and an awaiting-review tag once uploaded.
+ */
+function OptionalDoc({
+  title,
+  description,
+  slot,
+  done,
+  isCorrection,
+}: {
+  title: string
+  description: string
+  slot: VerifyDocSlot
+  done: boolean
+  isCorrection: boolean
+}) {
+  return (
+    <div className="py-4 first:pt-0 last:pb-0">
+      <div className="flex items-start gap-3">
+        <span
+          className={cn(
+            'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+            done ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500',
+          )}
+        >
+          {done ? (
+            <Check className="h-4 w-4" strokeWidth={3} />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+            {done ? (
+              <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-emerald-700">
+                Awaiting review
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400">
+                Optional
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-sm leading-relaxed text-gray-600">
+            {description}
+          </p>
+          <div className="mt-3">
+            <DocumentUploadActions slot={slot} isCorrection={isCorrection} />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

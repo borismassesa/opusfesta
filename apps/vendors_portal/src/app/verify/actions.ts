@@ -13,6 +13,13 @@ import {
   getVendorAgreement,
   VENDOR_AGREEMENT_VERSION,
 } from '@/lib/onboarding/vendor-agreement'
+import { createCaptureToken } from '@/lib/capture-token'
+import {
+  getVerificationCaptureProgress,
+  maybeTransitionToAdminReview,
+  storeVerificationShot,
+  type CaptureKind,
+} from '@/lib/verification'
 
 export type VerifyDocType =
   | 'tin_certificate'
@@ -210,77 +217,99 @@ function isValidDocType(s: string): s is VerifyDocType {
   )
 }
 
-/**
- * Auto-flip onboarding_status from `verification_pending` (or
- * `needs_corrections`) to `admin_review` once every required artifact is in
- * place. The cheap-but-correct rule used here:
- *
- *   - latest TIN certificate exists with status pending_review or approved
- *   - latest business license OR sole-proprietor declaration exists, same
- *   - a payout method row exists (set during /onboard submit)
- *   - an agreement row exists (set during /onboard submit)
- *
- * Anything more (TIN ↔ payout name match, BRELA cross-check) is the human
- * admin's job — handled in the dashboard review queue.
- */
-async function maybeTransitionToAdminReview(vendorId: string): Promise<void> {
-  const admin = createSupabaseAdminClient()
+// The `admin_review` auto-transition lives in @/lib/verification (shared with
+// the phone-capture path) and requires National ID front + back + selfie
+// (TIN/license optional). Imported above as `maybeTransitionToAdminReview`.
 
-  const docs = await admin
-    .from('vendor_verification_documents')
-    .select('doc_type, status')
-    .eq('vendor_id', vendorId)
-    .eq('is_latest', true)
-    .returns<Array<{ doc_type: string; status: string }>>()
+// =============================================================================
+// National ID — camera capture (desktop) + phone-handoff token
+// =============================================================================
 
-  if (docs.error || !docs.data) {
-    console.warn(
-      `[verify] auto-transition: docs query failed for ${vendorId}: ${docs.error?.message ?? 'no data'}`,
-    )
-    return
+export type NationalIdResult =
+  | { ok: true }
+  | { ok: false; error: string; reason: 'wrong-state' | 'invalid' | 'unknown' }
+
+async function resolveOwnVendorId(): Promise<string | null> {
+  const userClient = await createClerkSupabaseServerClient()
+  const r = await userClient
+    .from('vendor_memberships')
+    .select('vendor_id')
+    .eq('status', 'active')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle<{ vendor_id: string }>()
+  return r.data?.vendor_id ?? null
+}
+
+async function requirePendingVendor(): Promise<
+  | { ok: true; vendorId: string }
+  | { ok: false; error: string; reason: 'wrong-state' | 'unknown' }
+> {
+  const state = await getCurrentVendor()
+  if (state.kind !== 'pending-approval') {
+    return {
+      ok: false,
+      reason: 'wrong-state',
+      error:
+        state.kind === 'live'
+          ? 'Your account is already approved.'
+          : state.kind === 'suspended'
+            ? 'Your account is suspended.'
+            : "You haven't started a vendor application yet.",
+    }
   }
+  if (
+    state.status !== 'verification_pending' &&
+    state.status !== 'needs_corrections'
+  ) {
+    return {
+      ok: false,
+      reason: 'wrong-state',
+      error: 'Verification is only open while your application is in review.',
+    }
+  }
+  const vendorId = await resolveOwnVendorId()
+  if (!vendorId) {
+    return { ok: false, reason: 'unknown', error: '[verify] no active membership found' }
+  }
+  return { ok: true, vendorId }
+}
 
-  const docTypes = new Set(
-    docs.data
-      .filter((d) => d.status === 'pending_review' || d.status === 'approved')
-      .map((d) => d.doc_type),
-  )
+/** Store a camera-captured identity photo (National ID front/back or selfie). */
+export async function uploadNationalIdShot(
+  kind: CaptureKind,
+  dataUrl: string,
+): Promise<NationalIdResult> {
+  if (kind !== 'front' && kind !== 'back' && kind !== 'selfie') {
+    return { ok: false, reason: 'invalid', error: 'Invalid capture type.' }
+  }
+  const guard = await requirePendingVendor()
+  if (!guard.ok) return guard
+  const res = await storeVerificationShot(guard.vendorId, kind, dataUrl)
+  if (!res.ok) return { ok: false, reason: 'unknown', error: res.error }
+  revalidatePath('/verify')
+  revalidatePath('/pending')
+  return { ok: true }
+}
 
-  const hasTin = docTypes.has('tin_certificate')
-  const hasLicense =
-    docTypes.has('business_license') ||
-    docTypes.has('sole_proprietor_declaration')
+/** Mint a short-lived token authorizing a phone to capture for this vendor. */
+export async function createNationalIdCaptureToken(): Promise<
+  { ok: true; token: string } | { ok: false; error: string }
+> {
+  const guard = await requirePendingVendor()
+  if (!guard.ok) return { ok: false, error: guard.error }
+  return { ok: true, token: createCaptureToken(guard.vendorId) }
+}
 
-  if (!hasTin || !hasLicense) return
-
-  const [payouts, agreements] = await Promise.all([
-    admin
-      .from('vendor_payout_methods')
-      .select('id', { count: 'exact', head: true })
-      .eq('vendor_id', vendorId),
-    // Match only signatures against the *current* agreement version. Older
-    // rows (e.g. the placeholder "v2026-05-vows-v1" from before the legal
-    // Mkataba shipped) live on as audit history but don't satisfy the
-    // verification gate — the vendor must re-sign the current agreement.
-    admin
-      .from('vendor_agreements')
-      .select('id', { count: 'exact', head: true })
-      .eq('vendor_id', vendorId)
-      .eq('agreement_version', VENDOR_AGREEMENT_VERSION),
-  ])
-
-  if ((payouts.count ?? 0) === 0 || (agreements.count ?? 0) === 0) return
-
-  await admin
-    .from('vendors')
-    .update({
-      onboarding_status: 'admin_review',
-      onboarding_completed_at: new Date().toISOString(),
-    })
-    .eq('id', vendorId)
-    // Only flip when state actually allows it — never re-promote an active or
-    // suspended vendor by accident.
-    .in('onboarding_status', ['verification_pending', 'needs_corrections'])
+/** Poll target for the desktop: which captures are done so far. */
+export async function getNationalIdProgressAction(): Promise<{
+  front: boolean
+  back: boolean
+  selfie: boolean
+}> {
+  const guard = await requirePendingVendor()
+  if (!guard.ok) return { front: false, back: false, selfie: false }
+  return getVerificationCaptureProgress(guard.vendorId)
 }
 
 // =============================================================================

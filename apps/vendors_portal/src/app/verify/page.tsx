@@ -131,7 +131,7 @@ export default async function VerifyPage() {
       title: 'TRA TIN certificate',
       description:
         'Your tax ID certificate from the Tanzania Revenue Authority. A clear photo or PDF of the official certificate.',
-      required: true,
+      required: false,
       currentDoc: tinDoc
         ? {
             status: tinDoc.status,
@@ -147,7 +147,7 @@ export default async function VerifyPage() {
       title: 'Business license',
       description:
         'BRELA registration, council license, or — if you trade as yourself — a sole-proprietor declaration. We accept either.',
-      required: true,
+      required: false,
       currentDoc: licenseDoc
         ? {
             status: licenseDoc.status,
@@ -163,6 +163,18 @@ export default async function VerifyPage() {
         : null,
     },
   ]
+
+  // National ID + liveness selfie progress — the required identity step. A
+  // capture counts once its latest doc exists and hasn't been rejected.
+  const idCaptured = (docType: string): boolean => {
+    const d = docByType.get(docType)
+    return !!d && d.status !== 'rejected'
+  }
+  const nationalId = {
+    front: idCaptured('national_id_front'),
+    back: idCaptured('national_id_back'),
+    selfie: idCaptured('selfie_liveness'),
+  }
 
   // Pre-fill the page-3 identification block on the Mkataba sign form with
   // whatever the vendor already entered during onboarding. The vendor can
@@ -194,6 +206,7 @@ export default async function VerifyPage() {
     <VerifyClient
       status={state.status}
       slots={slots}
+      nationalId={nationalId}
       agreementBody={getVendorAgreement()}
       agreementPdfUrl={VENDOR_AGREEMENT_PDF_URL}
       agreementVersion={VENDOR_AGREEMENT_VERSION}

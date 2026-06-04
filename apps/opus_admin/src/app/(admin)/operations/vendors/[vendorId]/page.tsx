@@ -274,6 +274,26 @@ export default async function VendorReviewPage({
     docByType.get('business_license') ??
     docByType.get('sole_proprietor_declaration') ??
     null
+  // Identity documents — the required NIDA front/back + liveness selfie that
+  // vendors capture via camera (TIN/license are optional). Same table + bucket,
+  // so admin review + signed-URL preview work unchanged.
+  const nationalIdFront = docByType.get('national_id_front') ?? null
+  const nationalIdBack = docByType.get('national_id_back') ?? null
+  const selfie = docByType.get('selfie_liveness') ?? null
+
+  const toDocSummary = (d: DocRow | null) =>
+    d && {
+      id: d.id,
+      docType: d.doc_type,
+      storagePath: d.storage_path,
+      filename: d.original_filename,
+      mimeType: d.mime_type,
+      sizeBytes: d.size_bytes,
+      status: d.status,
+      rejectionReason: d.rejection_reason,
+      reviewedAt: d.reviewed_at,
+      uploadedAt: d.uploaded_at,
+    }
 
   // Resolve the agreement signature image path by convention. We don't store
   // it on the agreement row — paths follow `{vendor_id}/signature/{version}.png`
@@ -360,6 +380,9 @@ export default async function VendorReviewPage({
       reviewedAt: license.reviewed_at,
       uploadedAt: license.uploaded_at,
     },
+    nationalIdFront: toDocSummary(nationalIdFront),
+    nationalIdBack: toDocSummary(nationalIdBack),
+    selfie: toDocSummary(selfie),
     payout: payoutRes.data && {
       id: payoutRes.data.id,
       methodType: payoutRes.data.method_type,

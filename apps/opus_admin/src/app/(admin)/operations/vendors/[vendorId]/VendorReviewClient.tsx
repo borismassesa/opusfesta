@@ -14,9 +14,11 @@ import {
   ExternalLink,
   FileSignature,
   FileText,
+  IdCard,
   Loader2,
   PauseCircle,
   PlayCircle,
+  ScanFace,
   ShieldCheck,
   ThumbsDown,
   ThumbsUp,
@@ -141,6 +143,9 @@ export type VendorReviewProps = {
   }
   tin: DocSummary | null
   license: DocSummary | null
+  nationalIdFront: DocSummary | null
+  nationalIdBack: DocSummary | null
+  selfie: DocSummary | null
   payout: {
     id: string
     methodType: string
@@ -244,7 +249,17 @@ const TAB_ORDER: ReadonlyArray<{ id: VendorTab; label: string }> = [
 ]
 
 export default function VendorReviewClient(props: VendorReviewProps) {
-  const { vendor, tin, license, payout, agreement, historicalDocs } = props
+  const {
+    vendor,
+    tin,
+    license,
+    nationalIdFront,
+    nationalIdBack,
+    selfie,
+    payout,
+    agreement,
+    historicalDocs,
+  } = props
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [bannerError, setBannerError] = useState<string | null>(null)
@@ -597,12 +612,59 @@ export default function VendorReviewClient(props: VendorReviewProps) {
 
             <PayoutPanel vendorId={vendor.id} payout={payout} />
 
+            {/* Identity (required) — NIDA front/back + liveness selfie captured
+                by the vendor's camera. Same approve/reject flow as any doc. */}
+            <DocReviewCard
+              title="National ID — Front"
+              subtitle="Front of the Tanzania National ID (NIDA). Required."
+              icon={IdCard}
+              doc={nationalIdFront}
+              missingMessage="Vendor hasn't captured the front of their National ID yet."
+              onApprove={(id) =>
+                runAction('Approve ID front', () => approveDocument(id))
+              }
+              onReject={(id, reason) =>
+                runAction('Reject ID front', () => rejectDocument(id, reason))
+              }
+              actionsDisabled={pending || isApproved || isSuspended}
+            />
+
+            <DocReviewCard
+              title="National ID — Back"
+              subtitle="Back of the Tanzania National ID (NIDA). Required."
+              icon={IdCard}
+              doc={nationalIdBack}
+              missingMessage="Vendor hasn't captured the back of their National ID yet."
+              onApprove={(id) =>
+                runAction('Approve ID back', () => approveDocument(id))
+              }
+              onReject={(id, reason) =>
+                runAction('Reject ID back', () => rejectDocument(id, reason))
+              }
+              actionsDisabled={pending || isApproved || isSuspended}
+            />
+
+            <DocReviewCard
+              title="Liveness selfie"
+              subtitle="Selfie captured to confirm the vendor matches their ID. Required."
+              icon={ScanFace}
+              doc={selfie}
+              missingMessage="Vendor hasn't taken a liveness selfie yet."
+              onApprove={(id) =>
+                runAction('Approve selfie', () => approveDocument(id))
+              }
+              onReject={(id, reason) =>
+                runAction('Reject selfie', () => rejectDocument(id, reason))
+              }
+              actionsDisabled={pending || isApproved || isSuspended}
+            />
+
             <DocReviewCard
               title="TRA TIN certificate"
-              subtitle="Tanzania Revenue Authority tax ID."
+              subtitle="Tanzania Revenue Authority tax ID. Optional."
               icon={FileText}
               doc={tin}
-              missingMessage="Vendor hasn't uploaded the TIN certificate yet."
+              missingMessage="Vendor hasn't uploaded the TIN certificate (optional)."
               onApprove={(id) =>
                 runAction('Approve TIN', () => approveDocument(id))
               }
@@ -614,10 +676,10 @@ export default function VendorReviewClient(props: VendorReviewProps) {
 
             <DocReviewCard
               title="Business license"
-              subtitle="BRELA registration, council license, or sole-proprietor declaration."
+              subtitle="BRELA registration, council license, or sole-proprietor declaration. Optional."
               icon={FileText}
               doc={license}
-              missingMessage="Vendor hasn't uploaded a business license yet."
+              missingMessage="Vendor hasn't uploaded a business license (optional)."
               onApprove={(id) =>
                 runAction('Approve license', () => approveDocument(id))
               }

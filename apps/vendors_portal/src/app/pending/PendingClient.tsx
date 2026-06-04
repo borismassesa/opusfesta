@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { SignOutButton } from '@clerk/nextjs'
 import {
-  AlertTriangle,
   ArrowRight,
   BadgeCheck,
   Banknote,
@@ -14,13 +13,13 @@ import {
   FileSignature,
   FileText,
   Heart,
+  IdCard,
   LogOut,
   type LucideIcon,
   Mail,
   MessageCircle,
   Search,
   ShieldCheck,
-  Sparkles,
   TrendingUp,
   Wallet,
   XCircle,
@@ -66,9 +65,14 @@ type Step = {
  * reflect actual progress (which doc is uploaded + its review status) rather
  * than rendering all three middle steps as "In progress" at once.
  */
+type DocState = { status: 'pending_review' | 'approved' | 'rejected' } | null
+
 export type VerificationProgress = {
-  tin: { status: 'pending_review' | 'approved' | 'rejected' } | null
-  license: { status: 'pending_review' | 'approved' | 'rejected' } | null
+  // National ID (front + back) + liveness selfie — the REQUIRED identity step.
+  nationalId: { front: DocState; back: DocState; selfie: DocState }
+  // TIN + business license are now OPTIONAL.
+  tin: DocState
+  license: DocState
   agreementSigned: boolean
 }
 
@@ -78,10 +82,7 @@ type Perk = {
   description: string
 }
 
-type Badge = { label: string; tone: 'amber' | 'purple' | 'emerald' | 'rose' | 'gray' }
-
 type VariantContent = {
-  badge: Badge | null
   headline: string
   subhead: string
   eta: string | null
@@ -145,6 +146,17 @@ const STEPS = {
     status,
     tone: 'purple',
   }),
+  identity: (
+    status: StepStatus,
+    copy: string,
+    tone: StepTone = 'blue',
+  ): Step => ({
+    icon: IdCard,
+    title: 'Identity verification',
+    description: copy,
+    status,
+    tone,
+  }),
   businessDocs: (
     status: StepStatus,
     copy: string,
@@ -193,7 +205,6 @@ const STEPS = {
 
 const COPY: Record<PendingVariant, VariantContent> = {
   'no-application': {
-    badge: null,
     headline: 'Apply to do business on OpusFesta',
     subhead:
       "OpusFesta verifies every vendor before they can take bookings. Tell us about your business, share your TIN and a few documents, and our team will review and approve your storefront — usually within 2–3 business days.",
@@ -209,9 +220,9 @@ const COPY: Record<PendingVariant, VariantContent> = {
         'upcoming',
         'Tell us about your business — category, services, packages, portfolio, and pricing in TZS.',
       ),
-      STEPS.businessDocs(
+      STEPS.identity(
         'upcoming',
-        'Upload your TRA TIN certificate and a business license or sole-proprietor declaration.',
+        'Photograph the front and back of your National ID (NIDA) and take a quick selfie. TIN and business license are optional.',
       ),
       STEPS.payout(
         'upcoming',
@@ -230,7 +241,6 @@ const COPY: Record<PendingVariant, VariantContent> = {
     perks: PERKS, // sales pitch — only on the no-application screen
   },
   'application-in-progress': {
-    badge: { label: 'Almost there', tone: 'purple' },
     headline: 'Pick up where you left off',
     subhead:
       "You started your vendor application but haven't submitted yet. Finish the remaining sections so we can move you to verification.",
@@ -242,13 +252,13 @@ const COPY: Record<PendingVariant, VariantContent> = {
         'current',
         'Complete the about, services, packages, payout, and portfolio sections, then submit.',
       ),
-      STEPS.businessDocs(
+      STEPS.identity(
         'upcoming',
-        'Upload your TIN certificate and business license / sole-proprietor declaration.',
+        'Verify your identity with your National ID (front + back) and a selfie. TIN and business license are optional.',
       ),
       STEPS.payout(
         'upcoming',
-        'Confirm a payout method — name on the account must match your TIN.',
+        'Confirm a payout method — name on the account must match your National ID.',
       ),
       STEPS.agreement(
         'upcoming',
@@ -263,25 +273,24 @@ const COPY: Record<PendingVariant, VariantContent> = {
     perks: null,
   },
   'verification-pending': {
-    badge: { label: 'Verification needed', tone: 'amber' },
-    headline: 'A few more documents to verify your business',
+    headline: 'Verify your identity to finish',
     subhead:
-      "Your application is in. Now upload the documents that prove your business is legitimate so couples on OpusFesta can trust you.",
+      "Your application is in. Capture your National ID and a quick selfie so couples on OpusFesta can trust you — usually approved within 2–3 business days.",
     eta: null,
-    primaryCta: { label: 'Upload documents', href: '/verify' },
+    primaryCta: { label: 'Verify identity', href: '/verify' },
     secondaryHint: null,
     steps: [
       STEPS.application(
         'done',
         'Application submitted — business details, services, and portfolio captured.',
       ),
-      STEPS.businessDocs(
+      STEPS.identity(
         'current',
-        "Upload your TRA TIN certificate and either a BRELA business license or a sole-proprietor declaration. JPG, PNG, or PDF up to 10MB.",
+        'Photograph the front and back of your National ID (NIDA) and take a liveness selfie. TIN and business license are optional.',
       ),
       STEPS.payout(
         'current',
-        "Confirm a payout method. The account holder name must match the name on your TIN certificate, or payouts will be rejected at booking time.",
+        "Confirm a payout method. The account holder name must match the name on your National ID, or payouts will be rejected at booking time.",
       ),
       STEPS.agreement(
         'current',
@@ -296,18 +305,17 @@ const COPY: Record<PendingVariant, VariantContent> = {
     perks: null,
   },
   'admin-review': {
-    badge: null,
     headline: "We're reviewing your application",
     subhead:
-      "Thanks for submitting everything. Our team is verifying your TIN, business documents, payout details, and portfolio. You'll get an email the moment your dashboard unlocks.",
+      "Thanks for submitting everything. Our team is verifying your identity, payout details, and portfolio. You'll get an email the moment your dashboard unlocks.",
     eta: 'Most vendors are approved within 2–3 business days. We may email you for clarifications.',
     primaryCta: null,
     secondaryHint: null,
     steps: [
       STEPS.application('done', 'Application submitted with all required details.'),
-      STEPS.businessDocs(
+      STEPS.identity(
         'done',
-        'TIN certificate and business license received and queued for review.',
+        'National ID and liveness selfie received and queued for review.',
       ),
       STEPS.payout(
         'done',
@@ -326,7 +334,6 @@ const COPY: Record<PendingVariant, VariantContent> = {
     perks: null,
   },
   'needs-corrections': {
-    badge: { label: 'Action required', tone: 'rose' },
     headline: 'A few items need your attention',
     subhead:
       "Our review team flagged something on your application. Open the details below to see exactly what to fix — once you re-submit, we'll review again right away.",
@@ -335,14 +342,14 @@ const COPY: Record<PendingVariant, VariantContent> = {
     secondaryHint: 'Re-reviews are typically completed within 1 business day.',
     steps: [
       STEPS.application('done', 'Application submitted.'),
-      STEPS.businessDocs(
+      STEPS.identity(
         'current',
-        'One or more documents need to be re-uploaded or corrected. Open Verify to see admin notes per document.',
+        'One or more identity captures need to be retaken. Open Verify to see admin notes.',
         'rose',
       ),
       STEPS.payout(
         'current',
-        'If the account name does not match your TIN, update the payout method to match exactly.',
+        'If the account name does not match your National ID, update the payout method to match exactly.',
         'rose',
       ),
       STEPS.agreement('done', 'Vendor agreement e-signed.'),
@@ -355,7 +362,6 @@ const COPY: Record<PendingVariant, VariantContent> = {
     perks: null,
   },
   suspended: {
-    badge: { label: 'Account suspended', tone: 'rose' },
     headline: 'Your vendor account is currently suspended',
     subhead:
       'Bookings, leads, and storefront access are paused. If you believe this is a mistake or want to appeal, contact OpusFesta support — we respond within 1 business day.',
@@ -366,7 +372,6 @@ const COPY: Record<PendingVariant, VariantContent> = {
     perks: null,
   },
   'no-env': {
-    badge: { label: 'Dev environment', tone: 'gray' },
     headline: 'Vendor backend not connected',
     subhead:
       "Supabase env vars are missing locally, so the portal can't resolve your vendor row. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY to continue.",
@@ -376,14 +381,6 @@ const COPY: Record<PendingVariant, VariantContent> = {
     steps: [],
     perks: null,
   },
-}
-
-const BADGE_TONE: Record<Badge['tone'], string> = {
-  amber: 'bg-amber-50 text-amber-800 border-amber-200',
-  purple: 'bg-[#F0DFF6] text-[#7E5896] border-[#E0C7E8]',
-  emerald: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-  rose: 'bg-rose-50 text-rose-700 border-rose-200',
-  gray: 'bg-gray-100 text-gray-700 border-gray-200',
 }
 
 // State, not step identity, drives the indicator color. Done is universally
@@ -430,62 +427,54 @@ const CURRENT_TAG_TONE: Record<StepTone, string> = {
  *
  * Rules:
  *   - Application: always done (we're in this state because submit succeeded).
- *   - Business verification: done once both TIN and license are uploaded;
- *     otherwise current. Tone goes rose if any uploaded doc was rejected,
- *     amber if all submitted are pending review, blue otherwise.
+ *   - Identity verification (REQUIRED): National ID front + back + selfie. Done
+ *     once all three are captured (not rejected); rose if any was rejected,
+ *     amber if all are pending review, blue otherwise. TIN/license optional.
  *   - Payout setup: always done — submit() persisted the row from /onboard.
- *   - Vendor agreement: done if signed; otherwise current (purple "Sign now").
+ *   - Vendor agreement: done if signed; otherwise current.
  *   - Under review / Approved: upcoming until admin_review fires.
  */
 function buildVerificationSteps(
   progress: VerificationProgress,
   variant: 'verification-pending' | 'needs-corrections',
 ): Step[] {
-  const tinDone =
-    !!progress.tin && progress.tin.status !== 'rejected'
-  const licenseDone =
-    !!progress.license && progress.license.status !== 'rejected'
-  const businessAllDone = tinDone && licenseDone
+  const { front, back, selfie } = progress.nationalId
+  const sides = [front, back, selfie]
+  const capturedCount = sides.filter(
+    (s) => s && s.status !== 'rejected',
+  ).length
+  const idAllDone = capturedCount === 3
+  const anyRejected = sides.some((s) => s?.status === 'rejected')
+  const allPending = sides.every((s) => s?.status === 'pending_review')
 
-  const anyRejected =
-    progress.tin?.status === 'rejected' ||
-    progress.license?.status === 'rejected'
-  const allUploadedPending =
-    progress.tin?.status === 'pending_review' &&
-    progress.license?.status === 'pending_review'
-
-  // Pick the right pill label for the business-verification step.
-  let businessTone: StepTone = 'blue'
-  let businessLabel: string | undefined
+  // Pick the right pill label for the identity step.
+  let idTone: StepTone = 'blue'
+  let idLabel: string | undefined
   if (anyRejected) {
-    businessTone = 'rose'
-    businessLabel = 'Needs fix'
-  } else if (allUploadedPending) {
-    businessTone = 'amber'
-    businessLabel = 'Awaiting review'
-  } else if (progress.tin || progress.license) {
-    businessLabel = '1 of 2 uploaded'
+    idTone = 'rose'
+    idLabel = 'Needs fix'
+  } else if (idAllDone && allPending) {
+    idTone = 'amber'
+    idLabel = 'Awaiting review'
+  } else if (capturedCount > 0) {
+    idLabel = `${capturedCount} of 3 captured`
   }
 
-  const businessStep: Step = businessAllDone
-    ? STEPS.businessDocs(
+  const identityStep: Step = idAllDone
+    ? STEPS.identity(
         'done',
         anyRejected
-          ? 'One or more documents need to be re-uploaded — see /verify for admin notes.'
-          : 'TIN certificate and business license uploaded.',
-        businessTone,
+          ? 'A capture was rejected — retake it on Verify (see admin notes).'
+          : 'National ID (front + back) and liveness selfie captured.',
+        idTone,
       )
     : {
-        ...STEPS.businessDocs(
+        ...STEPS.identity(
           'current',
-          progress.tin && !progress.license
-            ? 'Business license is still missing. Upload BRELA registration or a sole-proprietor declaration.'
-            : !progress.tin && progress.license
-              ? 'TIN certificate is still missing. Upload a photo or PDF of your TRA TIN certificate.'
-              : 'Upload your TRA TIN certificate and either a BRELA business license or a sole-proprietor declaration.',
-          businessTone,
+          'Photograph the front and back of your National ID (NIDA) and take a liveness selfie. TIN and business license are optional.',
+          idTone,
         ),
-        currentLabel: businessLabel,
+        currentLabel: idLabel,
       }
 
   const agreementStep: Step = progress.agreementSigned
@@ -502,7 +491,7 @@ function buildVerificationSteps(
       'done',
       'Application submitted — business details, services, and portfolio captured.',
     ),
-    businessStep,
+    identityStep,
     STEPS.payout(
       'done',
       'Payout method recorded. Final name match happens during admin review.',
@@ -534,10 +523,9 @@ export default function PendingClient({
       ? { ...baseCopy, steps: buildVerificationSteps(progress, variant) }
       : baseCopy
   const isSuspended = variant === 'suspended'
-  const isNeedsCorrections = variant === 'needs-corrections'
 
   return (
-    <div className="min-h-screen bg-[#F5F4F1] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <header className="px-6 sm:px-10 py-5 border-b border-gray-100/80 bg-white/70 backdrop-blur flex items-center justify-between">
         <Link href="/" aria-label="OpusFesta home" className="block">
           <Logo className="h-7 w-auto" />
@@ -557,27 +545,7 @@ export default function PendingClient({
         <div className="max-w-3xl mx-auto">
           {/* Hero */}
           <div className="text-center">
-            {copy.badge && (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] px-3 py-1.5 rounded-full border',
-                  BADGE_TONE[copy.badge.tone],
-                )}
-              >
-                {isSuspended || isNeedsCorrections ? (
-                  <AlertTriangle className="w-3 h-3" />
-                ) : (
-                  <Sparkles className="w-3 h-3" />
-                )}
-                {copy.badge.label}
-              </span>
-            )}
-            <h1
-              className={cn(
-                'text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]',
-                copy.badge ? 'mt-5' : '',
-              )}
-            >
+            <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]">
               {copy.headline}
             </h1>
             <p className="mt-4 text-base text-gray-600 leading-relaxed max-w-xl mx-auto">
