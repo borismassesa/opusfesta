@@ -40,7 +40,13 @@ export function isEmailConfigured(): boolean {
 }
 
 function defaultFromAddress(): string {
-  return process.env.RESEND_FROM_EMAIL || 'OpusFesta <admin@opusfesta.com>'
+  // Accept either name — RESEND_FROM_EMAIL is canonical, EMAIL_FROM is a common
+  // alias used in some env files. The sender must be a Resend-verified domain.
+  return (
+    process.env.RESEND_FROM_EMAIL ||
+    process.env.EMAIL_FROM ||
+    'OpusFesta <admin@opusfesta.com>'
+  )
 }
 
 export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
