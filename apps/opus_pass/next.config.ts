@@ -31,13 +31,25 @@ const nextConfig: NextConfig = {
     ],
   },
   async redirects() {
+    // Standalone domain (opuspass.opusfesta.com) entry — the app lives under
+    // /opuspass, so the bare root must bounce there. We emit an ABSOLUTE URL in
+    // production: a relative `Location: /opuspass` works in browsers but some
+    // link-preview crawlers (WhatsApp/iMessage unfurlers) mishandle relative
+    // redirects, so a shared bare link wouldn't unfurl. Prefer an explicit
+    // NEXT_PUBLIC_SITE_URL, fall back to Vercel's auto-injected production
+    // domain, and finally to a relative path for local dev.
+    const siteUrl =
+      process.env.NEXT_PUBLIC_SITE_URL ??
+      (process.env.VERCEL_PROJECT_PRODUCTION_URL
+        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+        : undefined)
+    const rootDestination = siteUrl ? `${siteUrl}/opuspass` : '/opuspass'
     return [
-      // Standalone domain (opuspass.opusfesta.com) entry — the app now lives under
-      // /opuspass, so send the bare root there. basePath:false matches the TRUE
-      // root; without it the source would itself be prefixed to /opuspass.
+      // basePath:false matches the TRUE root; without it the source would itself
+      // be prefixed to /opuspass and the bare domain would 404.
       {
         source: '/',
-        destination: '/opuspass',
+        destination: rootDestination,
         basePath: false,
         permanent: false,
       },
