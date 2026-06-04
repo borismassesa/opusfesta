@@ -1,4 +1,4 @@
-import type { OnboardingDraft } from '../onboarding/draft'
+import { hasCompletePayout, type OnboardingDraft } from '../onboarding/draft'
 
 export type SectionStatus = 'complete' | 'partial' | 'empty' | 'auto'
 
@@ -33,8 +33,7 @@ const packagesComplete = (d: OnboardingDraft) =>
 const policiesComplete = (d: OnboardingDraft) =>
   Boolean(d.cancellationLevel) && Boolean(d.reschedulePolicy) && d.depositPercent.trim() !== ''
 
-const payoutComplete = (d: OnboardingDraft) =>
-  Boolean(d.payoutMethod) && d.payoutNumber.trim() !== '' && d.payoutAccountName.trim() !== ''
+const payoutComplete = (d: OnboardingDraft) => hasCompletePayout(d)
 
 // FAQ is an optional section — vendors may have one cornerstone Q&A or
 // none at all. Treating the section as "partial" until 3 are filled in

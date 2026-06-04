@@ -4,7 +4,11 @@ import Link from 'next/link'
 import { Fragment } from 'react'
 import { Check } from 'lucide-react'
 import Logo from '../ui/Logo'
-import { useOnboardingDraft, type OnboardingDraft } from '@/lib/onboarding/draft'
+import {
+  hasCompletePayout,
+  useOnboardingDraft,
+  type OnboardingDraft,
+} from '@/lib/onboarding/draft'
 import { cn } from '@/lib/utils'
 
 export type StepKey = 'profile' | 'details' | 'pricing' | 'review'
@@ -43,9 +47,7 @@ const pricingComplete = (d: OnboardingDraft) =>
   d.packages.every((p) => p.name.trim() && p.price.trim()) &&
   Boolean(d.cancellationLevel) &&
   Boolean(d.reschedulePolicy) &&
-  Boolean(d.payoutMethod) &&
-  d.payoutNumber.trim() !== '' &&
-  d.payoutAccountName.trim() !== ''
+  hasCompletePayout(d)
 
 const reviewComplete = (d: OnboardingDraft) => Boolean(d.submittedAt)
 

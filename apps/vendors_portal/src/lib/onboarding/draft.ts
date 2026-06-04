@@ -83,6 +83,19 @@ export type PayoutMethod =
   | 'bank'
   | null
 
+// A single payout destination. Vendors can register several (e.g. an M-Pesa
+// number for fast deposits plus a bank account for the balance) and mark one
+// as `primary` — the default destination money is sent to.
+export type PayoutEntry = {
+  id: string
+  method: PayoutMethod
+  number: string
+  accountName: string
+  bankName: string // when method === 'bank'
+  network: string // when method === 'lipa-namba'
+  primary: boolean
+}
+
 export type OnboardingDraft = {
   categoryId: string | null
   vowsAccepted: boolean
@@ -112,11 +125,7 @@ export type OnboardingDraft = {
   depositPercent: string
   cancellationLevel: CancellationLevel
   reschedulePolicy: ReschedulePolicy
-  payoutMethod: PayoutMethod
-  payoutNumber: string
-  payoutAccountName: string
-  payoutBankName: string
-  payoutNetwork: string
+  payoutMethods: PayoutEntry[]
   hours: BusinessHours
   socials: SocialLinks
   awards: string
@@ -192,11 +201,7 @@ const EMPTY: OnboardingDraft = {
   depositPercent: '30',
   cancellationLevel: null,
   reschedulePolicy: null,
-  payoutMethod: null,
-  payoutNumber: '',
-  payoutAccountName: '',
-  payoutBankName: '',
-  payoutNetwork: '',
+  payoutMethods: [],
   hours: DEFAULT_HOURS,
   socials: DEFAULT_SOCIALS,
   awards: '',
@@ -213,13 +218,81 @@ const EMPTY: OnboardingDraft = {
   submittedAt: null,
 }
 
+// Legacy single-payout fields stored by drafts created before multi-payout
+// support. Read off the raw JSON so we can migrate them into the new array.
+type LegacyPayoutShape = {
+  payoutMethod?: PayoutMethod
+  payoutNumber?: string
+  payoutAccountName?: string
+  payoutBankName?: string
+  payoutNetwork?: string
+}
+
+/** Stable id for a payout entry. crypto.randomUUID where available. */
+export function newPayoutEntryId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `pe-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`
+}
+
+/** A blank payout entry for the onboarding UI to fill in. */
+export function emptyPayoutEntry(primary = false): PayoutEntry {
+  return {
+    id: newPayoutEntryId(),
+    method: null,
+    number: '',
+    accountName: '',
+    bankName: '',
+    network: '',
+    primary,
+  }
+}
+
+/** Is this entry filled in enough to persist? */
+export function isPayoutEntryComplete(e: PayoutEntry): boolean {
+  if (!e.method) return false
+  if (!e.number.trim() || !e.accountName.trim()) return false
+  if (e.method === 'bank' && !e.bankName.trim()) return false
+  if (e.method === 'lipa-namba' && !e.network.trim()) return false
+  return true
+}
+
+/** Does the draft have at least one usable payout method? */
+export function hasCompletePayout(draft: OnboardingDraft): boolean {
+  return draft.payoutMethods.some(isPayoutEntryComplete)
+}
+
+/** The primary entry (explicitly flagged, else the first). */
+export function primaryPayoutEntry(draft: OnboardingDraft): PayoutEntry | null {
+  return (
+    draft.payoutMethods.find((e) => e.primary) ?? draft.payoutMethods[0] ?? null
+  )
+}
+
 function readDraft(): OnboardingDraft {
   if (typeof window === 'undefined') return EMPTY
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY)
     if (!raw) return EMPTY
-    const parsed = JSON.parse(raw) as Partial<OnboardingDraft>
-    return { ...EMPTY, ...parsed }
+    const parsed = JSON.parse(raw) as Partial<OnboardingDraft> & LegacyPayoutShape
+    const merged = { ...EMPTY, ...parsed }
+    // Migrate a legacy single payout method into the array so drafts started
+    // before multi-payout don't lose what the vendor already entered.
+    if (merged.payoutMethods.length === 0 && parsed.payoutMethod) {
+      merged.payoutMethods = [
+        {
+          id: newPayoutEntryId(),
+          method: parsed.payoutMethod,
+          number: parsed.payoutNumber ?? '',
+          accountName: parsed.payoutAccountName ?? '',
+          bankName: parsed.payoutBankName ?? '',
+          network: parsed.payoutNetwork ?? '',
+          primary: true,
+        },
+      ]
+    }
+    return merged
   } catch {
     return EMPTY
   }

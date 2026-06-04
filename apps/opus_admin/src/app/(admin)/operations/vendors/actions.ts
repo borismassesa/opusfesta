@@ -437,6 +437,9 @@ export type VendorPayoutPatch = {
   accountNumber: string
   accountHolderName: string
   status: VendorPayoutStatus
+  // Only meaningful on insert: make this new method the primary (is_default).
+  // Promoting an existing method to primary goes through setPrimaryPayoutMethod.
+  makeDefault?: boolean
 }
 
 const VALID_PAYOUT_METHODS: VendorPayoutMethodType[] = [
@@ -495,24 +498,110 @@ export async function saveVendorPayoutMethod(
     failure_reason: null,
   }
 
-  const query = payoutId
-    ? admin
+  if (payoutId) {
+    // Edit in place. We never touch is_default here — primary changes go
+    // through setPrimaryPayoutMethod so the partial unique index is respected.
+    const { error } = await admin
+      .from('vendor_payout_methods')
+      .update(payload)
+      .eq('id', payoutId)
+      .eq('vendor_id', vendorId)
+    if (error) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: `[admin] payout save failed: ${error.code} ${error.message}`,
+      }
+    }
+  } else {
+    // Insert a new method. It becomes the default when the caller asks, or
+    // automatically when the vendor has no default yet (so there's always
+    // exactly one primary). Clear any existing default first to satisfy the
+    // partial unique index (only one is_default=true allowed at a time).
+    const existingDefault = await admin
+      .from('vendor_payout_methods')
+      .select('id', { count: 'exact', head: true })
+      .eq('vendor_id', vendorId)
+      .eq('is_default', true)
+    if (existingDefault.error) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: `[admin] payout default check failed: ${existingDefault.error.code} ${existingDefault.error.message}`,
+      }
+    }
+    const makeDefault = fields.makeDefault === true || (existingDefault.count ?? 0) === 0
+    if (makeDefault && (existingDefault.count ?? 0) > 0) {
+      const clear = await admin
         .from('vendor_payout_methods')
-        .update(payload)
-        .eq('id', payoutId)
+        .update({ is_default: false })
         .eq('vendor_id', vendorId)
-    : admin.from('vendor_payout_methods').insert({
-        vendor_id: vendorId,
-        is_default: true,
-        ...payload,
-      })
+        .eq('is_default', true)
+      if (clear.error) {
+        return {
+          ok: false,
+          reason: 'unknown',
+          error: `[admin] payout default clear failed: ${clear.error.code} ${clear.error.message}`,
+        }
+      }
+    }
+    const { error } = await admin.from('vendor_payout_methods').insert({
+      vendor_id: vendorId,
+      is_default: makeDefault,
+      ...payload,
+    })
+    if (error) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: `[admin] payout save failed: ${error.code} ${error.message}`,
+      }
+    }
+  }
 
-  const { error } = await query
-  if (error) {
+  revalidatePath('/operations/vendors')
+  revalidatePath(`/operations/vendors/${vendorId}`)
+  return { ok: true }
+}
+
+/**
+ * Promote one payout method to primary (is_default). Clears the current
+ * default first, then sets the chosen one — two steps because the partial
+ * unique index (`WHERE is_default`) allows only one default row at a time.
+ */
+export async function setPrimaryPayoutMethod(
+  vendorId: string,
+  payoutId: string
+): Promise<ActionResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  if (!payoutId) {
+    return { ok: false, reason: 'invalid', error: 'Missing payout method.' }
+  }
+
+  const admin = createSupabaseAdminClient()
+  const clear = await admin
+    .from('vendor_payout_methods')
+    .update({ is_default: false })
+    .eq('vendor_id', vendorId)
+    .eq('is_default', true)
+  if (clear.error) {
     return {
       ok: false,
       reason: 'unknown',
-      error: `[admin] payout save failed: ${error.code} ${error.message}`,
+      error: `[admin] payout primary clear failed: ${clear.error.code} ${clear.error.message}`,
+    }
+  }
+  const set = await admin
+    .from('vendor_payout_methods')
+    .update({ is_default: true })
+    .eq('id', payoutId)
+    .eq('vendor_id', vendorId)
+  if (set.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] payout primary set failed: ${set.error.code} ${set.error.message}`,
     }
   }
 

@@ -3,7 +3,6 @@
 import Link from 'next/link'
 import { SignOutButton } from '@clerk/nextjs'
 import {
-  AlertTriangle,
   ArrowRight,
   BadgeCheck,
   Banknote,
@@ -20,7 +19,6 @@ import {
   MessageCircle,
   Search,
   ShieldCheck,
-  Sparkles,
   TrendingUp,
   Wallet,
   XCircle,
@@ -378,14 +376,6 @@ const COPY: Record<PendingVariant, VariantContent> = {
   },
 }
 
-const BADGE_TONE: Record<Badge['tone'], string> = {
-  amber: 'bg-amber-50 text-amber-800 border-amber-200',
-  purple: 'bg-[#F0DFF6] text-[#7E5896] border-[#E0C7E8]',
-  emerald: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-  rose: 'bg-rose-50 text-rose-700 border-rose-200',
-  gray: 'bg-gray-100 text-gray-700 border-gray-200',
-}
-
 // State, not step identity, drives the indicator color. Done is universally
 // emerald + check. Current is filled in the step's tone (the only place tone
 // surfaces visually). Upcoming is uniformly neutral so the timeline doesn't
@@ -544,7 +534,6 @@ export default function PendingClient({
       ? { ...baseCopy, steps: buildVerificationSteps(progress, variant) }
       : baseCopy
   const isSuspended = variant === 'suspended'
-  const isNeedsCorrections = variant === 'needs-corrections'
   // When nothing has started yet (e.g. the "apply" screen), the timeline is a
   // map of the journey rather than a live status. Faded gray-on-white reads as
   // unreadable there, so render those upcoming steps in normal dark text. In
@@ -573,27 +562,7 @@ export default function PendingClient({
         <div className="max-w-3xl mx-auto">
           {/* Hero */}
           <div className="text-center">
-            {copy.badge && (
-              <span
-                className={cn(
-                  'inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] px-3 py-1.5 rounded-full border',
-                  BADGE_TONE[copy.badge.tone],
-                )}
-              >
-                {isSuspended || isNeedsCorrections ? (
-                  <AlertTriangle className="w-3 h-3" />
-                ) : (
-                  <Sparkles className="w-3 h-3" />
-                )}
-                {copy.badge.label}
-              </span>
-            )}
-            <h1
-              className={cn(
-                'text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]',
-                copy.badge ? 'mt-5' : '',
-              )}
-            >
+            <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]">
               {copy.headline}
             </h1>
             <p className="mt-4 text-base text-gray-600 leading-relaxed max-w-xl mx-auto">
