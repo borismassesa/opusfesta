@@ -33,16 +33,87 @@ type SceneItem = {
   url: string
   sortOrder: number
   isNew: boolean
+  // Card placement within the mockup photo (percentages of the scene box;
+  // rotation in degrees). Mirrors the website_cms_mockup_carousel columns.
+  cardX: number
+  cardY: number
+  cardWidth: number
+  cardRotate: number
+  cardHidden: boolean
+}
+
+// Centered default — reproduces the pre-placement behaviour for untuned scenes.
+const DEFAULT_PLACEMENT = { cardX: 50, cardY: 50, cardWidth: 62, cardRotate: 0, cardHidden: false }
+
+// Postgres `numeric` values arrive as strings via PostgREST — coerce to a finite
+// number, falling back when null/missing or unparseable.
+function toNum(v: number | string | null | undefined, fallback: number): number {
+  if (v == null) return fallback
+  const n = Number(v)
+  return Number.isFinite(n) ? n : fallback
 }
 
 function sceneLabel(item: SceneItem): string {
   return item.label.trim() || SCENE_DEFAULT_LABEL[item.id] || item.id
 }
 
+// A neutral stand-in for the invitation card, used only to position the card
+// slot in the preview. The real artwork renders on the public site — we don't
+// import opus_pass's InvitationVisual across the app boundary.
+function CardGhost() {
+  return (
+    <div className="relative aspect-[3/4] w-full rounded-sm overflow-hidden bg-[#F7F3EC] ring-1 ring-black/10 shadow-[0_18px_50px_-12px_rgba(0,0,0,0.45)] flex flex-col items-center justify-center text-center px-[8%]">
+      <span className="text-[6px] tracking-[0.3em] text-[#5C6B4D] uppercase">You are invited</span>
+      <span className="mt-1 font-serif text-[12px] leading-none text-gray-800">Amani<br />&amp; Neema</span>
+      <span className="mt-1.5 h-px w-[30%] bg-[#5C6B4D]/50" />
+      <span className="mt-1.5 text-[6px] tracking-[0.2em] text-[#5C6B4D]">22 · 08 · 2026</span>
+    </div>
+  )
+}
+
+function PlacementSlider({
+  label, value, min, max, step = 1, suffix = '', disabled, onChange,
+}: {
+  label: string
+  value: number
+  min: number
+  max: number
+  step?: number
+  suffix?: string
+  disabled?: boolean
+  onChange: (v: number) => void
+}) {
+  return (
+    <label className={disabled ? 'block opacity-40' : 'block'}>
+      <div className="mb-1 flex justify-between text-[11px] font-semibold text-gray-600">
+        <span>{label}</span>
+        <span className="tabular-nums text-gray-400">{value}{suffix}</span>
+      </div>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        disabled={disabled}
+        onChange={(e) => onChange(Number(e.target.value))}
+        className="w-full accent-[#C9A0DC] disabled:cursor-not-allowed"
+      />
+    </label>
+  )
+}
+
 // ─── Preview panel ────────────────────────────────────────────────────────────
 
-function MockupCarouselPreview({ scenes }: { scenes: SceneItem[] }) {
-  const [activeId, setActiveId] = useState<string>(() => scenes[0]?.id ?? '')
+function MockupCarouselPreview({
+  scenes,
+  activeId,
+  onActiveChange,
+}: {
+  scenes: SceneItem[]
+  activeId: string
+  onActiveChange: (id: string) => void
+}) {
   const active = scenes.find((s) => s.id === activeId) ?? scenes[0]
   if (!active) return null
 
@@ -52,12 +123,26 @@ function MockupCarouselPreview({ scenes }: { scenes: SceneItem[] }) {
   return (
     <div className="space-y-2">
       <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-widest">Preview</p>
-      <div className="relative aspect-[3/4] rounded-xl overflow-hidden shadow-md" style={{ background: bg }}>
+      <div className="relative aspect-[4/3] rounded-xl overflow-hidden shadow-md" style={{ background: bg }}>
         {url ? (
           <img src={url} alt={sceneLabel(active)} className="absolute inset-0 w-full h-full object-cover" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
             <span className="text-[11px] text-gray-400">No photo</span>
+          </div>
+        )}
+        {/* Ghost card showing where the invitation lands in the photo's slot */}
+        {!active.cardHidden && (
+          <div
+            className="absolute"
+            style={{
+              left: `${active.cardX}%`,
+              top: `${active.cardY}%`,
+              width: `${active.cardWidth}%`,
+              transform: `translate(-50%, -50%) rotate(${active.cardRotate}deg)`,
+            }}
+          >
+            <CardGhost />
           </div>
         )}
         <div className="absolute left-3 bottom-3 bg-white/80 backdrop-blur-sm rounded px-2 py-0.5">
@@ -73,9 +158,9 @@ function MockupCarouselPreview({ scenes }: { scenes: SceneItem[] }) {
             <button
               key={s.id}
               type="button"
-              onClick={() => setActiveId(s.id)}
+              onClick={() => onActiveChange(s.id)}
               title={sceneLabel(s)}
-              className={`relative aspect-[3/4] rounded overflow-hidden transition ${
+              className={`relative aspect-[4/3] rounded overflow-hidden transition ${
                 s.id === activeId
                   ? 'ring-2 ring-[#1A1A1A]'
                   : 'ring-1 ring-gray-200 hover:ring-gray-400'
@@ -101,8 +186,18 @@ export default function MockupCarouselEditor({ initial }: { initial: MockupScene
       url: s.url,
       sortOrder: s.sort_order ?? i,
       isNew: false,
+      // Postgres numeric columns arrive as strings — coerce so the sliders and
+      // saved payload are real numbers, not "74".
+      cardX: toNum(s.card_x, DEFAULT_PLACEMENT.cardX),
+      cardY: toNum(s.card_y, DEFAULT_PLACEMENT.cardY),
+      cardWidth: toNum(s.card_width, DEFAULT_PLACEMENT.cardWidth),
+      cardRotate: toNum(s.card_rotate, DEFAULT_PLACEMENT.cardRotate),
+      cardHidden: s.card_hidden ?? DEFAULT_PLACEMENT.cardHidden,
     }))
   )
+
+  // Which scene the live preview is showing — followed when placement sliders move.
+  const [previewId, setPreviewId] = useState<string>(() => initial[0]?.scene ?? '')
 
   const [pending, startTransition] = useTransition()
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -130,8 +225,9 @@ export default function MockupCarouselEditor({ initial }: { initial: MockupScene
     const newId = `scene_${Date.now()}`
     setScenes((prev) => [
       ...prev,
-      { id: newId, label: '', url: '', sortOrder: prev.length, isNew: true },
+      { id: newId, label: '', url: '', sortOrder: prev.length, isNew: true, ...DEFAULT_PLACEMENT },
     ])
+    setPreviewId(newId) // jump the live preview to the scene just added
     setSaved(false)
   }
 
@@ -161,6 +257,11 @@ export default function MockupCarouselEditor({ initial }: { initial: MockupScene
       url: s.url,
       label: s.label.trim() || null,
       sort_order: s.sortOrder,
+      card_x: s.cardX,
+      card_y: s.cardY,
+      card_width: s.cardWidth,
+      card_rotate: s.cardRotate,
+      card_hidden: s.cardHidden,
     }))
     startTransition(async () => {
       try {
@@ -179,6 +280,7 @@ export default function MockupCarouselEditor({ initial }: { initial: MockupScene
       <div className="flex items-center justify-between gap-4">
         <p className="text-sm text-gray-500">
           Upload one photo per scene. Edit names, reorder, add or remove scenes — changes apply to every product page.
+          <span className="block text-xs text-gray-400 mt-0.5">Recommended: landscape 800×600 (4:3), WebP.</span>
         </p>
         <div className="flex items-center gap-2 shrink-0">
           {error && (
@@ -254,10 +356,37 @@ export default function MockupCarouselEditor({ initial }: { initial: MockupScene
                 value={scene.url}
                 onChange={(v) => updateScene(scene.id, { url: v })}
                 pathPrefix={IMAGE_PREFIX}
-                previewAspect="aspect-[3/4]"
-                previewWidth="max-w-[160px]"
+                previewAspect="aspect-[4/3]"
+                previewWidth="max-w-[200px]"
                 accept="image"
               />
+
+              {/* Card placement — drops the invitation into the photo's card slot */}
+              <div className="mt-4 border-t border-gray-100 pt-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-widest">Card placement</p>
+                  <label className="flex items-center gap-1.5 text-[11px] font-medium text-gray-600">
+                    <input
+                      type="checkbox"
+                      checked={scene.cardHidden}
+                      onChange={(e) => updateScene(scene.id, { cardHidden: e.target.checked })}
+                      className="h-3.5 w-3.5 rounded border-gray-300 text-[#C9A0DC] focus:ring-[#C9A0DC]"
+                    />
+                    Hide card overlay
+                  </label>
+                </div>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-3">
+                  <PlacementSlider label="Horizontal" value={scene.cardX} min={0} max={100} suffix="%" disabled={scene.cardHidden}
+                    onChange={(v) => { updateScene(scene.id, { cardX: v }); setPreviewId(scene.id) }} />
+                  <PlacementSlider label="Vertical" value={scene.cardY} min={0} max={100} suffix="%" disabled={scene.cardHidden}
+                    onChange={(v) => { updateScene(scene.id, { cardY: v }); setPreviewId(scene.id) }} />
+                  <PlacementSlider label="Size" value={scene.cardWidth} min={10} max={100} suffix="%" disabled={scene.cardHidden}
+                    onChange={(v) => { updateScene(scene.id, { cardWidth: v }); setPreviewId(scene.id) }} />
+                  <PlacementSlider label="Rotation" value={scene.cardRotate} min={-30} max={30} suffix="°" disabled={scene.cardHidden}
+                    onChange={(v) => { updateScene(scene.id, { cardRotate: v }); setPreviewId(scene.id) }} />
+                </div>
+                <p className="mt-2 text-[11px] text-gray-400">Slide to drop the invitation into the photo&apos;s blank card slot — watch the preview.</p>
+              </div>
             </div>
           ))}
 
@@ -275,7 +404,7 @@ export default function MockupCarouselEditor({ initial }: { initial: MockupScene
 
         {/* Sticky preview */}
         <div className="w-[200px] shrink-0 sticky top-6">
-          <MockupCarouselPreview scenes={scenes} />
+          <MockupCarouselPreview scenes={scenes} activeId={previewId} onActiveChange={setPreviewId} />
         </div>
       </div>
     </div>

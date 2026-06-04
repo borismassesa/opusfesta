@@ -15,6 +15,14 @@ export type MockupScene = {
   url: string
   label: string | null
   sort_order: number
+  // Card placement within a photographic mockup (see migration
+  // 20260604000001_mockup_carousel_card_placement). Percentages of the scene
+  // container; rotation in degrees.
+  card_x: number
+  card_y: number
+  card_width: number
+  card_rotate: number
+  card_hidden: boolean
 }
 
 export async function upsertMockupCarouselScenes(scenes: MockupScene[]): Promise<void> {
