@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { auth } from '@clerk/nextjs/server'
+import { requireAdminRole } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { isEmailConfigured, sendEmail } from '@/lib/email'
 import {
@@ -1472,6 +1473,11 @@ export async function getVendorDeletionImpact(
 ): Promise<VendorDeletionImpactResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try {
+    await requireAdminRole(['owner', 'admin'])
+  } catch {
+    return { ok: false, reason: 'unauth', error: "You don't have permission for that." }
+  }
 
   const admin = createSupabaseAdminClient()
   const vendor = await admin
@@ -1730,6 +1736,11 @@ export async function deleteVendor(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try {
+    await requireAdminRole(['owner', 'admin'])
+  } catch {
+    return { ok: false, reason: 'unauth', error: "You don't have permission for that." }
+  }
   if (!vendorId) {
     return { ok: false, reason: 'invalid', error: 'Missing vendor id.' }
   }
@@ -1855,6 +1866,11 @@ export async function mergeVendors(input: {
 }): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try {
+    await requireAdminRole(['owner', 'admin'])
+  } catch {
+    return { ok: false, reason: 'unauth', error: "You don't have permission for that." }
+  }
 
   const { survivorId, loserId, confirmName } = input
   if (!survivorId || !loserId) {
