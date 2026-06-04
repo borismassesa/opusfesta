@@ -6,6 +6,7 @@ import DOMPurify from 'dompurify'
 import { cn } from '@/lib/utils'
 import { assetPath } from '@/lib/asset-path'
 import { InvitationVisual, COUPLE_DEFAULT, type Treatment, type Couple, type InvitationPalette } from '@/components/guests/InvitationVisual'
+import { DEFAULT_CARD_PLACEMENT, type CardPlacement } from '@/lib/cms/mockup-placement'
 
 // CMS-uploaded SVGs (designImage) are untrusted. Sanitize with DOMPurify's SVG
 // profile before injecting via dangerouslySetInnerHTML — it strips <script>,
@@ -91,7 +92,7 @@ function FlatLayScene({ treatment, couple, designImage, designSvg, palette, mock
         designImage={designImage}
         designSvg={designSvg}
         palette={palette}
-        className="w-[62%] rounded-sm"
+        className="h-[86%] w-auto rounded-sm"
         style={{ transform: 'rotate(-3deg)', boxShadow: '0 20px 60px -10px rgba(0,0,0,0.35), 0 8px 20px -8px rgba(0,0,0,0.2)' }}
       />
     </div>
@@ -111,7 +112,7 @@ function DarkStudioScene({ treatment, couple, designImage, designSvg, palette, m
         designImage={designImage}
         designSvg={designSvg}
         palette={palette}
-        className="w-[62%] rounded-sm"
+        className="h-[86%] w-auto rounded-sm"
         style={{ boxShadow: '0 24px 64px -8px rgba(0,0,0,0.8), 0 8px 24px -8px rgba(0,0,0,0.6)' }}
       />
     </div>
@@ -125,7 +126,7 @@ function PaperStackScene({ treatment, couple, designImage, designSvg, palette, m
       className="absolute inset-0 flex items-center justify-center"
       style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: '#E8E3DB' }}
     >
-      <div className="relative w-[60%]" style={{ aspectRatio: '3/4' }}>
+      <div className="relative h-[82%]" style={{ aspectRatio: '3/4' }}>
         {/* Back cards */}
         <div className="absolute inset-0" style={{ transform: 'rotate(5deg)', opacity: 0.8 }}>
           <InviteCard treatment={treatment} couple={couple} designImage={designImage} designSvg={designSvg} palette={palette} className="w-full rounded-sm" />
@@ -149,7 +150,7 @@ function EnvelopeScene({ treatment, couple, designImage, designSvg, palette, moc
       className="absolute inset-0 flex items-center justify-center"
       style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: '#F5EFE3' }}
     >
-      <div className="relative" style={{ width: '72%' }}>
+      <div className="relative" style={{ width: '58%' }}>
         {/* Envelope body — overflow-hidden only applies to the envelope itself */}
         <div
           className="relative rounded-sm overflow-hidden"
@@ -197,7 +198,7 @@ function PhoneScene({ treatment, couple, designImage, designSvg, palette, mockup
       <div
         className="relative rounded-[20px] overflow-hidden"
         style={{
-          width: '54%',
+          height: '92%',
           aspectRatio: '9/19.5',
           backgroundColor: '#0A0A0A',
           boxShadow: '0 0 0 2px #333, 0 20px 60px -10px rgba(0,0,0,0.8)',
@@ -239,7 +240,45 @@ type SceneProps = {
   designSvg?: string
   palette?: InvitationPalette
   mockupImages?: Record<string, string>
+  mockupPlacements?: Record<string, CardPlacement>
   sceneId?: string
+}
+
+// Renders an uploaded mockup PHOTO as a full-bleed background and drops the
+// invitation card into the photo's blank card slot using the per-scene
+// placement (center X/Y %, width %, rotation). Used whenever a scene has an
+// uploaded photo — the synthetic CSS scenes below are the no-photo fallback.
+function PhotoMockupScene({ treatment, couple, designImage, designSvg, palette, mockupImages, mockupPlacements, sceneId }: SceneProps) {
+  const bg = sceneId ? mockupImages?.[sceneId] : undefined
+  const placement = (sceneId ? mockupPlacements?.[sceneId] : undefined) ?? DEFAULT_CARD_PLACEMENT
+  return (
+    <div
+      className="absolute inset-0"
+      style={bg ? { backgroundImage: `url(${bg})`, backgroundSize: 'cover', backgroundPosition: 'center' } : { backgroundColor: '#F0EDE8' }}
+    >
+      {!placement.hidden && (
+        <div
+          className="absolute"
+          style={{
+            left: `${placement.x}%`,
+            top: `${placement.y}%`,
+            width: `${placement.width}%`,
+            transform: `translate(-50%, -50%) rotate(${placement.rotate}deg)`,
+          }}
+        >
+          <InviteCard
+            treatment={treatment}
+            couple={couple}
+            designImage={designImage}
+            designSvg={designSvg}
+            palette={palette}
+            className="w-full rounded-sm"
+            style={{ boxShadow: '0 18px 50px -12px rgba(0,0,0,0.45), 0 6px 16px -8px rgba(0,0,0,0.3)' }}
+          />
+        </div>
+      )}
+    </div>
+  )
 }
 
 function GenericScene({ treatment, couple, designImage, designSvg, palette, mockupImages, sceneId }: SceneProps) {
@@ -255,7 +294,7 @@ function GenericScene({ treatment, couple, designImage, designSvg, palette, mock
         designImage={designImage}
         designSvg={designSvg}
         palette={palette}
-        className="w-[62%] rounded-sm"
+        className="h-[86%] w-auto rounded-sm"
         style={{ boxShadow: '0 20px 60px -10px rgba(0,0,0,0.3)' }}
       />
     </div>
@@ -270,6 +309,13 @@ const SCENE_COMPONENTS: Record<SceneId, React.ComponentType<SceneProps>> = {
   'phone':       PhoneScene,
 }
 
+// When a scene has an uploaded photo, render it via the placement-driven
+// PhotoMockupScene; otherwise fall back to the synthetic CSS scene.
+function resolveSceneComponent(sceneId: string, mockupImages?: Record<string, string>): React.ComponentType<SceneProps> {
+  if (mockupImages?.[sceneId]) return PhotoMockupScene
+  return SCENE_COMPONENTS[sceneId as SceneId] ?? GenericScene
+}
+
 export function MockupCarousel({
   treatment,
   couple = COUPLE_DEFAULT,
@@ -277,6 +323,7 @@ export function MockupCarousel({
   designSvg,
   palette,
   mockupImages,
+  mockupPlacements,
   scenes: scenesProp,
   onFavourite,
   favourited = false,
@@ -287,6 +334,7 @@ export function MockupCarousel({
   designSvg?: string
   palette?: InvitationPalette
   mockupImages?: Record<string, string>
+  mockupPlacements?: Record<string, CardPlacement>
   scenes?: { id: string; label: string }[]
   onFavourite?: () => void
   favourited?: boolean
@@ -311,13 +359,13 @@ export function MockupCarousel({
 
   const resolvedSvg = designSvg ?? fetchedSvg
 
-  const ActiveSceneComponent = SCENE_COMPONENTS[active as SceneId] ?? GenericScene
-  const sceneProps: SceneProps = { treatment, couple, designImage, designSvg: resolvedSvg ?? undefined, palette, mockupImages, sceneId: active }
+  const ActiveSceneComponent = resolveSceneComponent(active, mockupImages)
+  const sceneProps: SceneProps = { treatment, couple, designImage, designSvg: resolvedSvg ?? undefined, palette, mockupImages, mockupPlacements, sceneId: active }
 
   return (
-    <div>
-      {/* Main view — 7:6 (not square) so the thumbnail strip stays in view */}
-      <div className="relative aspect-[7/6] bg-white rounded-md shadow-md overflow-hidden">
+    <div className="max-w-[800px]">
+      {/* Main view — 4:3 (800×600) to match the landscape mockup photos. */}
+      <div className="relative aspect-[4/3] bg-white rounded-md shadow-md overflow-hidden">
         <ActiveSceneComponent {...sceneProps} />
 
         {onFavourite && (
@@ -336,7 +384,7 @@ export function MockupCarousel({
       {/* Thumbnail strip */}
       <div className="mt-4 grid gap-2" style={{ gridTemplateColumns: `repeat(${scenesToShow.length}, minmax(0, 1fr))` }}>
         {scenesToShow.map((scene) => {
-          const ThumbComponent = SCENE_COMPONENTS[scene.id as SceneId] ?? GenericScene
+          const ThumbComponent = resolveSceneComponent(scene.id, mockupImages)
           const isActive = active === scene.id
           return (
             <button
@@ -346,7 +394,9 @@ export function MockupCarousel({
               aria-pressed={isActive}
               onClick={() => setActive(scene.id)}
               className={cn(
-                'relative aspect-[3/4] rounded-sm overflow-hidden transition',
+                // Landscape 4:3 to match the 800×600 scene mockups (the invite
+                // card overlay inside each scene stays portrait).
+                'relative aspect-[4/3] rounded-sm overflow-hidden transition',
                 isActive ? 'ring-2 ring-gray-400 ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-400',
               )}
             >

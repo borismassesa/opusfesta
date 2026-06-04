@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import { InvitationVisual, COUPLE_DEFAULT } from '@/components/guests/InvitationVisual'
 import { MockupCarousel } from '@/components/guests/MockupCarousel'
+import type { CardPlacement } from '@/lib/cms/mockup-placement'
 import { PACK_QTY, PROMO_CODE } from '@/components/guests/productInfo'
 import type { CatalogProduct } from '@/data/invitations-products'
 import { useCart } from '@/components/providers/CartProvider'
@@ -41,7 +42,7 @@ const DIGITAL_QTY_OPTIONS = [50, 100, 150, 200, 300, 500]
 const PAPER_QTY_OPTIONS = [10, 25, 50, 100, 150, 200]
 
 
-export default function ProductDetailClient({ product, allProducts, mockupImages, mockupScenes, designSvg }: { product: CatalogProduct; allProducts: CatalogProduct[]; mockupImages?: Record<string, string>; mockupScenes?: { id: string; label: string }[]; designSvg?: string | null }) {
+export default function ProductDetailClient({ product, allProducts, mockupImages, mockupScenes, mockupPlacements, designSvg }: { product: CatalogProduct; allProducts: CatalogProduct[]; mockupImages?: Record<string, string>; mockupScenes?: { id: string; label: string }[]; mockupPlacements?: Record<string, CardPlacement>; designSvg?: string | null }) {
   const customiseHref = `/invitations/p/${product.id}/customise`
   const router = useRouter()
   const { addItem } = useCart()
@@ -133,6 +134,7 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
               designImage={product.designImage}
               designSvg={designSvg ?? undefined}
               mockupImages={mockupImages}
+              mockupPlacements={mockupPlacements}
               scenes={mockupScenes}
               palette={(() => {
                 const safeIndex = product.palettes.length > 0 ? Math.max(0, Math.min(selectedColor, product.palettes.length - 1)) : 0

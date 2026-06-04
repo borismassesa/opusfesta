@@ -52,6 +52,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
       allProducts={allProducts}
       mockupImages={mockup.images}
       mockupScenes={mockup.scenes}
+      mockupPlacements={mockup.placements}
       designSvg={designSvg}
     />
   )
