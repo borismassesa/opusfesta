@@ -18,6 +18,14 @@ const DEFAULT_LABELS: Record<string, string> = {
   'phone':       'Phone',
 }
 
+// Coerce a PostgREST `numeric` value (delivered as a string) to a finite number,
+// falling back when null/missing or unparseable.
+function toNum(v: number | string | null, fallback: number): number {
+  if (v == null) return fallback
+  const n = Number(v)
+  return Number.isFinite(n) ? n : fallback
+}
+
 export async function loadMockupCarouselImages(): Promise<MockupCarouselData> {
   try {
     const supabase = createSupabaseServerClient()
@@ -26,14 +34,16 @@ export async function loadMockupCarouselImages(): Promise<MockupCarouselData> {
       .select('scene, label, url, card_x, card_y, card_width, card_rotate, card_hidden')
       .order('sort_order', { ascending: true })
     if (error) throw error
+    // Postgres `numeric` columns come back from PostgREST as strings, so accept
+    // string | number and coerce below (see toNum).
     const rows = (data ?? []) as {
       scene: string
       label: string | null
       url: string
-      card_x: number | null
-      card_y: number | null
-      card_width: number | null
-      card_rotate: number | null
+      card_x: number | string | null
+      card_y: number | string | null
+      card_width: number | string | null
+      card_rotate: number | string | null
       card_hidden: boolean | null
     }[]
     return {
@@ -43,10 +53,10 @@ export async function loadMockupCarouselImages(): Promise<MockupCarouselData> {
         rows.map((r) => [
           r.scene,
           {
-            x: r.card_x ?? DEFAULT_CARD_PLACEMENT.x,
-            y: r.card_y ?? DEFAULT_CARD_PLACEMENT.y,
-            width: r.card_width ?? DEFAULT_CARD_PLACEMENT.width,
-            rotate: r.card_rotate ?? DEFAULT_CARD_PLACEMENT.rotate,
+            x: toNum(r.card_x, DEFAULT_CARD_PLACEMENT.x),
+            y: toNum(r.card_y, DEFAULT_CARD_PLACEMENT.y),
+            width: toNum(r.card_width, DEFAULT_CARD_PLACEMENT.width),
+            rotate: toNum(r.card_rotate, DEFAULT_CARD_PLACEMENT.rotate),
             hidden: r.card_hidden ?? DEFAULT_CARD_PLACEMENT.hidden,
           } satisfies CardPlacement,
         ])

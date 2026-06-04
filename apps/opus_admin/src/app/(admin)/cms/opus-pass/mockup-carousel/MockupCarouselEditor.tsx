@@ -45,6 +45,14 @@ type SceneItem = {
 // Centered default — reproduces the pre-placement behaviour for untuned scenes.
 const DEFAULT_PLACEMENT = { cardX: 50, cardY: 50, cardWidth: 62, cardRotate: 0, cardHidden: false }
 
+// Postgres `numeric` values arrive as strings via PostgREST — coerce to a finite
+// number, falling back when null/missing or unparseable.
+function toNum(v: number | string | null | undefined, fallback: number): number {
+  if (v == null) return fallback
+  const n = Number(v)
+  return Number.isFinite(n) ? n : fallback
+}
+
 function sceneLabel(item: SceneItem): string {
   return item.label.trim() || SCENE_DEFAULT_LABEL[item.id] || item.id
 }
@@ -178,10 +186,12 @@ export default function MockupCarouselEditor({ initial }: { initial: MockupScene
       url: s.url,
       sortOrder: s.sort_order ?? i,
       isNew: false,
-      cardX: s.card_x ?? DEFAULT_PLACEMENT.cardX,
-      cardY: s.card_y ?? DEFAULT_PLACEMENT.cardY,
-      cardWidth: s.card_width ?? DEFAULT_PLACEMENT.cardWidth,
-      cardRotate: s.card_rotate ?? DEFAULT_PLACEMENT.cardRotate,
+      // Postgres numeric columns arrive as strings — coerce so the sliders and
+      // saved payload are real numbers, not "74".
+      cardX: toNum(s.card_x, DEFAULT_PLACEMENT.cardX),
+      cardY: toNum(s.card_y, DEFAULT_PLACEMENT.cardY),
+      cardWidth: toNum(s.card_width, DEFAULT_PLACEMENT.cardWidth),
+      cardRotate: toNum(s.card_rotate, DEFAULT_PLACEMENT.cardRotate),
       cardHidden: s.card_hidden ?? DEFAULT_PLACEMENT.cardHidden,
     }))
   )
@@ -217,6 +227,7 @@ export default function MockupCarouselEditor({ initial }: { initial: MockupScene
       ...prev,
       { id: newId, label: '', url: '', sortOrder: prev.length, isNew: true, ...DEFAULT_PLACEMENT },
     ])
+    setPreviewId(newId) // jump the live preview to the scene just added
     setSaved(false)
   }
 
