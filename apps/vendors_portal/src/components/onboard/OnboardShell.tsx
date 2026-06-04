@@ -16,7 +16,7 @@ export function OnboardShell({
   showBack?: boolean
 }) {
   return (
-    <div className="min-h-screen bg-[#F5F4F1] text-gray-900">
+    <div className="min-h-screen bg-white text-gray-900">
       <Stepper current={step} profileLabel={profileLabel} />
       <main className="px-6 lg:px-12 py-8 lg:py-10">
         {showBack ? <BackLink href={backHref} /> : null}
