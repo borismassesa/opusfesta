@@ -82,16 +82,25 @@ export default function ReviewPage() {
 
   const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(' ').trim()
 
+  // Edit mode: the vendor already submitted once (tracked on the draft). Then
+  // this screen is "review & confirm edits" — an update, not a new submission.
+  const isEdit = Boolean(draft.submittedAt)
+
   const onSubmit = async () => {
     setSubmitting(true)
     setSubmitError(null)
-    const result = await submitApplication(draft)
+    const result = await submitApplication(draft, { isEdit })
     setSubmitting(false)
     if (!result.ok) {
       setSubmitError(result.error)
       return
     }
     update({ submittedAt: new Date().toISOString() })
+    if (isEdit) {
+      // Confirmed edits — back to verification, no "submitted" celebration.
+      router.push('/verify')
+      return
+    }
     setSubmitted(true)
   }
 
@@ -120,7 +129,7 @@ export default function ReviewPage() {
     // sees them seconds later. Showing the same lists twice in a row is
     // exactly what the cleanup PR is removing.
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#FBF7FC] via-[#FDFDFD] to-[#FDFDFD] flex flex-col">
+      <div className="min-h-screen bg-white flex flex-col">
         <Confetti active={submitted} />
         <header className="px-6 sm:px-10 py-5 border-b border-gray-100/80 bg-white/70 backdrop-blur">
           <Link href="/" aria-label="OpusFesta home" className="inline-block">
@@ -144,7 +153,7 @@ export default function ReviewPage() {
             <button
               type="button"
               onClick={onContinueToVerify}
-              className="group mt-8 inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px"
+              className="group mt-8 inline-flex items-center gap-2 bg-[#1A1A1A] hover:bg-black text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px"
             >
               Continue to verification
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
@@ -173,10 +182,12 @@ export default function ReviewPage() {
       {/* Page heading */}
       <header className="mb-12">
         <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-gray-900">
-          Review your storefront
+          {isEdit ? 'Edit your storefront' : 'Review your storefront'}
         </h1>
         <p className="mt-2 text-base text-gray-600 max-w-2xl">
-          Here’s everything couples will see. Make any final edits, then submit for review.
+          {isEdit
+            ? 'Update any details below, then confirm your edits. This updates your existing application — it’s not a new submission.'
+            : 'Here’s everything couples will see. Make any final edits, then submit for review.'}
         </p>
       </header>
 
@@ -350,11 +361,12 @@ export default function ReviewPage() {
           <div className="flex items-center gap-6">
             <p className="flex-1 min-w-0 text-sm text-gray-600 leading-relaxed">
               <span className="text-gray-900 font-semibold">
-                Ready when you are.
+                {isEdit ? 'Save your changes.' : 'Ready when you are.'}
               </span>{' '}
               <span className="hidden sm:inline">
-                Once you submit, we&rsquo;ll ask for a couple of documents to
-                verify your business.
+                {isEdit
+                  ? 'Your edits update your existing application — your verification status stays as it is.'
+                  : 'Once you submit, we’ll ask for a couple of documents to verify your business.'}
               </span>
             </p>
             <button
@@ -362,17 +374,17 @@ export default function ReviewPage() {
               onClick={onSubmit}
               disabled={submitting}
               className={
-                'group shrink-0 inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px disabled:shadow-none disabled:hover:translate-y-0'
+                'group shrink-0 inline-flex items-center gap-2 bg-[#1A1A1A] hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px disabled:shadow-none disabled:hover:translate-y-0'
               }
             >
               {submitting ? (
                 <>
                   <Clock className="w-4 h-4 animate-pulse" />
-                  Submitting…
+                  {isEdit ? 'Saving…' : 'Submitting…'}
                 </>
               ) : (
                 <>
-                  Submit application
+                  {isEdit ? 'Confirm edits' : 'Submit application'}
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                 </>
               )}

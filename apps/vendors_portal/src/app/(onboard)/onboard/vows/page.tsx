@@ -24,7 +24,7 @@ export default function VowsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F5F4F1] text-gray-900">
+    <div className="min-h-screen bg-white text-gray-900">
       <header className="bg-white border-b border-gray-100">
         <div className="px-6 lg:px-12 py-4 flex items-center">
           <Link href="/" aria-label="OpusFesta home" className="shrink-0">

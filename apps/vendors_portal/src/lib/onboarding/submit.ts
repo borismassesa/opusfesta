@@ -198,7 +198,13 @@ function validateDraft(draft: OnboardingDraft): string | null {
  */
 export async function submitApplication(
   draft: OnboardingDraft,
+  opts: { isEdit?: boolean } = {},
 ): Promise<SubmitApplicationResult> {
+  // Edit mode: the vendor already submitted and is updating their details from
+  // /verify. We update the storefront fields but DO NOT reset onboarding_status
+  // (so they stay in verification/review, not bounced to a fresh submission)
+  // and we skip the "new application" admin notification.
+  const isEdit = opts.isEdit === true
   const { userId } = await auth()
   if (!userId) {
     return { ok: false, reason: 'unauth', error: 'Sign in before submitting.' }
@@ -348,9 +354,16 @@ export async function submitApplication(
 
   let vendorId: string
   if (existing.data) {
+    // On edit, preserve the vendor's current status + original start date —
+    // updating details must not re-open them as a brand-new submission.
+    const { onboarding_status, onboarding_started_at, ...editableCore } =
+      corePayload
+    const updatePayload = isEdit ? editableCore : corePayload
+    void onboarding_status
+    void onboarding_started_at
     const update = await admin
       .from('vendors')
-      .update(corePayload)
+      .update(updatePayload)
       .eq('id', existing.data.id)
       .select('id')
       .single<{ id: string }>()
@@ -483,9 +496,9 @@ export async function submitApplication(
 
   // 5) Best-effort transactional emails: ping admins about the new
   //    application and receipt the vendor. Email failures are logged but
-  //    never block the submit — the persisted vendor row + payout method
-  //    above are the source of truth.
-  try {
+  //    never block the submit. Skipped entirely on edit — an update isn't a
+  //    new application, so we don't re-notify admins.
+  if (!isEdit) try {
     const region =
       TZ_REGIONS.find((r) => r.code === draft.region)?.name ?? draft.region ?? null
     // The set_vendor_code_trigger populated vendor_code on insert; on
