@@ -220,7 +220,7 @@ export default function VerifyClient({
       action:
         optionalMode === 'active' ? (
           <div className="mt-3 space-y-3">
-            <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 px-4">
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 px-5">
               <OptionalDoc
                 title="TRA TIN certificate"
                 description="Your tax ID certificate from the Tanzania Revenue Authority."
@@ -502,7 +502,7 @@ function OptionalDoc({
   isCorrection: boolean
 }) {
   return (
-    <div className="py-4 first:pt-0 last:pb-0">
+    <div className="py-5">
       <div className="flex items-start gap-3">
         <span
           className={cn(
