@@ -26,6 +26,19 @@ const nextConfig: NextConfig = {
   // NEXT_PUBLIC_OPUS_PASS_URL (https://opuspass.opusfesta.com); falls back to
   // the local dev port 3008.
   async rewrites() {
+    // Fail the build loudly if the proxy target is missing on Vercel. Without
+    // this, an unset var silently bakes in localhost:3008 and every /opuspass/*
+    // route 404s in prod with DNS_HOSTNAME_RESOLVED_PRIVATE (Vercel refuses to
+    // proxy to a private host). Gate on VERCEL (not NODE_ENV) so a LOCAL prod
+    // build — which legitimately has no var and falls back to localhost:3008 —
+    // is unaffected; this only guards the deployed zone.
+    if (process.env.VERCEL && !process.env.NEXT_PUBLIC_OPUS_PASS_URL) {
+      throw new Error(
+        'NEXT_PUBLIC_OPUS_PASS_URL is required for Vercel builds. ' +
+          'Set it to the opus_pass origin (e.g. https://opuspass.opusfesta.com) ' +
+          'on the opus_website Vercel project — see .env.example.',
+      )
+    }
     const opusPass = process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'
     return [
       { source: '/opuspass', destination: `${opusPass}/opuspass` },
