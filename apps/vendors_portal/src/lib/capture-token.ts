@@ -6,19 +6,18 @@ import { createHmac, timingSafeEqual } from 'node:crypto'
 // page and its upload action are the only things that trust this token, and
 // its only power is "attach national_id_front/back images to this vendor".
 //
-// Secret: a dedicated CAPTURE_TOKEN_SECRET if set, else the service-role key
-// (always present server-side) so the feature works without extra config.
-// Set CAPTURE_TOKEN_SECRET in production to rotate independently.
+// Secret: a dedicated, REQUIRED CAPTURE_TOKEN_SECRET. It is deliberately NOT
+// derived from the service-role key — the two have different threat models and
+// rotation cadences, and reusing the service-role key as an HMAC secret would
+// couple them. Set CAPTURE_TOKEN_SECRET in every environment.
 
 const TTL_MS = 15 * 60 * 1000 // 15 minutes — long enough to grab a phone
 
 function secret(): string {
-  const s =
-    process.env.CAPTURE_TOKEN_SECRET?.trim() ||
-    process.env.SUPABASE_SERVICE_ROLE_KEY?.trim()
+  const s = process.env.CAPTURE_TOKEN_SECRET?.trim()
   if (!s) {
     throw new Error(
-      '[capture-token] no signing secret — set CAPTURE_TOKEN_SECRET or SUPABASE_SERVICE_ROLE_KEY',
+      '[capture-token] CAPTURE_TOKEN_SECRET is required — set it (do not reuse the service-role key)',
     )
   }
   return s

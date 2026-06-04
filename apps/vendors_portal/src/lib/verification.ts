@@ -20,6 +20,11 @@ const DOC_TYPE: Record<CaptureKind, string> = {
 }
 
 const MAX_BYTES = 15 * 1024 * 1024
+// Reject the raw data-URL string BEFORE base64-decoding it. A 15 MB binary
+// arrives as a ~20 MB base64 string (4/3 expansion) plus the `data:...;base64,`
+// prefix; cap the string at ~22 MB so we never allocate a huge decode buffer
+// for an oversized (or maliciously padded) payload on this public route.
+export const MAX_DATA_URL_CHARS = 22_000_000
 
 export type StoreResult = { ok: true } | { ok: false; error: string }
 
@@ -45,6 +50,11 @@ export async function storeVerificationShot(
   kind: CaptureKind,
   dataUrl: string,
 ): Promise<StoreResult> {
+  // Pre-check the raw string length before decoding — cheap rejection of
+  // oversized payloads so we don't allocate a multi-megabyte decode buffer.
+  if (typeof dataUrl !== 'string' || dataUrl.length > MAX_DATA_URL_CHARS) {
+    return { ok: false, error: 'Photo is too large — please retake it.' }
+  }
   const parsed = parseImageDataUrl(dataUrl)
   if (!parsed) return { ok: false, error: 'Photo must be a JPEG or PNG image.' }
   if (parsed.buffer.length === 0) {
