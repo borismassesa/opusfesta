@@ -395,6 +395,16 @@ const CURRENT_TONE: Record<StepTone, string> = {
   rose: 'bg-rose-500 text-white',
 }
 
+// Dashed-ring color for not-yet-started (upcoming) steps — a colored dashed
+// outline that fills in solid green once the step is done.
+const UPCOMING_RING: Record<StepTone, string> = {
+  purple: 'border-[#7E5896]/60 text-[#7E5896]',
+  blue: 'border-blue-500/60 text-blue-600',
+  emerald: 'border-emerald-500/60 text-emerald-600',
+  amber: 'border-amber-500/70 text-amber-600',
+  rose: 'border-rose-500/60 text-rose-600',
+}
+
 // Title text on `current` rows picks up the tone — subtle accent that reads as
 // "this is the active step" without painting the whole indicator chip.
 const CURRENT_TEXT: Record<StepTone, string> = {
@@ -643,7 +653,7 @@ export default function PendingClient({
                           step.status === 'current' &&
                             CURRENT_TONE[step.tone],
                           step.status === 'upcoming' &&
-                            'bg-white border border-gray-200 text-gray-300',
+                            cn('bg-white border-2 border-dashed', UPCOMING_RING[step.tone]),
                         )}
                         aria-hidden
                       >

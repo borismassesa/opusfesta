@@ -87,6 +87,14 @@ type Props = {
 
 type StepMode = 'done' | 'active' | 'locked'
 
+// Dashed-ring color for not-yet-reached (locked) steps — a colored dashed
+// outline that fills in solid green once the step completes. Matches /pending.
+const LOCKED_RING: Record<'purple' | 'blue' | 'amber', string> = {
+  purple: 'border-[#7E5896]/60 text-[#7E5896]',
+  blue: 'border-blue-500/60 text-blue-600',
+  amber: 'border-amber-500/70 text-amber-600',
+}
+
 /**
  * A doc slot is considered "done" when there's a latest upload that hasn't
  * been rejected. Pending-review and approved both count — the vendor has
@@ -156,6 +164,8 @@ export default function VerifyClient({
     doneLabel?: string
     activeLabel?: string
     activeTone?: 'purple' | 'amber' | 'rose'
+    /** Accent for the dashed ring shown while the step is still locked. */
+    tone?: 'purple' | 'blue' | 'amber'
     /** Inline action UI rendered below the description when the step is the
      *  active one. Keeps the vendor's focus on the timeline; no separate
      *  duplicated card below. */
@@ -206,6 +216,7 @@ export default function VerifyClient({
       doneLabel: tinDone || licenseDone ? 'Added' : 'Skipped',
       activeLabel: 'Optional',
       activeTone: 'purple',
+      tone: 'blue',
       action:
         optionalMode === 'active' ? (
           <div className="mt-3 space-y-3">
@@ -255,6 +266,7 @@ export default function VerifyClient({
       doneLabel: 'Signed',
       activeLabel: 'In progress',
       activeTone: 'purple',
+      tone: 'purple',
       action:
         agreementMode === 'active' ? (
           <AgreementSignActions
@@ -268,6 +280,7 @@ export default function VerifyClient({
       icon: ShieldCheck,
       title: 'Under review',
       mode: 'locked',
+      tone: 'amber',
       description:
         'Once the steps above are complete, our team verifies your details and approves your storefront. Usually 2 to 3 business days.',
     },
@@ -378,7 +391,10 @@ export default function VerifyClient({
                               ? 'bg-rose-500 text-white'
                               : 'bg-[#7E5896] text-white'),
                         step.mode === 'locked' &&
-                          'bg-white border border-gray-200 text-gray-300',
+                          cn(
+                          'bg-white border-2 border-dashed',
+                          LOCKED_RING[step.tone ?? 'purple'],
+                        ),
                       )}
                       aria-hidden
                     >

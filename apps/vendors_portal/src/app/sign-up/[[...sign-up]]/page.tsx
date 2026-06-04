@@ -1,17 +1,28 @@
 import { SignUp } from '@clerk/nextjs'
+import AuthShell from '@/components/AuthShell'
 
 export default function SignUpPage() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#FDFDFD] px-4">
+    <AuthShell
+      panelTitle="Grow your business with OpusFesta"
+      panelSubtitle="List your services, reach couples planning their big day, and manage every booking — leads, quotes, and payments — from one dashboard."
+    >
       <SignUp
         forceRedirectUrl="/onboard"
         fallbackRedirectUrl="/onboard"
         appearance={{
           elements: {
-            formButtonPrimary: 'bg-[#C9A0DC] hover:bg-[#b97fd0] text-[#1A1A1A]',
+            rootBox: 'w-full',
+            cardBox: 'w-full shadow-none border-0',
+            card: 'shadow-none border-0 bg-transparent p-0 w-full',
+            headerTitle:
+              'text-[28px] font-bold leading-tight tracking-tight text-[#1A1A1A]',
+            headerSubtitle: 'text-[15px] text-gray-500',
+            formButtonPrimary:
+              'bg-[#1A1A1A] hover:bg-black text-white normal-case',
           },
         }}
       />
-    </div>
+    </AuthShell>
   )
 }
