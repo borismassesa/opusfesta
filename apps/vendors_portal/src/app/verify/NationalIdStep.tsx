@@ -39,16 +39,22 @@ export default function NationalIdStep({
   const idDone = front && back
   const allDone = front && back && selfie
 
-  // Mint a capture token + render it as a QR for the phone handoff.
+  // Mint a capture token + render it as a QR for the phone handoff. Tokens
+  // expire after 15 min, so we re-mint every 12 min while the desktop waits —
+  // otherwise a vendor who takes their time hits an unrecoverable "expired"
+  // loop. Any failure (incl. a rejected server action) sets a clear message
+  // instead of leaving the QR spinner stuck forever.
   useEffect(() => {
+    if (allDone) return
     let cancelled = false
-    createNationalIdCaptureToken().then(async (res) => {
-      if (cancelled) return
-      if (!res.ok) {
-        setQrError(res.error)
-        return
-      }
+    const mint = async () => {
       try {
+        const res = await createNationalIdCaptureToken()
+        if (cancelled) return
+        if (!res.ok) {
+          setQrError(res.error)
+          return
+        }
         // The phone scanning the QR must reach this URL. In production that's
         // the real origin. In dev, `localhost` is the phone itself (and HTTP
         // blocks the camera) — set NEXT_PUBLIC_CAPTURE_BASE_URL to an HTTPS
@@ -58,15 +64,25 @@ export default function NationalIdStep({
           window.location.origin
         const url = `${base.replace(/\/$/, '')}/verify/capture/${res.token}`
         const dataUrl = await QRCode.toDataURL(url, { margin: 1, width: 220 })
-        if (!cancelled) setQr(dataUrl)
+        if (!cancelled) {
+          setQr(dataUrl)
+          setQrError(null)
+        }
       } catch {
-        if (!cancelled) setQrError('Could not generate the QR code.')
+        if (!cancelled) {
+          setQrError(
+            'Couldn’t generate a phone link — capture here on this device instead.',
+          )
+        }
       }
-    })
+    }
+    void mint()
+    const id = setInterval(() => void mint(), 12 * 60 * 1000)
     return () => {
       cancelled = true
+      clearInterval(id)
     }
-  }, [])
+  }, [allDone])
 
   // Poll for phone uploads until everything is captured.
   useEffect(() => {
