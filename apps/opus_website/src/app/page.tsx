@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Navbar from '@/components/navbar'
 import Hero from '@/components/hero'
 import Trust from '@/components/trust'
@@ -11,6 +12,19 @@ import Features from '@/components/features'
 import Faq from '@/components/faq'
 import Cta from '@/components/cta'
 import Footer from '@/components/footer'
+
+export const metadata: Metadata = {
+  title: 'OpusFesta — Plan Your Perfect Wedding',
+  description:
+    'Everything you need to plan your wedding, all in one place. Discover venues, connect with vendors, and manage your invitations in Tanzania.',
+  openGraph: {
+    title: 'OpusFesta — Plan Your Perfect Wedding',
+    description:
+      'Discover venues, connect with vendors, and manage your wedding in Tanzania — all in one place.',
+    images: [{ url: '/assets/images/coupleswithpiano.jpg', width: 1200, height: 630, alt: 'OpusFesta — Wedding Planning in Tanzania' }],
+    type: 'website',
+  },
+}
 
 // Sections load from website_page_sections via Supabase (service-role client,
 // no per-request state) so this page is safely cacheable. ISR instead of

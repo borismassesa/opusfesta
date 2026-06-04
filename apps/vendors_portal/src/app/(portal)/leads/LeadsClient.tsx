@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import { Filter, MapPin, Mail, Search, Wallet, Users, MessageSquare, Check, X, Send, Archive, Receipt, ChevronDown, ChevronUp } from 'lucide-react'
+import { toast } from 'sonner'
 import type { InquiryRow } from '@/lib/mock-data'
 import { TZ_REGIONS } from '@/lib/onboarding/regions'
 import { cn } from '@/lib/utils'
@@ -715,8 +716,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
       updateLocalStatus(selectedRow.id, 'replied')
       setReplyText('')
       setReplyOpen(false)
+      toast.success('Reply sent.')
     } catch (err) {
       console.error('[leads] send reply failed', err)
+      toast.error('Could not send reply.')
     } finally { setSending(false) }
   }
 
@@ -726,8 +729,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     try {
       await patchInquiryRequest(selectedRow.id, { status: 'closed' })
       updateLocalStatus(selectedRow.id, 'closed')
+      toast.success('Lead marked as closed.')
     } catch (err) {
       console.error('[leads] close failed', err)
+      toast.error('Could not close this lead.')
     } finally { setActionLoading(false) }
   }
 
@@ -742,8 +747,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
       updateLocalStatus(selectedRow.id, 'declined')
       setDeclineOpen(false)
       setDeclineReason('')
+      toast.success('Lead declined.')
     } catch (err) {
       console.error('[leads] decline failed', err)
+      toast.error('Could not decline this lead.')
     } finally { setActionLoading(false) }
   }
 
@@ -788,8 +795,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
         proposal_accepted_at: null,
       })
       setProposalOpen(false)
+      toast.success('Proposal sent.')
     } catch (err) {
       console.error('[leads] send proposal failed', err)
+      toast.error('Could not send proposal.')
     } finally {
       setProposalSending(false)
     }
@@ -815,8 +824,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
         proposal_accepted_at: new Date().toISOString(),
       })
       updateLocalStatus(selectedRow.id, 'booked')
+      toast.success('Counter accepted. Lead moved to booked.')
     } catch (err) {
       console.error('[leads] accept counter failed', err)
+      toast.error('Could not accept counter offer.')
     } finally {
       setProposalActionLoading(false)
     }
@@ -828,8 +839,10 @@ function useLeadsState(initialInquiries: InquiryRow[], isSampleData: boolean) {
     try {
       await patchInquiryRequest(selectedRow.id, { status: mapUiStatusToDbStatus(status) })
       updateLocalStatus(selectedRow.id, status)
+      toast.success(`Lead status updated to ${STATUS_LABEL[status].toLowerCase()}.`)
     } catch (err) {
       console.error('[leads] status change failed', err)
+      toast.error('Could not update lead status.')
     } finally { setActionLoading(false) }
   }
 

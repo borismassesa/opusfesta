@@ -3,12 +3,16 @@
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Loader2, Plus, Save, Trash2, X } from 'lucide-react'
+import { ArrowLeft, Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { PaletteEditor } from '@/components/cms/PaletteEditor'
+import { SvgInspector } from '@/components/cms/SvgInspector'
+import { SvgPreview } from '@/components/cms/SvgPreview'
 import {
   PRODUCT_CATEGORIES,
   PRODUCT_TREATMENTS,
   slugifyProductName,
+  type InvitationPalette,
   type InvitationProductRecord,
 } from '@/lib/cms/opus-pass-invitations-products'
 import { deleteInvitationProduct, upsertInvitationProduct } from '../actions'
@@ -30,6 +34,7 @@ export default function ProductEditor({
   const [product, setProduct] = useState<InvitationProductRecord>(initial)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  const [activepaletteIdx, setActivePaletteIdx] = useState(0)
 
   function set<K extends keyof InvitationProductRecord>(key: K, value: InvitationProductRecord[K]) {
     setProduct((p) => ({ ...p, [key]: value }))
@@ -39,7 +44,6 @@ export default function ProductEditor({
     setProduct((p) => ({
       ...p,
       name,
-      // Keep slug in lockstep with the name until the user customises it.
       slug: !p.slug || p.slug === slugifyProductName(p.name) ? slugifyProductName(name) : p.slug,
     }))
   }
@@ -53,7 +57,9 @@ export default function ProductEditor({
     if (!slug) return setError('Slug is required.')
     if (!product.price_now || product.price_now <= 0) return setError('Price must be greater than 0.')
 
-    const record: InvitationProductRecord = { ...product, id, slug }
+    const swatches =
+      palettes.length > 0 ? palettes.map((p) => p.accent) : product.swatches
+    const record: InvitationProductRecord = { ...product, id, slug, swatches }
 
     startTransition(async () => {
       try {
@@ -79,135 +85,219 @@ export default function ProductEditor({
     })
   }
 
+  const palettes = product.palettes ?? []
+  const activePalette: InvitationPalette | null = palettes[activepaletteIdx] ?? null
+
   return (
-    <div className="py-2 max-w-3xl">
-      {/* Header bar */}
-      <div className="flex items-center justify-between gap-4 mb-6">
-        <div className="min-w-0">
-          <Link
-            href={LIST}
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 mb-1"
-          >
-            <ArrowLeft className="w-3.5 h-3.5" />
-            All products
-          </Link>
-          <h2 className="text-2xl font-bold text-gray-900 tracking-tight truncate">
-            {isNew ? 'New product' : product.name || 'Untitled product'}
-          </h2>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {error && (
-            <span className="text-xs text-red-600 font-medium max-w-[280px] truncate" title={error}>
-              {error}
-            </span>
-          )}
-          {!isNew && (
+    <div className="py-2 flex items-start gap-6">
+      {/* Form column */}
+      <div className="flex-1 min-w-0">
+        {/* Header bar */}
+        <div className="flex items-center justify-between gap-4 mb-6">
+          <div className="min-w-0">
+            <Link
+              href={LIST}
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 mb-1"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+              All products
+            </Link>
+            <h2 className="text-2xl font-bold text-gray-900 tracking-tight truncate">
+              {isNew ? 'New product' : product.name || 'Untitled product'}
+            </h2>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            {error && (
+              <span className="text-xs text-red-600 font-medium max-w-[280px] truncate" title={error}>
+                {error}
+              </span>
+            )}
+            {!isNew && (
+              <button
+                type="button"
+                onClick={remove}
+                disabled={pending}
+                className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-red-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            )}
             <button
               type="button"
-              onClick={remove}
+              onClick={save}
               disabled={pending}
-              className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-red-600 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-red-50 transition-colors disabled:opacity-50"
+              className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#C9A0DC] hover:bg-[#b97fd0] px-4 py-1.5 rounded-lg transition-colors disabled:opacity-50"
             >
-              <Trash2 className="w-4 h-4" />
-              Delete
+              {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save
             </button>
-          )}
-          <button
-            type="button"
-            onClick={save}
-            disabled={pending}
-            className="flex items-center gap-1.5 text-sm font-semibold text-white bg-[#C9A0DC] hover:bg-[#b97fd0] px-4 py-1.5 rounded-lg transition-colors disabled:opacity-50"
-          >
-            {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save
-          </button>
-        </div>
-      </div>
-
-      <div className="space-y-6">
-        {/* Basics */}
-        <Card title="Basics">
-          <Field label="Name">
-            <input value={product.name} onChange={(e) => onNameChange(e.target.value)} className={inputCls} placeholder="Botanical Frame Wedding Invitations" />
-          </Field>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Slug" hint="Used in the product URL.">
-              <input value={product.slug} onChange={(e) => set('slug', e.target.value)} className={inputCls} placeholder="botanical-frame-wedding-invitations" />
-            </Field>
-            <Field label="Designer">
-              <input value={product.designer} onChange={(e) => set('designer', e.target.value)} className={inputCls} placeholder="Bagamoyo Press" />
-            </Field>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <Field label="Category">
-              <select value={product.category} onChange={(e) => set('category', e.target.value)} className={inputCls}>
-                {PRODUCT_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>{c}</option>
+        </div>
+
+        <div className="space-y-6">
+          {/* Basics */}
+          <Card title="Basics">
+            <Field label="Name">
+              <input value={product.name} onChange={(e) => onNameChange(e.target.value)} className={inputCls} placeholder="Botanical Frame Wedding Invitations" />
+            </Field>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Slug" hint="Used in the product URL.">
+                <input value={product.slug} onChange={(e) => set('slug', e.target.value)} className={inputCls} placeholder="botanical-frame-wedding-invitations" />
+              </Field>
+              <Field label="Designer">
+                <input value={product.designer} onChange={(e) => set('designer', e.target.value)} className={inputCls} placeholder="Bagamoyo Press" />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Field label="Category">
+                <select value={product.category} onChange={(e) => set('category', e.target.value)} className={inputCls}>
+                  {PRODUCT_CATEGORIES.map((c) => (
+                    <option key={c} value={c}>{c}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Sort order" hint="Lower numbers appear first.">
+                <input type="number" value={product.sort_order} onChange={(e) => set('sort_order', Number(e.target.value) || 0)} className={inputCls} />
+              </Field>
+            </div>
+          </Card>
+
+          {/* Pricing */}
+          <Card title="Pricing (TZS)">
+            <div className="grid grid-cols-3 gap-4">
+              <Field label="Price now" hint="Pack total.">
+                <input type="number" value={product.price_now} onChange={(e) => set('price_now', Number(e.target.value) || 0)} className={inputCls} />
+              </Field>
+              <Field label="Price was" hint="Optional — struck through.">
+                <input
+                  type="number"
+                  value={product.price_was ?? ''}
+                  onChange={(e) => set('price_was', e.target.value === '' ? null : Number(e.target.value) || 0)}
+                  className={inputCls}
+                  placeholder="—"
+                />
+              </Field>
+              <Field label="Per digital card">
+                <input type="number" value={product.digital_unit_price} onChange={(e) => set('digital_unit_price', Number(e.target.value) || 0)} className={inputCls} />
+              </Field>
+            </div>
+            <Toggle label="Offer a free sample" checked={product.free_sample} onChange={(v) => set('free_sample', v)} />
+          </Card>
+
+          {/* Card design */}
+          <Card title="Card design">
+            <div>
+              <ImageUploadField
+                label="Front design (hero)"
+                value={product.image_url}
+                onChange={(v) => set('image_url', v)}
+                pathPrefix={IMAGE_PREFIX}
+                previewAspect="aspect-[5/7]"
+                previewWidth="max-w-[180px]"
+                accept="svg"
+              />
+              <SvgInspector url={product.image_url} />
+            </div>
+            <div>
+              <ImageUploadField
+                label="Back design (optional)"
+                value={product.back_image_url}
+                onChange={(v) => set('back_image_url', v)}
+                pathPrefix={IMAGE_PREFIX}
+                previewAspect="aspect-[5/7]"
+                previewWidth="max-w-[180px]"
+                accept="svg"
+              />
+              <SvgInspector url={product.back_image_url} />
+            </div>
+            <p className="text-[11px] text-gray-500 -mt-1">
+              Upload SVGs for the card design. When front is attached it replaces the built-in CSS design. Leave empty to use the CSS design below.
+            </p>
+            <Field label="Built-in design (fallback)">
+              <select value={product.treatment} onChange={(e) => set('treatment', e.target.value as InvitationProductRecord['treatment'])} className={inputCls}>
+                {PRODUCT_TREATMENTS.map((t) => (
+                  <option key={t} value={t}>{t}</option>
                 ))}
               </select>
             </Field>
-            <Field label="Sort order" hint="Lower numbers appear first.">
-              <input type="number" value={product.sort_order} onChange={(e) => set('sort_order', Number(e.target.value) || 0)} className={inputCls} />
-            </Field>
-          </div>
-        </Card>
+            <GalleryEditor value={product.gallery} onChange={(v) => set('gallery', v)} />
+          </Card>
 
-        {/* Pricing */}
-        <Card title="Pricing (TZS)">
-          <div className="grid grid-cols-3 gap-4">
-            <Field label="Price now" hint="Pack total.">
-              <input type="number" value={product.price_now} onChange={(e) => set('price_now', Number(e.target.value) || 0)} className={inputCls} />
-            </Field>
-            <Field label="Price was" hint="Optional — struck through.">
-              <input
-                type="number"
-                value={product.price_was ?? ''}
-                onChange={(e) => set('price_was', e.target.value === '' ? null : Number(e.target.value) || 0)}
-                className={inputCls}
-                placeholder="—"
-              />
-            </Field>
-            <Field label="Per digital card">
-              <input type="number" value={product.digital_unit_price} onChange={(e) => set('digital_unit_price', Number(e.target.value) || 0)} className={inputCls} />
-            </Field>
-          </div>
-          <Toggle label="Offer a free sample" checked={product.free_sample} onChange={(v) => set('free_sample', v)} />
-        </Card>
+          {/* Colours */}
+          <Card title="Design colours">
+            <p className="text-[11px] text-gray-500 -mt-2">
+              Each palette has 6 colour roles. The accent colour is used as the swatch dot in the catalog.
+            </p>
+            <PaletteEditor value={palettes} onChange={(v) => { set('palettes', v); setActivePaletteIdx(0) }} />
+          </Card>
 
-        {/* Card design */}
-        <Card title="Card design">
-          <ImageUploadField
-            label="Card artwork (hero)"
-            value={product.image_url}
-            onChange={(v) => set('image_url', v)}
-            pathPrefix={IMAGE_PREFIX}
-            previewAspect="aspect-[5/7]"
-            previewWidth="max-w-[180px]"
-            accept="svg"
-          />
-          <p className="text-[11px] text-gray-500 -mt-1">
-            Upload an SVG of the card design. When attached it replaces the built-in CSS design on the product page. Leave empty to use the CSS design below.
-          </p>
-          <Field label="Built-in design (fallback)">
-            <select value={product.treatment} onChange={(e) => set('treatment', e.target.value as InvitationProductRecord['treatment'])} className={inputCls}>
-              {PRODUCT_TREATMENTS.map((t) => (
-                <option key={t} value={t}>{t}</option>
-              ))}
-            </select>
-          </Field>
-          <GalleryEditor value={product.gallery} onChange={(v) => set('gallery', v)} />
-        </Card>
-
-        {/* Colours */}
-        <Card title="Design colours">
-          <SwatchEditor value={product.swatches} onChange={(v) => set('swatches', v)} />
-        </Card>
-
-        {/* Visibility */}
-        <Card title="Visibility">
-          <Toggle label="Published (visible on the site)" checked={product.published} onChange={(v) => set('published', v)} />
-        </Card>
+          {/* Visibility */}
+          <Card title="Visibility">
+            <Toggle label="Published (visible on the site)" checked={product.published} onChange={(v) => set('published', v)} />
+          </Card>
+        </div>
       </div>
+
+      {/* Preview panel */}
+      <aside className="w-[200px] shrink-0 sticky top-6">
+        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] space-y-4">
+          <p className="text-xs font-bold text-gray-700">Preview</p>
+
+          {palettes.length > 1 && (
+            <div className="flex gap-1.5 flex-wrap">
+              {palettes.map((p, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  title={p.name || `Palette ${i + 1}`}
+                  onClick={() => setActivePaletteIdx(i)}
+                  className="w-5 h-5 rounded-full border-2 transition-all"
+                  style={{
+                    backgroundColor: p.accent,
+                    borderColor: i === activepaletteIdx ? '#7E5896' : 'transparent',
+                    outline: i === activepaletteIdx ? '1px solid #7E5896' : 'none',
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          <SvgPreview
+            url={product.image_url}
+            palette={activePalette}
+            aspect="aspect-[5/7]"
+            label="Front"
+          />
+
+          {product.back_image_url && (
+            <SvgPreview
+              url={product.back_image_url}
+              palette={activePalette}
+              aspect="aspect-[5/7]"
+              label="Back"
+            />
+          )}
+
+          {!product.image_url && !product.back_image_url && (
+            <p className="text-[11px] text-gray-400 text-center py-2">
+              Upload an SVG to see a preview
+            </p>
+          )}
+
+          {product.name && (
+            <div className="border-t border-gray-100 pt-3 space-y-0.5">
+              <p className="text-xs font-semibold text-gray-800 truncate">{product.name}</p>
+              {product.designer && <p className="text-[11px] text-gray-500 truncate">{product.designer}</p>}
+              {product.price_now > 0 && (
+                <p className="text-xs text-[#7E5896] font-semibold">
+                  TZS {product.price_now.toLocaleString('en-US')}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </aside>
     </div>
   )
 }
@@ -242,51 +332,6 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
       />
       <span className="text-sm text-gray-700">{label}</span>
     </label>
-  )
-}
-
-function SwatchEditor({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
-  const update = (i: number, hex: string) => onChange(value.map((c, idx) => (idx === i ? hex : c)))
-  const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i))
-  const add = () => onChange([...value, '#A6B89A'])
-
-  return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap gap-2">
-        {value.map((c, i) => (
-          <div key={i} className="flex items-center gap-1.5 rounded-lg border border-gray-200 pl-1.5 pr-1 py-1">
-            <input
-              type="color"
-              value={/^#[0-9a-fA-F]{6}$/.test(c) ? c : '#000000'}
-              onChange={(e) => update(i, e.target.value)}
-              className="h-6 w-6 cursor-pointer rounded border-0 bg-transparent p-0"
-              aria-label={`Swatch ${i + 1} colour`}
-            />
-            <input
-              value={c}
-              onChange={(e) => update(i, e.target.value)}
-              className="w-[78px] text-xs tabular-nums text-gray-700 focus:outline-none"
-            />
-            <button
-              type="button"
-              onClick={() => remove(i)}
-              className="p-0.5 text-gray-400 hover:text-red-600 rounded"
-              aria-label={`Remove swatch ${i + 1}`}
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        ))}
-      </div>
-      <button
-        type="button"
-        onClick={add}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7E5896] hover:text-[#5d3a78] px-2.5 py-1.5 rounded-lg border border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        Add colour
-      </button>
-    </div>
   )
 }
 

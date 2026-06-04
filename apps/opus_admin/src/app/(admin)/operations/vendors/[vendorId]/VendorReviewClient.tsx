@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 import {
   AlertCircle,
+  AlertTriangle,
   ArrowLeft,
   Banknote,
   Check,
@@ -14,9 +15,11 @@ import {
   ExternalLink,
   FileSignature,
   FileText,
+  IdCard,
   Loader2,
   PauseCircle,
   PlayCircle,
+  ScanFace,
   ShieldCheck,
   ThumbsDown,
   ThumbsUp,
@@ -30,13 +33,16 @@ import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import {
   approveDocument,
   approveVendor,
+  deleteVendor,
   deleteVendorPayoutMethod,
   generateSignedUrl,
+  getVendorDeletionImpact,
   reactivateVendor,
   rejectDocument,
   requestCorrections,
   saveVendorPayoutMethod,
   suspendVendor,
+  type VendorDeletionImpact,
   type VendorPayoutMethodType,
   type VendorPayoutStatus,
 } from '../actions'
@@ -141,6 +147,9 @@ export type VendorReviewProps = {
   }
   tin: DocSummary | null
   license: DocSummary | null
+  nationalIdFront: DocSummary | null
+  nationalIdBack: DocSummary | null
+  selfie: DocSummary | null
   payout: {
     id: string
     methodType: string
@@ -149,16 +158,22 @@ export type VendorReviewProps = {
     accountHolderName: string
     status: string
   } | null
-  agreement: {
-    id: string
+  // The OF-LGL-AGR-002 agreement family — main contract + two schedules, each
+  // signed independently. One entry per document (signed or not).
+  agreements: Array<{
     version: string
-    textHash: string
-    signedFullName: string
-    signedIp: string | null
-    signedUserAgent: string | null
-    signedAt: string
-    signatureImagePath: string | null
-  } | null
+    code: string
+    title: string
+    signed: {
+      id: string
+      textHash: string
+      signedFullName: string
+      signedIp: string | null
+      signedUserAgent: string | null
+      signedAt: string
+      signatureImagePath: string | null
+    } | null
+  }>
   historicalDocs: Array<{
     id: string
     docType: string
@@ -244,7 +259,17 @@ const TAB_ORDER: ReadonlyArray<{ id: VendorTab; label: string }> = [
 ]
 
 export default function VendorReviewClient(props: VendorReviewProps) {
-  const { vendor, tin, license, payout, agreement, historicalDocs } = props
+  const {
+    vendor,
+    tin,
+    license,
+    nationalIdFront,
+    nationalIdBack,
+    selfie,
+    payout,
+    agreements,
+    historicalDocs,
+  } = props
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [bannerError, setBannerError] = useState<string | null>(null)
@@ -254,7 +279,9 @@ export default function VendorReviewClient(props: VendorReviewProps) {
   const isSuspended = vendor.onboardingStatus === 'suspended'
 
   const verificationFlags = {
-    agreement: !agreement,
+    // Flagged until every document in the agreement family is signed.
+    agreement:
+      agreements.length === 0 || agreements.some((a) => !a.signed),
     payout: !payout || payout.status !== 'verified',
     tin: !tin || tin.status !== 'approved',
     license: !license || license.status !== 'approved',
@@ -593,16 +620,63 @@ export default function VendorReviewClient(props: VendorReviewProps) {
             title="Verification & Payout"
             description="Approve the required legal documents, confirm the vendor agreement, and verify the payout account before activating the vendor."
           >
-            <AgreementReviewCard agreement={agreement} vendorId={vendor.id} />
+            <AgreementReviewCard agreements={agreements} />
 
             <PayoutPanel vendorId={vendor.id} payout={payout} />
 
+            {/* Identity (required) — NIDA front/back + liveness selfie captured
+                by the vendor's camera. Same approve/reject flow as any doc. */}
+            <DocReviewCard
+              title="National ID — Front"
+              subtitle="Front of the Tanzania National ID (NIDA). Required."
+              icon={IdCard}
+              doc={nationalIdFront}
+              missingMessage="Vendor hasn't captured the front of their National ID yet."
+              onApprove={(id) =>
+                runAction('Approve ID front', () => approveDocument(id))
+              }
+              onReject={(id, reason) =>
+                runAction('Reject ID front', () => rejectDocument(id, reason))
+              }
+              actionsDisabled={pending || isApproved || isSuspended}
+            />
+
+            <DocReviewCard
+              title="National ID — Back"
+              subtitle="Back of the Tanzania National ID (NIDA). Required."
+              icon={IdCard}
+              doc={nationalIdBack}
+              missingMessage="Vendor hasn't captured the back of their National ID yet."
+              onApprove={(id) =>
+                runAction('Approve ID back', () => approveDocument(id))
+              }
+              onReject={(id, reason) =>
+                runAction('Reject ID back', () => rejectDocument(id, reason))
+              }
+              actionsDisabled={pending || isApproved || isSuspended}
+            />
+
+            <DocReviewCard
+              title="Liveness selfie"
+              subtitle="Selfie captured to confirm the vendor matches their ID. Required."
+              icon={ScanFace}
+              doc={selfie}
+              missingMessage="Vendor hasn't taken a liveness selfie yet."
+              onApprove={(id) =>
+                runAction('Approve selfie', () => approveDocument(id))
+              }
+              onReject={(id, reason) =>
+                runAction('Reject selfie', () => rejectDocument(id, reason))
+              }
+              actionsDisabled={pending || isApproved || isSuspended}
+            />
+
             <DocReviewCard
               title="TRA TIN certificate"
-              subtitle="Tanzania Revenue Authority tax ID."
+              subtitle="Tanzania Revenue Authority tax ID. Optional."
               icon={FileText}
               doc={tin}
-              missingMessage="Vendor hasn't uploaded the TIN certificate yet."
+              missingMessage="Vendor hasn't uploaded the TIN certificate (optional)."
               onApprove={(id) =>
                 runAction('Approve TIN', () => approveDocument(id))
               }
@@ -614,10 +688,10 @@ export default function VendorReviewClient(props: VendorReviewProps) {
 
             <DocReviewCard
               title="Business license"
-              subtitle="BRELA registration, council license, or sole-proprietor declaration."
+              subtitle="BRELA registration, council license, or sole-proprietor declaration. Optional."
               icon={FileText}
               doc={license}
-              missingMessage="Vendor hasn't uploaded a business license yet."
+              missingMessage="Vendor hasn't uploaded a business license (optional)."
               onApprove={(id) =>
                 runAction('Approve license', () => approveDocument(id))
               }
@@ -665,6 +739,12 @@ export default function VendorReviewClient(props: VendorReviewProps) {
             </ReviewSection>
           )}
         </div>
+
+        <DangerZone
+          vendorId={vendor.id}
+          businessName={vendor.businessName}
+          onDeleted={() => router.push('/operations/vendors')}
+        />
       </div>
       <GlobalSaveBar bottomOffsetClass={activeTab === 'verification' ? 'pb-[100px]' : 'pb-4'} />
     </div>
@@ -675,6 +755,191 @@ export default function VendorReviewClient(props: VendorReviewProps) {
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
+
+// Permanent-deletion panel. Lives at the bottom of every tab, visually walled
+// off as a "danger zone" so it's never mistaken for the everyday Suspend /
+// Approve controls in the header. Expanding it loads the deletion impact
+// (live bookings, reviews) and requires the admin to retype the exact business
+// name before the destructive button unlocks.
+function DangerZone({
+  vendorId,
+  businessName,
+  onDeleted,
+}: {
+  vendorId: string
+  businessName: string
+  onDeleted: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [confirmText, setConfirmText] = useState('')
+  const [impact, setImpact] = useState<VendorDeletionImpact | null>(null)
+  const [loadingImpact, setLoadingImpact] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [pending, startTransition] = useTransition()
+
+  // Expand the panel and fetch the impact summary once. Loading on click
+  // (not in an effect) keeps the fetch tied to the user's intent and avoids
+  // a synchronous setState during render.
+  const openPanel = () => {
+    setOpen(true)
+    if (impact || loadingImpact) return
+    setLoadingImpact(true)
+    getVendorDeletionImpact(vendorId).then((res) => {
+      setLoadingImpact(false)
+      if (res.ok) setImpact(res.impact)
+      // A failed impact lookup isn't fatal — the name-match guard still
+      // protects the delete. Leave counts unknown rather than blocking.
+    })
+  }
+
+  const confirmed = confirmText.trim() === businessName.trim()
+
+  const onDelete = () => {
+    if (!confirmed || pending) return
+    setError(null)
+    startTransition(async () => {
+      const res = await deleteVendor(vendorId, confirmText)
+      if (!res.ok) {
+        setError(res.error ?? 'Delete failed.')
+        return
+      }
+      onDeleted()
+    })
+  }
+
+  return (
+    <section className="mt-12 pt-8 border-t border-gray-200">
+      <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-6">
+        <header className="flex items-start gap-3">
+          <div className="w-10 h-10 rounded-full bg-white border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+            <AlertTriangle className="w-5 h-5" strokeWidth={1.75} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h2 className="text-base font-semibold text-rose-900">
+              Delete vendor account
+            </h2>
+            <p className="text-xs text-rose-800/80 mt-0.5 leading-relaxed max-w-2xl">
+              Permanently removes this vendor and everything attached to it —
+              bookings, reviews, messages, payouts, verification documents, and
+              uploaded media — and deletes their sign-in login so the email is
+              freed up. This cannot be undone. To temporarily disable a vendor
+              instead, use <span className="font-semibold">Suspend</span> in the
+              header.
+            </p>
+          </div>
+          {!open && (
+            <button
+              type="button"
+              onClick={openPanel}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-white border border-rose-300 text-rose-700 hover:bg-rose-100 transition-colors shrink-0"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Delete account
+            </button>
+          )}
+        </header>
+
+        {open && (
+          <div className="mt-5 rounded-xl bg-white border border-rose-200 p-4">
+            {/* Impact summary */}
+            {loadingImpact ? (
+              <p className="text-xs text-gray-500 flex items-center gap-2">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Checking what will be removed…
+              </p>
+            ) : impact ? (
+              <div className="flex flex-wrap gap-2 mb-4">
+                {impact.liveBookings > 0 && (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-rose-100 text-rose-800 border border-rose-200">
+                    <AlertCircle className="w-3 h-3" />
+                    {impact.liveBookings} live booking
+                    {impact.liveBookings === 1 ? '' : 's'}
+                  </span>
+                )}
+                <ImpactPill label="bookings" count={impact.totalBookings} />
+                <ImpactPill label="reviews" count={impact.reviews} />
+              </div>
+            ) : null}
+
+            {impact && impact.liveBookings > 0 && (
+              <div className="mb-4 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-700 mt-0.5 shrink-0" />
+                <p className="text-xs text-amber-900 leading-relaxed">
+                  This vendor has{' '}
+                  <span className="font-semibold">
+                    {impact.liveBookings} active booking
+                    {impact.liveBookings === 1 ? '' : 's'}
+                  </span>{' '}
+                  with couples. Deleting will also remove{' '}
+                  {impact.liveBookings === 1 ? 'it' : 'them'}. Consider{' '}
+                  <span className="font-semibold">Suspend</span> unless
+                  you&rsquo;re sure.
+                </p>
+              </div>
+            )}
+
+            <label className="block text-xs font-semibold text-gray-700 mb-1">
+              Type{' '}
+              <span className="font-mono text-rose-700">{businessName}</span> to
+              confirm
+            </label>
+            <input
+              type="text"
+              value={confirmText}
+              onChange={(e) => setConfirmText(e.target.value)}
+              placeholder={businessName}
+              autoComplete="off"
+              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent"
+            />
+
+            {error && (
+              <div className="mt-3 flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-600 mt-0.5 shrink-0" />
+                <p className="text-xs text-rose-800">{error}</p>
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setOpen(false)
+                  setConfirmText('')
+                  setError(null)
+                }}
+                disabled={pending}
+                className="inline-flex items-center text-sm font-semibold px-4 py-2 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={!confirmed || pending}
+                className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-rose-600 hover:bg-rose-700 text-white shadow-sm disabled:bg-rose-300 disabled:cursor-not-allowed transition-colors"
+              >
+                {pending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                {pending ? 'Deleting…' : 'Permanently delete'}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  )
+}
+
+function ImpactPill({ label, count }: { label: string; count: number }) {
+  return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-gray-100 text-gray-600 border border-gray-200">
+      {count} {label}
+    </span>
+  )
+}
 
 function ReviewSection({
   title,
@@ -1309,25 +1574,12 @@ function DocReviewCard({
 }
 
 function AgreementReviewCard({
-  agreement,
-  vendorId,
+  agreements,
 }: {
-  agreement: VendorReviewProps['agreement']
-  vendorId: string
+  agreements: VendorReviewProps['agreements']
 }) {
-  const [signatureUrl, setSignatureUrl] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!agreement?.signatureImagePath) return
-    let cancelled = false
-    generateSignedUrl(agreement.signatureImagePath).then((res) => {
-      if (cancelled) return
-      if (res.ok) setSignatureUrl(res.url)
-    })
-    return () => {
-      cancelled = true
-    }
-  }, [agreement?.signatureImagePath])
+  const signedCount = agreements.filter((a) => a.signed).length
+  const allSigned = agreements.length > 0 && signedCount === agreements.length
 
   return (
     <article className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-6">
@@ -1340,42 +1592,110 @@ function AgreementReviewCard({
             <h2 className="text-base font-semibold text-gray-900">
               Vendor agreement
             </h2>
-            {agreement ? (
+            {allSigned ? (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
                 <CheckCircle2 className="w-2.5 h-2.5" />
-                Signed
+                All signed
               </span>
             ) : (
               <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
-                Not signed
+                {signedCount}/{agreements.length} signed
               </span>
             )}
           </div>
           <p className="text-xs text-gray-500 mt-0.5">
-            Mkataba wa Watoa Huduma · the binding e-signature, separate from the
+            Mkataba wa Watoa Huduma (OF-LGL-AGR-002) · the binding e-signatures
+            on the main contract and its two schedules, separate from the
             Vendor Vows pledge.
           </p>
         </div>
       </header>
 
-      {!agreement ? (
-        <p className="text-sm text-gray-500 italic">
-          Vendor hasn&rsquo;t signed the agreement yet.
+      <div className="flex flex-col gap-3">
+        {agreements.map((doc) => (
+          <AgreementDocRow key={doc.version} doc={doc} />
+        ))}
+      </div>
+    </article>
+  )
+}
+
+/**
+ * One document in the agreement family — its signature audit detail when
+ * signed, or a muted "not signed" placeholder otherwise.
+ */
+function AgreementDocRow({
+  doc,
+}: {
+  doc: VendorReviewProps['agreements'][number]
+}) {
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null)
+  const imagePath = doc.signed?.signatureImagePath ?? null
+
+  useEffect(() => {
+    if (!imagePath) return
+    let cancelled = false
+    generateSignedUrl(imagePath).then((res) => {
+      if (cancelled) return
+      if (res.ok) setSignatureUrl(res.url)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [imagePath])
+
+  return (
+    <div
+      className={cn(
+        'rounded-xl border p-4',
+        doc.signed
+          ? 'border-emerald-200 bg-emerald-50/40'
+          : 'border-gray-200 bg-gray-50/40',
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h3 className="text-sm font-semibold text-gray-900">
+              {doc.title}
+            </h3>
+            <span className="font-mono text-[10px] text-gray-400">
+              {doc.code}
+            </span>
+          </div>
+        </div>
+        {doc.signed ? (
+          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
+            <CheckCircle2 className="w-2.5 h-2.5" />
+            Signed
+          </span>
+        ) : (
+          <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200 shrink-0">
+            Not signed
+          </span>
+        )}
+      </div>
+
+      {!doc.signed ? (
+        <p className="mt-2 text-xs text-gray-500 italic">
+          Vendor hasn&rsquo;t signed this document yet.
         </p>
       ) : (
-        <div className="flex flex-col gap-4">
+        <div className="mt-3 flex flex-col gap-3">
           <ul className="space-y-1.5 text-xs text-gray-700">
             <li>
               <span className="text-gray-400">Version:</span>{' '}
-              <span className="font-mono">{agreement.version}</span>
+              <span className="font-mono">{doc.version}</span>
             </li>
             <li>
               <span className="text-gray-400">Signed name:</span>{' '}
-              <span className="font-semibold">{agreement.signedFullName}</span>
+              <span className="font-semibold">
+                {doc.signed.signedFullName}
+              </span>
             </li>
             <li>
               <span className="text-gray-400">Signed at:</span>{' '}
-              {new Date(agreement.signedAt).toLocaleString('en-GB', {
+              {new Date(doc.signed.signedAt).toLocaleString('en-GB', {
                 day: 'numeric',
                 month: 'short',
                 year: 'numeric',
@@ -1383,24 +1703,24 @@ function AgreementReviewCard({
                 minute: '2-digit',
               })}
             </li>
-            {agreement.signedIp && (
+            {doc.signed.signedIp && (
               <li>
                 <span className="text-gray-400">IP:</span>{' '}
-                <span className="font-mono">{agreement.signedIp}</span>
+                <span className="font-mono">{doc.signed.signedIp}</span>
               </li>
             )}
-            {agreement.signedUserAgent && (
+            {doc.signed.signedUserAgent && (
               <li className="break-words">
                 <span className="text-gray-400">User-agent:</span>{' '}
                 <span className="font-mono text-[11px] text-gray-500">
-                  {agreement.signedUserAgent}
+                  {doc.signed.signedUserAgent}
                 </span>
               </li>
             )}
             <li className="pt-2 border-t border-gray-100">
               <span className="text-gray-400">Body hash (SHA-256):</span>{' '}
               <span className="font-mono text-[11px] text-gray-500 break-all">
-                {agreement.textHash}
+                {doc.signed.textHash}
               </span>
             </li>
           </ul>
@@ -1419,13 +1739,13 @@ function AgreementReviewCard({
               />
             </div>
           ) : (
-            <p className="text-[11px] text-gray-400 italic self-end">
+            <p className="text-[11px] text-gray-400 italic">
               Vendor signed by typed name only (no canvas drawing).
             </p>
           )}
         </div>
       )}
-    </article>
+    </div>
   )
 }
 

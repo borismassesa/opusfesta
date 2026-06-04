@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import { BOOKING_SELECT, mapDbBooking, type DbBookingRow } from '@/lib/booking-db'
+import { notifyBookingEventEmail } from '@/lib/email/notify-leads-bookings'
 
 const ALLOWED_STAGES = new Set(['quoted', 'reserved', 'confirmed', 'completed', 'cancelled'])
 const ALLOWED_INTERNAL = new Set([
@@ -10,12 +11,59 @@ const ALLOWED_INTERNAL = new Set([
   'completed', 'cancelled',
 ])
 const MUTABLE_FIELDS = new Set([
+  'event_date', 'start_time', 'end_time',
   'deposit_paid', 'balance_due_date', 'contract_sent_at', 'contract_signed',
   'invoice_issued', 'brief_submitted', 'slot_held_until',
   'last_message_at', 'last_message_preview',
   'review_requested', 'review_received',
   'cancellation_reason', 'cancelled_at',
 ])
+
+// Fields whose accepted value must look like an ISO date / time. Without
+// these guards a vendor could PATCH any string into event_date and break
+// downstream date math (or pollute the audit timeline). Wider booking-conflict
+// checks would be ideal but are out of scope; format validation is the minimum.
+const DATE_FIELDS = new Set(['event_date', 'balance_due_date'])
+const TIME_FIELDS = new Set(['start_time', 'end_time'])
+const TIMESTAMP_FIELDS = new Set(['contract_sent_at', 'slot_held_until', 'last_message_at', 'cancelled_at'])
+// Free-text fields — cap length so a vendor can't store unbounded blobs (storage
+// DoS) or stash markup that renders elsewhere. Still escape at render time.
+const TEXT_FIELDS = new Set(['last_message_preview', 'cancellation_reason'])
+const MAX_TEXT_LEN = 2000
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+const TIME_RE = /^\d{2}:\d{2}(:\d{2})?$/
+// Require a real ISO 8601 shape — `new Date(value)` alone accepts garbage like
+// "yesterday" or overflowing months (V8 rolls them over).
+const ISO_TS_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?(\.\d+)?(Z|[+-]\d{2}:\d{2})?$/
+
+/** Returns an error string if invalid, else null. */
+function validateMutableField(field: string, value: unknown): string | null {
+  if (value === null) return null // explicit clear
+  if (DATE_FIELDS.has(field)) {
+    if (typeof value !== 'string' || !DATE_RE.test(value)) {
+      return `${field} must be YYYY-MM-DD`
+    }
+    if (Number.isNaN(new Date(`${value}T00:00:00`).getTime())) {
+      return `${field} is not a valid date`
+    }
+  }
+  if (TIME_FIELDS.has(field)) {
+    if (typeof value !== 'string' || !TIME_RE.test(value)) {
+      return `${field} must be HH:MM (or HH:MM:SS)`
+    }
+  }
+  if (TIMESTAMP_FIELDS.has(field)) {
+    if (typeof value !== 'string' || !ISO_TS_RE.test(value) || Number.isNaN(new Date(value).getTime())) {
+      return `${field} must be an ISO 8601 timestamp`
+    }
+  }
+  if (TEXT_FIELDS.has(field)) {
+    if (typeof value !== 'string') return `${field} must be a string`
+    if (value.length > MAX_TEXT_LEN) return `${field} exceeds ${MAX_TEXT_LEN} characters`
+  }
+  return null
+}
 
 export async function GET(
   _request: Request,
@@ -75,10 +123,17 @@ export async function PATCH(
   // Confirm ownership and fetch current timeline before writing.
   const { data: existing, error: ownerErr } = await supabase
     .from('vendor_bookings')
-    .select('id, timeline')
+    .select('id, timeline, partner_a, partner_b, email, event_date')
     .eq('id', id)
     .eq('vendor_id', state.vendor.id)
-    .maybeSingle<{ id: string; timeline: unknown }>()
+    .maybeSingle<{
+      id: string
+      timeline: unknown
+      partner_a: string | null
+      partner_b: string | null
+      email: string | null
+      event_date: string | null
+    }>()
 
   if (ownerErr) {
     console.error('[bookings] ownership check failed', ownerErr.code)
@@ -94,16 +149,28 @@ export async function PATCH(
   if (body.internal_status !== undefined) update.internal_status = body.internal_status
 
   for (const field of MUTABLE_FIELDS) {
-    if (body[field] !== undefined) update[field] = body[field]
+    if (body[field] === undefined) continue
+    const err = validateMutableField(field, body[field])
+    if (err) return NextResponse.json({ error: err }, { status: 400 })
+    update[field] = body[field]
   }
 
-  // Append a timeline entry if provided.
+  // Append a timeline entry if provided. Build a clean entry from only the
+  // expected scalar keys — never spread the client object (prevents arbitrary
+  // JSON / prototype pollution into the stored JSONB) — and stamp `at`
+  // server-side so a skewed client clock can't reorder the audit trail.
   if (body.timeline_entry !== undefined) {
     if (typeof body.timeline_entry !== 'object' || body.timeline_entry === null || Array.isArray(body.timeline_entry)) {
       return NextResponse.json({ error: 'timeline_entry must be an object' }, { status: 400 })
     }
+    const raw = body.timeline_entry as Record<string, unknown>
+    const entry = {
+      at: new Date().toISOString(),
+      kind: typeof raw.kind === 'string' ? raw.kind.slice(0, 40) : 'note',
+      label: typeof raw.label === 'string' ? raw.label.slice(0, 500) : '',
+    }
     const prev = Array.isArray(existing.timeline) ? existing.timeline : []
-    update.timeline = [...prev, body.timeline_entry]
+    update.timeline = [...prev, entry]
   }
 
   const { error } = await supabase
@@ -115,6 +182,34 @@ export async function PATCH(
   if (error) {
     console.error('[bookings] patch failed', error)
     return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+  }
+
+  let eventLabel: string | null = null
+  if (body.stage === 'reserved' || body.internal_status === 'quote_accepted') {
+    eventLabel = 'Offer accepted'
+  } else if (body.internal_status === 'contract_sent') {
+    eventLabel = 'Contract sent'
+  } else if (body.deposit_paid === true) {
+    eventLabel = 'Deposit received'
+  } else if (body.stage === 'confirmed') {
+    eventLabel = 'Booking confirmed'
+  } else if (body.stage === 'cancelled') {
+    eventLabel = 'Booking cancelled'
+  } else if (body.review_requested === true) {
+    eventLabel = 'Review requested'
+  }
+
+  if (eventLabel) {
+    // Fire-and-forget so email latency doesn't block the response — but surface
+    // rejections instead of letting `void` swallow them into an unhandled reject.
+    notifyBookingEventEmail({
+      recipientEmail: existing.email,
+      recipientName: [existing.partner_a, existing.partner_b].filter(Boolean).join(' & ') || null,
+      vendorName: state.vendor.businessName,
+      bookingId: existing.id,
+      eventDate: existing.event_date,
+      eventLabel,
+    }).catch((err) => console.error('[bookings] notify email threw', err))
   }
 
   return NextResponse.json({ success: true })

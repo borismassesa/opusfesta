@@ -1,7 +1,8 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   ArrowLeft,
   CalendarClock,
@@ -33,8 +34,28 @@ import {
   timeAgo,
 } from '@/lib/bookings'
 import { cn } from '@/lib/utils'
+import { useBookingAction } from '@/lib/use-booking-action'
 
 export default function BookingDetailClient({ booking }: { booking: Booking }) {
+  const router = useRouter()
+  const action = useBookingAction()
+
+  async function patch(payload: Record<string, unknown>, successMessage?: string) {
+    const ok = await action.perform(
+      () =>
+        fetch(`/api/bookings/${booking.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        }),
+      {
+        successMessage,
+        errorMessage: 'Could not update booking.',
+      },
+    )
+    if (ok) router.refresh()
+  }
+
   const stage = STAGE_META[booking.stage]
   const deposit = depositAmount(booking)
   const balance = balanceAmount(booking)
@@ -79,12 +100,23 @@ export default function BookingDetailClient({ booking }: { booking: Booking }) {
           ) : null}
 
           <div className="ml-auto flex items-center gap-2">
+            {action.error ? (
+              <p className="text-xs text-rose-600 font-medium">{action.error}</p>
+            ) : null}
             {primaryAction ? (
               <button
                 type="button"
-                className="inline-flex items-center gap-1.5 bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-800 transition-colors"
+                disabled={action.loading}
+                onClick={() => handlePrimaryCta(primaryAction.key, patch)}
+                className="inline-flex items-center gap-1.5 bg-gray-900 text-white text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
               >
-                <primaryAction.icon className="w-4 h-4" />
+                {action.loading ? (
+                  <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M12 2a10 10 0 0 1 10 10" strokeLinecap="round" />
+                  </svg>
+                ) : (
+                  <primaryAction.icon className="w-4 h-4" />
+                )}
                 {primaryAction.label}
               </button>
             ) : null}
@@ -104,7 +136,7 @@ export default function BookingDetailClient({ booking }: { booking: Booking }) {
           <aside className="space-y-5 lg:sticky lg:top-4">
             <CoupleCard booking={booking} />
             <DocumentsCard booking={booking} />
-            <QuickActions booking={booking} />
+            <QuickActions booking={booking} patch={patch} loading={action.loading} />
           </aside>
         </div>
       </div>
@@ -113,17 +145,45 @@ export default function BookingDetailClient({ booking }: { booking: Booking }) {
 }
 
 /* ---------- Helpers ---------- */
+type CtaKey =
+  | 'mark_quote_accepted'
+  | 'send_contract'
+  | 'mark_deposit_received'
+  | 'confirm_booking'
+  | 'open_brief'
+  | 'request_review'
 
-type Cta = { label: string; icon: typeof Send; hint?: string }
+type Cta = { key: CtaKey; label: string; icon: typeof Send }
 
 function primaryCta(b: Booking): Cta | null {
-  if (b.stage === 'quoted') return { label: 'Mark quote accepted', icon: CheckCircle2 }
-  if (b.stage === 'reserved' && !b.contractSigned) return { label: 'Send contract', icon: FileSignature }
-  if (b.stage === 'reserved' && b.contractSigned && !b.depositPaid) return { label: 'Mark deposit received', icon: Wallet }
-  if (b.stage === 'reserved') return { label: 'Confirm booking', icon: CheckCircle2 }
-  if (b.stage === 'confirmed' && !b.briefSubmitted) return { label: 'Open day-of brief', icon: FileText }
-  if (b.stage === 'completed' && !b.reviewRequested) return { label: 'Request review', icon: Send }
+  if (b.stage === 'quoted') return { key: 'mark_quote_accepted', label: 'Mark quote accepted', icon: CheckCircle2 }
+  if (b.stage === 'reserved' && !b.contractSigned) return { key: 'send_contract', label: 'Send contract', icon: FileSignature }
+  if (b.stage === 'reserved' && b.contractSigned && !b.depositPaid) return { key: 'mark_deposit_received', label: 'Mark deposit received', icon: Wallet }
+  if (b.stage === 'reserved') return { key: 'confirm_booking', label: 'Confirm booking', icon: CheckCircle2 }
+  if (b.stage === 'confirmed' && !b.briefSubmitted) return { key: 'open_brief', label: 'Open day-of brief', icon: FileText }
+  if (b.stage === 'completed' && !b.reviewRequested) return { key: 'request_review', label: 'Request review', icon: Send }
   return null
+}
+
+async function handlePrimaryCta(
+  key: CtaKey,
+  patch: (payload: Record<string, unknown>, successMessage?: string) => Promise<void>,
+) {
+  const now = new Date().toISOString()
+  switch (key) {
+    case 'mark_quote_accepted':
+      return patch({ stage: 'reserved', internal_status: 'quote_accepted', timeline_entry: { at: now, kind: 'quote_accepted', label: 'Quote accepted by couple' } }, 'Offer marked as accepted.')
+    case 'send_contract':
+      return patch({ internal_status: 'contract_sent', contract_sent_at: now, timeline_entry: { at: now, kind: 'contract_sent', label: 'Contract sent to couple' } }, 'Contract marked as sent.')
+    case 'mark_deposit_received':
+      return patch({ deposit_paid: true, internal_status: 'deposit_pending', timeline_entry: { at: now, kind: 'deposit_paid', label: 'Deposit received' } }, 'Deposit recorded as received.')
+    case 'confirm_booking':
+      return patch({ stage: 'confirmed', internal_status: 'confirmed', timeline_entry: { at: now, kind: 'confirmed', label: 'Booking confirmed' } }, 'Booking confirmed.')
+    case 'open_brief':
+      return patch({ brief_submitted: true, timeline_entry: { at: now, kind: 'completed', label: 'Day-of brief submitted' } }, 'Day-of brief marked as submitted.')
+    case 'request_review':
+      return patch({ review_requested: true, timeline_entry: { at: now, kind: 'review_requested', label: 'Review requested from couple' } }, 'Review request marked as sent.')
+  }
 }
 
 /* ---------- Summary ---------- */
@@ -391,24 +451,73 @@ function DocumentsCard({ booking: b }: { booking: Booking }) {
 
 /* ---------- Quick actions ---------- */
 
-function QuickActions({ booking: b }: { booking: Booking }) {
-  const actions: { label: string; icon: typeof Send; tone?: 'danger' }[] = []
+function QuickActions({
+  booking: b,
+  patch,
+  loading,
+}: {
+  booking: Booking
+  patch: (payload: Record<string, unknown>, successMessage?: string) => Promise<void>
+  loading: boolean
+}) {
+  const router = useRouter()
+  const [showReschedule, setShowReschedule] = useState(false)
+  const [showCancel, setShowCancel] = useState(false)
+  const [rescheduleDate, setRescheduleDate] = useState(b.date)
+  const [rescheduleStart, setRescheduleStart] = useState(b.startTime)
+  const [rescheduleEnd, setRescheduleEnd] = useState(b.endTime)
+  const [cancelReason, setCancelReason] = useState('')
+  const cancelTextRef = useRef<HTMLTextAreaElement>(null)
+
+  async function confirmReschedule() {
+    if (!rescheduleDate) return
+    await patch({
+      event_date: rescheduleDate,
+      start_time: rescheduleStart || b.startTime,
+      end_time: rescheduleEnd || b.endTime,
+      internal_status: 'rescheduled',
+      timeline_entry: {
+        at: new Date().toISOString(),
+        kind: 'rescheduled',
+        label: `Rescheduled to ${eventDateLabel(rescheduleDate)}`,
+      },
+    }, 'Booking rescheduled.')
+    setShowReschedule(false)
+  }
+
+  async function confirmCancel() {
+    await patch({
+      stage: 'cancelled',
+      internal_status: 'cancelled',
+      cancellation_reason: cancelReason.trim() || null,
+      cancelled_at: new Date().toISOString(),
+      timeline_entry: {
+        at: new Date().toISOString(),
+        kind: 'cancelled',
+        label: cancelReason.trim() ? `Booking cancelled — ${cancelReason.trim()}` : 'Booking cancelled',
+      },
+    }, 'Booking cancelled.')
+    setShowCancel(false)
+  }
+
+  const actions: { label: string; icon: typeof Send; tone?: 'danger'; onClick: () => void }[] = []
   if (b.stage !== 'cancelled' && b.stage !== 'completed') {
-    actions.push({ label: 'Send reminder', icon: Send })
-    actions.push({ label: 'Reschedule', icon: RefreshCcw })
+    actions.push({ label: 'Send reminder', icon: Send, onClick: () => router.push(`/messages${b.leadId ? `?leadId=${b.leadId}` : ''}`) })
+    actions.push({ label: 'Reschedule', icon: RefreshCcw, onClick: () => setShowReschedule(true) })
   }
   if (b.stage !== 'completed' && b.stage !== 'cancelled') {
-    actions.push({ label: 'Cancel booking', icon: CalendarX, tone: 'danger' })
+    actions.push({ label: 'Cancel booking', icon: CalendarX, tone: 'danger', onClick: () => { setCancelReason(''); setShowCancel(true) } })
   }
   if (b.stage === 'completed') {
-    actions.push({ label: 'Send invoice', icon: FileText })
-    actions.push({ label: 'Mark for review', icon: Send })
+    actions.push({ label: 'Send invoice', icon: FileText, onClick: () => patch({ invoice_issued: true, timeline_entry: { at: new Date().toISOString(), kind: 'completed', label: 'Invoice issued' } }, 'Invoice marked as issued.') })
+    actions.push({ label: 'Mark for review', icon: Send, onClick: () => patch({ review_requested: true, timeline_entry: { at: new Date().toISOString(), kind: 'review_requested', label: 'Review requested from couple' } }, 'Review request marked as sent.') })
   }
 
   if (actions.length === 0) return null
 
   return (
-    <section className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5">
+    <section className="space-y-3">
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] p-5">
       <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500 mb-3">Quick actions</p>
       <ul className="space-y-1">
         {actions.map((a) => {
@@ -417,8 +526,10 @@ function QuickActions({ booking: b }: { booking: Booking }) {
             <li key={a.label}>
               <button
                 type="button"
+                disabled={loading}
+                onClick={a.onClick}
                 className={cn(
-                  'w-full inline-flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold transition-colors',
+                  'w-full inline-flex items-center gap-2 px-3 py-2 rounded-md text-xs font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed',
                   a.tone === 'danger' ? 'text-rose-600 hover:bg-rose-50' : 'text-gray-700 hover:bg-gray-50',
                 )}
               >
@@ -429,6 +540,101 @@ function QuickActions({ booking: b }: { booking: Booking }) {
           )
         })}
       </ul>
+      </div>
+
+      {/* Reschedule dialog */}
+      {showReschedule ? (
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.15)] p-5 space-y-4">
+          <p className="text-sm font-semibold text-gray-900">Reschedule booking</p>
+          <div className="space-y-3">
+            <label className="block">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">New date</span>
+              <input
+                type="date"
+                value={rescheduleDate}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => setRescheduleDate(e.target.value)}
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+              />
+            </label>
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">Start time</span>
+                <input
+                  type="time"
+                  value={rescheduleStart}
+                  onChange={(e) => setRescheduleStart(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                />
+              </label>
+              <label className="block">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">End time</span>
+                <input
+                  type="time"
+                  value={rescheduleEnd}
+                  onChange={(e) => setRescheduleEnd(e.target.value)}
+                  className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900 focus:border-transparent"
+                />
+              </label>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              disabled={loading || !rescheduleDate}
+              onClick={confirmReschedule}
+              className="flex-1 bg-gray-900 text-white text-xs font-semibold px-3 py-2 rounded-full hover:bg-gray-800 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Saving…' : 'Confirm reschedule'}
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => setShowReschedule(false)}
+              className="flex-1 text-xs font-semibold text-gray-600 hover:text-gray-900 px-3 py-2 rounded-full border border-gray-200 hover:border-gray-300 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Cancel booking dialog */}
+      {showCancel ? (
+        <div className="bg-white rounded-2xl border border-rose-100 shadow-[0_4px_20px_-6px_rgba(0,0,0,0.15)] p-5 space-y-4">
+          <p className="text-sm font-semibold text-gray-900">Cancel this booking?</p>
+          <p className="text-xs text-gray-500 leading-relaxed">This will mark the booking as cancelled. Contact the couple separately if a refund or communication is needed.</p>
+          <label className="block">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400 block mb-1">Reason (optional)</span>
+            <textarea
+              ref={cancelTextRef}
+              rows={3}
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="e.g. Couple changed plans, venue no longer available…"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-rose-500 focus:border-transparent"
+            />
+          </label>
+          <div className="flex items-center gap-2 pt-1">
+            <button
+              type="button"
+              disabled={loading}
+              onClick={confirmCancel}
+              className="flex-1 bg-rose-600 text-white text-xs font-semibold px-3 py-2 rounded-full hover:bg-rose-700 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Cancelling…' : 'Yes, cancel booking'}
+            </button>
+            <button
+              type="button"
+              disabled={loading}
+              onClick={() => setShowCancel(false)}
+              className="flex-1 text-xs font-semibold text-gray-600 hover:text-gray-900 px-3 py-2 rounded-full border border-gray-200 hover:border-gray-300 transition-colors"
+            >
+              Keep booking
+            </button>
+          </div>
+        </div>
+      ) : null}
     </section>
   )
 }

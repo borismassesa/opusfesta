@@ -40,23 +40,23 @@ export function ClassicSerif({ names, date, venue, palette, message, messageAttr
             <text
               x={na.x} y="178"
               textAnchor={na.textAnchor} dominantBaseline="middle"
-              style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight}
-              fill="var(--iv-tp)"
-            >{line1}</text>
+              style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight}
+              fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}
+            >{na.uppercase ? line1.toUpperCase() : line1}</text>
             <text
               x={na.x} y="198"
               textAnchor={na.textAnchor} dominantBaseline="middle"
-              style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight}
-              fill="var(--iv-tp)"
-            >&amp; {line2}</text>
+              style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight}
+              fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}
+            >&amp; {na.uppercase ? line2.toUpperCase() : line2}</text>
           </>
         ) : (
           <text
             x={na.x} y="188"
             textAnchor={na.textAnchor} dominantBaseline="middle"
-            style={font.namesStyle} fontSize={na.fontSize} fontWeight={na.fontWeight}
-            fill="var(--iv-tp)"
-          >{names}</text>
+            style={{ ...font.namesStyle, ...(na.fontStyle && { fontStyle: na.fontStyle }) }} fontSize={na.fontSize} fontWeight={na.fontWeight}
+            fill={na.fill ?? 'var(--iv-tp)'} opacity={na.opacity}
+          >{na.uppercase ? names.toUpperCase() : names}</text>
         )}
       </g>
       <line x1="125" y1="216" x2="175" y2="216" stroke="var(--iv-acc)" strokeWidth="0.8" />
@@ -64,25 +64,25 @@ export function ClassicSerif({ names, date, venue, palette, message, messageAttr
         data-section="date"
         x={da.x} y="232"
         textAnchor={da.textAnchor} dominantBaseline="middle"
-        fontFamily="inherit" fontSize={da.fontSize} fontWeight={da.fontWeight} letterSpacing="2.2"
-        fill="var(--iv-ts)"
-      >{date}</text>
+        fontFamily="inherit" fontSize={da.fontSize} fontWeight={da.fontWeight} fontStyle={da.fontStyle} letterSpacing={da.letterSpacing ?? 2.2}
+        fill={da.fill ?? 'var(--iv-ts)'} opacity={da.opacity}
+      >{da.uppercase ? date.toUpperCase() : date}</text>
       <text
         data-section="venue"
         x={va.x} y="250"
         textAnchor={va.textAnchor} dominantBaseline="middle"
-        fontFamily="inherit" fontSize={va.fontSize} fontWeight={va.fontWeight} letterSpacing="2.2"
-        fill="var(--iv-mut)"
-      >{venue.toUpperCase()}</text>
+        fontFamily="inherit" fontSize={va.fontSize} fontWeight={va.fontWeight} fontStyle={va.fontStyle} letterSpacing={va.letterSpacing ?? 2.2}
+        fill={va.fill ?? 'var(--iv-mut)'} opacity={va.opacity}
+      >{va.uppercase === false ? venue : venue.toUpperCase()}</text>
       {message && (
         <g data-section="message">
           <line x1="100" y1="285" x2="200" y2="285" stroke="var(--iv-acc)" strokeWidth="0.5" strokeOpacity="0.6" />
           <text
             x={ma.x} y="299"
             textAnchor={ma.textAnchor} dominantBaseline="middle"
-            style={font.bodyStyle} fontSize={ma.fontSize} fontWeight={ma.fontWeight}
-            fill="var(--iv-ts)"
-          >{message}</text>
+            style={{ ...font.bodyStyle, ...(ma.fontStyle && { fontStyle: ma.fontStyle }) }} fontSize={ma.fontSize} fontWeight={ma.fontWeight}
+            fill={ma.fill ?? 'var(--iv-ts)'} opacity={ma.opacity}
+          >{ma.uppercase ? message.toUpperCase() : message}</text>
           {messageAttr && (
             <text
               x={ma.x} y="313"

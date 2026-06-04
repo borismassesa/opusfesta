@@ -270,10 +270,10 @@ export async function submitApplication(
   // our admin client and slug collisions are common across re-attempts.
   const existing = await admin
     .from('vendors')
-    .select('id, slug')
+    .select('id, slug, onboarding_status')
     .eq('user_id', supabaseUserId)
     .limit(1)
-    .maybeSingle<{ id: string; slug: string }>()
+    .maybeSingle<{ id: string; slug: string; onboarding_status: string | null }>()
 
   if (existing.error) {
     return {
@@ -302,6 +302,32 @@ export async function submitApplication(
     }
   }
 
+  // First submission = no vendor row yet, or one that's still a pre-submit
+  // draft. Only then do we advance the lifecycle to `verification_pending` and
+  // stamp `onboarding_started_at`. On a later EDIT (vendor is already
+  // verification_pending / admin_review / needs_corrections / active /
+  // suspended) we must NOT touch the status or the started-at clock — otherwise
+  // editing a detail silently knocks an advanced vendor back to
+  // verification_pending and resets their review SLA.
+  const currentStatus =
+    existing.data?.onboarding_status ?? 'application_in_progress'
+  const isFirstSubmission = !existing.data || currentStatus === 'application_in_progress'
+
+  // Decide what (if anything) this submit does to the lifecycle:
+  //  • First submission → advance to `verification_pending` + stamp the clock.
+  //  • Re-submit after `needs_corrections` → push back into `admin_review` so
+  //    the admin re-checks the fixes (the vendor has "answered" the request).
+  //  • Any other edit (verification_pending / admin_review / active / …) →
+  //    leave the status and SLA clock untouched.
+  const lifecycleFields: Record<string, unknown> = isFirstSubmission
+    ? {
+        onboarding_status: 'verification_pending',
+        onboarding_started_at: new Date().toISOString(),
+      }
+    : currentStatus === 'needs_corrections'
+      ? { onboarding_status: 'admin_review' }
+      : {}
+
   // Core columns guaranteed to exist after migration 001 + 056 — anything
   // beyond this set is treated as "best effort" so missing migrations or
   // stale PostgREST schema caches don't block submit.
@@ -313,8 +339,7 @@ export async function submitApplication(
     bio: draft.bio || null,
     location: buildLocation(draft),
     contact_info: buildContactInfo(draft),
-    onboarding_status: 'verification_pending' as const,
-    onboarding_started_at: new Date().toISOString(),
+    ...lifecycleFields,
   }
 
   // Optional columns added by later migrations (021 packages, 025 services_offered

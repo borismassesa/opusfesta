@@ -23,9 +23,16 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const categories = await loadInvitationCategoriesList()
   const cat = findCategory(categories, category)
   if (!cat) return { title: 'Category not found | OpusPass' }
+  const description = `Browse ${cat.label.toLowerCase()} designs — bilingual digital invitations for Tanzanian weddings.`
   return {
     title: `${cat.label} | OpusPass Invitations`,
-    description: `Browse ${cat.label.toLowerCase()} designs — bilingual digital invitations for Tanzanian weddings.`,
+    description,
+    openGraph: {
+      title: `${cat.label} | OpusPass Invitations`,
+      description,
+      images: cat.img ? [{ url: cat.img, alt: cat.label }] : [],
+      type: 'website',
+    },
   }
 }
 

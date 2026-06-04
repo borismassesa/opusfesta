@@ -3,7 +3,11 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateOpusPass } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requireAdminRole, type AdminAccessRole } from '@/lib/admin-auth'
 import type { InvitationProductRecord } from '@/lib/cms/opus-pass-invitations-products'
+
+// Same role allowlist as /lib/cms/upload-media.ts — keep them in sync.
+const PRODUCT_EDIT_ROLES: AdminAccessRole[] = ['owner', 'admin', 'editor']
 
 async function revalidateProductPaths(id?: string): Promise<void> {
   revalidatePath('/cms/opus-pass/invitations/products')
@@ -16,6 +20,7 @@ async function revalidateProductPaths(id?: string): Promise<void> {
 export async function upsertInvitationProduct(
   product: InvitationProductRecord,
 ): Promise<{ id: string }> {
+  await requireAdminRole(PRODUCT_EDIT_ROLES)
   const supabase = createSupabaseAdminClient()
   // DB manages timestamps.
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -36,6 +41,7 @@ export async function patchInvitationProduct(
   id: string,
   patch: Partial<Pick<InvitationProductRecord, 'published' | 'sort_order' | 'free_sample'>>,
 ): Promise<void> {
+  await requireAdminRole(PRODUCT_EDIT_ROLES)
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_invitations_products')
@@ -47,6 +53,7 @@ export async function patchInvitationProduct(
 }
 
 export async function deleteInvitationProduct(id: string): Promise<void> {
+  await requireAdminRole(PRODUCT_EDIT_ROLES)
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_invitations_products')

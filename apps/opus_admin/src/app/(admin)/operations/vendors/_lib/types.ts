@@ -32,8 +32,10 @@ export interface VendorAccount {
   category: string
   city: string | null
   submittedByName: string | null
+  contactEmail: string | null
   submittedAt: string | null
   createdAt: string
+  updatedAt: string
   agreementStatus: AgreementStatus
   documentsVerified: number
   documentsTotal: number

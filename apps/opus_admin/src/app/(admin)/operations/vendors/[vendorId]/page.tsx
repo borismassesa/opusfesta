@@ -169,8 +169,7 @@ export default async function VendorReviewPage({
       )
       .eq('vendor_id', vendorId)
       .order('signed_at', { ascending: false })
-      .limit(1)
-      .maybeSingle<AgreementRow>(),
+      .returns<AgreementRow[]>(),
   ])
 
   if (vendorRes.error) {
@@ -274,25 +273,93 @@ export default async function VendorReviewPage({
     docByType.get('business_license') ??
     docByType.get('sole_proprietor_declaration') ??
     null
+  // Identity documents — the required NIDA front/back + liveness selfie that
+  // vendors now capture via camera (TIN/license are optional). Same table +
+  // storage bucket, so admin review + signed-URL preview work unchanged.
+  const nationalIdFront = docByType.get('national_id_front') ?? null
+  const nationalIdBack = docByType.get('national_id_back') ?? null
+  const selfie = docByType.get('selfie_liveness') ?? null
 
-  // Resolve the agreement signature image path by convention. We don't store
-  // it on the agreement row — paths follow `{vendor_id}/signature/{version}.png`
-  // and the upload uses upsert. If the file doesn't exist (vendor only typed
-  // their name, didn't draw), the storage check returns null gracefully.
-  let signatureImagePath: string | null = null
-  if (agreementRes.data) {
-    const candidate = `${vendorId}/signature/${agreementRes.data.agreement_version}.png`
-    const { data: existCheck } = await admin.storage
-      .from('vendor_verification')
-      .list(`${vendorId}/signature`, { limit: 100 })
-    if (
-      existCheck?.some(
-        (f) => f.name === `${agreementRes.data!.agreement_version}.png`,
-      )
-    ) {
-      signatureImagePath = candidate
+  const toDocSummary = (d: DocRow | null) =>
+    d && {
+      id: d.id,
+      docType: d.doc_type,
+      storagePath: d.storage_path,
+      filename: d.original_filename,
+      mimeType: d.mime_type,
+      sizeBytes: d.size_bytes,
+      status: d.status,
+      rejectionReason: d.rejection_reason,
+      reviewedAt: d.reviewed_at,
+      uploadedAt: d.uploaded_at,
+    }
+
+  // The vendor agreement is the OF-LGL-AGR-002 family — the main contract plus
+  // two schedules, each signed independently as its own vendor_agreements row.
+  // This mirrors AGREEMENT_DOCS in apps/vendors_portal/src/lib/onboarding/
+  // vendor-agreement.ts; keep the version strings in sync if they're bumped.
+  const AGREEMENT_FAMILY: ReadonlyArray<{
+    version: string
+    code: string
+    title: string
+  }> = [
+    {
+      version: 'OF-LGL-AGR-002.2026-04',
+      code: 'OF-LGL-AGR-002',
+      title: 'Mkataba wa Ushirikiano na Mtoa Huduma',
+    },
+    {
+      version: 'OF-LGL-AGR-002-A.2026-04',
+      code: 'OF-LGL-AGR-002-A',
+      title: 'Masharti ya Kibiashara',
+    },
+    {
+      version: 'OF-LGL-AGR-002-B.2026-04',
+      code: 'OF-LGL-AGR-002-B',
+      title: 'Maudhui, Ridhaa na Ulinzi wa Taarifa',
+    },
+  ]
+
+  const signedByVersion = new Map<string, AgreementRow>()
+  for (const row of agreementRes.data ?? []) {
+    // Ordered signed_at desc, so the first hit per version is the latest.
+    if (!signedByVersion.has(row.agreement_version)) {
+      signedByVersion.set(row.agreement_version, row)
     }
   }
+
+  // Resolve each signature image path by convention — paths follow
+  // `{vendor_id}/signature/{version}.png` and the upload uses upsert. List the
+  // folder once and match per version; missing files (vendor typed their name
+  // but didn't draw) resolve to null gracefully.
+  const { data: signatureFiles } = await admin.storage
+    .from('vendor_verification')
+    .list(`${vendorId}/signature`, { limit: 100 })
+  const signatureNames = new Set((signatureFiles ?? []).map((f) => f.name))
+
+  const agreements = AGREEMENT_FAMILY.map((fam) => {
+    const row = signedByVersion.get(fam.version) ?? null
+    const signatureImagePath =
+      row && signatureNames.has(`${fam.version}.png`)
+        ? `${vendorId}/signature/${fam.version}.png`
+        : null
+    return {
+      version: fam.version,
+      code: fam.code,
+      title: fam.title,
+      signed: row
+        ? {
+            id: row.id,
+            textHash: row.agreement_text_hash,
+            signedFullName: row.signed_full_name,
+            signedIp: row.signed_ip,
+            signedUserAgent: row.signed_user_agent,
+            signedAt: row.signed_at,
+            signatureImagePath,
+          }
+        : null,
+    }
+  })
 
   const props: VendorReviewProps = {
     vendor: {
@@ -360,6 +427,9 @@ export default async function VendorReviewPage({
       reviewedAt: license.reviewed_at,
       uploadedAt: license.uploaded_at,
     },
+    nationalIdFront: toDocSummary(nationalIdFront),
+    nationalIdBack: toDocSummary(nationalIdBack),
+    selfie: toDocSummary(selfie),
     payout: payoutRes.data && {
       id: payoutRes.data.id,
       methodType: payoutRes.data.method_type,
@@ -368,16 +438,7 @@ export default async function VendorReviewPage({
       accountHolderName: payoutRes.data.account_holder_name,
       status: payoutRes.data.status,
     },
-    agreement: agreementRes.data && {
-      id: agreementRes.data.id,
-      version: agreementRes.data.agreement_version,
-      textHash: agreementRes.data.agreement_text_hash,
-      signedFullName: agreementRes.data.signed_full_name,
-      signedIp: agreementRes.data.signed_ip,
-      signedUserAgent: agreementRes.data.signed_user_agent,
-      signedAt: agreementRes.data.signed_at,
-      signatureImagePath,
-    },
+    agreements,
     historicalDocs: docs
       .filter((d) => !d.is_latest)
       .map((d) => ({

@@ -25,6 +25,8 @@ type VendorRow = {
   updated_at: string
   location: { city?: string | null; homeMarket?: string | null } | null
   application_snapshot: Record<string, unknown> | null
+  cover_image: string | null
+  gallery_urls: string[] | null
   user_id: string
 }
 
@@ -78,7 +80,8 @@ export default async function VendorsListPage({
     .select(
       `id, vendor_code, slug, business_name, category, onboarding_status,
        onboarding_started_at, onboarding_completed_at, suspended_at,
-       created_at, updated_at, location, application_snapshot, user_id`,
+       created_at, updated_at, location, application_snapshot,
+       cover_image, gallery_urls, user_id`,
     )
     .order('onboarding_started_at', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: true })
@@ -172,15 +175,26 @@ export default async function VendorsListPage({
       category: v.category,
       city: v.location?.city ?? v.location?.homeMarket ?? null,
       submittedByName,
+      contactEmail: owner?.email ?? null,
       submittedAt: v.onboarding_started_at,
       createdAt: v.created_at,
+      updatedAt: v.updated_at,
       agreementStatus: agreementByVendor.has(v.id) ? 'signed' : 'pending',
       documentsVerified: docs.verified,
       documentsTotal: docs.total,
       reviewerId: null,
       status:
         DB_STATUS_TO_VENDOR_STATUS[v.onboarding_status] ?? 'drafting',
-      logoUrl: null,
+      // Vendors have no dedicated logo column — use the storefront cover as
+      // the profile pic, then the first gallery shot, then the snapshot's
+      // cover. Falls back to an initials avatar when none exist.
+      logoUrl:
+        v.cover_image?.trim() ||
+        v.gallery_urls?.find((u) => typeof u === 'string' && u.trim())?.trim() ||
+        (typeof snapshot?.coverImage === 'string'
+          ? (snapshot.coverImage as string).trim()
+          : null) ||
+        null,
     }
   })
 

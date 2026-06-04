@@ -199,7 +199,7 @@ const COPY: Record<PendingVariant, VariantContent> = {
       "OpusFesta verifies every vendor before they can take bookings. Tell us about your business, share your TIN and a few documents, and our team will review and approve your storefront — usually within 2–3 business days.",
     eta: null,
     primaryCta: { label: 'Start vendor application', href: '/onboard' },
-    secondaryHint: 'Already invited by OpusFesta? Sign in with the same email.',
+    secondaryHint: null,
     // All steps are `upcoming` — the vendor hasn't started anything yet, so
     // marking Application as `current` would falsely advertise progress. The
     // hero CTA above carries the action prompt; the timeline here is a
@@ -398,6 +398,16 @@ const CURRENT_TONE: Record<StepTone, string> = {
   rose: 'bg-rose-500 text-white',
 }
 
+// Dashed-ring color for not-yet-done (upcoming) steps — a colored outline that
+// reads as "pending", which fills in solid green once the step completes.
+const UPCOMING_RING: Record<StepTone, string> = {
+  purple: 'border-[#7E5896]/60 text-[#7E5896]',
+  blue: 'border-blue-500/60 text-blue-600',
+  emerald: 'border-emerald-500/60 text-emerald-600',
+  amber: 'border-amber-500/70 text-amber-600',
+  rose: 'border-rose-500/60 text-rose-600',
+}
+
 // Title text on `current` rows picks up the tone — subtle accent that reads as
 // "this is the active step" without painting the whole indicator chip.
 const CURRENT_TEXT: Record<StepTone, string> = {
@@ -535,9 +545,15 @@ export default function PendingClient({
       : baseCopy
   const isSuspended = variant === 'suspended'
   const isNeedsCorrections = variant === 'needs-corrections'
+  // When nothing has started yet (e.g. the "apply" screen), the timeline is a
+  // map of the journey rather than a live status. Faded gray-on-white reads as
+  // unreadable there, so render those upcoming steps in normal dark text. In
+  // active variants the fade still signals "not your turn yet".
+  const allUpcoming =
+    copy.steps.length > 0 && copy.steps.every((s) => s.status === 'upcoming')
 
   return (
-    <div className="min-h-screen bg-[#F5F4F1] flex flex-col">
+    <div className="min-h-screen bg-white flex flex-col">
       <header className="px-6 sm:px-10 py-5 border-b border-gray-100/80 bg-white/70 backdrop-blur flex items-center justify-between">
         <Link href="/" aria-label="OpusFesta home" className="block">
           <Logo className="h-7 w-auto" />
@@ -586,7 +602,7 @@ export default function PendingClient({
             {copy.primaryCta && (
               <Link
                 href={copy.primaryCta.href}
-                className="mt-7 inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-colors shadow-sm"
+                className="mt-7 inline-flex items-center justify-center gap-2 bg-[#1A1A1A] hover:bg-black text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-colors shadow-sm"
               >
                 {copy.primaryCta.label}
                 <ArrowRight className="w-4 h-4" />
@@ -675,7 +691,10 @@ export default function PendingClient({
                           step.status === 'current' &&
                             CURRENT_TONE[step.tone],
                           step.status === 'upcoming' &&
-                            'bg-white border border-gray-200 text-gray-300',
+                            cn(
+                              'bg-white border-2 border-dashed',
+                              UPCOMING_RING[step.tone],
+                            ),
                         )}
                         aria-hidden
                       >
@@ -694,7 +713,8 @@ export default function PendingClient({
                           <h3
                             className={cn(
                               'text-sm font-semibold',
-                              step.status === 'upcoming' && 'text-gray-400',
+                              step.status === 'upcoming' &&
+                                (allUpcoming ? 'text-gray-900' : 'text-gray-400'),
                               step.status === 'current' &&
                                 CURRENT_TEXT[step.tone],
                               step.status === 'done' && 'text-gray-900',
@@ -722,7 +742,9 @@ export default function PendingClient({
                           className={cn(
                             'mt-1 text-sm leading-relaxed',
                             step.status === 'upcoming'
-                              ? 'text-gray-400'
+                              ? allUpcoming
+                                ? 'text-gray-600'
+                                : 'text-gray-400'
                               : 'text-gray-600',
                           )}
                         >
@@ -797,7 +819,7 @@ export default function PendingClient({
             </span>
             <span className="hidden sm:inline text-gray-300">·</span>
             <a
-              href="https://wa.me/255700000000"
+              href="https://wa.me/255799242471"
               target="_blank"
               rel="noreferrer"
               className="inline-flex items-center gap-1.5 font-semibold text-gray-700 hover:text-gray-900"

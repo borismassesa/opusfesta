@@ -10,9 +10,17 @@ import {
 } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import {
-  getVendorAgreement,
-  VENDOR_AGREEMENT_VERSION,
+  type AgreementDocId,
+  getAgreementBody,
+  getAgreementDoc,
 } from '@/lib/onboarding/vendor-agreement'
+import { createCaptureToken } from '@/lib/capture-token'
+import {
+  getVerificationCaptureProgress,
+  maybeTransitionToAdminReview,
+  storeVerificationShot,
+  type CaptureKind,
+} from '@/lib/verification'
 
 export type VerifyDocType =
   | 'tin_certificate'
@@ -210,78 +218,9 @@ function isValidDocType(s: string): s is VerifyDocType {
   )
 }
 
-/**
- * Auto-flip onboarding_status from `verification_pending` (or
- * `needs_corrections`) to `admin_review` once every required artifact is in
- * place. The cheap-but-correct rule used here:
- *
- *   - latest TIN certificate exists with status pending_review or approved
- *   - latest business license OR sole-proprietor declaration exists, same
- *   - a payout method row exists (set during /onboard submit)
- *   - an agreement row exists (set during /onboard submit)
- *
- * Anything more (TIN ↔ payout name match, BRELA cross-check) is the human
- * admin's job — handled in the dashboard review queue.
- */
-async function maybeTransitionToAdminReview(vendorId: string): Promise<void> {
-  const admin = createSupabaseAdminClient()
-
-  const docs = await admin
-    .from('vendor_verification_documents')
-    .select('doc_type, status')
-    .eq('vendor_id', vendorId)
-    .eq('is_latest', true)
-    .returns<Array<{ doc_type: string; status: string }>>()
-
-  if (docs.error || !docs.data) {
-    console.warn(
-      `[verify] auto-transition: docs query failed for ${vendorId}: ${docs.error?.message ?? 'no data'}`,
-    )
-    return
-  }
-
-  const docTypes = new Set(
-    docs.data
-      .filter((d) => d.status === 'pending_review' || d.status === 'approved')
-      .map((d) => d.doc_type),
-  )
-
-  const hasTin = docTypes.has('tin_certificate')
-  const hasLicense =
-    docTypes.has('business_license') ||
-    docTypes.has('sole_proprietor_declaration')
-
-  if (!hasTin || !hasLicense) return
-
-  const [payouts, agreements] = await Promise.all([
-    admin
-      .from('vendor_payout_methods')
-      .select('id', { count: 'exact', head: true })
-      .eq('vendor_id', vendorId),
-    // Match only signatures against the *current* agreement version. Older
-    // rows (e.g. the placeholder "v2026-05-vows-v1" from before the legal
-    // Mkataba shipped) live on as audit history but don't satisfy the
-    // verification gate — the vendor must re-sign the current agreement.
-    admin
-      .from('vendor_agreements')
-      .select('id', { count: 'exact', head: true })
-      .eq('vendor_id', vendorId)
-      .eq('agreement_version', VENDOR_AGREEMENT_VERSION),
-  ])
-
-  if ((payouts.count ?? 0) === 0 || (agreements.count ?? 0) === 0) return
-
-  await admin
-    .from('vendors')
-    .update({
-      onboarding_status: 'admin_review',
-      onboarding_completed_at: new Date().toISOString(),
-    })
-    .eq('id', vendorId)
-    // Only flip when state actually allows it — never re-promote an active or
-    // suspended vendor by accident.
-    .in('onboarding_status', ['verification_pending', 'needs_corrections'])
-}
+// The `admin_review` auto-transition now lives in @/lib/verification (shared
+// with the phone-capture path) and requires National ID front+back rather than
+// TIN + license. Imported above as `maybeTransitionToAdminReview`.
 
 // =============================================================================
 // Vendor agreement e-signature
@@ -296,38 +235,66 @@ export type SignAgreementResult =
     }
 
 /**
- * Capture the vendor's e-signature on the OpusFesta Vendor Agreement.
+ * Capture the vendor's e-signature on one document of the OpusFesta
+ * OF-LGL-AGR-002 agreement family — the main contract, Schedule A
+ * (Masharti ya Kibiashara), or Schedule B (Viwango na Ulinzi). The document
+ * is selected by the `documentId` form field; each is signed independently
+ * and persisted as its own `vendor_agreements` row.
  *
  * The signature event records:
- *   - the agreement version + SHA-256 of the agreement body at sign time
+ *   - the document's version + SHA-256 of that document's body at sign time
  *     (so the audit trail can prove what was agreed to even if the source
  *     copy is updated later)
  *   - the typed full name as the signature
+ *   - the SEHEMU B identification block the vendor filled in (full 7-field
+ *     business table for the main contract; the lighter business-name /
+ *     position / NIDA block for the schedules)
  *   - the IP + user-agent for non-repudiation
  *
  * Re-running with the same `(vendor_id, agreement_version)` is a no-op due
  * to the unique constraint, so re-submits don't create duplicate rows.
  *
- * Triggers the same auto-transition to `admin_review` once all the other
- * verification artifacts are in place.
+ * Triggers the auto-transition to `admin_review` once every document in the
+ * family is signed and the other verification artifacts are in place.
  */
 export async function signVendorAgreement(formData: FormData): Promise<SignAgreementResult> {
+  const documentId = String(formData.get('documentId') ?? 'main') as AgreementDocId
+  let doc
+  try {
+    doc = getAgreementDoc(documentId)
+  } catch {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'Unknown agreement document.',
+    }
+  }
+
   const typedName = String(formData.get('signedName') ?? '').trim()
   const acknowledged = formData.get('acknowledged') === 'true'
   const signatureImage = String(formData.get('signatureImage') ?? '').trim()
 
-  // Page-3 identification block of the Mkataba. Captured at signing time so
-  // the audit trail records the exact details the vendor declared on the
-  // agreement form, independent of any later edits to the vendors row.
-  const businessDetails = {
-    businessName: String(formData.get('businessName') ?? '').trim(),
-    tin: String(formData.get('tin') ?? '').trim(),
-    businessAddress: String(formData.get('businessAddress') ?? '').trim(),
-    contactPerson: String(formData.get('contactPerson') ?? '').trim(),
-    email: String(formData.get('email') ?? '').trim(),
-    phone: String(formData.get('phone') ?? '').trim(),
-    serviceType: String(formData.get('serviceType') ?? '').trim(),
-  }
+  // SEHEMU B identification block, captured at signing time so the audit
+  // trail records exactly what the vendor declared on the form — independent
+  // of any later edits to the vendors row. The main contract carries the full
+  // business table; the schedules carry the lighter block printed on their
+  // own signature page.
+  const businessDetails: Record<string, string> =
+    doc.fields === 'full'
+      ? {
+          businessName: String(formData.get('businessName') ?? '').trim(),
+          tin: String(formData.get('tin') ?? '').trim(),
+          businessAddress: String(formData.get('businessAddress') ?? '').trim(),
+          contactPerson: String(formData.get('contactPerson') ?? '').trim(),
+          email: String(formData.get('email') ?? '').trim(),
+          phone: String(formData.get('phone') ?? '').trim(),
+          serviceType: String(formData.get('serviceType') ?? '').trim(),
+        }
+      : {
+          businessName: String(formData.get('businessName') ?? '').trim(),
+          position: String(formData.get('position') ?? '').trim(),
+          nida: String(formData.get('nida') ?? '').trim(),
+        }
 
   if (!acknowledged) {
     return {
@@ -343,15 +310,23 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
       error: 'Type your full legal name to sign.',
     }
   }
-  for (const [key, swahili] of [
-    ['businessName', 'Jina la Biashara'],
-    ['tin', 'TIN'],
-    ['businessAddress', 'Anwani ya Biashara'],
-    ['contactPerson', 'Mtu wa Mawasiliano'],
-    ['email', 'Barua Pepe'],
-    ['phone', 'WhatsApp/Simu'],
-    ['serviceType', 'Aina ya Huduma'],
-  ] as const) {
+  const requiredFields: ReadonlyArray<[string, string]> =
+    doc.fields === 'full'
+      ? [
+          ['businessName', 'Jina la Biashara'],
+          ['tin', 'TIN'],
+          ['businessAddress', 'Anwani ya Biashara'],
+          ['contactPerson', 'Mtu wa Mawasiliano'],
+          ['email', 'Barua Pepe'],
+          ['phone', 'WhatsApp/Simu'],
+          ['serviceType', 'Aina ya Huduma'],
+        ]
+      : [
+          ['businessName', 'Jina la Biashara'],
+          ['position', 'Cheo'],
+          ['nida', 'Kitambulisho (NIDA)'],
+        ]
+  for (const [key, swahili] of requiredFields) {
     if (!businessDetails[key]) {
       return {
         ok: false,
@@ -460,12 +435,12 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
   const userAgent = headerStore.get('user-agent') || null
 
   const agreementHash = createHash('sha256')
-    .update(`${VENDOR_AGREEMENT_VERSION}\n${getVendorAgreement()}`)
+    .update(`${doc.version}\n${getAgreementBody(doc.id)}`)
     .digest('hex')
 
   const insertPayload: Record<string, unknown> = {
     vendor_id: vendorId,
-    agreement_version: VENDOR_AGREEMENT_VERSION,
+    agreement_version: doc.version,
     agreement_text_hash: agreementHash,
     signed_by: userLookup.data.id,
     signed_full_name: typedName,
@@ -495,7 +470,7 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
       // Still upload the drawn signature if the row already existed but no
       // signature image was on file (e.g. retry after a network hiccup).
       if (signaturePngBuffer) {
-        await uploadSignatureImage(admin, vendorId, signaturePngBuffer)
+        await uploadSignatureImage(admin, vendorId, doc.version, signaturePngBuffer)
       }
       revalidatePath('/verify')
       revalidatePath('/pending')
@@ -512,7 +487,7 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
   // upload AFTER the row insert succeeds so we never leave an orphan PNG
   // pointing at no signature record.
   if (signaturePngBuffer) {
-    await uploadSignatureImage(admin, vendorId, signaturePngBuffer)
+    await uploadSignatureImage(admin, vendorId, doc.version, signaturePngBuffer)
   }
 
   await maybeTransitionToAdminReview(vendorId)
@@ -527,8 +502,9 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
  *
  * Path convention is deterministic — `{vendor_id}/signature/{version}.png` —
  * so the read side can locate the image from the agreement row alone, with
- * no extra DB column needed. Re-signing the same version overwrites; older
- * versions stay alongside as audit history.
+ * no extra DB column needed. Each document in the family has its own version,
+ * so each gets its own signature PNG. Re-signing the same version overwrites;
+ * older versions stay alongside as audit history.
  *
  * Failures are logged but non-fatal: the agreement row is the legally
  * binding artifact (typed name + IP + UA + body hash), and a missing PNG
@@ -537,9 +513,10 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
 async function uploadSignatureImage(
   admin: ReturnType<typeof createSupabaseAdminClient>,
   vendorId: string,
+  version: string,
   png: Buffer,
 ): Promise<void> {
-  const path = `${vendorId}/signature/${VENDOR_AGREEMENT_VERSION}.png`
+  const path = `${vendorId}/signature/${version}.png`
   const { error } = await admin.storage
     .from('vendor_verification')
     .upload(path, png, {
@@ -551,5 +528,110 @@ async function uploadSignatureImage(
       `[verify] signature image upload failed (path=${path}): ${error.message}`,
     )
   }
+}
+
+// =============================================================================
+// National ID — camera capture (desktop) + phone-handoff token
+// =============================================================================
+
+export type NationalIdResult =
+  | { ok: true }
+  | {
+      ok: false
+      error: string
+      reason: 'wrong-state' | 'invalid' | 'unknown'
+    }
+
+/** Resolve the caller's own active vendor id via the Clerk-authed client. */
+async function resolveOwnVendorId(): Promise<string | null> {
+  const userClient = await createClerkSupabaseServerClient()
+  const r = await userClient
+    .from('vendor_memberships')
+    .select('vendor_id')
+    .eq('status', 'active')
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle<{ vendor_id: string }>()
+  return r.data?.vendor_id ?? null
+}
+
+/** Gate National ID actions to the right state + resolve the vendor id. */
+async function requirePendingVendor(): Promise<
+  | { ok: true; vendorId: string }
+  | { ok: false; error: string; reason: 'wrong-state' | 'unknown' }
+> {
+  const state = await getCurrentVendor()
+  if (state.kind !== 'pending-approval') {
+    return {
+      ok: false,
+      reason: 'wrong-state',
+      error:
+        state.kind === 'live'
+          ? 'Your account is already approved.'
+          : state.kind === 'suspended'
+            ? 'Your account is suspended.'
+            : "You haven't started a vendor application yet.",
+    }
+  }
+  if (
+    state.status !== 'verification_pending' &&
+    state.status !== 'needs_corrections'
+  ) {
+    return {
+      ok: false,
+      reason: 'wrong-state',
+      error: 'Verification is only open while your application is in review.',
+    }
+  }
+  const vendorId = await resolveOwnVendorId()
+  if (!vendorId) {
+    return { ok: false, reason: 'unknown', error: '[verify] no active membership found' }
+  }
+  return { ok: true, vendorId }
+}
+
+/**
+ * Store a camera-captured identity photo (National ID front/back or the
+ * liveness selfie) for the signed-in vendor on this device. `dataUrl` is a
+ * JPEG/PNG data URL from the camera — no file upload path.
+ */
+export async function uploadNationalIdShot(
+  kind: CaptureKind,
+  dataUrl: string,
+): Promise<NationalIdResult> {
+  if (kind !== 'front' && kind !== 'back' && kind !== 'selfie') {
+    return { ok: false, reason: 'invalid', error: 'Invalid capture type.' }
+  }
+  const guard = await requirePendingVendor()
+  if (!guard.ok) return guard
+  const res = await storeVerificationShot(guard.vendorId, kind, dataUrl)
+  if (!res.ok) return { ok: false, reason: 'unknown', error: res.error }
+  revalidatePath('/verify')
+  revalidatePath('/pending')
+  return { ok: true }
+}
+
+/**
+ * Mint a short-lived token authorizing a phone (not signed in) to capture the
+ * National ID for this vendor. The client builds the capture URL
+ * `/verify/capture/<token>` and renders it as a QR code.
+ */
+export async function createNationalIdCaptureToken(): Promise<
+  { ok: true; token: string } | { ok: false; error: string }
+> {
+  const guard = await requirePendingVendor()
+  if (!guard.ok) return { ok: false, error: guard.error }
+  return { ok: true, token: createCaptureToken(guard.vendorId) }
+}
+
+/** Poll target for the desktop: which captures are done so far. */
+export async function getNationalIdProgressAction(): Promise<{
+  front: boolean
+  back: boolean
+  selfie: boolean
+}> {
+  const guard = await requirePendingVendor()
+  if (!guard.ok) return { front: false, back: false, selfie: false }
+  return getVerificationCaptureProgress(guard.vendorId)
 }
 

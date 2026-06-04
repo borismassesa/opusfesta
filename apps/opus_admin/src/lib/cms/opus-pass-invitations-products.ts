@@ -1,6 +1,17 @@
 // Client-safe types + helpers for the OpusPass invitation products CMS.
 // Loaders live in the page.tsx files to keep this module free of server imports.
 
+// Kept in sync with InvitationPalette in opus_pass/_types.ts — no cross-app import.
+export type InvitationPalette = {
+  name: string
+  background: string
+  surface: string
+  accent: string
+  textPrimary: string
+  textSecondary: string
+  muted: string
+}
+
 // Built-in CSS card designs (used when no artwork is attached). Must stay in
 // sync with the `Treatment` union in opus_pass InvitationVisual.tsx.
 export const PRODUCT_TREATMENTS = [
@@ -14,6 +25,10 @@ export const PRODUCT_TREATMENTS = [
   'cultural-red',
   'arch-script',
   'photo-overlay',
+  'ticket',
+  'ticket-barcode',
+  'save-the-date',
+  'save-the-date-photo',
 ] as const
 
 export type ProductTreatment = (typeof PRODUCT_TREATMENTS)[number]
@@ -30,6 +45,7 @@ export const PRODUCT_CATEGORIES = [
   'Thank You Cards',
   'Birthday Invitations',
   'Welcome Signs',
+  'Event Tickets',
 ] as const
 
 export type InvitationProductRecord = {
@@ -47,12 +63,16 @@ export type InvitationProductRecord = {
   digital_unit_price: number
   free_sample: boolean
 
-  /** Design colour swatches (hex strings). */
+  /** Design colour swatches (hex strings) — derived from palettes[].accent on save. */
   swatches: string[]
+  /** Full palette objects (6 colour roles + name). Drives the palette picker on the product page. */
+  palettes: InvitationPalette[]
   /** Built-in CSS card design, used when image_url is empty. */
   treatment: ProductTreatment
-  /** Attached hero card artwork. When set, replaces the CSS design on the page. */
+  /** Attached front card artwork (SVG). When set, replaces the CSS design on the page. */
   image_url: string
+  /** Attached back card artwork (SVG). Optional — leave empty to omit back design. */
+  back_image_url: string
   /** Extra card views/scenes shown as gallery thumbnails. */
   gallery: string[]
 
@@ -76,9 +96,11 @@ export function emptyInvitationProduct(
     price_now: 0,
     digital_unit_price: 10000,
     free_sample: true,
-    swatches: ['#F5EFE3', '#1A1A1A', '#A6B89A'],
+    swatches: [],
+    palettes: [],
     treatment: 'classic-serif',
     image_url: '',
+    back_image_url: '',
     gallery: [],
     published: true,
     sort_order: 0,

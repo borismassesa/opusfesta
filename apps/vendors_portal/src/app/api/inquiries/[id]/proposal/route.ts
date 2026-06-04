@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import { createBookingFromInquiry } from '@/lib/booking-from-inquiry'
+import { notifyLeadEventEmail } from '@/lib/email/notify-leads-bookings'
 
 type ProposalAction = 'send' | 'accept-counter'
 
@@ -33,6 +34,11 @@ function parseProposalDraft(payload: Record<string, unknown>) {
 async function sendProposal(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   inquiryId: string,
+  vendorName: string,
+  inquiry: {
+    email: string | null
+    name: string | null
+  },
   priorStatus: string | null,
   payload: Record<string, unknown>,
 ) {
@@ -68,12 +74,23 @@ async function sendProposal(
     return NextResponse.json({ error: 'Failed to save proposal' }, { status: 500 })
   }
 
+  notifyLeadEventEmail({
+    recipientEmail: inquiry.email,
+    recipientName: inquiry.name,
+    vendorName,
+    inquiryId,
+    statusLabel: 'Proposal sent',
+    eventDate: draft.eventDate,
+    amountTzs: draft.invoiceAmount,
+  }).catch((err) => console.error('[proposal] notify email threw', err))
+
   return NextResponse.json({ success: true })
 }
 
 async function acceptCounter(
   supabase: ReturnType<typeof createSupabaseAdminClient>,
   inquiryId: string,
+  vendorName: string,
   inquiry: {
     vendor_id: string
     user_id: string | null
@@ -118,6 +135,16 @@ async function acceptCounter(
     proposal_invoice_amount: inquiry.proposal_counter_amount ?? inquiry.proposal_invoice_amount,
     proposal_counter_amount: null,
   })
+
+  notifyLeadEventEmail({
+    recipientEmail: inquiry.email,
+    recipientName: inquiry.name,
+    vendorName,
+    inquiryId,
+    statusLabel: 'Counter offer accepted',
+    eventDate: inquiry.proposal_event_date,
+    amountTzs: inquiry.proposal_counter_amount ?? inquiry.proposal_invoice_amount,
+  }).catch((err) => console.error('[proposal] notify email threw', err))
 
   return NextResponse.json({ success: true })
 }
@@ -176,12 +203,19 @@ export async function PATCH(
   }
 
   if (action === 'send') {
-    return sendProposal(supabase, id, inquiry.proposal_status, payload)
+    return sendProposal(
+      supabase,
+      id,
+      state.vendor.businessName,
+      { email: inquiry.email, name: inquiry.name },
+      inquiry.proposal_status,
+      payload,
+    )
   }
 
   if (inquiry.proposal_status !== 'countered') {
     return NextResponse.json({ error: 'No client counter to accept' }, { status: 400 })
   }
 
-  return acceptCounter(supabase, id, inquiry)
+  return acceptCounter(supabase, id, state.vendor.businessName, inquiry)
 }

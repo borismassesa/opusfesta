@@ -2,13 +2,10 @@ import { redirect } from 'next/navigation'
 import { currentUser } from '@clerk/nextjs/server'
 import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
-import {
-  getVendorAgreement,
-  VENDOR_AGREEMENT_PDF_URL,
-  VENDOR_AGREEMENT_VERSION,
-} from '@/lib/onboarding/vendor-agreement'
+import { AGREEMENT_DOCS } from '@/lib/onboarding/vendor-agreement'
 import VerifyClient, {
   type AgreementBusinessDefaults,
+  type AgreementDocView,
   type VerifyDocSlot,
 } from './VerifyClient'
 
@@ -90,19 +87,21 @@ export default async function VerifyPage() {
       .eq('is_latest', true)
       .order('uploaded_at', { ascending: false })
       .returns<VendorDocRow[]>(),
-    // Only signatures against the *current* agreement version satisfy the
-    // verification gate. Old signatures (e.g. the placeholder
-    // "v2026-05-vows-v1" written when Vendor Vows acceptance was wrongly
-    // recorded as the legal agreement) stay in the DB as audit history but
-    // don't count as "signed" — the vendor must e-sign the real Mkataba
-    // (OF-LGL-AGR-002) before admin review.
+    // Pull every signature against the current OF-LGL-AGR-002 family (main
+    // contract + Schedule A + Schedule B). Each document is signed
+    // independently, so we map the rows back onto the document registry below.
+    // Older signatures against retired versions (e.g. the placeholder
+    // "v2026-05-vows-v1") stay in the DB as audit history but don't count —
+    // they're filtered out by the `.in(...)` on the current version set.
     supabase
       .from('vendor_agreements')
       .select('agreement_version, signed_at')
-      .eq('agreement_version', VENDOR_AGREEMENT_VERSION)
+      .in(
+        'agreement_version',
+        AGREEMENT_DOCS.map((d) => d.version),
+      )
       .order('signed_at', { ascending: false })
-      .limit(1)
-      .maybeSingle<VendorAgreementRow>(),
+      .returns<VendorAgreementRow[]>(),
     supabase
       .from('vendors')
       .select('business_name, category, location, contact_info')
@@ -131,7 +130,7 @@ export default async function VerifyPage() {
       title: 'TRA TIN certificate',
       description:
         'Your tax ID certificate from the Tanzania Revenue Authority. A clear photo or PDF of the official certificate.',
-      required: true,
+      required: false,
       currentDoc: tinDoc
         ? {
             status: tinDoc.status,
@@ -147,7 +146,7 @@ export default async function VerifyPage() {
       title: 'Business license',
       description:
         'BRELA registration, council license, or — if you trade as yourself — a sole-proprietor declaration. We accept either.',
-      required: true,
+      required: false,
       currentDoc: licenseDoc
         ? {
             status: licenseDoc.status,
@@ -163,6 +162,18 @@ export default async function VerifyPage() {
         : null,
     },
   ]
+
+  // National ID + liveness selfie progress — the required identity step. A
+  // capture counts once its latest doc exists and hasn't been rejected.
+  const idCaptured = (docType: string): boolean => {
+    const d = docByType.get(docType)
+    return !!d && d.status !== 'rejected'
+  }
+  const nationalId = {
+    front: idCaptured('national_id_front'),
+    back: idCaptured('national_id_back'),
+    selfie: idCaptured('selfie_liveness'),
+  }
 
   // Pre-fill the page-3 identification block on the Mkataba sign form with
   // whatever the vendor already entered during onboarding. The vendor can
@@ -190,22 +201,35 @@ export default async function VerifyPage() {
     serviceType: v?.category ?? '',
   }
 
+  // Map each document in the registry onto its signature status. A document
+  // counts as signed once a row exists for its version; the timeline step is
+  // "done" only when all three are signed.
+  const signedAtByVersion = new Map<string, string>()
+  for (const row of agreementRes.data ?? []) {
+    // Rows are ordered signed_at desc, so the first hit per version is latest.
+    if (!signedAtByVersion.has(row.agreement_version)) {
+      signedAtByVersion.set(row.agreement_version, row.signed_at)
+    }
+  }
+  const agreementDocs: AgreementDocView[] = AGREEMENT_DOCS.map((d) => ({
+    id: d.id,
+    version: d.version,
+    code: d.code,
+    title: d.title,
+    subtitle: d.subtitle,
+    pdfUrl: d.pdfUrl,
+    downloadName: d.downloadName,
+    fields: d.fields,
+    signedAt: signedAtByVersion.get(d.version) ?? null,
+  }))
+
   return (
     <VerifyClient
       status={state.status}
       slots={slots}
-      agreementBody={getVendorAgreement()}
-      agreementPdfUrl={VENDOR_AGREEMENT_PDF_URL}
-      agreementVersion={VENDOR_AGREEMENT_VERSION}
+      nationalId={nationalId}
+      agreementDocs={agreementDocs}
       agreementBusinessDefaults={businessDefaults}
-      agreement={
-        agreementRes.data
-          ? {
-              version: agreementRes.data.agreement_version,
-              signedAt: agreementRes.data.signed_at,
-            }
-          : null
-      }
     />
   )
 }
