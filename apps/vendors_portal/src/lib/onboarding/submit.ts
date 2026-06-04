@@ -2,6 +2,7 @@
 
 import { randomBytes } from 'node:crypto'
 import { auth, currentUser } from '@clerk/nextjs/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import {
   createSupabaseAdminClient,
   createClerkSupabaseServerClient,
@@ -489,7 +490,7 @@ export async function submitApplication(
 
   // Best-effort: persist each optional column. Skip any that the schema
   // doesn't know about so submit doesn't fail on a missing migration.
-  await persistOptionalVendorColumns(vendorId, optionalPayload)
+  await persistOptionalVendorColumns(admin, vendorId, optionalPayload)
 
   // 3) Persist payout methods. A vendor can register several; exactly one is
   //    marked primary (is_default). We only (re)write them while the vendor is
@@ -624,10 +625,10 @@ export async function submitApplication(
  * up via the warning so a real bug is visible in logs.
  */
 async function persistOptionalVendorColumns(
+  admin: SupabaseClient,
   vendorId: string,
   payload: Record<string, unknown>,
 ): Promise<void> {
-  const admin = createSupabaseAdminClient()
   for (const [column, value] of Object.entries(payload)) {
     if (value === undefined) continue
     const { error } = await admin
