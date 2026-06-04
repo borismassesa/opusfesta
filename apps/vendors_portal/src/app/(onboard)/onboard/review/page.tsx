@@ -73,13 +73,6 @@ export default function ReviewPage() {
   const rescheduleLabel = RESCHEDULE_OPTIONS.find(
     (o) => o.id === draft.reschedulePolicy,
   )?.label
-  const payoutLabel = PAYOUT_OPTIONS.find((o) => o.id === draft.payoutMethod)?.label
-  const isBankPayout = draft.payoutMethod === 'bank'
-  const isLipaNambaPayout = draft.payoutMethod === 'lipa-namba'
-  const lipaNetworkLabel = LIPA_NAMBA_NETWORKS.find(
-    (n) => n.id === draft.payoutNetwork,
-  )?.label
-
   const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(' ').trim()
 
   // A draft that already carries `submittedAt` means the vendor submitted once
@@ -324,29 +317,54 @@ export default function ReviewPage() {
         </Section>
 
         <Section title="Payout" editHref="/onboard/pricing/payout">
-          <Row label="Method">{payoutLabel ?? 'Not set'}</Row>
-          {isBankPayout ? (
-            <Row label="Bank">{draft.payoutBankName || 'Not set'}</Row>
-          ) : null}
-          {isLipaNambaPayout ? (
-            <Row label="Network">{lipaNetworkLabel ?? 'Not set'}</Row>
-          ) : null}
-          <Row
-            label={
-              isBankPayout
+          {draft.payoutMethods.length === 0 ? (
+            <Row label="Method">Not set</Row>
+          ) : (
+            draft.payoutMethods.map((p, i) => {
+              const methodLabel =
+                PAYOUT_OPTIONS.find((o) => o.id === p.method)?.label ?? 'Not set'
+              const isBank = p.method === 'bank'
+              const isLipa = p.method === 'lipa-namba'
+              const networkLabel = LIPA_NAMBA_NETWORKS.find(
+                (n) => n.id === p.network,
+              )?.label
+              const numberLabel = isBank
                 ? 'Account number'
-                : isLipaNambaPayout
+                : isLipa
                   ? 'Lipa Namba'
                   : 'Number'
-            }
-          >
-            {draft.payoutNumber
-              ? isBankPayout || isLipaNambaPayout
-                ? draft.payoutNumber
-                : `+255 ${draft.payoutNumber}`
-              : 'Not set'}
-          </Row>
-          <Row label="Account holder">{draft.payoutAccountName || 'Not set'}</Row>
+              const numberValue = p.number
+                ? isBank || isLipa
+                  ? p.number
+                  : `+255 ${p.number}`
+                : 'Not set'
+              return (
+                <div
+                  key={p.id}
+                  className={
+                    i > 0 ? 'mt-4 pt-4 border-t border-gray-100' : undefined
+                  }
+                >
+                  <Row label="Method">
+                    {methodLabel}
+                    {p.primary ? (
+                      <span className="ml-2 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[#F0DFF6] text-[#7E5896]">
+                        Primary
+                      </span>
+                    ) : null}
+                  </Row>
+                  {isBank ? (
+                    <Row label="Bank">{p.bankName || 'Not set'}</Row>
+                  ) : null}
+                  {isLipa ? (
+                    <Row label="Network">{networkLabel ?? 'Not set'}</Row>
+                  ) : null}
+                  <Row label={numberLabel}>{numberValue}</Row>
+                  <Row label="Account holder">{p.accountName || 'Not set'}</Row>
+                </div>
+              )
+            })
+          )}
         </Section>
       </div>
 

@@ -159,8 +159,10 @@ export default async function VendorReviewPage({
          status, is_default, created_at`,
       )
       .eq('vendor_id', vendorId)
-      .eq('is_default', true)
-      .maybeSingle<PayoutRow>(),
+      // Primary first, then oldest — stable order for the review list.
+      .order('is_default', { ascending: false })
+      .order('created_at', { ascending: true })
+      .returns<PayoutRow[]>(),
     admin
       .from('vendor_agreements')
       .select(
@@ -430,14 +432,15 @@ export default async function VendorReviewPage({
     nationalIdFront: toDocSummary(nationalIdFront),
     nationalIdBack: toDocSummary(nationalIdBack),
     selfie: toDocSummary(selfie),
-    payout: payoutRes.data && {
-      id: payoutRes.data.id,
-      methodType: payoutRes.data.method_type,
-      provider: payoutRes.data.provider,
-      accountNumber: payoutRes.data.account_number,
-      accountHolderName: payoutRes.data.account_holder_name,
-      status: payoutRes.data.status,
-    },
+    payouts: (payoutRes.data ?? []).map((p) => ({
+      id: p.id,
+      methodType: p.method_type,
+      provider: p.provider,
+      accountNumber: p.account_number,
+      accountHolderName: p.account_holder_name,
+      status: p.status,
+      isDefault: p.is_default,
+    })),
     agreements,
     historicalDocs: docs
       .filter((d) => !d.is_latest)

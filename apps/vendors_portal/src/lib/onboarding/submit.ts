@@ -15,7 +15,12 @@ import { LIPA_NAMBA_NETWORKS, PAYOUT_OPTIONS } from './payouts'
 import { SERVICE_MARKETS, TZ_REGIONS } from './regions'
 import { getServicesForCategory } from './services'
 import { getStylesForCategory } from './styles'
-import type { OnboardingDraft } from './draft'
+import {
+  hasCompletePayout,
+  isPayoutEntryComplete,
+  type OnboardingDraft,
+  type PayoutMethod,
+} from './draft'
 
 export type SubmitApplicationResult =
   | { ok: true; vendorId: string }
@@ -40,7 +45,7 @@ const CATEGORY_TO_DB: Record<string, string> = {
 
 // Maps the onboarding payout-method tag to the v_b-lite enum.
 const PAYOUT_METHOD_TO_DB: Record<
-  NonNullable<OnboardingDraft['payoutMethod']>,
+  NonNullable<PayoutMethod>,
   'mpesa' | 'airtel' | 'tigo' | 'lipa_namba' | 'bank' | null
 > = {
   mpesa: 'mpesa',
@@ -134,11 +139,17 @@ function buildSnapshotLabels(draft: OnboardingDraft) {
     reschedulePolicy:
       RESCHEDULE_OPTIONS.find((o) => o.id === draft.reschedulePolicy)?.label ??
       null,
-    payoutMethod:
-      PAYOUT_OPTIONS.find((o) => o.id === draft.payoutMethod)?.label ?? null,
-    payoutNetwork:
-      LIPA_NAMBA_NETWORKS.find((n) => n.id === draft.payoutNetwork)?.label ??
-      null,
+    // Resolved, human-friendly view of every payout method for admin review.
+    payoutMethods: draft.payoutMethods.map((p) => ({
+      method: PAYOUT_OPTIONS.find((o) => o.id === p.method)?.label ?? p.method,
+      network: p.network
+        ? LIPA_NAMBA_NETWORKS.find((n) => n.id === p.network)?.label ?? p.network
+        : null,
+      bankName: p.bankName || null,
+      number: p.number,
+      accountName: p.accountName,
+      primary: p.primary,
+    })),
   }
 }
 
@@ -166,9 +177,14 @@ function validateDraft(draft: OnboardingDraft): string | null {
   }
   if (draft.packages.length === 0) return 'Add at least one package.'
   if (!draft.cancellationLevel) return 'Pick a cancellation policy.'
-  if (!draft.payoutMethod) return 'Pick a payout method.'
-  if (!draft.payoutNumber.trim() || !draft.payoutAccountName.trim()) {
-    return 'Add your payout account details.'
+  if (!hasCompletePayout(draft)) {
+    return 'Add at least one complete payout method.'
+  }
+  if (draft.payoutMethods.some((p) => p.method && !isPayoutEntryComplete(p))) {
+    return 'Finish or remove the incomplete payout method.'
+  }
+  if (!draft.payoutMethods.some((p) => p.primary)) {
+    return 'Mark one payout method as primary.'
   }
   return null
 }
@@ -442,61 +458,70 @@ export async function submitApplication(
   // doesn't know about so submit doesn't fail on a missing migration.
   await persistOptionalVendorColumns(vendorId, optionalPayload)
 
-  // 3) Persist payout method.
-  const payoutMethodDb =
-    draft.payoutMethod && PAYOUT_METHOD_TO_DB[draft.payoutMethod]
-  // Fallback: halopesa lands in lipa_namba bucket since there's no dedicated
-  // enum value yet. This keeps the payout step persisted; admin can correct
-  // during review.
-  const resolvedPayoutMethod = payoutMethodDb ?? 'lipa_namba'
+  // 3) Persist payout methods. A vendor can register several; exactly one is
+  //    marked primary (is_default). We only (re)write them while the vendor is
+  //    still pre-review — once admin has started verifying (admin_review and
+  //    beyond), the admin owns these rows (verify / mark-failed / edit), so a
+  //    vendor edit must NOT wipe that work. In the pre-review states we replace
+  //    the whole set, which is safe because nothing's been verified yet.
+  const payoutEditable =
+    isFirstSubmission ||
+    currentStatus === 'verification_pending' ||
+    currentStatus === 'needs_corrections'
 
-  const payoutPayload = {
-    vendor_id: vendorId,
-    method_type: resolvedPayoutMethod,
-    provider:
-      draft.payoutMethod === 'bank'
-        ? draft.payoutBankName || null
-        : draft.payoutMethod === 'lipa-namba'
-          ? draft.payoutNetwork || null
-          : null,
-    account_number: draft.payoutNumber.trim(),
-    account_holder_name: draft.payoutAccountName.trim(),
-    status: 'pending' as const,
-    is_default: true,
-  }
+  if (payoutEditable) {
+    const payoutRows = draft.payoutMethods
+      .filter(isPayoutEntryComplete)
+      .map((entry) => {
+        // Fallback: halopesa lands in the lipa_namba bucket since there's no
+        // dedicated enum value yet; admin can correct during review.
+        const methodDb =
+          (entry.method && PAYOUT_METHOD_TO_DB[entry.method]) || 'lipa_namba'
+        return {
+          vendor_id: vendorId,
+          method_type: methodDb,
+          provider:
+            entry.method === 'bank'
+              ? entry.bankName || null
+              : entry.method === 'lipa-namba'
+                ? entry.network || null
+                : null,
+          account_number: entry.number.trim(),
+          account_holder_name: entry.accountName.trim(),
+          status: 'pending' as const,
+          is_default: entry.primary,
+        }
+      })
 
-  // The migration's unique index on vendor_payout_methods is partial
-  // (`WHERE is_default`), and Postgres ON CONFLICT can't target partial
-  // indexes (42P10). Use explicit select-then-insert-or-update so re-submits
-  // replace the existing default cleanly.
-  const existingPayout = await admin
-    .from('vendor_payout_methods')
-    .select('id')
-    .eq('vendor_id', vendorId)
-    .eq('is_default', true)
-    .limit(1)
-    .maybeSingle<{ id: string }>()
-
-  if (existingPayout.error) {
-    return {
-      ok: false,
-      reason: 'unknown',
-      error: `[submit] payout lookup failed: ${existingPayout.error.code} ${existingPayout.error.message}`,
+    // Guarantee exactly one default to satisfy the partial unique index
+    // (`WHERE is_default`) and so payouts have a clear destination.
+    if (payoutRows.length > 0 && !payoutRows.some((r) => r.is_default)) {
+      payoutRows[0].is_default = true
     }
-  }
 
-  const payoutWrite = existingPayout.data
-    ? await admin
-        .from('vendor_payout_methods')
-        .update(payoutPayload)
-        .eq('id', existingPayout.data.id)
-    : await admin.from('vendor_payout_methods').insert(payoutPayload)
-
-  if (payoutWrite.error) {
-    return {
-      ok: false,
-      reason: 'unknown',
-      error: `[submit] payout write failed: ${payoutWrite.error.code} ${payoutWrite.error.message}`,
+    // Replace the whole set: delete the existing pre-review rows, then insert
+    // the current draft's methods. Cleaner than per-row reconciliation and
+    // safe before any admin verification exists.
+    const del = await admin
+      .from('vendor_payout_methods')
+      .delete()
+      .eq('vendor_id', vendorId)
+    if (del.error) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: `[submit] payout clear failed: ${del.error.code} ${del.error.message}`,
+      }
+    }
+    if (payoutRows.length > 0) {
+      const ins = await admin.from('vendor_payout_methods').insert(payoutRows)
+      if (ins.error) {
+        return {
+          ok: false,
+          reason: 'unknown',
+          error: `[submit] payout write failed: ${ins.error.code} ${ins.error.message}`,
+        }
+      }
     }
   }
 
@@ -510,32 +535,47 @@ export async function submitApplication(
   //    application and receipt the vendor. Email failures are logged but
   //    never block the submit — the persisted vendor row + payout method
   //    above are the source of truth.
-  try {
-    const region =
-      TZ_REGIONS.find((r) => r.code === draft.region)?.name ?? draft.region ?? null
-    // The set_vendor_code_trigger populated vendor_code on insert; on
-    // re-submit it's already there. Read it back so the receipt + admin
-    // notification can quote the human-readable application reference.
-    const codeRow = await admin
-      .from('vendors')
-      .select('vendor_code')
-      .eq('id', vendorId)
-      .maybeSingle<{ vendor_code: string | null }>()
-    await notifyOnVendorSubmit({
-      vendorId,
-      vendorCode: codeRow.data?.vendor_code ?? null,
-      businessName: draft.businessName.trim(),
-      category: findCategory(draft.categoryId!)?.profileLabel ?? dbCategory,
-      region,
-      city: draft.city.trim() || null,
-      vendorContactEmail: draft.email?.trim() || email,
-      vendorContactPhone: draft.phone?.trim() || null,
-      submittedAt: new Date().toISOString(),
-    })
-  } catch (err) {
-    console.warn(
-      `[submit] notifyOnVendorSubmit threw for vendor=${vendorId}:`,
-      err instanceof Error ? err.message : err,
+  //
+  //    ONLY fire on events that actually need review: a first submission, or a
+  //    re-submit after `needs_corrections` (the vendor answered the review
+  //    request). A plain edit of an already-submitted vendor
+  //    (verification_pending / admin_review / active / suspended) must NOT
+  //    re-notify — otherwise every "Save changes" spams admins with a
+  //    duplicate "new application" email and re-receipts the vendor.
+  const shouldNotifySubmission =
+    isFirstSubmission || currentStatus === 'needs_corrections'
+  if (shouldNotifySubmission) {
+    try {
+      const region =
+        TZ_REGIONS.find((r) => r.code === draft.region)?.name ?? draft.region ?? null
+      // The set_vendor_code_trigger populated vendor_code on insert; on
+      // re-submit it's already there. Read it back so the receipt + admin
+      // notification can quote the human-readable application reference.
+      const codeRow = await admin
+        .from('vendors')
+        .select('vendor_code')
+        .eq('id', vendorId)
+        .maybeSingle<{ vendor_code: string | null }>()
+      await notifyOnVendorSubmit({
+        vendorId,
+        vendorCode: codeRow.data?.vendor_code ?? null,
+        businessName: draft.businessName.trim(),
+        category: findCategory(draft.categoryId!)?.profileLabel ?? dbCategory,
+        region,
+        city: draft.city.trim() || null,
+        vendorContactEmail: draft.email?.trim() || email,
+        vendorContactPhone: draft.phone?.trim() || null,
+        submittedAt: new Date().toISOString(),
+      })
+    } catch (err) {
+      console.warn(
+        `[submit] notifyOnVendorSubmit threw for vendor=${vendorId}:`,
+        err instanceof Error ? err.message : err,
+      )
+    }
+  } else {
+    console.log(
+      `[submit] vendor=${vendorId} edit (status=${currentStatus}) — skipping submit notifications`,
     )
   }
 

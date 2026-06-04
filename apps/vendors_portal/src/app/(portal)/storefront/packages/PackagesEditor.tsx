@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Check, Pencil, Plus, Tag, X } from 'lucide-react'
-import { useOnboardingDraft } from '@/lib/onboarding/draft'
+import { primaryPayoutEntry, useOnboardingDraft } from '@/lib/onboarding/draft'
 import { CANCELLATION_OPTIONS, RESCHEDULE_OPTIONS } from '@/lib/onboarding/policies'
 import { LIPA_NAMBA_NETWORKS, PAYOUT_OPTIONS } from '@/lib/onboarding/payouts'
 import {
@@ -102,9 +102,15 @@ export default function PackagesEditor({
   const rescheduleLabel = RESCHEDULE_OPTIONS.find(
     (o) => o.id === draft.reschedulePolicy,
   )?.label
-  const payoutLabel = PAYOUT_OPTIONS.find((o) => o.id === draft.payoutMethod)?.label
+  // Storefront shows the primary payout method; the full set lives on the
+  // onboarding payout step and in admin review.
+  const primaryPayout = primaryPayoutEntry(draft)
+  const payoutCount = draft.payoutMethods.length
+  const payoutLabel = PAYOUT_OPTIONS.find(
+    (o) => o.id === primaryPayout?.method,
+  )?.label
   const lipaNetworkLabel = LIPA_NAMBA_NETWORKS.find(
-    (n) => n.id === draft.payoutNetwork,
+    (n) => n.id === primaryPayout?.network,
   )?.label
 
   const persistBadge = (
@@ -235,31 +241,39 @@ export default function PackagesEditor({
             right={<EditLink href="/onboard/pricing/payout" />}
           >
             <dl className="divide-y divide-gray-100">
-              <Row label="Method">{(hydrated && payoutLabel) || '—'}</Row>
-              {hydrated && draft.payoutMethod === 'bank' ? (
-                <Row label="Bank">{draft.payoutBankName || '—'}</Row>
+              <Row label={payoutCount > 1 ? 'Primary method' : 'Method'}>
+                {(hydrated && payoutLabel) || '—'}
+              </Row>
+              {hydrated && primaryPayout?.method === 'bank' ? (
+                <Row label="Bank">{primaryPayout.bankName || '—'}</Row>
               ) : null}
-              {hydrated && draft.payoutMethod === 'lipa-namba' ? (
+              {hydrated && primaryPayout?.method === 'lipa-namba' ? (
                 <Row label="Network">{lipaNetworkLabel ?? '—'}</Row>
               ) : null}
               <Row
                 label={
-                  draft.payoutMethod === 'bank'
+                  primaryPayout?.method === 'bank'
                     ? 'Account number'
-                    : draft.payoutMethod === 'lipa-namba'
+                    : primaryPayout?.method === 'lipa-namba'
                       ? 'Lipa Namba'
                       : 'Number'
                 }
               >
-                {hydrated && draft.payoutNumber
-                  ? draft.payoutMethod === 'bank' || draft.payoutMethod === 'lipa-namba'
-                    ? draft.payoutNumber
-                    : `+255 ${draft.payoutNumber}`
+                {hydrated && primaryPayout?.number
+                  ? primaryPayout.method === 'bank' ||
+                    primaryPayout.method === 'lipa-namba'
+                    ? primaryPayout.number
+                    : `+255 ${primaryPayout.number}`
                   : '—'}
               </Row>
               <Row label="Account holder">
-                {(hydrated && draft.payoutAccountName) || '—'}
+                {(hydrated && primaryPayout?.accountName) || '—'}
               </Row>
+              {hydrated && payoutCount > 1 ? (
+                <Row label="Other methods">
+                  {payoutCount - 1} more on file
+                </Row>
+              ) : null}
             </dl>
           </Card>
         </div>

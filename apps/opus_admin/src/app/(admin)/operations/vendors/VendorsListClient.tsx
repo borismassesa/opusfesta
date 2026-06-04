@@ -111,24 +111,6 @@ const STATUS_BADGE: Record<
   suspended: { label: 'Suspended', variant: 'neutral' },
 }
 
-// Category chips — one brand hue per category so an admin can pick out all
-// the venues (or florists) at a glance. Hashed deterministically from the
-// category name, using the SAME palette + seed as VendorAvatar's fallback
-// tile, so a vendor's monogram tile and its category chip always match.
-const CHIP_PALETTE = [
-  { bg: '#F0DFF6', fg: '#7E5896' }, // lavender
-  { bg: '#E8FBDB', fg: '#3F8B5C' }, // sage
-  { bg: '#FCE9C2', fg: '#B07F2C' }, // champagne
-  { bg: '#DDE9EE', fg: '#3F6B82' }, // periwinkle
-  { bg: '#F5DCE2', fg: '#A84F66' }, // rose
-] as const
-
-function categoryChip(category: string): { bg: string; fg: string } {
-  const seed = category.trim() || '?'
-  const hash = [...seed].reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
-  return CHIP_PALETTE[hash % CHIP_PALETTE.length]
-}
-
 // Vendor hasn't finished their side yet — these read as "in progress" (dashed,
 // muted) so a half-built record never masquerades as a live one.
 const IN_PROGRESS_STATUSES = new Set<VendorStatus>(['drafting', 'uploading_docs'])
@@ -697,21 +679,20 @@ function VendorCard({
   onMerge: () => void
 }) {
   const badge = STATUS_BADGE[vendor.status]
-  const chip = categoryChip(vendor.category)
   const inProgress = IN_PROGRESS_STATUSES.has(vendor.status)
   const suspended = vendor.status === 'suspended'
-  const active = vendor.status === 'active'
 
   // Warm-brutalist surfaces with a hard (no-blur) offset shadow. State drives
-  // the treatment so the grid is scannable: live = emerald, in-queue =
-  // lavender, in-progress = dashed/flat, suspended = muted.
+  // the treatment so the grid is scannable: in-progress = dashed/flat,
+  // suspended = muted, everything else (live + in-queue) = neutral gray
+  // border with a soft lavender offset shadow + lavender hover accent.
+  // Status itself is read from the pill, so we keep one calm treatment across
+  // the grid rather than colour-coding live vs. queued.
   const surface = inProgress
-    ? 'border-2 border-dashed border-[#E2D6EA] bg-[#FBF9FD] hover:border-[#C9A0DC]'
+    ? 'border-2 border-dashed border-gray-300 bg-gray-50/50 hover:border-[#C9A0DC]'
     : suspended
       ? 'border-2 border-gray-200 bg-gray-50/70 hover:border-gray-300'
-      : active
-        ? 'border-2 border-[#CDEBD7] bg-[#FCFFFD] shadow-[3px_3px_0_0_#DDF1E4] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-[#9FE870] hover:shadow-[5px_5px_0_0_#9FE870]'
-        : 'border-2 border-[#EFE7F3] bg-[#FCF9FF] shadow-[3px_3px_0_0_#EFE7F3] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-[#C9A0DC] hover:shadow-[5px_5px_0_0_#C9A0DC]'
+      : 'border-2 border-gray-200 bg-white shadow-[3px_3px_0_0_#EFE7F3] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-[#C9A0DC] hover:shadow-[5px_5px_0_0_#C9A0DC]'
 
   const reviewHref = `/operations/vendors/${vendor.id}`
 
@@ -731,7 +712,8 @@ function VendorCard({
         surface,
       )}
     >
-      {/* Header: logo tile + name (two-line) with status pill pinned right */}
+      {/* Header: logo tile + name with the category pill tucked directly
+          beneath the name; status pill pinned right. */}
       <div className="flex items-start gap-3">
         <VendorAvatar
           logoUrl={vendor.logoUrl}
@@ -740,32 +722,29 @@ function VendorCard({
           size={44}
           className={suspended ? 'opacity-70 grayscale' : undefined}
         />
-        <p
-          className={cn(
-            'min-w-0 flex-1 line-clamp-2 text-sm font-semibold leading-snug',
-            suspended ? 'text-gray-500' : 'text-gray-950',
-          )}
-        >
-          {vendor.businessName}
-        </p>
+        <div className="min-w-0 flex-1">
+          <p
+            className={cn(
+              'line-clamp-2 text-sm font-semibold leading-snug',
+              suspended ? 'text-gray-500' : 'text-gray-950',
+            )}
+          >
+            {vendor.businessName}
+          </p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="inline-flex items-center rounded-full bg-[#F0DFF6] px-2 py-0.5 text-[11px] font-semibold text-[#5B2D8E]">
+              {titleCaseCategory(vendor.category) || 'Uncategorized'}
+            </span>
+            {inProgress && (
+              <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-[#C9A0DC] px-2 py-0.5 text-[11px] font-semibold text-[#7E5896]">
+                {vendor.documentsTotal > 0
+                  ? `Docs ${vendor.documentsVerified}/${vendor.documentsTotal}`
+                  : 'Awaiting docs'}
+              </span>
+            )}
+          </div>
+        </div>
         <StatusPill variant={badge.variant}>{badge.label}</StatusPill>
-      </div>
-
-      {/* Category chip + in-progress docs hint */}
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-        <span
-          className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
-          style={{ backgroundColor: chip.bg, color: chip.fg }}
-        >
-          {titleCaseCategory(vendor.category) || 'Uncategorized'}
-        </span>
-        {inProgress && (
-          <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-[#C9A0DC] px-2 py-0.5 text-[11px] font-semibold text-[#7E5896]">
-            {vendor.documentsTotal > 0
-              ? `Docs ${vendor.documentsVerified}/${vendor.documentsTotal}`
-              : 'Awaiting docs'}
-          </span>
-        )}
       </div>
 
       {/* Meta row: location + labeled timestamp */}

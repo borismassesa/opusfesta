@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import {
   AlertCircle,
   AlertTriangle,
@@ -17,10 +17,13 @@ import {
   FileText,
   IdCard,
   Loader2,
+  MoreHorizontal,
   PauseCircle,
   PlayCircle,
+  Plus,
   ScanFace,
   ShieldCheck,
+  Star,
   ThumbsDown,
   ThumbsUp,
   Trash2,
@@ -41,6 +44,7 @@ import {
   rejectDocument,
   requestCorrections,
   saveVendorPayoutMethod,
+  setPrimaryPayoutMethod,
   suspendVendor,
   type VendorDeletionImpact,
   type VendorPayoutMethodType,
@@ -150,14 +154,17 @@ export type VendorReviewProps = {
   nationalIdFront: DocSummary | null
   nationalIdBack: DocSummary | null
   selfie: DocSummary | null
-  payout: {
+  // A vendor can register several payout methods; exactly one is the primary
+  // (isDefault) destination. Admin verifies each independently.
+  payouts: Array<{
     id: string
     methodType: string
     provider: string | null
     accountNumber: string
     accountHolderName: string
     status: string
-  } | null
+    isDefault: boolean
+  }>
   // The OF-LGL-AGR-002 agreement family — main contract + two schedules, each
   // signed independently. One entry per document (signed or not).
   agreements: Array<{
@@ -266,7 +273,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
     nationalIdFront,
     nationalIdBack,
     selfie,
-    payout,
+    payouts,
     agreements,
     historicalDocs,
   } = props
@@ -274,15 +281,21 @@ export default function VendorReviewClient(props: VendorReviewProps) {
   const [pending, startTransition] = useTransition()
   const [bannerError, setBannerError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<VendorTab>('profile')
+  const [deleteOpen, setDeleteOpen] = useState(false)
 
   const isApproved = vendor.onboardingStatus === 'active'
   const isSuspended = vendor.onboardingStatus === 'suspended'
+
+  // The primary payout (or the first if none flagged) is the one that must be
+  // verified before activation; alternates can be verified too but don't gate.
+  const primaryPayout =
+    payouts.find((p) => p.isDefault) ?? payouts[0] ?? null
 
   const verificationFlags = {
     // Flagged until every document in the agreement family is signed.
     agreement:
       agreements.length === 0 || agreements.some((a) => !a.signed),
-    payout: !payout || payout.status !== 'verified',
+    payout: !primaryPayout || primaryPayout.status !== 'verified',
     tin: !tin || tin.status !== 'approved',
     license: !license || license.status !== 'approved',
   }
@@ -342,6 +355,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
             primary action sits next to the global icons, not inside the
             page content. Approve / Reject / Suspend logic unchanged. */}
         <HeaderActionsSlot>
+          <div className="flex items-center gap-2">
           {isApproved ? (
             <button
               type="button"
@@ -408,6 +422,11 @@ export default function VendorReviewClient(props: VendorReviewProps) {
               </button>
             </>
           )}
+          <HeaderMoreMenu
+            disabled={pending}
+            onDelete={() => setDeleteOpen(true)}
+          />
+          </div>
         </HeaderActionsSlot>
 
         {/* Back link */}
@@ -622,7 +641,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           >
             <AgreementReviewCard agreements={agreements} />
 
-            <PayoutPanel vendorId={vendor.id} payout={payout} />
+            <PayoutSection vendorId={vendor.id} payouts={payouts} />
 
             {/* Identity (required) — NIDA front/back + liveness selfie captured
                 by the vendor's camera. Same approve/reject flow as any doc. */}
@@ -740,13 +759,16 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           )}
         </div>
 
-        <DangerZone
-          vendorId={vendor.id}
-          businessName={vendor.businessName}
-          onDeleted={() => router.push('/operations/vendors')}
-        />
       </div>
-      <GlobalSaveBar bottomOffsetClass={activeTab === 'verification' ? 'pb-[100px]' : 'pb-4'} />
+
+      <DeleteVendorDialog
+        open={deleteOpen}
+        onClose={() => setDeleteOpen(false)}
+        vendorId={vendor.id}
+        businessName={vendor.businessName}
+        onDeleted={() => router.push('/operations/vendors')}
+      />
+      <GlobalSaveBar />
     </div>
     </VendorEditorProvider>
   )
@@ -756,33 +778,105 @@ export default function VendorReviewClient(props: VendorReviewProps) {
 // Sub-components
 // ---------------------------------------------------------------------------
 
-// Permanent-deletion panel. Lives at the bottom of every tab, visually walled
-// off as a "danger zone" so it's never mistaken for the everyday Suspend /
-// Approve controls in the header. Expanding it loads the deletion impact
+// Header "⋯" overflow menu. Keeps destructive / rare lifecycle actions out of
+// the always-visible primary buttons (Approve / Suspend) and off the editing
+// surface entirely. Right now it just hosts "Delete vendor account", which
+// opens the guarded DeleteVendorDialog.
+function HeaderMoreMenu({
+  disabled,
+  onDelete,
+}: {
+  disabled?: boolean
+  onDelete: () => void
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close on outside click or Esc — the menu is a thin disclosure, no library.
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onPointer)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        disabled={disabled}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        aria-label="More vendor actions"
+        className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 hover:text-gray-900 disabled:opacity-50 transition-colors"
+      >
+        <MoreHorizontal className="w-4 h-4" />
+      </button>
+
+      {open && (
+        <div
+          role="menu"
+          className="absolute right-0 top-full mt-1.5 w-56 rounded-xl border border-gray-100 bg-white p-1 shadow-lg z-20"
+        >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              setOpen(false)
+              onDelete()
+            }}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 transition-colors"
+          >
+            <Trash2 className="w-4 h-4 shrink-0" />
+            Delete vendor account
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// Guarded permanent-deletion dialog. Triggered from the header overflow menu
+// (never inline on the editing surface). On open it loads the deletion impact
 // (live bookings, reviews) and requires the admin to retype the exact business
 // name before the destructive button unlocks.
-function DangerZone({
+function DeleteVendorDialog({
+  open,
+  onClose,
   vendorId,
   businessName,
   onDeleted,
 }: {
+  open: boolean
+  onClose: () => void
   vendorId: string
   businessName: string
   onDeleted: () => void
 }) {
-  const [open, setOpen] = useState(false)
   const [confirmText, setConfirmText] = useState('')
   const [impact, setImpact] = useState<VendorDeletionImpact | null>(null)
   const [loadingImpact, setLoadingImpact] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
-  // Expand the panel and fetch the impact summary once. Loading on click
-  // (not in an effect) keeps the fetch tied to the user's intent and avoids
-  // a synchronous setState during render.
-  const openPanel = () => {
-    setOpen(true)
-    if (impact || loadingImpact) return
+  // Reset the form each time the dialog opens, and fetch the impact summary
+  // once per open. Tying the fetch to the open transition keeps it pinned to
+  // the admin's intent.
+  useEffect(() => {
+    if (!open) return
+    setConfirmText('')
+    setError(null)
+    setImpact(null)
     setLoadingImpact(true)
     getVendorDeletionImpact(vendorId).then((res) => {
       setLoadingImpact(false)
@@ -790,7 +884,19 @@ function DangerZone({
       // A failed impact lookup isn't fatal — the name-match guard still
       // protects the delete. Leave counts unknown rather than blocking.
     })
-  }
+  }, [open, vendorId])
+
+  // Esc closes the dialog (unless a delete is in flight).
+  useEffect(() => {
+    if (!open) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !pending) onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, pending, onClose])
+
+  if (!open) return null
 
   const confirmed = confirmText.trim() === businessName.trim()
 
@@ -808,17 +914,28 @@ function DangerZone({
   }
 
   return (
-    <section className="mt-12 pt-8 border-t border-gray-200">
-      <div className="rounded-2xl border border-rose-200 bg-rose-50/40 p-6">
-        <header className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-full bg-white border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="delete-vendor-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !pending) onClose()
+      }}
+    >
+      <div className="relative w-full max-w-lg rounded-2xl border border-gray-100 bg-white shadow-xl">
+        <header className="flex items-start gap-3 px-6 pt-5 pb-4 border-b border-gray-100">
+          <div className="w-10 h-10 rounded-full bg-rose-50 border border-rose-200 text-rose-600 flex items-center justify-center shrink-0">
             <AlertTriangle className="w-5 h-5" strokeWidth={1.75} />
           </div>
           <div className="flex-1 min-w-0">
-            <h2 className="text-base font-semibold text-rose-900">
+            <h2
+              id="delete-vendor-title"
+              className="text-base font-semibold text-rose-900"
+            >
               Delete vendor account
             </h2>
-            <p className="text-xs text-rose-800/80 mt-0.5 leading-relaxed max-w-2xl">
+            <p className="text-xs text-rose-800/80 mt-0.5 leading-relaxed">
               Permanently removes this vendor and everything attached to it —
               bookings, reviews, messages, payouts, verification documents, and
               uploaded media — and deletes their sign-in login so the email is
@@ -827,109 +944,94 @@ function DangerZone({
               header.
             </p>
           </div>
-          {!open && (
-            <button
-              type="button"
-              onClick={openPanel}
-              className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-white border border-rose-300 text-rose-700 hover:bg-rose-100 transition-colors shrink-0"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              Delete account
-            </button>
-          )}
         </header>
 
-        {open && (
-          <div className="mt-5 rounded-xl bg-white border border-rose-200 p-4">
-            {/* Impact summary */}
-            {loadingImpact ? (
-              <p className="text-xs text-gray-500 flex items-center gap-2">
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                Checking what will be removed…
-              </p>
-            ) : impact ? (
-              <div className="flex flex-wrap gap-2 mb-4">
-                {impact.liveBookings > 0 && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-rose-100 text-rose-800 border border-rose-200">
-                    <AlertCircle className="w-3 h-3" />
-                    {impact.liveBookings} live booking
-                    {impact.liveBookings === 1 ? '' : 's'}
-                  </span>
-                )}
-                <ImpactPill label="bookings" count={impact.totalBookings} />
-                <ImpactPill label="reviews" count={impact.reviews} />
-              </div>
-            ) : null}
-
-            {impact && impact.liveBookings > 0 && (
-              <div className="mb-4 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">
-                <AlertTriangle className="w-3.5 h-3.5 text-amber-700 mt-0.5 shrink-0" />
-                <p className="text-xs text-amber-900 leading-relaxed">
-                  This vendor has{' '}
-                  <span className="font-semibold">
-                    {impact.liveBookings} active booking
-                    {impact.liveBookings === 1 ? '' : 's'}
-                  </span>{' '}
-                  with couples. Deleting will also remove{' '}
-                  {impact.liveBookings === 1 ? 'it' : 'them'}. Consider{' '}
-                  <span className="font-semibold">Suspend</span> unless
-                  you&rsquo;re sure.
-                </p>
-              </div>
-            )}
-
-            <label className="block text-xs font-semibold text-gray-700 mb-1">
-              Type{' '}
-              <span className="font-mono text-rose-700">{businessName}</span> to
-              confirm
-            </label>
-            <input
-              type="text"
-              value={confirmText}
-              onChange={(e) => setConfirmText(e.target.value)}
-              placeholder={businessName}
-              autoComplete="off"
-              className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent"
-            />
-
-            {error && (
-              <div className="mt-3 flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
-                <AlertCircle className="w-3.5 h-3.5 text-rose-600 mt-0.5 shrink-0" />
-                <p className="text-xs text-rose-800">{error}</p>
-              </div>
-            )}
-
-            <div className="mt-4 flex items-center justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => {
-                  setOpen(false)
-                  setConfirmText('')
-                  setError(null)
-                }}
-                disabled={pending}
-                className="inline-flex items-center text-sm font-semibold px-4 py-2 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={onDelete}
-                disabled={!confirmed || pending}
-                className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-rose-600 hover:bg-rose-700 text-white shadow-sm disabled:bg-rose-300 disabled:cursor-not-allowed transition-colors"
-              >
-                {pending ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="w-3.5 h-3.5" />
-                )}
-                {pending ? 'Deleting…' : 'Permanently delete'}
-              </button>
+        <div className="px-6 py-4">
+          {/* Impact summary */}
+          {loadingImpact ? (
+            <p className="text-xs text-gray-500 flex items-center gap-2 mb-4">
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              Checking what will be removed…
+            </p>
+          ) : impact ? (
+            <div className="flex flex-wrap gap-2 mb-4">
+              {impact.liveBookings > 0 && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-rose-100 text-rose-800 border border-rose-200">
+                  <AlertCircle className="w-3 h-3" />
+                  {impact.liveBookings} live booking
+                  {impact.liveBookings === 1 ? '' : 's'}
+                </span>
+              )}
+              <ImpactPill label="bookings" count={impact.totalBookings} />
+              <ImpactPill label="reviews" count={impact.reviews} />
             </div>
-          </div>
-        )}
+          ) : null}
+
+          {impact && impact.liveBookings > 0 && (
+            <div className="mb-4 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5">
+              <AlertTriangle className="w-3.5 h-3.5 text-amber-700 mt-0.5 shrink-0" />
+              <p className="text-xs text-amber-900 leading-relaxed">
+                This vendor has{' '}
+                <span className="font-semibold">
+                  {impact.liveBookings} active booking
+                  {impact.liveBookings === 1 ? '' : 's'}
+                </span>{' '}
+                with couples. Deleting will also remove{' '}
+                {impact.liveBookings === 1 ? 'it' : 'them'}. Consider{' '}
+                <span className="font-semibold">Suspend</span> unless
+                you&rsquo;re sure.
+              </p>
+            </div>
+          )}
+
+          <label className="block text-xs font-semibold text-gray-700 mb-1">
+            Type{' '}
+            <span className="font-mono text-rose-700">{businessName}</span> to
+            confirm
+          </label>
+          <input
+            type="text"
+            value={confirmText}
+            onChange={(e) => setConfirmText(e.target.value)}
+            placeholder={businessName}
+            autoComplete="off"
+            autoFocus
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-rose-300 focus:border-transparent"
+          />
+
+          {error && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-200 px-3 py-2">
+              <AlertCircle className="w-3.5 h-3.5 text-rose-600 mt-0.5 shrink-0" />
+              <p className="text-xs text-rose-800">{error}</p>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="inline-flex items-center text-sm font-semibold px-4 py-2 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={!confirmed || pending}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-rose-600 hover:bg-rose-700 text-white shadow-sm disabled:bg-rose-300 disabled:cursor-not-allowed transition-colors"
+          >
+            {pending ? (
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            ) : (
+              <Trash2 className="w-3.5 h-3.5" />
+            )}
+            {pending ? 'Deleting…' : 'Permanently delete'}
+          </button>
+        </div>
       </div>
-    </section>
+    </div>
   )
 }
 
@@ -1152,12 +1254,77 @@ function ReviewPanelActions({
   )
 }
 
-function PayoutPanel({
+function PayoutSection({
   vendorId,
-  payout,
+  payouts,
 }: {
   vendorId: string
-  payout: VendorReviewProps['payout']
+  payouts: VendorReviewProps['payouts']
+}) {
+  const [adding, setAdding] = useState(false)
+
+  return (
+    <SidePanel title="Payout methods" icon={Banknote}>
+      <div className="flex flex-col gap-4">
+        {payouts.length === 0 && !adding && (
+          <p className="text-sm text-gray-500 italic">
+            No payout method on file yet. Add the destination the vendor sent
+            over.
+          </p>
+        )}
+
+        {payouts.map((p) => (
+          <PayoutCard
+            key={p.id}
+            vendorId={vendorId}
+            payout={p}
+            canSetPrimary={payouts.length > 1 && !p.isDefault}
+          />
+        ))}
+
+        {adding && (
+          <PayoutCard
+            vendorId={vendorId}
+            payout={null}
+            canSetPrimary={false}
+            isFirst={payouts.length === 0}
+            onDone={() => setAdding(false)}
+          />
+        )}
+
+        {!adding && (
+          <button
+            type="button"
+            onClick={() => setAdding(true)}
+            className="inline-flex items-center gap-1.5 self-start text-sm font-semibold text-[#7E5896] hover:text-[#6B4880] transition-colors"
+          >
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            Add payout method
+          </button>
+        )}
+      </div>
+
+      <p className="text-[11px] text-gray-500 italic mt-4">
+        Verify the account holder name matches the TIN certificate above before
+        approving the vendor. The <span className="font-semibold">primary</span>{' '}
+        method must be verified to activate.
+      </p>
+    </SidePanel>
+  )
+}
+
+function PayoutCard({
+  vendorId,
+  payout,
+  canSetPrimary,
+  isFirst = false,
+  onDone,
+}: {
+  vendorId: string
+  payout: VendorReviewProps['payouts'][number] | null
+  canSetPrimary: boolean
+  isFirst?: boolean
+  onDone?: () => void
 }) {
   const initialMethod = isVendorPayoutMethodType(payout?.methodType)
     ? payout.methodType
@@ -1186,14 +1353,19 @@ function PayoutPanel({
     !payout
 
   const save = (nextStatus = status) =>
-    run(() =>
-      saveVendorPayoutMethod(vendorId, payout?.id ?? null, {
-        methodType,
-        provider: provider || null,
-        accountNumber,
-        accountHolderName,
-        status: nextStatus,
-      })
+    run(
+      () =>
+        saveVendorPayoutMethod(vendorId, payout?.id ?? null, {
+          methodType,
+          provider: provider || null,
+          accountNumber,
+          accountHolderName,
+          status: nextStatus,
+          // A brand-new first method becomes the default; extra ones are
+          // alternates the admin can promote with "Make primary".
+          makeDefault: !payout ? isFirst : undefined,
+        }),
+      () => onDone?.()
     )
 
   const saveWithStatus = (nextStatus: VendorPayoutStatus) => {
@@ -1204,15 +1376,60 @@ function PayoutPanel({
   const deletePayout = () => {
     if (!payout?.id) return
     const confirmed = window.confirm(
-      'Delete this payout method? The vendor will need to add a new payout method before payouts can be approved.'
+      'Delete this payout method? If it was the primary, set another as primary afterward.'
     )
     if (!confirmed) return
     run(() => deleteVendorPayoutMethod(vendorId, payout.id))
   }
 
+  const makePrimary = () => {
+    if (!payout?.id) return
+    run(() => setPrimaryPayoutMethod(vendorId, payout.id))
+  }
+
   return (
-    <>
-    <SidePanel title="Payout method" icon={Banknote}>
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold text-gray-900">
+            {payout
+              ? PAYOUT_METHOD_LABEL[methodType] ?? methodType
+              : 'New payout method'}
+          </span>
+          {payout?.isDefault && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#F0DFF6] text-[#7E5896]">
+              <Star className="w-2.5 h-2.5 fill-current" />
+              Primary
+            </span>
+          )}
+          {payout && (
+            <span
+              className={cn(
+                'inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full',
+                status === 'verified'
+                  ? 'bg-emerald-50 text-emerald-700'
+                  : status === 'failed'
+                    ? 'bg-rose-50 text-rose-700'
+                    : 'bg-amber-50 text-amber-800'
+              )}
+            >
+              {status}
+            </span>
+          )}
+        </div>
+        {canSetPrimary && (
+          <button
+            type="button"
+            onClick={makePrimary}
+            disabled={pending}
+            className="inline-flex items-center gap-1 text-xs font-semibold text-[#7E5896] hover:text-[#6B4880] disabled:opacity-50 transition-colors"
+          >
+            <Star className="w-3.5 h-3.5" />
+            Make primary
+          </button>
+        )}
+      </div>
+
       <div className="flex flex-col gap-3">
         <Field label="Method">
           <select
@@ -1266,54 +1483,38 @@ function PayoutPanel({
           />
         </Field>
       </div>
-      <p className="text-[11px] text-gray-500 italic mt-3">
-        Verify the account holder name matches the TIN certificate above before
-        approving the vendor.
-      </p>
-    </SidePanel>
 
-    {/* Sticky payout action bar — these are the highest-leverage buttons
-        on the page (Verify / Mark failed / Save / Delete). When PayoutPanel
-        is mounted (Verification tab is active), they sit at viewport bottom
-        instead of being a quiet trio buried at the end of the card. */}
-    <div className="fixed bottom-0 right-0 left-0 lg:left-64 z-30 pointer-events-none flex justify-center pb-4 px-4">
-      <div className="pointer-events-auto w-full max-w-[1200px] flex items-center justify-between gap-3 bg-white border border-gray-200 rounded-2xl shadow-[0_12px_32px_-8px_rgba(0,0,0,0.18)] px-5 py-3 flex-wrap">
-        <div className="text-sm flex items-center gap-2 min-w-0">
-          <Banknote className="w-4 h-4 text-gray-500 shrink-0" />
-          <div className="min-w-0">
-            <span className="font-semibold text-gray-900">Payout method</span>
-            {error && (
-              <span className="ml-2 text-rose-700 text-xs">{error}</span>
-            )}
-            {saved && !error && (
-              <span className="ml-2 text-emerald-700 text-xs">Saved.</span>
-            )}
-            {!error && !saved && (
-              <span className="ml-2 text-gray-500 text-xs">
-                {payout
-                  ? `${PAYOUT_METHOD_LABEL[methodType] ?? methodType} — ${status}`
-                  : 'Not created yet'}
-              </span>
-            )}
-          </div>
+      <div className="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between gap-2 flex-wrap">
+        <div className="text-xs min-w-0">
+          {error && <span className="text-rose-700">{error}</span>}
+          {saved && !error && <span className="text-emerald-700">Saved.</span>}
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap">
-          {payout?.id && (
+          {payout?.id ? (
             <button
               type="button"
               onClick={deletePayout}
               disabled={pending}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               <Trash2 className="w-3 h-3" />
               Delete
             </button>
-          )}
+          ) : onDone ? (
+            <button
+              type="button"
+              onClick={onDone}
+              disabled={pending}
+              className="inline-flex items-center text-xs font-semibold px-2.5 py-1.5 rounded-full text-gray-600 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+            >
+              Cancel
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => saveWithStatus('failed')}
-            disabled={pending}
-            className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 disabled:opacity-50 transition-colors"
+            disabled={pending || !payout}
+            className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100 disabled:opacity-50 transition-colors"
           >
             <XCircle className="w-3 h-3" />
             Mark failed
@@ -1322,15 +1523,15 @@ function PayoutPanel({
             type="button"
             onClick={() => save()}
             disabled={pending || !dirty}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-gray-900 hover:bg-black text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-gray-900 hover:bg-black text-white disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
           >
-            {pending ? 'Saving…' : payout ? 'Save payout' : 'Create payout'}
+            {pending ? 'Saving…' : payout ? 'Save' : 'Create'}
           </button>
           <button
             type="button"
             onClick={() => saveWithStatus('verified')}
             disabled={pending}
-            className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-50 transition-colors"
+            className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm disabled:opacity-50 transition-colors"
           >
             <ShieldCheck className="w-3.5 h-3.5" />
             Verify
@@ -1338,7 +1539,6 @@ function PayoutPanel({
         </div>
       </div>
     </div>
-    </>
   )
 }
 
@@ -1762,7 +1962,7 @@ function isVendorPayoutStatus(
 }
 
 function formatPayoutAccountNumber(
-  payout: NonNullable<VendorReviewProps['payout']>
+  payout: NonNullable<VendorReviewProps['payouts'][number]>
 ): string {
   if (!MOBILE_PAYOUT_METHODS.has(payout.methodType)) {
     return payout.accountNumber
