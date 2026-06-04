@@ -82,6 +82,12 @@ export default function ReviewPage() {
 
   const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(' ').trim()
 
+  // A draft that already carries `submittedAt` means the vendor submitted once
+  // and is now back to edit. Drive the CTA copy and the post-save flow off this
+  // so an edit reads as "Save changes" → back to /verify, not a fresh
+  // "Submit application" → first-time celebration.
+  const isEdit = Boolean(draft.submittedAt)
+
   const onSubmit = async () => {
     setSubmitting(true)
     setSubmitError(null)
@@ -92,6 +98,12 @@ export default function ReviewPage() {
       return
     }
     update({ submittedAt: new Date().toISOString() })
+    if (isEdit) {
+      // Editing an existing application — return to the verification hub
+      // instead of replaying the first-time "Application complete" screen.
+      router.push('/verify')
+      return
+    }
     setSubmitted(true)
   }
 
@@ -120,7 +132,7 @@ export default function ReviewPage() {
     // sees them seconds later. Showing the same lists twice in a row is
     // exactly what the cleanup PR is removing.
     return (
-      <div className="min-h-screen bg-gradient-to-b from-[#FBF7FC] via-[#FDFDFD] to-[#FDFDFD] flex flex-col">
+      <div className="min-h-screen bg-white flex flex-col">
         <Confetti active={submitted} />
         <header className="px-6 sm:px-10 py-5 border-b border-gray-100/80 bg-white/70 backdrop-blur">
           <Link href="/" aria-label="OpusFesta home" className="inline-block">
@@ -176,7 +188,9 @@ export default function ReviewPage() {
           Review your storefront
         </h1>
         <p className="mt-2 text-base text-gray-600 max-w-2xl">
-          Here’s everything couples will see. Make any final edits, then submit for review.
+          {isEdit
+            ? 'Here’s everything couples will see. Update any details and save — your application status won’t change.'
+            : 'Here’s everything couples will see. Make any final edits, then submit for review.'}
         </p>
       </header>
 
@@ -350,11 +364,12 @@ export default function ReviewPage() {
           <div className="flex items-center gap-6">
             <p className="flex-1 min-w-0 text-sm text-gray-600 leading-relaxed">
               <span className="text-gray-900 font-semibold">
-                Ready when you are.
+                {isEdit ? 'Save your changes.' : 'Ready when you are.'}
               </span>{' '}
               <span className="hidden sm:inline">
-                Once you submit, we&rsquo;ll ask for a couple of documents to
-                verify your business.
+                {isEdit
+                  ? 'We’ll update your storefront — you’ll stay exactly where you are in the process.'
+                  : 'Once you submit, we’ll ask for a couple of documents to verify your business.'}
               </span>
             </p>
             <button
@@ -368,11 +383,11 @@ export default function ReviewPage() {
               {submitting ? (
                 <>
                   <Clock className="w-4 h-4 animate-pulse" />
-                  Submitting…
+                  {isEdit ? 'Saving…' : 'Submitting…'}
                 </>
               ) : (
                 <>
-                  Submit application
+                  {isEdit ? 'Save changes' : 'Submit application'}
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                 </>
               )}

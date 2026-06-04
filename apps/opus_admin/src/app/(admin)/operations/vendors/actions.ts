@@ -1423,3 +1423,575 @@ export async function reactivateVendor(
   revalidatePath(`/operations/vendors/${vendorId}`)
   return { ok: true }
 }
+
+// =============================================================================
+// Permanent deletion — the irreversible end of the lifecycle
+// =============================================================================
+//
+// "Suspend" is the soft off-switch: the vendor row survives, bookings and
+// history stay intact, and the vendor can be reactivated. "Delete" is the
+// hard one — it removes the `vendors` row, which CASCADEs to every child
+// table (bookings, reviews, inquiries link, payments, invoices, payouts,
+// verification documents, agreements, memberships, availability, …) AND
+// deletes the vendor's Clerk login so their email is freed for re-signup.
+// There is no undo. Reach for it to remove test/duplicate accounts or to
+// honour a vendor's account-deletion request, NOT as a stronger suspend.
+//
+// The Clerk piece is the whole point: vendors sign in through the
+// vendors-portal Clerk instance, which is SEPARATE from the admin's own
+// Clerk instance. So this action calls Clerk's Backend API with the portal
+// instance's secret (VENDORS_CLERK_SECRET_KEY) to remove the login — without
+// it, the email stays "taken" and the admin would have to delete the user by
+// hand in the Clerk dashboard, which is exactly what we're avoiding.
+//
+// Two guards make an accidental wipe hard:
+//   1. The caller must echo the exact business name (checked server-side, so
+//      a stray client call can't delete the wrong vendor).
+//   2. The UI surfaces the live-booking count first via getVendorDeletionImpact
+//      so the admin sees what they're about to destroy.
+
+export type VendorDeletionImpact = {
+  liveBookings: number
+  totalBookings: number
+  reviews: number
+}
+
+export type VendorDeletionImpactResult =
+  | { ok: true; businessName: string; impact: VendorDeletionImpact }
+  | { ok: false; error: string; reason: 'unauth' | 'not-found' | 'unknown' }
+
+/**
+ * Summarise what a delete would destroy so the admin can make an informed
+ * call before confirming. Counts are best-effort — a missing table (e.g. an
+ * environment behind on migrations) degrades that count to 0 rather than
+ * failing the whole preview. "Live" bookings are those not yet cancelled or
+ * completed: deleting a vendor mid-engagement orphans a real couple.
+ */
+export async function getVendorDeletionImpact(
+  vendorId: string
+): Promise<VendorDeletionImpactResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+
+  const admin = createSupabaseAdminClient()
+  const vendor = await admin
+    .from('vendors')
+    .select('business_name')
+    .eq('id', vendorId)
+    .maybeSingle<{ business_name: string | null }>()
+  if (vendor.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] deletion impact lookup failed: ${vendor.error.code} ${vendor.error.message}`,
+    }
+  }
+  if (!vendor.data) {
+    return {
+      ok: false,
+      reason: 'not-found',
+      error: 'Vendor not found — it may have already been deleted.',
+    }
+  }
+
+  const countFor = async (
+    table: string,
+    liveOnly = false
+  ): Promise<number> => {
+    let query = admin
+      .from(table)
+      .select('id', { count: 'exact', head: true })
+      .eq('vendor_id', vendorId)
+    if (liveOnly) {
+      // Everything not yet cancelled or completed — a vendor mid-engagement.
+      query = query.not('stage', 'in', '("cancelled","completed")')
+    }
+    const { count, error } = await query
+    if (error) {
+      console.warn(
+        `[admin] deletion impact count failed for ${table}: ${error.code} ${error.message}`
+      )
+      return 0
+    }
+    return count ?? 0
+  }
+
+  const [totalBookings, liveBookings, reviews] = await Promise.all([
+    countFor('vendor_bookings'),
+    countFor('vendor_bookings', true),
+    countFor('reviews'),
+  ])
+
+  return {
+    ok: true,
+    businessName: vendor.data.business_name?.trim() || '',
+    impact: { liveBookings, totalBookings, reviews },
+  }
+}
+
+/**
+ * Recursively collect every object key under a storage prefix. Supabase's
+ * `list` is one folder deep, so we walk into sub-folders (entries with no
+ * `id`) until we bottom out. Used to purge a deleted vendor's media so we
+ * don't orphan private KYC scans or portfolio files in the bucket.
+ */
+async function listStorageObjects(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  bucket: string,
+  prefix: string
+): Promise<string[]> {
+  const { data, error } = await admin.storage.from(bucket).list(prefix, {
+    limit: 1000,
+  })
+  if (error || !data) {
+    if (error) {
+      console.warn(
+        `[admin] storage list failed (${bucket}/${prefix}): ${error.message}`
+      )
+    }
+    return []
+  }
+  const keys: string[] = []
+  for (const entry of data) {
+    const path = prefix ? `${prefix}/${entry.name}` : entry.name
+    if (entry.id === null) {
+      // A folder — recurse into it.
+      keys.push(...(await listStorageObjects(admin, bucket, path)))
+    } else {
+      keys.push(path)
+    }
+  }
+  return keys
+}
+
+/**
+ * Best-effort purge of a vendor's stored files before the row (and its
+ * exact storage-path records) disappear. Pulls precise verification-document
+ * and signature paths from the DB, plus a recursive sweep of the portfolio
+ * folder. Never throws — a storage hiccup must not block the DB delete.
+ */
+async function removeVendorStorageObjects(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  vendorId: string
+): Promise<void> {
+  // vendor_verification bucket: KYC documents + the drawn signature image.
+  const verificationKeys = new Set<string>()
+  const docs = await admin
+    .from('vendor_verification_documents')
+    .select('storage_path')
+    .eq('vendor_id', vendorId)
+  if (!docs.error) {
+    for (const row of docs.data ?? []) {
+      const path = (row as { storage_path: string | null }).storage_path
+      if (path) verificationKeys.add(path)
+    }
+  }
+  const agreements = await admin
+    .from('vendor_agreements')
+    .select('signature_image_path')
+    .eq('vendor_id', vendorId)
+  if (!agreements.error) {
+    for (const row of agreements.data ?? []) {
+      const path = (row as { signature_image_path: string | null })
+        .signature_image_path
+      if (path) verificationKeys.add(path)
+    }
+  }
+  // Belt-and-braces: also sweep anything left under the vendor's folder.
+  for (const key of await listStorageObjects(
+    admin,
+    'vendor_verification',
+    vendorId
+  )) {
+    verificationKeys.add(key)
+  }
+  if (verificationKeys.size > 0) {
+    const { error } = await admin.storage
+      .from('vendor_verification')
+      .remove(Array.from(verificationKeys))
+    if (error) {
+      console.warn(
+        `[admin] vendor_verification purge failed for ${vendorId}: ${error.message}`
+      )
+    }
+  }
+
+  // vendor-portfolios bucket: cover, gallery, and video uploads.
+  const portfolioKeys = await listStorageObjects(
+    admin,
+    'vendor-portfolios',
+    vendorId
+  )
+  if (portfolioKeys.length > 0) {
+    const { error } = await admin.storage
+      .from('vendor-portfolios')
+      .remove(portfolioKeys)
+    if (error) {
+      console.warn(
+        `[admin] vendor-portfolios purge failed for ${vendorId}: ${error.message}`
+      )
+    }
+  }
+}
+
+const CLERK_API_BASE = 'https://api.clerk.com/v1'
+
+/**
+ * Delete the vendor's login from the vendors-portal Clerk instance so the
+ * email is freed for a fresh sign-up — the whole reason admins shouldn't have
+ * to open the Clerk dashboard. Uses VENDORS_CLERK_SECRET_KEY (the *portal*
+ * instance's secret, NOT the admin instance's). Resolves the Clerk user id
+ * from `clerkId` when we have it, otherwise looks it up by email (covers
+ * admin-created vendors whose users row was never linked).
+ *
+ * Returns `{ ok: true }` when there's nothing to remove (no login exists) or
+ * the user is already gone (404) — those are success states. Returns an error
+ * only when the secret is missing or Clerk rejects the call, so the caller can
+ * abort before deleting DB rows and leaving the email stuck as "taken".
+ */
+async function deleteVendorClerkLogin(opts: {
+  clerkId: string | null
+  email: string | null
+}): Promise<{ ok: boolean; error?: string }> {
+  const secret = process.env.VENDORS_CLERK_SECRET_KEY?.trim()
+  if (!secret) {
+    return {
+      ok: false,
+      error:
+        'Vendor login deletion is not configured. Set VENDORS_CLERK_SECRET_KEY (the vendors-portal Clerk secret) on the admin app, then try again.',
+    }
+  }
+  const headers = { Authorization: `Bearer ${secret}` }
+
+  let clerkId = opts.clerkId?.trim() || null
+
+  // No stored id → resolve by email. Clerk's list endpoint filters on exact
+  // email_address and returns an array of matching users.
+  if (!clerkId && opts.email) {
+    try {
+      const lookup = await fetch(
+        `${CLERK_API_BASE}/users?email_address=${encodeURIComponent(opts.email)}&limit=1`,
+        { headers }
+      )
+      if (lookup.ok) {
+        const rows = (await lookup.json()) as Array<{ id?: string }>
+        clerkId = Array.isArray(rows) ? (rows[0]?.id ?? null) : null
+      } else if (lookup.status !== 404) {
+        const body = await lookup.text().catch(() => '')
+        return {
+          ok: false,
+          error: `Clerk user lookup failed (${lookup.status}): ${body.slice(0, 200)}`,
+        }
+      }
+    } catch (err) {
+      return {
+        ok: false,
+        error: `Clerk user lookup error: ${err instanceof Error ? err.message : String(err)}`,
+      }
+    }
+  }
+
+  // Nothing to delete — e.g. an admin-created vendor that never signed in.
+  if (!clerkId) return { ok: true }
+
+  try {
+    const res = await fetch(`${CLERK_API_BASE}/users/${clerkId}`, {
+      method: 'DELETE',
+      headers,
+    })
+    // 404 = already deleted in Clerk; treat as success so we don't wedge.
+    if (res.ok || res.status === 404) return { ok: true }
+    const body = await res.text().catch(() => '')
+    return {
+      ok: false,
+      error: `Clerk login deletion failed (${res.status}): ${body.slice(0, 200)}`,
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      error: `Clerk login deletion error: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
+}
+
+/**
+ * Permanently delete a vendor account. Order matters: remove the Clerk login
+ * FIRST (so the email is freed and we abort cleanly if that can't happen),
+ * then purge stored media, then delete the `vendors` row — every child table
+ * CASCADEs. Finally the linked `public.users` row's `clerk_id` is cleared so a
+ * later re-signup re-links cleanly instead of colliding with a dead id; the
+ * users row itself is kept (it may be referenced by non-vendor data).
+ * `confirmName` must exactly match the vendor's current business name or the
+ * action refuses, defending against a misfired call.
+ */
+export async function deleteVendor(
+  vendorId: string,
+  confirmName: string
+): Promise<ActionResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  if (!vendorId) {
+    return { ok: false, reason: 'invalid', error: 'Missing vendor id.' }
+  }
+
+  const admin = createSupabaseAdminClient()
+  const vendor = await admin
+    .from('vendors')
+    .select('business_name, user_id, contact_info')
+    .eq('id', vendorId)
+    .maybeSingle<{
+      business_name: string | null
+      user_id: string | null
+      contact_info: { email?: string | null } | null
+    }>()
+  if (vendor.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] vendor lookup failed: ${vendor.error.code} ${vendor.error.message}`,
+    }
+  }
+  if (!vendor.data) {
+    return {
+      ok: false,
+      reason: 'not-found',
+      error: 'Vendor not found — it may have already been deleted.',
+    }
+  }
+
+  const expected = (vendor.data.business_name ?? '').trim()
+  if (confirmName.trim() !== expected) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: `The name you typed doesn't match "${expected}". Deletion cancelled.`,
+    }
+  }
+
+  // Resolve the vendor's login email + Clerk id from the linked users row,
+  // falling back to the contact email on the vendor record.
+  let clerkId: string | null = null
+  let loginEmail: string | null = vendor.data.contact_info?.email?.trim() || null
+  if (vendor.data.user_id) {
+    const userRow = await admin
+      .from('users')
+      .select('clerk_id, email')
+      .eq('id', vendor.data.user_id)
+      .maybeSingle<{ clerk_id: string | null; email: string | null }>()
+    if (!userRow.error && userRow.data) {
+      clerkId = userRow.data.clerk_id?.trim() || null
+      loginEmail = userRow.data.email?.trim() || loginEmail
+    }
+  }
+
+  // Remove the Clerk login first. If this can't happen, abort before touching
+  // any DB rows — otherwise we'd delete the vendor but leave the email stuck
+  // as "taken", which is the exact problem this feature exists to fix.
+  const clerkRes = await deleteVendorClerkLogin({ clerkId, email: loginEmail })
+  if (!clerkRes.ok) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: clerkRes.error ?? 'Could not delete the vendor login.',
+    }
+  }
+
+  // Purge storage before the row goes — afterwards we lose the exact paths.
+  await removeVendorStorageObjects(admin, vendorId)
+
+  const { error } = await admin.from('vendors').delete().eq('id', vendorId)
+  if (error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] delete vendor failed: ${error.code} ${error.message}`,
+    }
+  }
+
+  // Clear the now-dangling Clerk link on the users row so a future sign-up
+  // with the same email re-links instead of hitting the unique clerk_id.
+  if (vendor.data.user_id && clerkId) {
+    const clear = await admin
+      .from('users')
+      .update({ clerk_id: null })
+      .eq('id', vendor.data.user_id)
+    if (clear.error) {
+      console.warn(
+        `[admin] clearing clerk_id failed for user=${vendor.data.user_id}: ${clear.error.code} ${clear.error.message}`
+      )
+    }
+  }
+
+  revalidatePath('/operations/vendors')
+  revalidatePath(`/operations/vendors/${vendorId}`)
+  return { ok: true }
+}
+
+/**
+ * Merge two duplicate vendor records into one. The `survivorId` keeps all data;
+ * the `loserId` is absorbed and then permanently deleted.
+ *
+ * Order, and why:
+ *  1. `merge_vendors` RPC reassigns every child row (bookings inquiries,
+ *     invoices, payments, payouts, portfolio, reviews, documents, agreements,
+ *     memberships, …) from loser → survivor in ONE transaction, deduping the
+ *     unique-constrained tables. Atomic so a vendor's data is never split.
+ *  2. Delete the loser's Clerk login — but ONLY when it's a *different* login
+ *     from the survivor's owner. If the same person owns both duplicates,
+ *     deleting "their" login would lock them out of the survivor. We compare
+ *     resolved Clerk ids and skip when they match.
+ *  3. Delete the now child-less loser `vendors` row (cascade is a no-op since
+ *     step 1 moved everything). We deliberately do NOT purge the loser's
+ *     storage objects — the reassigned portfolio/document rows still point at
+ *     those files, so they now belong to the survivor.
+ *
+ * `confirmName` must exactly match the LOSER's business name (it's the record
+ * being destroyed), defending against a misfired merge.
+ */
+export async function mergeVendors(input: {
+  survivorId: string
+  loserId: string
+  confirmName: string
+}): Promise<ActionResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+
+  const { survivorId, loserId, confirmName } = input
+  if (!survivorId || !loserId) {
+    return { ok: false, reason: 'invalid', error: 'Both vendors are required.' }
+  }
+  if (survivorId === loserId) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: 'Pick two different vendors to merge.',
+    }
+  }
+
+  const admin = createSupabaseAdminClient()
+
+  type MergeVendorRow = {
+    id: string
+    business_name: string | null
+    user_id: string | null
+    contact_info: { email?: string | null } | null
+  }
+  const both = await admin
+    .from('vendors')
+    .select('id, business_name, user_id, contact_info')
+    .in('id', [survivorId, loserId])
+    .returns<MergeVendorRow[]>()
+  if (both.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] merge lookup failed: ${both.error.code} ${both.error.message}`,
+    }
+  }
+  const survivor = both.data?.find((v) => v.id === survivorId)
+  const loser = both.data?.find((v) => v.id === loserId)
+  if (!survivor || !loser) {
+    return {
+      ok: false,
+      reason: 'not-found',
+      error: 'One of the vendors no longer exists — it may have been deleted.',
+    }
+  }
+
+  const expected = (loser.business_name ?? '').trim()
+  if (confirmName.trim() !== expected) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      error: `The name you typed doesn't match "${expected}". Merge cancelled.`,
+    }
+  }
+
+  // Resolve both sides' login (Clerk id + email) so we can (a) absorb the
+  // loser's login and (b) NEVER delete a login the survivor still needs.
+  const resolveLogin = async (
+    v: MergeVendorRow,
+  ): Promise<{ clerkId: string | null; email: string | null }> => {
+    let clerkId: string | null = null
+    let email: string | null = v.contact_info?.email?.trim() || null
+    if (v.user_id) {
+      const userRow = await admin
+        .from('users')
+        .select('clerk_id, email')
+        .eq('id', v.user_id)
+        .maybeSingle<{ clerk_id: string | null; email: string | null }>()
+      if (!userRow.error && userRow.data) {
+        clerkId = userRow.data.clerk_id?.trim() || null
+        email = userRow.data.email?.trim() || email
+      }
+    }
+    return { clerkId, email }
+  }
+  const [survivorLogin, loserLogin] = await Promise.all([
+    resolveLogin(survivor),
+    resolveLogin(loser),
+  ])
+
+  // 1) Reassign all child rows loser → survivor, atomically.
+  const merge = await admin.rpc('merge_vendors', {
+    p_loser: loserId,
+    p_survivor: survivorId,
+  })
+  if (merge.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] merge_vendors failed: ${merge.error.code} ${merge.error.message}`,
+    }
+  }
+
+  // 2) Remove the loser's login, but only if it's genuinely a separate login
+  // from the survivor's owner (same person owning both duplicates → keep it).
+  const sharesOwner =
+    (loserLogin.clerkId != null && loserLogin.clerkId === survivorLogin.clerkId) ||
+    (loser.user_id != null && loser.user_id === survivor.user_id)
+  if (!sharesOwner && loserLogin.clerkId) {
+    const clerkRes = await deleteVendorClerkLogin({
+      clerkId: loserLogin.clerkId,
+      email: loserLogin.email,
+    })
+    if (!clerkRes.ok) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error:
+          (clerkRes.error ?? 'Could not delete the duplicate login.') +
+          ' The records were merged; only the duplicate login removal failed.',
+      }
+    }
+  }
+
+  // 3) Delete the now child-less loser row. NOT its storage — those files back
+  // the reassigned rows and now belong to the survivor.
+  const del = await admin.from('vendors').delete().eq('id', loserId)
+  if (del.error) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] deleting merged loser failed: ${del.error.code} ${del.error.message}`,
+    }
+  }
+
+  // Clear the dangling clerk_id on the loser's users row (when not shared) so a
+  // future sign-up with that email re-links cleanly.
+  if (!sharesOwner && loser.user_id && loserLogin.clerkId) {
+    const clear = await admin
+      .from('users')
+      .update({ clerk_id: null })
+      .eq('id', loser.user_id)
+    if (clear.error) {
+      console.warn(
+        `[admin] clearing clerk_id failed for user=${loser.user_id}: ${clear.error.code} ${clear.error.message}`,
+      )
+    }
+  }
+
+  revalidatePath('/operations/vendors')
+  revalidatePath(`/operations/vendors/${survivorId}`)
+  return { ok: true }
+}

@@ -6,11 +6,13 @@ import { useRouter } from 'next/navigation'
 import { SignOutButton } from '@clerk/nextjs'
 import {
   AlertCircle,
+  ArrowRight,
   Check,
   ClipboardCheck,
   Clock,
   FileSignature,
   FileText,
+  IdCard,
   LogOut,
   type LucideIcon,
   PenLine,
@@ -25,6 +27,7 @@ import {
   type VerifyDocType,
 } from './actions'
 import { SignaturePad } from './SignaturePad'
+import NationalIdStep from './NationalIdStep'
 
 export type VerifyDocSlot = {
   docType: VerifyDocType
@@ -58,28 +61,49 @@ export type AgreementBusinessDefaults = {
   serviceType: string
 }
 
+/**
+ * One document in the OF-LGL-AGR-002 agreement family, with its signature
+ * status. Mirrors the server-side AgreementDoc registry minus the server-only
+ * bits (body file path), plus `signedAt` (null = not yet signed). `fields`
+ * decides which SEHEMU B block the sign form renders.
+ */
+export type AgreementDocView = {
+  id: 'main' | 'schedule_a' | 'schedule_b'
+  version: string
+  code: string
+  title: string
+  subtitle: string
+  pdfUrl: string
+  downloadName: string
+  fields: 'full' | 'schedule'
+  signedAt: string | null
+}
+
 type Props = {
   status: 'verification_pending' | 'needs_corrections'
   slots: VerifyDocSlot[]
-  agreement: {
-    version: string
-    signedAt: string
-  } | null
-  /** Plain-text body of the agreement (from vendor-agreement.md). Used as a
-   *  download/copy fallback when the PDF viewer isn't available, e.g. on
-   *  iOS Safari. */
-  agreementBody: string
-  /** Public URL of the canonical PDF — rendered inline via the browser's
-   *  native PDF viewer for pixel-perfect fidelity with the legal source. */
-  agreementPdfUrl: string
-  /** Stable version identifier persisted with each signature. */
-  agreementVersion: string
-  /** Pre-filled values for the page-3 identification block on the Mkataba
-   *  sign form (business name, TIN, address, contact, etc.). */
+  /** National ID + liveness selfie capture progress (the required identity
+   *  step). TIN + business license in `slots` are optional. */
+  nationalId: { front: boolean; back: boolean; selfie: boolean }
+  /** Every document in the agreement family, in signing order, each with its
+   *  current signature status. The agreement step is "done" only once all of
+   *  them are signed. */
+  agreementDocs: AgreementDocView[]
+  /** Pre-filled values for the SEHEMU B identification block on each sign
+   *  form (business name, TIN, address, contact, etc.). */
   agreementBusinessDefaults: AgreementBusinessDefaults
 }
 
 type StepMode = 'done' | 'active' | 'locked'
+
+// Dashed-ring color for not-yet-reached (locked) steps — matches the dashed
+// timeline circles on /pending so the two screens read consistently. Solid
+// green takes over once a step is done.
+const LOCKED_RING: Record<'purple' | 'blue' | 'amber', string> = {
+  purple: 'border-[#7E5896]/60 text-[#7E5896]',
+  blue: 'border-blue-500/60 text-blue-600',
+  amber: 'border-amber-500/70 text-amber-600',
+}
 
 /**
  * A doc slot is considered "done" when there's a latest upload that hasn't
@@ -93,40 +117,59 @@ function isSlotDone(slot: VerifyDocSlot): boolean {
 export default function VerifyClient({
   status,
   slots,
-  agreement,
-  agreementBody,
-  agreementPdfUrl,
-  agreementVersion,
+  nationalId,
+  agreementDocs,
   agreementBusinessDefaults,
 }: Props) {
   const isCorrection = status === 'needs_corrections'
 
-  // Progressive disclosure: only ONE verification step is active at a time.
-  // Earlier steps collapse to a compact "done" row; later steps render as a
-  // compact "locked" row until their gate opens. This keeps the page focused
-  // on the next concrete action instead of a wall of three forms.
+  // Required identity step: National ID front + back + a liveness selfie. This
+  // is the gate — TIN certificate and business license (in `slots`) are now
+  // OPTIONAL and live in a separate section below the journey.
+  const idComplete =
+    nationalId.front && nationalId.back && nationalId.selfie
+
   const tinSlot = slots[0]
   const licenseSlot = slots[1]
   const tinDone = isSlotDone(tinSlot)
   const licenseDone = isSlotDone(licenseSlot)
-  const agreementSigned = !!agreement
 
-  const tinMode: StepMode = tinDone ? 'done' : 'active'
-  const licenseMode: StepMode = !tinDone
+  // The agreement step spans the whole OF-LGL-AGR-002 family — it's only
+  // "done" once every document has been signed.
+  const signedCount = agreementDocs.filter((d) => d.signedAt).length
+  const agreementSigned =
+    agreementDocs.length > 0 && signedCount === agreementDocs.length
+  // The most recent signature across the family — used for the "Signed …"
+  // relative-time label on the done state.
+  const latestSignedAt = agreementDocs
+    .map((d) => d.signedAt)
+    .filter((s): s is string => Boolean(s))
+    .sort()
+    .at(-1)
+
+  const [skippedOptional, setSkippedOptional] = useState(false)
+
+  const idMode: StepMode = idComplete ? 'done' : 'active'
+
+  // Optional documents come right after identity. The vendor either adds their
+  // TIN / business license or skips — either way the optional step is
+  // "resolved" and the agreement opens. A signature already in progress also
+  // counts as resolved, so returning vendors aren't sent back through skip.
+  const optionalResolved = skippedOptional || signedCount > 0
+  const optionalMode: StepMode = !idComplete
     ? 'locked'
-    : licenseDone
+    : optionalResolved
       ? 'done'
       : 'active'
+
+  // Agreement unlocks once identity is verified AND the optional step has been
+  // resolved (documents added, or skipped).
   const agreementMode: StepMode =
-    !tinDone || !licenseDone
+    !idComplete || !optionalResolved
       ? 'locked'
       : agreementSigned
         ? 'done'
         : 'active'
-
-  const completedSteps =
-    (tinDone ? 1 : 0) + (licenseDone ? 1 : 0) + (agreementSigned ? 1 : 0)
-  const totalSteps = 3
 
   // Build the visual timeline rendered above the active form. We model 5
   // steps total — Application (always done), TIN, License, Agreement, Under
@@ -143,14 +186,13 @@ export default function VerifyClient({
     doneLabel?: string
     activeLabel?: string
     activeTone?: 'purple' | 'amber' | 'rose'
+    /** Accent for the dashed ring shown while the step is still locked. */
+    tone?: 'purple' | 'blue' | 'amber'
     /** Inline action UI rendered below the description when the step is the
      *  active one. Keeps the vendor's focus on the timeline; no separate
      *  duplicated card below. */
     action?: ReactNode
   }
-
-  const tinDocStatus = tinSlot.currentDoc?.status
-  const licenseDocStatus = licenseSlot.currentDoc?.status
 
   const journey: JourneyStep[] = [
     {
@@ -162,48 +204,72 @@ export default function VerifyClient({
       doneLabel: 'Submitted',
     },
     {
-      icon: FileText,
-      title: 'TIN certificate',
-      mode: tinMode,
+      icon: IdCard,
+      title: 'Identity verification',
+      mode: idMode,
       description:
-        tinMode === 'done'
-          ? tinDocStatus === 'approved'
-            ? 'Approved by OpusFesta admin.'
-            : `Uploaded ${tinSlot.currentDoc ? formatRelative(tinSlot.currentDoc.uploadedAt) : 'recently'}. Awaiting admin review.`
-          : 'Upload your TRA TIN certificate.',
-      doneLabel:
-        tinDocStatus === 'approved' ? 'Approved' : 'Awaiting review',
-      activeLabel:
-        tinDocStatus === 'rejected' ? 'Needs fix' : 'In progress',
-      activeTone: tinDocStatus === 'rejected' ? 'rose' : 'purple',
+        idMode === 'done'
+          ? 'National ID (front + back) and liveness selfie captured. Awaiting admin review.'
+          : 'Take a photo of the front and back of your Tanzania National ID (NIDA), then a quick selfie to confirm it’s you.',
+      doneLabel: 'Awaiting review',
+      activeLabel: 'In progress',
+      activeTone: 'purple',
+      tone: 'blue',
       action:
-        tinMode === 'active' ? (
-          <DocumentUploadActions slot={tinSlot} isCorrection={isCorrection} />
+        idMode === 'active' ? (
+          <NationalIdStep
+            initialFront={nationalId.front}
+            initialBack={nationalId.back}
+            initialSelfie={nationalId.selfie}
+          />
         ) : undefined,
     },
     {
       icon: FileText,
-      title: 'Business license',
-      mode: licenseMode,
+      title: 'Optional documents',
+      mode: optionalMode,
+      tone: 'blue',
       description:
-        licenseMode === 'done'
-          ? licenseDocStatus === 'approved'
-            ? 'Approved by OpusFesta admin.'
-            : `Uploaded ${licenseSlot.currentDoc ? formatRelative(licenseSlot.currentDoc.uploadedAt) : 'recently'}. Awaiting admin review.`
-          : licenseMode === 'active'
-            ? 'Upload your BRELA registration, council license, or sole-proprietor declaration.'
-            : 'Unlocks once your TIN certificate is uploaded.',
-      doneLabel:
-        licenseDocStatus === 'approved' ? 'Approved' : 'Awaiting review',
-      activeLabel:
-        licenseDocStatus === 'rejected' ? 'Needs fix' : 'In progress',
-      activeTone: licenseDocStatus === 'rejected' ? 'rose' : 'purple',
+        optionalMode === 'done'
+          ? tinDone || licenseDone
+            ? 'Optional documents added — thanks, this helps speed up review.'
+            : 'Skipped for now. Your National ID alone is enough to get approved.'
+          : optionalMode === 'active'
+            ? 'Not required to get approved — your National ID is enough. Adding your TIN or business license builds trust and can speed up review.'
+            : 'Unlocks once your identity is verified.',
+      doneLabel: tinDone || licenseDone ? 'Added' : 'Skipped',
+      activeLabel: 'Optional',
+      activeTone: 'purple',
       action:
-        licenseMode === 'active' ? (
-          <DocumentUploadActions
-            slot={licenseSlot}
-            isCorrection={isCorrection}
-          />
+        optionalMode === 'active' ? (
+          <div className="mt-3 space-y-3">
+            <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 px-4">
+              <OptionalDoc
+                title="TRA TIN certificate"
+                description="Your tax ID certificate from the Tanzania Revenue Authority."
+                slot={tinSlot}
+                done={tinDone}
+                isCorrection={isCorrection}
+              />
+              <OptionalDoc
+                title="Business license"
+                description="BRELA registration, council license, or a sole-proprietor declaration."
+                slot={licenseSlot}
+                done={licenseDone}
+                isCorrection={isCorrection}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setSkippedOptional(true)}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-600 transition-colors hover:text-gray-900"
+            >
+              {tinDone || licenseDone
+                ? 'Continue to agreement'
+                : 'Skip to agreement'}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
         ) : undefined,
     },
     {
@@ -212,20 +278,23 @@ export default function VerifyClient({
       mode: agreementMode,
       description:
         agreementMode === 'done'
-          ? agreement?.signedAt
-            ? `Signed ${formatRelative(agreement.signedAt)}. Separate from the Vendor Vows you accepted during onboarding.`
+          ? latestSignedAt
+            ? `All ${agreementDocs.length} documents signed ${formatRelative(latestSignedAt)}. Separate from the Vendor Vows you accepted during onboarding.`
             : 'Signed.'
           : agreementMode === 'active'
-            ? 'Read and e-sign the OpusFesta Mkataba wa Watoa Huduma. This is the legally binding agreement, separate from the Vendor Vows pledge.'
-            : 'Unlocks once both business documents are uploaded.',
+            ? `Read and e-sign each part of the OpusFesta Mkataba wa Watoa Huduma (OF-LGL-AGR-002) — the main contract and its two schedules. Each is signed separately. This is the legally binding agreement, distinct from the Vendor Vows pledge.`
+            : !idComplete
+              ? 'Unlocks once your identity is verified.'
+              : 'Add the optional documents above, or skip, to continue.',
       doneLabel: 'Signed',
-      activeLabel: 'In progress',
+      activeLabel:
+        signedCount > 0 ? `${signedCount}/${agreementDocs.length} signed` : 'In progress',
       activeTone: 'purple',
+      tone: 'purple',
       action:
         agreementMode === 'active' ? (
-          <AgreementSignActions
-            agreementPdfUrl={agreementPdfUrl}
-            agreementVersion={agreementVersion}
+          <AgreementDocsList
+            docs={agreementDocs}
             businessDefaults={agreementBusinessDefaults}
           />
         ) : undefined,
@@ -234,6 +303,7 @@ export default function VerifyClient({
       icon: ShieldCheck,
       title: 'Under review',
       mode: 'locked',
+      tone: 'amber',
       description:
         'Once the steps above are complete, our team verifies your details and approves your storefront. Usually 2 to 3 business days.',
     },
@@ -317,7 +387,8 @@ export default function VerifyClient({
                 Your verification journey
               </h2>
               <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">
-                {completedSteps + 1}/{totalSteps + 2} complete
+                {journey.filter((s) => s.mode === 'done').length}/
+                {journey.length} complete
               </span>
             </div>
 
@@ -359,7 +430,10 @@ export default function VerifyClient({
                               ? 'bg-rose-500 text-white'
                               : 'bg-[#7E5896] text-white'),
                         step.mode === 'locked' &&
-                          'bg-white border border-gray-200 text-gray-300',
+                          cn(
+                            'bg-white border-2 border-dashed',
+                            LOCKED_RING[step.tone ?? 'purple'],
+                          ),
                       )}
                       aria-hidden
                     >
@@ -444,6 +518,64 @@ export default function VerifyClient({
           </footer>
         </div>
       </main>
+    </div>
+  )
+}
+
+/**
+ * A single optional document row (TIN / business license). Reuses
+ * DocumentUploadActions for the upload UI, wrapped with an icon, an
+ * "Optional" tag, and an awaiting-review tag once uploaded.
+ */
+function OptionalDoc({
+  title,
+  description,
+  slot,
+  done,
+  isCorrection,
+}: {
+  title: string
+  description: string
+  slot: VerifyDocSlot
+  done: boolean
+  isCorrection: boolean
+}) {
+  return (
+    <div className="py-4 first:pt-0 last:pb-0">
+      <div className="flex items-start gap-3">
+        <span
+          className={cn(
+            'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+            done ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-500',
+          )}
+        >
+          {done ? (
+            <Check className="h-4 w-4" strokeWidth={3} />
+          ) : (
+            <FileText className="h-4 w-4" />
+          )}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+            {done ? (
+              <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-emerald-700">
+                Awaiting review
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-gray-400">
+                Optional
+              </span>
+            )}
+          </div>
+          <p className="mt-0.5 text-sm leading-relaxed text-gray-600">
+            {description}
+          </p>
+          <div className="mt-3">
+            <DocumentUploadActions slot={slot} isCorrection={isCorrection} />
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
@@ -605,23 +737,67 @@ function DocumentUploadActions({
 }
 
 /**
- * Action-only renderer for the active vendor-agreement step. The timeline
- * row above provides the title + status pill + description; this just
- * renders the read-the-PDF + ack + name + signature pad + submit form.
+ * Renders the list of agreement documents (main contract + Schedule A +
+ * Schedule B) for the active agreement step. Each document is signed
+ * independently; signed ones collapse to a compact done row, and the first
+ * unsigned document is expanded by default so the vendor always sees the next
+ * thing to sign.
  */
-function AgreementSignActions({
-  agreementPdfUrl,
-  agreementVersion,
+function AgreementDocsList({
+  docs,
   businessDefaults,
 }: {
-  agreementPdfUrl: string
-  agreementVersion: string
+  docs: AgreementDocView[]
   businessDefaults: AgreementBusinessDefaults
+}) {
+  const firstUnsigned = docs.find((d) => !d.signedAt)?.id ?? null
+  const [openId, setOpenId] = useState<AgreementDocView['id'] | null>(
+    firstUnsigned,
+  )
+
+  return (
+    <div className="mt-4 space-y-3">
+      <p className="text-[11px] text-gray-500 leading-relaxed">
+        The agreement comes in {docs.length} parts — the main contract and its
+        two schedules. Read and e-sign each one separately. They&rsquo;re all
+        part of the same binding contract (OF-LGL-AGR-002).
+      </p>
+      {docs.map((doc) => (
+        <AgreementDocCard
+          key={doc.id}
+          doc={doc}
+          businessDefaults={businessDefaults}
+          open={openId === doc.id}
+          onToggle={() =>
+            setOpenId((cur) => (cur === doc.id ? null : doc.id))
+          }
+        />
+      ))}
+    </div>
+  )
+}
+
+/**
+ * A single agreement document: header (title + code + status pill) and, when
+ * expanded and not yet signed, the read-the-PDF + ack + SEHEMU B
+ * identification block + name + signature pad + submit form. The main
+ * contract uses the full 7-field business table; the schedules use the lighter
+ * block printed on their own signature page.
+ */
+function AgreementDocCard({
+  doc,
+  businessDefaults,
+  open,
+  onToggle,
+}: {
+  doc: AgreementDocView
+  businessDefaults: AgreementBusinessDefaults
+  open: boolean
+  onToggle: () => void
 }) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [expanded, setExpanded] = useState(true)
   const [name, setName] = useState('')
   const [acknowledged, setAcknowledged] = useState(false)
   // PNG data URL of the drawn signature, or null if the vendor hasn't drawn
@@ -629,9 +805,11 @@ function AgreementSignActions({
   // record per the agreement; the drawn glyph is supplementary visual proof).
   const [signatureDataUrl, setSignatureDataUrl] = useState<string | null>(null)
 
-  // Page-3 identification block of the Mkataba. Pre-filled from onboarding
-  // answers so the vendor only has to type the genuinely new fields (TIN
-  // primarily). All fields are required to match the printed form.
+  const isFull = doc.fields === 'full'
+
+  // SEHEMU B identification block. Pre-filled from onboarding answers where we
+  // have the data. The full contract carries the whole business table; the
+  // schedules carry only business name + position (Cheo) + NIDA.
   const [businessName, setBusinessName] = useState(
     businessDefaults.businessName,
   )
@@ -645,6 +823,11 @@ function AgreementSignActions({
   const [email, setEmail] = useState(businessDefaults.email)
   const [phone, setPhone] = useState(businessDefaults.phone)
   const [serviceType, setServiceType] = useState(businessDefaults.serviceType)
+  // Schedule-only fields.
+  const [position, setPosition] = useState('')
+  const [nida, setNida] = useState('')
+
+  const signed = !!doc.signedAt
 
   const onSubmit = () => {
     setError(null)
@@ -656,31 +839,44 @@ function AgreementSignActions({
       setError('Type your full legal name to sign.')
       return
     }
-    const fields: [string, string, string][] = [
-      ['Jina la Biashara', 'business name', businessName],
-      ['TIN', 'TIN', tin],
-      ['Anwani ya Biashara', 'business address', businessAddress],
-      ['Mtu wa mawasiliano', 'contact person', contactPerson],
-      ['Barua Pepe', 'email', email],
-      ['WhatsApp/Simu', 'phone', phone],
-      ['Aina ya Huduma', 'service type', serviceType],
-    ]
-    for (const [sw, en, value] of fields) {
+    const required: [string, string][] = isFull
+      ? [
+          ['Jina la Biashara', businessName],
+          ['TIN', tin],
+          ['Anwani ya Biashara', businessAddress],
+          ['Mtu wa Mawasiliano', contactPerson],
+          ['Barua Pepe', email],
+          ['WhatsApp/Simu', phone],
+          ['Aina ya Huduma', serviceType],
+        ]
+      : [
+          ['Jina la Biashara', businessName],
+          ['Cheo', position],
+          ['Kitambulisho (NIDA)', nida],
+        ]
+    for (const [label, value] of required) {
       if (!value.trim()) {
-        setError(`Fill in ${sw} (${en}) before signing.`)
+        setError(`Fill in ${label} before signing.`)
         return
       }
     }
+
     const formData = new FormData()
+    formData.append('documentId', doc.id)
     formData.append('signedName', name.trim())
     formData.append('acknowledged', 'true')
     formData.append('businessName', businessName.trim())
-    formData.append('tin', tin.trim())
-    formData.append('businessAddress', businessAddress.trim())
-    formData.append('contactPerson', contactPerson.trim())
-    formData.append('email', email.trim())
-    formData.append('phone', phone.trim())
-    formData.append('serviceType', serviceType.trim())
+    if (isFull) {
+      formData.append('tin', tin.trim())
+      formData.append('businessAddress', businessAddress.trim())
+      formData.append('contactPerson', contactPerson.trim())
+      formData.append('email', email.trim())
+      formData.append('phone', phone.trim())
+      formData.append('serviceType', serviceType.trim())
+    } else {
+      formData.append('position', position.trim())
+      formData.append('nida', nida.trim())
+    }
     if (signatureDataUrl) {
       formData.append('signatureImage', signatureDataUrl)
     }
@@ -695,205 +891,283 @@ function AgreementSignActions({
   }
 
   return (
-    <div className="mt-4">
-      <div className="flex items-center gap-3 flex-wrap">
-        <button
-          type="button"
-          onClick={() => setExpanded((s) => !s)}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-[#7E5896] hover:text-[#5e3f72]"
+    <div
+      className={cn(
+        'rounded-2xl border bg-white overflow-hidden transition-colors',
+        signed ? 'border-emerald-200 bg-emerald-50/40' : 'border-gray-200',
+      )}
+    >
+      {/* Header row — title, code, status. Clicking toggles the body open for
+          unsigned docs; signed docs just show the done state. */}
+      <button
+        type="button"
+        onClick={signed ? undefined : onToggle}
+        aria-expanded={signed ? undefined : open}
+        className={cn(
+          'w-full flex items-start gap-3 px-4 py-3.5 text-left',
+          !signed && 'hover:bg-gray-50',
+        )}
+      >
+        <span
+          className={cn(
+            'mt-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full shrink-0',
+            signed
+              ? 'bg-emerald-500 text-white'
+              : open
+                ? 'bg-[#7E5896] text-white'
+                : 'bg-gray-100 text-gray-500',
+          )}
+          aria-hidden
         >
-          {expanded ? 'Hide agreement' : 'Read the agreement'}
-        </button>
-        <span className="text-gray-300">·</span>
-        <a
-          href={agreementPdfUrl}
-          download="OpusFesta_Mkataba_Watoa_Huduma.pdf"
-          className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900"
-        >
-          Download PDF
-        </a>
-      </div>
+          {signed ? (
+            <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+          ) : (
+            <FileSignature className="w-3.5 h-3.5" />
+          )}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+            <span className="text-sm font-semibold text-gray-900">
+              {doc.title}
+            </span>
+            <span className="font-mono text-[10px] text-gray-400">
+              {doc.code}
+            </span>
+          </span>
+          <span className="block text-[11px] text-gray-500">
+            {doc.subtitle}
+          </span>
+        </span>
+        <span className="shrink-0 self-center">
+          {signed ? (
+            <span className="text-[10px] font-bold uppercase tracking-[0.06em] text-emerald-700">
+              Signed{doc.signedAt ? ` · ${formatRelative(doc.signedAt)}` : ''}
+            </span>
+          ) : (
+            <span className="text-[11px] font-semibold text-[#7E5896]">
+              {open ? 'Hide' : 'Sign'}
+            </span>
+          )}
+        </span>
+      </button>
 
-      {expanded && (
-        <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50/70 overflow-hidden">
-          {/* Native PDF viewer renders the canonical Mkataba exactly as it
-              appears in the source document. Browsers that can't display the
-              PDF inline (mostly older mobile Safari) get the download CTA. */}
-          <object
-            data={`${agreementPdfUrl}#view=FitH`}
-            type="application/pdf"
-            aria-label="OpusFesta vendor agreement (Mkataba wa Watoa Huduma)"
-            className="w-full h-[640px]"
-          >
-            <div className="p-6 text-center text-xs text-gray-600 leading-relaxed">
-              Your browser can&rsquo;t display the PDF inline.{' '}
-              <a
-                href={agreementPdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-semibold text-[#7E5896] hover:text-[#5e3f72] underline underline-offset-2"
-              >
-                Open the agreement in a new tab
-              </a>{' '}
-              to read the full Mkataba before signing.
+      {!signed && open && (
+        <div className="px-4 pb-4 border-t border-gray-100">
+          <div className="mt-3 flex items-center gap-3 flex-wrap">
+            <a
+              href={doc.pdfUrl}
+              download={doc.downloadName}
+              className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900"
+            >
+              Download PDF
+            </a>
+          </div>
+
+          <div className="mt-3 rounded-xl border border-gray-200 bg-gray-50/70 overflow-hidden">
+            {/* Native PDF viewer renders the canonical document exactly as it
+                appears in the source. Browsers that can't display the PDF
+                inline (mostly older mobile Safari) get the download CTA. */}
+            <object
+              data={`${doc.pdfUrl}#view=FitH`}
+              type="application/pdf"
+              aria-label={`${doc.title} (${doc.code})`}
+              className="w-full h-[560px]"
+            >
+              <div className="p-6 text-center text-xs text-gray-600 leading-relaxed">
+                Your browser can&rsquo;t display the PDF inline.{' '}
+                <a
+                  href={doc.pdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-semibold text-[#7E5896] hover:text-[#5e3f72] underline underline-offset-2"
+                >
+                  Open the document in a new tab
+                </a>{' '}
+                to read it in full before signing.
+              </div>
+            </object>
+          </div>
+
+          <div className="mt-4 space-y-3">
+            <label className="flex items-start gap-2.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acknowledged}
+                onChange={(e) => setAcknowledged(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#7E5896] focus:ring-[#7E5896] focus:ring-offset-0"
+              />
+              <span className="text-xs text-gray-700 leading-relaxed">
+                I have read {doc.title} ({doc.code}) and agree to its terms on
+                behalf of my business.
+              </span>
+            </label>
+
+            {/* SEHEMU B identification block, mirroring the printed signature
+                page. Labels are Swahili (to match the document) with English
+                sub-labels as a reading aid. Pre-filled from onboarding where
+                we have the data. */}
+            <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
+              <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-gray-700">
+                {isFull ? 'Taarifa za Biashara' : 'Taarifa za Mtoa Huduma'}{' '}
+                <span className="text-gray-400 font-semibold normal-case tracking-normal">
+                  (SEHEMU B)
+                </span>
+              </h4>
+              <p className="mt-1 text-[11px] text-gray-500 leading-relaxed">
+                Confirm the details that appear on the signature page. Edit
+                anything that&rsquo;s out of date.
+              </p>
+
+              {isFull ? (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <AgreementField
+                    label="Jina la Biashara"
+                    hint="Business name"
+                    value={businessName}
+                    onChange={setBusinessName}
+                    autoComplete="organization"
+                    disabled={pending}
+                  />
+                  <AgreementField
+                    label="TIN"
+                    hint="Tax Identification Number"
+                    value={tin}
+                    onChange={setTin}
+                    placeholder="123-456-789"
+                    inputMode="numeric"
+                    disabled={pending}
+                  />
+                  <AgreementField
+                    label="Anwani ya Biashara"
+                    hint="Business address"
+                    value={businessAddress}
+                    onChange={setBusinessAddress}
+                    autoComplete="street-address"
+                    className="sm:col-span-2"
+                    disabled={pending}
+                  />
+                  <AgreementField
+                    label="Mtu wa Mawasiliano"
+                    hint="Contact person"
+                    value={contactPerson}
+                    onChange={setContactPerson}
+                    autoComplete="name"
+                    disabled={pending}
+                  />
+                  <AgreementField
+                    label="Barua Pepe"
+                    hint="Email"
+                    value={email}
+                    onChange={setEmail}
+                    type="email"
+                    autoComplete="email"
+                    disabled={pending}
+                  />
+                  <AgreementField
+                    label="WhatsApp / Simu"
+                    hint="WhatsApp / phone"
+                    value={phone}
+                    onChange={setPhone}
+                    type="tel"
+                    autoComplete="tel"
+                    disabled={pending}
+                  />
+                  <AgreementField
+                    label="Aina ya Huduma"
+                    hint="Type of service"
+                    value={serviceType}
+                    onChange={setServiceType}
+                    disabled={pending}
+                  />
+                </div>
+              ) : (
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <AgreementField
+                    label="Jina la Biashara"
+                    hint="Business name"
+                    value={businessName}
+                    onChange={setBusinessName}
+                    autoComplete="organization"
+                    className="sm:col-span-2"
+                    disabled={pending}
+                  />
+                  <AgreementField
+                    label="Cheo"
+                    hint="Position / title"
+                    value={position}
+                    onChange={setPosition}
+                    placeholder="e.g. Mmiliki"
+                    disabled={pending}
+                  />
+                  <AgreementField
+                    label="Kitambulisho (NIDA)"
+                    hint="National ID number"
+                    value={nida}
+                    onChange={setNida}
+                    inputMode="numeric"
+                    disabled={pending}
+                  />
+                </div>
+              )}
             </div>
-          </object>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Type your full legal name to sign
+              </label>
+              <input
+                type="text"
+                autoComplete="name"
+                placeholder="e.g. Asha Mwakikuti"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7E5896] focus:border-transparent"
+              />
+              <p className="mt-1 text-[11px] text-gray-500">
+                Must match the name on your National ID. Your IP and timestamp
+                are recorded for the signature audit trail.
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 mb-1">
+                Or draw your signature
+              </label>
+              <SignaturePad onChange={setSignatureDataUrl} disabled={pending} />
+            </div>
+
+            {error && (
+              <div className="flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-100 px-3 py-2.5">
+                <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
+                <p className="text-xs text-rose-800 leading-relaxed">{error}</p>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={onSubmit}
+              disabled={pending}
+              className={cn(
+                'inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-full transition-colors',
+                'bg-gray-900 hover:bg-gray-800 text-white',
+                pending && 'opacity-60 cursor-wait',
+              )}
+            >
+              {pending ? (
+                <>
+                  <Clock className="w-3.5 h-3.5 animate-pulse" />
+                  Signing…
+                </>
+              ) : (
+                <>
+                  <PenLine className="w-3.5 h-3.5" />
+                  Sign and submit
+                </>
+              )}
+            </button>
+          </div>
         </div>
       )}
-
-      <div className="mt-4 space-y-3">
-        <label className="flex items-start gap-2.5 cursor-pointer">
-          <input
-            type="checkbox"
-            checked={acknowledged}
-            onChange={(e) => setAcknowledged(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-[#7E5896] focus:ring-[#7E5896] focus:ring-offset-0"
-          />
-          <span className="text-xs text-gray-700 leading-relaxed">
-            I have read the OpusFesta vendor agreement ({agreementVersion}) and
-            agree to its terms on behalf of my business.
-          </span>
-        </label>
-
-        {/* Page-3 identification block of the Mkataba. The labels are in
-            Swahili to mirror the printed form; sub-labels in English give a
-            quick reading aid. Pre-filled from the vendor's onboarding answers
-            where we already have the data. Sits before the signature inputs
-            so the form flows the same way page 3 of the printed agreement
-            does — declare the business, then sign for it. */}
-        <div className="rounded-xl border border-gray-200 bg-gray-50/70 px-4 py-4">
-          <h4 className="text-xs font-bold uppercase tracking-[0.08em] text-gray-700">
-            Taarifa za Biashara{' '}
-            <span className="text-gray-400 font-semibold normal-case tracking-normal">
-              (page 3 of the Mkataba)
-            </span>
-          </h4>
-          <p className="mt-1 text-[11px] text-gray-500 leading-relaxed">
-            Confirm the details that appear on page 3 of the agreement. Edit
-            anything that&rsquo;s out of date.
-          </p>
-
-          <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <AgreementField
-              label="Jina la Biashara"
-              hint="Business name"
-              value={businessName}
-              onChange={setBusinessName}
-              autoComplete="organization"
-              disabled={pending}
-            />
-            <AgreementField
-              label="TIN"
-              hint="Tax Identification Number"
-              value={tin}
-              onChange={setTin}
-              placeholder="123-456-789"
-              inputMode="numeric"
-              disabled={pending}
-            />
-            <AgreementField
-              label="Anwani ya Biashara"
-              hint="Business address"
-              value={businessAddress}
-              onChange={setBusinessAddress}
-              autoComplete="street-address"
-              className="sm:col-span-2"
-              disabled={pending}
-            />
-            <AgreementField
-              label="Mtu wa Mawasiliano"
-              hint="Contact person"
-              value={contactPerson}
-              onChange={setContactPerson}
-              autoComplete="name"
-              disabled={pending}
-            />
-            <AgreementField
-              label="Barua Pepe"
-              hint="Email"
-              value={email}
-              onChange={setEmail}
-              type="email"
-              autoComplete="email"
-              disabled={pending}
-            />
-            <AgreementField
-              label="WhatsApp / Simu"
-              hint="WhatsApp / phone"
-              value={phone}
-              onChange={setPhone}
-              type="tel"
-              autoComplete="tel"
-              disabled={pending}
-            />
-            <AgreementField
-              label="Aina ya Huduma"
-              hint="Type of service"
-              value={serviceType}
-              onChange={setServiceType}
-              disabled={pending}
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
-            Type your full legal name to sign
-          </label>
-          <input
-            type="text"
-            autoComplete="name"
-            placeholder="e.g. Asha Mwakikuti"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#7E5896] focus:border-transparent"
-          />
-          <p className="mt-1 text-[11px] text-gray-500">
-            Must match the name on your TIN certificate. Your IP and timestamp
-            are recorded for the signature audit trail.
-          </p>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-gray-700 mb-1">
-            Or draw your signature
-          </label>
-          <SignaturePad
-            onChange={setSignatureDataUrl}
-            disabled={pending}
-          />
-        </div>
-
-        {error && (
-          <div className="flex items-start gap-2 rounded-lg bg-rose-50 border border-rose-100 px-3 py-2.5">
-            <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-rose-800 leading-relaxed">{error}</p>
-          </div>
-        )}
-
-        <button
-          type="button"
-          onClick={onSubmit}
-          disabled={pending}
-          className={cn(
-            'inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-full transition-colors',
-            'bg-gray-900 hover:bg-gray-800 text-white',
-            pending && 'opacity-60 cursor-wait',
-          )}
-        >
-          {pending ? (
-            <>
-              <Clock className="w-3.5 h-3.5 animate-pulse" />
-              Signing…
-            </>
-          ) : (
-            <>
-              <PenLine className="w-3.5 h-3.5" />
-              Sign and submit
-            </>
-          )}
-        </button>
-      </div>
     </div>
   )
 }

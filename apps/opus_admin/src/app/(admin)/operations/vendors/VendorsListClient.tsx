@@ -1,21 +1,32 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import type { ReactNode } from 'react'
 import {
   AlertCircle,
+  AlertTriangle,
+  ArrowUpRight,
   Building2,
   ChevronDown,
+  Clock,
+  Eye,
+  Gauge,
+  GitMerge,
   Loader2,
+  Mail,
+  MapPin,
   Plus,
+  Search,
+  SquarePen,
   X,
 } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import { cn } from '@/lib/utils'
 import { useSetPageHeading } from '@/components/PageHeading'
-import { useSetPageSearch } from '@/components/PageSearch'
 import { HeaderActionsSlot } from '@/components/HeaderPortals'
-import { QueueHealthStrip } from './_components/QueueHealthStrip'
-import { VendorRowCard } from './_components/VendorRowCard'
+import { VendorAvatar } from './_components/VendorAvatar'
+import { StatusPill, type StatusPillVariant } from './_components/StatusPill'
+import { MergeVendorDialog } from './_components/MergeVendorDialog'
 import { createVendorAccount } from './actions'
 import type {
   QueueHealth,
@@ -88,9 +99,45 @@ const STATUS_TABS: Array<{ id: ListStatus; label: string; description: string }>
   },
 ]
 
-const ALPHABET: string[] = Array.from({ length: 26 }, (_, i) =>
-  String.fromCharCode(65 + i),
-)
+const STATUS_BADGE: Record<
+  VendorStatus,
+  { label: string; variant: StatusPillVariant }
+> = {
+  awaiting_review: { label: 'Submitted', variant: 'warning' },
+  needs_corrections: { label: 'Corrections', variant: 'danger' },
+  uploading_docs: { label: 'Uploading', variant: 'info' },
+  drafting: { label: 'Drafting', variant: 'neutral' },
+  active: { label: 'Active', variant: 'success' },
+  suspended: { label: 'Suspended', variant: 'neutral' },
+}
+
+// Category chips — one brand hue per category so an admin can pick out all
+// the venues (or florists) at a glance. Hashed deterministically from the
+// category name, using the SAME palette + seed as VendorAvatar's fallback
+// tile, so a vendor's monogram tile and its category chip always match.
+const CHIP_PALETTE = [
+  { bg: '#F0DFF6', fg: '#7E5896' }, // lavender
+  { bg: '#E8FBDB', fg: '#3F8B5C' }, // sage
+  { bg: '#FCE9C2', fg: '#B07F2C' }, // champagne
+  { bg: '#DDE9EE', fg: '#3F6B82' }, // periwinkle
+  { bg: '#F5DCE2', fg: '#A84F66' }, // rose
+] as const
+
+function categoryChip(category: string): { bg: string; fg: string } {
+  const seed = category.trim() || '?'
+  const hash = [...seed].reduce((sum, ch) => sum + ch.charCodeAt(0), 0)
+  return CHIP_PALETTE[hash % CHIP_PALETTE.length]
+}
+
+// Vendor hasn't finished their side yet — these read as "in progress" (dashed,
+// muted) so a half-built record never masquerades as a live one.
+const IN_PROGRESS_STATUSES = new Set<VendorStatus>(['drafting', 'uploading_docs'])
+
+// Shared 6-column grid for the list "table" (CSS grid, not <table> — mirrors
+// the Employees page). Columns: Vendor · Vendor ID · Category · Status ·
+// Joined · Actions.
+const ROW_GRID =
+  'grid min-w-[860px] grid-cols-[minmax(0,2.4fr)_110px_minmax(0,1.8fr)_130px_minmax(130px,1fr)_64px] items-center gap-5'
 
 export default function VendorsListClient({
   vendors,
@@ -110,16 +157,15 @@ export default function VendorsListClient({
 
   const initialQ = searchParams?.get('q') ?? ''
   const initialSort = (searchParams?.get('sort') as SortMode) ?? 'oldest'
-  const initialLetter = searchParams?.get('letter') ?? 'all'
 
   const [search, setSearch] = useState(initialQ)
+  const [categoryFilter, setCategoryFilter] = useState(
+    searchParams?.get('category') ?? 'All',
+  )
   const [sort, setSort] = useState<SortMode>(
     initialSort === 'oldest' || initialSort === 'newest' || initialSort === 'name'
       ? initialSort
       : 'oldest',
-  )
-  const [letter, setLetter] = useState<string>(
-    /^[A-Z]$/.test(initialLetter) ? initialLetter : 'all',
   )
 
   // Header is driven by live status data per OF-ENG-SPEC-002 §5.
@@ -127,16 +173,6 @@ export default function VendorsListClient({
   useSetPageHeading({
     title: 'Vendor accounts',
     subtitle: activeTab?.description ?? 'Every vendor record.',
-  })
-
-  // Search input lives in the global admin Header — register the placeholder
-  // and wiring here so the input shows up there on this page only.
-  useSetPageSearch({
-    value: search,
-    placeholder: 'Search vendors, IDs, contacts…',
-    ariaLabel: 'Search vendors',
-    onChange: (next) => setSearch(next),
-    onClear: () => setSearch(''),
   })
 
   // URL sync — debounced for `q`, immediate for the rest. Uses replace so
@@ -182,32 +218,34 @@ export default function VendorsListClient({
     writeParam('sort', next === 'oldest' ? null : next)
   }
 
-  const handleLetterChange = (next: string) => {
-    setLetter(next)
-    writeParam('letter', next === 'all' ? null : next)
+  const handleCategoryChange = (next: string) => {
+    setCategoryFilter(next)
+    writeParam('category', next === 'All' ? null : next)
   }
 
-  // Bucket vendors by first letter for the alphabet filter; same fold rule
-  // as the Filter dropdown below — non-letters go to '#'.
-  const bucketFor = (v: VendorAccount): string => {
-    const ch = (v.businessName.trim().charAt(0) || '').toUpperCase()
-    return ch >= 'A' && ch <= 'Z' ? ch : '#'
-  }
+  const [view, setView] = useState<'list' | 'grid'>('grid')
 
-  const lettersWithCounts = useMemo(() => {
-    const map = new Map<string, number>()
+  // Distinct categories present in the roster, title-cased, for the filter.
+  const categoryOptions = useMemo(() => {
+    const set = new Set<string>()
     for (const v of vendors) {
-      const b = bucketFor(v)
-      map.set(b, (map.get(b) ?? 0) + 1)
+      const label = titleCaseCategory(v.category)
+      if (label) set.add(label)
     }
-    return map
+    return ['All', ...Array.from(set).sort((a, b) => a.localeCompare(b))]
   }, [vendors])
+
+  const clearFilters = () => {
+    setSearch('')
+    if (categoryFilter !== 'All') handleCategoryChange('All')
+    if (status !== 'all') handleStatusChange('all')
+  }
 
   const visibleVendors = useMemo(() => {
     let list = vendors
 
-    if (letter !== 'all') {
-      list = list.filter((v) => bucketFor(v) === letter)
+    if (categoryFilter !== 'All') {
+      list = list.filter((v) => titleCaseCategory(v.category) === categoryFilter)
     }
 
     const q = search.trim().toLowerCase()
@@ -250,12 +288,12 @@ export default function VendorsListClient({
       }
     })
     return sorted
-  }, [vendors, letter, search, sort])
+  }, [vendors, search, sort, categoryFilter])
 
   const totalCount = vendors.length
-  const showHealth = status === 'awaiting_review' || status === 'all'
 
   const [createOpen, setCreateOpen] = useState(false)
+  const [mergeAnchor, setMergeAnchor] = useState<VendorAccount | null>(null)
 
   return (
     <div className="px-8 pt-4 pb-12">
@@ -282,88 +320,169 @@ export default function VendorsListClient({
         }}
       />
 
-      <div className="max-w-[1200px] mx-auto">
-        {/* Search now lives in the global admin Header (registered via
-            useSetPageSearch above). */}
+      <MergeVendorDialog
+        anchor={mergeAnchor}
+        vendors={vendors}
+        onClose={() => setMergeAnchor(null)}
+        onMerged={() => {
+          setMergeAnchor(null)
+          router.refresh()
+        }}
+      />
 
-        {/* Queue health */}
-        {showHealth && <QueueHealthStrip health={health} />}
+      <div className="space-y-5">
+        {/* KPI cards — same visual language as the Employees page. */}
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Kpi
+            label="Total vendors"
+            value={String(counts.all)}
+            delta={`${counts.active} active`}
+            deltaTone="neutral"
+            icon={<Building2 className="h-4 w-4" />}
+          />
+          <Kpi
+            label="Awaiting review"
+            value={String(counts.awaiting_review)}
+            hint="in the review queue"
+            icon={<Clock className="h-4 w-4" />}
+          />
+          <Kpi
+            label="Avg review time"
+            value={health.avgReviewTimeDays > 0 ? `${health.avgReviewTimeDays}d` : '—'}
+            hint="per vendor"
+            icon={<Gauge className="h-4 w-4" />}
+          />
+          <Kpi
+            label="SLA at risk"
+            value={String(health.slaAtRisk)}
+            delta={health.slaAtRisk > 0 ? 'attention' : undefined}
+            deltaTone="negative"
+            hint={health.slaAtRisk > 0 ? undefined : 'all on track'}
+            icon={<AlertTriangle className="h-4 w-4" />}
+          />
+        </div>
 
-        {/* Status tabs — pill-shaped, matches the wireframe */}
-        <div className="bg-gray-50 rounded-lg p-1 mb-4 overflow-x-auto">
-          <div className="flex items-center gap-0.5 min-w-max">
-            {STATUS_TABS.map((tab) => {
-              const isActive = tab.id === status
-              const count = counts[tab.id as keyof VendorStatusCounts]
-              return (
+        {/* Toolbar — search + status/sort pills + view toggle. */}
+        <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative min-w-[220px] flex-1">
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Search by name, category, city, ID…"
+                aria-label="Search vendors"
+                className="w-full rounded-lg border border-gray-200 bg-white py-2 pl-9 pr-3 text-sm outline-none focus:border-transparent focus:ring-2 focus:ring-[#C9A0DC] [&::-webkit-search-cancel-button]:hidden"
+              />
+            </div>
+            <FilterPill
+              label="Category"
+              value={categoryFilter}
+              options={categoryOptions}
+              onChange={handleCategoryChange}
+            />
+            <FilterPill
+              label="Status"
+              value={activeTab?.label ?? 'All'}
+              options={STATUS_TABS.map((t) => t.label)}
+              onChange={(label) => {
+                const tab = STATUS_TABS.find((t) => t.label === label)
+                if (tab) handleStatusChange(tab.id)
+              }}
+            />
+            <FilterPill
+              label="Sort"
+              value={SORT_LABELS[sort]}
+              options={Object.values(SORT_LABELS)}
+              onChange={(label) => {
+                const mode = (Object.keys(SORT_LABELS) as SortMode[]).find(
+                  (m) => SORT_LABELS[m] === label,
+                )
+                if (mode) handleSortChange(mode)
+              }}
+            />
+            {(search.trim() || status !== 'all' || categoryFilter !== 'All') && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium text-gray-500 hover:text-[#5B2D8E]"
+              >
+                <X className="h-3 w-3" />
+                Clear
+              </button>
+            )}
+            <div className="ml-auto flex items-center gap-3">
+              <span className="text-xs text-gray-500 tabular-nums">
+                {visibleVendors.length === vendors.length
+                  ? `${vendors.length} ${vendors.length === 1 ? 'vendor' : 'vendors'}`
+                  : `${visibleVendors.length} of ${vendors.length}`}
+              </span>
+              <div className="flex rounded-lg border border-gray-200 bg-gray-50 p-0.5 text-xs font-semibold">
                 <button
-                  key={tab.id}
                   type="button"
-                  onClick={() => handleStatusChange(tab.id)}
-                  aria-pressed={isActive}
+                  onClick={() => setView('grid')}
                   className={cn(
-                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[13px] font-medium transition-colors',
-                    isActive
-                      ? 'bg-gray-900 text-white shadow-sm'
-                      : 'text-gray-600 hover:text-gray-900',
+                    'rounded-md px-2.5 py-1 transition-colors',
+                    view === 'grid' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500',
                   )}
                 >
-                  {tab.label}
-                  <span
-                    className={cn(
-                      'inline-flex items-center justify-center min-w-[20px] h-[18px] px-1.5 rounded-full text-[11px] font-semibold tabular-nums',
-                      isActive
-                        ? 'bg-white/20 text-white'
-                        : 'bg-gray-200/70 text-gray-600',
-                    )}
-                  >
-                    {count}
-                  </span>
+                  Cards
                 </button>
-              )
-            })}
+                <button
+                  type="button"
+                  onClick={() => setView('list')}
+                  className={cn(
+                    'rounded-md px-2.5 py-1 transition-colors',
+                    view === 'list' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500',
+                  )}
+                >
+                  Table
+                </button>
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Toolbar — count + sort + filter */}
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <p className="text-xs text-gray-500">
-            {visibleVendors.length === 0
-              ? 'No vendors'
-              : visibleVendors.length === 1
-                ? '1 vendor'
-                : `${visibleVendors.length} vendors`}
-            {letter !== 'all' && ` · starting with ${letter}`}
-            {search.trim() && ` · matching "${search.trim()}"`}
-            {!letter || letter === 'all'
-              ? ` · sorted by ${SORT_LABELS[sort].toLowerCase()}`
-              : null}
-          </p>
-          <div className="flex items-center gap-2">
-            <SortMenu value={sort} onChange={handleSortChange} />
-            <FilterMenu
-              letter={letter}
-              onLetterChange={handleLetterChange}
-              lettersWithCounts={lettersWithCounts}
-            />
-          </div>
-        </div>
-
-        {/* Row cards */}
+        {/* Results — list (grid-row table) or card grid. */}
         {visibleVendors.length === 0 ? (
-          <EmptyState
-            search={search}
-            letter={letter}
-            totalInStatus={totalCount}
-          />
-        ) : (
-          <ul className="space-y-2.5">
+          <EmptyState search={search} totalInStatus={totalCount} />
+        ) : view === 'list' ? (
+          <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
+            <div
+              role="row"
+              className={cn(
+                ROW_GRID,
+                'border-b border-gray-100 bg-gray-50/60 px-5 py-2.5 text-[11px] font-semibold text-gray-500',
+              )}
+            >
+              <span>Vendor</span>
+              <span>Vendor ID</span>
+              <span>Category</span>
+              <span>Status</span>
+              <span>Joined</span>
+              <span className="pr-1 text-right">Actions</span>
+            </div>
             {visibleVendors.map((v) => (
-              <li key={v.id}>
-                <VendorRowCard vendor={v} slaHours={slaHours} />
-              </li>
+              <VendorRow
+                key={v.id}
+                vendor={v}
+                slaHours={slaHours}
+                onOpen={() => router.push(`/operations/vendors/${v.id}`)}
+              />
             ))}
-          </ul>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {visibleVendors.map((v) => (
+              <VendorCard
+                key={v.id}
+                vendor={v}
+                onOpen={() => router.push(`/operations/vendors/${v.id}`)}
+                onMerge={() => setMergeAnchor(v)}
+              />
+            ))}
+          </div>
         )}
       </div>
     </div>
@@ -372,186 +491,423 @@ export default function VendorsListClient({
 
 // --- Sub-components --------------------------------------------------------
 
-function SortMenu({
+// Pill-shaped filter with a transparent native <select> overlaid — same
+// pattern as the Employees page so the two pages read identically.
+function FilterPill({
+  label,
   value,
   onChange,
+  options,
 }: {
-  value: SortMode
-  onChange: (next: SortMode) => void
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: readonly string[]
 }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [open])
-
+  const active = value !== 'All' && value !== SORT_LABELS.oldest
   return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((s) => !s)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-3 h-8 text-xs font-medium text-gray-700 hover:border-gray-300 transition-colors"
+    <label
+      className={cn(
+        'relative inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+        active
+          ? 'border-[#E0BEEC] bg-[#F0DFF6] text-[#5B2D8E]'
+          : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50',
+      )}
+    >
+      <span className="text-gray-400">{label}:</span>
+      <span className={active ? 'text-[#5B2D8E]' : 'text-gray-900'}>{value}</span>
+      <ChevronDown className="h-3 w-3 text-gray-400" />
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        aria-label={label}
+        className="absolute inset-0 cursor-pointer opacity-0"
       >
-        Sort: {SORT_LABELS[value]}
-        <ChevronDown className="w-3 h-3 text-gray-400" />
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full mt-1 w-52 bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden z-20"
-        >
-          {(Object.keys(SORT_LABELS) as SortMode[]).map((mode) => (
-            <button
-              key={mode}
-              role="menuitem"
-              type="button"
-              onClick={() => {
-                onChange(mode)
-                setOpen(false)
-              }}
+        {options.map((opt) => (
+          <option key={opt} value={opt}>
+            {opt}
+          </option>
+        ))}
+      </select>
+    </label>
+  )
+}
+
+// --- KPI card (mirrors workforce/_components/Kpi) --------------------------
+
+function Kpi({
+  label,
+  value,
+  delta,
+  deltaTone = 'positive',
+  hint,
+  icon,
+}: {
+  label: string
+  value: string
+  delta?: string
+  deltaTone?: 'positive' | 'negative' | 'neutral'
+  hint?: string
+  icon?: ReactNode
+}) {
+  return (
+    <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.04)]">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-[12px] font-medium text-gray-500">{label}</div>
+        {icon && (
+          <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gray-100 text-gray-700">
+            {icon}
+          </span>
+        )}
+      </div>
+      <div className="mt-2 text-[28px] font-semibold leading-none tracking-tight text-gray-900">
+        {value}
+      </div>
+      {(delta || hint) && (
+        <div className="mt-2 flex items-center gap-2 text-[11px]">
+          {delta && (
+            <span
               className={cn(
-                'block w-full text-left px-3 py-2 text-xs hover:bg-gray-50 transition-colors',
-                value === mode ? 'font-semibold text-gray-900' : 'text-gray-700',
+                'inline-flex items-center rounded-full px-1.5 py-0.5 font-semibold',
+                deltaTone === 'positive' && 'bg-emerald-50 text-emerald-700',
+                deltaTone === 'negative' && 'bg-rose-50 text-rose-700',
+                deltaTone === 'neutral' && 'bg-gray-100 text-gray-600',
               )}
             >
-              {SORT_LABELS[mode]}
-            </button>
-          ))}
+              {delta}
+            </span>
+          )}
+          {hint && <span className="text-gray-400">{hint}</span>}
         </div>
       )}
     </div>
   )
 }
 
-function FilterMenu({
-  letter,
-  onLetterChange,
-  lettersWithCounts,
+// --- List row --------------------------------------------------------------
+
+function VendorRow({
+  vendor,
+  slaHours,
+  onOpen,
 }: {
-  letter: string
-  onLetterChange: (next: string) => void
-  lettersWithCounts: Map<string, number>
+  vendor: VendorAccount
+  slaHours: number
+  onOpen: () => void
 }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    const onClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false)
-      }
-    }
-    document.addEventListener('mousedown', onClick)
-    return () => document.removeEventListener('mousedown', onClick)
-  }, [open])
-
-  const isFiltered = letter !== 'all'
-
+  const badge = STATUS_BADGE[vendor.status]
   return (
-    <div className="relative" ref={ref}>
-      <button
-        type="button"
-        onClick={() => setOpen((s) => !s)}
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className={cn(
-          'inline-flex items-center gap-1.5 bg-white border rounded-lg px-3 h-8 text-xs font-medium transition-colors',
-          isFiltered
-            ? 'border-[#5B2D8E]/40 text-[#5B2D8E]'
-            : 'border-gray-200 text-gray-700 hover:border-gray-300',
-        )}
-      >
-        Filter
-        {isFiltered && (
-          <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#EEEDFE] text-[#5B2D8E] text-[10px] font-bold">
-            {letter}
-          </span>
-        )}
-        <ChevronDown className="w-3 h-3 text-gray-400" />
-      </button>
-      {open && (
-        <div
-          role="menu"
-          className="absolute right-0 top-full mt-1 w-72 bg-white border border-gray-200 rounded-lg shadow-lg p-3 z-20"
-        >
-          <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
-            By first letter
-          </p>
-          <div className="grid grid-cols-7 gap-1">
-            <button
-              type="button"
-              onClick={() => {
-                onLetterChange('all')
-                setOpen(false)
-              }}
-              className={cn(
-                'col-span-2 inline-flex items-center justify-center h-8 px-2 rounded text-xs font-semibold transition-colors',
-                letter === 'all'
-                  ? 'bg-gray-900 text-white'
-                  : 'text-gray-700 hover:bg-gray-50',
-              )}
-            >
-              All
-            </button>
-            {ALPHABET.map((ch) => {
-              const count = lettersWithCounts.get(ch) ?? 0
-              const isActive = letter === ch
-              const disabled = count === 0
-              return (
-                <button
-                  key={ch}
-                  type="button"
-                  disabled={disabled}
-                  onClick={() => {
-                    onLetterChange(ch)
-                    setOpen(false)
-                  }}
-                  title={
-                    disabled
-                      ? `No ${ch} vendors`
-                      : `${count} starting with ${ch}`
-                  }
-                  className={cn(
-                    'inline-flex items-center justify-center h-8 rounded text-xs font-semibold transition-colors',
-                    isActive && 'bg-gray-900 text-white',
-                    !isActive &&
-                      !disabled &&
-                      'text-gray-700 hover:bg-gray-50',
-                    disabled && 'text-gray-300 cursor-not-allowed',
-                  )}
-                >
-                  {ch}
-                </button>
-              )
-            })}
-          </div>
-        </div>
+    <div
+      role="row"
+      onClick={onOpen}
+      className={cn(
+        ROW_GRID,
+        'group cursor-pointer border-b border-gray-100 px-5 py-3 transition-colors last:border-b-0 hover:bg-gray-50/80',
       )}
+    >
+      {/* Vendor: logo + name + city */}
+      <div className="flex min-w-0 items-center gap-3">
+        <VendorAvatar
+          logoUrl={vendor.logoUrl}
+          businessName={vendor.businessName}
+          category={vendor.category}
+          size={32}
+        />
+        <div className="min-w-0">
+          <p className="truncate text-sm font-semibold text-gray-950">
+            {vendor.businessName}
+          </p>
+          <p className="truncate text-xs text-gray-500">{vendor.city || '—'}</p>
+        </div>
+      </div>
+
+      {/* Vendor ID */}
+      <div className="min-w-0">
+        <span className="font-mono text-[12px] font-semibold tracking-tight text-gray-700 tabular-nums">
+          {vendor.publicId}
+        </span>
+      </div>
+
+      {/* Category + submitter */}
+      <div className="min-w-0">
+        <p className="truncate text-sm font-medium text-gray-900">
+          {titleCaseCategory(vendor.category) || '—'}
+        </p>
+        {vendor.submittedByName && (
+          <p className="truncate text-xs text-gray-500">
+            via {vendor.submittedByName}
+          </p>
+        )}
+      </div>
+
+      {/* Status */}
+      <div>
+        <StatusPill variant={badge.variant}>{badge.label}</StatusPill>
+      </div>
+
+      {/* Joined */}
+      <div className="min-w-0">
+        <p className="truncate text-sm text-gray-700 tabular-nums">
+          {formatDate(vendor.submittedAt ?? vendor.createdAt)}
+        </p>
+        <p
+          className={cn(
+            'truncate text-[11px]',
+            ageTone(vendor, slaHours),
+          )}
+        >
+          {formatRelativeTime(vendor.submittedAt ?? vendor.createdAt)}
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div
+        className="flex items-center justify-end"
+        onClick={(e) => {
+          e.stopPropagation()
+        }}
+      >
+        <a
+          href={`/operations/vendors/${vendor.id}`}
+          onClick={(e) => {
+            if (e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1) return
+            e.preventDefault()
+            onOpen()
+          }}
+          aria-label={`Review ${vendor.businessName}`}
+          title="Open vendor"
+          className="rounded-md p-1.5 text-gray-400 transition-colors hover:bg-[#F0DFF6] hover:text-[#5B2D8E]"
+        >
+          <ArrowUpRight className="h-4 w-4" />
+        </a>
+      </div>
     </div>
   )
+}
+
+// --- Grid card -------------------------------------------------------------
+
+function VendorCard({
+  vendor,
+  onOpen,
+  onMerge,
+}: {
+  vendor: VendorAccount
+  onOpen: () => void
+  onMerge: () => void
+}) {
+  const badge = STATUS_BADGE[vendor.status]
+  const chip = categoryChip(vendor.category)
+  const inProgress = IN_PROGRESS_STATUSES.has(vendor.status)
+  const suspended = vendor.status === 'suspended'
+  const active = vendor.status === 'active'
+
+  // Warm-brutalist surfaces with a hard (no-blur) offset shadow. State drives
+  // the treatment so the grid is scannable: live = emerald, in-queue =
+  // lavender, in-progress = dashed/flat, suspended = muted.
+  const surface = inProgress
+    ? 'border-2 border-dashed border-[#E2D6EA] bg-[#FBF9FD] hover:border-[#C9A0DC]'
+    : suspended
+      ? 'border-2 border-gray-200 bg-gray-50/70 hover:border-gray-300'
+      : active
+        ? 'border-2 border-[#CDEBD7] bg-[#FCFFFD] shadow-[3px_3px_0_0_#DDF1E4] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-[#9FE870] hover:shadow-[5px_5px_0_0_#9FE870]'
+        : 'border-2 border-[#EFE7F3] bg-[#FCF9FF] shadow-[3px_3px_0_0_#EFE7F3] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-[#C9A0DC] hover:shadow-[5px_5px_0_0_#C9A0DC]'
+
+  const reviewHref = `/operations/vendors/${vendor.id}`
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen()
+        }
+      }}
+      className={cn(
+        'group relative flex cursor-pointer flex-col rounded-xl p-4 text-left transition-all',
+        surface,
+      )}
+    >
+      {/* Header: logo tile + name (two-line) with status pill pinned right */}
+      <div className="flex items-start gap-3">
+        <VendorAvatar
+          logoUrl={vendor.logoUrl}
+          businessName={vendor.businessName}
+          category={vendor.category}
+          size={44}
+          className={suspended ? 'opacity-70 grayscale' : undefined}
+        />
+        <p
+          className={cn(
+            'min-w-0 flex-1 line-clamp-2 text-sm font-semibold leading-snug',
+            suspended ? 'text-gray-500' : 'text-gray-950',
+          )}
+        >
+          {vendor.businessName}
+        </p>
+        <StatusPill variant={badge.variant}>{badge.label}</StatusPill>
+      </div>
+
+      {/* Category chip + in-progress docs hint */}
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        <span
+          className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+          style={{ backgroundColor: chip.bg, color: chip.fg }}
+        >
+          {titleCaseCategory(vendor.category) || 'Uncategorized'}
+        </span>
+        {inProgress && (
+          <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-[#C9A0DC] px-2 py-0.5 text-[11px] font-semibold text-[#7E5896]">
+            {vendor.documentsTotal > 0
+              ? `Docs ${vendor.documentsVerified}/${vendor.documentsTotal}`
+              : 'Awaiting docs'}
+          </span>
+        )}
+      </div>
+
+      {/* Meta row: location + labeled timestamp */}
+      <div className="mt-3 flex items-center justify-between gap-2 border-t border-black/5 pt-2.5 text-xs text-gray-500">
+        <span className="inline-flex min-w-0 items-center gap-1">
+          <MapPin className="h-3 w-3 shrink-0 text-gray-400" />
+          <span className="truncate">{vendor.city || 'Location TBC'}</span>
+        </span>
+        <span className="shrink-0 text-gray-400">
+          Updated {formatRelativeTime(vendor.updatedAt)}
+        </span>
+      </div>
+
+      {/* Footer: demoted ID caption + hover quick-actions */}
+      <div className="mt-2.5 flex items-center justify-between gap-2">
+        <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-gray-400 tabular-nums">
+          {vendor.publicId}
+        </span>
+        <div className="flex items-center gap-1 opacity-0 transition-opacity focus-within:opacity-100 group-hover:opacity-100">
+          <CardAction label="View vendor" href={reviewHref} onActivate={onOpen}>
+            <Eye className="h-3.5 w-3.5" />
+          </CardAction>
+          <CardAction label="Edit storefront" href={reviewHref} onActivate={onOpen}>
+            <SquarePen className="h-3.5 w-3.5" />
+          </CardAction>
+          {vendor.contactEmail && (
+            <CardAction
+              label="Message vendor"
+              href={`mailto:${vendor.contactEmail}`}
+            >
+              <Mail className="h-3.5 w-3.5" />
+            </CardAction>
+          )}
+          <button
+            type="button"
+            title="Merge duplicate"
+            aria-label="Merge duplicate"
+            onClick={(e) => {
+              e.stopPropagation()
+              onMerge()
+            }}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white/80 text-gray-500 transition-colors hover:border-[#C9A0DC] hover:bg-[#F0DFF6] hover:text-[#5B2D8E]"
+          >
+            <GitMerge className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Small hover quick-action on a card. Anchor-based so View/Edit support
+// cmd-click (open in new tab) and Message is a real mailto; clicks are
+// stopped from bubbling to the card's onClick.
+function CardAction({
+  label,
+  href,
+  onActivate,
+  children,
+}: {
+  label: string
+  href: string
+  onActivate?: () => void
+  children: ReactNode
+}) {
+  return (
+    <a
+      href={href}
+      title={label}
+      aria-label={label}
+      onClick={(e) => {
+        e.stopPropagation()
+        // Plain left-clicks on internal links route via the SPA; let modified
+        // clicks (new tab) and mailto fall through to the browser.
+        if (onActivate && !(e.metaKey || e.ctrlKey || e.shiftKey || e.button === 1)) {
+          e.preventDefault()
+          onActivate()
+        }
+      }}
+      className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-200 bg-white/80 text-gray-500 transition-colors hover:border-[#C9A0DC] hover:bg-[#F0DFF6] hover:text-[#5B2D8E]"
+    >
+      {children}
+    </a>
+  )
+}
+
+// --- Time / text helpers ---------------------------------------------------
+
+function ageTone(vendor: VendorAccount, slaHours: number): string {
+  if (vendor.status !== 'awaiting_review' || !vendor.submittedAt) {
+    return 'text-gray-400'
+  }
+  const ageMs = Date.now() - new Date(vendor.submittedAt).getTime()
+  const slaMs = slaHours * 60 * 60 * 1000
+  if (ageMs > slaMs * 2) return 'text-rose-600'
+  if (ageMs > slaMs) return 'text-amber-600'
+  return 'text-gray-400'
+}
+
+function formatDate(iso: string | null): string {
+  if (!iso) return '—'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return '—'
+  return d.toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  })
+}
+
+function formatRelativeTime(iso: string | null): string {
+  if (!iso) return '—'
+  const target = new Date(iso).getTime()
+  if (Number.isNaN(target)) return '—'
+  const diffMs = Date.now() - target
+  if (diffMs < 60_000) return 'just now'
+  const minutes = Math.floor(diffMs / 60_000)
+  if (minutes < 60) return `${minutes}m ago`
+  const hours = Math.floor(minutes / 60)
+  if (hours < 24) return `${hours}h ago`
+  const days = Math.floor(hours / 24)
+  if (days < 7) return `${days}d ago`
+  const weeks = Math.floor(days / 7)
+  if (weeks < 5) return `${weeks}w ago`
+  const months = Math.floor(days / 30)
+  if (months < 12) return `${months}mo`
+  return `${Math.floor(days / 365)}y`
+}
+
+function titleCaseCategory(raw: string): string {
+  if (!raw) return ''
+  return raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase()
 }
 
 function EmptyState({
   search,
-  letter,
   totalInStatus,
 }: {
   search: string
-  letter: string
   totalInStatus: number
 }) {
-  const filtered = search.trim() || letter !== 'all'
+  const filtered = Boolean(search.trim())
   return (
     <div className="bg-white rounded-xl border border-dashed border-gray-200 p-16 text-center">
       <div className="w-12 h-12 rounded-2xl bg-[#EEEDFE] text-[#5B2D8E] flex items-center justify-center mx-auto">
@@ -566,7 +922,7 @@ function EmptyState({
       </p>
       <p className="text-xs text-gray-500 mt-1">
         {filtered
-          ? 'Clear the search or pick a different letter.'
+          ? 'Clear the search to see all vendors.'
           : 'When vendors hit this state, they’ll appear here.'}
       </p>
     </div>
