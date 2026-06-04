@@ -84,20 +84,32 @@ export default function ReviewPage() {
   const onSubmit = async () => {
     setSubmitting(true)
     setSubmitError(null)
-    const result = await submitApplication(draft)
-    setSubmitting(false)
-    if (!result.ok) {
-      setSubmitError(result.error)
-      return
+    try {
+      const result = await submitApplication(draft)
+      if (!result.ok) {
+        setSubmitError(result.error)
+        return
+      }
+      update({ submittedAt: new Date().toISOString() })
+      if (isEdit) {
+        // Editing an existing application — return to the verification hub
+        // instead of replaying the first-time "Application complete" screen.
+        router.push('/verify')
+        return
+      }
+      setSubmitted(true)
+    } catch (err) {
+      // A throwing Server Action (Clerk/Supabase env error, origin rejection,
+      // network drop) must NOT leave the button stuck on "Submitting…". Surface
+      // it and reset so the vendor can retry.
+      console.error('[onboard/review] submit failed', err)
+      setSubmitError(
+        'Something went wrong submitting your application. Please check your connection and try again.',
+      )
+    } finally {
+      // Always runs — guarantees the spinner never sticks.
+      setSubmitting(false)
     }
-    update({ submittedAt: new Date().toISOString() })
-    if (isEdit) {
-      // Editing an existing application — return to the verification hub
-      // instead of replaying the first-time "Application complete" screen.
-      router.push('/verify')
-      return
-    }
-    setSubmitted(true)
   }
 
   const onContinueToVerify = () => router.push('/verify')

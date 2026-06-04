@@ -215,7 +215,20 @@ function validateDraft(draft: OnboardingDraft): string | null {
 export async function submitApplication(
   draft: OnboardingDraft,
 ): Promise<SubmitApplicationResult> {
-  const { userId } = await auth()
+  // Clerk's auth()/currentUser() and the Supabase admin client can THROW
+  // (env misconfig, Clerk outage, Server Action origin rejection). Catch them
+  // so this action always RESOLVES with a result object — a rejected promise
+  // would otherwise hang the client's "Submitting…" button.
+  let userId: string | null
+  try {
+    ;({ userId } = await auth())
+  } catch (err) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[submit] auth check failed: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
   if (!userId) {
     return { ok: false, reason: 'unauth', error: 'Sign in before submitting.' }
   }
@@ -225,7 +238,16 @@ export async function submitApplication(
     return { ok: false, reason: 'incomplete', error: validation }
   }
 
-  const clerkUser = await currentUser()
+  let clerkUser
+  try {
+    clerkUser = await currentUser()
+  } catch (err) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[submit] account lookup failed: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
   const email =
     clerkUser?.emailAddresses?.[0]?.emailAddress ?? draft.email ?? null
   const fullName =
@@ -241,7 +263,18 @@ export async function submitApplication(
     }
   }
 
-  const admin = createSupabaseAdminClient()
+  let admin
+  try {
+    admin = createSupabaseAdminClient()
+  } catch (err) {
+    // Thrown synchronously when NEXT_PUBLIC_SUPABASE_URL or
+    // SUPABASE_SERVICE_ROLE_KEY is missing in the deployment env.
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[submit] database unavailable — check Supabase env config: ${err instanceof Error ? err.message : String(err)}`,
+    }
+  }
 
   // 1) Provision public.users row keyed on clerk_id, so RLS can resolve it.
   const upsertUser = await admin
