@@ -35,15 +35,12 @@ const nextConfig: NextConfig = {
     // /opuspass, so the bare root must bounce there. We emit an ABSOLUTE URL in
     // production: a relative `Location: /opuspass` works in browsers but some
     // link-preview crawlers (WhatsApp/iMessage unfurlers) mishandle relative
-    // redirects, so a shared bare link wouldn't unfurl. Prefer an explicit
-    // NEXT_PUBLIC_SITE_URL, fall back to Vercel's auto-injected production
-    // domain, and finally to a relative path for local dev.
-    const siteUrl =
-      process.env.NEXT_PUBLIC_SITE_URL ??
-      (process.env.VERCEL_PROJECT_PRODUCTION_URL
-        ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
-        : undefined)
-    const rootDestination = siteUrl ? `${siteUrl}/opuspass` : '/opuspass'
+    // redirects, so a shared bare link wouldn't unfurl. Use Vercel's
+    // auto-injected production domain (this deployment's OWN host — note
+    // NEXT_PUBLIC_SITE_URL means the opus_website origin here, not opuspass, so
+    // it must NOT be used) and fall back to a relative path for local dev.
+    const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL
+    const rootDestination = prodHost ? `https://${prodHost}/opuspass` : '/opuspass'
     return [
       // basePath:false matches the TRUE root; without it the source would itself
       // be prefixed to /opuspass and the bare domain would 404.
