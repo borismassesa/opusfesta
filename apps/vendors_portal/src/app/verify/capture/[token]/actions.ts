@@ -1,7 +1,11 @@
 'use server'
 
 import { verifyCaptureToken } from '@/lib/capture-token'
-import { storeVerificationShot, type CaptureKind } from '@/lib/verification'
+import {
+  isVendorUploadEligible,
+  storeVerificationShot,
+  type CaptureKind,
+} from '@/lib/verification'
 
 // Public (unauthenticated) upload used by the phone-capture page. Authorization
 // comes entirely from the signed capture token, which scopes the upload to one
@@ -23,6 +27,14 @@ export async function uploadCapturedNationalId(
   }
   if (kind !== 'front' && kind !== 'back' && kind !== 'selfie') {
     return { ok: false, error: 'Invalid capture type.' }
+  }
+  // Re-check vendor state at upload time — the token can outlive the state it
+  // was minted for (e.g. admin approved/suspended the vendor since).
+  if (!(await isVendorUploadEligible(vendorId))) {
+    return {
+      ok: false,
+      error: 'This application is no longer accepting document uploads.',
+    }
   }
   return storeVerificationShot(vendorId, kind, dataUrl)
 }

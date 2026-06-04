@@ -61,15 +61,26 @@ export async function storeVerificationShot(
       upsert: false,
     })
   if (up.error) {
-    return { ok: false, error: `[verify] capture upload failed: ${up.error.message}` }
+    // Log the raw cause server-side; return a clean, user-safe message (this
+    // can surface on the unauthenticated phone-capture screen).
+    console.warn(`[verify] capture upload failed (${docType}): ${up.error.message}`)
+    return { ok: false, error: 'Could not save that photo. Please retake it.' }
   }
 
-  await admin
+  // Supersede prior latest doc of this type. Capture the result — a silent
+  // failure here would leave two is_latest=true rows (esp. on retake), which
+  // skews the progress gate. Log if it fails (the insert below still wins).
+  const supersede = await admin
     .from('vendor_verification_documents')
     .update({ is_latest: false })
     .eq('vendor_id', vendorId)
     .eq('doc_type', docType)
     .eq('is_latest', true)
+  if (supersede.error) {
+    console.warn(
+      `[verify] is_latest supersede failed for vendor ${vendorId} (${docType}): ${supersede.error.message}`,
+    )
+  }
 
   const ins = await admin.from('vendor_verification_documents').insert({
     vendor_id: vendorId,
@@ -83,14 +94,31 @@ export async function storeVerificationShot(
   })
   if (ins.error) {
     await admin.storage.from('vendor_verification').remove([storagePath])
-    return {
-      ok: false,
-      error: `[verify] capture row insert failed: ${ins.error.code} ${ins.error.message}`,
-    }
+    console.warn(
+      `[verify] capture row insert failed for vendor ${vendorId} (${docType}): ${ins.error.code} ${ins.error.message}`,
+    )
+    return { ok: false, error: 'Could not save that photo. Please retake it.' }
   }
 
   await maybeTransitionToAdminReview(vendorId)
   return { ok: true }
+}
+
+/**
+ * Is the vendor still in a state where document uploads are accepted? The
+ * authenticated desktop path gates on this via requirePendingVendor; the
+ * public token path must re-check it too, since a 15-min token can outlive the
+ * state it was minted for (admin may approve/suspend mid-window).
+ */
+export async function isVendorUploadEligible(vendorId: string): Promise<boolean> {
+  const admin = createSupabaseAdminClient()
+  const v = await admin
+    .from('vendors')
+    .select('onboarding_status')
+    .eq('id', vendorId)
+    .maybeSingle<{ onboarding_status: string }>()
+  const s = v.data?.onboarding_status
+  return s === 'verification_pending' || s === 'needs_corrections'
 }
 
 /** Which captures are done (latest, not-rejected): ID front, back, selfie. */
@@ -105,6 +133,11 @@ export async function getVerificationCaptureProgress(
     .eq('is_latest', true)
     .in('doc_type', ['national_id_front', 'national_id_back', 'selfie_liveness'])
     .returns<Array<{ doc_type: string; status: string }>>()
+  if (docs.error) {
+    console.warn(
+      `[verify] capture-progress query failed for ${vendorId}: ${docs.error.message}`,
+    )
+  }
   const present = new Set(
     (docs.data ?? [])
       .filter((d) => d.status !== 'rejected')
@@ -165,9 +198,15 @@ export async function maybeTransitionToAdminReview(
       .eq('agreement_version', VENDOR_AGREEMENT_VERSION),
   ])
 
+  if (payouts.error || agreements.error) {
+    console.warn(
+      `[verify] auto-transition: payout/agreement check failed for ${vendorId}: ${payouts.error?.message ?? ''} ${agreements.error?.message ?? ''}`,
+    )
+    return
+  }
   if ((payouts.count ?? 0) === 0 || (agreements.count ?? 0) === 0) return
 
-  await admin
+  const transition = await admin
     .from('vendors')
     .update({
       onboarding_status: 'admin_review',
@@ -175,4 +214,11 @@ export async function maybeTransitionToAdminReview(
     })
     .eq('id', vendorId)
     .in('onboarding_status', ['verification_pending', 'needs_corrections'])
+  if (transition.error) {
+    // A completing capture left the vendor stuck in verification — surface it
+    // so it's debuggable instead of silently failing to advance.
+    console.warn(
+      `[verify] auto-transition to admin_review failed for ${vendorId}: ${transition.error.code} ${transition.error.message}`,
+    )
+  }
 }
