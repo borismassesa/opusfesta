@@ -554,7 +554,7 @@ export default function PendingClient({
             {copy.primaryCta && (
               <Link
                 href={copy.primaryCta.href}
-                className="mt-7 inline-flex items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-colors shadow-sm"
+                className="mt-7 inline-flex items-center justify-center gap-2 bg-[#1A1A1A] hover:bg-black text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-colors shadow-sm"
               >
                 {copy.primaryCta.label}
                 <ArrowRight className="w-4 h-4" />

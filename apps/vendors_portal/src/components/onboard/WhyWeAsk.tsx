@@ -78,7 +78,7 @@ export function WhyWeAsk({ title = 'Why we ask', children, label = 'Why we ask' 
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className="bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
+                className="bg-[#1A1A1A] text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-black transition-colors"
               >
                 Got it
               </button>

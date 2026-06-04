@@ -652,7 +652,7 @@ function DocumentUploadActions({
             'inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-full transition-colors',
             current
               ? 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-              : 'bg-gray-900 hover:bg-gray-800 text-white',
+              : 'bg-[#1A1A1A] hover:bg-black text-white',
             pending && 'opacity-60 cursor-wait',
           )}
         >
@@ -954,7 +954,7 @@ function AgreementSignActions({
           disabled={pending}
           className={cn(
             'inline-flex items-center gap-2 text-sm font-semibold px-5 py-2.5 rounded-full transition-colors',
-            'bg-gray-900 hover:bg-gray-800 text-white',
+            'bg-[#1A1A1A] hover:bg-black text-white',
             pending && 'opacity-60 cursor-wait',
           )}
         >
