@@ -3,6 +3,27 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
 import type { PackageDraft } from './packages'
+import {
+  emptyPayoutEntry,
+  hasCompletePayout,
+  isPayoutEntryComplete,
+  newPayoutEntryId,
+  primaryPayoutEntry,
+  type PayoutEntry,
+  type PayoutMethod,
+} from './payout'
+
+// The pure payout helpers/types live in the (non-client) ./payout module so
+// server code can use them without crossing the client boundary. Re-export them
+// here so existing importers of '@/lib/onboarding/draft' keep working.
+export {
+  emptyPayoutEntry,
+  hasCompletePayout,
+  isPayoutEntryComplete,
+  newPayoutEntryId,
+  primaryPayoutEntry,
+}
+export type { PayoutEntry, PayoutMethod }
 
 export type DayHours = {
   open: boolean
@@ -75,27 +96,6 @@ export type AwardCertificate = {
 
 export type CancellationLevel = 'flexible' | 'moderate' | 'strict' | null
 export type ReschedulePolicy = 'one-free' | 'unlimited' | 'none' | null
-export type PayoutMethod =
-  | 'mpesa'
-  | 'airtel-money'
-  | 'tigopesa'
-  | 'halopesa'
-  | 'lipa-namba'
-  | 'bank'
-  | null
-
-// A single payout destination. Vendors can register several (e.g. an M-Pesa
-// number for fast deposits plus a bank account for the balance) and mark one
-// as `primary` — the default destination money is sent to.
-export type PayoutEntry = {
-  id: string
-  method: PayoutMethod
-  number: string
-  accountName: string
-  bankName: string // when method === 'bank'
-  network: string // when method === 'lipa-namba'
-  primary: boolean
-}
 
 export type OnboardingDraft = {
   categoryId: string | null
@@ -242,48 +242,6 @@ type LegacyPayoutShape = {
   payoutAccountName?: string
   payoutBankName?: string
   payoutNetwork?: string
-}
-
-/** Stable id for a payout entry. crypto.randomUUID where available. */
-export function newPayoutEntryId(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
-    return crypto.randomUUID()
-  }
-  return `pe-${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`
-}
-
-/** A blank payout entry for the onboarding UI to fill in. */
-export function emptyPayoutEntry(primary = false): PayoutEntry {
-  return {
-    id: newPayoutEntryId(),
-    method: null,
-    number: '',
-    accountName: '',
-    bankName: '',
-    network: '',
-    primary,
-  }
-}
-
-/** Is this entry filled in enough to persist? */
-export function isPayoutEntryComplete(e: PayoutEntry): boolean {
-  if (!e.method) return false
-  if (!e.number.trim() || !e.accountName.trim()) return false
-  if (e.method === 'bank' && !e.bankName.trim()) return false
-  if (e.method === 'lipa-namba' && !e.network.trim()) return false
-  return true
-}
-
-/** Does the draft have at least one usable payout method? */
-export function hasCompletePayout(draft: OnboardingDraft): boolean {
-  return draft.payoutMethods.some(isPayoutEntryComplete)
-}
-
-/** The primary entry (explicitly flagged, else the first). */
-export function primaryPayoutEntry(draft: OnboardingDraft): PayoutEntry | null {
-  return (
-    draft.payoutMethods.find((e) => e.primary) ?? draft.payoutMethods[0] ?? null
-  )
 }
 
 function readDraft(userId: string | null): OnboardingDraft {

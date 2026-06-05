@@ -15,12 +15,12 @@ import { LIPA_NAMBA_NETWORKS, PAYOUT_OPTIONS } from './payouts'
 import { SERVICE_MARKETS, TZ_REGIONS } from './regions'
 import { getServicesForCategory } from './services'
 import { getStylesForCategory } from './styles'
+import { type OnboardingDraft } from './draft'
 import {
   hasCompletePayout,
   isPayoutEntryComplete,
-  type OnboardingDraft,
   type PayoutMethod,
-} from './draft'
+} from './payout'
 
 export type SubmitApplicationResult =
   | { ok: true; vendorId: string }
