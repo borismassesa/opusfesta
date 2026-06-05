@@ -102,9 +102,9 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
         </div>
 
         {/* Headline — line 1's last word carries the underline accent, line 2 the ⚡ */}
-        <h1 className="mt-7 sm:mt-8 text-[2.1rem] sm:text-[3rem] md:text-[3.6rem] lg:text-[4rem] font-black tracking-tight leading-[1.08] text-[#1A1A1A]">
+        <h1 className="mt-7 sm:mt-8 text-[2.1rem] sm:text-[3rem] md:text-[3.6rem] lg:text-[4rem] font-black tracking-tight leading-[1.18] sm:leading-[1.12] md:leading-[1.08] text-[#1A1A1A]">
           {line1Head}
-          <span className="underline decoration-[#1A1A1A] decoration-[6px] underline-offset-[8px]">
+          <span className="underline decoration-[#1A1A1A] decoration-[4px] sm:decoration-[6px] underline-offset-[5px] sm:underline-offset-[8px]">
             {line1LastWord}
           </span>
           <br />

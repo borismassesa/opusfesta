@@ -84,7 +84,7 @@ function DesignsPicker({ content }: { content: WebsitesDesignsContent }) {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center justify-center gap-1 sm:gap-2 mb-8 sm:mb-10 overflow-x-auto px-2 [&::-webkit-scrollbar]:hidden">
+        <div className="flex items-center justify-start sm:justify-center gap-1 sm:gap-2 mb-8 sm:mb-10 overflow-x-auto px-2 [&::-webkit-scrollbar]:hidden">
           {DESIGN_TABS.map((tab) => (
             <button
               key={tab}

@@ -28,8 +28,8 @@ export async function WhyOpusPass() {
               />
             </div>
 
-            {/* Floating product chip — straddling the top-left edge */}
-            <div className="absolute left-0 top-12 flex -translate-x-[50%] items-center gap-3 rounded-[20px] bg-white px-3.5 py-3 shadow-[0_14px_35px_-10px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.05]">
+            {/* Floating product chip — inset on mobile, straddling the top-left edge from sm up */}
+            <div className="absolute left-2 top-6 flex translate-x-0 items-center gap-3 rounded-[20px] bg-white px-3.5 py-3 shadow-[0_14px_35px_-10px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.05] sm:left-0 sm:top-12 sm:-translate-x-[50%]">
               <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-100">
                 <Image
                   src={content.chip_image_url}
@@ -45,10 +45,10 @@ export async function WhyOpusPass() {
               </span>
             </div>
 
-            {/* Floating CTA pill — straddling the bottom edge */}
+            {/* Floating CTA pill — inset on mobile, straddling the bottom edge from sm up */}
             <Link
               href={content.floating_cta_href}
-              className="absolute bottom-12 right-0 inline-flex translate-x-[50%] items-center gap-2.5 rounded-full bg-[var(--accent)] px-8 py-4 text-base font-extrabold text-[var(--on-accent)] shadow-[0_16px_35px_-10px_rgba(0,0,0,0.4)] transition-colors hover:bg-[var(--accent-hover)]"
+              className="absolute bottom-6 right-2 inline-flex translate-x-0 items-center gap-2.5 rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-extrabold text-[var(--on-accent)] shadow-[0_16px_35px_-10px_rgba(0,0,0,0.4)] transition-colors hover:bg-[var(--accent-hover)] sm:bottom-12 sm:right-0 sm:translate-x-[50%] sm:px-8 sm:py-4 sm:text-base"
             >
               <Tag className="h-5 w-5" />
               {content.floating_cta_label}
