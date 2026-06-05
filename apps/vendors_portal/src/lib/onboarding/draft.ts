@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useAuth } from '@clerk/nextjs'
 import type { PackageDraft } from './packages'
 
 export type DayHours = {
@@ -170,7 +171,22 @@ const DEFAULT_SOCIALS: SocialLinks = {
   whatsapp: '',
 }
 
-const STORAGE_KEY = 'opusfesta:vendor-onboarding-draft'
+// Per-user storage. The draft used to live under a single global key, which
+// meant a SHARED device (a staff laptop demoing signups, a phone passed
+// between vendors, an internet café) leaked the previous vendor's draft —
+// including PII like phone, email, and payout/bank account numbers — into the
+// next vendor's onboarding form. Scoping the key to the Clerk user id makes
+// that impossible: a different signed-in user reads a different key.
+const STORAGE_PREFIX = 'opusfesta:vendor-onboarding-draft'
+
+// The old un-scoped key. It may hold a *different* vendor's data, so we never
+// inherit it — we delete it on load (see `useOnboardingDraft`), closing the
+// cross-vendor leak for good.
+const LEGACY_STORAGE_KEY = STORAGE_PREFIX
+
+function storageKey(userId: string): string {
+  return `${STORAGE_PREFIX}:${userId}`
+}
 
 const EMPTY: OnboardingDraft = {
   categoryId: null,
@@ -270,10 +286,10 @@ export function primaryPayoutEntry(draft: OnboardingDraft): PayoutEntry | null {
   )
 }
 
-function readDraft(): OnboardingDraft {
-  if (typeof window === 'undefined') return EMPTY
+function readDraft(userId: string | null): OnboardingDraft {
+  if (typeof window === 'undefined' || !userId) return EMPTY
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY)
+    const raw = window.localStorage.getItem(storageKey(userId))
     if (!raw) return EMPTY
     const parsed = JSON.parse(raw) as Partial<OnboardingDraft> & LegacyPayoutShape
     const merged = { ...EMPTY, ...parsed }
@@ -307,10 +323,10 @@ function readDraft(): OnboardingDraft {
 // write so every instance re-reads from localStorage.
 const DRAFT_CHANGE_EVENT = 'opusfesta:onboarding-draft-changed'
 
-function writeDraft(draft: OnboardingDraft) {
-  if (typeof window === 'undefined') return
+function writeDraft(userId: string | null, draft: OnboardingDraft) {
+  if (typeof window === 'undefined' || !userId) return
   try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(draft))
+    window.localStorage.setItem(storageKey(userId), JSON.stringify(draft))
     // Defer the cross-instance broadcast. `writeDraft` is called from
     // inside the `setDraft` state updater in `update()` — dispatching
     // synchronously would call listeners' setState during the calling
@@ -329,26 +345,44 @@ function writeDraft(draft: OnboardingDraft) {
 }
 
 export function useOnboardingDraft() {
+  // The draft is keyed to the signed-in vendor, so we must wait for Clerk to
+  // resolve the user before reading — otherwise we'd read EMPTY (or, worse, the
+  // wrong key) and flash stale UI.
+  const { isLoaded, userId: clerkUserId } = useAuth()
+  const userId = clerkUserId ?? null
   const [draft, setDraft] = useState<OnboardingDraft>(EMPTY)
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    setDraft(readDraft())
+    if (!isLoaded) return
+
+    // One-time purge of the legacy un-scoped key. It may belong to a *different*
+    // vendor who used this device before, so we never read it into the form —
+    // we delete it outright. This is what closes the cross-vendor data leak.
+    if (typeof window !== 'undefined') {
+      window.localStorage.removeItem(LEGACY_STORAGE_KEY)
+    }
+
+    setDraft(readDraft(userId))
     setHydrated(true)
+
+    if (!userId) return
+
     // Listen for cross-instance updates so every consumer of the hook
     // converges on the latest persisted draft. Same-tab updates come
     // through the custom event; cross-tab updates use the native
-    // `storage` event.
+    // `storage` event (scoped to THIS user's key).
+    const key = storageKey(userId)
     const onChange = (event: Event) => {
       const detail = (event as CustomEvent<OnboardingDraft>).detail
       if (detail) {
         setDraft(detail)
       } else {
-        setDraft(readDraft())
+        setDraft(readDraft(userId))
       }
     }
     const onStorage = (event: StorageEvent) => {
-      if (event.key === STORAGE_KEY) setDraft(readDraft())
+      if (event.key === key) setDraft(readDraft(userId))
     }
     window.addEventListener(DRAFT_CHANGE_EVENT, onChange)
     window.addEventListener('storage', onStorage)
@@ -356,29 +390,35 @@ export function useOnboardingDraft() {
       window.removeEventListener(DRAFT_CHANGE_EVENT, onChange)
       window.removeEventListener('storage', onStorage)
     }
-  }, [])
+  }, [isLoaded, userId])
 
-  const update = useCallback((patch: Partial<OnboardingDraft>) => {
-    setDraft((prev) => {
-      const next = { ...prev, ...patch }
-      writeDraft(next)
-      return next
-    })
-  }, [])
+  const update = useCallback(
+    (patch: Partial<OnboardingDraft>) => {
+      setDraft((prev) => {
+        const next = { ...prev, ...patch }
+        writeDraft(userId, next)
+        return next
+      })
+    },
+    [userId],
+  )
 
   const reset = useCallback(() => {
     setDraft(EMPTY)
-    if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(STORAGE_KEY)
+    if (typeof window !== 'undefined' && userId) {
+      window.localStorage.removeItem(storageKey(userId))
       window.dispatchEvent(
         new CustomEvent(DRAFT_CHANGE_EVENT, { detail: EMPTY }),
       )
     }
-  }, [])
+  }, [userId])
 
   return { draft, update, reset, hydrated }
 }
 
-export function clearOnboardingDraft() {
-  if (typeof window !== 'undefined') window.localStorage.removeItem(STORAGE_KEY)
+export function clearOnboardingDraft(userId?: string) {
+  if (typeof window === 'undefined') return
+  // Always drop the legacy global key; drop the per-user key when we know who.
+  window.localStorage.removeItem(LEGACY_STORAGE_KEY)
+  if (userId) window.localStorage.removeItem(storageKey(userId))
 }
