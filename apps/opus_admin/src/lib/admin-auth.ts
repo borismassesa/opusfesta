@@ -44,6 +44,19 @@ export function isAdminDashboardRole(role: AdminAccessRole | null): boolean {
   return role !== null && ADMIN_DASHBOARD_ROLES.includes(role)
 }
 
+// True when the signed-in user was provisioned with a temporary password
+// (admin "create login now" path) and hasn't set their own yet. The admin
+// layout uses this to bounce them to /set-password before they can use the
+// dashboard. Read LIVE from Clerk (not session claims) so a user who just
+// reset isn't trapped by a stale token. Returns false for everyone who was
+// never given a temp password, so it's a no-op for existing admins.
+export const callerMustResetPassword = cache(async (): Promise<boolean> => {
+  const { userId } = await auth()
+  if (!userId) return false
+  const user = await currentUser()
+  return user?.publicMetadata?.mustResetPassword === true
+})
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }

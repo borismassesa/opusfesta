@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { Trash2, X } from 'lucide-react'
+import { Check, Copy, KeyRound, Mail, Trash2, X } from 'lucide-react'
 import {
   createEmployee,
   deleteEmployee,
@@ -85,9 +85,16 @@ export function EmployeeFormDialog(props: FormDialogProps) {
   const initialRoleId = seed?.dashboardRoleId ?? roles[0]?.id ?? ''
   const [grantAccess, setGrantAccess] = useState(initialGrant)
   const [accessRoleId, setAccessRoleId] = useState(initialRoleId)
+  // How to bring a brand-new teammate online: create their login now with a
+  // temporary password (default — no email needed), or email an invitation.
+  const [accessMethod, setAccessMethod] = useState<'create_login' | 'invite'>('create_login')
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [accessNotice, setAccessNotice] = useState<string | null>(null)
+  // When set, the login was just created — show the temp credentials once for
+  // the admin to hand over (kept only in memory, never persisted).
+  const [createdCreds, setCreatedCreds] = useState<{ email: string; password: string } | null>(null)
+  const [copied, setCopied] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -158,14 +165,20 @@ export function EmployeeFormDialog(props: FormDialogProps) {
             if (!accessRoleId) {
               throw new Error('Pick a role before granting dashboard access.')
             }
-            const result = await grantDashboardAccess(employeeId, accessRoleId)
+            const result = await grantDashboardAccess(employeeId, accessRoleId, accessMethod)
+            if (result.mode === 'created_login' && result.tempPassword) {
+              // Login created — surface the one-time credentials and keep the
+              // dialog open so the admin can copy them.
+              setCreatedCreds({ email, password: result.tempPassword })
+              return
+            }
+            if (result.mode === 'granted_existing') {
+              setAccessNotice(
+                `Dashboard access granted. ${email} already has a Clerk account, so no email was sent — they can sign in immediately with their existing password.`
+              )
+              return
+            }
             if (!result.emailSent) {
-              if (result.emailReason === 'no_email_needed_existing_user') {
-                setAccessNotice(
-                  `Dashboard access granted. ${email} already has a Clerk account, so no invitation email was sent — they can sign in immediately with their existing password.`
-                )
-                return
-              }
               setAccessNotice(
                 `Invitation saved, but the email did not send (${result.emailReason ?? 'unknown'}). Send the invite link manually from the pending invitations panel.`
               )
@@ -179,6 +192,20 @@ export function EmployeeFormDialog(props: FormDialogProps) {
         setError(err instanceof Error ? err.message : 'Could not save changes.')
       }
     })
+  }
+
+  async function copyCreds() {
+    if (!createdCreds) return
+    try {
+      await navigator.clipboard.writeText(
+        `Email: ${createdCreds.email}\nTemporary password: ${createdCreds.password}`,
+      )
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      // Clipboard can be blocked (insecure context / permissions) — the
+      // password is still visible on screen for manual copy.
+    }
   }
 
   const title = isEdit ? `Edit ${seed!.name}` : 'Add employee'
@@ -195,7 +222,7 @@ export function EmployeeFormDialog(props: FormDialogProps) {
         if (e.target === e.currentTarget) onClose()
       }}
     >
-      <div className="flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl">
+      <div className="relative flex max-h-[90vh] w-full max-w-2xl flex-col rounded-2xl bg-white shadow-xl">
         <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">{title}</h2>
@@ -388,28 +415,74 @@ export function EmployeeFormDialog(props: FormDialogProps) {
                           ? 'An invitation was sent on ' +
                             formatDate(seed.invitedAt) +
                             ' but has not been accepted. Tick to resend.'
-                          : 'A Clerk invitation will be emailed to the address above. They pick their own password — OpusFesta never stores it.'}
+                          : 'Create their login now, or email an invitation. Either way OpusFesta never stores their final password.'}
                     </span>
                   </span>
                 </label>
 
                 {grantAccess && (
-                  <Field label="Role">
-                    <select
-                      value={accessRoleId}
-                      onChange={(e) => setAccessRoleId(e.target.value)}
-                      className={inputClass}
-                    >
-                      {roles.length === 0 && (
-                        <option value="">No roles defined yet — create one in Roles & Permissions</option>
-                      )}
-                      {roles.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name} {r.isSystem ? '· system' : ''}
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
+                  <>
+                    <Field label="Role">
+                      <select
+                        value={accessRoleId}
+                        onChange={(e) => setAccessRoleId(e.target.value)}
+                        className={inputClass}
+                      >
+                        {roles.length === 0 && (
+                          <option value="">No roles defined yet — create one in Roles & Permissions</option>
+                        )}
+                        {roles.map((r) => (
+                          <option key={r.id} value={r.id}>
+                            {r.name} {r.isSystem ? '· system' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </Field>
+
+                    {!seed?.dashboardAccess && (
+                      <fieldset className="space-y-2">
+                        <legend className="mb-1 text-xs font-semibold uppercase tracking-wider text-gray-500">
+                          How they get in
+                        </legend>
+                        <label className="flex items-start gap-2.5 cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+                          <input
+                            type="radio"
+                            name="access-method"
+                            checked={accessMethod === 'create_login'}
+                            onChange={() => setAccessMethod('create_login')}
+                            className="mt-0.5 h-4 w-4 border-gray-300 text-[#7E5896] focus:ring-[#C9A0DC]"
+                          />
+                          <span className="text-sm">
+                            <span className="block font-medium text-gray-900">
+                              Create login now
+                            </span>
+                            <span className="mt-0.5 block text-xs text-gray-500">
+                              Generates a temporary password to hand over. They set
+                              their own on first sign-in. No email needed.
+                            </span>
+                          </span>
+                        </label>
+                        <label className="flex items-start gap-2.5 cursor-pointer rounded-lg border border-gray-200 bg-white px-3 py-2.5">
+                          <input
+                            type="radio"
+                            name="access-method"
+                            checked={accessMethod === 'invite'}
+                            onChange={() => setAccessMethod('invite')}
+                            className="mt-0.5 h-4 w-4 border-gray-300 text-[#7E5896] focus:ring-[#C9A0DC]"
+                          />
+                          <span className="text-sm">
+                            <span className="block font-medium text-gray-900">
+                              Email an invitation
+                            </span>
+                            <span className="mt-0.5 block text-xs text-gray-500">
+                              Sends a sign-up link; they pick their own password.
+                              Requires email delivery to be working.
+                            </span>
+                          </span>
+                        </label>
+                      </fieldset>
+                    )}
+                  </>
                 )}
 
                 {seed?.lastDashboardLogin && (
@@ -449,6 +522,73 @@ export function EmployeeFormDialog(props: FormDialogProps) {
             {pending ? 'Saving…' : isEdit ? 'Save changes' : 'Add employee'}
           </button>
         </div>
+
+        {/* One-time credentials — shown over the dialog after a login is
+            created so the admin can hand them over. Not persisted anywhere. */}
+        {createdCreds && (
+          <div className="absolute inset-0 z-10 flex flex-col rounded-2xl bg-white">
+            <div className="flex items-start justify-between border-b border-gray-100 px-6 py-5">
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Login created</h2>
+                <p className="mt-1 text-sm text-gray-500">
+                  Share these with the new teammate. They’ll set their own
+                  password on first sign-in — this won’t be shown again.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={onClose}
+                aria-label="Close"
+                className="rounded-md p-1.5 text-gray-400 hover:bg-gray-50 hover:text-gray-700"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="space-y-4 overflow-y-auto px-6 py-5">
+              <div className="space-y-3 rounded-xl border border-gray-200 bg-gray-50/60 p-4">
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4 shrink-0 text-gray-400" />
+                  <span className="font-medium text-gray-900">{createdCreds.email}</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <KeyRound className="h-4 w-4 shrink-0 text-gray-400" />
+                    <code className="truncate rounded border border-gray-200 bg-white px-2 py-1 font-mono text-sm text-gray-900">
+                      {createdCreds.password}
+                    </code>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={copyCreds}
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                    {copied ? 'Copied' : 'Copy'}
+                  </button>
+                </div>
+              </div>
+              <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-900">
+                Hand this over securely. The temporary password forces a reset
+                at first sign-in and is never stored by OpusFesta.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 border-t border-gray-100 px-6 py-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

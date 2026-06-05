@@ -1,8 +1,15 @@
 'use client'
 
-import { useEffect, useState, type FormEvent } from 'react'
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type KeyboardEvent as ReactKeyboardEvent,
+} from 'react'
 import { useSignIn } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
+import { Eye, EyeOff } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 
 // Fully headless sign-in: we own the markup, Clerk owns the auth. We call
@@ -19,6 +26,7 @@ const PANEL_IMAGE =
   'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=1600&q=80'
 
 const STALL_THRESHOLD_MS = 15000
+const CODE_LENGTH = 6
 
 type Step = 'identifier' | 'password' | 'code'
 
@@ -46,6 +54,7 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
   const [step, setStep] = useState<Step>('identifier')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [code, setCode] = useState('')
   const [emailCodeId, setEmailCodeId] = useState<string | null>(null)
   const [canUseCode, setCanUseCode] = useState(false)
@@ -241,17 +250,33 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
                       <label htmlFor="password" className={labelClass}>
                         Password
                       </label>
-                      <input
-                        id="password"
-                        type="password"
-                        autoComplete="current-password"
-                        autoFocus
-                        required
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        placeholder="Enter your password"
-                        className={inputClass}
-                      />
+                      <div className="relative">
+                        <input
+                          id="password"
+                          type={showPassword ? 'text' : 'password'}
+                          autoComplete="current-password"
+                          autoFocus
+                          required
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          placeholder="Enter your password"
+                          className={`${inputClass} pr-12`}
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((v) => !v)}
+                          tabIndex={-1}
+                          aria-label={showPassword ? 'Hide password' : 'Show password'}
+                          aria-pressed={showPassword}
+                          className="absolute inset-y-0 right-0 flex items-center px-3.5 text-gray-400 transition-colors hover:text-[#1A1A1A]"
+                        >
+                          {showPassword ? (
+                            <EyeOff className="h-5 w-5" aria-hidden="true" />
+                          ) : (
+                            <Eye className="h-5 w-5" aria-hidden="true" />
+                          )}
+                        </button>
+                      </div>
                     </div>
                     <button type="submit" disabled={busy} className={buttonClass}>
                       {busy ? 'Signing in…' : 'Sign in'}
@@ -272,22 +297,16 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
                 {step === 'code' && (
                   <form onSubmit={onCode} className="space-y-5">
                     <div>
-                      <label htmlFor="code" className={labelClass}>
+                      <label htmlFor="code-0" className={labelClass}>
                         Verification code
                       </label>
-                      <input
-                        id="code"
-                        inputMode="numeric"
-                        autoComplete="one-time-code"
-                        autoFocus
-                        required
-                        value={code}
-                        onChange={(e) => setCode(e.target.value)}
-                        placeholder="Enter the 6-digit code"
-                        className={`${inputClass} tracking-[0.3em]`}
-                      />
+                      <CodeInput value={code} onChange={setCode} disabled={busy} />
                     </div>
-                    <button type="submit" disabled={busy} className={buttonClass}>
+                    <button
+                      type="submit"
+                      disabled={busy || code.length < CODE_LENGTH}
+                      className={buttonClass}
+                    >
                       {busy ? 'Verifying…' : 'Verify & sign in'}
                     </button>
                     <div className="flex items-center justify-between text-sm">
@@ -344,6 +363,97 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
           </div>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Segmented 6-box one-time-code input. Each box holds one digit; typing
+// auto-advances, Backspace steps back, arrows move between boxes, and pasting
+// a full code fills every box at once. The combined value is reported up via
+// onChange so the parent's existing `code` state and submit flow are unchanged.
+function CodeInput({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string
+  onChange: (next: string) => void
+  disabled?: boolean
+}) {
+  const refs = useRef<Array<HTMLInputElement | null>>([])
+  const digits = Array.from({ length: CODE_LENGTH }, (_, i) => value[i] ?? '')
+
+  const focusAt = (i: number) => {
+    const clamped = Math.max(0, Math.min(i, CODE_LENGTH - 1))
+    refs.current[clamped]?.focus()
+    refs.current[clamped]?.select()
+  }
+
+  const handleChange = (i: number, raw: string) => {
+    const onlyDigits = raw.replace(/\D/g, '')
+    if (!onlyDigits) {
+      // Cleared box.
+      const next = digits.slice()
+      next[i] = ''
+      onChange(next.join(''))
+      return
+    }
+    // A single keystroke or a paste of several digits both land here.
+    const incoming = onlyDigits.split('')
+    const next = digits.slice()
+    let cursor = i
+    for (const ch of incoming) {
+      if (cursor >= CODE_LENGTH) break
+      next[cursor] = ch
+      cursor += 1
+    }
+    onChange(next.join('').slice(0, CODE_LENGTH))
+    focusAt(cursor)
+  }
+
+  const handleKeyDown = (i: number, e: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace') {
+      e.preventDefault()
+      const next = digits.slice()
+      if (digits[i]) {
+        next[i] = ''
+        onChange(next.join(''))
+      } else if (i > 0) {
+        next[i - 1] = ''
+        onChange(next.join(''))
+        focusAt(i - 1)
+      }
+    } else if (e.key === 'ArrowLeft') {
+      e.preventDefault()
+      focusAt(i - 1)
+    } else if (e.key === 'ArrowRight') {
+      e.preventDefault()
+      focusAt(i + 1)
+    }
+  }
+
+  return (
+    <div className="flex gap-2 sm:gap-2.5" role="group" aria-label="Verification code">
+      {digits.map((digit, i) => (
+        <input
+          key={i}
+          id={`code-${i}`}
+          ref={(el) => {
+            refs.current[i] = el
+          }}
+          inputMode="numeric"
+          autoComplete={i === 0 ? 'one-time-code' : 'off'}
+          maxLength={CODE_LENGTH}
+          autoFocus={i === 0}
+          disabled={disabled}
+          value={digit}
+          onChange={(e) => handleChange(i, e.target.value)}
+          onKeyDown={(e) => handleKeyDown(i, e)}
+          onFocus={(e) => e.target.select()}
+          aria-label={`Digit ${i + 1}`}
+          className="h-14 w-full rounded-lg border border-gray-300 bg-white text-center text-xl font-semibold text-[#1A1A1A] outline-none transition focus:border-[#1A1A1A] focus:ring-2 focus:ring-[#1A1A1A]/10 disabled:opacity-60"
+        />
+      ))}
     </div>
   )
 }

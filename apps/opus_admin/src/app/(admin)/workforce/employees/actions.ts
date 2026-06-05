@@ -6,6 +6,7 @@ import { getCallerEmail, requirePermission } from '@/lib/admin-auth'
 import {
   inviteEmployee as inviteEmployeeViaClerk,
   revokeInvitation as revokeWorkforceInvitation,
+  type GrantMethod,
 } from '@/lib/workforce-invitations'
 import type {
   Department,
@@ -283,18 +284,23 @@ export type GrantDashboardAccessResult = {
   invitationId: string
   emailSent: boolean
   emailReason?: string
+  mode: 'invited' | 'created_login' | 'granted_existing'
+  // Plaintext temporary password, returned ONLY for mode === 'created_login'
+  // so the dialog can show it once for the admin to hand over. Never stored.
+  tempPassword?: string
 }
 
 export async function grantDashboardAccess(
   employeeId: string,
   roleId: string,
+  method: GrantMethod = 'invite',
 ): Promise<GrantDashboardAccessResult> {
   // Granting dashboard access is a privileged operation — it determines
   // who can sign in and what they can do. Only owners can do it.
   await requirePermission('platform.admin')
 
   const invitedById = await getCallerWhitelistId()
-  const result = await inviteEmployeeViaClerk({ employeeId, roleId, invitedById })
+  const result = await inviteEmployeeViaClerk({ employeeId, roleId, invitedById, method })
 
   revalidatePath('/workforce/employees')
   revalidatePath('/workforce/roles')
@@ -302,6 +308,8 @@ export async function grantDashboardAccess(
     invitationId: result.invitationId,
     emailSent: result.emailSent,
     emailReason: result.emailReason,
+    mode: result.mode,
+    tempPassword: result.tempPassword,
   }
 }
 

@@ -17,6 +17,7 @@ import { createHash, randomBytes } from 'crypto'
 import { headers } from 'next/headers'
 import { clerkClient } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { generateTempPassword } from '@/lib/temp-password'
 import { sendEmail } from '@/lib/email'
 import { buildWorkforceInviteEmail } from '@/lib/workforce-invite-email'
 import { auditInviteFailed } from '@/lib/audit-log'
@@ -70,10 +71,21 @@ async function appUrl(): Promise<string> {
   return `${proto}://${host}`
 }
 
+// How the admin wants to bring a brand-new (no existing Clerk account)
+// teammate online:
+//   - 'invite'       → email them a Clerk invitation; they self-sign-up.
+//   - 'create_login' → create the Clerk user right now with a temporary
+//                      password the admin hands over, and force a reset on
+//                      first sign-in. No email round-trip — works even when
+//                      Clerk email delivery is down.
+// Employees who ALREADY have a Clerk account are granted directly either way.
+export type GrantMethod = 'invite' | 'create_login'
+
 export type InviteEmployeeInput = {
   employeeId: string
   roleId: string
   invitedById: string | null
+  method?: GrantMethod
 }
 
 export type InviteResult = {
@@ -81,7 +93,17 @@ export type InviteResult = {
   inviteLink: string
   emailSent: boolean
   emailReason?: string
+  // 'invited'          → invitation email path (self sign-up pending)
+  // 'created_login'    → Clerk user created now; tempPassword returned
+  // 'granted_existing' → email already had a Clerk account; access flipped
+  mode: 'invited' | 'created_login' | 'granted_existing'
+  // Only set for mode === 'created_login'. Plaintext, shown once to the
+  // admin to hand over — never persisted on our side.
+  tempPassword?: string
 }
+
+// Temp password for the create-login path lives in its own pure module so
+// it can be unit-tested without this file's server-only deps.
 
 // Clerk's SDK throws ClerkAPIResponseError carrying a `errors[]` array
 // where each entry has { code, message, longMessage }. The default toString
@@ -220,6 +242,93 @@ export async function inviteEmployee(input: InviteEmployeeInput): Promise<Invite
       inviteLink,
       emailSent: false,
       emailReason: 'no_email_needed_existing_user',
+      mode: 'granted_existing',
+    }
+  }
+
+  // No existing account, create-login path → provision the Clerk user
+  // directly with a temporary password and force a reset on first sign-in.
+  // Access is granted immediately (no acceptance step), mirroring the
+  // existing-user fast path above. No email is sent.
+  if (input.method === 'create_login') {
+    const tempPassword = generateTempPassword()
+
+    let createdUserId: string
+    try {
+      const [firstName, ...rest] = employee.full_name.trim().split(/\s+/)
+      const created = await clerk.users.createUser({
+        emailAddress: [employee.email],
+        password: tempPassword,
+        firstName: firstName || undefined,
+        lastName: rest.length ? rest.join(' ') : undefined,
+        publicMetadata: {
+          role: 'admin',
+          workforceRoleId: role.id,
+          mustResetPassword: true,
+        },
+      })
+      createdUserId = created.id
+    } catch (err) {
+      throw new Error(`Could not create the login: ${describeClerkError(err)}`)
+    }
+
+    // The Clerk user now EXISTS. If any of the following DB writes fail we
+    // MUST delete it again — otherwise it's orphaned with
+    // mustResetPassword=true and a temp password no one holds (the action
+    // errored before returning it), and a retry would hit the existing-user
+    // fast path above (granted_existing) and never surface a new temp
+    // password, leaving the teammate permanently unable to sign in.
+    let createdLedgerId: string
+    try {
+      const { error: updateEmployeeError } = await supabase
+        .from('workforce_employees')
+        .update({
+          dashboard_access: true,
+          dashboard_role_id: role.id,
+          clerk_user_id: createdUserId,
+          invited_at: new Date().toISOString(),
+        })
+        .eq('id', employee.id)
+      if (updateEmployeeError) throw updateEmployeeError
+
+      const { data: ledger, error: ledgerError } = await supabase
+        .from('workforce_invitations')
+        .insert({
+          employee_id: employee.id,
+          email: employee.email,
+          role_id: role.id,
+          clerk_invitation_id: null,
+          token_hash: tokenHash,
+          status: 'accepted',
+          invited_by: input.invitedById,
+          accepted_at: new Date().toISOString(),
+        })
+        .select('id')
+        .single<{ id: string }>()
+      if (ledgerError) throw ledgerError
+      createdLedgerId = ledger.id
+    } catch (err) {
+      // Roll back the just-created Clerk user so a retry is clean. The
+      // employee row (if its update landed) self-heals on retry: the deleted
+      // user won't be found, so create_login runs again and overwrites it.
+      try {
+        await clerk.users.deleteUser(createdUserId)
+      } catch (rollbackErr) {
+        console.error(
+          '[workforce-invitations] FAILED to roll back orphaned Clerk user after create_login error — manual cleanup needed',
+          { createdUserId, email: employee.email, rollbackErr },
+        )
+      }
+      throw err
+    }
+
+    return {
+      invitationId: createdLedgerId,
+      inviteLink,
+      emailSent: false,
+      emailReason: 'no_email_needed_created_login',
+      mode: 'created_login',
+      tempPassword,
     }
   }
 
@@ -287,6 +396,7 @@ export async function inviteEmployee(input: InviteEmployeeInput): Promise<Invite
     inviteLink,
     emailSent: result.sent,
     emailReason: result.sent ? undefined : result.reason,
+    mode: 'invited',
   }
 }
 
