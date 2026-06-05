@@ -147,11 +147,7 @@ export default function ReviewPage() {
 
         <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-16">
           <div className="max-w-xl w-full text-center">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-200">
-              <Check className="w-3 h-3" strokeWidth={3} />
-              Application complete
-            </span>
-            <h1 className="mt-5 text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]">
+            <h1 className="text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]">
               You&rsquo;re in. Let&rsquo;s verify your business.
             </h1>
             <p className="mt-4 text-base text-gray-600 leading-relaxed max-w-md mx-auto">
