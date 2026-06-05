@@ -1,4 +1,5 @@
-import { hasCompletePayout, type OnboardingDraft } from '../onboarding/draft'
+import { hasCompletePayout } from '../onboarding/payout'
+import { type OnboardingDraft } from '../onboarding/draft'
 
 export type SectionStatus = 'complete' | 'partial' | 'empty' | 'auto'
 
