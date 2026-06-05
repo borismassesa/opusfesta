@@ -117,20 +117,21 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
           {HERO.description}
         </p>
 
-        {/* CTAs */}
-        <div className="mt-9 sm:mt-10 flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
+        {/* CTAs — kept on a single row across all breakpoints (tighter padding
+            and tracking on mobile so both pills fit side by side at 375px). */}
+        <div className="mt-9 sm:mt-10 flex flex-nowrap items-center justify-center gap-x-2.5 sm:gap-x-4 gap-y-3">
           <Link
             href={HERO.primary_cta_href}
-            className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
+            className="inline-flex shrink-0 items-center whitespace-nowrap rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-4 sm:px-7 py-3 text-[12px] sm:text-[14px] font-extrabold uppercase tracking-[0.05em] sm:tracking-[0.1em]"
           >
             {HERO.primary_cta_label}
           </Link>
           <Link
             href={HERO.secondary_cta_href}
-            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-6 py-3 text-[13px] sm:text-[14px] font-semibold text-[#1A1A1A] hover:border-gray-300 hover:bg-gray-50"
+            className="inline-flex shrink-0 items-center gap-1 sm:gap-1.5 whitespace-nowrap rounded-full border border-gray-200 bg-white px-4 sm:px-6 py-3 text-[12px] sm:text-[14px] font-semibold text-[#1A1A1A] hover:border-gray-300 hover:bg-gray-50"
           >
             {HERO.secondary_cta_label}
-            <ArrowRight size={15} aria-hidden="true" />
+            <ArrowRight size={15} aria-hidden="true" className="shrink-0" />
           </Link>
         </div>
 
