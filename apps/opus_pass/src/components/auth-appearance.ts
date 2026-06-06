@@ -25,8 +25,8 @@ export const authAppearance = {
     // `!` (Tailwind important) is required: Clerk's default card chrome
     // (shadow, border, rounded box, padding) otherwise wins on specificity, and
     // we want the form to sit flush on the white pane like Admin / Vendors Portal.
-    cardBox: 'w-full !rounded-none !border-0 !shadow-none',
-    card: 'w-full gap-6 !rounded-none !border-0 !bg-transparent !p-0 !shadow-none',
+    cardBox: 'w-full !rounded-none !border-0 !shadow-none !overflow-visible',
+    card: 'w-full gap-6 !rounded-none !border-0 !bg-transparent !p-0 !shadow-none !overflow-visible',
     header: 'hidden',
     headerTitle: 'hidden',
     headerSubtitle: 'hidden',

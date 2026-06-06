@@ -1,14 +1,14 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import Link from 'next/link'
 import { toast } from 'sonner'
-import { Heart, Wallet } from 'lucide-react'
-import { Card, SectionTitle } from '@/components/dashboard/primitives'
+import { Heart, Wallet, ArrowLeft } from 'lucide-react'
 import { Button, Field, inputClass } from '@/components/dashboard/controls'
 import { upsertCoupleProfile } from '@/lib/dashboard/actions'
 import type { CoupleProfileLite } from '@/lib/dashboard/queries'
 
-export default function SettingsForm({ profile }: { profile: CoupleProfileLite | null }) {
+export default function WeddingSettingsForm({ profile }: { profile: CoupleProfileLite | null }) {
   const [form, setForm] = useState({
     partner1_name: profile?.partner1_name ?? '',
     partner2_name: profile?.partner2_name ?? '',
@@ -36,7 +36,7 @@ export default function SettingsForm({ profile }: { profile: CoupleProfileLite |
           pledge_payment_instructions: form.pledge_payment_instructions || null,
           pledge_goal_amount: form.pledge_goal_amount ? Number(form.pledge_goal_amount) : null,
         })
-        toast.success('Profile saved')
+        toast.success('Saved')
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not save')
       }
@@ -44,27 +44,42 @@ export default function SettingsForm({ profile }: { profile: CoupleProfileLite |
   }
 
   return (
-    <div className="space-y-6">
-      <SectionTitle title="Settings" subtitle="Your details appear on guests' RSVP pages" />
+    <div className="mx-auto max-w-3xl space-y-7 pb-16">
+      <div>
+        <Link
+          href="/my/dashboard/settings"
+          className="inline-flex items-center gap-1.5 text-sm font-medium text-[#1A1A1A]/55 transition-colors hover:text-[#1A1A1A]"
+        >
+          <ArrowLeft className="h-4 w-4" /> Account profile
+        </Link>
+        <h1 className="mt-2 text-2xl font-bold tracking-tight text-[#1A1A1A]">Wedding settings</h1>
+        <p className="mt-1 text-sm text-[#1A1A1A]/55">
+          Your celebration details and how contributors pay you.
+        </p>
+      </div>
 
-      <Card className="p-6">
+      {/* ── Wedding details ── */}
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-black/[0.05] text-[#1A1A1A]/70">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#C9A0DC]/15 text-[#7E5896]">
             <Heart className="h-5 w-5" />
           </span>
           <div>
-            <h3 className="font-semibold text-[#1A1A1A]">Couple profile</h3>
-            <p className="text-sm text-[#1A1A1A]/55">How your celebration is introduced to guests</p>
+            <h3 className="font-semibold text-[#1A1A1A]">Wedding details</h3>
+            <p className="text-sm text-[#1A1A1A]/55">
+              How your celebration appears on guests&rsquo; RSVP pages
+            </p>
           </div>
         </div>
 
-        <div className="grid max-w-xl gap-4">
+        <div className="grid gap-4">
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Partner 1 name">
               <input
                 className={inputClass}
                 value={form.partner1_name}
                 onChange={(e) => setForm({ ...form, partner1_name: e.target.value })}
+                placeholder="e.g. Boris"
               />
             </Field>
             <Field label="Partner 2 name">
@@ -72,6 +87,7 @@ export default function SettingsForm({ profile }: { profile: CoupleProfileLite |
                 className={inputClass}
                 value={form.partner2_name}
                 onChange={(e) => setForm({ ...form, partner2_name: e.target.value })}
+                placeholder="e.g. Grace"
               />
             </Field>
           </div>
@@ -102,20 +118,23 @@ export default function SettingsForm({ profile }: { profile: CoupleProfileLite |
             />
           </Field>
         </div>
-      </Card>
+      </section>
 
-      <Card className="p-6">
+      {/* ── Pledge collection ── */}
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm sm:p-6">
         <div className="mb-5 flex items-center gap-3">
-          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-black/[0.05] text-[#1A1A1A]/70">
+          <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#C9A0DC]/15 text-[#7E5896]">
             <Wallet className="h-5 w-5" />
           </span>
           <div>
             <h3 className="font-semibold text-[#1A1A1A]">Pledge collection</h3>
-            <p className="text-sm text-[#1A1A1A]/55">How contributors pay you — shown on your pledge link and reminders</p>
+            <p className="text-sm text-[#1A1A1A]/55">
+              How contributors pay you — shown on your pledge link and reminders
+            </p>
           </div>
         </div>
 
-        <div className="grid max-w-xl gap-4">
+        <div className="grid gap-4">
           <Field
             label="Fundraising goal (optional)"
             hint="Set a target and the Reports tab shows progress toward it. Leave blank for no goal."
@@ -149,9 +168,9 @@ export default function SettingsForm({ profile }: { profile: CoupleProfileLite |
             />
           </Field>
         </div>
-      </Card>
+      </section>
 
-      <div className="pt-2">
+      <div className="flex items-center justify-end gap-3 pt-1">
         <Button onClick={save} disabled={pending}>
           {pending ? 'Saving…' : 'Save changes'}
         </Button>
