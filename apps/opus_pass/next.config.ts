@@ -67,6 +67,17 @@ const nextConfig: NextConfig = {
         basePath: false,
         permanent: false,
       },
+      // Same problem for the post-auth landing: Clerk's fallbackRedirectUrl
+      // ("/my/dashboard") drops the /opuspass basePath, so after sign-in the
+      // user lands on a bare /my/... and 404s. Bounce bare /my/* under /opuspass.
+      // (basePath:false → matches the TRUE root /my/*, NOT /opuspass/my/*, so the
+      // real dashboard routes are untouched.)
+      {
+        source: '/my/:path*',
+        destination: '/opuspass/my/:path*',
+        basePath: false,
+        permanent: false,
+      },
       // The guests landing page was renamed /guests -> /guests-and-rsvp.
       // Keep the old path alive for any stored CMS hrefs, bookmarks, and
       // inbound links so they don't 404. (source is auto-prefixed to /opuspass/guests.)

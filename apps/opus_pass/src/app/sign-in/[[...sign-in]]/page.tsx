@@ -41,7 +41,7 @@ export default async function SignInPage() {
         <SignIn
           routing="hash"
           signUpUrl="/sign-up"
-          fallbackRedirectUrl="/my/dashboard"
+          fallbackRedirectUrl="/opuspass/my/dashboard"
           appearance={authAppearance}
         />
       </div>
