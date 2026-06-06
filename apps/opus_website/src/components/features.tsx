@@ -96,7 +96,9 @@ export default async function Features() {
     <section className="py-16 sm:py-24 md:py-32 px-4 sm:px-6 max-w-6xl mx-auto">
 
       <Reveal direction="up" className="hidden sm:block text-center mb-14 sm:mb-20 md:mb-24">
-        <span className="text-(--accent) text-xs font-bold uppercase tracking-widest">{content.eyebrow}</span>
+        {content.eyebrow && (
+          <span className="text-(--accent) text-xs font-bold uppercase tracking-widest">{content.eyebrow}</span>
+        )}
         <h2 className="text-[2.8rem] sm:text-6xl md:text-7xl lg:text-[96px] font-black tracking-tighter uppercase leading-[0.95] sm:leading-[0.88] md:leading-[0.85] mt-4 text-[#1A1A1A]">
           {content.headline_line_1}
           <br />

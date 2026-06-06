@@ -18,7 +18,7 @@ export type FaqContent = {
 }
 
 export const FAQ_FALLBACK: FaqContent = {
-  eyebrow: 'Support',
+  eyebrow: '',
   headline_line_1: 'Every',
   headline_line_2: 'answer',
   headline_line_3: 'you need.',

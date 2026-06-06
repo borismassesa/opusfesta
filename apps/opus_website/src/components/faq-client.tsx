@@ -14,7 +14,9 @@ export default function FaqClient({ content }: { content: FaqContent }) {
         {/* Left */}
         <Reveal direction="up" margin="-80px" className="md:w-72 shrink-0 text-center md:text-left">
           <div className="md:sticky md:top-24">
-            <span className="text-[var(--accent)] text-xs font-bold uppercase tracking-widest">{content.eyebrow}</span>
+            {content.eyebrow && (
+              <span className="text-[var(--accent)] text-xs font-bold uppercase tracking-widest">{content.eyebrow}</span>
+            )}
             <h2 className="text-[2.4rem] sm:text-5xl font-black tracking-tighter uppercase leading-[1.0] sm:leading-[0.88] mt-3 mb-5 text-[#1A1A1A]">
               {content.headline_line_1}
               <br />

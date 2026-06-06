@@ -35,7 +35,7 @@ export type FeaturesContent = {
 }
 
 export const FEATURES_FALLBACK: FeaturesContent = {
-  eyebrow: 'Built for every part',
+  eyebrow: '',
   headline_line_1: 'Beyond',
   headline_line_2: 'the basics',
   subheadline: 'Every tool you need to plan, style, and celebrate. All in one place.',
