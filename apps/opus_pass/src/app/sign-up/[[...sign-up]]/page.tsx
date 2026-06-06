@@ -1,27 +1,36 @@
 import { SignUp } from '@clerk/nextjs'
-import Logo from '@/components/ui/Logo'
+import AuthShell from '@/components/AuthShell'
+import { authAppearance } from '@/components/auth-appearance'
 
 export const metadata = { title: 'Sign up — OpusPass' }
 
 export default function SignUpPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#F3E9FA] via-[#FBF7F2] to-white px-4 py-12">
-      <Logo className="mb-6 text-3xl" />
+    <AuthShell
+      panelTitle="Plan your celebration with OpusPass"
+      panelSubtitle="Beautiful digital invitations, a free wedding website, live RSVPs and a gift registry — everything for your big day, in one account."
+    >
+      <h1 className="text-[28px] font-bold leading-tight tracking-tight text-[#1A1A1A]">
+        Create your account
+      </h1>
+      <p className="mt-2 text-[15px] text-gray-500">
+        One account for your invitations, wedding website, and RSVPs.
+      </p>
+
       {/*
-        routing="hash" is required because the app runs under basePath '/opuspass'
-        (see next.config.ts). Clerk's default "path" routing infers its mount path
-        and navigates to sub-paths (e.g. /sign-up/verify-email-address); that path
-        inference doesn't account for the basePath prefix, so the component mounts
-        at /opuspass/sign-up but expects /sign-up and hangs on a blank/loading state.
-        Hash routing keeps every step on the same URL (#/...) and ignores the path,
-        sidestepping the prefix entirely. Redirects (signInUrl, fallbackRedirectUrl)
-        go through Clerk's Next router integration, which already respects basePath.
+        routing="hash" is required under basePath '/opuspass' — see the matching
+        note on the sign-in page. Same shared Clerk instance as the rest of the
+        OpusFesta ecosystem, so a couple who signs up here is recognised on
+        opusfesta.com too.
       */}
-      <SignUp
-        routing="hash"
-        signInUrl="/sign-in"
-        fallbackRedirectUrl="/my/dashboard"
-      />
-    </div>
+      <div className="mt-6">
+        <SignUp
+          routing="hash"
+          signInUrl="/sign-in"
+          fallbackRedirectUrl="/my/dashboard"
+          appearance={authAppearance}
+        />
+      </div>
+    </AuthShell>
   )
 }

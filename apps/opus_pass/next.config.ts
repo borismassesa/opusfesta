@@ -50,6 +50,23 @@ const nextConfig: NextConfig = {
         basePath: false,
         permanent: false,
       },
+      // Clerk's instance-level / after-sign-out redirects target bare
+      // /sign-in and /sign-up — they go through Clerk's hosted flow, not the
+      // <SignIn> component's Next-router integration, so they DON'T pick up the
+      // /opuspass basePath and would 404 on the standalone domain. Bounce them
+      // under /opuspass. (basePath:false matches the TRUE root, like the / rule.)
+      {
+        source: '/sign-in',
+        destination: '/opuspass/sign-in',
+        basePath: false,
+        permanent: false,
+      },
+      {
+        source: '/sign-up',
+        destination: '/opuspass/sign-up',
+        basePath: false,
+        permanent: false,
+      },
       // The guests landing page was renamed /guests -> /guests-and-rsvp.
       // Keep the old path alive for any stored CMS hrefs, bookmarks, and
       // inbound links so they don't 404. (source is auto-prefixed to /opuspass/guests.)

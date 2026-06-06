@@ -1,25 +1,42 @@
 import { SignIn } from '@clerk/nextjs'
-import Logo from '@/components/ui/Logo'
+import AuthShell from '@/components/AuthShell'
+import { authAppearance } from '@/components/auth-appearance'
 
 export const metadata = { title: 'Sign in — OpusPass' }
 
 export default function SignInPage() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-gradient-to-b from-[#F3E9FA] via-[#FBF7F2] to-white px-4 py-12">
-      <Logo className="mb-6 text-3xl" />
+    <AuthShell
+      panelTitle="Welcome back to OpusPass"
+      panelSubtitle="Your invitations, wedding website, guest list and live RSVPs — all in one place."
+    >
+      <h1 className="text-[28px] font-bold leading-tight tracking-tight text-[#1A1A1A]">
+        Sign in to your account
+      </h1>
+      <p className="mt-2 text-[15px] text-gray-500">
+        Welcome back — sign in to manage your celebration.
+      </p>
+
       {/*
-        routing="hash" is required because the app runs under basePath '/opuspass'
-        (see next.config.ts). Clerk's default "path" routing infers its mount path
-        and navigates to sub-paths; that inference doesn't account for the basePath
-        prefix, so the component mounts at /opuspass/sign-in but expects /sign-in and
-        hangs on a blank/loading state. Hash routing keeps every step on the same URL
-        (#/...) and ignores the path. See the matching note on the sign-up page.
+        routing="hash" is required under basePath '/opuspass' (see next.config.ts).
+        Clerk's default "path" routing infers its mount path and navigates to
+        sub-paths; that inference doesn't account for the basePath prefix, so the
+        component mounts at /opuspass/sign-in but expects /sign-in and hangs on a
+        blank/loading state. Hash routing keeps every step on the same URL (#/...)
+        and ignores the path. Redirects (signUpUrl, fallbackRedirectUrl) go through
+        Clerk's Next router integration, which already respects basePath.
+
+        Same Clerk instance as opus_website + vendors_portal, so this account is
+        recognised across the whole OpusFesta ecosystem (shared apex session).
       */}
-      <SignIn
-        routing="hash"
-        signUpUrl="/sign-up"
-        fallbackRedirectUrl="/my/dashboard"
-      />
-    </div>
+      <div className="mt-6">
+        <SignIn
+          routing="hash"
+          signUpUrl="/sign-up"
+          fallbackRedirectUrl="/my/dashboard"
+          appearance={authAppearance}
+        />
+      </div>
+    </AuthShell>
   )
 }
