@@ -1,3 +1,5 @@
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 import SignInClient from './SignInClient'
 
 function firstParam(value: string | string[] | undefined): string | null {
@@ -20,6 +22,13 @@ export default async function SignInPage({
   const redirectUrl = safeLocalRedirect(
     firstParam(params?.redirect_url) || firstParam(params?.redirectUrl)
   )
+
+  // The apex Clerk session is shared across *.opusfesta.com, so a visitor may
+  // already be signed in (e.g. from OpusPass). Don't render the sign-in form —
+  // it would show "You're already signed in" and a 400. Send them onward; the
+  // (admin) layout gates on admin_whitelist and bounces non-staff to /contribute.
+  const { userId } = await auth()
+  if (userId) redirect(redirectUrl || '/')
 
   return <SignInClient redirectUrl={redirectUrl} />
 }

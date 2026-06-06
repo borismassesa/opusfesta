@@ -1,14 +1,11 @@
 import type { ReactNode } from 'react'
 import Logo from '@/components/ui/Logo'
 
-// Two-pane auth layout shared by sign-in and sign-up — mirrors the OpusFesta
-// Admin sign-in (form left on white, dark feature panel right). Layout only:
-// our custom headless forms (SignInClient / SignUpClient, both useSignIn/
-// useSignUp — no Clerk UI) are passed as `children` and render flush on the
-// left pane under the logo. No Clerk <SignIn>/<SignUp> component is involved.
-
-// Self-hosted in public/ so the panel can't break on a third-party hotlink.
-const PANEL_IMAGE = '/auth-panel.jpg'
+// Two-pane auth layout for opus_website sign-in and sign-up — mirrors the
+// OpusFesta Admin, Vendors Portal and OpusPass auth screens (form on the white
+// left pane, dark feature panel right). Layout only: the heading + Clerk
+// <SignIn>/<SignUp> (restyled flush via auth-appearance.ts) are passed in as
+// `children` and render on the left pane under the logo.
 
 export default function AuthShell({
   panelTitle,
@@ -24,7 +21,7 @@ export default function AuthShell({
       {/* ── Left: Clerk form on white ── */}
       <div className="flex min-h-screen flex-col bg-white">
         <div className="px-8 pt-8 sm:px-12 lg:px-20">
-          <Logo className="h-8 w-auto" />
+          <Logo className="h-7 w-auto" />
         </div>
         <div className="flex flex-1 flex-col justify-center px-8 py-6 sm:px-12 lg:px-20">
           <div className="mx-auto w-full max-w-[440px]">{children}</div>
@@ -55,7 +52,7 @@ export default function AuthShell({
       <div className="relative hidden overflow-hidden bg-[#0E0E10] lg:block">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={PANEL_IMAGE}
+          src="/auth-panel.jpg"
           alt=""
           className="absolute inset-0 h-full w-full object-cover"
         />

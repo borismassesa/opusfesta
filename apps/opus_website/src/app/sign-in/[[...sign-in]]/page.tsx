@@ -1,33 +1,33 @@
 import { SignIn } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
+import AuthShell from '@/components/AuthShell'
+import { authAppearance } from '@/components/auth-appearance'
 
-export default function SignInPage() {
+export const metadata = { title: 'Sign in — OpusFesta' }
+
+export default async function SignInPage() {
+  // All *.opusfesta.com apps share one Clerk instance, so a visitor may already
+  // have a session (e.g. signed in on OpusPass). Clerk's <SignIn> renders an
+  // empty form when a session exists — redirect instead of showing a dead form.
+  const { userId } = await auth()
+  if (userId) redirect('/')
+
   return (
-    <main className="min-h-screen bg-[#FAFAF8] flex flex-col items-center justify-center px-4 py-12">
-      <div className="mb-8 text-center">
-        <h1 className="text-2xl font-bold text-[#1A1A1A] mb-1">Welcome back</h1>
-        <p className="text-sm text-gray-500">Sign in to your OpusFesta account</p>
+    <AuthShell
+      panelTitle="Welcome back to OpusFesta"
+      panelSubtitle="Plan your wedding, discover vendors and manage every celebration — all from one account."
+    >
+      <h1 className="text-[28px] font-bold leading-tight tracking-tight text-[#1A1A1A]">
+        Sign in to your account
+      </h1>
+      <p className="mt-2 text-[15px] text-gray-500">
+        Welcome back — sign in to continue.
+      </p>
+
+      <div className="mt-6">
+        <SignIn signUpUrl="/sign-up" appearance={authAppearance} />
       </div>
-      <SignIn
-        appearance={{
-          elements: {
-            rootBox: 'w-full max-w-md',
-            card: 'shadow-none border border-gray-100 rounded-2xl bg-white p-6',
-            headerTitle: 'hidden',
-            headerSubtitle: 'hidden',
-            socialButtonsBlockButton:
-              'rounded-xl border border-gray-200 font-semibold text-[#1A1A1A] hover:bg-gray-50',
-            dividerLine: 'bg-gray-200',
-            dividerText: 'text-gray-400 text-xs',
-            formFieldInput:
-              'rounded-xl border-gray-200 focus:border-[#1A1A1A] text-sm py-3',
-            formButtonPrimary:
-              'rounded-full bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) text-sm font-bold',
-            footerActionLink: 'text-[#1A1A1A] font-semibold',
-            identityPreviewText: 'text-sm text-gray-600',
-            formResendCodeLink: 'text-[#1A1A1A]',
-          },
-        }}
-      />
-    </main>
+    </AuthShell>
   )
 }

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import Logo from '@/components/ui/Logo'
+import { assetPath } from '@/lib/asset-path'
 
 // Two-pane auth layout shared by OpusPass sign-in and sign-up — mirrors the
 // OpusFesta Admin / Vendors Portal auth screens (form on white left, dark
@@ -7,8 +8,8 @@ import Logo from '@/components/ui/Logo'
 // (restyled flush via auth-appearance.ts) are passed in as `children` and
 // render on the left pane under the logo.
 
-const PANEL_IMAGE =
-  'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=1600&q=80'
+// Self-hosted in public/ (served at /opuspass/auth-panel.jpg via basePath).
+const PANEL_IMAGE = assetPath('/auth-panel.jpg')
 
 export default function AuthShell({
   panelTitle,
@@ -20,9 +21,9 @@ export default function AuthShell({
   children: ReactNode
 }) {
   return (
-    <div className="grid h-screen overflow-hidden lg:grid-cols-2">
+    <div className="grid min-h-screen lg:grid-cols-2">
       {/* ── Left: headless form on white ── */}
-      <div className="flex h-full flex-col overflow-y-auto bg-white">
+      <div className="flex min-h-screen flex-col bg-white">
         <div className="px-8 pt-8 sm:px-12 lg:px-20">
           <Logo className="text-2xl" />
         </div>

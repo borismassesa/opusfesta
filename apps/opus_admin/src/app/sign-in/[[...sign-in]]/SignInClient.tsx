@@ -22,8 +22,8 @@ import Logo from '@/components/ui/Logo'
 //   • email_code → send a code, ask for it
 // On a complete result we activate the session and redirect.
 
-const PANEL_IMAGE =
-  'https://images.unsplash.com/photo-1519225421980-715cb0215aed?auto=format&fit=crop&w=1600&q=80'
+// Self-hosted in public/ so the panel can't break on a third-party hotlink.
+const PANEL_IMAGE = '/auth-panel.jpg'
 
 const STALL_THRESHOLD_MS = 15000
 const CODE_LENGTH = 6

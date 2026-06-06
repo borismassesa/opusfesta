@@ -1,10 +1,17 @@
 import { SignUp } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 import AuthShell from '@/components/AuthShell'
 import { authAppearance } from '@/components/auth-appearance'
 
 export const metadata = { title: 'Sign up — OpusPass' }
 
-export default function SignUpPage() {
+export default async function SignUpPage() {
+  // Shared apex session — don't render an empty <SignUp> to an already
+  // signed-in visitor; send them to the dashboard instead.
+  const { userId } = await auth()
+  if (userId) redirect('/my/dashboard')
+
   return (
     <AuthShell
       panelTitle="Plan your celebration with OpusPass"

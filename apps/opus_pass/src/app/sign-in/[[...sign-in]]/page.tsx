@@ -1,10 +1,18 @@
 import { SignIn } from '@clerk/nextjs'
+import { auth } from '@clerk/nextjs/server'
+import { redirect } from 'next/navigation'
 import AuthShell from '@/components/AuthShell'
 import { authAppearance } from '@/components/auth-appearance'
 
 export const metadata = { title: 'Sign in — OpusPass' }
 
-export default function SignInPage() {
+export default async function SignInPage() {
+  // The apex Clerk session is shared, so a visitor may already be signed in
+  // (e.g. from opusfesta.com). Clerk's <SignIn> renders an empty form when a
+  // session exists — redirect to the dashboard instead of showing a dead form.
+  const { userId } = await auth()
+  if (userId) redirect('/my/dashboard')
+
   return (
     <AuthShell
       panelTitle="Welcome back to OpusPass"
