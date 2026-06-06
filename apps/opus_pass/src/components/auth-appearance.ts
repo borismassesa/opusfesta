@@ -37,13 +37,13 @@ export const authAppearance = {
     dividerText: 'text-xs font-medium uppercase tracking-wider text-gray-400',
     formFieldLabel: 'text-sm font-medium text-[#1A1A1A]',
     formFieldInput:
-      'rounded-lg !border !border-gray-300 px-4 py-3 text-[15px] text-[#1A1A1A] focus:!border-[#C9A0DC] focus:ring-2 focus:ring-[#C9A0DC]/25',
+      'rounded-lg !border !border-gray-300 !shadow-none px-4 py-3 text-[15px] text-[#1A1A1A] focus:!border-[#C9A0DC] focus:!ring-2 focus:!ring-[#C9A0DC]/25',
     formFieldAction: 'font-medium text-[#7E5896] hover:underline',
     formButtonPrimary:
       'rounded-lg bg-[#1A1A1A] py-3 text-sm font-semibold normal-case shadow-none hover:bg-black',
     formFieldInputShowPasswordButton: 'text-gray-400 hover:text-gray-600',
     otpCodeFieldInput:
-      'rounded-lg !border !border-gray-300 focus:!border-[#C9A0DC] focus:ring-2 focus:ring-[#C9A0DC]/25',
+      'rounded-lg !border !border-gray-300 !shadow-none focus:!border-[#C9A0DC] focus:!ring-2 focus:!ring-[#C9A0DC]/25',
     footer: '!border-0 !bg-transparent !bg-none',
     footerActionText: 'text-gray-500',
     footerActionLink: 'font-medium text-[#7E5896] hover:underline',
