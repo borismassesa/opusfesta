@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import CartMenu from '@/components/CartMenu'
+import { UserButton, useUser } from '@clerk/nextjs'
 import {
   Menu,
   X,
@@ -148,6 +149,7 @@ export default function Navbar() {
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
+  const { isSignedIn, isLoaded } = useUser()
   const activeItem = activeMenu ? navItems.find((i) => i.label === activeMenu) ?? null : null
 
   const hamburgerRef = useRef<HTMLButtonElement>(null)
@@ -217,12 +219,33 @@ export default function Navbar() {
           {/* Cart — available signed in or out so guests can build an order pre-signup */}
           <CartMenu />
 
-          <Link
-            href="/invitations/catalog"
-            className="shrink-0 rounded-full bg-(--accent) px-3.5 py-2 text-xs font-bold whitespace-nowrap text-(--on-accent) transition-colors hover:bg-(--accent-hover) sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]"
-          >
-            Browse designs
-          </Link>
+          {/* Auth — Log in / Sign up when signed out, Dashboard + account when signed in */}
+          {isLoaded && !isSignedIn ? (
+            <>
+              <Link
+                href="/sign-in"
+                className="hidden shrink-0 rounded-full px-3.5 py-2 text-xs font-bold whitespace-nowrap text-gray-700 transition-colors hover:bg-gray-100 sm:inline-flex sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]"
+              >
+                Log in
+              </Link>
+              <Link
+                href="/sign-up"
+                className="shrink-0 rounded-full bg-(--accent) px-3.5 py-2 text-xs font-bold whitespace-nowrap text-(--on-accent) transition-colors hover:bg-(--accent-hover) sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]"
+              >
+                Sign up
+              </Link>
+            </>
+          ) : isLoaded ? (
+            <>
+              <Link
+                href="/my/dashboard"
+                className="shrink-0 rounded-full bg-(--accent) px-3.5 py-2 text-xs font-bold whitespace-nowrap text-(--on-accent) transition-colors hover:bg-(--accent-hover) sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]"
+              >
+                Dashboard
+              </Link>
+              <UserButton appearance={{ elements: { avatarBox: 'h-8 w-8' } }} />
+            </>
+          ) : null}
           <button
             ref={hamburgerRef}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 lg:hidden sm:h-10 sm:w-10 outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
@@ -385,15 +408,34 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* Footer CTA */}
+            {/* Footer CTA — auth */}
             <div className="shrink-0 px-4 py-5 border-t border-gray-100 flex flex-col gap-2.5">
-              <Link
-                href="/invitations/catalog"
-                onClick={() => setMobileOpen(false)}
-                className="w-full text-center bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) py-3 rounded-full font-bold text-sm transition-colors"
-              >
-                Browse designs
-              </Link>
+              {isLoaded && !isSignedIn ? (
+                <>
+                  <Link
+                    href="/sign-up"
+                    onClick={closeMobile}
+                    className="w-full text-center bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) py-3 rounded-full font-bold text-sm transition-colors"
+                  >
+                    Sign up
+                  </Link>
+                  <Link
+                    href="/sign-in"
+                    onClick={closeMobile}
+                    className="w-full text-center border border-gray-300 hover:bg-gray-50 text-gray-800 py-3 rounded-full font-bold text-sm transition-colors"
+                  >
+                    Log in
+                  </Link>
+                </>
+              ) : isLoaded ? (
+                <Link
+                  href="/my/dashboard"
+                  onClick={closeMobile}
+                  className="w-full text-center bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) py-3 rounded-full font-bold text-sm transition-colors"
+                >
+                  Dashboard
+                </Link>
+              ) : null}
             </div>
           </div>
 

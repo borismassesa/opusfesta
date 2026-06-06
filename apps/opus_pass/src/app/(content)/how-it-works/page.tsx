@@ -50,7 +50,7 @@ export default function HowItWorksPage() {
         ))}
       </div>
       <Link
-        href="/sign-up"
+        href="/my/dashboard?seed=1"
         className="inline-flex items-center rounded-full bg-black hover:bg-gray-800 text-white px-7 py-3.5 text-[14px] font-bold"
       >
         Start your guest list
