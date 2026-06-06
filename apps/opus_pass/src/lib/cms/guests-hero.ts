@@ -26,7 +26,12 @@ export const GUESTS_HERO_FALLBACK: GuestsHeroContent = {
   description:
     'Send digital invitations by WhatsApp or SMS and watch the “Joyful yes” replies roll in — a free guest list and bilingual RSVP page in English & Swahili.',
   primary_cta_label: 'Start your guest list',
-  primary_cta_href: '/sign-up?redirect_url=%2Fmy%2Fdashboard%3Fseed%3D1',
+  // Go straight to the dashboard. /my is auth-protected, so a signed-in couple
+  // (shared OpusFesta session) lands directly on it, while a signed-out visitor
+  // is funnelled through /sign-in (→ back here) by middleware. seed=1 triggers
+  // first-run setup on the dashboard. Rendered via next/link, so basePath
+  // (/opuspass) is prepended automatically.
+  primary_cta_href: '/my/dashboard?seed=1',
   secondary_cta_label: 'See how it works',
   secondary_cta_href: '#collection',
   trust_lead: 'Trusted by 500+',

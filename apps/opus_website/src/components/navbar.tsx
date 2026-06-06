@@ -385,14 +385,14 @@ export default function Navbar() {
       }}
     >
       {/* ── Top bar ── */}
-      <nav className="relative z-50 mx-auto flex max-w-344 items-center justify-between bg-white px-3 py-3.5 sm:px-4 sm:py-4 lg:px-3 xl:px-2">
+      <nav className="relative z-50 mx-auto flex max-w-[1536px] items-center justify-between bg-white px-4 py-3.5 sm:px-6 sm:py-4 lg:px-8">
         {/* Left: logo + desktop nav */}
         <div className="flex min-w-0 items-center gap-3 sm:gap-6 lg:gap-5">
           <Link href="/" aria-label="OpusFesta home" className="shrink-0">
             <Logo className="h-8 w-auto sm:h-10" />
           </Link>
 
-          <div className="hidden lg:flex gap-1 font-semibold text-[15px]">
+          <div className="hidden min-[1340px]:flex gap-1 font-semibold text-[15px]">
             {navItems.map((item) => (
               <button
                 key={item.label}
@@ -417,7 +417,7 @@ export default function Navbar() {
             <>
               <Link
                 href="/sign-in"
-                className="hidden lg:block text-gray-700 hover:text-[#1A1A1A] transition-colors whitespace-nowrap px-4 py-2.5 rounded-full hover:bg-gray-100"
+                className="hidden min-[1340px]:block text-gray-700 hover:text-[#1A1A1A] transition-colors whitespace-nowrap px-4 py-2.5 rounded-full hover:bg-gray-100"
               >
                 Log in
               </Link>
@@ -432,15 +432,43 @@ export default function Navbar() {
             <div className="flex items-center gap-3">
               <Link
                 href="/my/dashboard"
-                className="hidden lg:flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-[#1A1A1A] px-4 py-2.5 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap"
+                className="hidden min-[1340px]:flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-[#1A1A1A] px-4 py-2.5 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap"
               >
                 My Wedding
               </Link>
-              <UserButton appearance={{ elements: { avatarBox: 'w-9 h-9' } }} />
+              {/* Same account, OpusPass zone — NavAnchor uses a plain <a> to cross
+                  the /opuspass rewrite boundary. Session is shared (one Clerk apex). */}
+              <NavAnchor
+                href="/opuspass/my/dashboard"
+                className="hidden 2xl:flex items-center gap-1.5 text-sm font-semibold text-gray-700 hover:text-[#1A1A1A] px-4 py-2.5 rounded-full hover:bg-gray-100 transition-colors whitespace-nowrap"
+              >
+                Invitations &amp; RSVPs
+              </NavAnchor>
+              {/* Dashboard destinations also live in the avatar menu so they
+                  stay reachable on mid-size desktops (1340–1535px) where the
+                  inline "Invitations & RSVPs" link is hidden for space. The
+                  /opuspass target crosses the rewrite boundary, so it uses a
+                  full-page nav (Action) rather than Clerk's client-side Link. */}
+              <UserButton appearance={{ elements: { avatarBox: 'w-9 h-9' } }}>
+                <UserButton.MenuItems>
+                  <UserButton.Link
+                    label="My Wedding"
+                    labelIcon={<Heart size={16} />}
+                    href="/my/dashboard"
+                  />
+                  <UserButton.Action
+                    label="Invitations & RSVPs"
+                    labelIcon={<CalendarCheck size={16} />}
+                    onClick={() => {
+                      window.location.href = '/opuspass/my/dashboard'
+                    }}
+                  />
+                </UserButton.MenuItems>
+              </UserButton>
             </div>
           ) : null}
           <button
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 lg:hidden sm:h-10 sm:w-10"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 min-[1340px]:hidden sm:h-10 sm:w-10"
             aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
             onClick={() => setMobileOpen((v) => !v)}
           >
@@ -451,7 +479,7 @@ export default function Navbar() {
 
       {/* ── Desktop mega-menu dropdown ── */}
       {activeItem && (
-        <div className="hidden lg:block absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-lg z-40">
+        <div className="hidden min-[1340px]:block absolute top-full left-0 w-full bg-white border-b border-gray-200 shadow-lg z-40">
           <div className="max-w-6xl mx-auto px-6 py-8 flex gap-10">
 
             {/* Featured card */}
@@ -571,7 +599,7 @@ export default function Navbar() {
 
       {/* ── Mobile: full-screen menu ── */}
       <div
-        className={`lg:hidden fixed inset-0 bg-white z-50 flex flex-col transition-transform duration-300 ease-in-out ${
+        className={`min-[1340px]:hidden fixed inset-0 bg-white z-50 flex flex-col transition-transform duration-300 ease-in-out ${
           mobileOpen ? 'translate-y-0' : '-translate-y-full'
         }`}
         aria-label="Navigation menu"
@@ -650,6 +678,13 @@ export default function Navbar() {
                   >
                     My Wedding
                   </Link>
+                  <NavAnchor
+                    href="/opuspass/my/dashboard"
+                    onClick={() => setMobileOpen(false)}
+                    className="w-full text-center py-3 rounded-full border-2 border-gray-200 text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    Invitations &amp; RSVPs
+                  </NavAnchor>
                   <div className="flex items-center justify-center pt-1">
                     <UserButton appearance={{ elements: { avatarBox: 'w-10 h-10' } }} />
                   </div>

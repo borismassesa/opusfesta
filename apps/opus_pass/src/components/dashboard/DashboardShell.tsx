@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { useClerk } from '@clerk/nextjs'
 import {
   LayoutDashboard,
   HandCoins,
@@ -18,9 +19,19 @@ import {
   ExternalLink,
   PanelLeftClose,
   PanelLeftOpen,
+  LogOut,
+  Store,
+  ChevronUp,
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import { cn } from '@/lib/utils'
+
+// opus_website (the marketplace + couple planning dashboard) lives at a different
+// origin than this app. In production both share the opusfesta.com apex (and the
+// same Clerk session), so jumping across keeps the user signed in. Absolute URL
+// works in both the proxied (/opuspass) and standalone (opuspass.opusfesta.com)
+// deployments; falls back to the website's local dev port.
+const MARKETPLACE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3006'
 
 // Events comes first after Overview: pledges, guests, invites and RSVPs all
 // depend on at least one event existing, so it's the natural starting point.
@@ -142,18 +153,6 @@ export default function DashboardShell({
           <NavLinks collapsed={collapsed} />
         </div>
         <div className="space-y-2 border-t border-black/[0.06] pt-4">
-          <Link
-            href="/invitations"
-            title={collapsed ? 'Browse designs' : undefined}
-            aria-label={collapsed ? 'Browse designs' : undefined}
-            className={cn(
-              'flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-[#1A1A1A]/60 hover:bg-black/[0.04]',
-              collapsed && 'justify-center px-0',
-            )}
-          >
-            <ExternalLink className="h-4 w-4 shrink-0" />
-            {collapsed ? null : 'Browse designs'}
-          </Link>
           <AccountFooter email={userEmail} initial={userInitial} collapsed={collapsed} />
         </div>
       </aside>
@@ -230,38 +229,117 @@ function AccountFooter({
   collapsed?: boolean
 }) {
   const pathname = usePathname()
+  const { signOut } = useClerk()
+  const [open, setOpen] = useState(false)
   const active = pathname.startsWith('/my/dashboard/settings')
+
+  const close = () => setOpen(false)
+
   return (
-    <Link
-      href="/my/dashboard/settings"
-      onClick={onNavigate}
-      title="Profile & settings"
-      aria-label="Profile & settings"
-      className={cn(
-        'flex items-center gap-3 rounded-xl px-3 py-2 transition-colors',
-        collapsed && 'justify-center px-0',
-        active ? 'bg-[#C9A0DC]/15' : 'hover:bg-black/[0.04]',
-      )}
-    >
-      <span
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C9A0DC]/25 text-xs font-bold text-[#8e57b3]"
-        aria-hidden="true"
-      >
-        {initial}
-      </span>
-      {collapsed ? null : (
-        <>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-medium text-[#1A1A1A]">Profile</span>
-            <span className="block truncate text-xs text-[#1A1A1A]/55" title={email}>
-              {email}
+    <div className="relative">
+      {/* Click-away backdrop */}
+      {open ? (
+        <button
+          type="button"
+          aria-hidden="true"
+          tabIndex={-1}
+          className="fixed inset-0 z-40 cursor-default"
+          onClick={close}
+        />
+      ) : null}
+
+      {/* Dropdown — opens upward (footer sits at the bottom of the sidebar) */}
+      {open ? (
+        <div
+          role="menu"
+          className={cn(
+            'absolute bottom-full z-50 mb-2 overflow-hidden rounded-xl border border-black/[0.08] bg-white py-1 shadow-lg',
+            collapsed ? 'left-0 w-56' : 'left-0 right-0',
+          )}
+        >
+          <Link
+            href="/my/dashboard/settings"
+            role="menuitem"
+            onClick={() => {
+              close()
+              onNavigate?.()
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-[#1A1A1A] hover:bg-black/[0.04]"
+          >
+            <Settings className="h-4 w-4 shrink-0 text-[#1A1A1A]/45" />
+            Profile &amp; settings
+          </Link>
+          <a
+            href={MARKETPLACE_URL}
+            role="menuitem"
+            onClick={() => {
+              close()
+              onNavigate?.()
+            }}
+            className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-[#1A1A1A] hover:bg-black/[0.04]"
+          >
+            <Store className="h-4 w-4 shrink-0 text-[#1A1A1A]/45" />
+            <span className="min-w-0 flex-1">
+              Vendors &amp; planning
+              <span className="block text-xs font-normal text-[#1A1A1A]/45">on OpusFesta</span>
             </span>
-          </span>
-          <Settings
-            className={cn('h-4 w-4 shrink-0', active ? 'text-[#8e57b3]' : 'text-[#1A1A1A]/40')}
-          />
-        </>
-      )}
-    </Link>
+            <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[#1A1A1A]/30" />
+          </a>
+          <div className="my-1 border-t border-black/[0.06]" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => {
+              close()
+              // basePath ('/opuspass') is NOT prepended by Clerk's signOut, so
+              // use the full path — matches AccountProfile / AlreadySignedIn and
+              // keeps the user in the OpusPass zone instead of the marketplace apex.
+              void signOut({ redirectUrl: '/opuspass/sign-in' })
+            }}
+            className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-[#1A1A1A] hover:bg-black/[0.04]"
+          >
+            <LogOut className="h-4 w-4 shrink-0 text-[#1A1A1A]/45" />
+            Sign out
+          </button>
+        </div>
+      ) : null}
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title="Account"
+        aria-label="Account menu"
+        className={cn(
+          'flex w-full items-center gap-3 rounded-xl px-3 py-2 transition-colors',
+          collapsed && 'justify-center px-0',
+          open || active ? 'bg-[#C9A0DC]/15' : 'hover:bg-black/[0.04]',
+        )}
+      >
+        <span
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#C9A0DC]/25 text-xs font-bold text-[#8e57b3]"
+          aria-hidden="true"
+        >
+          {initial}
+        </span>
+        {collapsed ? null : (
+          <>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block text-sm font-medium text-[#1A1A1A]">Account</span>
+              <span className="block truncate text-xs text-[#1A1A1A]/55" title={email}>
+                {email}
+              </span>
+            </span>
+            <ChevronUp
+              className={cn(
+                'h-4 w-4 shrink-0 text-[#1A1A1A]/40 transition-transform',
+                open ? '' : 'rotate-180',
+              )}
+            />
+          </>
+        )}
+      </button>
+    </div>
   )
 }

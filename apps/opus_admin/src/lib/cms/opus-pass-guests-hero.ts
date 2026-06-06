@@ -33,7 +33,11 @@ export const OPUS_PASS_GUESTS_HERO_FALLBACK: OpusPassGuestsHeroContent = {
   description:
     'Send digital invitations by WhatsApp or SMS and watch the “Joyful yes” replies roll in — a free guest list and bilingual RSVP page in English & Swahili.',
   primary_cta_label: 'Start your guest list',
-  primary_cta_href: '/sign-up?redirect_url=%2Fmy%2Fdashboard%3Fseed%3D1',
+  // Straight to the dashboard (/opuspass/my/dashboard via the app's basePath).
+  // /my is auth-protected: signed-in couples land directly, signed-out visitors
+  // get routed through /sign-in and back. Keep in sync with the opus_pass
+  // GUESTS_HERO_FALLBACK so publishing from admin doesn't revert the target.
+  primary_cta_href: '/my/dashboard?seed=1',
   secondary_cta_label: 'See how it works',
   secondary_cta_href: '#collection',
   trust_lead: 'Trusted by 500+',
