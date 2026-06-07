@@ -7,7 +7,7 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
-import { useSignIn } from '@clerk/nextjs'
+import { useAuth, useSignIn } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
@@ -49,6 +49,7 @@ const linkClass = 'font-medium text-[#1A1A1A] underline-offset-2 hover:underline
 
 export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) {
   const { isLoaded, signIn, setActive } = useSignIn()
+  const { isLoaded: authLoaded, isSignedIn } = useAuth()
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('identifier')
@@ -63,6 +64,21 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
   const [stalled, setStalled] = useState(false)
 
   const dest = redirectUrl || '/'
+
+  // Client-side counterpart of the server guard in page.tsx. /sign-in is a
+  // public route, so Clerk's middleware never runs a handshake here — when the
+  // apex session (shared across *.opusfesta.com) is only hydrated in the
+  // client SDK, the server's auth() sees no userId and renders this form. If we
+  // then let the user submit, Clerk rejects signIn.create() with a 400
+  // "You're already signed in". So: as soon as the client SDK reports an active
+  // session, bail out of the form and do a FULL-PAGE navigation to the
+  // destination. Going through a protected route triggers Clerk's middleware
+  // handshake, which mints the server __session cookie and lands the user on
+  // the dashboard (or /contribute, per the (admin) layout's whitelist gate).
+  const alreadySignedIn = authLoaded && isSignedIn
+  useEffect(() => {
+    if (alreadySignedIn) window.location.replace(dest)
+  }, [alreadySignedIn, dest])
 
   useEffect(() => {
     if (isLoaded) return
@@ -163,8 +179,9 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
     setError(null)
   }
 
-  const subtitle =
-    step === 'code'
+  const subtitle = alreadySignedIn
+    ? 'Welcome back.'
+    : step === 'code'
       ? `Enter the code we sent to ${email}.`
       : step === 'password'
         ? 'Enter your password to continue.'
@@ -183,7 +200,18 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
             </h1>
             <p className="mt-2 text-[15px] text-gray-500">{subtitle}</p>
 
-            {!isLoaded ? (
+            {alreadySignedIn ? (
+              <div className="py-14 text-center">
+                <div
+                  className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[#1A1A1A]"
+                  role="status"
+                  aria-label="Redirecting"
+                />
+                <p className="mt-4 text-sm text-gray-500">
+                  You&rsquo;re already signed in — taking you to your dashboard…
+                </p>
+              </div>
+            ) : !isLoaded ? (
               <div className="py-14 text-center">
                 {stalled ? (
                   <>
