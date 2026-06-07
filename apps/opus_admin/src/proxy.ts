@@ -1,5 +1,15 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
+// TEMPORARY: when DISABLE_ADMIN_AUTH=true the whole sign-in/role gate is
+// bypassed so we can develop the dashboard without auth. The Clerk wiring is
+// left fully intact — flip the flag (or remove it) to restore enforcement.
+// Hard-gated to non-production builds so the flag can NEVER open the admin in
+// prod even if the env var leaks into a deployed environment.
+// See also getAdminAccessRole() in lib/admin-auth.ts.
+const AUTH_DISABLED =
+  process.env.DISABLE_ADMIN_AUTH === 'true' &&
+  process.env.NODE_ENV !== 'production'
+
 // Public routes — sign-in/sign-up pages, Clerk's own callback handling, and
 // webhook endpoints (which are authenticated by their own signing secrets).
 const isPublicRoute = createRouteMatcher([
@@ -16,6 +26,7 @@ const isPublicRoute = createRouteMatcher([
 
 export default clerkMiddleware(
   async (auth, req) => {
+    if (AUTH_DISABLED) return
     if (isPublicRoute(req)) return
     await auth.protect({
       unauthenticatedUrl: new URL('/sign-in', req.url).toString(),
