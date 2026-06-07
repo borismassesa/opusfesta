@@ -35,9 +35,13 @@ function isElevatedRole(role: AdminAccessRole): boolean {
 // development convenience only — the Clerk + admin_whitelist machinery below
 // is left untouched. Remove the flag (or set it to anything but 'true') to
 // restore real auth. Mirrored in proxy.ts, which skips route protection under
-// the same flag.
+// the same flag. Hard-gated to non-production builds so a leaked env var can
+// never open the admin in prod.
 function isAdminAuthDisabled(): boolean {
-  return process.env.DISABLE_ADMIN_AUTH === 'true'
+  return (
+    process.env.DISABLE_ADMIN_AUTH === 'true' &&
+    process.env.NODE_ENV !== 'production'
+  )
 }
 
 // Roles that are allowed to load the admin dashboard (everything under
