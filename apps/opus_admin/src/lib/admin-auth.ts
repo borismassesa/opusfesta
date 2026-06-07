@@ -3,6 +3,7 @@ import { auth, clerkClient, currentUser } from '@clerk/nextjs/server'
 import type { User } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient, hasSupabaseAdminConfig } from '@/lib/supabase'
 import { auditPermissionDenied, recordAuditEvent } from '@/lib/audit-log'
+import { hasTempAdminAccess } from '@/lib/temp-admin'
 
 export type AdminAccessRole = 'owner' | 'admin' | 'editor' | 'author' | 'viewer'
 
@@ -66,6 +67,8 @@ export function isAdminDashboardRole(role: AdminAccessRole | null): boolean {
 // never given a temp password, so it's a no-op for existing admins.
 export const callerMustResetPassword = cache(async (): Promise<boolean> => {
   if (isAdminAuthDisabled()) return false
+  // Temp shared-access users never had a Clerk password to reset.
+  if (await hasTempAdminAccess()) return false
   const { userId } = await auth()
   if (!userId) return false
   const user = await currentUser()
@@ -178,6 +181,8 @@ async function syncClerkRoleIfStale(
 export const getAdminAccessRole = cache(
   async (): Promise<AdminAccessRole | null> => {
     if (isAdminAuthDisabled()) return 'owner'
+    // Shared temp-access cookie → full owner control (see lib/temp-admin.ts).
+    if (await hasTempAdminAccess()) return 'owner'
     const { userId, sessionClaims } = await auth()
     if (!userId) return null
 
@@ -266,6 +271,7 @@ export function escapeLike(value: string): string {
 
 export const getCallerEmail = cache(async (): Promise<string | null> => {
   if (isAdminAuthDisabled()) return 'dev@opusfesta.com'
+  if (await hasTempAdminAccess()) return 'temp-admin@opusfesta.com'
   const { userId, sessionClaims } = await auth()
   if (!userId) return null
   const user = await currentUser()
