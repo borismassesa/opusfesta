@@ -30,6 +30,20 @@ function isElevatedRole(role: AdminAccessRole): boolean {
   return ELEVATED_ROLES.includes(role)
 }
 
+// TEMPORARY: when DISABLE_ADMIN_AUTH=true every caller is treated as an
+// `owner` so the dashboard is reachable without signing in. This is a
+// development convenience only — the Clerk + admin_whitelist machinery below
+// is left untouched. Remove the flag (or set it to anything but 'true') to
+// restore real auth. Mirrored in proxy.ts, which skips route protection under
+// the same flag. Hard-gated to non-production builds so a leaked env var can
+// never open the admin in prod.
+function isAdminAuthDisabled(): boolean {
+  return (
+    process.env.DISABLE_ADMIN_AUTH === 'true' &&
+    process.env.NODE_ENV !== 'production'
+  )
+}
+
 // Roles that are allowed to load the admin dashboard (everything under
 // `(admin)/`). Authors write articles via /contribute and shouldn't see the
 // admin shell — see comment in operations/articles/actions.ts.
@@ -51,6 +65,7 @@ export function isAdminDashboardRole(role: AdminAccessRole | null): boolean {
 // reset isn't trapped by a stale token. Returns false for everyone who was
 // never given a temp password, so it's a no-op for existing admins.
 export const callerMustResetPassword = cache(async (): Promise<boolean> => {
+  if (isAdminAuthDisabled()) return false
   const { userId } = await auth()
   if (!userId) return false
   const user = await currentUser()
@@ -162,6 +177,7 @@ async function syncClerkRoleIfStale(
 // expensive call here.
 export const getAdminAccessRole = cache(
   async (): Promise<AdminAccessRole | null> => {
+    if (isAdminAuthDisabled()) return 'owner'
     const { userId, sessionClaims } = await auth()
     if (!userId) return null
 
@@ -249,6 +265,7 @@ export function escapeLike(value: string): string {
 }
 
 export const getCallerEmail = cache(async (): Promise<string | null> => {
+  if (isAdminAuthDisabled()) return 'dev@opusfesta.com'
   const { userId, sessionClaims } = await auth()
   if (!userId) return null
   const user = await currentUser()
