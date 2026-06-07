@@ -14,25 +14,19 @@ import { cookies } from 'next/headers'
 //     Clerk route guard.
 //
 // It is gated by the shared code (NOT wide open), but it IS a shared password
-// that grants full admin — treat it as temporary. Disable it by setting
-// ADMIN_TEMP_PASSWORD="" (empty) in the environment, or remove this module.
+// that grants full admin — treat it as temporary. The code lives ONLY in the
+// ADMIN_TEMP_PASSWORD env var (never committed). Unset/empty → the whole
+// feature is disabled, so production is closed by default.
 //
-// NOTE: the constant here is duplicated in proxy.ts because middleware runs on
+// NOTE: the cookie name is duplicated in proxy.ts because middleware runs on
 // the edge runtime and can't import this `next/headers` module.
 
 export const TEMP_ADMIN_COOKIE = 'of_temp_admin'
 
-// Default code so it works on a fresh deploy without extra env wiring. Override
-// (or disable with an empty string) via ADMIN_TEMP_PASSWORD.
-const DEFAULT_TEMP_PASSWORD = 'opusfesta-admin-2026'
-
 export function tempAdminPassword(): string | null {
-  // Explicitly-set empty string disables the feature; unset falls back to the
-  // default so production works straight after deploy.
-  const raw =
-    process.env.ADMIN_TEMP_PASSWORD === undefined
-      ? DEFAULT_TEMP_PASSWORD
-      : process.env.ADMIN_TEMP_PASSWORD
+  // No baked-in default: the feature is off unless ADMIN_TEMP_PASSWORD is set,
+  // so a deploy can never silently open the admin.
+  const raw = process.env.ADMIN_TEMP_PASSWORD ?? ''
   return raw.length > 0 ? raw : null
 }
 

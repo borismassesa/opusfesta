@@ -13,13 +13,11 @@ const AUTH_DISABLED =
 // TEMPORARY shared-passcode access (see lib/temp-admin.ts). A valid
 // `of_temp_admin` cookie lets the team into the admin with full owner rights
 // without Clerk. The cookie value is the shared code itself, compared here
-// (edge runtime can't import the next/headers helper, so the constant +
-// password are duplicated). Disable by setting ADMIN_TEMP_PASSWORD="".
+// (edge runtime can't import the next/headers helper). The code lives ONLY in
+// ADMIN_TEMP_PASSWORD — unset/empty disables the feature, so prod is closed by
+// default.
 const TEMP_ADMIN_COOKIE = 'of_temp_admin'
-const TEMP_ADMIN_PASSWORD =
-  process.env.ADMIN_TEMP_PASSWORD === undefined
-    ? 'opusfesta-admin-2026'
-    : process.env.ADMIN_TEMP_PASSWORD
+const TEMP_ADMIN_PASSWORD = process.env.ADMIN_TEMP_PASSWORD ?? ''
 const TEMP_ADMIN_ENABLED = TEMP_ADMIN_PASSWORD.length > 0
 
 function hasTempAdminCookie(req: Request): boolean {
