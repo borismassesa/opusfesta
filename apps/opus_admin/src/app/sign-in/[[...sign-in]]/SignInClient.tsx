@@ -27,6 +27,9 @@ const PANEL_IMAGE = '/auth-panel.jpg'
 
 const STALL_THRESHOLD_MS = 15000
 const CODE_LENGTH = 6
+// Per-tab marker so the already-signed-in auto-redirect only fires once and
+// can't become a reload loop. See the effect in SignInClient.
+const REDIRECT_GUARD_KEY = 'opus_admin_signin_redirected'
 
 type Step = 'identifier' | 'password' | 'code'
 
@@ -62,6 +65,7 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [stalled, setStalled] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
 
   const dest = redirectUrl || '/'
 
@@ -77,7 +81,18 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
   // the dashboard (or /contribute, per the (admin) layout's whitelist gate).
   const alreadySignedIn = authLoaded && isSignedIn
   useEffect(() => {
-    if (alreadySignedIn) window.location.replace(dest)
+    if (!alreadySignedIn) return
+    // One-shot guard against a reload loop. If the server STILL can't establish
+    // a session after we bounce through the protected route (a genuine
+    // cross-instance apex-cookie collision, or a handshake that can't resolve),
+    // auth.protect() sends us right back to /sign-in — where we'd be signed-in
+    // again and redirect again, forever. Remember that we already tried once
+    // (per tab) and fall through to the form instead of looping. Cleared on a
+    // successful sign-in in complete().
+    if (sessionStorage.getItem(REDIRECT_GUARD_KEY)) return
+    sessionStorage.setItem(REDIRECT_GUARD_KEY, '1')
+    setRedirecting(true)
+    window.location.replace(dest)
   }, [alreadySignedIn, dest])
 
   useEffect(() => {
@@ -89,6 +104,9 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
   // Returns true if the result completed the sign-in (and we've redirected).
   async function complete(result: { status: string | null; createdSessionId: string | null }) {
     if (result.status === 'complete' && result.createdSessionId && setActive) {
+      // Fresh, valid session — clear the loop guard so a later visit can
+      // auto-redirect again if needed.
+      sessionStorage.removeItem(REDIRECT_GUARD_KEY)
       await setActive({ session: result.createdSessionId })
       router.push(dest)
       return true
@@ -179,7 +197,7 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
     setError(null)
   }
 
-  const subtitle = alreadySignedIn
+  const subtitle = redirecting
     ? 'Welcome back.'
     : step === 'code'
       ? `Enter the code we sent to ${email}.`
@@ -200,7 +218,7 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
             </h1>
             <p className="mt-2 text-[15px] text-gray-500">{subtitle}</p>
 
-            {alreadySignedIn ? (
+            {redirecting ? (
               <div className="py-14 text-center">
                 <div
                   className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[#1A1A1A]"
