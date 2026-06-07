@@ -7,7 +7,7 @@ import {
   type FormEvent,
   type KeyboardEvent as ReactKeyboardEvent,
 } from 'react'
-import { useSignIn } from '@clerk/nextjs'
+import { useAuth, useSignIn } from '@clerk/nextjs'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
@@ -27,6 +27,9 @@ const PANEL_IMAGE = '/auth-panel.jpg'
 
 const STALL_THRESHOLD_MS = 15000
 const CODE_LENGTH = 6
+// Per-tab marker so the already-signed-in auto-redirect only fires once and
+// can't become a reload loop. See the effect in SignInClient.
+const REDIRECT_GUARD_KEY = 'opus_admin_signin_redirected'
 
 type Step = 'identifier' | 'password' | 'code'
 
@@ -49,6 +52,7 @@ const linkClass = 'font-medium text-[#1A1A1A] underline-offset-2 hover:underline
 
 export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) {
   const { isLoaded, signIn, setActive } = useSignIn()
+  const { isLoaded: authLoaded, isSignedIn } = useAuth()
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('identifier')
@@ -61,8 +65,35 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [stalled, setStalled] = useState(false)
+  const [redirecting, setRedirecting] = useState(false)
 
   const dest = redirectUrl || '/'
+
+  // Client-side counterpart of the server guard in page.tsx. /sign-in is a
+  // public route, so Clerk's middleware never runs a handshake here — when the
+  // apex session (shared across *.opusfesta.com) is only hydrated in the
+  // client SDK, the server's auth() sees no userId and renders this form. If we
+  // then let the user submit, Clerk rejects signIn.create() with a 400
+  // "You're already signed in". So: as soon as the client SDK reports an active
+  // session, bail out of the form and do a FULL-PAGE navigation to the
+  // destination. Going through a protected route triggers Clerk's middleware
+  // handshake, which mints the server __session cookie and lands the user on
+  // the dashboard (or /contribute, per the (admin) layout's whitelist gate).
+  const alreadySignedIn = authLoaded && isSignedIn
+  useEffect(() => {
+    if (!alreadySignedIn) return
+    // One-shot guard against a reload loop. If the server STILL can't establish
+    // a session after we bounce through the protected route (a genuine
+    // cross-instance apex-cookie collision, or a handshake that can't resolve),
+    // auth.protect() sends us right back to /sign-in — where we'd be signed-in
+    // again and redirect again, forever. Remember that we already tried once
+    // (per tab) and fall through to the form instead of looping. Cleared on a
+    // successful sign-in in complete().
+    if (sessionStorage.getItem(REDIRECT_GUARD_KEY)) return
+    sessionStorage.setItem(REDIRECT_GUARD_KEY, '1')
+    setRedirecting(true)
+    window.location.replace(dest)
+  }, [alreadySignedIn, dest])
 
   useEffect(() => {
     if (isLoaded) return
@@ -73,6 +104,9 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
   // Returns true if the result completed the sign-in (and we've redirected).
   async function complete(result: { status: string | null; createdSessionId: string | null }) {
     if (result.status === 'complete' && result.createdSessionId && setActive) {
+      // Fresh, valid session — clear the loop guard so a later visit can
+      // auto-redirect again if needed.
+      sessionStorage.removeItem(REDIRECT_GUARD_KEY)
       await setActive({ session: result.createdSessionId })
       router.push(dest)
       return true
@@ -163,8 +197,9 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
     setError(null)
   }
 
-  const subtitle =
-    step === 'code'
+  const subtitle = redirecting
+    ? 'Welcome back.'
+    : step === 'code'
       ? `Enter the code we sent to ${email}.`
       : step === 'password'
         ? 'Enter your password to continue.'
@@ -183,7 +218,18 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
             </h1>
             <p className="mt-2 text-[15px] text-gray-500">{subtitle}</p>
 
-            {!isLoaded ? (
+            {redirecting ? (
+              <div className="py-14 text-center">
+                <div
+                  className="mx-auto h-8 w-8 animate-spin rounded-full border-2 border-gray-200 border-t-[#1A1A1A]"
+                  role="status"
+                  aria-label="Redirecting"
+                />
+                <p className="mt-4 text-sm text-gray-500">
+                  You&rsquo;re already signed in — taking you to your dashboard…
+                </p>
+              </div>
+            ) : !isLoaded ? (
               <div className="py-14 text-center">
                 {stalled ? (
                   <>
