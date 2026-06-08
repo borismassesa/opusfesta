@@ -7,6 +7,10 @@ const nextConfig: NextConfig = {
   // is kept alive as a 308 redirect to the subdomain (see opus_website/next.config.ts),
   // so there is no longer a path prefix and no multi-zone proxy to satisfy.
   images: {
+    // The Next dev image optimizer (Turbopack) intermittently 504s even on small,
+    // fast-loading remote images. Serve images raw in dev (fast enough — these are
+    // already-sized uploads) and let Vercel's robust optimizer handle production.
+    unoptimized: process.env.NODE_ENV !== 'production',
     remotePatterns: [
       {
         protocol: 'https',

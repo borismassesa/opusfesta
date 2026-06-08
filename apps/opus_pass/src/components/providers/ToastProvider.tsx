@@ -18,7 +18,7 @@ const TOAST_BASE =
 export default function ToastProvider() {
   return (
     <Toaster
-      position="bottom-right"
+      position="top-right"
       gap={10}
       offset={20}
       icons={{

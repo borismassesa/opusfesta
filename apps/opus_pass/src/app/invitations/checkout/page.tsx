@@ -34,32 +34,9 @@ type SavedMethod = {
   badge: { text: string; bg: string; fg: string }
 }
 
-const SAVED_METHODS: SavedMethod[] = [
-  {
-    id: 'mpesa-default',
-    label: 'M-Pesa ending in 4521',
-    detail: 'Connected since Oct 2024',
-    badge: { text: 'M-PESA', bg: '#dcfce7', fg: '#166534' },
-  },
-  {
-    id: 'airtel-default',
-    label: 'Airtel Money ending in 7890',
-    detail: 'Connected since Mar 2025',
-    badge: { text: 'AIRTEL', bg: '#fee2e2', fg: '#991b1b' },
-  },
-  {
-    id: 'tigo-default',
-    label: 'Tigo Pesa ending in 1234',
-    detail: 'Connected since Jan 2025',
-    badge: { text: 'TIGO', bg: '#dbeafe', fg: '#1e3a8a' },
-  },
-  {
-    id: 'card-default',
-    label: 'Visa ending in 7658',
-    detail: 'Expiry 10/2027',
-    badge: { text: 'VISA', bg: '#eef2ff', fg: '#1e3a8a' },
-  },
-]
+// No saved methods yet — a real user starts by entering a card or mobile-money number.
+// When a saved-payment backend exists, populate this from the signed-in user's account.
+const SAVED_METHODS: SavedMethod[] = []
 
 function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
@@ -106,8 +83,8 @@ export default function CheckoutPage() {
   const router = useRouter()
   const { items, subtotal, clear } = useCart()
 
-  const [selected, setSelected] = useState<PaymentMethodId>('mpesa-default')
-  const [newKind, setNewKind] = useState<'card' | 'mobile'>('card')
+  const [selected, setSelected] = useState<PaymentMethodId>('new-mobile')
+  const [newKind, setNewKind] = useState<'card' | 'mobile'>('mobile')
 
   const [cardName, setCardName] = useState('')
   const [cardNumber, setCardNumber] = useState('')
@@ -237,7 +214,8 @@ export default function CheckoutPage() {
                 </div>
               )}
 
-              {/* Saved methods */}
+              {/* Saved methods — only shown when the account has any */}
+              {SAVED_METHODS.length > 0 && (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 {SAVED_METHODS.map((m) => {
                   const isActive = selected === m.id
@@ -247,8 +225,8 @@ export default function CheckoutPage() {
                       type="button"
                       onClick={() => setSelected(m.id)}
                       aria-pressed={isActive}
-                      className={`relative text-left rounded-xl border-2 p-4 transition-colors ${
-                        isActive ? 'border-gray-900 bg-white' : 'border-gray-200 bg-white hover:border-gray-400'
+                      className={`relative text-left rounded-xl border bg-white p-4 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1A1A1A]/15 ${
+                        isActive ? 'border-[#1A1A1A] ring-1 ring-[#1A1A1A]' : 'border-gray-200 hover:border-gray-400'
                       }`}
                     >
                       <span
@@ -275,15 +253,20 @@ export default function CheckoutPage() {
                   )
                 })}
               </div>
+              )}
 
-              <div className="flex items-center gap-4 mb-6">
-                <div className="flex-1 h-px bg-gray-200" />
-                <span className="text-sm text-gray-500">or</span>
-                <div className="flex-1 h-px bg-gray-200" />
-              </div>
+              {SAVED_METHODS.length > 0 && (
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="flex-1 h-px bg-gray-200" />
+                  <span className="text-sm text-gray-500">or</span>
+                  <div className="flex-1 h-px bg-gray-200" />
+                </div>
+              )}
 
               <div className="mb-5">
-                <h2 className="text-base font-semibold text-gray-900 mb-3">Add a new payment method</h2>
+                <h2 className="text-base font-semibold text-gray-900 mb-3">
+                  {SAVED_METHODS.length > 0 ? 'Add a new payment method' : 'Payment method'}
+                </h2>
                 <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1 mb-5">
                   <button
                     type="button"
@@ -429,7 +412,7 @@ export default function CheckoutPage() {
                 type="button"
                 onClick={handlePay}
                 disabled={submitting || items.length === 0}
-                className="w-full h-12 bg-gray-900 text-white font-semibold rounded-md hover:bg-gray-800 transition mt-2 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-[#1A1A1A] px-6 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-[#333] disabled:cursor-not-allowed disabled:bg-gray-300"
               >
                 {submitting ? 'Processing…' : `Pay ${formatTzs(total)}`}
               </button>

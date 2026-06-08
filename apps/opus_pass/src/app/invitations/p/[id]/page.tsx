@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { loadInvitationProduct, loadInvitationProducts } from '@/lib/cms/invitations-products'
 import { loadMockupCarouselImages } from '@/lib/cms/mockup-carousel'
+import { loadPackagesContent } from '@/lib/cms/packages'
 import ProductDetailClient from './ProductDetailClient'
 
 export const dynamic = 'force-dynamic'
@@ -39,10 +40,11 @@ async function fetchSvg(url: string | undefined): Promise<string | null> {
 
 export default async function ProductDetailPage({ params }: { params: Promise<Params> }) {
   const { id } = await params
-  const [product, allProducts, mockup] = await Promise.all([
+  const [product, allProducts, mockup, packages] = await Promise.all([
     loadInvitationProduct(id),
     loadInvitationProducts(),
     loadMockupCarouselImages(),
+    loadPackagesContent(),
   ])
   if (!product) return notFound()
   const designSvg = await fetchSvg(product.imageUrl)
@@ -54,6 +56,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
       mockupScenes={mockup.scenes}
       mockupPlacements={mockup.placements}
       designSvg={designSvg}
+      packages={packages}
     />
   )
 }

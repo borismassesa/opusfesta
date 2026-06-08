@@ -32,22 +32,26 @@ export default function CheckoutStepper({ current }: { current: CheckoutStep }) 
           const content = (
             <span className="flex flex-col items-center gap-1.5 group">
               <span
-                className={`w-12 h-12 rounded-md flex items-center justify-center transition-colors ${
+                className={`flex h-12 w-12 items-center justify-center rounded-full transition-colors ${
                   status === 'current'
                     ? 'text-gray-900'
                     : status === 'done'
-                      ? 'text-gray-900'
+                      ? 'bg-emerald-50 text-emerald-600'
                       : 'text-gray-400'
                 }`}
               >
-                <StepIcon size={26} strokeWidth={1.5} />
+                {status === 'done' ? (
+                  <CheckCircle2 size={26} strokeWidth={2} />
+                ) : (
+                  <StepIcon size={26} strokeWidth={1.5} />
+                )}
               </span>
               <span
                 className={`text-sm transition-colors ${
                   status === 'current'
                     ? 'font-bold text-gray-900'
                     : status === 'done'
-                      ? 'font-medium text-gray-700 group-hover:text-gray-900'
+                      ? 'font-semibold text-gray-900'
                       : 'font-medium text-gray-400'
                 }`}
               >

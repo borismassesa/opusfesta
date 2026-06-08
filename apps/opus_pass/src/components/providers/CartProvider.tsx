@@ -9,8 +9,14 @@ export type CartItem = {
   name: string
   designer: string
   treatment: Treatment
-  /** Short config summary, e.g. "Digital cards · 150 guests". */
+  /** Short config summary, e.g. "Digital cards · 150 guests" (fallback for list views). */
   summary: string
+  /** Structured config — used to render a clean breakdown in the cart. */
+  tier?: string
+  /** Tier id (lite/classic/signature) — drives the package pill colour. */
+  tierId?: string
+  guests?: number
+  addOns?: string[]
   /** Line total in TZS. */
   total: number
 }
@@ -24,7 +30,9 @@ type CartContextValue = {
   clear: () => void
 }
 
-const STORAGE_KEY = 'opuspass.cart.v1'
+// v2: cart items now carry structured tier/guests/addOns (not just a summary string).
+// Bumping the key invalidates v1 carts so stale-shape items don't linger.
+const STORAGE_KEY = 'opuspass.cart.v2'
 
 const CartContext = createContext<CartContextValue | null>(null)
 
