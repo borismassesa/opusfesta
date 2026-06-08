@@ -218,24 +218,9 @@ export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft 
             previewAspect="aspect-square"
             previewWidth="max-w-[120px]"
           />
-          <Field label="Background (Tailwind class, e.g. bg-[#5d3a78] or bg-white)">
-            <input
-              type="text"
-              value={item.bg}
-              onChange={(e) => setItem(col, idx, { bg: e.target.value })}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Text contrast">
-            <select
-              value={item.fg}
-              onChange={(e) => setItem(col, idx, { fg: e.target.value as OpusPassGuestsTestimonialFg })}
-              className={inputCls}
-            >
-              <option value="light">light (dark text on light card)</option>
-              <option value="dark">dark (white text on dark card)</option>
-            </select>
-          </Field>
+          <p className="text-[11px] text-gray-400 leading-relaxed">
+            Card colours alternate automatically by position on the live page — no per-card colour to set.
+          </p>
         </CollapsibleCard>
       ))}
       <button
@@ -339,13 +324,13 @@ function TestimonialsPreview({ content }: { content: OpusPassGuestsTestimonialsC
       </div>
       <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-hidden">
         <div className="space-y-2">
-          {content.column1.slice(0, 3).map((t) => (
-            <TestimonialCardMini key={t.id} t={t} />
+          {content.column1.slice(0, 3).map((t, i) => (
+            <TestimonialCardMini key={t.id} t={t} index={i} />
           ))}
         </div>
         <div className="space-y-2">
-          {content.column2.slice(0, 3).map((t) => (
-            <TestimonialCardMini key={t.id} t={t} />
+          {content.column2.slice(0, 3).map((t, i) => (
+            <TestimonialCardMini key={t.id} t={t} index={i} />
           ))}
         </div>
       </div>
@@ -353,18 +338,20 @@ function TestimonialsPreview({ content }: { content: OpusPassGuestsTestimonialsC
   )
 }
 
-function TestimonialCardMini({ t }: { t: OpusPassGuestsTestimonialItem }) {
-  const isDark = t.fg === 'dark'
-  const text = isDark ? 'text-white' : 'text-gray-900'
-  const sub = isDark ? 'text-white/70' : 'text-gray-600'
+// Mirrors the live InvitationShowcase card: colour alternates by position
+// (index % 2), not by any per-item field, and the role pill is fixed.
+function TestimonialCardMini({ t, index }: { t: OpusPassGuestsTestimonialItem; index: number }) {
+  const isDark = index % 2 === 0
+  const text = isDark ? 'text-white' : 'text-[#1A1A1A]'
+  const sub = isDark ? 'text-white/60' : 'text-[#1A1A1A]/60'
   return (
-    <div className={`rounded-lg p-2 ${t.bg}`}>
+    <div className={`rounded-lg p-2 ${isDark ? 'bg-[#1A1A1A]' : 'bg-[#9FE870]'}`}>
       <div className="flex items-center gap-0.5 text-amber-400 mb-1">
         {Array.from({ length: 5 }).map((_, i) => (
           <Star key={i} size={8} className="fill-current" strokeWidth={0} />
         ))}
       </div>
-      <p className={`font-serif text-[9px] leading-snug ${text} line-clamp-3 mb-1`}>“{t.quote}”</p>
+      <p className={`text-[9px] font-semibold leading-snug ${text} line-clamp-3 mb-1`}>“{t.quote}”</p>
       <div className="flex items-center gap-1.5">
         <div className="w-5 h-5 shrink-0 rounded-full overflow-hidden bg-gray-200">
           {t.avatar ? (
@@ -372,10 +359,17 @@ function TestimonialCardMini({ t }: { t: OpusPassGuestsTestimonialItem }) {
             <img src={resolveOpusPassAssetUrl(t.avatar)} alt="" className="w-full h-full object-cover" />
           ) : null}
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <p className={`text-[9px] font-semibold leading-tight ${text} truncate`}>{t.name}</p>
           <p className={`text-[8px] leading-tight truncate ${sub}`}>{t.location}</p>
         </div>
+        <span
+          className={`shrink-0 px-1.5 py-0.5 rounded-full text-[7px] font-bold ${
+            isDark ? 'bg-[#9FE870] text-[#1A1A1A]' : 'bg-white text-[#1A1A1A]'
+          }`}
+        >
+          Couple
+        </span>
       </div>
     </div>
   )
