@@ -30,13 +30,11 @@ export type Product = {
 export function ProductInfo({
   product,
   href,
-  showPromo = true,
   selectedSwatch,
   onSwatchSelect,
 }: {
   product: Product
   href?: string
-  showPromo?: boolean
   selectedSwatch?: number
   onSwatchSelect?: (index: number) => void
 }) {
@@ -44,10 +42,6 @@ export function ProductInfo({
   const unitWas = product.priceWas
     ? Math.round(product.priceWas / PACK_QTY / 10) * 10
     : undefined
-  const discountPct = product.priceWas
-    ? Math.round((1 - product.priceNow / product.priceWas) * 100)
-    : 0
-  const onSale = discountPct > 0
 
   return (
     <>
@@ -84,9 +78,9 @@ export function ProductInfo({
       {/* Title — bigger and bolder, capped at 2 lines for consistent card heights */}
       <p className="mt-1 text-[15px] sm:text-[16px] font-bold text-[#1A1A1A] leading-snug line-clamp-2">
         {href ? (
-          <span className="group-hover/pick:underline underline-offset-2">{product.name}</span>
+          product.name
         ) : (
-          <Link href={`/invitations/p/${product.id}`} className="hover:underline underline-offset-2">{product.name}</Link>
+          <Link href={`/invitations/p/${product.id}`}>{product.name}</Link>
         )}
       </p>
 
@@ -111,20 +105,6 @@ export function ProductInfo({
             TZS {unitNow.toLocaleString('en-US')} ea.
           </span>
           <span className="text-[11px] text-[#1A1A1A]/60">({PACK_QTY_MIN}&ndash;{PACK_QTY_MAX} qty)</span>
-        </div>
-      )}
-
-      {/* Feature pills — Free RSVP page is included with every digital card; paper discount as a secondary note */}
-      {showPromo && product.digitalUnitPrice && (
-        <div className="mt-2 flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center rounded-sm bg-[#1A1A1A] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
-            Free RSVP page
-          </span>
-          {onSale && (
-            <span className="inline-flex items-center rounded-sm bg-[#7A1F2B] px-2 py-0.5 text-[10px] font-bold text-white">
-              -{discountPct}% paper add-on
-            </span>
-          )}
         </div>
       )}
     </>

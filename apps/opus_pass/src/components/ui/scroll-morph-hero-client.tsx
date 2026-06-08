@@ -1,11 +1,12 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import type { InvitationsHeroContent } from '@/lib/cms/invitations-hero'
 
-// Branded placeholder shown only during the brief chunk-load window, before the
-// client-only animated hero mounts. It uses the default copy (a client
+// Branded placeholder shown on the server and the first client render, before
+// the client-only animated hero mounts. It uses the default copy (a client
 // component can't import the loader's FALLBACK — that pulls in next/headers —
 // and next/dynamic's `loading` can't receive props). The real, CMS-driven
 // headline + buttons render inside the animated hero once it mounts.
@@ -35,14 +36,21 @@ function HeroPlaceholder() {
   )
 }
 
-// The morph hero is a heavy, purely-decorative animation. Rendering it
-// client-only (ssr: false) avoids any hydration mismatch; the placeholder above
-// keeps the screen branded (not blank) until it mounts.
+// The morph hero is a heavy, purely-decorative animation. Code-split it so its
+// chunk loads lazily; `ssr: false` is intentionally NOT used here — in the App
+// Router it makes the server emit a <Suspense> boundary that the client's first
+// hydration pass doesn't match (a "<Suspense> vs <div>" hydration error). The
+// `mounted` gate below is what keeps it client-only instead.
 const ScrollMorphHero = dynamic(() => import('@/components/ui/scroll-morph-hero'), {
-  ssr: false,
   loading: () => <HeroPlaceholder />,
 })
 
 export default function ScrollMorphHeroClient({ hero }: { hero: InvitationsHeroContent }) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+
+  // Server render and the first client render both produce the placeholder, so
+  // hydration matches exactly. The animated hero mounts client-only afterwards.
+  if (!mounted) return <HeroPlaceholder />
   return <ScrollMorphHero hero={hero} />
 }
