@@ -8,6 +8,11 @@ import { loadInvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-fr
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import InvitationsCatalogClient from './InvitationsCatalogClient'
 
+// CMS-driven page: ISR safety net so published changes appear on the public
+// site within ~60s even if the admin's on-demand revalidation doesn't reach
+// this deployment. See apps/opus_admin/src/lib/revalidate.ts.
+export const revalidate = 60
+
 export const metadata: Metadata = {
   title: 'Wedding Invitations | OpusFesta',
   description:
