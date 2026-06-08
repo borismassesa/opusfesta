@@ -39,7 +39,7 @@ const sections: Section[] = [
     icon: Sparkles,
     href: '/cms/opus-pass/wedding-website/hero',
     status: 'live',
-    description: 'Top banner — headline, description, primary & secondary CTAs, and background colour.',
+    description: 'Top banner — headline, description, CTAs, trust badge (rating, avatars) and the "as featured in" press strip.',
   },
   {
     key: 'designs',
@@ -71,7 +71,7 @@ const sections: Section[] = [
     icon: MessageSquareQuote,
     href: '/cms/opus-pass/wedding-website/testimonials',
     status: 'live',
-    description: '"What they say about us" — testimonial carousel cards (variant, rating, quote, role).',
+    description: 'Two scrolling columns of couple testimonial cards (headline, description, CTA, quote, name, location, avatar).',
   },
   {
     key: 'faqs',
@@ -94,7 +94,7 @@ export default function OpusPassWeddingWebsiteCmsLayout({ children }: { children
 function OpusPassWeddingWebsiteCmsShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   // opus_pass is mounted under basePath '/opuspass'.
-  const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}/opuspass`
+  const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}`
   const activeSection = sections.find((s) => s.href && pathname.startsWith(s.href)) ?? sections[0]
 
   const liveSections = sections.filter((s) => s.status === 'live')

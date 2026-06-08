@@ -75,7 +75,6 @@ export async function revalidateOpusPass(...paths: string[]): Promise<void> {
       label: 'opus_pass',
       url: process.env.NEXT_PUBLIC_OPUS_PASS_URL,
       secret: process.env.OPUS_PASS_REVALIDATE_SECRET,
-      basePath: '/opuspass',
     },
     paths.length ? paths : ['/']
   )

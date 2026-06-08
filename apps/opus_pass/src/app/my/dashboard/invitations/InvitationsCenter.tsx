@@ -16,6 +16,7 @@ import {
   emailShareUrl,
 } from '@/lib/dashboard/share'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
+import type { InvitationsDashboardCopy } from '@/lib/cms/dashboard-copy'
 import type {
   GuestWithInvitations,
   RsvpStatus,
@@ -34,10 +35,12 @@ export default function InvitationsCenter({
   guests,
   coupleName,
   hero,
+  copy: pageCopy,
 }: {
   guests: GuestWithInvitations[]
   coupleName: string
   hero: DashboardHeroContent
+  copy: InvitationsDashboardCopy
 }) {
   const [origin, setOrigin] = useState('')
   const [, startTransition] = useTransition()
@@ -72,7 +75,7 @@ export default function InvitationsCenter({
   async function copy(g: GuestWithInvitations) {
     try {
       await navigator.clipboard.writeText(rsvpUrl(origin, g.public_token))
-      toast.success('RSVP link copied')
+      toast.success(pageCopy.toast_copied)
       track(g.id, 'link')
     } catch {
       toast.error('Could not copy')
@@ -86,12 +89,12 @@ export default function InvitationsCenter({
       {guests.length === 0 ? (
         <EmptyState
           icon={<Send className="h-7 w-7" />}
-          title="No guests to invite yet"
-          description="Add guests and invite them to events first."
+          title={pageCopy.empty_no_guests_title}
+          description={pageCopy.empty_no_guests_description}
           action={
             <Link href="/my/dashboard/guests">
               <Button>
-                <Users className="h-4 w-4" /> Go to guest list
+                <Users className="h-4 w-4" /> {pageCopy.empty_no_guests_cta}
               </Button>
             </Link>
           }
@@ -99,11 +102,11 @@ export default function InvitationsCenter({
       ) : invitable.length === 0 ? (
         <EmptyState
           icon={<Send className="h-7 w-7" />}
-          title="No one is invited to an event yet"
-          description="Open the guest list and tick which events each guest is invited to."
+          title={pageCopy.empty_not_invited_title}
+          description={pageCopy.empty_not_invited_description}
           action={
             <Link href="/my/dashboard/guests">
-              <Button>Manage invitations</Button>
+              <Button>{pageCopy.empty_not_invited_cta}</Button>
             </Link>
           }
         />
@@ -113,7 +116,7 @@ export default function InvitationsCenter({
             <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
               {notInvited} guest{notInvited === 1 ? ' is' : 's are'} not invited to any event yet.{' '}
               <Link href="/my/dashboard/guests" className="font-semibold underline">
-                Add them to events
+                {pageCopy.not_invited_link}
               </Link>
               .
             </p>
@@ -134,10 +137,10 @@ export default function InvitationsCenter({
                       <p className="text-xs text-[#1A1A1A]/50">
                         {sent ? (
                           <span className="inline-flex items-center gap-1 text-emerald-600">
-                            <Check className="h-3 w-3" /> Sent {g.invite_count}×
+                            <Check className="h-3 w-3" /> {pageCopy.sent_label} {g.invite_count}×
                           </span>
                         ) : (
-                          'Not sent yet'
+                          pageCopy.not_sent
                         )}
                       </p>
                     </div>

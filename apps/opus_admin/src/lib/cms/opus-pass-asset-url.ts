@@ -11,9 +11,9 @@ export function resolveOpusPassAssetUrl(url: string | undefined | null): string 
   }
   if (url.startsWith('/')) {
     const base = process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? ''
-    // opus_pass runs under basePath '/opuspass', so its public/ assets are served
-    // from `${origin}/opuspass/assets/...`. Stored paths are app-relative (/assets/…).
-    return base ? `${base}/opuspass${url}` : url
+    // opus_pass is served at its subdomain root, so its public/ assets live at
+    // `${origin}/assets/...`. Stored paths are already app-relative (/assets/…).
+    return base ? `${base}${url}` : url
   }
   return url
 }

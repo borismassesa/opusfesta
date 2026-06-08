@@ -49,6 +49,7 @@ import {
   emailShareUrl,
 } from '@/lib/dashboard/share'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
+import type { PledgesDashboardCopy } from '@/lib/cms/dashboard-copy'
 import type {
   AttendanceAnswer,
   CardStatus,
@@ -222,6 +223,7 @@ export default function PledgesManager({
   weddingDate,
   hero,
   pledgeToken,
+  copy,
 }: {
   initialPledges: PledgeWithContact[]
   stats: PledgeStats
@@ -233,6 +235,7 @@ export default function PledgesManager({
   weddingDate: string | null
   hero: DashboardHeroContent
   pledgeToken: string | null
+  copy: PledgesDashboardCopy
 }) {
   const [section, setSection] = useState<Section>('manage')
   const [query, setQuery] = useState('')
@@ -373,7 +376,7 @@ export default function PledgesManager({
           toast.success('Pledge updated')
         } else {
           await createPledge(buildInput(form))
-          toast.success('Pledge added')
+          toast.success(copy.toast_added)
         }
         setOpen(false)
       } catch (err) {
@@ -429,7 +432,7 @@ export default function PledgesManager({
     startTransition(async () => {
       try {
         await updatePledge(target.id, input)
-        toast.success('Payment recorded')
+        toast.success(copy.toast_payment)
         setPayTarget(null)
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not record payment')
@@ -606,6 +609,16 @@ export default function PledgesManager({
     }
   }
 
+  const viewLabels: Partial<Record<PledgeView, string>> = {
+    all: copy.view_all,
+    invited: copy.view_awaiting,
+    pledged: copy.view_pledged,
+    partial: copy.view_partial,
+    paid: copy.view_paid,
+    cards: copy.view_cards,
+  }
+  const viewLabel = (id: PledgeView): string => viewLabels[id] ?? copy.view_all
+
   return (
     <div className="space-y-6">
       <DashboardHero
@@ -616,12 +629,17 @@ export default function PledgesManager({
             onClick={openCreate}
             className="inline-flex items-center gap-2 rounded-full bg-[#C9A0DC] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
           >
-            <Plus className="h-3.5 w-3.5" /> Add pledge
+            <Plus className="h-3.5 w-3.5" /> {copy.add_pledge_cta}
           </button>
         }
       />
 
-      <PledgeSubNav section={section} onChange={setSection} dueCount={remindersDue.length} />
+      <PledgeSubNav
+        section={section}
+        onChange={setSection}
+        dueCount={remindersDue.length}
+        copy={copy}
+      />
 
       {section === 'manage' || section === 'followups' ? (
       <>
@@ -687,7 +705,12 @@ export default function PledgesManager({
       ) : null}
 
       {section === 'invite' ? (
-        <InviteSection shareLink={shareLink} coupleName={coupleName} onCopy={copyShareLink} />
+        <InviteSection
+          shareLink={shareLink}
+          coupleName={coupleName}
+          onCopy={copyShareLink}
+          copy={copy}
+        />
       ) : null}
 
       {section === 'collection' ? (
@@ -698,6 +721,7 @@ export default function PledgesManager({
           setMethods={setMethods}
           pending={pending}
           onSave={saveCollection}
+          copy={copy}
         />
       ) : null}
 
@@ -718,7 +742,7 @@ export default function PledgesManager({
               )}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              <span>{VIEW_TABS.find((t) => t.id === view)?.label ?? 'Filter'}</span>
+              <span>{viewLabel(view) ?? copy.nav_manage}</span>
             </button>
             {filterOpen ? (
               <div
@@ -739,7 +763,7 @@ export default function PledgesManager({
                           view === t.id && 'font-semibold text-[#5d3a78]',
                         )}
                       >
-                        <span>{t.label}</span>
+                        <span>{viewLabel(t.id)}</span>
                         {view === t.id ? <Check className="h-4 w-4" /> : null}
                       </button>
                     </li>
@@ -763,16 +787,16 @@ export default function PledgesManager({
       {initialPledges.length === 0 ? (
         <EmptyState
           icon={<HandCoins className="h-7 w-7" />}
-          title="Start collecting pledges"
-          description="Add the people you're reaching out to and the amount they pledge, then chase follow-ups until they pay. Share your pledge link to let people pledge themselves."
+          title={copy.empty_title}
+          description={copy.empty_description}
           action={
             <Button onClick={openCreate}>
-              <Plus className="h-4 w-4" /> Add pledge
+              <Plus className="h-4 w-4" /> {copy.empty_cta}
             </Button>
           }
         />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={<Search className="h-6 w-6" />} title="No pledges match this view" />
+        <EmptyState icon={<Search className="h-6 w-6" />} title={copy.no_match_title} />
       ) : (
         <Card className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm [&_td:first-child]:pl-5 [&_td:last-child]:pr-5 [&_th:first-child]:pl-5 [&_th:last-child]:pr-5">
@@ -883,6 +907,7 @@ export default function PledgesManager({
           onSms={remindSms}
           onEmail={remindEmail}
           onRecord={openRecordPayment}
+          copy={copy}
         />
       ) : null}
 
@@ -899,6 +924,7 @@ export default function PledgesManager({
             setView('invited')
             setSection('manage')
           }}
+          copy={copy}
         />
       ) : null}
 
@@ -1100,17 +1126,19 @@ function PledgeSubNav({
   section,
   onChange,
   dueCount,
+  copy,
 }: {
   section: Section
   onChange: (s: Section) => void
   dueCount: number
+  copy: PledgesDashboardCopy
 }) {
   const tabs: { id: Section; label: string; icon: typeof HandCoins; badge?: number }[] = [
-    { id: 'manage', label: 'Pledges', icon: HandCoins },
-    { id: 'invite', label: 'Share & preview', icon: Send },
-    { id: 'collection', label: 'Pledge collection', icon: Banknote },
-    { id: 'followups', label: 'Follow-ups', icon: ListChecks, badge: dueCount },
-    { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'manage', label: copy.nav_manage, icon: HandCoins },
+    { id: 'invite', label: copy.nav_invite, icon: Send },
+    { id: 'collection', label: copy.nav_collection, icon: Banknote },
+    { id: 'followups', label: copy.nav_followups, icon: ListChecks, badge: dueCount },
+    { id: 'reports', label: copy.nav_reports, icon: BarChart3 },
   ]
   return (
     <nav
@@ -1162,6 +1190,7 @@ function CollectionSection({
   setMethods,
   pending,
   onSave,
+  copy,
 }: {
   goalInput: string
   setGoalInput: (v: string) => void
@@ -1169,6 +1198,7 @@ function CollectionSection({
   setMethods: React.Dispatch<React.SetStateAction<PledgePaymentMethod[]>>
   pending: boolean
   onSave: () => void
+  copy: PledgesDashboardCopy
 }) {
   const goalNum = Number(goalInput) || 0
   const presets = [1_000_000, 2_500_000, 5_000_000, 10_000_000]
@@ -1187,10 +1217,10 @@ function CollectionSection({
           <Banknote className="h-5 w-5" />
         </span>
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-[#1A1A1A]">Pledge collection</h2>
-          <p className="mt-0.5 text-sm text-[#1A1A1A]/55">
-            How contributors pay you — shown on your pledge link and in reminders.
-          </p>
+          <h2 className="text-xl font-semibold tracking-tight text-[#1A1A1A]">
+            {copy.collection_title}
+          </h2>
+          <p className="mt-0.5 text-sm text-[#1A1A1A]/55">{copy.collection_desc}</p>
         </div>
       </div>
 
@@ -1198,14 +1228,12 @@ function CollectionSection({
       <Card className="px-6 py-5">
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-[#8e57b3]" />
-          <h3 className="text-sm font-semibold text-[#1A1A1A]">Fundraising goal</h3>
+          <h3 className="text-sm font-semibold text-[#1A1A1A]">{copy.goal_title}</h3>
           <span className="rounded-full bg-black/[0.05] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1A1A1A]/45">
             Optional
           </span>
         </div>
-        <p className="mt-1 text-sm text-[#1A1A1A]/55">
-          Set a target and the Reports tab shows progress toward it. Leave blank for no goal.
-        </p>
+        <p className="mt-1 text-sm text-[#1A1A1A]/55">{copy.goal_desc}</p>
 
         <div className="relative mt-4 max-w-md">
           <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-semibold text-[#1A1A1A]/40">
@@ -1260,11 +1288,9 @@ function CollectionSection({
       <Card className="px-6 py-5">
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-[#3f6b1f]" />
-          <h3 className="text-sm font-semibold text-[#1A1A1A]">How to pay</h3>
+          <h3 className="text-sm font-semibold text-[#1A1A1A]">{copy.howtopay_title}</h3>
         </div>
-        <p className="mt-1 text-sm text-[#1A1A1A]/55">
-          Mobile money or bank details contributors use to send their pledge. Add one per provider.
-        </p>
+        <p className="mt-1 text-sm text-[#1A1A1A]/55">{copy.howtopay_desc}</p>
 
         <datalist id="pay-providers">
           {PAYMENT_PROVIDERS.map((p) => (
@@ -1378,17 +1404,19 @@ function InviteSection({
   shareLink,
   coupleName,
   onCopy,
+  copy,
 }: {
   shareLink: string | null
   coupleName: string
   onCopy: () => void
+  copy: PledgesDashboardCopy
 }) {
   if (!shareLink) {
     return (
       <EmptyState
         icon={<Send className="h-7 w-7" />}
-        title="No pledge link yet"
-        description="Your shareable pledge link isn't ready. Refresh the page, or add a pledge to generate one."
+        title={copy.nolink_title}
+        description={copy.nolink_description}
       />
     )
   }
@@ -1422,11 +1450,8 @@ function InviteSection({
         {/* Share */}
         <Card className="space-y-5 px-5 py-5">
           <div>
-            <h3 className="text-base font-semibold text-[#1A1A1A]">Share your pledge link</h3>
-            <p className="mt-1 text-sm text-[#1A1A1A]/55">
-              Post it in a family WhatsApp group, or send it directly. Anyone who opens it can pledge a
-              contribution themselves — no app or sign-in needed.
-            </p>
+            <h3 className="text-base font-semibold text-[#1A1A1A]">{copy.share_title}</h3>
+            <p className="mt-1 text-sm text-[#1A1A1A]/55">{copy.share_description}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1487,12 +1512,14 @@ function FollowUpsSection({
   onSms,
   onEmail,
   onRecord,
+  copy,
 }: {
   pledges: PledgeWithContact[]
   onWa: (p: PledgeWithContact) => void
   onSms: (p: PledgeWithContact) => void
   onEmail: (p: PledgeWithContact) => void
   onRecord: (p: PledgeWithContact) => void
+  copy: PledgesDashboardCopy
 }) {
   // Everyone still owing money, due-first (overdue and scheduled-due at the top).
   const owing = pledges.filter((p) => OWING.includes(p.status))
@@ -1509,8 +1536,8 @@ function FollowUpsSection({
     return (
       <EmptyState
         icon={<ListChecks className="h-7 w-7" />}
-        title="No follow-ups needed"
-        description="Every pledge is either fully paid or declined. Nice work chasing them down!"
+        title={copy.followups_empty_title}
+        description={copy.followups_empty_description}
       />
     )
   }
@@ -1609,6 +1636,7 @@ function ReportsSection({
   onPrint,
   onChaseFollowups,
   onViewAwaiting,
+  copy,
 }: {
   pledges: PledgeWithContact[]
   stats: PledgeStats
@@ -1618,6 +1646,7 @@ function ReportsSection({
   onPrint: () => void
   onChaseFollowups: () => void
   onViewAwaiting: () => void
+  copy: PledgesDashboardCopy
 }) {
   const collectionRate =
     stats.totalPledged > 0 ? Math.round((stats.totalReceived / stats.totalPledged) * 100) : 0
@@ -1710,8 +1739,8 @@ function ReportsSection({
     return (
       <EmptyState
         icon={<BarChart3 className="h-7 w-7" />}
-        title="No data to report yet"
-        description="Once you've added some pledges, you'll see contribution totals and breakdowns here."
+        title={copy.reports_empty_title}
+        description={copy.reports_empty_description}
       />
     )
   }

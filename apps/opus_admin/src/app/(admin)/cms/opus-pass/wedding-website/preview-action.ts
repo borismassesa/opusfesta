@@ -10,5 +10,5 @@ export async function getOpusPassWebsitesPreviewUrl(
   if (!token) return null
   const safePath = ALLOWED_REDIRECTS.has(redirectPath) ? redirectPath : '/websites'
   // opus_pass runs under basePath '/opuspass' — the preview API lives there.
-  return `${url}/opuspass/api/preview/enable?token=${encodeURIComponent(token)}&redirect=${encodeURIComponent(safePath)}`
+  return `${url}/api/preview/enable?token=${encodeURIComponent(token)}&redirect=${encodeURIComponent(safePath)}`
 }

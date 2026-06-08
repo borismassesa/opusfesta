@@ -294,7 +294,7 @@ function AccountFooter({
               // basePath ('/opuspass') is NOT prepended by Clerk's signOut, so
               // use the full path — matches AccountProfile / AlreadySignedIn and
               // keeps the user in the OpusPass zone instead of the marketplace apex.
-              void signOut({ redirectUrl: '/opuspass/sign-in' })
+              void signOut({ redirectUrl: '/sign-in' })
             }}
             className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-[#1A1A1A] hover:bg-black/[0.04]"
           >

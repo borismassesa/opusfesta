@@ -6,17 +6,19 @@ import {
   getMyCollectorToken,
 } from '@/lib/dashboard/queries'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
+import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
 import GuestsManager from './GuestsManager'
 
 export const dynamic = 'force-dynamic'
 
 export default async function GuestsPage() {
-  const [guests, events, profile, hero, collectorToken] = await Promise.all([
+  const [guests, events, profile, hero, collectorToken, copy] = await Promise.all([
     getGuestsWithInvitations(),
     getEvents(),
     getCoupleProfile(),
     loadDashboardHero('guests'),
     getMyCollectorToken(),
+    loadDashboardCopy('guests'),
   ])
   return (
     <GuestsManager
@@ -25,6 +27,7 @@ export default async function GuestsPage() {
       coupleName={coupleDisplayName(profile)}
       hero={hero}
       collectorToken={collectorToken}
+      copy={copy}
     />
   )
 }

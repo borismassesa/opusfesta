@@ -1,6 +1,8 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
+// Mirrors LandingHeroContent (components/LandingHero) — the /websites hero now
+// renders the shared centred sparkle hero, not the old two-column banner.
 export type WebsitesHeroContent = {
   headline_line_1: string
   headline_line_2: string
@@ -9,10 +11,13 @@ export type WebsitesHeroContent = {
   primary_cta_href: string
   secondary_cta_label: string
   secondary_cta_href: string
-  background_color: string
-  /** Optional uploaded image. When set, replaces the built-in laptop + phone mockup on the right. */
-  right_image_url: string
-  right_image_alt: string
+  /** Trust badge — star rating (e.g. "4.5") and couple count (e.g. "1000+"). */
+  rating: string
+  trust_count: string
+  /** Avatar cluster shown beside the rating. Empty = built-in couple photos. */
+  avatars: string[]
+  /** "As featured in" press wordmarks. Empty = built-in press list. */
+  featured_in: string[]
 }
 
 export const WEBSITES_HERO_FALLBACK: WebsitesHeroContent = {
@@ -24,9 +29,16 @@ export const WEBSITES_HERO_FALLBACK: WebsitesHeroContent = {
   primary_cta_href: '/sign-up',
   secondary_cta_label: 'Explore designs',
   secondary_cta_href: '#designs',
-  background_color: '#E1ECDB',
-  right_image_url: '',
-  right_image_alt: '',
+  rating: '4.5',
+  trust_count: '1000+',
+  avatars: [
+    '/assets/images/cutesy_couple.jpg',
+    '/assets/images/churchcouples.jpg',
+    '/assets/images/coupleswithpiano.jpg',
+    '/assets/images/authentic_couple.jpg',
+    '/assets/images/mauzo_crew.jpg',
+  ],
+  featured_in: ['The Citizen', 'Clouds FM', 'Bongo5', 'JamiiForums'],
 }
 
 export async function loadWebsitesHeroContent(): Promise<WebsitesHeroContent> {
@@ -46,7 +58,23 @@ export async function loadWebsitesHeroContent(): Promise<WebsitesHeroContent> {
       | Partial<WebsitesHeroContent>
       | undefined
     if (stored) {
-      return { ...WEBSITES_HERO_FALLBACK, ...stored }
+      return {
+        headline_line_1: stored.headline_line_1 ?? WEBSITES_HERO_FALLBACK.headline_line_1,
+        headline_line_2: stored.headline_line_2 ?? WEBSITES_HERO_FALLBACK.headline_line_2,
+        description: stored.description ?? WEBSITES_HERO_FALLBACK.description,
+        primary_cta_label: stored.primary_cta_label ?? WEBSITES_HERO_FALLBACK.primary_cta_label,
+        primary_cta_href: stored.primary_cta_href ?? WEBSITES_HERO_FALLBACK.primary_cta_href,
+        secondary_cta_label: stored.secondary_cta_label ?? WEBSITES_HERO_FALLBACK.secondary_cta_label,
+        secondary_cta_href: stored.secondary_cta_href ?? WEBSITES_HERO_FALLBACK.secondary_cta_href,
+        rating: stored.rating ?? WEBSITES_HERO_FALLBACK.rating,
+        trust_count: stored.trust_count ?? WEBSITES_HERO_FALLBACK.trust_count,
+        avatars:
+          stored.avatars && Array.isArray(stored.avatars) ? stored.avatars : WEBSITES_HERO_FALLBACK.avatars,
+        featured_in:
+          stored.featured_in && Array.isArray(stored.featured_in)
+            ? stored.featured_in
+            : WEBSITES_HERO_FALLBACK.featured_in,
+      }
     }
     return WEBSITES_HERO_FALLBACK
   } catch (err) {

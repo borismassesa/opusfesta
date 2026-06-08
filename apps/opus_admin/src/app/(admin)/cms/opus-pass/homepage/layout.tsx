@@ -104,7 +104,7 @@ export default function OpusPassHomepageCmsLayout({ children }: { children: Reac
 function OpusPassHomepageCmsShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   // opus_pass is mounted under basePath '/opuspass' — link straight to it.
-  const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}/opuspass`
+  const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}`
   const activeSection = sections.find((s) => s.href && pathname.startsWith(s.href)) ?? sections[0]
 
   const liveSections = sections.filter((s) => s.status === 'live')

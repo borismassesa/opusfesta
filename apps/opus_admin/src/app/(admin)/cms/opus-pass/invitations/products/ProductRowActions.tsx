@@ -16,7 +16,7 @@ export default function ProductRowActions({ id, name }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
   // opus_pass is mounted under basePath '/opuspass'.
-  const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}/opuspass`
+  const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}`
 
   const handleDelete = () => {
     if (!confirm(`Delete "${name}"? This cannot be undone.`)) return

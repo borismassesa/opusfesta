@@ -52,8 +52,8 @@ function ModeCard({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`text-left rounded-xl border-2 p-4 transition-colors ${
-        active ? 'border-gray-900 bg-white' : 'border-gray-200 bg-white hover:border-gray-400'
+      className={`text-left rounded-xl border bg-white p-4 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1A1A1A]/15 ${
+        active ? 'border-[#1A1A1A] ring-1 ring-[#1A1A1A]' : 'border-gray-200 hover:border-gray-400'
       }`}
     >
       <div className="flex items-start gap-3">
@@ -264,7 +264,7 @@ export default function AddressPage() {
               <button
                 type="button"
                 onClick={handleContinue}
-                className="mt-7 w-full h-12 bg-gray-900 text-white font-semibold rounded-md hover:bg-gray-800 transition"
+                className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#1A1A1A] px-6 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-[#333]"
               >
                 Continue to payment
               </button>

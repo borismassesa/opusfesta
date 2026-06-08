@@ -1,24 +1,23 @@
 import type { MetadataRoute } from 'next'
 
 export default function robots(): MetadataRoute.Robots {
-  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com/opuspass'
-  // Pages are served under the /opuspass basePath, so disallow paths carry the
-  // prefix. (sign-in/sign-up routes were removed when Clerk auth was dropped.)
+  const base = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com'
+  // opus_pass is served at the subdomain root, so paths have no prefix.
   return {
     rules: [
       {
         userAgent: '*',
-        allow: '/opuspass',
+        allow: '/',
         disallow: [
-          '/opuspass/my/',
-          '/opuspass/rsvp/',
-          '/opuspass/pledge/',
-          '/opuspass/collect/',
-          '/opuspass/invitations/checkout',
-          '/opuspass/invitations/cart',
-          '/opuspass/invitations/confirmation',
-          '/opuspass/invitations/address',
-          '/opuspass/api/',
+          '/my/',
+          '/rsvp/',
+          '/pledge/',
+          '/collect/',
+          '/invitations/checkout',
+          '/invitations/cart',
+          '/invitations/confirmation',
+          '/invitations/address',
+          '/api/',
         ],
       },
     ],

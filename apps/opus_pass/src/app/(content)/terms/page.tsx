@@ -106,7 +106,7 @@ const sections: LegalSection[] = [
         OpusFesta or our licensors and are protected by intellectual-property laws.
         Using our templates to create your invitation doesn&rsquo;t transfer ownership of
         the underlying design to you. See our{' '}
-        <a href="/opuspass/copyright">Copyright &amp; IP policy</a> for how to report
+        <a href="/copyright">Copyright &amp; IP policy</a> for how to report
         infringement.
       </p>
     ),

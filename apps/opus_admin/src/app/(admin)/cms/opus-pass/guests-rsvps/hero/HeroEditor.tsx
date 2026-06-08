@@ -141,20 +141,20 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
         <h3 className="text-[15px] font-semibold text-gray-900">Hero content</h3>
 
         <FieldGroup label="Headline">
-          <Field label="Lead text">
+          <Field label="Line 1">
             <input
               type="text"
-              value={draft.headline_lead}
-              onChange={(e) => setField('headline_lead', e.target.value)}
+              value={draft.headline_line_1}
+              onChange={(e) => setField('headline_line_1', e.target.value)}
               placeholder="Your guest list, replying in"
               className={inputCls}
             />
           </Field>
-          <Field label="Highlighted word(s)">
+          <Field label="Line 2 (highlighted)">
             <input
               type="text"
-              value={draft.headline_highlight}
-              onChange={(e) => setField('headline_highlight', e.target.value)}
+              value={draft.headline_line_2}
+              onChange={(e) => setField('headline_line_2', e.target.value)}
               placeholder="real time"
               className={inputCls}
             />
@@ -351,8 +351,9 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
         </div>
         <div className="text-center">
           <h2 className="text-xl font-black leading-tight text-gray-900">
-            {draft.headline_lead}{' '}
-            <span className="bg-[#C9A0DC]/40 rounded px-1">{draft.headline_highlight}</span>
+            {draft.headline_line_1}
+            <br />
+            <span className="bg-[#C9A0DC]/40 rounded px-1">{draft.headline_line_2}</span>
           </h2>
           <p className="mt-3 text-[11px] text-gray-600 leading-relaxed">{draft.description}</p>
           <div className="mt-4 flex items-center justify-center gap-2">

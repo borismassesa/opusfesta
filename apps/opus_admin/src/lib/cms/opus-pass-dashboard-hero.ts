@@ -1,8 +1,14 @@
-// Shared types / fallbacks / page-key map for the 5 OpusPass dashboard hero CMS pages.
+// Shared types / fallbacks / page-key map for the 6 OpusPass dashboard hero CMS pages.
 // Editor lives at apps/opus_admin/src/app/(admin)/cms/opus-pass/dashboard/[page]/hero/.
 // Loader on the OpusPass side lives at apps/opus_pass/src/lib/cms/dashboard-hero.ts.
 
-export type DashboardHeroSlug = 'home' | 'invitations' | 'guests' | 'rsvps' | 'website'
+export type DashboardHeroSlug =
+  | 'home'
+  | 'invitations'
+  | 'guests'
+  | 'rsvps'
+  | 'website'
+  | 'pledges'
 
 export type DashboardHeroMediaType = 'image' | 'video' | 'none'
 
@@ -68,6 +74,15 @@ export const DASHBOARD_HERO_FALLBACK: Record<DashboardHeroSlug, DashboardHeroCon
     media_type: 'none',
     media_alt: '',
   },
+  pledges: {
+    eyebrow: 'Pledges',
+    title: 'Contributions & pledges',
+    subtitle:
+      'Invite people to pledge, chase follow-ups, record who has paid, then confirm who’s coming.',
+    media_url: '',
+    media_type: 'none',
+    media_alt: '',
+  },
 }
 
 export const DASHBOARD_HERO_PAGE_KEY: Record<DashboardHeroSlug, string> = {
@@ -76,6 +91,7 @@ export const DASHBOARD_HERO_PAGE_KEY: Record<DashboardHeroSlug, string> = {
   guests: 'opus-pass-dashboard-guests',
   rsvps: 'opus-pass-dashboard-rsvps',
   website: 'opus-pass-dashboard-website',
+  pledges: 'opus-pass-dashboard-pledges',
 }
 
 export const DASHBOARD_HERO_PUBLIC_PATH: Record<DashboardHeroSlug, string> = {
@@ -84,6 +100,7 @@ export const DASHBOARD_HERO_PUBLIC_PATH: Record<DashboardHeroSlug, string> = {
   guests: '/my/dashboard/guests',
   rsvps: '/my/dashboard/rsvps',
   website: '/my/dashboard/website',
+  pledges: '/my/dashboard/pledges',
 }
 
 export const DASHBOARD_HERO_LABEL: Record<DashboardHeroSlug, string> = {
@@ -92,6 +109,7 @@ export const DASHBOARD_HERO_LABEL: Record<DashboardHeroSlug, string> = {
   guests: 'Guest list',
   rsvps: 'RSVPs',
   website: 'Wedding website',
+  pledges: 'Pledges',
 }
 
 export const DASHBOARD_HERO_SLUGS: readonly DashboardHeroSlug[] = [
@@ -100,6 +118,7 @@ export const DASHBOARD_HERO_SLUGS: readonly DashboardHeroSlug[] = [
   'guests',
   'rsvps',
   'website',
+  'pledges',
 ] as const
 
 export function isDashboardHeroSlug(value: string): value is DashboardHeroSlug {
