@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { Trash2 } from 'lucide-react'
+import { ArrowRight, Plus, Star, Trash2 } from 'lucide-react'
 import type { OpusPassWebsitesHeroContent } from '@/lib/cms/opus-pass-websites-hero'
 import { cn } from '@/lib/utils'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
@@ -66,6 +66,20 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
     value: OpusPassWebsitesHeroContent[K],
   ) => setDraft((d) => ({ ...d, [key]: value }))
 
+  // Avatar cluster (string[] of asset paths)
+  const setAvatar = (idx: number, value: string) =>
+    setDraft((d) => ({ ...d, avatars: d.avatars.map((a, i) => (i === idx ? value : a)) }))
+  const addAvatar = () => setDraft((d) => ({ ...d, avatars: [...d.avatars, ''] }))
+  const removeAvatar = (idx: number) =>
+    setDraft((d) => ({ ...d, avatars: d.avatars.filter((_, i) => i !== idx) }))
+
+  // Press wordmarks (string[])
+  const setPress = (idx: number, value: string) =>
+    setDraft((d) => ({ ...d, featured_in: d.featured_in.map((p, i) => (i === idx ? value : p)) }))
+  const addPress = () => setDraft((d) => ({ ...d, featured_in: [...d.featured_in, ''] }))
+  const removePress = (idx: number) =>
+    setDraft((d) => ({ ...d, featured_in: d.featured_in.filter((_, i) => i !== idx) }))
+
   const runAction = (job: () => Promise<void>) =>
     startTransition(async () => {
       setError(null)
@@ -120,12 +134,16 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
         <h3 className="text-[15px] font-semibold text-gray-900">Hero content</h3>
 
         <FieldGroup label="Headline">
+          <p className="text-[11px] text-gray-500 leading-relaxed">
+            The last word of line 1 is underlined, and a ⚡ is appended after line 2 — automatically on
+            the live page.
+          </p>
           <Field label="Line 1" hint={<CharCount value={draft.headline_line_1} max={60} />}>
             <input
               type="text"
               value={draft.headline_line_1}
               onChange={(e) => set('headline_line_1', e.target.value)}
-              placeholder="Your wedding website,"
+              placeholder="Create your wedding website"
               className={inputCls}
             />
           </Field>
@@ -134,7 +152,7 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
               type="text"
               value={draft.headline_line_2}
               onChange={(e) => set('headline_line_2', e.target.value)}
-              placeholder="ready in minutes."
+              placeholder="in just minutes"
               className={inputCls}
             />
           </Field>
@@ -149,7 +167,7 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
           </Field>
         </FieldGroup>
 
-        <FieldGroup label="Primary CTA (filled)">
+        <FieldGroup label="Primary CTA (filled pill)">
           <Field label="Label" hint={<CharCount value={draft.primary_cta_label} max={30} />}>
             <input
               type="text"
@@ -170,7 +188,7 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
           </Field>
         </FieldGroup>
 
-        <FieldGroup label="Secondary CTA (underline link)">
+        <FieldGroup label="Secondary CTA (outline button)">
           <Field label="Label" hint={<CharCount value={draft.secondary_cta_label} max={30} />}>
             <input
               type="text"
@@ -191,57 +209,98 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
           </Field>
         </FieldGroup>
 
-        <FieldGroup label="Banner background">
-          <Field label="Background colour (hex)">
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={draft.background_color}
-                onChange={(e) => set('background_color', e.target.value)}
-                className="w-10 h-10 rounded border border-gray-200 p-0 overflow-hidden cursor-pointer"
-              />
+        <FieldGroup label="Trust badge">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="Star rating" hint="0–5">
               <input
                 type="text"
-                value={draft.background_color}
-                onChange={(e) => set('background_color', e.target.value)}
-                placeholder="#E1ECDB"
-                className={`${inputCls} flex-1 font-mono text-[12px]`}
+                value={draft.rating}
+                onChange={(e) => set('rating', e.target.value)}
+                placeholder="4.5"
+                className={inputCls}
+              />
+            </Field>
+            <Field label="Couple count">
+              <input
+                type="text"
+                value={draft.trust_count}
+                onChange={(e) => set('trust_count', e.target.value)}
+                placeholder="1000+"
+                className={inputCls}
+              />
+            </Field>
+          </div>
+          <div className="space-y-2">
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+              Avatar cluster ({draft.avatars.length})
+            </p>
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              Couple photos shown beside the rating. Leave empty to use the built-in photos.
+            </p>
+            {draft.avatars.map((avatar, idx) => (
+              <div key={idx} className="flex items-start gap-2">
+                <div className="flex-1">
+                  <ImageUploadField
+                    label={`Avatar ${idx + 1}`}
+                    value={avatar}
+                    onChange={(v) => setAvatar(idx, v)}
+                    pathPrefix="opus-pass/websites/hero-avatars"
+                    previewAspect="aspect-square"
+                    previewWidth="max-w-[88px]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeAvatar(idx)}
+                  className="mt-6 p-1.5 text-gray-400 hover:text-red-600 shrink-0"
+                  aria-label={`Remove avatar ${idx + 1}`}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+            ))}
+            <button
+              type="button"
+              onClick={addAvatar}
+              className="flex items-center gap-2 text-sm font-medium text-[#7E5896] hover:text-[#5d3a78] px-3 py-2 rounded-lg border border-dashed border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Add avatar
+            </button>
+          </div>
+        </FieldGroup>
+
+        <FieldGroup label="As featured in">
+          <p className="text-[11px] text-gray-500 leading-relaxed">
+            Press wordmarks under the hero. Leave empty to use the built-in list.
+          </p>
+          {draft.featured_in.map((name, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setPress(idx, e.target.value)}
+                placeholder="The Citizen"
+                className={`${inputCls} flex-1`}
               />
               <button
                 type="button"
-                onClick={() => set('background_color', '#E1ECDB')}
-                className="p-1 text-gray-400 hover:text-gray-700 shrink-0"
-                title="Reset to default (#E1ECDB)"
-                aria-label="Reset background colour"
+                onClick={() => removePress(idx)}
+                className="p-1.5 text-gray-400 hover:text-red-600 shrink-0"
+                aria-label={`Remove press name ${idx + 1}`}
               >
-                <Trash2 className="w-3.5 h-3.5" />
+                <Trash2 className="w-4 h-4" />
               </button>
             </div>
-          </Field>
-        </FieldGroup>
-
-        <FieldGroup label="Right-side banner image">
-          <p className="text-[11px] text-gray-500 leading-relaxed">
-            Optional — when set, replaces the built-in laptop + phone mockup arrangement on the right
-            side of the banner.
-          </p>
-          <ImageUploadField
-            label="Image"
-            value={draft.right_image_url}
-            onChange={(v) => set('right_image_url', v)}
-            pathPrefix="opus-pass/websites/hero"
-            previewAspect="aspect-[4/3]"
-            previewWidth="max-w-xs"
-          />
-          <Field label="Alt text (for screen readers)">
-            <input
-              type="text"
-              value={draft.right_image_alt}
-              onChange={(e) => set('right_image_alt', e.target.value)}
-              placeholder="Couple admiring their wedding website on a laptop"
-              className={inputCls}
-            />
-          </Field>
+          ))}
+          <button
+            type="button"
+            onClick={addPress}
+            className="flex items-center gap-2 text-sm font-medium text-[#7E5896] hover:text-[#5d3a78] px-3 py-2 rounded-lg border border-dashed border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add press name
+          </button>
         </FieldGroup>
       </div>
 
@@ -257,49 +316,77 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
 }
 
 function HeroPreview({ content }: { content: OpusPassWebsitesHeroContent }) {
+  // Mirror LandingHero: underline the last word of line 1.
+  const line1 = content.headline_line_1.trim().replace(/,\s*$/, '')
+  const lastSpace = line1.lastIndexOf(' ')
+  const head = lastSpace === -1 ? '' : line1.slice(0, lastSpace + 1)
+  const lastWord = lastSpace === -1 ? line1 : line1.slice(lastSpace + 1)
+  const avatars = content.avatars.filter((a) => a.trim())
+  const press = content.featured_in.filter((p) => p.trim())
   return (
-    <div
-      className="relative overflow-hidden rounded-md p-5"
-      style={{
-        backgroundColor: content.background_color || '#E1ECDB',
-        backgroundImage:
-          'radial-gradient(circle at 1px 1px, #5C6B4D66 0.6px, transparent 0)',
-        backgroundSize: '6px 6px',
-      }}
-    >
-      <div className="grid grid-cols-1 sm:grid-cols-12 gap-3 items-center">
-        <div className="sm:col-span-7">
-          <h1 className="text-lg sm:text-xl font-black uppercase tracking-tighter leading-[1.15] text-[#1A1A1A]">
-            {content.headline_line_1 || 'Headline line 1'}
-            <br />
-            {content.headline_line_2 || 'Headline line 2'}
-          </h1>
-          <p className="mt-3 text-[11px] sm:text-xs text-[#1A1A1A]/80 leading-relaxed line-clamp-5">
-            {content.description}
-          </p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center rounded-full bg-[#C9A0DC] text-[#1A1A1A] px-4 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.1em]">
-              {content.primary_cta_label || 'Primary CTA'}
+    <div className="rounded-md bg-white px-4 py-6 text-center">
+      {/* Trust badge */}
+      <div className="flex items-center justify-center gap-2">
+        <div className="flex -space-x-2">
+          {(avatars.length > 0 ? avatars : ['', '', '']).slice(0, 5).map((src, i) => (
+            <span
+              key={i}
+              className="inline-block h-7 w-7 overflow-hidden rounded-full ring-2 ring-white bg-gray-200"
+            >
+              {src ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img src={resolveOpusPassAssetUrl(src)} alt="" className="h-full w-full object-cover" />
+              ) : null}
             </span>
-            <span className="text-[10px] font-semibold text-[#1A1A1A] underline underline-offset-[4px] decoration-[#1A1A1A]/40">
-              {content.secondary_cta_label || 'Secondary CTA'} →
-            </span>
+          ))}
+        </div>
+        <div className="text-left">
+          <div className="flex items-center gap-1 text-[#F59E0B]">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <Star key={i} size={10} className="fill-current" strokeWidth={0} />
+            ))}
+            <span className="text-[10px] font-extrabold text-[#1A1A1A]">{content.rating || '4.5'}</span>
           </div>
+          <p className="text-[9px] leading-tight text-[#1A1A1A]/70">
+            Trusted by <span className="font-bold text-[#1A1A1A]">{content.trust_count || '1000+'}</span> couples
+          </p>
         </div>
-        <div className="sm:col-span-5 relative aspect-[4/3] sm:aspect-auto sm:min-h-[140px] rounded-md overflow-hidden bg-white/30">
-          {content.right_image_url ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={resolveOpusPassAssetUrl(content.right_image_url)}
-              alt={content.right_image_alt}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          ) : (
-            <div className="absolute inset-0 flex items-center justify-center text-[9px] uppercase tracking-wider text-gray-500 text-center px-2">
-              Built-in laptop + phone mockup
-            </div>
-          )}
-        </div>
+      </div>
+
+      {/* Headline */}
+      <h1 className="mt-4 text-xl font-black tracking-tight leading-[1.1] text-[#1A1A1A]">
+        {head}
+        <span className="underline decoration-[#1A1A1A] decoration-2 underline-offset-2">{lastWord}</span>
+        <br />
+        {content.headline_line_2 || 'Headline line 2'} <span aria-hidden>⚡</span>
+      </h1>
+
+      {/* Description */}
+      <p className="mx-auto mt-3 max-w-sm text-[11px] leading-relaxed text-[#1A1A1A]/70 line-clamp-4">
+        {content.description}
+      </p>
+
+      {/* CTAs */}
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        <span className="inline-flex items-center rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#1A1A1A]">
+          {content.primary_cta_label || 'Primary CTA'}
+        </span>
+        <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-3 py-1.5 text-[10px] font-semibold text-[#1A1A1A]">
+          {content.secondary_cta_label || 'Secondary CTA'}
+          <ArrowRight size={11} aria-hidden="true" />
+        </span>
+      </div>
+
+      {/* Press strip */}
+      <div className="mt-5 flex flex-wrap items-center justify-center gap-x-4 gap-y-1">
+        <span className="text-[8px] font-semibold uppercase tracking-[0.18em] text-[#1A1A1A]/40">
+          As featured in
+        </span>
+        {(press.length > 0 ? press : ['The Citizen', 'Clouds FM', 'Bongo5']).map((name, i) => (
+          <span key={i} className="text-[11px] font-bold text-[#1A1A1A]/40">
+            {name}
+          </span>
+        ))}
       </div>
     </div>
   )

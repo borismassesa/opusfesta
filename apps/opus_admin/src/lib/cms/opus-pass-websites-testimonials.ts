@@ -1,24 +1,25 @@
-export type OpusPassWebsitesTestimonialVariant = 'dark' | 'purple'
-
-export const OPUS_PASS_WEBSITES_TESTIMONIAL_VARIANTS: OpusPassWebsitesTestimonialVariant[] = [
-  'dark',
-  'purple',
-]
+// Mirrors the public WebsitesTestimonialsContent — the /websites testimonials
+// wall is the shared <InvitationShowcase> (two scrolling columns of cards), so
+// the shape matches the homepage & guests testimonials editors.
+export type OpusPassWebsitesTestimonialFg = 'light' | 'dark'
 
 export type OpusPassWebsitesTestimonialItem = {
   id: string
-  rating: number
   quote: string
   name: string
   location: string
   avatar: string
-  role: string
-  variant: OpusPassWebsitesTestimonialVariant
+  bg: string
+  fg: OpusPassWebsitesTestimonialFg
 }
 
 export type OpusPassWebsitesTestimonialsContent = {
-  heading: string
-  items: OpusPassWebsitesTestimonialItem[]
+  headline: string
+  description: string
+  cta_label: string
+  cta_href: string
+  column1: OpusPassWebsitesTestimonialItem[]
+  column2: OpusPassWebsitesTestimonialItem[]
 }
 
 export type OpusPassWebsitesTestimonialsRow = {
@@ -32,62 +33,85 @@ export type OpusPassWebsitesTestimonialsRow = {
 }
 
 export const OPUS_PASS_WEBSITES_TESTIMONIALS_FALLBACK: OpusPassWebsitesTestimonialsContent = {
-  heading: 'What they say about us',
-  items: [
+  headline: 'Couples who built their site with OpusPass.',
+  description:
+    'One link, every detail — see how couples shared their story, venue and live updates with a free OpusPass wedding website.',
+  cta_label: 'Read more stories',
+  cta_href: '/reviews',
+  column1: [
     {
-      id: 't1',
-      rating: 5,
-      quote:
-        'OpusFesta made planning our wedding a breeze! The checklist kept us sane and the website builder was so fun to use.',
+      id: 'wc1-a',
+      quote: 'Our wedding website was up the same day. Guests loved the photo gallery and travel info.',
       name: 'Rehema & Bakari',
       location: 'Dar es Salaam',
       avatar: '/assets/images/cutesy_couple.jpg',
-      role: 'Couple',
-      variant: 'dark',
+      bg: 'bg-[#5d3a78]',
+      fg: 'dark',
     },
     {
-      id: 't2',
-      rating: 4,
-      quote:
-        'Finding our wedding crew on OpusFesta brought clarity, and our matching site reached far more guests than we expected.',
-      name: 'Shirima & Joyce',
-      location: 'Zanzibar',
-      avatar: '/assets/images/churchcouples.jpg',
-      role: 'Couple',
-      variant: 'purple',
-    },
-    {
-      id: 't3',
-      rating: 5,
-      quote:
-        'Our digital invite hit every WhatsApp group in ten minutes. The first RSVPs were in by morning — no chasing required.',
-      name: 'Neema & Amani',
-      location: 'Bagamoyo',
-      avatar: '/assets/images/coupleswithpiano.jpg',
-      role: 'Newlyweds',
-      variant: 'dark',
-    },
-    {
-      id: 't4',
-      rating: 5,
-      quote:
-        'Bilingual invites were the unlock — both sides of the family felt at home on our site. Worth every shilling, and it was free!',
+      id: 'wc1-b',
+      quote: 'Bilingual pages meant both sides of the family felt at home — and it was completely free.',
       name: 'Faith & Daniel',
       location: 'Arusha',
       avatar: '/assets/images/authentic_couple.jpg',
-      role: 'Couple',
-      variant: 'purple',
+      bg: 'bg-[#fbeede]',
+      fg: 'light',
     },
     {
-      id: 't5',
-      rating: 5,
-      quote:
-        'From the save-the-date to thank-yous, every piece matched. Our guests kept asking how we put it all together.',
+      id: 'wc1-c',
+      quote: 'We changed the venue once and the site updated instantly. No reprints, no panic.',
+      name: 'Neema & Amani',
+      location: 'Bagamoyo',
+      avatar: '/assets/images/coupleswithpiano.jpg',
+      bg: 'bg-[#3f6b3f]',
+      fg: 'dark',
+    },
+    {
+      id: 'wc1-d',
+      quote: 'From save-the-date to thank-yous, every page matched our invitations beautifully.',
       name: 'Joyce & Mwita',
       location: 'Mwanza',
-      avatar: '/assets/images/mauzo_crew.jpg',
-      role: 'Couple',
-      variant: 'dark',
+      avatar: '/assets/images/churchcouples.jpg',
+      bg: 'bg-[#e7c8c8]',
+      fg: 'light',
+    },
+  ],
+  column2: [
+    {
+      id: 'wc2-a',
+      quote: 'One link in our WhatsApp groups and everyone had the schedule, the map and the RSVP.',
+      name: 'Shirima & Joyce',
+      location: 'Zanzibar',
+      avatar: '/assets/images/beautiful_bride.jpg',
+      bg: 'bg-[#c47a3a]',
+      fg: 'dark',
+    },
+    {
+      id: 'wc2-b',
+      quote: 'The registry link sat right on the site, so gifting was effortless for our guests.',
+      name: 'Grace & Peter',
+      location: 'Moshi',
+      avatar: '/assets/images/bride_umbrella.jpg',
+      bg: 'bg-[#e8d4f2]',
+      fg: 'light',
+    },
+    {
+      id: 'wc2-c',
+      quote: 'Live updates on the site meant no last-minute phone calls. Everyone just checked the link.',
+      name: 'Esther & Tumaini',
+      location: 'Tanga',
+      avatar: '/assets/images/brideincar.jpg',
+      bg: 'bg-[#1f4a47]',
+      fg: 'dark',
+    },
+    {
+      id: 'wc2-d',
+      quote: 'A beautiful site in minutes, free with our pass. Our guests kept asking how we did it.',
+      name: 'Zawadi & Emmanuel',
+      location: 'Morogoro',
+      avatar: '/assets/images/beautyinbride.jpg',
+      bg: 'bg-[#fbeede]',
+      fg: 'light',
     },
   ],
 }

@@ -39,7 +39,7 @@ const sections: Section[] = [
     icon: Sparkles,
     href: '/cms/opus-pass/wedding-website/hero',
     status: 'live',
-    description: 'Top banner — headline, description, primary & secondary CTAs, and background colour.',
+    description: 'Top banner — headline, description, CTAs, trust badge (rating, avatars) and the "as featured in" press strip.',
   },
   {
     key: 'designs',
@@ -71,7 +71,7 @@ const sections: Section[] = [
     icon: MessageSquareQuote,
     href: '/cms/opus-pass/wedding-website/testimonials',
     status: 'live',
-    description: '"What they say about us" — testimonial carousel cards (variant, rating, quote, role).',
+    description: 'Two scrolling columns of couple testimonial cards (headline, description, CTA, quote, name, location, avatar).',
   },
   {
     key: 'faqs',

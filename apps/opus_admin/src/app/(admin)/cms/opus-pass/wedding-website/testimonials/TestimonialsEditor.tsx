@@ -1,15 +1,15 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { Plus, Star } from 'lucide-react'
-import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
-import {
-  OPUS_PASS_WEBSITES_TESTIMONIAL_VARIANTS,
-  type OpusPassWebsitesTestimonialItem,
-  type OpusPassWebsitesTestimonialsContent,
-} from '@/lib/cms/opus-pass-websites-testimonials'
+import { ChevronsDownUp, ChevronsUpDown, Plus, Star } from 'lucide-react'
 import { CollapsibleCard } from '@/components/cms/CollapsibleCard'
+import type {
+  OpusPassWebsitesTestimonialFg,
+  OpusPassWebsitesTestimonialItem,
+  OpusPassWebsitesTestimonialsContent,
+} from '@/lib/cms/opus-pass-websites-testimonials'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardOpusPassWebsitesTestimonialsDraft,
@@ -21,6 +21,8 @@ type Props = {
   initial: OpusPassWebsitesTestimonialsContent
   hasDraft: boolean
 }
+
+type Column = 'column1' | 'column2'
 
 const inputCls =
   'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
@@ -44,7 +46,7 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
 }
 
 function randomId(): string {
-  return `tst-${Math.random().toString(36).slice(2, 9)}`
+  return `wt-${Math.random().toString(36).slice(2, 9)}`
 }
 
 export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft }: Props) {
@@ -55,54 +57,64 @@ export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft 
   const [error, setError] = useState<string | null>(null)
   const { bind, unbind } = useEditorActions()
 
-  const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0]))
-  const toggleExpanded = (idx: number) =>
+  // Per-column expanded set: key is `${col}:${idx}` so the two columns can be
+  // toggled independently.
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
+  const isExpanded = (col: Column, idx: number) => expanded.has(`${col}:${idx}`)
+  const toggleExpanded = (col: Column, idx: number) =>
     setExpanded((s) => {
+      const key = `${col}:${idx}`
       const next = new Set(s)
-      if (next.has(idx)) next.delete(idx)
-      else next.add(idx)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
       return next
     })
+  const expandAll = () => {
+    const all = new Set<string>()
+    draft.column1.forEach((_, i) => all.add(`column1:${i}`))
+    draft.column2.forEach((_, i) => all.add(`column2:${i}`))
+    setExpanded(all)
+  }
+  const collapseAll = () => setExpanded(new Set())
 
   const setField = <K extends keyof OpusPassWebsitesTestimonialsContent>(
     key: K,
-    value: OpusPassWebsitesTestimonialsContent[K],
+    value: OpusPassWebsitesTestimonialsContent[K]
   ) => setDraft((d) => ({ ...d, [key]: value }))
 
-  const setItem = (idx: number, patch: Partial<OpusPassWebsitesTestimonialItem>) =>
+  const setItem = (col: Column, idx: number, patch: Partial<OpusPassWebsitesTestimonialItem>) =>
     setDraft((d) => ({
       ...d,
-      items: d.items.map((item, i) => (i === idx ? { ...item, ...patch } : item)),
+      [col]: d[col].map((item, i) => (i === idx ? { ...item, ...patch } : item)),
     }))
 
-  const addItem = () =>
+  const addItem = (col: Column) =>
     setDraft((d) => ({
       ...d,
-      items: [
-        ...d.items,
+      [col]: [
+        ...d[col],
         {
           id: randomId(),
-          rating: 5,
           quote: '',
           name: '',
           location: '',
           avatar: '',
-          role: 'Couple',
-          variant: 'dark',
+          bg: 'bg-white',
+          fg: 'light' as OpusPassWebsitesTestimonialFg,
         },
       ],
     }))
 
-  const removeItem = (idx: number) =>
-    setDraft((d) => ({ ...d, items: d.items.filter((_, i) => i !== idx) }))
+  const removeItem = (col: Column, idx: number) =>
+    setDraft((d) => ({ ...d, [col]: d[col].filter((_, i) => i !== idx) }))
 
-  const moveItem = (idx: number, delta: number) =>
+  const moveItem = (col: Column, idx: number, delta: number) =>
     setDraft((d) => {
-      const next = [...d.items]
+      const next = [...d[col]]
       const target = idx + delta
       if (target < 0 || target >= next.length) return d
       ;[next[idx], next[target]] = [next[target], next[idx]]
-      return { ...d, items: next }
+      return { ...d, [col]: next }
     })
 
   const runAction = (job: () => Promise<void>) =>
@@ -153,126 +165,136 @@ export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasDraft, pending, message, error, draft])
 
-  return (
-    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start pb-12">
-      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] space-y-5">
-        <h3 className="text-[15px] font-semibold text-gray-900">Testimonials</h3>
-
-        <FieldGroup label="Section header">
-          <Field label="Heading">
-            <input
-              type="text"
-              value={draft.heading}
-              onChange={(e) => setField('heading', e.target.value)}
-              placeholder="What they say about us"
+  const renderColumn = (col: Column) => (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between gap-3 px-1">
+        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+          {col === 'column1' ? 'Column 1 (scrolls up)' : 'Column 2 (scrolls down)'} ({draft[col].length})
+        </p>
+      </div>
+      {draft[col].map((item, idx) => (
+        <CollapsibleCard
+          key={item.id}
+          index={idx}
+          title={item.name || 'New testimonial'}
+          subtitle={item.location}
+          collapsed={!isExpanded(col, idx)}
+          onToggle={() => toggleExpanded(col, idx)}
+          onMoveUp={() => moveItem(col, idx, -1)}
+          onMoveDown={() => moveItem(col, idx, 1)}
+          onRemove={() => removeItem(col, idx)}
+          disableMoveUp={idx === 0}
+          disableMoveDown={idx === draft[col].length - 1}
+        >
+          <Field label="Quote">
+            <textarea
+              rows={3}
+              value={item.quote}
+              onChange={(e) => setItem(col, idx, { quote: e.target.value })}
               className={inputCls}
             />
           </Field>
-        </FieldGroup>
-
-        <div className="space-y-3">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 px-1">
-            Testimonial cards ({draft.items.length})
+          <Field label="Name (e.g. Rehema & Bakari)">
+            <input
+              type="text"
+              value={item.name}
+              onChange={(e) => setItem(col, idx, { name: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
+          <Field label="Location">
+            <input
+              type="text"
+              value={item.location}
+              onChange={(e) => setItem(col, idx, { location: e.target.value })}
+              className={inputCls}
+            />
+          </Field>
+          <ImageUploadField
+            label="Avatar"
+            value={item.avatar}
+            onChange={(v) => setItem(col, idx, { avatar: v })}
+            pathPrefix="opus-pass/websites-testimonials"
+            previewAspect="aspect-square"
+            previewWidth="max-w-[120px]"
+          />
+          <p className="text-[11px] text-gray-400 leading-relaxed">
+            Card colours alternate automatically by position on the live page — no per-card colour to set.
           </p>
-          {draft.items.map((item, idx) => (
-            <CollapsibleCard
-              key={item.id}
-              index={idx}
-              title={item.name || 'New testimonial'}
-              collapsed={!expanded.has(idx)}
-              onToggle={() => toggleExpanded(idx)}
-              onMoveUp={() => moveItem(idx, -1)}
-              onMoveDown={() => moveItem(idx, 1)}
-              onRemove={() => removeItem(idx)}
-              disableMoveUp={idx === 0}
-              disableMoveDown={idx === draft.items.length - 1}
+        </CollapsibleCard>
+      ))}
+      <button
+        type="button"
+        onClick={() => addItem(col)}
+        className="flex items-center gap-2 text-sm font-medium text-[#7E5896] hover:text-[#5d3a78] px-3 py-2 rounded-lg border border-dashed border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
+      >
+        <Plus className="w-4 h-4" />
+        Add testimonial
+      </button>
+    </div>
+  )
+
+  return (
+    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start pb-12">
+      <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] space-y-5">
+        <div className="flex items-center justify-between gap-3">
+          <h3 className="text-[15px] font-semibold text-gray-900">Testimonials content</h3>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={expandAll}
+              className="flex items-center gap-1 text-[11px] font-medium text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
             >
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Variant">
-                  <select
-                    value={item.variant}
-                    onChange={(e) =>
-                      setItem(idx, {
-                        variant: e.target.value as OpusPassWebsitesTestimonialItem['variant'],
-                      })
-                    }
-                    className={inputCls}
-                  >
-                    {OPUS_PASS_WEBSITES_TESTIMONIAL_VARIANTS.map((opt) => (
-                      <option key={opt} value={opt}>
-                        {opt}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Rating (1–5)">
-                  <input
-                    type="number"
-                    min={1}
-                    max={5}
-                    value={item.rating}
-                    onChange={(e) =>
-                      setItem(idx, { rating: Math.max(1, Math.min(5, Number(e.target.value) || 5)) })
-                    }
-                    className={inputCls}
-                  />
-                </Field>
-              </div>
-              <Field label="Quote">
-                <textarea
-                  rows={4}
-                  value={item.quote}
-                  onChange={(e) => setItem(idx, { quote: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Couple name">
-                  <input
-                    type="text"
-                    value={item.name}
-                    onChange={(e) => setItem(idx, { name: e.target.value })}
-                    placeholder="Neema & Amani"
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Location">
-                  <input
-                    type="text"
-                    value={item.location}
-                    onChange={(e) => setItem(idx, { location: e.target.value })}
-                    placeholder="Bagamoyo"
-                    className={inputCls}
-                  />
-                </Field>
-              </div>
-              <Field label="Role pill (e.g., Couple, Newlyweds)">
-                <input
-                  type="text"
-                  value={item.role}
-                  onChange={(e) => setItem(idx, { role: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <ImageUploadField
-                label="Avatar photo"
-                value={item.avatar}
-                onChange={(v) => setItem(idx, { avatar: v })}
-                pathPrefix="opus-pass/websites/testimonials"
-                previewAspect="aspect-square"
-                previewWidth="max-w-[120px]"
-              />
-            </CollapsibleCard>
-          ))}
-          <button
-            type="button"
-            onClick={addItem}
-            className="flex items-center gap-2 text-sm font-medium text-[#7E5896] hover:text-[#5d3a78] px-3 py-2 rounded-lg border border-dashed border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Add testimonial
-          </button>
+              <ChevronsUpDown className="w-3 h-3" />
+              Expand all
+            </button>
+            <button
+              type="button"
+              onClick={collapseAll}
+              className="flex items-center gap-1 text-[11px] font-medium text-gray-600 hover:text-gray-900 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+            >
+              <ChevronsDownUp className="w-3 h-3" />
+              Collapse all
+            </button>
+          </div>
         </div>
+      <FieldGroup label="Section header">
+        <Field label="Headline">
+          <input
+            type="text"
+            value={draft.headline}
+            onChange={(e) => setField('headline', e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+        <Field label="Description (shown below the testimonial wall)">
+          <textarea
+            rows={2}
+            value={draft.description}
+            onChange={(e) => setField('description', e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+        <Field label="CTA label">
+          <input
+            type="text"
+            value={draft.cta_label}
+            onChange={(e) => setField('cta_label', e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+        <Field label="CTA destination URL">
+          <input
+            type="text"
+            value={draft.cta_href}
+            onChange={(e) => setField('cta_href', e.target.value)}
+            className={inputCls}
+          />
+        </Field>
+      </FieldGroup>
+
+      {renderColumn('column1')}
+      {renderColumn('column2')}
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
@@ -286,86 +308,68 @@ export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft 
   )
 }
 
-function TestimonialsPreview({
-  content,
-}: {
-  content: OpusPassWebsitesTestimonialsContent
-}) {
+function TestimonialsPreview({ content }: { content: OpusPassWebsitesTestimonialsContent }) {
   return (
-    <div>
-      <h2 className="text-2xl font-bold uppercase tracking-tight leading-[0.95] text-[#1A1A1A] mb-4">
-        {content.heading || 'Section heading'}
-      </h2>
-      <div className="flex gap-2 overflow-x-hidden">
-        {content.items.slice(0, 3).map((t) => {
-          const isDark = t.variant === 'dark'
-          return (
-            <div
-              key={t.id}
-              className={
-                isDark
-                  ? 'shrink-0 w-[160px] rounded-xl p-3 flex flex-col bg-[#1A1A1A] text-white'
-                  : 'shrink-0 w-[160px] rounded-xl p-3 flex flex-col bg-[#C9A0DC] text-[#1A1A1A]'
-              }
-            >
-              <div className="flex items-center gap-0.5 text-amber-400 mb-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <Star
-                    key={i}
-                    size={10}
-                    className={i < t.rating ? 'fill-current' : 'fill-transparent'}
-                    strokeWidth={i < t.rating ? 0 : 1.5}
-                  />
-                ))}
-              </div>
-              <p className="text-[9px] font-semibold leading-snug line-clamp-4 flex-1">
-                &ldquo;{t.quote || 'Quote'}&rdquo;
-              </p>
-              <div
-                className={
-                  isDark
-                    ? 'mt-2 h-px bg-white/15'
-                    : 'mt-2 h-px bg-black/15'
-                }
-              />
-              <div className="mt-2 flex items-center gap-1.5">
-                <div className="w-5 h-5 rounded-full overflow-hidden bg-gray-300 shrink-0">
-                  {t.avatar && (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={resolveOpusPassAssetUrl(t.avatar)}
-                      alt=""
-                      className="w-full h-full object-cover"
-                    />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[8px] font-bold leading-tight truncate">
-                    {t.name || 'Name'}
-                  </p>
-                  <p
-                    className={
-                      isDark
-                        ? 'text-[7px] text-white/55 truncate'
-                        : 'text-[7px] text-[#1A1A1A]/60 truncate'
-                    }
-                  >
-                    {t.location}
-                  </p>
-                </div>
-                <span
-                  className={
-                    isDark
-                      ? 'shrink-0 rounded-full bg-[#C9A0DC] text-[#1A1A1A] px-1.5 py-[2px] text-[7px] font-bold'
-                      : 'shrink-0 rounded-full bg-white text-[#1A1A1A] px-1.5 py-[2px] text-[7px] font-bold'
-                  }
-                >
-                  {t.role}
-                </span>
-              </div>
-            </div>
-          )
-        })}
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-start">
+      <div className="space-y-1.5">
+        <h2 className="text-sm font-serif font-bold text-gray-900 leading-tight">
+          {content.headline || 'Headline'}
+        </h2>
+        <p className="text-[10px] text-gray-600 leading-relaxed line-clamp-3">
+          {content.description}
+        </p>
+        <span className="inline-block text-[10px] text-gray-900 font-semibold underline">
+          {content.cta_label || 'CTA'}
+        </span>
+      </div>
+      <div className="grid grid-cols-2 gap-2 max-h-[280px] overflow-hidden">
+        <div className="space-y-2">
+          {content.column1.slice(0, 3).map((t, i) => (
+            <TestimonialCardMini key={t.id} t={t} index={i} />
+          ))}
+        </div>
+        <div className="space-y-2">
+          {content.column2.slice(0, 3).map((t, i) => (
+            <TestimonialCardMini key={t.id} t={t} index={i} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Mirrors the live InvitationShowcase card: colour alternates by position
+// (index % 2), not by any per-item field, and the role pill is fixed.
+function TestimonialCardMini({ t, index }: { t: OpusPassWebsitesTestimonialItem; index: number }) {
+  const isDark = index % 2 === 0
+  const text = isDark ? 'text-white' : 'text-[#1A1A1A]'
+  const sub = isDark ? 'text-white/60' : 'text-[#1A1A1A]/60'
+  return (
+    <div className={`rounded-lg p-2 ${isDark ? 'bg-[#1A1A1A]' : 'bg-[#9FE870]'}`}>
+      <div className="flex items-center gap-0.5 text-amber-400 mb-1">
+        {Array.from({ length: 5 }).map((_, i) => (
+          <Star key={i} size={8} className="fill-current" strokeWidth={0} />
+        ))}
+      </div>
+      <p className={`text-[9px] font-semibold leading-snug ${text} line-clamp-3 mb-1`}>“{t.quote}”</p>
+      <div className="flex items-center gap-1.5">
+        <div className="w-5 h-5 shrink-0 rounded-full overflow-hidden bg-gray-200">
+          {t.avatar ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={resolveOpusPassAssetUrl(t.avatar)} alt="" className="w-full h-full object-cover" />
+          ) : null}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className={`text-[9px] font-semibold leading-tight ${text} truncate`}>{t.name}</p>
+          <p className={`text-[8px] leading-tight truncate ${sub}`}>{t.location}</p>
+        </div>
+        <span
+          className={`shrink-0 px-1.5 py-0.5 rounded-full text-[7px] font-bold ${
+            isDark ? 'bg-[#9FE870] text-[#1A1A1A]' : 'bg-white text-[#1A1A1A]'
+          }`}
+        >
+          Couple
+        </span>
       </div>
     </div>
   )
