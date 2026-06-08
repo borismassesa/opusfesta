@@ -9,6 +9,11 @@ import { loadGuestsFaqsContent } from '@/lib/cms/guests-faqs'
 import { loadGuestsTestimonialsContent } from '@/lib/cms/guests-testimonials'
 import GuestsLandingClient from './GuestsLandingClient'
 
+// CMS-driven page: ISR safety net so published changes appear on the public
+// site within ~60s even if the admin's on-demand revalidation doesn't reach
+// this deployment. See apps/opus_admin/src/lib/revalidate.ts.
+export const revalidate = 60
+
 export const metadata: Metadata = {
   title: 'Guests & RSVPs | OpusPass',
   description:
