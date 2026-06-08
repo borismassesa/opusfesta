@@ -5,6 +5,8 @@ import { ArrowDown, ArrowUp, Plus, Trash2, AlertTriangle } from 'lucide-react'
 import type {
   OpusPassHomepageShowcaseContent,
   OpusPassHomepageShowcaseImage,
+  OpusPassHomepageShowcasePill,
+  OpusPassHomepageShowcasePillKind,
 } from '@/lib/cms/opus-pass-homepage-showcase'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
@@ -15,14 +17,24 @@ import { useEditorActions } from '../EditorActionsContext'
 // them by index. Extra photos are ignored; missing ones leave a gap.
 const SLOT_LABELS = [
   'Column 1 · tall portrait',
-  'Column 2 top · “Performance” pill',
-  'Column 2 bottom · “Visit” pill',
+  'Column 2 · top',
+  'Column 2 · bottom',
   'Column 3 · main, above caption',
-  'Column 4 top',
-  'Column 4 bottom · “Visit” pill',
-  'Column 5 · “Live RSVPs” pill',
+  'Column 4 · top',
+  'Column 4 · bottom',
+  'Column 5',
 ]
 const SLOT_COUNT = SLOT_LABELS.length
+
+const PILL_KINDS: { value: OpusPassHomepageShowcasePillKind; label: string }[] = [
+  { value: 'visit', label: 'Visit (rounded label + arrow)' },
+  { value: 'stat', label: 'Stat (title + chart line)' },
+  { value: 'toggle', label: 'Toggle (label + switch)' },
+]
+
+function randomId(): string {
+  return `pill-${Math.random().toString(36).slice(2, 9)}`
+}
 import {
   discardOpusPassHomepageShowcaseDraft,
   publishOpusPassHomepageShowcase,
@@ -69,6 +81,29 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
   )
 }
 
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  return (
+    <Field label={label}>
+      <div className="flex items-center gap-2">
+        <input
+          type="color"
+          value={/^#[0-9a-fA-F]{6}$/.test(value) ? value : '#9FE870'}
+          onChange={(e) => onChange(e.target.value)}
+          className="h-9 w-12 shrink-0 cursor-pointer rounded-lg border border-gray-200 bg-white p-1"
+          aria-label={`${label} picker`}
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="#9FE870"
+          className={cn(inputCls, 'font-mono')}
+        />
+      </div>
+    </Field>
+  )
+}
+
 export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: Props) {
   const [draft, setDraft] = useState<OpusPassHomepageShowcaseContent>(initial)
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
@@ -80,8 +115,26 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
   const setCaption = (patch: Partial<OpusPassHomepageShowcaseContent['caption']>) =>
     setDraft((d) => ({ ...d, caption: { ...d.caption, ...patch } }))
 
-  const setPill = (patch: Partial<OpusPassHomepageShowcaseContent['pills']>) =>
-    setDraft((d) => ({ ...d, pills: { ...d.pills, ...patch } }))
+  const setPill = (idx: number, patch: Partial<OpusPassHomepageShowcasePill>) =>
+    setDraft((d) => ({ ...d, pills: d.pills.map((p, i) => (i === idx ? { ...p, ...patch } : p)) }))
+  const addPill = () =>
+    setDraft((d) => ({
+      ...d,
+      pills: [
+        ...d.pills,
+        { id: randomId(), kind: 'visit', slot: 0, color: '#FFFFFF', side: 'left', label: 'Visit', sublabel: '' },
+      ],
+    }))
+  const removePill = (idx: number) =>
+    setDraft((d) => ({ ...d, pills: d.pills.filter((_, i) => i !== idx) }))
+  const movePill = (idx: number, delta: number) =>
+    setDraft((d) => {
+      const next = [...d.pills]
+      const target = idx + delta
+      if (target < 0 || target >= next.length) return d
+      ;[next[idx], next[target]] = [next[target], next[idx]]
+      return { ...d, pills: next }
+    })
 
   const setAccent = (value: string) => setDraft((d) => ({ ...d, accent_color: value }))
 
@@ -156,8 +209,8 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] space-y-5">
         <h3 className="text-[15px] font-semibold text-gray-900">Photo showcase content</h3>
         <p className="text-xs text-gray-500 -mt-3">
-          The masonry layout and the animated pills are fixed design. Each photo maps to a numbered
-          slot below (shown on the right) — reorder to change which photo lands where.
+          The masonry layout has {SLOT_COUNT} numbered photo slots (shown on the right). Reorder the
+          photos to change which lands where, and point each pill at the photo it should sit on.
         </p>
 
         <FieldGroup label="Caption card">
@@ -198,62 +251,128 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
           </Field>
         </FieldGroup>
 
-        <FieldGroup label="Floating pills">
+        <FieldGroup label={`Floating pills (${draft.pills.length})`}>
           <p className="text-[11px] text-gray-500 -mt-1">
-            The small animated labels that pop over the photos. Positions and animation are fixed.
+            The small labels that pop over the photos. Each pill picks its own colour and which photo
+            it sits on; the pop-in animation is automatic.
           </p>
-          <Field label="“Visit” pill" hint={<CharCount value={draft.pills.visit_label} max={16} />}>
-            <input
-              type="text"
-              value={draft.pills.visit_label}
-              onChange={(e) => setPill({ visit_label: e.target.value })}
-              className={inputCls}
-            />
-          </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Stat pill — title" hint={<CharCount value={draft.pills.stat_title} max={18} />}>
-              <input
-                type="text"
-                value={draft.pills.stat_title}
-                onChange={(e) => setPill({ stat_title: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Stat pill — label" hint={<CharCount value={draft.pills.stat_label} max={14} />}>
-              <input
-                type="text"
-                value={draft.pills.stat_label}
-                onChange={(e) => setPill({ stat_label: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-          </div>
-          <Field label="Toggle pill" hint={<CharCount value={draft.pills.toggle_label} max={18} />}>
-            <input
-              type="text"
-              value={draft.pills.toggle_label}
-              onChange={(e) => setPill({ toggle_label: e.target.value })}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Accent colour (badge circle, chart line, toggle)">
-            <div className="flex items-center gap-2">
-              <input
-                type="color"
-                value={/^#[0-9a-fA-F]{6}$/.test(draft.accent_color) ? draft.accent_color : '#9FE870'}
-                onChange={(e) => setAccent(e.target.value)}
-                className="h-9 w-12 shrink-0 cursor-pointer rounded-lg border border-gray-200 bg-white p-1"
-                aria-label="Accent colour picker"
-              />
-              <input
-                type="text"
-                value={draft.accent_color}
-                onChange={(e) => setAccent(e.target.value)}
-                placeholder="#9FE870"
-                className={cn(inputCls, 'font-mono')}
-              />
+          {draft.pills.map((pill, idx) => (
+            <div key={pill.id} className="relative space-y-3 rounded-lg border border-gray-200 p-3">
+              <div className="absolute top-2 right-2 flex items-center gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => movePill(idx, -1)}
+                  disabled={idx === 0}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 disabled:opacity-30 rounded hover:bg-gray-100 transition-colors"
+                  aria-label="Move pill up"
+                >
+                  <ArrowUp className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => movePill(idx, 1)}
+                  disabled={idx === draft.pills.length - 1}
+                  className="p-1.5 text-gray-400 hover:text-gray-700 disabled:opacity-30 rounded hover:bg-gray-100 transition-colors"
+                  aria-label="Move pill down"
+                >
+                  <ArrowDown className="w-4 h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removePill(idx)}
+                  className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
+                  aria-label="Remove pill"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
+              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7E5896] pr-24">
+                Pill {idx + 1}
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Type">
+                  <select
+                    value={pill.kind}
+                    onChange={(e) =>
+                      setPill(idx, { kind: e.target.value as OpusPassHomepageShowcasePillKind })
+                    }
+                    className={inputCls}
+                  >
+                    {PILL_KINDS.map((k) => (
+                      <option key={k.value} value={k.value}>
+                        {k.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Attach to photo">
+                  <select
+                    value={pill.slot}
+                    onChange={(e) => setPill(idx, { slot: Number(e.target.value) })}
+                    className={inputCls}
+                  >
+                    {SLOT_LABELS.map((lbl, i) => (
+                      <option key={i} value={i}>
+                        Photo {i + 1} — {lbl}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+              <Field
+                label={pill.kind === 'stat' ? 'Title' : 'Label'}
+                hint={<CharCount value={pill.label} max={20} />}
+              >
+                <input
+                  type="text"
+                  value={pill.label}
+                  onChange={(e) => setPill(idx, { label: e.target.value })}
+                  className={inputCls}
+                />
+              </Field>
+              {pill.kind === 'stat' && (
+                <Field label="Label under the chart" hint={<CharCount value={pill.sublabel} max={14} />}>
+                  <input
+                    type="text"
+                    value={pill.sublabel}
+                    onChange={(e) => setPill(idx, { sublabel: e.target.value })}
+                    className={inputCls}
+                  />
+                </Field>
+              )}
+              <div className="grid grid-cols-2 gap-3">
+                <ColorField
+                  label={pill.kind === 'visit' ? 'Background colour' : 'Accent colour'}
+                  value={pill.color}
+                  onChange={(v) => setPill(idx, { color: v })}
+                />
+                {pill.kind === 'visit' && (
+                  <Field label="Side of photo">
+                    <select
+                      value={pill.side}
+                      onChange={(e) => setPill(idx, { side: e.target.value as 'left' | 'right' })}
+                      className={inputCls}
+                    >
+                      <option value="left">Left</option>
+                      <option value="right">Right</option>
+                    </select>
+                  </Field>
+                )}
+              </div>
             </div>
-          </Field>
+          ))}
+          <button
+            type="button"
+            onClick={addPill}
+            className="flex items-center gap-2 text-sm font-medium text-[#7E5896] hover:text-[#5d3a78] px-3 py-2 rounded-lg border border-dashed border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            Add pill
+          </button>
+        </FieldGroup>
+
+        <FieldGroup label="Caption badge">
+          <ColorField label="Badge circle colour" value={draft.accent_color} onChange={setAccent} />
         </FieldGroup>
 
         {draft.images.length !== SLOT_COUNT && (
@@ -368,21 +487,30 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
         </div>
 
         <div className="mb-5 flex flex-wrap items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-[#1A1A1A] shadow ring-1 ring-black/5">
-            ↗ {draft.pills.visit_label || 'Visit'}
-          </span>
-          <span className="rounded-lg bg-white px-2.5 py-1 text-[10px] font-bold text-[#1A1A1A] shadow ring-1 ring-black/5">
-            {draft.pills.stat_title || 'Performance'} · <span className="text-[#1A1A1A]/55">{draft.pills.stat_label || 'Sales'}</span>
-          </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-[#1A1A1A] shadow ring-1 ring-black/5">
-            {draft.pills.toggle_label || 'Live RSVPs'}
+          {draft.pills.length === 0 && (
+            <span className="text-[11px] text-gray-400">No pills — add one on the left.</span>
+          )}
+          {draft.pills.map((pill) => (
             <span
-              className="inline-flex h-3 w-5 items-center rounded-full px-0.5"
-              style={{ backgroundColor: draft.accent_color }}
+              key={pill.id}
+              className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold text-[#1A1A1A] shadow ring-1 ring-black/5"
+              title={`On photo ${pill.slot + 1}`}
             >
-              <span className="ml-auto h-2.5 w-2.5 rounded-full bg-white" />
+              <span
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
+                style={{ backgroundColor: pill.color }}
+              />
+              {pill.kind === 'visit' && <>↗ {pill.label || 'Visit'}</>}
+              {pill.kind === 'stat' && (
+                <>
+                  {pill.label || 'Performance'} ·{' '}
+                  <span className="text-[#1A1A1A]/55">{pill.sublabel || 'Sales'}</span>
+                </>
+              )}
+              {pill.kind === 'toggle' && <>{pill.label || 'Live RSVPs'}</>}
+              <span className="text-[#1A1A1A]/40">· P{pill.slot + 1}</span>
             </span>
-          </span>
+          ))}
         </div>
 
         <div className="px-1">

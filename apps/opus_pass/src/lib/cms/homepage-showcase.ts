@@ -13,21 +13,30 @@ export type HomepageShowcaseCaption = {
   badge: string
 }
 
-// Text on the floating decorative pills (positions/animation are fixed design).
-export type HomepageShowcasePills = {
-  visit_label: string
-  stat_title: string
-  stat_label: string
-  toggle_label: string
+// A floating decorative pill that pops over one of the photos. Each pill chooses
+// which photo it attaches to (`slot`, a 0-based index into images[]), its own
+// colour, and — for the "visit" kind — which edge it pops on. The pop-in
+// animation is automatic (delays are derived from list order in the component).
+export type HomepageShowcasePillKind = 'visit' | 'stat' | 'toggle'
+
+export type HomepageShowcasePill = {
+  id: string
+  kind: HomepageShowcasePillKind
+  slot: number
+  color: string
+  side: 'left' | 'right'
+  // visit/toggle: the pill text. stat: the title (with `sublabel` under the chart).
+  label: string
+  sublabel: string
 }
 
 export type HomepageShowcaseContent = {
   caption: HomepageShowcaseCaption
-  // Flat list of photo cards in render order; the masonry layout and decorative
-  // pills are fixed in the component and map to these images by index.
+  // Flat list of photo cards in render order; the masonry layout is fixed in the
+  // component and maps these images by index. Pills attach to a card by `slot`.
   images: HomepageShowcaseImage[]
-  pills: HomepageShowcasePills
-  // Accent colour (hex) for the badge circle, stat chart line and toggle pill.
+  pills: HomepageShowcasePill[]
+  // Accent colour (hex) for the caption badge circle.
   accent_color: string
 }
 
@@ -47,12 +56,12 @@ export const HOMEPAGE_SHOWCASE_FALLBACK: HomepageShowcaseContent = {
     { src: '/assets/images/brideincar.jpg', alt: 'Bride in the car' },
     { src: '/assets/images/flowers_pinky.jpg', alt: 'Wedding flowers' },
   ],
-  pills: {
-    visit_label: 'Visit',
-    stat_title: 'Performance',
-    stat_label: 'Sales',
-    toggle_label: 'Live RSVPs',
-  },
+  pills: [
+    { id: 'visit-1', kind: 'visit', slot: 2, color: '#FFFFFF', side: 'left', label: 'Visit', sublabel: '' },
+    { id: 'stat-1', kind: 'stat', slot: 1, color: '#9FE870', side: 'left', label: 'Performance', sublabel: 'Sales' },
+    { id: 'visit-2', kind: 'visit', slot: 5, color: '#FFFFFF', side: 'right', label: 'Visit', sublabel: '' },
+    { id: 'toggle-1', kind: 'toggle', slot: 6, color: '#9FE870', side: 'left', label: 'Live RSVPs', sublabel: '' },
+  ],
   accent_color: '#9FE870',
 }
 
@@ -79,7 +88,10 @@ export async function loadHomepageShowcaseContent(): Promise<HomepageShowcaseCon
           stored.images && Array.isArray(stored.images) && stored.images.length > 0
             ? stored.images
             : HOMEPAGE_SHOWCASE_FALLBACK.images,
-        pills: { ...HOMEPAGE_SHOWCASE_FALLBACK.pills, ...stored.pills },
+        pills:
+          stored.pills && Array.isArray(stored.pills) && stored.pills.length > 0
+            ? stored.pills
+            : HOMEPAGE_SHOWCASE_FALLBACK.pills,
         accent_color: stored.accent_color || HOMEPAGE_SHOWCASE_FALLBACK.accent_color,
       }
     }

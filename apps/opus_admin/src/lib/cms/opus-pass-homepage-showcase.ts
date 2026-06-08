@@ -10,17 +10,22 @@ export type OpusPassHomepageShowcaseCaption = {
   badge: string
 }
 
-export type OpusPassHomepageShowcasePills = {
-  visit_label: string
-  stat_title: string
-  stat_label: string
-  toggle_label: string
+export type OpusPassHomepageShowcasePillKind = 'visit' | 'stat' | 'toggle'
+
+export type OpusPassHomepageShowcasePill = {
+  id: string
+  kind: OpusPassHomepageShowcasePillKind
+  slot: number
+  color: string
+  side: 'left' | 'right'
+  label: string
+  sublabel: string
 }
 
 export type OpusPassHomepageShowcaseContent = {
   caption: OpusPassHomepageShowcaseCaption
   images: OpusPassHomepageShowcaseImage[]
-  pills: OpusPassHomepageShowcasePills
+  pills: OpusPassHomepageShowcasePill[]
   accent_color: string
 }
 
@@ -50,11 +55,11 @@ export const OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK: OpusPassHomepageShowcaseConte
     { src: '/assets/images/brideincar.jpg', alt: 'Bride in the car' },
     { src: '/assets/images/flowers_pinky.jpg', alt: 'Wedding flowers' },
   ],
-  pills: {
-    visit_label: 'Visit',
-    stat_title: 'Performance',
-    stat_label: 'Sales',
-    toggle_label: 'Live RSVPs',
-  },
+  pills: [
+    { id: 'visit-1', kind: 'visit', slot: 2, color: '#FFFFFF', side: 'left', label: 'Visit', sublabel: '' },
+    { id: 'stat-1', kind: 'stat', slot: 1, color: '#9FE870', side: 'left', label: 'Performance', sublabel: 'Sales' },
+    { id: 'visit-2', kind: 'visit', slot: 5, color: '#FFFFFF', side: 'right', label: 'Visit', sublabel: '' },
+    { id: 'toggle-1', kind: 'toggle', slot: 6, color: '#9FE870', side: 'left', label: 'Live RSVPs', sublabel: '' },
+  ],
   accent_color: '#9FE870',
 }
