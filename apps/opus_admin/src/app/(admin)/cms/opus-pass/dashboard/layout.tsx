@@ -7,10 +7,10 @@ import {
   ClipboardCheck,
   ExternalLink,
   Globe2,
+  HandCoins,
   LayoutDashboard,
   Save,
   Send,
-  Sparkles,
   Trash2,
   Users,
   type LucideIcon,
@@ -32,9 +32,19 @@ const ICONS: Record<DashboardHeroSlug, LucideIcon> = {
   guests: Users,
   rsvps: ClipboardCheck,
   website: Globe2,
+  pledges: HandCoins,
 }
 
-const DESCRIPTIONS: Record<DashboardHeroSlug, string> = {
+type SectionKey = 'hero' | 'copy'
+
+const SECTION_LABEL: Record<SectionKey, string> = {
+  hero: 'Hero banner',
+  copy: 'Page copy',
+}
+
+const SECTIONS: readonly SectionKey[] = ['hero', 'copy'] as const
+
+const HERO_DESCRIPTIONS: Record<DashboardHeroSlug, string> = {
   home: 'Top banner on the dashboard overview (/my/dashboard) — eyebrow, title, subtitle and cover media.',
   invitations:
     'Top banner on the Send invitations page (/my/dashboard/invitations) — eyebrow, title, subtitle and cover media.',
@@ -43,13 +53,21 @@ const DESCRIPTIONS: Record<DashboardHeroSlug, string> = {
   rsvps: 'Top banner on the RSVPs page (/my/dashboard/rsvps) — eyebrow, title, subtitle and cover media.',
   website:
     'Top banner on the Wedding website page (/my/dashboard/website) — eyebrow, title, subtitle and cover media.',
+  pledges:
+    'Top banner on the Pledges page (/my/dashboard/pledges) — eyebrow, title, subtitle and cover media.',
 }
 
-function slugFromPath(pathname: string): DashboardHeroSlug {
+const COPY_DESCRIPTION =
+  'Page text beyond the hero — empty states, buttons, section headings and callouts.'
+
+function parsePath(pathname: string): { slug: DashboardHeroSlug; section: SectionKey } {
   for (const slug of DASHBOARD_HERO_SLUGS) {
-    if (pathname.startsWith(`/cms/opus-pass/dashboard/${slug}`)) return slug
+    if (pathname.startsWith(`/cms/opus-pass/dashboard/${slug}`)) {
+      const section: SectionKey = pathname.includes(`/${slug}/copy`) ? 'copy' : 'hero'
+      return { slug, section }
+    }
   }
-  return 'home'
+  return { slug: 'home', section: 'hero' }
 }
 
 export default function OpusPassDashboardCmsLayout({ children }: { children: ReactNode }) {
@@ -63,12 +81,12 @@ export default function OpusPassDashboardCmsLayout({ children }: { children: Rea
 function Shell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   // opus_pass is mounted under basePath '/opuspass'.
-  const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}/opuspass`
-  const activeSlug = slugFromPath(pathname)
+  const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}`
+  const { slug: activeSlug, section: activeSection } = parsePath(pathname)
 
   useSetPageHeading({
-    title: `${DASHBOARD_HERO_LABEL[activeSlug]} — Hero`,
-    subtitle: DESCRIPTIONS[activeSlug],
+    title: `${DASHBOARD_HERO_LABEL[activeSlug]} — ${SECTION_LABEL[activeSection]}`,
+    subtitle: activeSection === 'copy' ? COPY_DESCRIPTION : HERO_DESCRIPTIONS[activeSlug],
   })
 
   return (
@@ -95,36 +113,53 @@ function Shell({ children }: { children: ReactNode }) {
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400 px-2 mb-2">
               Dashboard pages
             </p>
-            <nav className="space-y-0.5">
+            <nav className="space-y-3">
               {DASHBOARD_HERO_SLUGS.map((slug) => {
                 const Icon = ICONS[slug]
-                const href = `/cms/opus-pass/dashboard/${slug}/hero`
-                const isActive = pathname.startsWith(`/cms/opus-pass/dashboard/${slug}`)
+                const pageActive = pathname.startsWith(`/cms/opus-pass/dashboard/${slug}`)
                 return (
-                  <Link
-                    key={slug}
-                    href={href}
-                    className={cn(
-                      'flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors',
-                      isActive
-                        ? 'bg-[#F0DFF6] text-[#7E5896]'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        'w-4 h-4 stroke-[1.5] shrink-0',
-                        isActive ? 'text-[#7E5896]' : 'text-gray-400'
-                      )}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <span className="block truncate">{DASHBOARD_HERO_LABEL[slug]}</span>
-                      <span className="block text-[10px] uppercase tracking-wider text-gray-400 mt-0.5">
-                        Hero
+                  <div key={slug}>
+                    <div className="flex items-center gap-2.5 px-2.5 py-1.5">
+                      <Icon
+                        className={cn(
+                          'w-4 h-4 stroke-[1.5] shrink-0',
+                          pageActive ? 'text-[#7E5896]' : 'text-gray-400',
+                        )}
+                      />
+                      <span
+                        className={cn(
+                          'text-sm font-semibold',
+                          pageActive ? 'text-[#7E5896]' : 'text-gray-700',
+                        )}
+                      >
+                        {DASHBOARD_HERO_LABEL[slug]}
                       </span>
                     </div>
-                    {isActive && <Sparkles className="w-3 h-3 text-[#7E5896]" />}
-                  </Link>
+                    <div className="ml-[1.45rem] border-l border-gray-100 pl-2 space-y-0.5">
+                      {SECTIONS.map((section) => {
+                        const href = `/cms/opus-pass/dashboard/${slug}/${section}`
+                        const isActive =
+                          pageActive &&
+                          (section === 'copy'
+                            ? pathname.includes(`/${slug}/copy`)
+                            : !pathname.includes(`/${slug}/copy`))
+                        return (
+                          <Link
+                            key={section}
+                            href={href}
+                            className={cn(
+                              'block px-2.5 py-1.5 rounded-lg text-[13px] font-medium transition-colors',
+                              isActive
+                                ? 'bg-[#F0DFF6] text-[#7E5896]'
+                                : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50',
+                            )}
+                          >
+                            {SECTION_LABEL[section]}
+                          </Link>
+                        )
+                      })}
+                    </div>
+                  </div>
                 )
               })}
             </nav>
@@ -144,7 +179,7 @@ function EditorStatusBadge() {
     <span
       className={cn(
         'inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full',
-        bound.hasDraft ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+        bound.hasDraft ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700',
       )}
     >
       {bound.hasDraft ? 'Unpublished draft' : 'All changes published'}

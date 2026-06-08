@@ -49,6 +49,7 @@ import {
   emailShareUrl,
 } from '@/lib/dashboard/share'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
+import type { PledgesDashboardCopy } from '@/lib/cms/dashboard-copy'
 import type {
   AttendanceAnswer,
   CardStatus,
@@ -222,6 +223,7 @@ export default function PledgesManager({
   weddingDate,
   hero,
   pledgeToken,
+  copy,
 }: {
   initialPledges: PledgeWithContact[]
   stats: PledgeStats
@@ -233,6 +235,7 @@ export default function PledgesManager({
   weddingDate: string | null
   hero: DashboardHeroContent
   pledgeToken: string | null
+  copy: PledgesDashboardCopy
 }) {
   const [section, setSection] = useState<Section>('manage')
   const [query, setQuery] = useState('')
@@ -616,12 +619,17 @@ export default function PledgesManager({
             onClick={openCreate}
             className="inline-flex items-center gap-2 rounded-full bg-[#C9A0DC] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
           >
-            <Plus className="h-3.5 w-3.5" /> Add pledge
+            <Plus className="h-3.5 w-3.5" /> {copy.add_pledge_cta}
           </button>
         }
       />
 
-      <PledgeSubNav section={section} onChange={setSection} dueCount={remindersDue.length} />
+      <PledgeSubNav
+        section={section}
+        onChange={setSection}
+        dueCount={remindersDue.length}
+        copy={copy}
+      />
 
       {section === 'manage' || section === 'followups' ? (
       <>
@@ -687,7 +695,12 @@ export default function PledgesManager({
       ) : null}
 
       {section === 'invite' ? (
-        <InviteSection shareLink={shareLink} coupleName={coupleName} onCopy={copyShareLink} />
+        <InviteSection
+          shareLink={shareLink}
+          coupleName={coupleName}
+          onCopy={copyShareLink}
+          copy={copy}
+        />
       ) : null}
 
       {section === 'collection' ? (
@@ -763,16 +776,16 @@ export default function PledgesManager({
       {initialPledges.length === 0 ? (
         <EmptyState
           icon={<HandCoins className="h-7 w-7" />}
-          title="Start collecting pledges"
-          description="Add the people you're reaching out to and the amount they pledge, then chase follow-ups until they pay. Share your pledge link to let people pledge themselves."
+          title={copy.empty_title}
+          description={copy.empty_description}
           action={
             <Button onClick={openCreate}>
-              <Plus className="h-4 w-4" /> Add pledge
+              <Plus className="h-4 w-4" /> {copy.empty_cta}
             </Button>
           }
         />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={<Search className="h-6 w-6" />} title="No pledges match this view" />
+        <EmptyState icon={<Search className="h-6 w-6" />} title={copy.no_match_title} />
       ) : (
         <Card className="overflow-x-auto">
           <table className="w-full min-w-[900px] text-left text-sm [&_td:first-child]:pl-5 [&_td:last-child]:pr-5 [&_th:first-child]:pl-5 [&_th:last-child]:pr-5">
@@ -883,6 +896,7 @@ export default function PledgesManager({
           onSms={remindSms}
           onEmail={remindEmail}
           onRecord={openRecordPayment}
+          copy={copy}
         />
       ) : null}
 
@@ -899,6 +913,7 @@ export default function PledgesManager({
             setView('invited')
             setSection('manage')
           }}
+          copy={copy}
         />
       ) : null}
 
@@ -1100,17 +1115,19 @@ function PledgeSubNav({
   section,
   onChange,
   dueCount,
+  copy,
 }: {
   section: Section
   onChange: (s: Section) => void
   dueCount: number
+  copy: PledgesDashboardCopy
 }) {
   const tabs: { id: Section; label: string; icon: typeof HandCoins; badge?: number }[] = [
-    { id: 'manage', label: 'Pledges', icon: HandCoins },
-    { id: 'invite', label: 'Share & preview', icon: Send },
-    { id: 'collection', label: 'Pledge collection', icon: Banknote },
-    { id: 'followups', label: 'Follow-ups', icon: ListChecks, badge: dueCount },
-    { id: 'reports', label: 'Reports', icon: BarChart3 },
+    { id: 'manage', label: copy.nav_manage, icon: HandCoins },
+    { id: 'invite', label: copy.nav_invite, icon: Send },
+    { id: 'collection', label: copy.nav_collection, icon: Banknote },
+    { id: 'followups', label: copy.nav_followups, icon: ListChecks, badge: dueCount },
+    { id: 'reports', label: copy.nav_reports, icon: BarChart3 },
   ]
   return (
     <nav
@@ -1378,17 +1395,19 @@ function InviteSection({
   shareLink,
   coupleName,
   onCopy,
+  copy,
 }: {
   shareLink: string | null
   coupleName: string
   onCopy: () => void
+  copy: PledgesDashboardCopy
 }) {
   if (!shareLink) {
     return (
       <EmptyState
         icon={<Send className="h-7 w-7" />}
-        title="No pledge link yet"
-        description="Your shareable pledge link isn't ready. Refresh the page, or add a pledge to generate one."
+        title={copy.nolink_title}
+        description={copy.nolink_description}
       />
     )
   }
@@ -1422,11 +1441,8 @@ function InviteSection({
         {/* Share */}
         <Card className="space-y-5 px-5 py-5">
           <div>
-            <h3 className="text-base font-semibold text-[#1A1A1A]">Share your pledge link</h3>
-            <p className="mt-1 text-sm text-[#1A1A1A]/55">
-              Post it in a family WhatsApp group, or send it directly. Anyone who opens it can pledge a
-              contribution themselves — no app or sign-in needed.
-            </p>
+            <h3 className="text-base font-semibold text-[#1A1A1A]">{copy.share_title}</h3>
+            <p className="mt-1 text-sm text-[#1A1A1A]/55">{copy.share_description}</p>
           </div>
 
           <div className="flex items-center gap-2">
@@ -1487,12 +1503,14 @@ function FollowUpsSection({
   onSms,
   onEmail,
   onRecord,
+  copy,
 }: {
   pledges: PledgeWithContact[]
   onWa: (p: PledgeWithContact) => void
   onSms: (p: PledgeWithContact) => void
   onEmail: (p: PledgeWithContact) => void
   onRecord: (p: PledgeWithContact) => void
+  copy: PledgesDashboardCopy
 }) {
   // Everyone still owing money, due-first (overdue and scheduled-due at the top).
   const owing = pledges.filter((p) => OWING.includes(p.status))
@@ -1509,8 +1527,8 @@ function FollowUpsSection({
     return (
       <EmptyState
         icon={<ListChecks className="h-7 w-7" />}
-        title="No follow-ups needed"
-        description="Every pledge is either fully paid or declined. Nice work chasing them down!"
+        title={copy.followups_empty_title}
+        description={copy.followups_empty_description}
       />
     )
   }
@@ -1609,6 +1627,7 @@ function ReportsSection({
   onPrint,
   onChaseFollowups,
   onViewAwaiting,
+  copy,
 }: {
   pledges: PledgeWithContact[]
   stats: PledgeStats
@@ -1618,6 +1637,7 @@ function ReportsSection({
   onPrint: () => void
   onChaseFollowups: () => void
   onViewAwaiting: () => void
+  copy: PledgesDashboardCopy
 }) {
   const collectionRate =
     stats.totalPledged > 0 ? Math.round((stats.totalReceived / stats.totalPledged) * 100) : 0
@@ -1710,8 +1730,8 @@ function ReportsSection({
     return (
       <EmptyState
         icon={<BarChart3 className="h-7 w-7" />}
-        title="No data to report yet"
-        description="Once you've added some pledges, you'll see contribution totals and breakdowns here."
+        title={copy.reports_empty_title}
+        description={copy.reports_empty_description}
       />
     )
   }

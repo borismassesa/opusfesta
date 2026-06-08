@@ -39,6 +39,7 @@ import {
 } from '@/lib/dashboard/actions'
 import { emailShareUrl, inviteMessage, rsvpUrl, smsShareUrl, whatsappShareUrl } from '@/lib/dashboard/share'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
+import type { GuestsDashboardCopy } from '@/lib/cms/dashboard-copy'
 import type {
   ChildEntry,
   GuestWithInvitations,
@@ -114,12 +115,14 @@ export default function GuestsManager({
   coupleName,
   hero,
   collectorToken,
+  copy,
 }: {
   initialGuests: GuestWithInvitations[]
   events: WeddingEvent[]
   coupleName: string
   hero: DashboardHeroContent
   collectorToken: string | null
+  copy: GuestsDashboardCopy
 }) {
   const [query, setQuery] = useState('')
   const [groupFilter, setGroupFilter] = useState('all')
@@ -508,7 +511,7 @@ export default function GuestsManager({
               onClick={openCreate}
               className="inline-flex items-center gap-2 rounded-full bg-[#C9A0DC] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
             >
-              <Plus className="h-3.5 w-3.5" /> Add guests
+              <Plus className="h-3.5 w-3.5" /> {copy.add_guests_cta}
             </button>
           </>
         }
@@ -519,15 +522,16 @@ export default function GuestsManager({
         onChange={setView}
         notInvitedCount={viewCounts.notInvited}
         onOpenCollector={collectorToken ? () => setCollectorOpen(true) : undefined}
+        copy={copy}
       />
 
       {initialGuests.length > 0 ? (
         <div className="grid gap-3 lg:grid-cols-2">
           <Card className="px-5 py-4">
             <div className="grid grid-cols-3 divide-x divide-black/[0.12] text-center">
-              <Stat value={initialGuests.length} label="Guests" />
-              <Stat value={headCounts.adults} label="Adults" />
-              <Stat value={headCounts.children} label="Children" />
+              <Stat value={initialGuests.length} label={copy.stat_guests_label} />
+              <Stat value={headCounts.adults} label={copy.stat_adults_label} />
+              <Stat value={headCounts.children} label={copy.stat_children_label} />
             </div>
           </Card>
           <Card className="px-5 py-4">
@@ -535,14 +539,14 @@ export default function GuestsManager({
               <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 text-xs text-[#1A1A1A]/65">
-                    <span>Your Contact Collector</span>
+                    <span>{copy.collector_heading}</span>
                     {collectorToken ? (
                       <button
                         type="button"
                         onClick={() => setCollectorOpen(true)}
                         className="font-semibold text-[#7E5896] underline-offset-2 hover:underline"
                       >
-                        Edit
+                        {copy.collector_edit}
                       </button>
                     ) : null}
                   </div>
@@ -551,9 +555,7 @@ export default function GuestsManager({
                       {collectorLink.replace(/^https?:\/\//, '')}
                     </div>
                   ) : (
-                    <div className="mt-1 text-xs text-[#1A1A1A]/55">
-                      No collector link yet — open Contact Collector to generate one.
-                    </div>
+                    <div className="mt-1 text-xs text-[#1A1A1A]/55">{copy.collector_empty}</div>
                   )}
                 </div>
                 {collectorToken ? (
@@ -562,14 +564,14 @@ export default function GuestsManager({
                       href="/my/dashboard/guests/customize"
                       className="inline-flex items-center gap-1.5 rounded-full bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
                     >
-                      <Palette className="h-3.5 w-3.5" /> Customize
+                      <Palette className="h-3.5 w-3.5" /> {copy.collector_customize}
                     </Link>
                     <button
                       type="button"
                       onClick={copyCollectorLink}
                       className="inline-flex items-center gap-1.5 rounded-full border border-black/[0.18] bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-black/[0.03]"
                     >
-                      <Copy className="h-3.5 w-3.5" /> Copy link
+                      <Copy className="h-3.5 w-3.5" /> {copy.collector_copy}
                     </button>
                   </div>
                 ) : (
@@ -578,7 +580,7 @@ export default function GuestsManager({
                     onClick={() => setCollectorOpen(true)}
                     className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-[#C9A0DC] px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
                   >
-                    <ClipboardSignature className="h-3.5 w-3.5" /> Set up
+                    <ClipboardSignature className="h-3.5 w-3.5" /> {copy.collector_setup}
                   </button>
                 )}
               </div>
@@ -671,7 +673,7 @@ export default function GuestsManager({
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/35" />
             <input
               className={`${inputClass} pl-9`}
-              placeholder="Search guests…"
+              placeholder={copy.search_placeholder}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
@@ -682,7 +684,7 @@ export default function GuestsManager({
             className="inline-flex shrink-0 items-center gap-2 rounded-xl border border-black/[0.12] bg-white px-3.5 py-2.5 text-sm font-medium text-[#1A1A1A] transition-colors hover:bg-black/[0.03]"
           >
             <Upload className="h-4 w-4" />
-            <span>Upload a spreadsheet</span>
+            <span>{copy.upload_spreadsheet_cta}</span>
           </button>
         </div>
       ) : null}
@@ -690,26 +692,26 @@ export default function GuestsManager({
       {initialGuests.length === 0 ? (
         <EmptyState
           icon={<Users className="h-7 w-7" />}
-          title="Build your guest list"
-          description="Add guests one by one, or upload a spreadsheet to import them in bulk. Each guest gets a personal RSVP link you can send by WhatsApp."
+          title={copy.empty_title}
+          description={copy.empty_description}
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <Button onClick={openCreate}>
-                <Plus className="h-4 w-4" /> Add guests
+                <Plus className="h-4 w-4" /> {copy.empty_add_cta}
               </Button>
               <Button variant="secondary" onClick={() => setImportOpen(true)}>
-                <Upload className="h-4 w-4" /> Upload spreadsheet
+                <Upload className="h-4 w-4" /> {copy.empty_upload_cta}
               </Button>
               {collectorToken ? (
                 <Button variant="secondary" onClick={() => setCollectorOpen(true)}>
-                  <ClipboardSignature className="h-4 w-4" /> Collect addresses
+                  <ClipboardSignature className="h-4 w-4" /> {copy.empty_collect_cta}
                 </Button>
               ) : null}
             </div>
           }
         />
       ) : filtered.length === 0 ? (
-        <EmptyState icon={<Search className="h-6 w-6" />} title="No guests match your search" />
+        <EmptyState icon={<Search className="h-6 w-6" />} title={copy.no_match_title} />
       ) : (
         <>
           {selected.size > 0 ? (
@@ -1168,15 +1170,17 @@ function GuestSubNav({
   onChange,
   notInvitedCount,
   onOpenCollector,
+  copy,
 }: {
   view: GuestView
   onChange: (v: GuestView) => void
   notInvitedCount: number
   /** Opens the Contact Collector slideover. Omit to hide the tab (no token yet). */
   onOpenCollector?: () => void
+  copy: GuestsDashboardCopy
 }) {
   const items: { id: GuestView; label: string; badge?: number }[] = [
-    { id: 'manage', label: 'Manage guest list' },
+    { id: 'manage', label: copy.nav_manage },
   ]
   return (
     <nav
@@ -1221,20 +1225,20 @@ function GuestSubNav({
           className="-mb-[9px] inline-flex items-center gap-2 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 transition-colors hover:text-[#1A1A1A]"
         >
           <ClipboardSignature className="h-3.5 w-3.5" />
-          Contact Collector
+          {copy.nav_collector}
         </button>
       ) : null}
       <Link
         href="/my/dashboard/pledges"
         className="-mb-[9px] inline-flex items-center gap-1.5 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]"
       >
-        Pledges <ArrowUp className="h-3 w-3 rotate-45" aria-hidden="true" />
+        {copy.nav_pledges} <ArrowUp className="h-3 w-3 rotate-45" aria-hidden="true" />
       </Link>
       <Link
         href="/my/dashboard/rsvps"
         className="-mb-[9px] inline-flex items-center gap-1.5 border-b-2 border-transparent pb-2.5 text-sm font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]"
       >
-        Track RSVPs <ArrowUp className="h-3 w-3 rotate-45" aria-hidden="true" />
+        {copy.nav_rsvps} <ArrowUp className="h-3 w-3 rotate-45" aria-hidden="true" />
       </Link>
     </nav>
   )

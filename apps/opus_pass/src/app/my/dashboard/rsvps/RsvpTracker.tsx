@@ -8,6 +8,7 @@ import { inputClass } from '@/components/dashboard/controls'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { updateRsvp } from '@/lib/dashboard/actions'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
+import type { RsvpsDashboardCopy } from '@/lib/cms/dashboard-copy'
 import {
   RSVP_STATUS_LABELS,
   type GuestWithInvitations,
@@ -34,10 +35,12 @@ export default function RsvpTracker({
   guests,
   events,
   hero,
+  copy,
 }: {
   guests: GuestWithInvitations[]
   events: WeddingEvent[]
   hero: DashboardHeroContent
+  copy: RsvpsDashboardCopy
 }) {
   const [eventFilter, setEventFilter] = useState('all')
   const [statusFilter, setStatusFilter] = useState<'all' | RsvpStatus>('all')
@@ -139,7 +142,7 @@ export default function RsvpTracker({
               onClick={exportCsv}
               className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
             >
-              <Download className="h-3.5 w-3.5" /> Export CSV
+              <Download className="h-3.5 w-3.5" /> {copy.export_cta}
             </button>
           ) : null
         }
@@ -148,8 +151,8 @@ export default function RsvpTracker({
       {rows.length === 0 ? (
         <EmptyState
           icon={<ClipboardCheck className="h-7 w-7" />}
-          title="No invitations yet"
-          description="Invite guests to your events to start tracking their RSVPs here."
+          title={copy.empty_title}
+          description={copy.empty_description}
         />
       ) : (
         <>
@@ -192,7 +195,7 @@ export default function RsvpTracker({
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search by name, group, meal…"
+                placeholder={copy.search_placeholder}
                 className={`${inputClass} pl-9`}
               />
             </div>
@@ -223,7 +226,7 @@ export default function RsvpTracker({
           </div>
 
           {filtered.length === 0 ? (
-            <EmptyState title="No RSVPs match these filters" />
+            <EmptyState title={copy.no_match_title} />
           ) : (
             <Card className="overflow-x-auto">
               <table className="w-full min-w-[640px] text-left text-sm">

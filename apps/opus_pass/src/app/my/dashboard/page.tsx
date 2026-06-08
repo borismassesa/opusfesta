@@ -19,6 +19,7 @@ import {
 import { Card, StatCard, SectionTitle, ProgressBar, StatusPill, EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
+import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
 import { eventTypeLabel } from '@/lib/dashboard/types'
 
 export const dynamic = 'force-dynamic'
@@ -34,12 +35,13 @@ function formatDate(value: string | null): string {
 }
 
 export default async function DashboardOverviewPage() {
-  const [stats, events, guests, profile, hero] = await Promise.all([
+  const [stats, events, guests, profile, hero, copy] = await Promise.all([
     getStats(),
     getEvents(),
     getGuestsWithInvitations(),
     getCoupleProfile(),
     loadDashboardHero('home'),
+    loadDashboardCopy('home'),
   ])
 
   const upcoming = events
@@ -70,7 +72,7 @@ export default async function DashboardOverviewPage() {
         </div>
         <Link href="/my/dashboard/guests">
           <Button>
-            <Users className="h-4 w-4" /> Manage guests
+            <Users className="h-4 w-4" /> {copy.manage_guests_cta}
           </Button>
         </Link>
       </header>
@@ -78,18 +80,18 @@ export default async function DashboardOverviewPage() {
       {empty ? (
         <EmptyState
           icon={<CalendarHeart className="h-7 w-7" />}
-          title="Let's set up your celebration"
-          description="Add your events, then build your guest list and start sending invitations. Track every RSVP in one place."
+          title={copy.empty_title}
+          description={copy.empty_description}
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <Link href="/my/dashboard/events">
                 <Button>
-                  <CalendarHeart className="h-4 w-4" /> Add an event
+                  <CalendarHeart className="h-4 w-4" /> {copy.empty_event_cta}
                 </Button>
               </Link>
               <Link href="/my/dashboard/guests">
                 <Button variant="secondary">
-                  <Users className="h-4 w-4" /> Add guests
+                  <Users className="h-4 w-4" /> {copy.empty_guests_cta}
                 </Button>
               </Link>
             </div>
@@ -99,21 +101,21 @@ export default async function DashboardOverviewPage() {
         <>
           {/* Stat cards */}
           <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-            <StatCard label="Guests" value={stats.totalGuests} icon={<Users className="h-5 w-5" />} accent />
+            <StatCard label={copy.stat_guests} value={stats.totalGuests} icon={<Users className="h-5 w-5" />} accent />
             <StatCard
-              label="Attending"
+              label={copy.stat_attending}
               value={stats.attending}
-              hint={`${stats.expectedHeadcount} expected to attend`}
+              hint={copy.stat_attending_hint.replace('{n}', String(stats.expectedHeadcount))}
               icon={<UserCheck className="h-5 w-5" />}
             />
-            <StatCard label="Declined" value={stats.declined} icon={<UserX className="h-5 w-5" />} />
-            <StatCard label="Awaiting reply" value={stats.pending} icon={<Clock className="h-5 w-5" />} />
+            <StatCard label={copy.stat_declined} value={stats.declined} icon={<UserX className="h-5 w-5" />} />
+            <StatCard label={copy.stat_pending} value={stats.pending} icon={<Clock className="h-5 w-5" />} />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3">
             {/* Response rate + funnel */}
             <Card className="p-6 lg:col-span-2">
-              <SectionTitle title="Response progress" subtitle={`${stats.responseRate}% of invitations answered`} />
+              <SectionTitle title={copy.response_title} subtitle={copy.response_subtitle.replace('{rate}', String(stats.responseRate))} />
               <ProgressBar value={stats.responseRate} />
               <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {[
@@ -135,10 +137,10 @@ export default async function DashboardOverviewPage() {
 
             {/* Meal breakdown */}
             <Card className="p-6">
-              <SectionTitle title="Meal choices" />
+              <SectionTitle title={copy.meal_title} />
               {stats.mealBreakdown.length === 0 ? (
                 <p className="flex items-center gap-2 text-sm text-[#1A1A1A]/45">
-                  <Utensils className="h-4 w-4" /> No meal preferences yet
+                  <Utensils className="h-4 w-4" /> {copy.meal_empty}
                 </p>
               ) : (
                 <ul className="space-y-3">
@@ -157,20 +159,20 @@ export default async function DashboardOverviewPage() {
             {/* Upcoming events */}
             <div>
               <SectionTitle
-                title="Upcoming events"
+                title={copy.upcoming_title}
                 action={
                   <Link href="/my/dashboard/events" className="text-sm font-medium text-[#1A1A1A]/70 hover:text-[#1A1A1A] hover:underline">
-                    View all
+                    {copy.upcoming_view_all}
                   </Link>
                 }
               />
               {upcoming.length === 0 ? (
                 <EmptyState
                   icon={<CalendarHeart className="h-6 w-6" />}
-                  title="No upcoming events"
+                  title={copy.upcoming_empty_title}
                   action={
                     <Link href="/my/dashboard/events">
-                      <Button variant="secondary">Add an event</Button>
+                      <Button variant="secondary">{copy.upcoming_empty_cta}</Button>
                     </Link>
                   }
                 />
@@ -197,22 +199,22 @@ export default async function DashboardOverviewPage() {
             {/* Recent responses */}
             <div>
               <SectionTitle
-                title="Recent responses"
+                title={copy.recent_title}
                 action={
                   <Link href="/my/dashboard/rsvps" className="text-sm font-medium text-[#1A1A1A]/70 hover:text-[#1A1A1A] hover:underline">
-                    View all
+                    {copy.recent_view_all}
                   </Link>
                 }
               />
               {recent.length === 0 ? (
                 <EmptyState
                   icon={<Send className="h-6 w-6" />}
-                  title="No responses yet"
-                  description="Send invitations to start collecting RSVPs."
+                  title={copy.recent_empty_title}
+                  description={copy.recent_empty_description}
                   action={
                     <Link href="/my/dashboard/invitations">
                       <Button variant="secondary">
-                        <Send className="h-4 w-4" /> Send invites
+                        <Send className="h-4 w-4" /> {copy.recent_empty_cta}
                       </Button>
                     </Link>
                   }
@@ -237,14 +239,12 @@ export default async function DashboardOverviewPage() {
 
           <Card className="flex flex-wrap items-center justify-between gap-4 p-6">
             <div>
-              <h3 className="font-semibold text-[#1A1A1A]">Ready to invite more guests?</h3>
-              <p className="text-sm text-[#1A1A1A]/55">
-                Share personal RSVP links over WhatsApp, SMS or email — no app needed for guests.
-              </p>
+              <h3 className="font-semibold text-[#1A1A1A]">{copy.cta_title}</h3>
+              <p className="text-sm text-[#1A1A1A]/55">{copy.cta_description}</p>
             </div>
             <Link href="/my/dashboard/invitations">
               <Button>
-                Send invitations <ArrowRight className="h-4 w-4" />
+                {copy.cta_button} <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
           </Card>

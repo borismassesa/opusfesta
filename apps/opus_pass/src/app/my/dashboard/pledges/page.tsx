@@ -7,18 +7,20 @@ import {
   getMyPledgeToken,
 } from '@/lib/dashboard/queries'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
+import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
 import PledgesManager from './PledgesManager'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PledgesPage() {
-  const [pledges, stats, guests, profile, hero, pledgeToken] = await Promise.all([
+  const [pledges, stats, guests, profile, hero, pledgeToken, copy] = await Promise.all([
     getPledges(),
     getPledgeStats(),
     getGuestsWithInvitations(),
     getCoupleProfile(),
     loadDashboardHero('pledges'),
     getMyPledgeToken(),
+    loadDashboardCopy('pledges'),
   ])
   return (
     <PledgesManager
@@ -38,6 +40,7 @@ export default async function PledgesPage() {
       weddingDate={profile?.wedding_date ?? null}
       hero={hero}
       pledgeToken={pledgeToken}
+      copy={copy}
     />
   )
 }
