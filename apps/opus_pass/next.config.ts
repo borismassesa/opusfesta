@@ -2,19 +2,11 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
-  // ── Multi-zone basePath ──
-  // opus_pass is mounted under /opuspass inside opus_website (opusfesta.com/opuspass)
-  // via Next.js rewrites. basePath makes every route, `_next` asset, <Link> and
-  // next/image src live under /opuspass so they never collide with opus_website's
-  // own /invitations, /websites, /guests-and-rsvp routes. This prefix applies to
-  // the standalone deployment (opuspass.opusfesta.com) too, so all paths are
-  // consistent across both entry points.
-  basePath: '/opuspass',
+  // opus_pass is served at the root of its own subdomain (opuspass.opusfesta.com).
+  // The marketing site links straight to that subdomain; opusfesta.com/opuspass/*
+  // is kept alive as a 308 redirect to the subdomain (see opus_website/next.config.ts),
+  // so there is no longer a path prefix and no multi-zone proxy to satisfy.
   images: {
-    // Custom loader prepends basePath to the optimizer `url` param so local public/
-    // assets (served at /opuspass/assets/…) resolve correctly. See image-loader.ts.
-    loader: 'custom',
-    loaderFile: './image-loader.ts',
     remotePatterns: [
       {
         protocol: 'https',
@@ -31,56 +23,10 @@ const nextConfig: NextConfig = {
     ],
   },
   async redirects() {
-    // Standalone domain (opuspass.opusfesta.com) entry — the app lives under
-    // /opuspass, so the bare root must bounce there. We emit an ABSOLUTE URL in
-    // production: a relative `Location: /opuspass` works in browsers but some
-    // link-preview crawlers (WhatsApp/iMessage unfurlers) mishandle relative
-    // redirects, so a shared bare link wouldn't unfurl. Use Vercel's
-    // auto-injected production domain (this deployment's OWN host — note
-    // NEXT_PUBLIC_SITE_URL means the opus_website origin here, not opuspass, so
-    // it must NOT be used) and fall back to a relative path for local dev.
-    const prodHost = process.env.VERCEL_PROJECT_PRODUCTION_URL
-    const rootDestination = prodHost ? `https://${prodHost}/opuspass` : '/opuspass'
     return [
-      // basePath:false matches the TRUE root; without it the source would itself
-      // be prefixed to /opuspass and the bare domain would 404.
-      {
-        source: '/',
-        destination: rootDestination,
-        basePath: false,
-        permanent: false,
-      },
-      // Clerk's instance-level / after-sign-out redirects target bare
-      // /sign-in and /sign-up — they go through Clerk's hosted flow, not the
-      // <SignIn> component's Next-router integration, so they DON'T pick up the
-      // /opuspass basePath and would 404 on the standalone domain. Bounce them
-      // under /opuspass. (basePath:false matches the TRUE root, like the / rule.)
-      {
-        source: '/sign-in',
-        destination: '/opuspass/sign-in',
-        basePath: false,
-        permanent: false,
-      },
-      {
-        source: '/sign-up',
-        destination: '/opuspass/sign-up',
-        basePath: false,
-        permanent: false,
-      },
-      // Same problem for the post-auth landing: Clerk's fallbackRedirectUrl
-      // ("/my/dashboard") drops the /opuspass basePath, so after sign-in the
-      // user lands on a bare /my/... and 404s. Bounce bare /my/* under /opuspass.
-      // (basePath:false → matches the TRUE root /my/*, NOT /opuspass/my/*, so the
-      // real dashboard routes are untouched.)
-      {
-        source: '/my/:path*',
-        destination: '/opuspass/my/:path*',
-        basePath: false,
-        permanent: false,
-      },
       // The guests landing page was renamed /guests -> /guests-and-rsvp.
       // Keep the old path alive for any stored CMS hrefs, bookmarks, and
-      // inbound links so they don't 404. (source is auto-prefixed to /opuspass/guests.)
+      // inbound links so they don't 404.
       {
         source: '/guests',
         destination: '/guests-and-rsvp',

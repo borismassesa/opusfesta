@@ -60,7 +60,7 @@ export default async function SignInPage() {
         <SignIn
           routing="hash"
           signUpUrl="/sign-up"
-          fallbackRedirectUrl="/opuspass/my/dashboard"
+          fallbackRedirectUrl="/my/dashboard"
           appearance={authAppearance}
         />
       </div>

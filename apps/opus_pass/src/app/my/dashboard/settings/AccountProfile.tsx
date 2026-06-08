@@ -94,7 +94,7 @@ export default function AccountProfile({ account }: { account: Account }) {
       <div className="pt-1">
         <button
           type="button"
-          onClick={() => signOut({ redirectUrl: '/opuspass/sign-in' })}
+          onClick={() => signOut({ redirectUrl: '/sign-in' })}
           className="inline-flex items-center gap-2 rounded-full border border-gray-300 px-5 py-2.5 text-sm font-semibold text-[#1A1A1A] transition-colors hover:bg-gray-50"
         >
           <LogOut className="h-4 w-4" /> Sign out

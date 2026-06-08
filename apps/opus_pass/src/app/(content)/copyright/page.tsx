@@ -88,7 +88,7 @@ const sections: LegalSection[] = [
         Our invitation templates, artwork and fonts are licensed to you for creating and
         sharing your own event invitations through OpusPass. They remain the property of
         OpusFesta or our licensors and may not be resold, redistributed or used outside
-        the Service. See our <a href="/opuspass/terms">Terms of Use</a> for the full licence.
+        the Service. See our <a href="/terms">Terms of Use</a> for the full licence.
       </p>
     ),
   },

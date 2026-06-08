@@ -8,10 +8,9 @@ import { CartProvider } from '@/components/providers/CartProvider'
 import JsonLd from '@/components/JsonLd'
 import './globals.css'
 
-// opus_pass is indexed on its own standalone subdomain, and runs under the
-// /opuspass basePath there too — so the canonical base includes the prefix.
-// Override per-env with NEXT_PUBLIC_APP_URL (e.g. https://opuspass.opusfesta.com/opuspass).
-const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com/opuspass'
+// opus_pass is indexed on its own standalone subdomain, served at the root.
+// Override per-env with NEXT_PUBLIC_APP_URL (e.g. https://opuspass.opusfesta.com).
+const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com'
 
 const yellowtail   = Yellowtail(       { weight: '400',         subsets: ['latin'], variable: '--font-yellowtail',  display: 'swap' })
 const playfair     = Playfair_Display( { weight: ['400','700'], subsets: ['latin'], variable: '--font-playfair',   display: 'swap' })

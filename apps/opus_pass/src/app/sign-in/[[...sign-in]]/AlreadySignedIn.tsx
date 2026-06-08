@@ -30,8 +30,7 @@ export default function AlreadySignedIn({ email }: { email: string }) {
         disabled={signingOut}
         onClick={() => {
           setSigningOut(true)
-          // Full path so Clerk's redirect lands under the /opuspass basePath.
-          void signOut({ redirectUrl: '/opuspass/sign-in' })
+          void signOut({ redirectUrl: '/sign-in' })
         }}
         className="block w-full rounded-lg border border-gray-300 py-3 text-center text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-60"
       >

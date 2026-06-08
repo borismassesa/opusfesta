@@ -1,9 +1,9 @@
 import type { MetadataRoute } from 'next'
 import { INVITATION_CATEGORIES } from '@/data/invitations-categories'
 
-// Standalone-subdomain canonical, including the /opuspass basePath the app
-// serves under. Override per-env with NEXT_PUBLIC_APP_URL.
-const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com/opuspass'
+// Standalone-subdomain canonical (served at the root, no path prefix).
+// Override per-env with NEXT_PUBLIC_APP_URL.
+const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const staticRoutes: MetadataRoute.Sitemap = [
