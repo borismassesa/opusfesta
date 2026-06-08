@@ -75,7 +75,7 @@ export default function InvitationsCenter({
   async function copy(g: GuestWithInvitations) {
     try {
       await navigator.clipboard.writeText(rsvpUrl(origin, g.public_token))
-      toast.success('RSVP link copied')
+      toast.success(pageCopy.toast_copied)
       track(g.id, 'link')
     } catch {
       toast.error('Could not copy')
@@ -116,7 +116,7 @@ export default function InvitationsCenter({
             <p className="rounded-xl bg-amber-50 px-4 py-2.5 text-sm text-amber-700">
               {notInvited} guest{notInvited === 1 ? ' is' : 's are'} not invited to any event yet.{' '}
               <Link href="/my/dashboard/guests" className="font-semibold underline">
-                Add them to events
+                {pageCopy.not_invited_link}
               </Link>
               .
             </p>
@@ -137,10 +137,10 @@ export default function InvitationsCenter({
                       <p className="text-xs text-[#1A1A1A]/50">
                         {sent ? (
                           <span className="inline-flex items-center gap-1 text-emerald-600">
-                            <Check className="h-3 w-3" /> Sent {g.invite_count}×
+                            <Check className="h-3 w-3" /> {pageCopy.sent_label} {g.invite_count}×
                           </span>
                         ) : (
-                          'Not sent yet'
+                          pageCopy.not_sent
                         )}
                       </p>
                     </div>

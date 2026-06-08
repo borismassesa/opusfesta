@@ -93,7 +93,7 @@ export default function RsvpTracker({
     startTransition(async () => {
       try {
         await updateRsvp(invitationId, { rsvp_status: status })
-        toast.success('RSVP updated')
+        toast.success(copy.toast_updated)
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not update')
       }
@@ -204,7 +204,7 @@ export default function RsvpTracker({
               value={eventFilter}
               onChange={(e) => setEventFilter(e.target.value)}
             >
-              <option value="all">All events</option>
+              <option value="all">{copy.filter_all_events}</option>
               {events.map((e) => (
                 <option key={e.id} value={e.id}>
                   {e.name}
@@ -220,7 +220,7 @@ export default function RsvpTracker({
                 }}
                 className="text-xs font-semibold text-[#1A1A1A]/70 hover:text-[#1A1A1A] hover:underline"
               >
-                Clear filters
+                {copy.clear_filters}
               </button>
             ) : null}
           </div>
@@ -232,11 +232,11 @@ export default function RsvpTracker({
               <table className="w-full min-w-[640px] text-left text-sm">
                 <thead>
                   <tr className="border-b border-black/[0.06] text-xs uppercase tracking-wide text-[#1A1A1A]/45">
-                    <th className="px-4 py-3 font-medium">Guest</th>
-                    <th className="px-4 py-3 font-medium">Event</th>
-                    <th className="px-4 py-3 font-medium">Status</th>
-                    <th className="px-4 py-3 font-medium">Party</th>
-                    <th className="px-4 py-3 font-medium">Meal / notes</th>
+                    <th className="px-4 py-3 font-medium">{copy.th_guest}</th>
+                    <th className="px-4 py-3 font-medium">{copy.th_event}</th>
+                    <th className="px-4 py-3 font-medium">{copy.th_status}</th>
+                    <th className="px-4 py-3 font-medium">{copy.th_party}</th>
+                    <th className="px-4 py-3 font-medium">{copy.th_meal}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-black/[0.05]">

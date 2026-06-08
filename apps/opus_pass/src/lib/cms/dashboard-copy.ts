@@ -51,6 +51,10 @@ export interface InvitationsDashboardCopy {
   empty_not_invited_title: string
   empty_not_invited_description: string
   empty_not_invited_cta: string
+  not_invited_link: string
+  sent_label: string
+  not_sent: string
+  toast_copied: string
 }
 
 export interface GuestsDashboardCopy {
@@ -76,6 +80,11 @@ export interface GuestsDashboardCopy {
   collector_customize: string
   collector_copy: string
   collector_setup: string
+  filter_label: string
+  import_title: string
+  toast_added: string
+  toast_updated: string
+  toast_removed: string
 }
 
 export interface RsvpsDashboardCopy {
@@ -84,6 +93,14 @@ export interface RsvpsDashboardCopy {
   empty_description: string
   no_match_title: string
   search_placeholder: string
+  filter_all_events: string
+  clear_filters: string
+  toast_updated: string
+  th_guest: string
+  th_event: string
+  th_status: string
+  th_party: string
+  th_meal: string
 }
 
 export interface WebsiteDashboardCopy {
@@ -105,6 +122,20 @@ export interface PledgesDashboardCopy {
   nav_collection: string
   nav_followups: string
   nav_reports: string
+  view_all: string
+  view_awaiting: string
+  view_pledged: string
+  view_partial: string
+  view_paid: string
+  view_cards: string
+  collection_title: string
+  collection_desc: string
+  goal_title: string
+  goal_desc: string
+  howtopay_title: string
+  howtopay_desc: string
+  toast_added: string
+  toast_payment: string
   add_pledge_cta: string
   empty_title: string
   empty_description: string
@@ -170,6 +201,10 @@ export const DASHBOARD_COPY_FALLBACKS: DashboardCopyBySlug = {
     empty_not_invited_description:
       'Open the guest list and tick which events each guest is invited to.',
     empty_not_invited_cta: 'Manage invitations',
+    not_invited_link: 'Add them to events',
+    sent_label: 'Sent',
+    not_sent: 'Not sent yet',
+    toast_copied: 'RSVP link copied',
   },
   guests: {
     add_guests_cta: 'Add guests',
@@ -195,6 +230,11 @@ export const DASHBOARD_COPY_FALLBACKS: DashboardCopyBySlug = {
     collector_customize: 'Customize',
     collector_copy: 'Copy link',
     collector_setup: 'Set up',
+    filter_label: 'Filter',
+    import_title: 'Upload spreadsheet',
+    toast_added: 'Guest added',
+    toast_updated: 'Guest updated',
+    toast_removed: 'Guest removed',
   },
   rsvps: {
     export_cta: 'Export CSV',
@@ -202,6 +242,14 @@ export const DASHBOARD_COPY_FALLBACKS: DashboardCopyBySlug = {
     empty_description: 'Invite guests to your events to start tracking their RSVPs here.',
     no_match_title: 'No RSVPs match these filters',
     search_placeholder: 'Search by name, group, meal…',
+    filter_all_events: 'All events',
+    clear_filters: 'Clear filters',
+    toast_updated: 'RSVP updated',
+    th_guest: 'Guest',
+    th_event: 'Event',
+    th_status: 'Status',
+    th_party: 'Party',
+    th_meal: 'Meal / notes',
   },
   website: {
     browse_chip: 'Browse designs',
@@ -223,6 +271,21 @@ export const DASHBOARD_COPY_FALLBACKS: DashboardCopyBySlug = {
     nav_collection: 'Pledge collection',
     nav_followups: 'Follow-ups',
     nav_reports: 'Reports',
+    view_all: 'All pledges',
+    view_awaiting: 'Awaiting pledge',
+    view_pledged: 'Pledged',
+    view_partial: 'Partly paid',
+    view_paid: 'Paid',
+    view_cards: 'Cards to prepare',
+    collection_title: 'Pledge collection',
+    collection_desc: 'How contributors pay you — shown on your pledge link and in reminders.',
+    goal_title: 'Fundraising goal',
+    goal_desc: 'Set a target and the Reports tab shows progress toward it. Leave blank for no goal.',
+    howtopay_title: 'How to pay',
+    howtopay_desc:
+      'Mobile money or bank details contributors use to send their pledge. Add one per provider.',
+    toast_added: 'Pledge added',
+    toast_payment: 'Payment recorded',
     add_pledge_cta: 'Add pledge',
     empty_title: 'Start collecting pledges',
     empty_description:

@@ -400,10 +400,10 @@ export default function GuestsManager({
       try {
         if (editing) {
           await updateGuest(editing.id, form)
-          toast.success('Guest updated')
+          toast.success(copy.toast_updated)
         } else {
           await createGuest(form)
-          toast.success('Guest added')
+          toast.success(copy.toast_added)
         }
         setOpen(false)
       } catch (err) {
@@ -418,7 +418,7 @@ export default function GuestsManager({
     startTransition(async () => {
       try {
         await deleteGuest(target.id)
-        toast.success('Guest removed')
+        toast.success(copy.toast_removed)
         setPendingDelete(null)
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not remove')
@@ -612,7 +612,7 @@ export default function GuestsManager({
               )}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              <span>Filter</span>
+              <span>{copy.filter_label}</span>
               {rsvpFilter.size > 0 ? (
                 <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-[#C9A0DC] px-1.5 text-[11px] font-semibold text-[#1A1A1A]">
                   {rsvpFilter.size}
@@ -1046,7 +1046,7 @@ export default function GuestsManager({
       <Slideover
         open={importOpen}
         onClose={() => setImportOpen(false)}
-        title="Upload spreadsheet"
+        title={copy.import_title}
         footer={
           <>
             <Button variant="secondary" onClick={() => setImportOpen(false)}>

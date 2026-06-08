@@ -376,7 +376,7 @@ export default function PledgesManager({
           toast.success('Pledge updated')
         } else {
           await createPledge(buildInput(form))
-          toast.success('Pledge added')
+          toast.success(copy.toast_added)
         }
         setOpen(false)
       } catch (err) {
@@ -432,7 +432,7 @@ export default function PledgesManager({
     startTransition(async () => {
       try {
         await updatePledge(target.id, input)
-        toast.success('Payment recorded')
+        toast.success(copy.toast_payment)
         setPayTarget(null)
       } catch (err) {
         toast.error(err instanceof Error ? err.message : 'Could not record payment')
@@ -609,6 +609,16 @@ export default function PledgesManager({
     }
   }
 
+  const viewLabels: Partial<Record<PledgeView, string>> = {
+    all: copy.view_all,
+    invited: copy.view_awaiting,
+    pledged: copy.view_pledged,
+    partial: copy.view_partial,
+    paid: copy.view_paid,
+    cards: copy.view_cards,
+  }
+  const viewLabel = (id: PledgeView): string => viewLabels[id] ?? copy.view_all
+
   return (
     <div className="space-y-6">
       <DashboardHero
@@ -711,6 +721,7 @@ export default function PledgesManager({
           setMethods={setMethods}
           pending={pending}
           onSave={saveCollection}
+          copy={copy}
         />
       ) : null}
 
@@ -731,7 +742,7 @@ export default function PledgesManager({
               )}
             >
               <SlidersHorizontal className="h-4 w-4" />
-              <span>{VIEW_TABS.find((t) => t.id === view)?.label ?? 'Filter'}</span>
+              <span>{viewLabel(view) ?? copy.nav_manage}</span>
             </button>
             {filterOpen ? (
               <div
@@ -752,7 +763,7 @@ export default function PledgesManager({
                           view === t.id && 'font-semibold text-[#5d3a78]',
                         )}
                       >
-                        <span>{t.label}</span>
+                        <span>{viewLabel(t.id)}</span>
                         {view === t.id ? <Check className="h-4 w-4" /> : null}
                       </button>
                     </li>
@@ -1179,6 +1190,7 @@ function CollectionSection({
   setMethods,
   pending,
   onSave,
+  copy,
 }: {
   goalInput: string
   setGoalInput: (v: string) => void
@@ -1186,6 +1198,7 @@ function CollectionSection({
   setMethods: React.Dispatch<React.SetStateAction<PledgePaymentMethod[]>>
   pending: boolean
   onSave: () => void
+  copy: PledgesDashboardCopy
 }) {
   const goalNum = Number(goalInput) || 0
   const presets = [1_000_000, 2_500_000, 5_000_000, 10_000_000]
@@ -1204,10 +1217,10 @@ function CollectionSection({
           <Banknote className="h-5 w-5" />
         </span>
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-[#1A1A1A]">Pledge collection</h2>
-          <p className="mt-0.5 text-sm text-[#1A1A1A]/55">
-            How contributors pay you — shown on your pledge link and in reminders.
-          </p>
+          <h2 className="text-xl font-semibold tracking-tight text-[#1A1A1A]">
+            {copy.collection_title}
+          </h2>
+          <p className="mt-0.5 text-sm text-[#1A1A1A]/55">{copy.collection_desc}</p>
         </div>
       </div>
 
@@ -1215,14 +1228,12 @@ function CollectionSection({
       <Card className="px-6 py-5">
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-[#8e57b3]" />
-          <h3 className="text-sm font-semibold text-[#1A1A1A]">Fundraising goal</h3>
+          <h3 className="text-sm font-semibold text-[#1A1A1A]">{copy.goal_title}</h3>
           <span className="rounded-full bg-black/[0.05] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-[#1A1A1A]/45">
             Optional
           </span>
         </div>
-        <p className="mt-1 text-sm text-[#1A1A1A]/55">
-          Set a target and the Reports tab shows progress toward it. Leave blank for no goal.
-        </p>
+        <p className="mt-1 text-sm text-[#1A1A1A]/55">{copy.goal_desc}</p>
 
         <div className="relative mt-4 max-w-md">
           <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-base font-semibold text-[#1A1A1A]/40">
@@ -1277,11 +1288,9 @@ function CollectionSection({
       <Card className="px-6 py-5">
         <div className="flex items-center gap-2">
           <Wallet className="h-4 w-4 text-[#3f6b1f]" />
-          <h3 className="text-sm font-semibold text-[#1A1A1A]">How to pay</h3>
+          <h3 className="text-sm font-semibold text-[#1A1A1A]">{copy.howtopay_title}</h3>
         </div>
-        <p className="mt-1 text-sm text-[#1A1A1A]/55">
-          Mobile money or bank details contributors use to send their pledge. Add one per provider.
-        </p>
+        <p className="mt-1 text-sm text-[#1A1A1A]/55">{copy.howtopay_desc}</p>
 
         <datalist id="pay-providers">
           {PAYMENT_PROVIDERS.map((p) => (

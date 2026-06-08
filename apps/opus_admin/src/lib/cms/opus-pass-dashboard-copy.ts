@@ -70,6 +70,10 @@ export const DASHBOARD_COPY_FALLBACK: Record<DashboardCopySlug, DashboardCopyCon
     empty_not_invited_description:
       'Open the guest list and tick which events each guest is invited to.',
     empty_not_invited_cta: 'Manage invitations',
+    not_invited_link: 'Add them to events',
+    sent_label: 'Sent',
+    not_sent: 'Not sent yet',
+    toast_copied: 'RSVP link copied',
   },
   guests: {
     add_guests_cta: 'Add guests',
@@ -95,6 +99,11 @@ export const DASHBOARD_COPY_FALLBACK: Record<DashboardCopySlug, DashboardCopyCon
     collector_customize: 'Customize',
     collector_copy: 'Copy link',
     collector_setup: 'Set up',
+    filter_label: 'Filter',
+    import_title: 'Upload spreadsheet',
+    toast_added: 'Guest added',
+    toast_updated: 'Guest updated',
+    toast_removed: 'Guest removed',
   },
   rsvps: {
     export_cta: 'Export CSV',
@@ -102,6 +111,14 @@ export const DASHBOARD_COPY_FALLBACK: Record<DashboardCopySlug, DashboardCopyCon
     empty_description: 'Invite guests to your events to start tracking their RSVPs here.',
     no_match_title: 'No RSVPs match these filters',
     search_placeholder: 'Search by name, group, meal…',
+    filter_all_events: 'All events',
+    clear_filters: 'Clear filters',
+    toast_updated: 'RSVP updated',
+    th_guest: 'Guest',
+    th_event: 'Event',
+    th_status: 'Status',
+    th_party: 'Party',
+    th_meal: 'Meal / notes',
   },
   website: {
     browse_chip: 'Browse designs',
@@ -123,6 +140,21 @@ export const DASHBOARD_COPY_FALLBACK: Record<DashboardCopySlug, DashboardCopyCon
     nav_collection: 'Pledge collection',
     nav_followups: 'Follow-ups',
     nav_reports: 'Reports',
+    view_all: 'All pledges',
+    view_awaiting: 'Awaiting pledge',
+    view_pledged: 'Pledged',
+    view_partial: 'Partly paid',
+    view_paid: 'Paid',
+    view_cards: 'Cards to prepare',
+    collection_title: 'Pledge collection',
+    collection_desc: 'How contributors pay you — shown on your pledge link and in reminders.',
+    goal_title: 'Fundraising goal',
+    goal_desc: 'Set a target and the Reports tab shows progress toward it. Leave blank for no goal.',
+    howtopay_title: 'How to pay',
+    howtopay_desc:
+      'Mobile money or bank details contributors use to send their pledge. Add one per provider.',
+    toast_added: 'Pledge added',
+    toast_payment: 'Payment recorded',
     add_pledge_cta: 'Add pledge',
     empty_title: 'Start collecting pledges',
     empty_description:
@@ -292,6 +324,15 @@ export const COPY_FIELD_SCHEMA: Record<DashboardCopySlug, CopyFieldGroup[]> = {
         { key: 'empty_not_invited_cta', label: 'Button', kind: 'text', max: 40 },
       ],
     },
+    {
+      legend: 'Guest rows & messages',
+      fields: [
+        { key: 'not_invited_link', label: 'Not-invited link', kind: 'text', max: 40 },
+        { key: 'sent_label', label: 'Sent label', kind: 'text', max: 20 },
+        { key: 'not_sent', label: 'Not-sent label', kind: 'text', max: 30 },
+        { key: 'toast_copied', label: 'Link-copied toast', kind: 'text', max: 40 },
+      ],
+    },
   ],
   guests: [
     {
@@ -299,8 +340,18 @@ export const COPY_FIELD_SCHEMA: Record<DashboardCopySlug, CopyFieldGroup[]> = {
       fields: [
         { key: 'add_guests_cta', label: 'Header button', kind: 'text', max: 40 },
         { key: 'upload_spreadsheet_cta', label: 'Upload button', kind: 'text', max: 40 },
+        { key: 'filter_label', label: 'Filter button', kind: 'text', max: 30 },
         { key: 'search_placeholder', label: 'Search placeholder', kind: 'text', max: 60 },
         { key: 'no_match_title', label: 'No-match message', kind: 'text', max: 60 },
+        { key: 'import_title', label: 'Import modal title', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Toasts',
+      fields: [
+        { key: 'toast_added', label: 'Guest-added', kind: 'text', max: 40 },
+        { key: 'toast_updated', label: 'Guest-updated', kind: 'text', max: 40 },
+        { key: 'toast_removed', label: 'Guest-removed', kind: 'text', max: 40 },
       ],
     },
     {
@@ -344,11 +395,24 @@ export const COPY_FIELD_SCHEMA: Record<DashboardCopySlug, CopyFieldGroup[]> = {
   ],
   rsvps: [
     {
-      legend: 'Header & search',
+      legend: 'Header, search & filters',
       fields: [
         { key: 'export_cta', label: 'Export button', kind: 'text', max: 40 },
         { key: 'search_placeholder', label: 'Search placeholder', kind: 'text', max: 60 },
+        { key: 'filter_all_events', label: 'All-events option', kind: 'text', max: 40 },
+        { key: 'clear_filters', label: 'Clear-filters link', kind: 'text', max: 30 },
         { key: 'no_match_title', label: 'No-match message', kind: 'text', max: 60 },
+        { key: 'toast_updated', label: 'RSVP-updated toast', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Table headers',
+      fields: [
+        { key: 'th_guest', label: 'Guest column', kind: 'text', max: 20 },
+        { key: 'th_event', label: 'Event column', kind: 'text', max: 20 },
+        { key: 'th_status', label: 'Status column', kind: 'text', max: 20 },
+        { key: 'th_party', label: 'Party column', kind: 'text', max: 20 },
+        { key: 'th_meal', label: 'Meal/notes column', kind: 'text', max: 30 },
       ],
     },
     {
@@ -406,6 +470,35 @@ export const COPY_FIELD_SCHEMA: Record<DashboardCopySlug, CopyFieldGroup[]> = {
         { key: 'nav_collection', label: 'Collection tab', kind: 'text', max: 30 },
         { key: 'nav_followups', label: 'Follow-ups tab', kind: 'text', max: 30 },
         { key: 'nav_reports', label: 'Reports tab', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Filter views',
+      fields: [
+        { key: 'view_all', label: 'All pledges', kind: 'text', max: 30 },
+        { key: 'view_awaiting', label: 'Awaiting pledge', kind: 'text', max: 30 },
+        { key: 'view_pledged', label: 'Pledged', kind: 'text', max: 30 },
+        { key: 'view_partial', label: 'Partly paid', kind: 'text', max: 30 },
+        { key: 'view_paid', label: 'Paid', kind: 'text', max: 30 },
+        { key: 'view_cards', label: 'Cards to prepare', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Collection settings',
+      fields: [
+        { key: 'collection_title', label: 'Section title', kind: 'text', max: 40 },
+        { key: 'collection_desc', label: 'Section description', kind: 'textarea', max: 160 },
+        { key: 'goal_title', label: 'Goal title', kind: 'text', max: 40 },
+        { key: 'goal_desc', label: 'Goal description', kind: 'textarea', max: 160 },
+        { key: 'howtopay_title', label: 'How-to-pay title', kind: 'text', max: 40 },
+        { key: 'howtopay_desc', label: 'How-to-pay description', kind: 'textarea', max: 160 },
+      ],
+    },
+    {
+      legend: 'Toasts',
+      fields: [
+        { key: 'toast_added', label: 'Pledge-added', kind: 'text', max: 40 },
+        { key: 'toast_payment', label: 'Payment-recorded', kind: 'text', max: 40 },
       ],
     },
     {
