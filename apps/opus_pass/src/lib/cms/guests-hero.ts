@@ -7,8 +7,8 @@ export type GuestsHeroImage = {
 }
 
 export type GuestsHeroContent = {
-  headline_lead: string
-  headline_highlight: string
+  headline_line_1: string
+  headline_line_2: string
   description: string
   primary_cta_label: string
   primary_cta_href: string
@@ -21,8 +21,8 @@ export type GuestsHeroContent = {
 }
 
 export const GUESTS_HERO_FALLBACK: GuestsHeroContent = {
-  headline_lead: 'Your guest list, replying in',
-  headline_highlight: 'real time',
+  headline_line_1: 'Your guest list, replying in',
+  headline_line_2: 'real time',
   description:
     'Send digital invitations by WhatsApp or SMS and watch the “Joyful yes” replies roll in — a free guest list and bilingual RSVP page in English & Swahili.',
   primary_cta_label: 'Start your guest list',

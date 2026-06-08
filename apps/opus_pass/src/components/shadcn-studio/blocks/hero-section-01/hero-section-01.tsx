@@ -40,9 +40,10 @@ const HeroSection = ({ content }: { content: GuestsHeroContent }) => {
         {/* ── Left: copy ── */}
         <div className="text-center lg:text-left">
           <h1 className="text-4xl font-black leading-[1.08] tracking-tight text-balance text-[#1A1A1A] sm:text-5xl lg:text-6xl">
-            {content.headline_lead}{' '}
+            {content.headline_line_1}
+            <br />
             <span className="relative inline-block whitespace-nowrap">
-              <span className="relative z-10">{content.headline_highlight}</span>
+              <span className="relative z-10">{content.headline_line_2}</span>
               <span
                 aria-hidden
                 className="absolute inset-x-0 bottom-1 -z-0 h-3.5 -rotate-1 rounded-sm bg-[#C9A0DC]/55 sm:bottom-1.5 sm:h-4"
