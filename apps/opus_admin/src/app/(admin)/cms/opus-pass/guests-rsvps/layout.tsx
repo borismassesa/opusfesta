@@ -8,6 +8,7 @@ import {
   ExternalLink,
   HelpCircle,
   LayoutPanelTop,
+  MessageSquareQuote,
   Save,
   Send,
   Share2,
@@ -54,6 +55,14 @@ const sections: Section[] = [
     href: '/cms/opus-pass/guests-rsvps/spread-the-joy',
     status: 'live',
     description: 'Ways to share an invitation — icon, title and copy per share method.',
+  },
+  {
+    key: 'testimonials',
+    label: 'Testimonials',
+    icon: MessageSquareQuote,
+    href: '/cms/opus-pass/guests-rsvps/testimonials',
+    status: 'live',
+    description: 'Testimonial wall — section header, CTA and the two scrolling columns of couple quotes.',
   },
   {
     key: 'faqs',

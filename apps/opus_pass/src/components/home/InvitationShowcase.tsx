@@ -3,6 +3,7 @@ import { Star } from 'lucide-react'
 import {
   loadHomepageTestimonialsContent,
   type HomepageTestimonialItem,
+  type HomepageTestimonialsContent,
 } from '@/lib/cms/homepage-testimonials'
 import { assetPath } from '@/lib/asset-path'
 
@@ -77,8 +78,14 @@ function VerticalMarquee({ items, reverse = false }: { items: HomepageTestimonia
   )
 }
 
-export async function InvitationShowcase() {
-  const content = await loadHomepageTestimonialsContent()
+export async function InvitationShowcase({
+  content: contentProp,
+}: {
+  content?: HomepageTestimonialsContent
+} = {}) {
+  // Most pages share the homepage testimonial wall; the Guests & RSVPs page
+  // passes its own CMS-managed content so it can be edited independently.
+  const content = contentProp ?? (await loadHomepageTestimonialsContent())
   return (
     <div className="py-10 lg:py-12 w-full">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">

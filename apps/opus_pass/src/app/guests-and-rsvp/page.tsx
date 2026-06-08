@@ -6,6 +6,7 @@ import { loadGuestsHeroContent } from '@/lib/cms/guests-hero'
 import { loadGuestsFeaturesContent } from '@/lib/cms/guests-features'
 import { loadGuestsSpreadContent } from '@/lib/cms/guests-spread-the-joy'
 import { loadGuestsFaqsContent } from '@/lib/cms/guests-faqs'
+import { loadGuestsTestimonialsContent } from '@/lib/cms/guests-testimonials'
 import GuestsLandingClient from './GuestsLandingClient'
 
 export const metadata: Metadata = {
@@ -16,11 +17,12 @@ export const metadata: Metadata = {
 
 export default async function GuestsLandingPage() {
   const { isEnabled: isDraft } = await draftMode()
-  const [hero, features, spread, faqs] = await Promise.all([
+  const [hero, features, spread, faqs, testimonials] = await Promise.all([
     loadGuestsHeroContent(),
     loadGuestsFeaturesContent(),
     loadGuestsSpreadContent(),
     loadGuestsFaqsContent(),
+    loadGuestsTestimonialsContent(),
   ])
   return (
     <>
@@ -30,7 +32,7 @@ export default async function GuestsLandingPage() {
         features={features}
         spread={spread}
         faqs={faqs}
-        testimonials={<InvitationShowcase />}
+        testimonials={<InvitationShowcase content={testimonials} />}
       />
     </>
   )
