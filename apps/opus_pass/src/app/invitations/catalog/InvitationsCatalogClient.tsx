@@ -1,9 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Check as CheckIcon, ChevronLeft, ChevronRight, Heart, SlidersHorizontal, Upload, X } from 'lucide-react'
+import { ArrowRight, Check as CheckIcon, ChevronLeft, ChevronRight, Heart, SlidersHorizontal, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { PROMO_CODE, ProductInfo } from '@/components/guests/productInfo'
@@ -92,6 +92,9 @@ function applyFilters(products: Product[], f: CommittedFilters): Product[] {
 }
 
 const PAGE_SIZE = 12
+// How many extra batches auto-load on scroll before the "Load more" button
+// takes over (keeps the footer reachable on large result sets).
+const AUTO_LOAD_BATCHES = 2
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  PAGE
@@ -124,17 +127,50 @@ export default function InvitationsCatalogClient({
     })
 
   const [filters, setFilters] = useState<CommittedFilters>(EMPTY_FILTERS)
-  const [page, setPage] = useState(1)
-
-  // Reset to page 1 whenever filters or source products change
-  useEffect(() => setPage(1), [filters, products])
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE)
+  // Number of batches auto-loaded on scroll so far. After AUTO_LOAD_BATCHES we
+  // switch to a manual "Load more" button so the page footer stays reachable.
+  const [autoLoads, setAutoLoads] = useState(0)
 
   const filteredProducts = useMemo(() => applyFilters(products, filters), [products, filters])
-  const totalPages = Math.max(1, Math.ceil(filteredProducts.length / PAGE_SIZE))
-  const pagedProducts = useMemo(
-    () => filteredProducts.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
-    [filteredProducts, page],
+
+  // Reset the visible window whenever filters or source products change
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE)
+    setAutoLoads(0)
+  }, [filters, products])
+
+  const visibleProducts = useMemo(
+    () => filteredProducts.slice(0, visibleCount),
+    [filteredProducts, visibleCount],
   )
+  const hasMore = visibleCount < filteredProducts.length
+  const autoLoading = hasMore && autoLoads < AUTO_LOAD_BATCHES
+
+  const loadMore = () =>
+    setVisibleCount((c) => Math.min(c + PAGE_SIZE, filteredProducts.length))
+
+  // Infinite scroll for the first AUTO_LOAD_BATCHES — grow the window when the
+  // sentinel near the grid's end scrolls into view. rootMargin pre-loads the
+  // next batch before it's reached. Past that, the "Load more" button takes over.
+  const sentinelRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    if (!autoLoading) return
+    const el = sentinelRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setAutoLoads((n) => n + 1)
+          loadMore()
+        }
+      },
+      { rootMargin: '600px 0px' },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoLoading, filteredProducts.length])
 
   return (
     <div className="bg-[#FAFAF8] text-[#1A1A1A]">
@@ -176,11 +212,31 @@ export default function InvitationsCatalogClient({
             <InvitationsFilterDrawer filters={filters} onApply={setFilters} />
           </div>
           <ProductGrid
-            products={pagedProducts}
+            products={visibleProducts}
             favourites={favourites}
             onToggleFavourite={toggleFavourite}
           />
-          <Pagination page={page} totalPages={totalPages} onPage={setPage} />
+          {autoLoading && (
+            <div ref={sentinelRef} aria-hidden className="mt-10 flex justify-center">
+              <span className="h-6 w-6 animate-spin rounded-full border-2 border-[#1A1A1A]/15 border-t-[#1A1A1A]/60" />
+            </div>
+          )}
+          {hasMore && !autoLoading && (
+            <div className="mt-10 flex justify-center">
+              <button
+                type="button"
+                onClick={loadMore}
+                className="inline-flex items-center rounded-full border border-[#1A1A1A]/20 bg-white px-7 py-3 text-[13px] font-bold text-[#1A1A1A] transition-colors hover:border-[#1A1A1A]"
+              >
+                Load more
+              </button>
+            </div>
+          )}
+          {filteredProducts.length > 0 && (
+            <p className="mt-6 text-center text-[12px] text-[#1A1A1A]/45">
+              Showing {visibleProducts.length} of {filteredProducts.length}
+            </p>
+          )}
         </div>
       </div>
 
@@ -672,49 +728,16 @@ function ProductGrid({
   favourites: Set<string>
   onToggleFavourite: (id: string) => void
 }) {
-  const items = useMemo(() => {
-    const out: Array<
-      | { kind: 'upload' }
-      | { kind: 'product'; product: Product }
-    > = [{ kind: 'upload' }]
-    products.forEach((p) => {
-      out.push({ kind: 'product', product: p })
-    })
-    return out
-  }, [products])
-
   return (
     <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-10">
-      {items.map((it, i) => {
-        if (it.kind === 'upload') return <UploadYourOwnCard key={`upload-${i}`} />
-        return (
-          <ProductCard
-            key={it.product.id}
-            product={it.product}
-            favourited={favourites.has(it.product.id)}
-            onToggleFavourite={() => onToggleFavourite(it.product.id)}
-          />
-        )
-      })}
-    </div>
-  )
-}
-
-function UploadYourOwnCard() {
-  return (
-    <div className="group flex flex-col">
-      <Link
-        href="/my/guests"
-        className="relative aspect-[3/4] overflow-hidden rounded-sm bg-[#FBF7F2] ring-1 ring-dashed ring-gray-300 flex flex-col items-center justify-center text-center px-4 hover:bg-white hover:ring-[#1A1A1A] transition"
-      >
-        <span className="grid h-10 w-10 place-items-center rounded-full bg-white shadow-sm">
-          <Upload className="h-4 w-4 text-[#1A1A1A]" />
-        </span>
-        <p className="mt-3 font-serif text-[15px] text-[#1A1A1A] leading-tight">Upload your own design</p>
-        <p className="mt-1 text-[11px] text-[#1A1A1A]/60 max-w-[160px]">
-          Bring your designer&rsquo;s artwork — we&rsquo;ll print and mail it.
-        </p>
-      </Link>
+      {products.map((product) => (
+        <ProductCard
+          key={product.id}
+          product={product}
+          favourited={favourites.has(product.id)}
+          onToggleFavourite={() => onToggleFavourite(product.id)}
+        />
+      ))}
     </div>
   )
 }
@@ -736,10 +759,9 @@ function ProductCard({
     <div className="group flex flex-col">
       <Link
         href={`/invitations/p/${product.id}`}
-        className="relative block aspect-[3/4] overflow-hidden rounded-sm bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_16px_-8px_rgba(0,0,0,0.12)] transition-shadow duration-300 group-hover:shadow-xl"
+        className="relative block aspect-[3/4] overflow-hidden rounded-sm bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_16px_-8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_4px_8px_rgba(0,0,0,0.06),0_18px_32px_-12px_rgba(0,0,0,0.18)]"
       >
-        {/* Zoom-on-hover wrapper around the invitation visual */}
-        <span className="absolute inset-0 transition-transform duration-500 group-hover:scale-[1.04]">
+        <span className="absolute inset-0">
           {product.imageUrl ? (
             <Image src={product.imageUrl} alt="" fill sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" className="object-cover" unoptimized />
           ) : (
@@ -758,81 +780,12 @@ function ProductCard({
           }}
           className="absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-full bg-white/90 shadow-sm hover:bg-white z-10"
         >
-          <Heart className={cn('h-3.5 w-3.5', favourited ? 'fill-[#7A1F2B] text-[#7A1F2B]' : 'text-[#1A1A1A]')} />
+          <Heart className={cn('h-3.5 w-3.5', favourited ? 'fill-red-500 text-red-500' : 'text-[#1A1A1A]')} />
         </button>
 
       </Link>
       <ProductInfo product={product} selectedSwatch={selectedSwatch} onSwatchSelect={setSelectedSwatch} />
     </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  PAGINATION
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Pagination({
-  page,
-  totalPages,
-  onPage,
-}: {
-  page: number
-  totalPages: number
-  onPage: (p: number) => void
-}) {
-  if (totalPages <= 1) return null
-
-  // For 7 or fewer pages show all; beyond that show an ellipsis window around current page
-  const pages: Array<number | 'ellipsis'> = []
-  if (totalPages <= 7) {
-    for (let i = 1; i <= totalPages; i++) pages.push(i)
-  } else {
-    pages.push(1)
-    if (page > 3) pages.push('ellipsis')
-    for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) pages.push(i)
-    if (page < totalPages - 2) pages.push('ellipsis')
-    pages.push(totalPages)
-  }
-
-  return (
-    <nav aria-label="Pagination" className="mt-10 sm:mt-14 flex items-center justify-center gap-2">
-      <button
-        type="button"
-        disabled={page === 1}
-        onClick={() => onPage(page - 1)}
-        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] text-[#1A1A1A] hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-      >
-        ← Prev
-      </button>
-
-      {pages.map((p, i) =>
-        p === 'ellipsis' ? (
-          <span key={`ellipsis-${i}`} className="px-1 text-[13px] text-gray-400">…</span>
-        ) : (
-          <button
-            key={p}
-            type="button"
-            onClick={() => onPage(p)}
-            aria-current={p === page ? 'page' : undefined}
-            className={cn(
-              'h-8 w-8 grid place-items-center rounded-full text-[13px] transition',
-              p === page ? 'bg-[#1A1A1A] text-white' : 'text-[#1A1A1A] hover:bg-gray-100',
-            )}
-          >
-            {p}
-          </button>
-        ),
-      )}
-
-      <button
-        type="button"
-        disabled={page === totalPages}
-        onClick={() => onPage(page + 1)}
-        className="inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-[13px] text-[#1A1A1A] hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-      >
-        Next →
-      </button>
-    </nav>
   )
 }
 

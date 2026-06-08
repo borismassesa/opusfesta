@@ -344,7 +344,7 @@ function EditorsPicks({ rows: cmsRows }: { rows: InvitationsEditorsPicksContent[
                   >
                     <PickVisual pick={p} />
                   </PickCard>
-                  <ProductInfo product={pickToProduct(p)} href={productHref} showPromo={false} />
+                  <ProductInfo product={pickToProduct(p)} href={productHref} />
                 </Link>
               )
             })}

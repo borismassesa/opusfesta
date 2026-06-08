@@ -73,8 +73,8 @@ const navItems: Array<{
       {
         title: 'Resources',
         links: [
-          { Icon: BookOpen, label: 'Invitation Wording', href: '/advice-and-ideas' },
-          { Icon: PenLine, label: 'RSVP Wording Ideas', href: '/advice-and-ideas' },
+          { Icon: BookOpen, label: 'Invitation Wording', href: '/invitations' },
+          { Icon: PenLine, label: 'RSVP Wording Ideas', href: '/invitations' },
         ],
       },
     ],
@@ -103,8 +103,8 @@ const navItems: Array<{
       {
         title: 'Resources',
         links: [
-          { Icon: BookOpen, label: 'RSVP Wording Ideas', href: '/advice-and-ideas' },
-          { Icon: PenLine, label: 'Guest Etiquette Tips', href: '/advice-and-ideas' },
+          { Icon: BookOpen, label: 'RSVP Wording Ideas', href: '/guests-and-rsvp' },
+          { Icon: PenLine, label: 'Guest Etiquette Tips', href: '/guests-and-rsvp' },
         ],
       },
     ],
@@ -124,24 +124,24 @@ const navItems: Array<{
       {
         title: 'Features',
         links: [
-          { Icon: Globe, label: 'Free Wedding Website' },
-          { Icon: LinkIcon, label: 'Custom Link' },
-          { Icon: Heart, label: 'Beautiful Templates' },
-          { Icon: CheckCircle2, label: 'RSVP Collection' },
-          { Icon: MapPin, label: 'Venue & Travel Info' },
+          { Icon: Globe, label: 'Free Wedding Website', href: '/websites' },
+          { Icon: LinkIcon, label: 'Custom Link', href: '/websites' },
+          { Icon: Heart, label: 'Beautiful Templates', href: '/websites' },
+          { Icon: CheckCircle2, label: 'RSVP Collection', href: '/websites' },
+          { Icon: MapPin, label: 'Venue & Travel Info', href: '/websites' },
         ],
       },
       {
         title: 'Resources',
         links: [
-          { Icon: Monitor, label: 'Website Examples' },
-          { Icon: ImageIcon, label: 'Photo Gallery Tips' },
-          { Icon: Share2, label: 'Sharing with Guests' },
+          { Icon: Monitor, label: 'Website Examples', href: '/websites' },
+          { Icon: ImageIcon, label: 'Photo Gallery Tips', href: '/websites' },
+          { Icon: Share2, label: 'Sharing with Guests', href: '/websites' },
         ],
       },
     ],
     photoGridTitle: 'Website Ideas',
-    photoGrid: websitesPhotoGrid,
+    photoGrid: websitesPhotoGrid.map((item) => ({ ...item, href: '/websites' })),
   },
 ]
 
@@ -329,7 +329,7 @@ export default function Navbar() {
                 </h4>
                 <div className="grid grid-cols-2 gap-2">
                   {activeItem.photoGrid.map((item) => (
-                    <a key={item.label} href={item.href ?? '#'} className="group flex flex-col gap-1.5">
+                    <Link key={item.label} href={getNavHref(item.href)} className="group flex flex-col gap-1.5">
                       <div className="relative rounded-xl overflow-hidden h-[88px] border border-gray-200">
                         <Image
                           src={item.image}
@@ -342,7 +342,7 @@ export default function Navbar() {
                       <span className="font-semibold text-xs text-[#1A1A1A] leading-tight px-0.5">
                         {item.label}
                       </span>
-                    </a>
+                    </Link>
                   ))}
                 </div>
               </div>
