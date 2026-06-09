@@ -1,15 +1,10 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import {
-  Smartphone,
-  CreditCard,
-  ShieldCheck,
-  AlertCircle,
-  Mail,
-} from 'lucide-react'
+import { Smartphone, ShieldCheck, AlertCircle, Mail, Clock, Sparkles, MapPin, Pencil, Copy, Check } from 'lucide-react'
 import CheckoutStepper from '@/components/invitations/CheckoutStepper'
 import { useCart } from '@/components/providers/CartProvider'
 import {
@@ -18,25 +13,59 @@ import {
   setLastOrder,
   type StoredContact,
 } from '@/lib/cart-storage'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Separator } from '@/components/ui/separator'
+import { cn } from '@/lib/utils'
 
-type PaymentMethodId =
-  | 'mpesa-default'
-  | 'airtel-default'
-  | 'tigo-default'
-  | 'card-default'
-  | 'new-card'
-  | 'new-mobile'
-
-type SavedMethod = {
-  id: Extract<PaymentMethodId, 'mpesa-default' | 'airtel-default' | 'tigo-default' | 'card-default'>
-  label: string
-  detail: string
-  badge: { text: string; bg: string; fg: string }
+type Logo = { src: string; w: number; h: number; cls: string }
+type PaymentMethod = {
+  id: string
+  kind: 'mobile' | 'card'
+  provider: string
+  desc: string
+  logos: Logo[]
 }
 
-// No saved methods yet — a real user starts by entering a card or mobile-money number.
-// When a saved-payment backend exists, populate this from the signed-in user's account.
-const SAVED_METHODS: SavedMethod[] = []
+const PAYMENT_METHODS: PaymentMethod[] = [
+  {
+    id: 'mpesa',
+    kind: 'mobile',
+    provider: 'M-Pesa',
+    desc: 'Approve the prompt on your phone',
+    logos: [{ src: '/assets/payment-logos/m-pesa-logo.png', w: 600, h: 400, cls: 'h-6 w-auto' }],
+  },
+  {
+    id: 'airtel',
+    kind: 'mobile',
+    provider: 'Airtel Money',
+    desc: 'Approve the prompt on your phone',
+    logos: [{ src: '/assets/payment-logos/airtel-money.png', w: 390, h: 230, cls: 'h-5 w-auto' }],
+  },
+  {
+    id: 'mixx',
+    kind: 'mobile',
+    provider: 'Mixx by Yas',
+    desc: 'Mixx by Yas (Tigo Pesa)',
+    logos: [{ src: '/assets/payment-logos/mixx-by-yass-tigo-pesa.png', w: 600, h: 400, cls: 'h-6 w-auto' }],
+  },
+  {
+    id: 'card',
+    kind: 'card',
+    provider: 'Card',
+    desc: 'Visa or Mastercard',
+    logos: [
+      { src: '/assets/payment-logos/visa.svg', w: 1000, h: 325, cls: 'h-4 w-auto' },
+      { src: '/assets/payment-logos/mastercard.svg', w: 1000, h: 618, cls: 'h-6 w-auto' },
+    ],
+  },
+]
+
+// OpusFesta's M-Pesa Lipa Namba (Buy Goods / till number).
+// TODO: replace the placeholder with the real business number.
+const MPESA_LIPA_NAMBA = '000000'
+const MPESA_LIPA_NAME = 'OpusFesta'
 
 function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
@@ -58,14 +87,7 @@ function isExpiryInPast(value: string): boolean {
 
 type Errors = Partial<
   Record<
-    | 'method'
-    | 'cardName'
-    | 'cardNumber'
-    | 'cardExpiry'
-    | 'cardCvv'
-    | 'mobilePhone'
-    | 'cart'
-    | 'contact',
+    'cardName' | 'cardNumber' | 'cardExpiry' | 'cardCvv' | 'mobilePhone' | 'cart' | 'contact',
     string
   >
 >
@@ -79,19 +101,37 @@ function FieldError({ children }: { children: React.ReactNode }) {
   )
 }
 
+// Small copy-to-clipboard control with a brief "copied" confirmation.
+function CopyButton({ value, label }: { value: string; label: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button
+      type="button"
+      onClick={() => {
+        void navigator.clipboard?.writeText(value)
+        setCopied(true)
+        setTimeout(() => setCopied(false), 1500)
+      }}
+      aria-label={copied ? `${label} copied` : `Copy ${label}`}
+      className="inline-flex size-7 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-white text-gray-500 transition hover:border-gray-300 hover:text-gray-900"
+    >
+      {copied ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
+    </button>
+  )
+}
+
 export default function CheckoutPage() {
   const router = useRouter()
   const { items, subtotal, clear } = useCart()
 
-  const [selected, setSelected] = useState<PaymentMethodId>('new-mobile')
-  const [newKind, setNewKind] = useState<'card' | 'mobile'>('mobile')
+  const [selected, setSelected] = useState<string>('mpesa')
+  // M-Pesa supports two flows: STK push to phone, or pay to our Lipa Namba.
+  const [mpesaMode, setMpesaMode] = useState<'phone' | 'lipa'>('phone')
 
   const [cardName, setCardName] = useState('')
   const [cardNumber, setCardNumber] = useState('')
   const [cardExpiry, setCardExpiry] = useState('')
   const [cardCvv, setCardCvv] = useState('')
-
-  const [mobileProvider, setMobileProvider] = useState('M-Pesa')
   const [mobilePhone, setMobilePhone] = useState('')
 
   const [errors, setErrors] = useState<Errors>({})
@@ -102,8 +142,14 @@ export default function CheckoutPage() {
     setContactState(getContact())
   }, [])
 
-  const vat = useMemo(() => Math.round(subtotal * 0.18), [subtotal])
-  const total = subtotal + vat
+  const method = PAYMENT_METHODS.find((m) => m.id === selected) ?? PAYMENT_METHODS[0]
+  const isCard = method.kind === 'card'
+  const isMpesa = method.id === 'mpesa'
+  const useLipa = isMpesa && mpesaMode === 'lipa'
+
+  // Digital product — prices are final (VAT-inclusive) and delivery is free.
+  const discount = 0
+  const total = subtotal - discount
 
   const clearError = (key: keyof Errors) =>
     setErrors((prev) => {
@@ -114,24 +160,24 @@ export default function CheckoutPage() {
     })
 
   const paymentLabel = (): string => {
-    if (selected === 'new-card') return `Card ending in ${cardNumber.replace(/\s/g, '').slice(-4)}`
-    if (selected === 'new-mobile') return `${mobileProvider} ${mobilePhone.trim()}`
-    return SAVED_METHODS.find((m) => m.id === selected)?.label ?? 'Saved method'
+    if (isCard) return `Card ending in ${cardNumber.replace(/\s/g, '').slice(-4)}`
+    if (useLipa) return `M-Pesa Lipa Namba ${MPESA_LIPA_NAMBA} · ${mobilePhone.trim()}`
+    return `${method.provider} ${mobilePhone.trim()}`
   }
 
   const validate = (): Errors => {
     const e: Errors = {}
     if (items.length === 0) e.cart = 'Your cart is empty — add a design before paying.'
     if (!contact) e.contact = 'Please add your contact details before paying.'
-    if (selected === 'new-card') {
+    if (isCard) {
       if (!cardName.trim()) e.cardName = 'Name on card is required.'
       if (!CARD_NUMBER_RE.test(cardNumber.replace(/\s/g, '')))
         e.cardNumber = 'Enter a 13–19 digit card number.'
       if (!EXPIRY_RE.test(cardExpiry)) e.cardExpiry = 'Use MM/YY format.'
       else if (isExpiryInPast(cardExpiry)) e.cardExpiry = 'This card has expired.'
       if (!CVV_RE.test(cardCvv)) e.cardCvv = '3 or 4 digits.'
-    } else if (selected === 'new-mobile') {
-      if (!PHONE_RE.test(mobilePhone.trim())) e.mobilePhone = 'Enter a valid phone number.'
+    } else if (!PHONE_RE.test(mobilePhone.trim())) {
+      e.mobilePhone = 'Enter a valid phone number.'
     }
     return e
   }
@@ -148,13 +194,20 @@ export default function CheckoutPage() {
         ref,
         paidAt: new Date().toISOString(),
         paymentLabel: paymentLabel(),
-        contact: {
-          email: contact.email,
-          phone: contact.phone,
-        },
-        items: items.map((i) => ({ id: i.id, name: i.name, summary: i.summary, total: i.total })),
+        contact: { name: contact.fullName, email: contact.email, phone: contact.phone },
+        items: items.map((i) => ({
+          id: i.id,
+          name: i.name,
+          summary: i.summary,
+          total: i.total,
+          treatment: i.treatment,
+          tier: i.tier,
+          tierId: i.tierId,
+          guests: i.guests,
+          addOns: i.addOns,
+        })),
         subtotal,
-        vat,
+        discount,
         total,
       })
       clear()
@@ -165,24 +218,25 @@ export default function CheckoutPage() {
   }
 
   return (
-    <>
-      <main className="bg-gray-50 min-h-screen py-8">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8">
-          <Link
-            href="/invitations/address"
-            className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 mb-4"
-          >
-            ← Back to contact details
-          </Link>
-          <CheckoutStepper current="payment" />
+    <main className="bg-gray-50 min-h-screen py-8">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8">
+        <Link
+          href="/invitations/address"
+          className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 mb-4"
+        >
+          ← Back to contact details
+        </Link>
+        <CheckoutStepper current="payment" />
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 lg:gap-8">
-            {/* LEFT — Payment */}
-            <section className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
-              <h1 className="text-2xl font-bold text-gray-900 mb-6">Payment</h1>
-
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 lg:gap-8">
+          {/* LEFT — Payment */}
+          <Card className="border-0 shadow-[0_2px_12px_-6px_rgba(0,0,0,0.12)]">
+            <CardHeader>
+              <CardTitle className="text-2xl font-semibold">Payment</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
               {(errors.cart || errors.contact) && (
-                <div className="mb-6 rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-800">
+                <div className="rounded-md border border-red-300 bg-red-50 p-4 text-sm text-red-800">
                   <p className="font-semibold mb-1 inline-flex items-center gap-1.5">
                     <AlertCircle size={14} /> We can&apos;t process this yet
                   </p>
@@ -201,258 +255,320 @@ export default function CheckoutPage() {
               )}
 
               {contact && (
-                <div className="mb-6 rounded-xl border border-gray-200 bg-gray-50 p-4 text-sm">
-                  <p className="font-semibold text-gray-900 mb-1">Delivering to</p>
-                  <p className="text-gray-700">{contact.fullName}</p>
-                  <div className="flex flex-wrap gap-4 mt-1 text-gray-500 text-xs">
-                    <span className="inline-flex items-center gap-1"><Mail size={12} />{contact.email}</span>
-                    <span className="inline-flex items-center gap-1"><Smartphone size={12} />{contact.phone}</span>
+                <div className="flex items-start gap-3.5 rounded-xl border border-gray-200 bg-white p-4 text-sm shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-gray-100 text-gray-900">
+                    <MapPin size={17} />
+                  </span>
+                  <div className="min-w-0 grow">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-muted-foreground">
+                      Delivering to
+                    </p>
+                    <p className="mt-0.5 font-semibold text-gray-900">{contact.fullName}</p>
+                    <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500">
+                      <span className="inline-flex items-center gap-1.5"><Mail size={12} className="shrink-0" />{contact.email}</span>
+                      <span className="inline-flex items-center gap-1.5"><Smartphone size={12} className="shrink-0" />{contact.phone}</span>
+                    </div>
                   </div>
-                  <Link href="/invitations/address" className="mt-2 inline-block text-xs font-medium text-gray-700 underline underline-offset-4 hover:text-gray-900">
+                  <Link
+                    href="/invitations/address"
+                    className="inline-flex shrink-0 items-center gap-1.5 rounded-full border border-gray-200 px-3 py-1.5 text-xs font-semibold text-gray-700 transition hover:border-gray-300 hover:bg-gray-50 hover:text-gray-900"
+                  >
+                    <Pencil size={12} />
                     Edit
                   </Link>
                 </div>
               )}
 
-              {/* Saved methods — only shown when the account has any */}
-              {SAVED_METHODS.length > 0 && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                {SAVED_METHODS.map((m) => {
-                  const isActive = selected === m.id
-                  return (
-                    <button
-                      key={m.id}
-                      type="button"
-                      onClick={() => setSelected(m.id)}
-                      aria-pressed={isActive}
-                      className={`relative text-left rounded-xl border bg-white p-4 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1A1A1A]/15 ${
-                        isActive ? 'border-[#1A1A1A] ring-1 ring-[#1A1A1A]' : 'border-gray-200 hover:border-gray-400'
-                      }`}
-                    >
-                      <span
-                        className={`absolute top-4 left-4 w-4 h-4 rounded-full border-2 ${
-                          isActive ? 'border-gray-900 bg-gray-900' : 'border-gray-300 bg-white'
-                        }`}
-                        aria-hidden="true"
-                      >
-                        {isActive && (
-                          <span className="block w-1.5 h-1.5 rounded-full bg-white m-auto mt-[3px]" />
+              {/* Payment method picker — selection style matches the product
+                  page's optional add-ons (square check, dark when selected). */}
+              <div className="space-y-3">
+                <h2 className="text-base font-semibold text-gray-900">Choose how to pay</h2>
+                <div role="radiogroup" aria-label="Payment method" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {PAYMENT_METHODS.map((m) => {
+                    const checked = selected === m.id
+                    return (
+                      <label
+                        key={m.id}
+                        className={cn(
+                          'flex cursor-pointer flex-col gap-3 rounded-md border p-4 transition',
+                          checked ? 'border-[#1A1A1A] bg-white' : 'border-gray-200 bg-white hover:border-gray-300',
                         )}
-                      </span>
-                      <div className="pl-8">
-                        <p className="text-sm font-semibold text-gray-900">{m.label}</p>
-                        <p className="text-xs text-gray-500 mt-0.5">{m.detail}</p>
+                      >
+                        <div className="flex items-start gap-3">
+                          <input
+                            type="radio"
+                            name="payment-method"
+                            value={m.id}
+                            checked={checked}
+                            onChange={() => setSelected(m.id)}
+                            aria-describedby={`pm-${m.id}-desc`}
+                            className="peer sr-only"
+                          />
+                          <span
+                            aria-hidden
+                            className={cn(
+                              'mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border transition peer-focus-visible:ring-2 peer-focus-visible:ring-[#1A1A1A]/25',
+                              checked ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-gray-300 bg-white text-transparent',
+                            )}
+                          >
+                            <Check size={13} strokeWidth={3} />
+                          </span>
+                          <div className="grow">
+                            <p className="text-[14px] font-bold text-gray-900">{m.provider}</p>
+                            <p id={`pm-${m.id}-desc`} className="mt-1 text-[12px] leading-relaxed text-gray-600">
+                              {m.desc}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="ml-8 flex items-center gap-2">
+                          {m.logos.map((logo) => (
+                            <span
+                              key={logo.src}
+                              className="inline-flex h-7 items-center justify-center rounded-md border border-gray-200 bg-white px-1.5"
+                            >
+                              <Image src={logo.src} alt="" width={logo.w} height={logo.h} className={logo.cls} />
+                            </span>
+                          ))}
+                        </div>
+                      </label>
+                    )
+                  })}
+                </div>
+              </div>
+
+              {/* Method-specific details */}
+              {isCard ? (
+                <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="card-name" className="mb-1.5 text-gray-900">
+                      Full name (as on card) <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="card-name"
+                      type="text"
+                      value={cardName}
+                      onChange={(e) => { setCardName(e.target.value); clearError('cardName') }}
+                      placeholder="Mary Mwakasege"
+                      aria-invalid={Boolean(errors.cardName)}
+                    />
+                    {errors.cardName && <FieldError>{errors.cardName}</FieldError>}
+                  </div>
+                  <div className="sm:col-span-2">
+                    <Label htmlFor="card-number" className="mb-1.5 text-gray-900">
+                      Card number <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="card-number"
+                      type="text"
+                      value={cardNumber}
+                      onChange={(e) => { setCardNumber(e.target.value); clearError('cardNumber') }}
+                      placeholder="xxxx xxxx xxxx xxxx"
+                      inputMode="numeric"
+                      aria-invalid={Boolean(errors.cardNumber)}
+                    />
+                    {errors.cardNumber && <FieldError>{errors.cardNumber}</FieldError>}
+                  </div>
+                  <div>
+                    <Label htmlFor="card-expiry" className="mb-1.5 text-gray-900">
+                      Card expiration <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="card-expiry"
+                      type="text"
+                      value={cardExpiry}
+                      onChange={(e) => { setCardExpiry(e.target.value); clearError('cardExpiry') }}
+                      placeholder="MM/YY"
+                      inputMode="numeric"
+                      aria-invalid={Boolean(errors.cardExpiry)}
+                    />
+                    {errors.cardExpiry && <FieldError>{errors.cardExpiry}</FieldError>}
+                  </div>
+                  <div>
+                    <Label htmlFor="card-cvv" className="mb-1.5 text-gray-900">
+                      CVV <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="card-cvv"
+                      type="text"
+                      value={cardCvv}
+                      onChange={(e) => { setCardCvv(e.target.value); clearError('cardCvv') }}
+                      placeholder="123"
+                      inputMode="numeric"
+                      maxLength={4}
+                      aria-invalid={Boolean(errors.cardCvv)}
+                    />
+                    {errors.cardCvv && <FieldError>{errors.cardCvv}</FieldError>}
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* M-Pesa offers two flows: STK push, or pay to our Lipa Namba */}
+                  {isMpesa && (
+                    <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1">
+                      <button
+                        type="button"
+                        onClick={() => setMpesaMode('phone')}
+                        className={cn(
+                          'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+                          mpesaMode === 'phone' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+                        )}
+                      >
+                        Phone prompt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setMpesaMode('lipa')}
+                        className={cn(
+                          'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+                          mpesaMode === 'lipa' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+                        )}
+                      >
+                        Lipa Namba
+                      </button>
+                    </div>
+                  )}
+
+                  {useLipa && (
+                    <div className="overflow-hidden rounded-xl border border-gray-200">
+                      {/* Lipa Namba + amount, both copyable */}
+                      <div className="grid grid-cols-2 divide-x divide-gray-200 border-b border-gray-200 bg-gray-50">
+                        <div className="p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                            Lipa Namba
+                          </p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <span className="text-2xl font-bold tracking-wide text-gray-900 tabular-nums">
+                              {MPESA_LIPA_NAMBA}
+                            </span>
+                            <CopyButton value={MPESA_LIPA_NAMBA} label="Lipa Namba" />
+                          </div>
+                          <p className="mt-0.5 text-xs text-gray-500">{MPESA_LIPA_NAME}</p>
+                        </div>
+                        <div className="p-4">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                            Amount
+                          </p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <span className="text-2xl font-bold text-gray-900 tabular-nums">
+                              {formatTzs(total)}
+                            </span>
+                            <CopyButton value={String(total)} label="amount" />
+                          </div>
+                        </div>
                       </div>
-                      <span
-                        className="absolute right-4 bottom-4 px-2 py-1 rounded text-[10px] font-bold tracking-wide uppercase"
-                        style={{ backgroundColor: m.badge.bg, color: m.badge.fg }}
-                      >
-                        {m.badge.text}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-              )}
+                      {/* Step-by-step */}
+                      <ol className="space-y-3 p-4">
+                        {[
+                          'Open the M-Pesa menu → Lipa kwa M-Pesa → Lipa Namba',
+                          'Enter the Lipa Namba and amount shown above',
+                          'Confirm with your PIN, then tap Pay below',
+                        ].map((step, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-gray-900 text-[11px] font-bold text-white tabular-nums">
+                              {i + 1}
+                            </span>
+                            <p className="text-xs leading-relaxed text-gray-700">{step}</p>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
 
-              {SAVED_METHODS.length > 0 && (
-                <div className="flex items-center gap-4 mb-6">
-                  <div className="flex-1 h-px bg-gray-200" />
-                  <span className="text-sm text-gray-500">or</span>
-                  <div className="flex-1 h-px bg-gray-200" />
+                  <div>
+                    <Label htmlFor="mobile-phone" className="mb-1.5 text-gray-900">
+                      {useLipa ? 'Your M-Pesa number (for confirmation)' : `${method.provider} phone number`}{' '}
+                      <span className="text-red-600">*</span>
+                    </Label>
+                    <Input
+                      id="mobile-phone"
+                      type="tel"
+                      value={mobilePhone}
+                      onChange={(e) => { setMobilePhone(e.target.value); clearError('mobilePhone') }}
+                      placeholder="+255 7xx xxx xxx"
+                      inputMode="tel"
+                      aria-invalid={Boolean(errors.mobilePhone)}
+                    />
+                    {errors.mobilePhone && <FieldError>{errors.mobilePhone}</FieldError>}
+                    {!useLipa && (
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        You&apos;ll get a prompt on your phone to approve the payment.
+                      </p>
+                    )}
+                  </div>
                 </div>
               )}
-
-              <div className="mb-5">
-                <h2 className="text-base font-semibold text-gray-900 mb-3">
-                  {SAVED_METHODS.length > 0 ? 'Add a new payment method' : 'Payment method'}
-                </h2>
-                <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1 mb-5">
-                  <button
-                    type="button"
-                    onClick={() => { setNewKind('card'); setSelected('new-card') }}
-                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                      newKind === 'card' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    <CreditCard size={14} />
-                    Card
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setNewKind('mobile'); setSelected('new-mobile') }}
-                    className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                      newKind === 'mobile' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900'
-                    }`}
-                  >
-                    <Smartphone size={14} />
-                    Mobile money
-                  </button>
-                </div>
-
-                {newKind === 'card' ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
-                    <div className="sm:col-span-1">
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                        Full name (as on card) <span className="text-red-600">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={cardName}
-                        onChange={(e) => { setCardName(e.target.value); clearError('cardName') }}
-                        onFocus={() => setSelected('new-card')}
-                        placeholder="Mary Mwakasege"
-                        aria-invalid={Boolean(errors.cardName)}
-                        className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
-                          errors.cardName ? 'border-red-500 focus:border-red-600' : 'border-gray-300 focus:border-gray-500'
-                        }`}
-                      />
-                      {errors.cardName && <FieldError>{errors.cardName}</FieldError>}
-                    </div>
-                    <div className="sm:col-span-1">
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                        Card number <span className="text-red-600">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={cardNumber}
-                        onChange={(e) => { setCardNumber(e.target.value); clearError('cardNumber') }}
-                        onFocus={() => setSelected('new-card')}
-                        placeholder="xxxx xxxx xxxx xxxx"
-                        inputMode="numeric"
-                        aria-invalid={Boolean(errors.cardNumber)}
-                        className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
-                          errors.cardNumber ? 'border-red-500 focus:border-red-600' : 'border-gray-300 focus:border-gray-500'
-                        }`}
-                      />
-                      {errors.cardNumber && <FieldError>{errors.cardNumber}</FieldError>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                        Card expiration <span className="text-red-600">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={cardExpiry}
-                        onChange={(e) => { setCardExpiry(e.target.value); clearError('cardExpiry') }}
-                        onFocus={() => setSelected('new-card')}
-                        placeholder="MM/YY"
-                        inputMode="numeric"
-                        aria-invalid={Boolean(errors.cardExpiry)}
-                        className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
-                          errors.cardExpiry ? 'border-red-500 focus:border-red-600' : 'border-gray-300 focus:border-gray-500'
-                        }`}
-                      />
-                      {errors.cardExpiry && <FieldError>{errors.cardExpiry}</FieldError>}
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                        CVV <span className="text-red-600">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        value={cardCvv}
-                        onChange={(e) => { setCardCvv(e.target.value); clearError('cardCvv') }}
-                        onFocus={() => setSelected('new-card')}
-                        placeholder="123"
-                        inputMode="numeric"
-                        maxLength={4}
-                        aria-invalid={Boolean(errors.cardCvv)}
-                        className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
-                          errors.cardCvv ? 'border-red-500 focus:border-red-600' : 'border-gray-300 focus:border-gray-500'
-                        }`}
-                      />
-                      {errors.cardCvv && <FieldError>{errors.cardCvv}</FieldError>}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                        Provider <span className="text-red-600">*</span>
-                      </label>
-                      <select
-                        value={mobileProvider}
-                        onChange={(e) => setMobileProvider(e.target.value)}
-                        onFocus={() => setSelected('new-mobile')}
-                        className="w-full h-11 rounded-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:border-gray-500"
-                      >
-                        <option>M-Pesa</option>
-                        <option>Airtel Money</option>
-                        <option>Tigo Pesa</option>
-                        <option>HaloPesa</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                        Phone number <span className="text-red-600">*</span>
-                      </label>
-                      <input
-                        type="tel"
-                        value={mobilePhone}
-                        onChange={(e) => { setMobilePhone(e.target.value); clearError('mobilePhone') }}
-                        onFocus={() => setSelected('new-mobile')}
-                        placeholder="+255 7xx xxx xxx"
-                        inputMode="tel"
-                        aria-invalid={Boolean(errors.mobilePhone)}
-                        className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
-                          errors.mobilePhone ? 'border-red-500 focus:border-red-600' : 'border-gray-300 focus:border-gray-500'
-                        }`}
-                      />
-                      {errors.mobilePhone && <FieldError>{errors.mobilePhone}</FieldError>}
-                    </div>
-                    <p className="sm:col-span-2 text-xs text-gray-500 mt-1">
-                      You&apos;ll get a prompt on your phone to approve the payment.
-                    </p>
-                  </div>
-                )}
-              </div>
 
               <button
                 type="button"
                 onClick={handlePay}
                 disabled={submitting || items.length === 0}
-                className="mt-2 inline-flex w-full items-center justify-center rounded-full bg-[#1A1A1A] px-6 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-[#333] disabled:cursor-not-allowed disabled:bg-gray-300"
+                className="inline-flex w-full items-center justify-center rounded-full bg-(--accent) px-6 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.06em] text-(--on-accent) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
               >
                 {submitting ? 'Processing…' : `Pay ${formatTzs(total)}`}
               </button>
 
-              <p className="mt-4 text-xs text-gray-500 inline-flex items-center gap-1.5">
+              <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
                 <ShieldCheck size={13} className="text-emerald-600" />
                 Payments are processed securely. Your design goes live within 24 hours of confirmation.
               </p>
-            </section>
+            </CardContent>
+          </Card>
 
-            <aside className="space-y-5">
-              <div className="rounded-2xl bg-white border border-gray-200 p-5">
-                <h2 className="text-base font-bold text-gray-900 mb-4">Order summary</h2>
-                <dl className="space-y-3 text-sm">
-                  <div className="flex justify-between">
-                    <dt className="text-gray-700">Subtotal</dt>
-                    <dd className="font-medium text-gray-900">{formatTzs(subtotal)}</dd>
-                  </div>
-                  <div className="flex justify-between">
-                    <dt className="text-gray-700">
-                      VAT <span className="text-gray-500">18%</span>
-                    </dt>
-                    <dd className="font-medium text-gray-900">+{formatTzs(vat)}</dd>
-                  </div>
-                </dl>
-                <div className="border-t border-gray-200 my-4" />
-                <div className="flex justify-between items-baseline">
-                  <span className="text-base font-bold text-gray-900">Total</span>
-                  <span className="text-xl font-bold text-gray-900">{formatTzs(total)}</span>
+          {/* RIGHT — Order summary & info */}
+          <aside className="flex flex-col gap-5">
+            <Card className="border-0 shadow-[0_2px_12px_-6px_rgba(0,0,0,0.12)]">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold">Order summary</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Price</span>
+                  <span className="font-medium text-gray-900 tabular-nums">{formatTzs(subtotal)}</span>
                 </div>
-              </div>
+                {discount > 0 && (
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Discount</span>
+                    <span className="font-medium text-green-600 tabular-nums">-{formatTzs(discount)}</span>
+                  </div>
+                )}
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-muted-foreground">Delivery charges</span>
+                  <span className="font-semibold text-gray-900">Free delivery</span>
+                </div>
+                <Separator />
+                <div className="flex items-center justify-between">
+                  <span className="text-base font-semibold text-gray-900">Total</span>
+                  <span className="text-xl font-semibold text-gray-900 tabular-nums">{formatTzs(total)}</span>
+                </div>
+              </CardContent>
+            </Card>
 
-              <p className="text-center text-xs text-gray-500">
-                Payments processed securely by{' '}
-                <span className="font-medium text-gray-900">OpusFesta Pay</span>
-              </p>
-            </aside>
-          </div>
+            <div className="flex gap-2.5 rounded-lg bg-white border border-gray-200 px-3 py-3">
+              <Clock className="mt-0.5 size-5 shrink-0 text-gray-700" />
+              <div className="space-y-0.5">
+                <h5 className="text-sm font-semibold text-gray-900">Ready in 24 hours</h5>
+                <p className="text-xs text-gray-600">
+                  Your personalised design and OpusPass tickets are delivered within a day of payment.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-2.5 rounded-lg bg-white border border-gray-200 px-3 py-3">
+              <Sparkles className="mt-0.5 size-5 shrink-0 text-gray-700" />
+              <div className="space-y-0.5">
+                <h5 className="text-sm font-semibold text-gray-900">One free revision</h5>
+                <p className="text-xs text-gray-600">
+                  We&apos;ll fine-tune the details until your invitation looks just right.
+                </p>
+              </div>
+            </div>
+
+            <p className="text-center text-xs text-gray-500">
+              Your payment details are encrypted and processed securely.
+            </p>
+          </aside>
         </div>
-      </main>
-    </>
+      </div>
+    </main>
   )
 }

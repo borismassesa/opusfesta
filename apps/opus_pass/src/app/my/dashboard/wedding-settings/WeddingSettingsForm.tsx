@@ -157,14 +157,14 @@ export default function WeddingSettingsForm({ profile }: { profile: CoupleProfil
           </Field>
           <Field
             label="How to pay (mobile money / bank)"
-            hint="e.g. M-Pesa Lipa Namba 1234567 (Name) · Tigo Pesa 0712 345 678 · Airtel Money 0786 …"
+            hint="e.g. M-Pesa Lipa Namba 1234567 (Name) · Mixx by Yas 0712 345 678 · Selcom Pesa 0786 …"
           >
             <textarea
               rows={4}
               className={inputClass}
               value={form.pledge_payment_instructions}
               onChange={(e) => setForm({ ...form, pledge_payment_instructions: e.target.value })}
-              placeholder={'M-Pesa: Lipa Namba 1234567 (Boris Massesa)\nTigo Pesa: 0712 345 678\nAirtel Money: 0786 000 111'}
+              placeholder={'M-Pesa: Lipa Namba 1234567 (Boris Massesa)\nMixx by Yas: 0712 345 678\nSelcom Pesa: 0786 000 111'}
             />
           </Field>
         </div>

@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import { cn } from '@/lib/utils'
 
 // Pricing model: priceWas / priceNow are TOTAL prices for a PACK_QTY-piece pack.
 // The UI displays per-unit pricing — total / PACK_QTY rounded to nearest 10 TZS.
@@ -30,13 +29,9 @@ export type Product = {
 export function ProductInfo({
   product,
   href,
-  selectedSwatch,
-  onSwatchSelect,
 }: {
   product: Product
   href?: string
-  selectedSwatch?: number
-  onSwatchSelect?: (index: number) => void
 }) {
   const unitNow = Math.round(product.priceNow / PACK_QTY / 10) * 10
   const unitWas = product.priceWas
@@ -45,33 +40,6 @@ export function ProductInfo({
 
   return (
     <>
-      {/* Color swatches — bigger (20px) with hover scale + hex tooltip */}
-      <div className="mt-3 flex items-center gap-2">
-        {product.swatches.slice(0, 4).map((c, i) => (
-          <button
-            key={`${product.id}-sw-${i}`}
-            type="button"
-            title={c}
-            aria-label={c}
-            aria-pressed={selectedSwatch === i}
-            onClick={onSwatchSelect ? (e) => { e.preventDefault(); onSwatchSelect(i) } : undefined}
-            className={cn(
-              'h-7 w-7 rounded-full border shadow-sm transition-transform hover:scale-110',
-              selectedSwatch === i
-                ? 'border-[#1A1A1A] ring-2 ring-offset-1 ring-[#1A1A1A]'
-                : 'border-black/15',
-              onSwatchSelect ? 'cursor-pointer' : 'cursor-default',
-            )}
-            style={{ backgroundColor: c }}
-          />
-        ))}
-        {product.swatches.length > 4 && (
-          <span className="text-[11px] text-[#1A1A1A]/60">
-            + {product.swatches.length - 4}
-          </span>
-        )}
-      </div>
-
       {/* Category label — lighter for hierarchy */}
       <p className="mt-3 text-[11px] text-[#1A1A1A]/50">{product.category}</p>
 

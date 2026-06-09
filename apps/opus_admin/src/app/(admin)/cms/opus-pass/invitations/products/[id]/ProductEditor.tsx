@@ -5,20 +5,16 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
-import { PaletteEditor } from '@/components/cms/PaletteEditor'
-import { SvgInspector } from '@/components/cms/SvgInspector'
-import { SvgPreview } from '@/components/cms/SvgPreview'
 import {
   PRODUCT_CATEGORIES,
-  PRODUCT_TREATMENTS,
   slugifyProductName,
-  type InvitationPalette,
   type InvitationProductRecord,
 } from '@/lib/cms/opus-pass-invitations-products'
 import { deleteInvitationProduct, upsertInvitationProduct } from '../actions'
 
 const LIST = '/cms/opus-pass/invitations/products'
 const IMAGE_PREFIX = 'opus-pass/invitations/products'
+const MAX_DESIGNS = 5
 
 const inputCls =
   'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
@@ -34,7 +30,6 @@ export default function ProductEditor({
   const [product, setProduct] = useState<InvitationProductRecord>(initial)
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
-  const [activepaletteIdx, setActivePaletteIdx] = useState(0)
 
   function set<K extends keyof InvitationProductRecord>(key: K, value: InvitationProductRecord[K]) {
     setProduct((p) => ({ ...p, [key]: value }))
@@ -55,11 +50,9 @@ export default function ProductEditor({
 
     if (!product.name.trim()) return setError('Name is required.')
     if (!slug) return setError('Slug is required.')
-    if (!product.price_now || product.price_now <= 0) return setError('Price must be greater than 0.')
 
-    const swatches =
-      palettes.length > 0 ? palettes.map((p) => p.accent) : product.swatches
-    const record: InvitationProductRecord = { ...product, id, slug, swatches }
+    const designs = product.designs.filter(Boolean)
+    const record: InvitationProductRecord = { ...product, id, slug, designs }
 
     startTransition(async () => {
       try {
@@ -85,13 +78,9 @@ export default function ProductEditor({
     })
   }
 
-  const palettes = product.palettes ?? []
-  const activePalette: InvitationPalette | null = palettes[activepaletteIdx] ?? null
-
   return (
-    <div className="py-2 flex items-start gap-6">
-      {/* Form column */}
-      <div className="flex-1 min-w-0">
+    <div className="py-2">
+      <div className="min-w-0">
         {/* Header bar */}
         <div className="flex items-center justify-between gap-4 mb-6">
           <div className="min-w-0">
@@ -100,10 +89,10 @@ export default function ProductEditor({
               className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500 hover:text-gray-900 mb-1"
             >
               <ArrowLeft className="w-3.5 h-3.5" />
-              All products
+              All cards
             </Link>
             <h2 className="text-2xl font-bold text-gray-900 tracking-tight truncate">
-              {isNew ? 'New product' : product.name || 'Untitled product'}
+              {isNew ? 'New card' : product.name || 'Untitled card'}
             </h2>
           </div>
           <div className="flex items-center gap-2 shrink-0">
@@ -163,73 +152,47 @@ export default function ProductEditor({
             </div>
           </Card>
 
-          {/* Pricing */}
-          <Card title="Pricing (TZS)">
-            <div className="grid grid-cols-3 gap-4">
-              <Field label="Price now" hint="Pack total.">
-                <input type="number" value={product.price_now} onChange={(e) => set('price_now', Number(e.target.value) || 0)} className={inputCls} />
-              </Field>
-              <Field label="Price was" hint="Optional — struck through.">
-                <input
-                  type="number"
-                  value={product.price_was ?? ''}
-                  onChange={(e) => set('price_was', e.target.value === '' ? null : Number(e.target.value) || 0)}
-                  className={inputCls}
-                  placeholder="—"
-                />
-              </Field>
-              <Field label="Per digital card">
-                <input type="number" value={product.digital_unit_price} onChange={(e) => set('digital_unit_price', Number(e.target.value) || 0)} className={inputCls} />
-              </Field>
-            </div>
-            <Toggle label="Offer a free sample" checked={product.free_sample} onChange={(v) => set('free_sample', v)} />
-          </Card>
-
-          {/* Card design */}
-          <Card title="Card design">
-            <div>
-              <ImageUploadField
-                label="Front design (hero)"
-                value={product.image_url}
-                onChange={(v) => set('image_url', v)}
-                pathPrefix={IMAGE_PREFIX}
-                previewAspect="aspect-[5/7]"
-                previewWidth="max-w-[180px]"
-                accept="svg"
+          {/* Details */}
+          <Card title="Details">
+            <Field
+              label="Description"
+              hint="Shown as the “Details” paragraph under the card on the product page. Leave empty to auto-generate from the name and designer."
+            >
+              <textarea
+                value={product.description}
+                onChange={(e) => set('description', e.target.value)}
+                rows={4}
+                className={`${inputCls} resize-y`}
+                placeholder="Botanical Frame is a Bagamoyo Press signature design — hand-illustrated foliage framing your names. Sent digitally to every guest by WhatsApp or SMS."
               />
-              <SvgInspector url={product.image_url} />
-            </div>
-            <div>
-              <ImageUploadField
-                label="Back design (optional)"
-                value={product.back_image_url}
-                onChange={(v) => set('back_image_url', v)}
-                pathPrefix={IMAGE_PREFIX}
-                previewAspect="aspect-[5/7]"
-                previewWidth="max-w-[180px]"
-                accept="svg"
-              />
-              <SvgInspector url={product.back_image_url} />
-            </div>
-            <p className="text-[11px] text-gray-500 -mt-1">
-              Upload SVGs for the card design. When front is attached it replaces the built-in CSS design. Leave empty to use the CSS design below.
-            </p>
-            <Field label="Built-in design (fallback)">
-              <select value={product.treatment} onChange={(e) => set('treatment', e.target.value as InvitationProductRecord['treatment'])} className={inputCls}>
-                {PRODUCT_TREATMENTS.map((t) => (
-                  <option key={t} value={t}>{t}</option>
-                ))}
-              </select>
             </Field>
-            <GalleryEditor value={product.gallery} onChange={(v) => set('gallery', v)} />
           </Card>
 
-          {/* Colours */}
-          <Card title="Design colours">
+          {/* Hero card — the catalog & landing cover (portrait) */}
+          <Card title="Hero card">
             <p className="text-[11px] text-gray-500 -mt-2">
-              Each palette has 6 colour roles. The accent colour is used as the swatch dot in the catalog.
+              The portrait cover shown on the catalog grid and landing page. Upload it at a{' '}
+              <strong>3:4 portrait ratio</strong> (taller than wide) — this is separate from the
+              detail-page carousel below, which is landscape.
             </p>
-            <PaletteEditor value={palettes} onChange={(v) => { set('palettes', v); setActivePaletteIdx(0) }} />
+            <ImageUploadField
+              label="Hero image"
+              value={product.image_url}
+              onChange={(v) => set('image_url', v)}
+              pathPrefix={IMAGE_PREFIX}
+              previewAspect="aspect-[3/4]"
+              previewWidth="max-w-[160px]"
+              accept="image"
+            />
+          </Card>
+
+          {/* Card designs — the detail-page carousel (landscape 800×600) */}
+          <Card title="Card designs">
+            <p className="text-[11px] text-gray-500 -mt-2">
+              Up to {MAX_DESIGNS} images for the carousel on the card <em>details</em> page. Design these at{' '}
+              <strong>800 × 600 (4:3 landscape)</strong> so they fill the carousel frame cleanly.
+            </p>
+            <DesignsEditor value={product.designs} onChange={(v) => set('designs', v)} />
           </Card>
 
           {/* Visibility */}
@@ -238,66 +201,6 @@ export default function ProductEditor({
           </Card>
         </div>
       </div>
-
-      {/* Preview panel */}
-      <aside className="w-[200px] shrink-0 sticky top-6">
-        <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] space-y-4">
-          <p className="text-xs font-bold text-gray-700">Preview</p>
-
-          {palettes.length > 1 && (
-            <div className="flex gap-1.5 flex-wrap">
-              {palettes.map((p, i) => (
-                <button
-                  key={i}
-                  type="button"
-                  title={p.name || `Palette ${i + 1}`}
-                  onClick={() => setActivePaletteIdx(i)}
-                  className="w-5 h-5 rounded-full border-2 transition-all"
-                  style={{
-                    backgroundColor: p.accent,
-                    borderColor: i === activepaletteIdx ? '#7E5896' : 'transparent',
-                    outline: i === activepaletteIdx ? '1px solid #7E5896' : 'none',
-                  }}
-                />
-              ))}
-            </div>
-          )}
-
-          <SvgPreview
-            url={product.image_url}
-            palette={activePalette}
-            aspect="aspect-[5/7]"
-            label="Front"
-          />
-
-          {product.back_image_url && (
-            <SvgPreview
-              url={product.back_image_url}
-              palette={activePalette}
-              aspect="aspect-[5/7]"
-              label="Back"
-            />
-          )}
-
-          {!product.image_url && !product.back_image_url && (
-            <p className="text-[11px] text-gray-400 text-center py-2">
-              Upload an SVG to see a preview
-            </p>
-          )}
-
-          {product.name && (
-            <div className="border-t border-gray-100 pt-3 space-y-0.5">
-              <p className="text-xs font-semibold text-gray-800 truncate">{product.name}</p>
-              {product.designer && <p className="text-[11px] text-gray-500 truncate">{product.designer}</p>}
-              {product.price_now > 0 && (
-                <p className="text-xs text-[#7E5896] font-semibold">
-                  TZS {product.price_now.toLocaleString('en-US')}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      </aside>
     </div>
   )
 }
@@ -335,45 +238,49 @@ function Toggle({ label, checked, onChange }: { label: string; checked: boolean;
   )
 }
 
-function GalleryEditor({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+function DesignsEditor({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
   const update = (i: number, url: string) => onChange(value.map((u, idx) => (idx === i ? url : u)))
   const remove = (i: number) => onChange(value.filter((_, idx) => idx !== i))
   const add = () => onChange([...value, ''])
+  const canAdd = value.length < MAX_DESIGNS
 
   return (
     <div className="space-y-3">
-      <span className="text-xs font-semibold text-gray-600">Gallery (extra views)</span>
       {value.map((url, i) => (
         <div key={i} className="flex items-start gap-2 rounded-lg border border-gray-100 p-2">
           <div className="flex-1">
             <ImageUploadField
-              label={`View ${i + 1}`}
+              label={`Design ${i + 1}`}
               value={url}
               onChange={(v) => update(i, v)}
               pathPrefix={IMAGE_PREFIX}
-              previewAspect="aspect-[5/7]"
-              previewWidth="max-w-[120px]"
-              accept="svg"
+              previewAspect="aspect-[4/3]"
+              previewWidth="max-w-[200px]"
+              accept="image"
             />
           </div>
           <button
             type="button"
             onClick={() => remove(i)}
             className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded mt-5"
-            aria-label={`Remove view ${i + 1}`}
+            aria-label={`Remove design ${i + 1}`}
           >
             <Trash2 className="w-3.5 h-3.5" />
           </button>
         </div>
       ))}
-      <button
-        type="button"
-        onClick={add}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7E5896] hover:text-[#5d3a78] px-2.5 py-1.5 rounded-lg border border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
-      >
-        <Plus className="w-3.5 h-3.5" />
-        Add view
-      </button>
+      {canAdd ? (
+        <button
+          type="button"
+          onClick={add}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7E5896] hover:text-[#5d3a78] px-2.5 py-1.5 rounded-lg border border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Add design
+        </button>
+      ) : (
+        <p className="text-[11px] text-gray-400">Maximum of {MAX_DESIGNS} designs reached.</p>
+      )}
     </div>
   )
 }

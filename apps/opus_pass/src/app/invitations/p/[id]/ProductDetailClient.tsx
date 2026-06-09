@@ -3,32 +3,37 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronDown, ChevronRight, Crown, MessageCircle, SlidersHorizontal, Ticket, X } from 'lucide-react'
+import { Check, ChevronDown, ChevronRight, Crown, Diamond, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { InvitationVisual, COUPLE_DEFAULT } from '@/components/guests/InvitationVisual'
-import { MockupCarousel } from '@/components/guests/MockupCarousel'
-import type { CardPlacement } from '@/lib/cms/mockup-placement'
-import { PACK_QTY } from '@/components/guests/productInfo'
+import { InvitationVisual } from '@/components/guests/InvitationVisual'
+import { DesignCarousel } from '@/components/guests/DesignCarousel'
 import type { CatalogProduct } from '@/data/invitations-products'
 import type { PackagesContent } from '@/lib/cms/packages'
 import { useCart } from '@/components/providers/CartProvider'
 
 // Pricing model:
 //   • Digital suite — `tier.price_per_guest × digitalQty` (per-guest package: Lite/Classic/Signature)
-//   • Paper prints  — `paperUnitPrice × paperQty` (optional physical add-on)
+//   • Paper prints  — `PAPER_PRINT_UNIT_PRICE × paperQty` (optional physical add-on, flat per-print)
 //   • Door-scan     — flat base fee per event (on-site scanning attendant)
 const DOOR_SCAN_SERVICE_PRICE = 50000 // TZS — flat per event (on-site scanning attendant at venue entrance)
+// Flat per-print price for the optional paper add-on. Package-independent (the
+// package tiers price the digital suite per guest; paper is a separate physical
+// extra), so it no longer derives from a per-card price. Adjust here if needed.
+const PAPER_PRINT_UNIT_PRICE = 2000 // TZS per printed card
 const PAPER_MIN_QTY = 10
 
 
-export default function ProductDetailClient({ product, allProducts, mockupImages, mockupScenes, mockupPlacements, designSvg, packages }: { product: CatalogProduct; allProducts: CatalogProduct[]; mockupImages?: Record<string, string>; mockupScenes?: { id: string; label: string }[]; mockupPlacements?: Record<string, CardPlacement>; designSvg?: string | null; packages: PackagesContent }) {
-  const customiseHref = `/invitations/p/${product.id}/customise`
+export default function ProductDetailClient({ product, allProducts, packages }: { product: CatalogProduct; allProducts: CatalogProduct[]; packages: PackagesContent }) {
   const router = useRouter()
   const { addItem } = useCart()
 
-  // Core selections
-  const [selectedColor, setSelectedColor] = useState(0)
+  // Detail carousel = the portrait hero card (image_url) followed by the
+  // landscape 800×600 "mockup" design views (designs[]). Each renders at its
+  // own ratio inside DesignCarousel.
+  const heroImage = product.imageUrl
+  const designViews = product.designs ?? []
+
   // Number of cards (= guests). Minimum 100; pricing is per-guest × this count.
   const MIN_CARDS = 100
   const [digitalQty, setDigitalQty] = useState<number>(MIN_CARDS)
@@ -41,15 +46,35 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
   const tier = packages.tiers.find((t) => t.id === selectedTier) ?? packages.tiers[0]
   const pricePerGuest = tier?.price_per_guest ?? 0
 
+  // Hide the sticky breadcrumb once scrolling reaches the "Explore similar designs" section.
+  const similarRef = useRef<HTMLElement>(null)
+  const [hideCrumb, setHideCrumb] = useState(false)
+  useEffect(() => {
+    let raf = 0
+    const onScroll = () => {
+      if (raf) return
+      raf = requestAnimationFrame(() => {
+        raf = 0
+        const el = similarRef.current
+        if (el) setHideCrumb(el.getBoundingClientRect().top <= 56)
+      })
+    }
+    onScroll()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    window.addEventListener('resize', onScroll)
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      window.removeEventListener('resize', onScroll)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [])
+
   // Add-ons
   const [paperPrints, setPaperPrints] = useState(false)
   const [paperQty, setPaperQty] = useState<number>(25)
   const [doorScan, setDoorScan] = useState(false)
 
   const [favourited, setFavourited] = useState(false)
-
-  // Preview modal state — Customise navigates to a dedicated full-page editor
-  const [showPreview, setShowPreview] = useState(false)
 
   // Details "Read more" — the toggle only appears when the text actually overflows
   // its clamped height, so short descriptions show no button.
@@ -61,13 +86,21 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
     const el = detailsRef.current
     if (!el) return
     const check = () => setDetailsOverflows(el.scrollHeight > el.clientHeight + 1)
-    check()
+    // Run after layout settles, and again once web fonts load — both change line
+    // wrapping/height, so an early check can miss (or over-report) the overflow.
+    const raf = requestAnimationFrame(check)
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(check).catch(() => {})
+    }
     window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [detailsExpanded, product.name, product.designer])
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', check)
+    }
+  }, [detailsExpanded, product.name, product.designer, product.description])
 
   const digitalSubtotal = pricePerGuest * digitalQty
-  const paperUnitPrice = Math.round(product.priceNow / PACK_QTY / 10) * 10 // TZS per piece
+  const paperUnitPrice = PAPER_PRINT_UNIT_PRICE
   const paperSubtotal = paperPrints ? paperUnitPrice * paperQty : 0
   const doorScanSubtotal = doorScan ? DOOR_SCAN_SERVICE_PRICE : 0
   const total = digitalSubtotal + paperSubtotal + doorScanSubtotal
@@ -88,19 +121,29 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
     .filter(Boolean)
     .join(' · ')
 
+  const buildCartItem = () => ({
+    id: product.id,
+    name: product.name,
+    designer: product.designer,
+    treatment: product.treatment,
+    summary: cartSummary,
+    tier: tier?.name,
+    tierId: tier?.id,
+    guests: digitalQty,
+    pricePerGuest,
+    extrasTotal: total - digitalSubtotal,
+    addOns: cartAddOns,
+    total,
+  })
+
+  // Buy now — add to cart and go straight to checkout
+  const handleBuyNow = () => {
+    addItem(buildCartItem())
+    router.push('/invitations/checkout')
+  }
+
   const handleAddToCart = () => {
-    addItem({
-      id: product.id,
-      name: product.name,
-      designer: product.designer,
-      treatment: product.treatment,
-      summary: cartSummary,
-      tier: tier?.name,
-      tierId: tier?.id,
-      guests: digitalQty,
-      addOns: cartAddOns,
-      total,
-    })
+    addItem(buildCartItem())
     toast.success('Added to cart', {
       description: `${product.name} — TZS ${total.toLocaleString('en-US')}`,
       action: {
@@ -114,8 +157,14 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
 
   return (
     <div className="bg-[#FAFAF8] text-[#1A1A1A]">
-      {/* Breadcrumb */}
-      <nav className="px-4 sm:px-6 pt-6 sm:pt-8" aria-label="Breadcrumb">
+      {/* Breadcrumb — pinned to the top while scrolling; hides once the similar-designs section is reached */}
+      <nav
+        className={cn(
+          'sticky top-0 z-30 bg-[#FAFAF8] px-4 sm:px-6 py-4 transition-all duration-300',
+          hideCrumb && 'pointer-events-none -translate-y-full opacity-0',
+        )}
+        aria-label="Breadcrumb"
+      >
         <div className="mx-auto max-w-7xl flex items-center gap-1.5 text-xs text-gray-600 flex-wrap">
           <Link href="/invitations" className="hover:text-gray-900 hover:underline">Invitations</Link>
           <ChevronRight size={12} className="text-gray-400" />
@@ -129,19 +178,11 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
       <div className="px-4 sm:px-6 pt-6 sm:pt-8 pb-12 sm:pb-16">
         <div className="mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
           {/* ─── LEFT: card + details — pinned; scrolls internally (no visible bar) if taller than the viewport ─── */}
-          <div className="hide-scrollbar space-y-8 lg:sticky lg:top-6 lg:max-h-[calc(100vh-3rem)] lg:overflow-y-auto">
-            <MockupCarousel
+          <div className="hide-scrollbar space-y-8 lg:sticky lg:top-[4rem] lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto">
+            <DesignCarousel
+              hero={heroImage}
+              designs={designViews}
               treatment={product.treatment}
-              couple={COUPLE_DEFAULT}
-              designImage={product.designImage}
-              designSvg={designSvg ?? undefined}
-              mockupImages={mockupImages}
-              mockupPlacements={mockupPlacements}
-              scenes={mockupScenes}
-              palette={(() => {
-                const safeIndex = product.palettes.length > 0 ? Math.max(0, Math.min(selectedColor, product.palettes.length - 1)) : 0
-                return product.palettes[safeIndex]
-              })()}
               favourited={favourited}
               onFavourite={() => setFavourited((v) => !v)}
             />
@@ -150,9 +191,10 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
             <div className="border-t border-gray-200 pt-5">
               <p className="text-[15px] font-medium text-gray-900 mb-2">Details</p>
               <div className="text-[14px] text-gray-700 leading-relaxed">
-                <p ref={detailsRef} className={cn(!detailsExpanded && 'line-clamp-4')}>
-                  {product.name} is a {product.designer} signature design — elegant typography paired with
-                  a customisable colour palette. Sent digitally to every guest by WhatsApp or SMS.
+                <p ref={detailsRef} className={cn('whitespace-pre-line', !detailsExpanded && 'line-clamp-4')}>
+                  {product.description?.trim()
+                    ? product.description
+                    : `${product.name} is a ${product.designer} signature design, sent digitally to every guest by WhatsApp or SMS.`}
                 </p>
                 {detailsOverflows && (
                   <button
@@ -190,16 +232,22 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
                   const active = t.id === selectedTier
                   const tierBg =
                     t.id === 'classic'
-                      ? 'bg-[#F6EFFB]' // faint lavender — most popular
+                      ? 'bg-[#ECDDF7]' // lavender — Elegant
                       : t.id === 'signature'
-                        ? 'bg-[#FBF6E9]' // faint gold — premium
-                        : 'bg-gray-50' // neutral — lite
+                        ? 'bg-[#F5E7BF]' // gold — Signature
+                        : 'bg-[#E1E8F0]' // slate — Essential
                   const tierActive =
                     t.id === 'classic'
                       ? 'border-[#B98FD6] ring-[#B98FD6]' // lavender
                       : t.id === 'signature'
                         ? 'border-[#C9A84C] ring-[#C9A84C]' // gold
-                        : 'border-gray-400 ring-gray-400' // neutral
+                        : 'border-[#475569] ring-[#475569]' // slate
+                  const tierBorder =
+                    t.id === 'classic'
+                      ? 'border-[#E3D2F2] hover:border-[#C9A0DC]' // lavender
+                      : t.id === 'signature'
+                        ? 'border-[#EBDCAE] hover:border-[#D6BC72]' // gold
+                        : 'border-[#D3DBE5] hover:border-[#9FB0C2]' // slate
                   return (
                     <button
                       key={t.id}
@@ -208,21 +256,28 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
                       aria-checked={active}
                       onClick={() => setSelectedTier(t.id)}
                       className={cn(
-                        'relative rounded-lg border p-3 text-left transition',
+                        'relative rounded-lg border p-3 text-left shadow-sm transition',
                         tierBg,
                         active
                           ? cn('ring-1', tierActive)
-                          : 'border-gray-200 hover:border-gray-400',
+                          : tierBorder,
                       )}
                     >
+                      {t.id === 'lite' && (
+                        <span className="absolute -top-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-[#475569] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
+                          <Sparkles size={12} strokeWidth={2.5} aria-hidden="true" />
+                          Basic
+                        </span>
+                      )}
                       {t.featured && (
-                        <span className="absolute -top-2 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-[var(--accent)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--on-accent)]">
+                        <span className="absolute -top-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-[var(--accent)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--on-accent)]">
+                          <Diamond size={13} strokeWidth={2.5} aria-hidden="true" />
                           Most popular
                         </span>
                       )}
                       {t.id === 'signature' && (
                         <span className="absolute -top-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-gradient-to-b from-[#E6C66E] to-[#C9A84C] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#3A2C06] shadow-sm">
-                          <Crown size={10} strokeWidth={2.5} className="-ml-0.5 fill-[#3A2C06]/15" aria-hidden="true" />
+                          <Crown size={12} strokeWidth={2.5} aria-hidden="true" />
                           Premium
                         </span>
                       )}
@@ -321,32 +376,6 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
               </div>
             </div>
 
-            {/* Design colour — only shown when the product has multiple swatches */}
-            {product.swatches.length > 1 && (
-              <ConfigGroup title="Design colour" value={(() => {
-                const safeIndex = Math.max(0, Math.min(selectedColor, product.palettes.length - 1))
-                return product.palettes[safeIndex]?.name ?? `Swatch ${selectedColor + 1}`
-              })()}>
-                <div className="flex flex-wrap gap-2.5">
-                  {product.swatches.map((c, i) => (
-                    <button
-                      key={`${product.id}-c-${i}`}
-                      type="button"
-                      onClick={() => setSelectedColor(i)}
-                      title={c}
-                      aria-label={product.palettes[i]?.name ?? c}
-                      aria-pressed={selectedColor === i}
-                      className={cn(
-                        'h-9 w-9 rounded-full border transition',
-                        selectedColor === i ? 'ring-2 ring-offset-2 ring-[#1A1A1A] border-white' : 'border-gray-300 hover:border-gray-500',
-                      )}
-                      style={{ backgroundColor: c }}
-                    />
-                  ))}
-                </div>
-              </ConfigGroup>
-            )}
-
             {/* ─── Optional add-ons ─── */}
             <div className="border-t border-gray-200 pt-6">
               <p className="text-[13px] font-bold text-gray-900 mb-3">Optional add-ons</p>
@@ -413,18 +442,14 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
                 priceLabel={`TZS ${DOOR_SCAN_SERVICE_PRICE.toLocaleString('en-US')} flat fee per event`}
               />
               {doorScan && (
-                <div className="-mt-1 mb-3 flex items-stretch overflow-hidden rounded-xl border border-gray-200 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
-                  {/* Ticket stub — perforated edge + ticket icon */}
-                  <div className="flex w-12 shrink-0 items-center justify-center border-r border-dashed border-gray-300 bg-[#FBF7EF]">
-                    <Ticket className="h-5 w-5 text-[#9A7B2E]" aria-hidden="true" />
-                  </div>
-                  <div className="p-4">
-                    <p className="text-[13px] font-bold text-gray-900">Every guest gets a wedding ticket</p>
-                    <p className="mt-1 text-[12px] leading-relaxed text-gray-600">
-                      A personalised <strong className="font-semibold text-gray-900">boarding-pass-style ticket</strong> with their name, event details, and a unique QR code — your attendant scans it at the door for seamless entry.
-                    </p>
-                  </div>
-                </div>
+                // Boarding-pass ticket — both ends (OpusPass stub + QR) are taken
+                // verbatim from src/assets/lite_ticket_pass.svg; only the middle copy differs.
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={`/assets/guest-ticket-card-${tier?.id ?? 'classic'}.svg`}
+                  alt="Every guest gets a personalised OpusPass ticket with their name, event details, and a unique QR code that your attendant scans at the door for seamless entry."
+                  className="-mt-1 mb-3 h-auto w-full [filter:drop-shadow(0_1px_2px_rgba(0,0,0,0.10))_drop-shadow(0_12px_26px_rgba(30,20,40,0.12))]"
+                />
               )}
               
             </div>
@@ -449,21 +474,21 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
               </dl>
             </div>
 
-            {/* Action buttons — explore (Customise) then commit (Add to cart) */}
+            {/* Action buttons — Add to cart (secondary) then Buy now (commit) */}
             <div className="grid grid-cols-2 gap-3">
-              <Link
-                href={customiseHref}
-                className="inline-flex items-center justify-center gap-2 rounded-full border border-[#1A1A1A] bg-transparent text-[#1A1A1A] px-5 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.1em] hover:bg-gray-50 transition"
-              >
-                <SlidersHorizontal size={16} aria-hidden="true" />
-                Customise
-              </Link>
               <button
                 type="button"
                 onClick={handleAddToCart}
-                className="inline-flex items-center justify-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-5 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.1em]"
+                className="inline-flex items-center justify-center rounded-full border border-[#1A1A1A] bg-transparent text-[#1A1A1A] px-5 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.1em] hover:bg-gray-50 transition"
               >
                 Add to cart
+              </button>
+              <button
+                type="button"
+                onClick={handleBuyNow}
+                className="inline-flex items-center justify-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-5 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.1em]"
+              >
+                Buy now
               </button>
             </div>
 
@@ -499,8 +524,8 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
 
               <Accordion title="Payment">
                 <p>
-                  Pay securely with M-Pesa, Airtel Money, Tigo Pesa, or any major bank card — all in
-                  Tanzanian shillings. Checkout is encrypted end to end, and you&apos;ll get an instant
+                  Pay securely with M-Pesa, Airtel Money, Mixx by Yas, Selcom Pesa, Visa, or Mastercard —
+                  all in Tanzanian shillings. Checkout is encrypted end to end, and you&apos;ll get an instant
                   confirmation by SMS and email the moment your payment clears, so your order starts right
                   away.
                 </p>
@@ -526,7 +551,7 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
 
       {/* Similar designs */}
       {recommendations.length > 0 && (
-        <section className="px-4 sm:px-6 pb-16 sm:pb-24 border-t border-gray-200">
+        <section ref={similarRef} className="px-4 sm:px-6 pb-16 sm:pb-24 border-t border-gray-200">
           <div className="mx-auto max-w-7xl pt-12 sm:pt-16">
             <h2 className="text-xl md:text-2xl font-serif font-medium text-gray-900 mb-6 sm:mb-8">
               Explore similar designs
@@ -551,38 +576,6 @@ export default function ProductDetailClient({ product, allProducts, mockupImages
         </section>
       )}
 
-      {/* Preview modal — sample personalisation + WhatsApp share-preview */}
-      <PreviewModal
-        open={showPreview}
-        onClose={() => setShowPreview(false)}
-        onCustomise={() => {
-          setShowPreview(false)
-          router.push(customiseHref)
-        }}
-        product={product}
-      />
-    </div>
-  )
-}
-
-function ConfigGroup({
-  title,
-  value,
-  compact = false,
-  children,
-}: {
-  title: string
-  value?: React.ReactNode
-  compact?: boolean
-  children: React.ReactNode
-}) {
-  return (
-    <div>
-      <p className={cn('font-bold text-gray-900', compact ? 'text-[12px] mb-1.5' : 'text-[13px] mb-2.5')}>
-        {title}
-        {value && <span className="ml-2 font-normal text-gray-600">{value}</span>}
-      </p>
-      {children}
     </div>
   )
 }
@@ -678,143 +671,3 @@ function Accordion({
     </div>
   )
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  MODAL — Preview my invite
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ModalShell({
-  open,
-  onClose,
-  ariaLabel,
-  children,
-}: {
-  open: boolean
-  onClose: () => void
-  ariaLabel: string
-  children: React.ReactNode
-}) {
-  useEffect(() => {
-    if (!open) return
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', onKey)
-    return () => {
-      document.body.style.overflow = prev
-      window.removeEventListener('keydown', onKey)
-    }
-  }, [open, onClose])
-
-  if (!open) return null
-
-  return (
-    <>
-      <div
-        className="fixed inset-0 bg-black/50 z-40"
-        onClick={onClose}
-        onWheel={(e) => e.preventDefault()}
-        onTouchMove={(e) => e.preventDefault()}
-        aria-hidden="true"
-        data-lenis-prevent
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-label={ariaLabel}
-        data-lenis-prevent
-        className="fixed inset-0 z-50 overflow-y-auto overscroll-contain"
-      >
-        <div className="min-h-full flex items-center justify-center p-4">{children}</div>
-      </div>
-    </>
-  )
-}
-
-function PreviewModal({
-  open,
-  onClose,
-  onCustomise,
-  product,
-}: {
-  open: boolean
-  onClose: () => void
-  onCustomise: () => void
-  product: CatalogProduct
-}) {
-  const sampleCouple = { names: 'Amani  &  Neema', date: '22 · 08 · 2026', venue: 'Bagamoyo, Tanzania' }
-  return (
-    <ModalShell open={open} onClose={onClose} ariaLabel="Preview your invite">
-      <div className="bg-white rounded-lg shadow-2xl w-full max-w-3xl my-8 overflow-hidden">
-        <header className="sticky top-0 bg-white border-b border-gray-200 px-5 sm:px-6 py-4 flex items-center justify-between z-10">
-          <div>
-            <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-gray-500">Sample preview</p>
-            <h2 className="text-[17px] font-bold text-gray-900 mt-0.5">{product.name}</h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close preview"
-            className="w-9 h-9 rounded-full flex items-center justify-center hover:bg-gray-100 transition"
-          >
-            <X size={20} className="text-gray-700" />
-          </button>
-        </header>
-
-        <div className="px-5 sm:px-6 py-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Invite preview — large */}
-          <div className="relative aspect-[3/4] bg-gray-50 rounded-md shadow-md overflow-hidden ring-1 ring-gray-200">
-            <InvitationVisual treatment={product.treatment} couple={sampleCouple} />
-          </div>
-
-          {/* Right column */}
-          <div className="space-y-5">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-gray-500">Previewing as</p>
-              <p className="mt-1 text-[15px] font-bold text-gray-900">{sampleCouple.names}</p>
-              <p className="text-[13px] text-gray-700">{sampleCouple.date} · {sampleCouple.venue}</p>
-            </div>
-
-            {/* WhatsApp share preview mock */}
-            <div className="rounded-lg bg-[#DCF8C6] border border-[#A8D89C]/60 p-3.5">
-              <div className="flex items-center gap-2 mb-2">
-                <MessageCircle size={14} className="text-[#075E54]" aria-hidden="true" />
-                <p className="text-[11px] uppercase tracking-[0.18em] font-bold text-[#075E54]">
-                  WhatsApp share preview
-                </p>
-              </div>
-              <p className="text-[13px] text-gray-900 leading-snug">
-                Karibu! You&rsquo;re invited to <strong>{sampleCouple.names}</strong>&rsquo;s wedding on {sampleCouple.date}. View your invite &amp; RSVP:
-              </p>
-              <p className="mt-1.5 text-[12px] text-[#0B4B8C] underline">opusfesta.com/i/abc123</p>
-            </div>
-
-            <p className="text-[13px] text-gray-700 leading-relaxed">
-              This is how the invite looks with sample names. Customise to add <strong>your</strong> names, date, venue, and colours.
-            </p>
-
-            <div className="flex flex-col gap-2 pt-1">
-              <button
-                type="button"
-                onClick={onCustomise}
-                className="inline-flex items-center justify-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] font-extrabold uppercase tracking-[0.1em]"
-              >
-                Customise this design
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                className="text-[13px] font-semibold text-gray-700 underline underline-offset-4 hover:text-gray-900"
-              >
-                Close preview
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </ModalShell>
-  )
-}
-
