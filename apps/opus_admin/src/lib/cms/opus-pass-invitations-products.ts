@@ -79,9 +79,9 @@ export type InvitationProductRecord = {
   /** Extra card views/scenes shown as gallery thumbnails. */
   gallery: string[]
   /**
-   * Designer-uploaded finished card images (PNG/JPG/WebP/SVG), max 5, shown in
-   * the product detail carousel at the 5:7 card ratio. The primary card display —
-   * supersedes the legacy image_url/treatment/mockup compositing.
+   * Designer-uploaded "mockup" card views (PNG/JPG/WebP/SVG), max 5, shown in
+   * the product detail carousel as landscape 800×600 (4:3) slides. The portrait
+   * hero (image_url) is a separate slide shown first and on the catalog/landing.
    */
   designs: string[]
 

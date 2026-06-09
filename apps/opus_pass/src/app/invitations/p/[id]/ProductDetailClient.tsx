@@ -192,8 +192,9 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
               <p className="text-[15px] font-medium text-gray-900 mb-2">Details</p>
               <div className="text-[14px] text-gray-700 leading-relaxed">
                 <p ref={detailsRef} className={cn('whitespace-pre-line', !detailsExpanded && 'line-clamp-4')}>
-                  {product.description ??
-                    `${product.name} is a ${product.designer} signature design, sent digitally to every guest by WhatsApp or SMS.`}
+                  {product.description?.trim()
+                    ? product.description
+                    : `${product.name} is a ${product.designer} signature design, sent digitally to every guest by WhatsApp or SMS.`}
                 </p>
                 {detailsOverflows && (
                   <button
