@@ -26,7 +26,6 @@ export type CommittedFilters = {
   priceRange: string
   customLow: string
   customHigh: string
-  colors: string[]
   styles: string[]
   formats: string[]
   printEdges: string[]
@@ -39,7 +38,6 @@ const EMPTY_FILTERS: CommittedFilters = {
   priceRange: 'any',
   customLow: '',
   customHigh: '',
-  colors: [],
   styles: [],
   formats: [],
   printEdges: [],
@@ -47,19 +45,6 @@ const EMPTY_FILTERS: CommittedFilters = {
   seasons: [],
   photoCount: [],
 }
-
-const COLOR_THEMES: { label: string; color: string }[] = [
-  { label: 'Blue',   color: '#1E2D54' },
-  { label: 'Gold',   color: '#C8A35C' },
-  { label: 'Green',  color: '#A6B89A' },
-  { label: 'White',  color: '#FFFFFF' },
-  { label: 'Purple', color: '#7A4F8E' },
-  { label: 'Red',    color: '#7A1F2B' },
-  { label: 'Pink',   color: '#F5DCE2' },
-  { label: 'Beige',  color: '#F5EFE3' },
-  { label: 'Orange', color: '#E89B5C' },
-  { label: 'Black',  color: '#1A1A1A' },
-]
 
 function applyFilters(products: Product[], f: CommittedFilters): Product[] {
   return products.filter((p) => {
@@ -77,15 +62,6 @@ function applyFilters(products: Product[], f: CommittedFilters): Product[] {
         if (!isNaN(low) && price < low) return false
         if (!isNaN(high) && price > high) return false
       }
-    }
-    // Color filter — match selected theme hex values against product swatches
-    if (f.colors.length > 0) {
-      const productSwatches = new Set((p.swatches ?? []).map((s) => s.toLowerCase()))
-      const matchedAny = f.colors.some((label) => {
-        const hex = COLOR_THEMES.find((c) => c.label === label)?.color.toLowerCase()
-        return hex ? productSwatches.has(hex) : false
-      })
-      if (!matchedAny) return false
     }
     return true
   })
@@ -412,39 +388,6 @@ function RadioRow({
   )
 }
 
-function ColorSwatchPicker({
-  options,
-  selected,
-  onToggle,
-}: {
-  options: { label: string; color: string }[]
-  selected: Set<string>
-  onToggle: (label: string) => void
-}) {
-  return (
-    <div className="flex flex-wrap gap-2.5">
-      {options.map((o) => {
-        const isOn = selected.has(o.label)
-        return (
-          <button
-            key={o.label}
-            type="button"
-            onClick={() => onToggle(o.label)}
-            title={o.label}
-            aria-label={o.label}
-            aria-pressed={isOn}
-            className={cn(
-              'h-7 w-7 rounded-full border transition',
-              isOn ? 'ring-2 ring-offset-1 ring-gray-900 border-white' : 'border-gray-300',
-            )}
-            style={{ backgroundColor: o.color }}
-          />
-        )
-      })}
-    </div>
-  )
-}
-
 function InvitationsFilterDrawer({
   filters,
   onApply,
@@ -461,7 +404,6 @@ function InvitationsFilterDrawer({
   const [styles, setStyles] = useState<Set<string>>(new Set(filters.styles))
   const [formats, setFormats] = useState<Set<string>>(new Set(filters.formats))
   const [printEdges, setPrintEdges] = useState<Set<string>>(new Set(filters.printEdges))
-  const [colors, setColors] = useState<Set<string>>(new Set(filters.colors))
   const [foil, setFoil] = useState(filters.foil)
   const [seasons, setSeasons] = useState<Set<string>>(new Set(filters.seasons))
   const [photoCount, setPhotoCount] = useState<Set<string>>(new Set(filters.photoCount))
@@ -491,7 +433,6 @@ function InvitationsFilterDrawer({
     setStyles(new Set())
     setFormats(new Set())
     setPrintEdges(new Set())
-    setColors(new Set())
     setFoil('any')
     setSeasons(new Set())
     setPhotoCount(new Set())
@@ -503,7 +444,6 @@ function InvitationsFilterDrawer({
       priceRange,
       customLow,
       customHigh,
-      colors: [...colors],
       styles: [...styles],
       formats: [...formats],
       printEdges: [...printEdges],
@@ -648,14 +588,6 @@ function InvitationsFilterDrawer({
             ))}
           </FilterSection>
 
-          <FilterSection title="Color theme">
-            <ColorSwatchPicker
-              options={COLOR_THEMES}
-              selected={colors}
-              onToggle={(label) => toggle(colors, label, setColors)}
-            />
-          </FilterSection>
-
           <FilterSection title="Foil">
             {FOIL_OPTIONS.map((f) => (
               <RadioRow
@@ -751,10 +683,6 @@ function ProductCard({
   favourited: boolean
   onToggleFavourite: () => void
 }) {
-  const [selectedSwatch, setSelectedSwatch] = useState(0)
-
-  const activePalette = product.palettes?.[selectedSwatch]
-
   return (
     <div className="group flex flex-col">
       <Link
@@ -765,7 +693,7 @@ function ProductCard({
           {product.imageUrl ? (
             <Image src={product.imageUrl} alt="" fill sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" className="object-cover" unoptimized />
           ) : (
-            <InvitationVisual treatment={product.treatment} palette={activePalette} />
+            <InvitationVisual treatment={product.treatment} />
           )}
         </span>
 
@@ -784,7 +712,7 @@ function ProductCard({
         </button>
 
       </Link>
-      <ProductInfo product={product} selectedSwatch={selectedSwatch} onSwatchSelect={setSelectedSwatch} />
+      <ProductInfo product={product} />
     </div>
   )
 }

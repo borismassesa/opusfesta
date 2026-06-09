@@ -87,10 +87,18 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
     const el = detailsRef.current
     if (!el) return
     const check = () => setDetailsOverflows(el.scrollHeight > el.clientHeight + 1)
-    check()
+    // Run after layout settles, and again once web fonts load — both change line
+    // wrapping/height, so an early check can miss (or over-report) the overflow.
+    const raf = requestAnimationFrame(check)
+    if (typeof document !== 'undefined' && 'fonts' in document) {
+      document.fonts.ready.then(check).catch(() => {})
+    }
     window.addEventListener('resize', check)
-    return () => window.removeEventListener('resize', check)
-  }, [detailsExpanded, product.name, product.designer])
+    return () => {
+      cancelAnimationFrame(raf)
+      window.removeEventListener('resize', check)
+    }
+  }, [detailsExpanded, product.name, product.designer, product.description])
 
   const digitalSubtotal = pricePerGuest * digitalQty
   const paperUnitPrice = PAPER_PRINT_UNIT_PRICE

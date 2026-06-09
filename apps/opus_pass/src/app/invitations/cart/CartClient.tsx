@@ -171,7 +171,7 @@ function RecommendCard({ product }: { product: CatalogProduct }) {
           <InvitationVisual treatment={product.treatment} palette={product.palettes?.[0]} />
         )}
       </Link>
-      <ProductInfo product={product} selectedSwatch={0} />
+      <ProductInfo product={product} />
     </div>
   )
 }

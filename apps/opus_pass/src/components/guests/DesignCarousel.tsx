@@ -27,9 +27,10 @@ export function DesignCarousel({
   const activeIndex = Math.min(active, Math.max(0, images.length - 1))
 
   return (
-    <div className="max-w-[520px]">
-      {/* Main view — 5:7 portrait to match the card proportions. */}
-      <div className="relative aspect-[5/7] bg-white rounded-md shadow-md overflow-hidden">
+    <div className="max-w-[800px]">
+      {/* Main view — 800×600 (4:3) frame. Width caps at 800px and scales down
+          responsively, keeping the 4:3 proportions at every size. */}
+      <div className="relative aspect-[4/3] w-full max-w-[800px] bg-white rounded-md shadow-md overflow-hidden">
         {images.length > 0 ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -70,7 +71,7 @@ export function DesignCarousel({
                 aria-pressed={isActive}
                 onClick={() => setActive(i)}
                 className={cn(
-                  'relative aspect-[5/7] rounded-sm overflow-hidden transition',
+                  'relative aspect-[4/3] rounded-sm overflow-hidden transition',
                   isActive ? 'ring-2 ring-gray-400 ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-400',
                 )}
               >
