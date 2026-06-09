@@ -683,6 +683,12 @@ function ProductCard({
   favourited: boolean
   onToggleFavourite: () => void
 }) {
+  // Card image: prefer the attached hero artwork, then fall back to the first
+  // designer-uploaded design, then the built-in CSS treatment. Products created
+  // via designer upload often have no `imageUrl` (only `designs`), so without
+  // this fallback their catalog card would show a blank placeholder.
+  const cardImage = product.imageUrl || product.designs?.[0]
+
   return (
     <div className="group flex flex-col">
       <Link
@@ -690,8 +696,8 @@ function ProductCard({
         className="relative block aspect-[3/4] overflow-hidden rounded-sm bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_16px_-8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_4px_8px_rgba(0,0,0,0.06),0_18px_32px_-12px_rgba(0,0,0,0.18)]"
       >
         <span className="absolute inset-0">
-          {product.imageUrl ? (
-            <Image src={product.imageUrl} alt="" fill sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" className="object-cover" unoptimized />
+          {cardImage ? (
+            <Image src={cardImage} alt="" fill sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" className="object-cover" unoptimized />
           ) : (
             <InvitationVisual treatment={product.treatment} />
           )}

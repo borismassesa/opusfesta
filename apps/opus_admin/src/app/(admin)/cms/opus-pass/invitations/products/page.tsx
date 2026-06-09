@@ -95,7 +95,7 @@ export default async function InvitationProductsListPage({
                       <Link href={`${BASE}/${p.id}`} className="flex items-center gap-3 group">
                         <div className="w-10 h-12 rounded-md overflow-hidden bg-gray-100 shrink-0 ring-1 ring-gray-200">
                           {(() => {
-                            const thumb = (Array.isArray(p.designs) ? p.designs.find(Boolean) : '') || p.image_url
+                            const thumb = p.image_url || (Array.isArray(p.designs) ? p.designs.find(Boolean) : '')
                             return thumb ? (
                               // eslint-disable-next-line @next/next/no-img-element
                               <img

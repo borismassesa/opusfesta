@@ -168,12 +168,29 @@ export default function ProductEditor({
             </Field>
           </Card>
 
-          {/* Card designs */}
+          {/* Hero card — the catalog & landing cover (portrait) */}
+          <Card title="Hero card">
+            <p className="text-[11px] text-gray-500 -mt-2">
+              The portrait cover shown on the catalog grid and landing page. Upload it at a{' '}
+              <strong>3:4 portrait ratio</strong> (taller than wide) — this is separate from the
+              detail-page carousel below, which is landscape.
+            </p>
+            <ImageUploadField
+              label="Hero image"
+              value={product.image_url}
+              onChange={(v) => set('image_url', v)}
+              pathPrefix={IMAGE_PREFIX}
+              previewAspect="aspect-[3/4]"
+              previewWidth="max-w-[160px]"
+              accept="image"
+            />
+          </Card>
+
+          {/* Card designs — the detail-page carousel (landscape 800×600) */}
           <Card title="Card designs">
             <p className="text-[11px] text-gray-500 -mt-2">
-              Upload up to {MAX_DESIGNS} finished card images (PNG, JPG, WebP or SVG). They appear on the
-              product page in a carousel — design them at a 5:7 portrait ratio so they fill the frame cleanly.
-              The first design is the hero shown in the catalog.
+              Up to {MAX_DESIGNS} images for the carousel on the card <em>details</em> page. Design these at{' '}
+              <strong>800 × 600 (4:3 landscape)</strong> so they fill the carousel frame cleanly.
             </p>
             <DesignsEditor value={product.designs} onChange={(v) => set('designs', v)} />
           </Card>
@@ -233,12 +250,12 @@ function DesignsEditor({ value, onChange }: { value: string[]; onChange: (v: str
         <div key={i} className="flex items-start gap-2 rounded-lg border border-gray-100 p-2">
           <div className="flex-1">
             <ImageUploadField
-              label={i === 0 ? 'Design 1 (hero)' : `Design ${i + 1}`}
+              label={`Design ${i + 1}`}
               value={url}
               onChange={(v) => update(i, v)}
               pathPrefix={IMAGE_PREFIX}
-              previewAspect="aspect-[5/7]"
-              previewWidth="max-w-[120px]"
+              previewAspect="aspect-[4/3]"
+              previewWidth="max-w-[200px]"
               accept="image"
             />
           </div>

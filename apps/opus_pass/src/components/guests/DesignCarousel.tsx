@@ -6,36 +6,50 @@ import { cn } from '@/lib/utils'
 import { assetPath } from '@/lib/asset-path'
 import { InvitationVisual, COUPLE_DEFAULT, type Treatment } from '@/components/guests/InvitationVisual'
 
-// Shows the designer-uploaded card images for a product. Designs are finished
-// artwork (PNG/JPG/WebP/SVG) authored at the 5:7 card ratio, so each fills a
-// 5:7 frame via object-cover. A thumbnail strip switches the active design.
-// When a product has no uploaded designs yet, it falls back to the built-in
-// CSS `treatment` so legacy products still render.
+// Product detail carousel. Two kinds of slide, each shown at its own ratio:
+//   • hero    — the portrait card cover (3:4), also used on the catalog/landing
+//   • designs — landscape "mockup" views authored at 800×600 (4:3)
+// The main frame adapts to the active slide's orientation so neither is cropped
+// or distorted (object-cover fills exactly because the artwork matches the
+// frame ratio). Falls back to the built-in CSS `treatment` when nothing is set.
+type Slide = { url: string; portrait: boolean }
+
 export function DesignCarousel({
+  hero,
   designs,
   treatment,
   favourited = false,
   onFavourite,
 }: {
+  hero?: string
   designs: string[]
   treatment: Treatment
   favourited?: boolean
   onFavourite?: () => void
 }) {
-  const images = designs.filter(Boolean)
+  const slides: Slide[] = [
+    ...(hero ? [{ url: hero, portrait: true }] : []),
+    ...designs.filter(Boolean).map((url) => ({ url, portrait: false })),
+  ]
   const [active, setActive] = useState(0)
-  const activeIndex = Math.min(active, Math.max(0, images.length - 1))
+  const activeIndex = Math.min(active, Math.max(0, slides.length - 1))
+  const activeSlide = slides[activeIndex]
+  const isPortrait = activeSlide?.portrait ?? false
 
   return (
-    <div className="max-w-[800px]">
-      {/* Main view — 800×600 (4:3) frame. Width caps at 800px and scales down
-          responsively, keeping the 4:3 proportions at every size. */}
-      <div className="relative aspect-[4/3] w-full max-w-[800px] bg-white rounded-md shadow-md overflow-hidden">
-        {images.length > 0 ? (
+    <div className={cn('mx-auto w-full transition-[max-width] duration-200', isPortrait ? 'max-w-[480px]' : 'max-w-[800px]')}>
+      {/* Main view — portrait (3:4) for the hero, landscape 800×600 (4:3) for designs. */}
+      <div
+        className={cn(
+          'relative w-full bg-white rounded-md shadow-md overflow-hidden',
+          isPortrait ? 'aspect-[3/4]' : 'aspect-[4/3]',
+        )}
+      >
+        {activeSlide ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={assetPath(images[activeIndex])}
-            alt={`Card design ${activeIndex + 1}`}
+            src={assetPath(activeSlide.url)}
+            alt={isPortrait ? 'Card design' : `Card view ${activeIndex + 1}`}
             className="absolute inset-0 h-full w-full object-cover"
           />
         ) : (
@@ -55,28 +69,25 @@ export function DesignCarousel({
         )}
       </div>
 
-      {/* Thumbnail strip — only when there's more than one design to switch between. */}
-      {images.length > 1 && (
-        <div
-          className="mt-4 grid gap-2"
-          style={{ gridTemplateColumns: `repeat(${images.length}, minmax(0, 1fr))` }}
-        >
-          {images.map((url, i) => {
-            const isActive = i === activeIndex
+      {/* Thumbnail strip — uniform squares so portrait + landscape sit in one tidy row. */}
+      {slides.length > 1 && (
+        <div className="mt-4 flex flex-wrap gap-2">
+          {slides.map((slide, i) => {
+            const thumbActive = i === activeIndex
             return (
               <button
-                key={`${url}-${i}`}
+                key={`${slide.url}-${i}`}
                 type="button"
-                aria-label={`View design ${i + 1}`}
-                aria-pressed={isActive}
+                aria-label={slide.portrait ? 'View card design' : `View card view ${i + 1}`}
+                aria-pressed={thumbActive}
                 onClick={() => setActive(i)}
                 className={cn(
-                  'relative aspect-[4/3] rounded-sm overflow-hidden transition',
-                  isActive ? 'ring-2 ring-gray-400 ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-400',
+                  'relative h-16 w-16 shrink-0 rounded-sm overflow-hidden transition',
+                  thumbActive ? 'ring-2 ring-gray-400 ring-offset-2' : 'ring-1 ring-gray-200 hover:ring-gray-400',
                 )}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={assetPath(url)} alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <img src={assetPath(slide.url)} alt="" className="absolute inset-0 h-full w-full object-cover" />
               </button>
             )
           })}

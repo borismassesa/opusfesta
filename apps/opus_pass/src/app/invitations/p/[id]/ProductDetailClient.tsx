@@ -28,12 +28,11 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
   const router = useRouter()
   const { addItem } = useCart()
 
-  // Designer-uploaded card images, shown in the detail carousel at 5:7. Falls
-  // back to the legacy hero/gallery artwork for products not migrated yet.
-  const designImages =
-    product.designs && product.designs.length > 0
-      ? product.designs
-      : ([product.imageUrl, ...(product.gallery ?? [])].filter(Boolean) as string[])
+  // Detail carousel = the portrait hero card (image_url) followed by the
+  // landscape 800×600 "mockup" design views (designs[]). Each renders at its
+  // own ratio inside DesignCarousel.
+  const heroImage = product.imageUrl
+  const designViews = product.designs ?? []
 
   // Number of cards (= guests). Minimum 100; pricing is per-guest × this count.
   const MIN_CARDS = 100
@@ -181,7 +180,8 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
           {/* ─── LEFT: card + details — pinned; scrolls internally (no visible bar) if taller than the viewport ─── */}
           <div className="hide-scrollbar space-y-8 lg:sticky lg:top-[4rem] lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto">
             <DesignCarousel
-              designs={designImages}
+              hero={heroImage}
+              designs={designViews}
               treatment={product.treatment}
               favourited={favourited}
               onFavourite={() => setFavourited((v) => !v)}
