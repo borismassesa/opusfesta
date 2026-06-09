@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { assetPath } from '@/lib/asset-path'
@@ -36,21 +36,68 @@ export function DesignCarousel({
   const activeSlide = slides[activeIndex]
   const isPortrait = activeSlide?.portrait ?? false
 
+  // Measure each slide's true aspect ratio so the frame matches the real artwork
+  // — some "design" views are portrait, not the assumed 800×600 landscape.
+  const [ratios, setRatios] = useState<Record<number, number>>({})
+
+  // Preload every slide up front: this measures all ratios before the user
+  // switches (so a switch animates straight to the correct size in ONE move,
+  // never a default→measured snap) and warms the cache for an instant crossfade.
+  const slideKey = useMemo(() => slides.map((s) => s.url).join('|'), [slides])
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    slides.forEach((slide, i) => {
+      const img = new window.Image()
+      img.onload = () => {
+        if (img.naturalWidth && img.naturalHeight)
+          setRatios((prev) => (prev[i] ? prev : { ...prev, [i]: img.naturalWidth / img.naturalHeight }))
+      }
+      img.src = assetPath(slide.url)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slideKey])
+
+  const activeRatio = ratios[activeIndex] ?? (isPortrait ? 3 / 4 : 4 / 3)
+  // Landscape fills up to 800px wide (→ 600px tall at 4:3); portrait is bounded
+  // by height (~640px) so tall cards don't dominate. Clamp to a sane width.
+  const maxWidthPx =
+    activeRatio >= 1 ? 800 : Math.min(800, Math.max(320, Math.round(640 * activeRatio)))
+
+  // Crossfade the artwork on switch so the resize reads as one smooth, intentional
+  // motion rather than a hard cut. We fade out, then fade the new slide back in.
+  const [shown, setShown] = useState(true)
+  useEffect(() => {
+    setShown(false)
+    const raf = requestAnimationFrame(() => setShown(true))
+    return () => cancelAnimationFrame(raf)
+  }, [activeIndex])
+
   return (
-    <div className={cn('mx-auto w-full transition-[max-width] duration-200', isPortrait ? 'max-w-[480px]' : 'max-w-[800px]')}>
-      {/* Main view — portrait (3:4) for the hero, landscape 800×600 (4:3) for designs. */}
+    <div
+      className="mx-auto w-full transition-[max-width] duration-300 ease-out"
+      style={{ maxWidth: maxWidthPx }}
+    >
+      {/* Main view — the frame matches the active design's real aspect ratio, so
+          neither portrait nor landscape artwork is cropped or distorted. The size
+          eases and the image crossfades so switching slides feels smooth. */}
       <div
-        className={cn(
-          'relative w-full bg-white rounded-md shadow-md overflow-hidden',
-          isPortrait ? 'aspect-[3/4]' : 'aspect-[4/3]',
-        )}
+        className="relative w-full bg-white rounded-md shadow-md overflow-hidden transition-[aspect-ratio] duration-300 ease-out"
+        style={{ aspectRatio: String(activeRatio) }}
       >
         {activeSlide ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={assetPath(activeSlide.url)}
             alt={isPortrait ? 'Card design' : `Card view ${activeIndex + 1}`}
-            className="absolute inset-0 h-full w-full object-cover"
+            onLoad={(e) => {
+              const { naturalWidth: w, naturalHeight: h } = e.currentTarget
+              if (w && h)
+                setRatios((prev) => (prev[activeIndex] ? prev : { ...prev, [activeIndex]: w / h }))
+            }}
+            className={cn(
+              'absolute inset-0 h-full w-full object-cover transition-opacity duration-300 ease-out',
+              shown ? 'opacity-100' : 'opacity-0',
+            )}
           />
         ) : (
           <InvitationVisual treatment={treatment} couple={COUPLE_DEFAULT} />

@@ -6,6 +6,7 @@ import { loadInvitationsStyleStripContent } from '@/lib/cms/invitations-style-st
 import { loadInvitationsExploreStylesContent } from '@/lib/cms/invitations-explore-styles'
 import { loadInvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-free-website-promo'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
+import { loadPackagesContent, packageFromPrice } from '@/lib/cms/packages'
 import InvitationsCatalogClient from './InvitationsCatalogClient'
 
 // CMS-driven page: ISR safety net so published changes appear on the public
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
 }
 
 export default async function InvitationsCatalogPage() {
-  const [{ isEnabled: isDraft }, products, promoBanner, styleStrip, exploreStyles, freeWebsitePromo] =
+  const [{ isEnabled: isDraft }, products, promoBanner, styleStrip, exploreStyles, freeWebsitePromo, packages] =
     await Promise.all([
       draftMode(),
       loadInvitationProducts(),
@@ -28,12 +29,14 @@ export default async function InvitationsCatalogPage() {
       loadInvitationsStyleStripContent(),
       loadInvitationsExploreStylesContent(),
       loadInvitationsFreeWebsitePromoContent(),
+      loadPackagesContent(),
     ])
   return (
     <>
       {isDraft && <PreviewBanner />}
       <InvitationsCatalogClient
         products={products}
+        fromGuestPrice={packageFromPrice(packages)}
         promoBanner={promoBanner}
         styleStrip={styleStrip}
         exploreStyles={exploreStyles}

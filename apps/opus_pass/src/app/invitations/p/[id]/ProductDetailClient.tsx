@@ -1,15 +1,18 @@
 'use client'
 
-import { useEffect, useId, useRef, useState } from 'react'
+import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Check, ChevronDown, ChevronRight, Crown, Diamond, Sparkles } from 'lucide-react'
+import { ArrowRight, Check, ChevronDown, ChevronRight, Crown, Diamond, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
+import DOMPurify from 'dompurify'
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { DesignCarousel } from '@/components/guests/DesignCarousel'
+import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { CatalogProduct } from '@/data/invitations-products'
 import type { PackagesContent } from '@/lib/cms/packages'
+import { packageFromPrice } from '@/lib/cms/packages-pricing'
 import { useCart } from '@/components/providers/CartProvider'
 
 // Pricing model:
@@ -23,6 +26,26 @@ const DOOR_SCAN_SERVICE_PRICE = 50000 // TZS — flat per event (on-site scannin
 const PAPER_PRINT_UNIT_PRICE = 2000 // TZS per printed card
 const PAPER_MIN_QTY = 10
 
+// Product descriptions authored in the admin are rich HTML (TipTap); older ones
+// are plain text. Detect HTML so each is rendered appropriately.
+const containsHtml = (s: string): boolean => /<\/?[a-z][\s\S]*?>/i.test(s)
+
+// Up-to-two-letter initials from the designer name for the avatar fallback.
+const designerInitials = (name: string): string => {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  const initials = parts.slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('')
+  return initials || '★'
+}
+
+// Strip tags for a safe, escaped plain-text fallback (used during SSR before the
+// client-side sanitizer runs). Rendered as React text, so it's never injected.
+const stripTags = (s: string): string => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+
+// Allowlist for the rendered description — only the marks/nodes the editor emits.
+const DESCRIPTION_SANITIZE = {
+  ALLOWED_TAGS: ['p', 'br', 'strong', 'b', 'em', 'i', 's', 'u', 'ul', 'ol', 'li', 'a'],
+  ALLOWED_ATTR: ['href', 'target', 'rel'],
+}
 
 export default function ProductDetailClient({ product, allProducts, packages }: { product: CatalogProduct; allProducts: CatalogProduct[]; packages: PackagesContent }) {
   const router = useRouter()
@@ -45,6 +68,9 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
   )
   const tier = packages.tiers.find((t) => t.id === selectedTier) ?? packages.tiers[0]
   const pricePerGuest = tier?.price_per_guest ?? 0
+  // Lowest per-guest package price — the "From TZS X per guest" anchor on the
+  // similar-designs footer (replaces the retired per-card price).
+  const fromGuestPrice = packageFromPrice(packages)
 
   // Hide the sticky breadcrumb once scrolling reaches the "Explore similar designs" section.
   const similarRef = useRef<HTMLElement>(null)
@@ -78,9 +104,21 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
 
   // Details "Read more" — the toggle only appears when the text actually overflows
   // its clamped height, so short descriptions show no button.
-  const detailsRef = useRef<HTMLParagraphElement>(null)
+  const detailsRef = useRef<HTMLDivElement>(null)
   const [detailsExpanded, setDetailsExpanded] = useState(false)
   const [detailsOverflows, setDetailsOverflows] = useState(false)
+
+  // Rich-text description rendering. DOMPurify needs a DOM, so we only sanitize
+  // after mount (client-side); during SSR / first paint we show an escaped
+  // plain-text version, then swap to the sanitized HTML — no hydration mismatch.
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  const description = product.description?.trim() ?? ''
+  const descriptionIsHtml = containsHtml(description)
+  const sanitizedDescription = useMemo(
+    () => (mounted && descriptionIsHtml ? DOMPurify.sanitize(description, DESCRIPTION_SANITIZE) : null),
+    [mounted, descriptionIsHtml, description],
+  )
   useEffect(() => {
     if (detailsExpanded) return // keep the toggle visible once expanded
     const el = detailsRef.current
@@ -97,7 +135,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
       cancelAnimationFrame(raf)
       window.removeEventListener('resize', check)
     }
-  }, [detailsExpanded, product.name, product.designer, product.description])
+  }, [detailsExpanded, product.name, product.designer, product.description, mounted, sanitizedDescription])
 
   const digitalSubtotal = pricePerGuest * digitalQty
   const paperUnitPrice = PAPER_PRINT_UNIT_PRICE
@@ -177,8 +215,10 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
       {/* Main 2-column layout */}
       <div className="px-4 sm:px-6 pt-6 sm:pt-8 pb-12 sm:pb-16">
         <div className="mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
-          {/* ─── LEFT: card + details — pinned; scrolls internally (no visible bar) if taller than the viewport ─── */}
-          <div className="hide-scrollbar space-y-8 lg:sticky lg:top-[4rem] lg:max-h-[calc(100vh-5.5rem)] lg:overflow-y-auto">
+          {/* ─── LEFT: card + description — pinned to the top of the column. No
+              height clamp/internal scroll, so a tall portrait card never clips
+              the description below it (the page scrolls naturally instead). ─── */}
+          <div className="space-y-8 lg:sticky lg:top-[4rem]">
             <DesignCarousel
               hero={heroImage}
               designs={designViews}
@@ -187,37 +227,77 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
               onFavourite={() => setFavourited((v) => !v)}
             />
 
-            {/* Details — below the card */}
+            {/* Description — below the card */}
             <div className="border-t border-gray-200 pt-5">
-              <p className="text-[15px] font-medium text-gray-900 mb-2">Details</p>
-              <div className="text-[14px] text-gray-700 leading-relaxed">
-                <p ref={detailsRef} className={cn('whitespace-pre-line', !detailsExpanded && 'line-clamp-4')}>
-                  {product.description?.trim()
-                    ? product.description
-                    : `${product.name} is a ${product.designer} signature design, sent digitally to every guest by WhatsApp or SMS.`}
-                </p>
+              <p className="text-[15px] font-medium text-gray-900 mb-2">Description</p>
+              <div className="max-w-[720px] text-[14px] leading-[1.8] text-[#4B5563]">
+                {!description ? (
+                  // Auto-generated fallback when no description is set.
+                  <div ref={detailsRef} className={cn('whitespace-pre-line', !detailsExpanded && 'max-h-[5.4em] overflow-hidden')}>
+                    {`${product.name} is a ${product.designer} signature design, sent digitally to every guest by WhatsApp or SMS.`}
+                  </div>
+                ) : sanitizedDescription !== null ? (
+                  // Rich text from the admin TipTap editor — sanitized client-side,
+                  // so bullet lists, bold, and links render properly (not literal "*").
+                  <div
+                    ref={detailsRef}
+                    className={cn(
+                      'space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:underline [&_a]:text-emerald-700 [&_strong]:font-semibold',
+                      !detailsExpanded && 'max-h-[5.4em] overflow-hidden',
+                    )}
+                    dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
+                  />
+                ) : (
+                  // SSR / pre-sanitize fallback (HTML) and legacy plain-text both
+                  // render as escaped text — never injected as markup.
+                  <div ref={detailsRef} className={cn('whitespace-pre-line', !detailsExpanded && 'max-h-[5.4em] overflow-hidden')}>
+                    {descriptionIsHtml ? stripTags(description) : description}
+                  </div>
+                )}
                 {detailsOverflows && (
-                  <button
-                    type="button"
-                    onClick={() => setDetailsExpanded((v) => !v)}
-                    aria-expanded={detailsExpanded}
-                    className="mt-1.5 text-[13px] font-semibold text-gray-900 underline underline-offset-2 hover:text-gray-600"
-                  >
-                    {detailsExpanded ? 'Read less' : 'Read more'}
-                  </button>
+                  <div className="mt-3">
+                    <button
+                      type="button"
+                      onClick={() => setDetailsExpanded((v) => !v)}
+                      aria-expanded={detailsExpanded}
+                      className="group inline-flex items-center gap-1.5 text-[13px] font-semibold uppercase tracking-[0.08em] text-[#7A4F8E] transition-colors hover:text-[#5E3D6E]"
+                    >
+                      {detailsExpanded ? 'Read Less' : 'Read More'}
+                      <ArrowRight
+                        size={15}
+                        className={cn(
+                          'transition-transform group-hover:translate-x-0.5',
+                          detailsExpanded && '-rotate-90',
+                        )}
+                        aria-hidden="true"
+                      />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
+
           </div>
 
           {/* ─── RIGHT: scrollable configurator ─── */}
           <div className="space-y-7">
             {/* Title block */}
             <div>
+              <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-gray-500 mb-2">{product.category}</p>
               <h1 className="text-2xl md:text-3xl lg:text-[34px] font-serif font-medium text-gray-900 leading-tight">
                 {product.name}
               </h1>
-              <p className="mt-1.5 text-[13px] font-medium text-gray-500">{product.category}</p>
+
+              {/* Designer — "by [avatar] Name" */}
+              <div className="mt-3.5 flex items-center gap-2 text-[13px] text-gray-500">
+                <span>by</span>
+                <Avatar className="size-7 ring-1 ring-gray-200">
+                  <AvatarFallback className="bg-gradient-to-br from-[#ECDDF7] to-[#E1E8F0] text-[11px] font-bold text-[#5A4A6A]">
+                    {designerInitials(product.designer)}
+                  </AvatarFallback>
+                </Avatar>
+                <span className="font-semibold text-gray-900">{product.designer}</span>
+              </div>
             </div>
 
             {/* Package selector — price is per guest, design-independent */}
@@ -567,7 +647,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                   <p className="mt-2.5 text-[11px] uppercase tracking-[0.18em] text-gray-500">{p.designer}</p>
                   <p className="mt-0.5 text-[14px] font-bold text-gray-900 leading-snug line-clamp-2">{p.name}</p>
                   <p className="mt-1 text-[13px] text-gray-700">
-                    From TZS {p.digitalUnitPrice.toLocaleString('en-US')} per digital card
+                    From TZS {fromGuestPrice.toLocaleString('en-US')} per guest
                   </p>
                 </Link>
               ))}

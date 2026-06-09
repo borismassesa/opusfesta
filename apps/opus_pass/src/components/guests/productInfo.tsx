@@ -18,9 +18,12 @@ export type Product = {
   priceWas?: number
   priceNow: number
   /**
-   * Optional — TZS per digital card. When set, ProductInfo shows this as the
-   * primary price ("From TZS X per card") instead of the paper per-pack price.
-   * Catalog products always set this; editorial/feature products may omit it.
+   * Optional — marks this as a digital catalog product. When set (alongside a
+   * `fromGuestPrice`), ProductInfo shows the per-guest package "from" price
+   * instead of the paper per-pack price. The value itself is no longer
+   * displayed (pricing is per-guest, not per-card); only its presence selects
+   * the digital branch. Catalog products always set it; editorial/feature
+   * products omit it and fall back to paper per-pack pricing.
    */
   digitalUnitPrice?: number
   swatches: string[]
@@ -29,9 +32,12 @@ export type Product = {
 export function ProductInfo({
   product,
   href,
+  fromGuestPrice,
 }: {
   product: Product
   href?: string
+  /** Lowest per-guest package price — see `packageFromPrice`. Shown as the digital "from" anchor. */
+  fromGuestPrice?: number
 }) {
   const unitNow = Math.round(product.priceNow / PACK_QTY / 10) * 10
   const unitWas = product.priceWas
@@ -52,13 +58,14 @@ export function ProductInfo({
         )}
       </p>
 
-      {/* Pricing — digital per-card is primary when present; falls back to paper per-pack */}
-      {product.digitalUnitPrice ? (
+      {/* Pricing — digital per-guest package "from" price is primary for catalog
+          products; editorial/feature products fall back to paper per-pack. */}
+      {product.digitalUnitPrice && fromGuestPrice ? (
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-[15px] sm:text-[16px] font-bold text-[#1A1A1A]">
-            From TZS {product.digitalUnitPrice.toLocaleString('en-US')}
+            From TZS {fromGuestPrice.toLocaleString('en-US')}
           </span>
-          <span className="text-[11px] text-[#1A1A1A]/60">per digital card</span>
+          <span className="text-[11px] text-[#1A1A1A]/60">per guest</span>
         </div>
       ) : (
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">

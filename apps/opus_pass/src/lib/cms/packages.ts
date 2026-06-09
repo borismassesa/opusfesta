@@ -142,6 +142,11 @@ export const PACKAGES_FALLBACK: PackagesContent = {
   ],
 }
 
+// Re-exported for server-side callers that already import from this module.
+// Defined in a sibling so client components can import it without pulling in
+// this file's server-only `next/headers` dependency.
+export { packageFromPrice } from './packages-pricing'
+
 export async function loadPackagesContent(): Promise<PackagesContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return PACKAGES_FALLBACK
