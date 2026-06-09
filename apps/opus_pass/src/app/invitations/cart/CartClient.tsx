@@ -151,7 +151,7 @@ function GuestStepper({ value, onChange }: { value: number; onChange: (n: number
 }
 
 // Compact cross-sell card — mirrors the catalog ProductCard look (5:7, hover lift).
-function RecommendCard({ product }: { product: CatalogProduct }) {
+function RecommendCard({ product, fromGuestPrice }: { product: CatalogProduct; fromGuestPrice?: number }) {
   return (
     <div className="group/rec flex flex-col">
       <Link
@@ -171,14 +171,14 @@ function RecommendCard({ product }: { product: CatalogProduct }) {
           <InvitationVisual treatment={product.treatment} palette={product.palettes?.[0]} />
         )}
       </Link>
-      <ProductInfo product={product} />
+      <ProductInfo product={product} fromGuestPrice={fromGuestPrice} />
     </div>
   )
 }
 
 // "You might also like" — leads with designs in the same categories as the cart,
 // then pads with other designs; falls back to a general selection when empty.
-function ExploreMore({ products }: { products: CatalogProduct[] }) {
+function ExploreMore({ products, fromGuestPrice }: { products: CatalogProduct[]; fromGuestPrice?: number }) {
   const { items } = useCart()
 
   const recommended = useMemo(() => {
@@ -218,14 +218,14 @@ function ExploreMore({ products }: { products: CatalogProduct[] }) {
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4">
         {recommended.map((product) => (
-          <RecommendCard key={product.id} product={product} />
+          <RecommendCard key={product.id} product={product} fromGuestPrice={fromGuestPrice} />
         ))}
       </div>
     </section>
   )
 }
 
-export default function CartClient({ products = [] }: { products?: CatalogProduct[] }) {
+export default function CartClient({ products = [], fromGuestPrice }: { products?: CatalogProduct[]; fromGuestPrice?: number }) {
   const { items, subtotal, removeItem, setGuests } = useCart()
   // Digital product — prices are final (VAT-inclusive) and delivery is free.
   const discount = 0
@@ -431,7 +431,7 @@ export default function CartClient({ products = [] }: { products?: CatalogProduc
           </div>
         </div>
 
-        <ExploreMore products={products} />
+        <ExploreMore products={products} fromGuestPrice={fromGuestPrice} />
       </div>
     </main>
   )

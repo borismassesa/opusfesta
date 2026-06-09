@@ -78,6 +78,7 @@ const AUTO_LOAD_BATCHES = 2
 
 export default function InvitationsCatalogClient({
   products = [],
+  fromGuestPrice,
   title = 'Wedding Invitations',
   subtitle = 'A handpicked edit of digital invitation designs, browse by style.',
   promoBanner,
@@ -86,6 +87,8 @@ export default function InvitationsCatalogClient({
   freeWebsitePromo,
 }: {
   products?: Product[]
+  /** Lowest per-guest package price — the "From TZS X per guest" card anchor. */
+  fromGuestPrice?: number
   title?: string
   subtitle?: string
   promoBanner: InvitationsPromoBannerContent
@@ -189,6 +192,7 @@ export default function InvitationsCatalogClient({
           </div>
           <ProductGrid
             products={visibleProducts}
+            fromGuestPrice={fromGuestPrice}
             favourites={favourites}
             onToggleFavourite={toggleFavourite}
           />
@@ -653,10 +657,12 @@ function InvitationsFilterDrawer({
 
 function ProductGrid({
   products,
+  fromGuestPrice,
   favourites,
   onToggleFavourite,
 }: {
   products: Product[]
+  fromGuestPrice?: number
   favourites: Set<string>
   onToggleFavourite: (id: string) => void
 }) {
@@ -666,6 +672,7 @@ function ProductGrid({
         <ProductCard
           key={product.id}
           product={product}
+          fromGuestPrice={fromGuestPrice}
           favourited={favourites.has(product.id)}
           onToggleFavourite={() => onToggleFavourite(product.id)}
         />
@@ -676,10 +683,12 @@ function ProductGrid({
 
 function ProductCard({
   product,
+  fromGuestPrice,
   favourited,
   onToggleFavourite,
 }: {
   product: Product
+  fromGuestPrice?: number
   favourited: boolean
   onToggleFavourite: () => void
 }) {
@@ -718,7 +727,7 @@ function ProductCard({
         </button>
 
       </Link>
-      <ProductInfo product={product} />
+      <ProductInfo product={product} fromGuestPrice={fromGuestPrice} />
     </div>
   )
 }

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft, Loader2, Plus, Save, Trash2 } from 'lucide-react'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { RichTextField } from '@/components/cms/RichTextField'
 import {
   PRODUCT_CATEGORIES,
   slugifyProductName,
@@ -152,17 +153,15 @@ export default function ProductEditor({
             </div>
           </Card>
 
-          {/* Details */}
-          <Card title="Details">
+          {/* Description */}
+          <Card title="Description">
             <Field
               label="Description"
-              hint="Shown as the “Details” paragraph under the card on the product page. Leave empty to auto-generate from the name and designer."
+              hint="Shown as the “Description” section under the card on the product page. Use the toolbar for bold, lists, and links. Leave empty to auto-generate from the name and designer."
             >
-              <textarea
+              <RichTextField
                 value={product.description}
-                onChange={(e) => set('description', e.target.value)}
-                rows={4}
-                className={`${inputCls} resize-y`}
+                onChange={(html) => set('description', html)}
                 placeholder="Botanical Frame is a Bagamoyo Press signature design — hand-illustrated foliage framing your names. Sent digitally to every guest by WhatsApp or SMS."
               />
             </Field>
