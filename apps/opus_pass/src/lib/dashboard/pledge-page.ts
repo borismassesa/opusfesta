@@ -148,7 +148,8 @@ export interface PledgePaymentMethod {
 /** Common providers offered in the editor (the couple can also type any label). */
 export const PAYMENT_PROVIDERS = [
   'M-Pesa',
-  'Tigo Pesa',
+  'Mixx by Yas',
+  'Selcom Pesa',
   'Airtel Money',
   'HaloPesa',
   'CRDB Bank',

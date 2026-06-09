@@ -10,6 +10,7 @@ type ProductRow = {
   name: string
   designer: string
   category: string
+  description: string | null
   price_was: number | null
   price_now: number
   digital_unit_price: number
@@ -20,6 +21,7 @@ type ProductRow = {
   image_url: string | null
   back_image_url: string | null
   gallery: string[] | null
+  designs: string[] | null
   published: boolean
   sort_order: number
 }
@@ -32,6 +34,7 @@ function rowToProduct(row: ProductRow): CatalogProduct {
     category:         row.category,
     name:             row.name,
     designer:         row.designer,
+    description:      row.description?.trim() || undefined,
     priceWas:         row.price_was ?? undefined,
     priceNow:         row.price_now,
     digitalUnitPrice: row.digital_unit_price,
@@ -42,6 +45,7 @@ function rowToProduct(row: ProductRow): CatalogProduct {
     imageUrl,
     designImage:      imageUrl,
     gallery:          Array.isArray(row.gallery) ? row.gallery.filter(Boolean) : [],
+    designs:          Array.isArray(row.designs) ? row.designs.filter(Boolean) : [],
   }
 }
 
@@ -56,22 +60,6 @@ export async function loadInvitationProducts(): Promise<CatalogProduct[]> {
     .order('name', { ascending: true })
   if (error) throw error
   return (data as ProductRow[]).map(rowToProduct)
-}
-
-export type MockupCarouselScene = { id: string; label: string | null; url: string }
-
-export async function loadMockupCarouselScenes(): Promise<MockupCarouselScene[]> {
-  const supabase = createSupabaseServerClient()
-  const { data, error } = await supabase
-    .from('website_cms_mockup_carousel')
-    .select('scene, label, url')
-    .order('sort_order', { ascending: true })
-  if (error) throw error
-  return (data ?? []).map((row: Record<string, unknown>) => ({
-    id: row.scene as string,
-    label: (row.label as string | null) ?? null,
-    url: (row.url as string) || '',
-  }))
 }
 
 /** A single published product by id. */

@@ -61,7 +61,7 @@ const sections: LegalSection[] = [
         Email{' '}
         <a href="mailto:support@opusfesta.com">support@opusfesta.com</a> or message us on WhatsApp with
         your order details. Approved refunds are returned to your original payment method (M-Pesa, Airtel
-        Money, Tigo Pesa, or card) within 7&ndash;14 business days.
+        Money, Mixx by Yas, Selcom Pesa, Visa, or Mastercard) within 7&ndash;14 business days.
       </p>
     ),
   },

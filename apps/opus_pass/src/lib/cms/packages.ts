@@ -2,7 +2,9 @@ import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Per-guest wedding packages (Lite / Classic / Signature).
+//  Per-guest wedding packages (Essential / Elegant / Signature).
+//  Note: tier `id`s remain 'lite' | 'classic' | 'signature' as stable internal keys
+//  (feature-matrix columns, ticket art, cart accents); only display names changed.
 //  Pricing is per guest × guest count; the chosen invitation design is a separate
 //  styling axis. Bilingual (English + Kiswahili). Source: New_OpusPass_Packages.xlsx.
 //  Stored as a single CMS config — page_key 'opus-pass-packages', section_key
@@ -73,9 +75,9 @@ export const PACKAGES_FALLBACK: PackagesContent = {
   note: 'Events above 600 guests get a capped, discounted per-guest rate.',
   note_sw: 'Matukio ya wageni zaidi ya 600 yanapata bei ya punguzo (kikomo).',
   tiers: [
-    { id: 'lite', name: 'Lite', name_sw: 'Lite', featured: false, price_per_guest: 2000, best_for: 'Small / budget events', best_for_sw: 'Matukio madogo / bajeti nafuu' },
-    { id: 'classic', name: 'Classic', name_sw: 'Classic', featured: true, price_per_guest: 3000, best_for: 'Most weddings', best_for_sw: 'Harusi nyingi' },
-    { id: 'signature', name: 'Signature', name_sw: 'Signature', featured: false, price_per_guest: 5000, best_for: 'Premium & high-profile', best_for_sw: 'Hafla za kifahari' },
+    { id: 'lite', name: 'Essential', name_sw: 'Essential', featured: false, price_per_guest: 1500, best_for: 'Everything you need', best_for_sw: 'Kila unachohitaji' },
+    { id: 'classic', name: 'Elegant', name_sw: 'Elegant', featured: true, price_per_guest: 2500, best_for: 'More customization & style', best_for_sw: 'Ubinafsishaji na mtindo zaidi' },
+    { id: 'signature', name: 'Signature', name_sw: 'Signature', featured: false, price_per_guest: 4000, best_for: 'Premium, exclusive experience', best_for_sw: 'Hali ya kifahari, ya kipekee' },
   ],
   features: [
     // ── Included in every package ──

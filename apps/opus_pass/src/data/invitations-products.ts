@@ -8,6 +8,8 @@ import type { Product as BaseProduct } from '@/components/guests/productInfo'
 export type CatalogProduct = BaseProduct & {
   designer: string
   freeSample?: boolean
+  /** Editable "Details" paragraph shown under the card. Empty → auto-generated copy. */
+  description?: string
   treatment: Treatment
   /** TZS per digital card (the primary product). */
   digitalUnitPrice: number
@@ -17,6 +19,8 @@ export type CatalogProduct = BaseProduct & {
   imageUrl?: string
   /** Extra attached card views shown in the gallery. */
   gallery?: string[]
+  /** Designer-uploaded finished card images (max 5), shown in the detail carousel at 5:7. */
+  designs?: string[]
   /** Structured invite content. When set, overrides the category-derived default. */
   content?: InvitationContent
   /** SVG used by the card renderer — set to imageUrl at load time. */

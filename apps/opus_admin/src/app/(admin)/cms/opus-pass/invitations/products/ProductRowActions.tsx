@@ -47,8 +47,8 @@ export default function ProductRowActions({ id, name }: Props) {
       <button
         type="button"
         onClick={handleDelete}
-        title="Delete product"
-        aria-label="Delete product"
+        title="Delete card"
+        aria-label="Delete card"
         className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
       >
         <Trash2 className="w-3.5 h-3.5" />

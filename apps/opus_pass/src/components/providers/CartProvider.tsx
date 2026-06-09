@@ -16,10 +16,17 @@ export type CartItem = {
   /** Tier id (lite/classic/signature) — drives the package pill colour. */
   tierId?: string
   guests?: number
+  /** Per-guest tier price (TZS) — lets the cart recompute the line when guests change. */
+  pricePerGuest?: number
+  /** Non-guest-scaling extras already included in `total` (paper prints, door-scan). */
+  extrasTotal?: number
   addOns?: string[]
   /** Line total in TZS. */
   total: number
 }
+
+/** Minimum guest count (matches the product page). */
+export const MIN_GUESTS = 100
 
 type CartContextValue = {
   items: CartItem[]
@@ -27,6 +34,8 @@ type CartContextValue = {
   subtotal: number
   addItem: (item: CartItem) => void
   removeItem: (id: string) => void
+  /** Update a line's guest count and recompute its total. */
+  setGuests: (id: string, guests: number) => void
   clear: () => void
 }
 
@@ -68,6 +77,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     setItems((prev) => prev.filter((i) => i.id !== id))
   }, [])
 
+  const setGuests = useCallback((id: string, guests: number) => {
+    setItems((prev) =>
+      prev.map((i) => {
+        if (i.id !== id) return i
+        const g = Math.max(MIN_GUESTS, Math.round(guests) || MIN_GUESTS)
+        // Prefer the stored breakdown; fall back to deriving it for legacy items.
+        const perGuest = i.pricePerGuest ?? (i.guests ? Math.round(i.total / i.guests) : 0)
+        const extras = i.extrasTotal ?? 0
+        return { ...i, guests: g, total: Math.round(perGuest * g + extras) }
+      }),
+    )
+  }, [])
+
   const clear = useCallback(() => setItems([]), [])
 
   const value = useMemo<CartContextValue>(
@@ -77,9 +99,10 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       subtotal: items.reduce((sum, i) => sum + i.total, 0),
       addItem,
       removeItem,
+      setGuests,
       clear,
     }),
-    [items, addItem, removeItem, clear],
+    [items, addItem, removeItem, setGuests, clear],
   )
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>

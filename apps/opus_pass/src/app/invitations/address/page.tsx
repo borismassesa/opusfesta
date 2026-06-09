@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Smartphone, Mail, AlertCircle, Check, Printer } from 'lucide-react'
+import { Smartphone, Mail, AlertCircle, Check, Printer, ArrowRight } from 'lucide-react'
 import CheckoutStepper from '@/components/invitations/CheckoutStepper'
 import { getContact, setContact, type DeliveryMode } from '@/lib/cart-storage'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 
 const TANZANIA_CITIES = [
   'Dar es Salaam',
@@ -24,6 +27,10 @@ type Errors = Partial<Record<'fullName' | 'email' | 'phone' | 'streetLine', stri
 
 const PHONE_RE = /^\+?(?:[\d](?:[\s().-]?)){9,}$/
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+// Shared field chrome — mirrors the shadcn <Input> so <select>/<textarea> match.
+const FIELD =
+  'border-input bg-transparent shadow-xs flex w-full rounded-md border px-3 py-1 text-base outline-none transition-[color,box-shadow] focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] md:text-sm'
 
 function FieldError({ children }: { children: React.ReactNode }) {
   return (
@@ -125,26 +132,41 @@ export default function AddressPage() {
     router.push('/invitations/checkout')
   }
 
+  // What-to-expect checklist — adapts to the chosen delivery mode.
+  const expectations = [
+    'Instant order confirmation in your inbox',
+    'Your design personalised by our team within 24 hours',
+    'One free round of revisions to get every detail right',
+    'A shareable invitation link for WhatsApp, SMS & email',
+    'Live RSVP tracking as your guests respond',
+    'An OpusPass ticket with QR code — save it to Apple or Google Wallet and scan at the entrance',
+    ...(mode === 'print'
+      ? ['High-quality printed cards mailed to you in 7–14 days']
+      : []),
+  ]
+
   return (
-    <>
-      <main className="bg-gray-50 min-h-screen py-8">
-        <div className="max-w-7xl mx-auto px-4 lg:px-8">
-          <Link
-            href="/invitations/cart"
-            className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 mb-4"
-          >
-            ← Back to cart
-          </Link>
-          <CheckoutStepper current="contact" />
+    <main className="bg-gray-50 min-h-screen py-8">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8">
+        <Link
+          href="/invitations/cart"
+          className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-gray-900 mb-4"
+        >
+          ← Back to cart
+        </Link>
+        <CheckoutStepper current="contact" />
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 lg:gap-8">
-            <section className="bg-white rounded-2xl border border-gray-200 p-6 md:p-8">
-              <h1 className="text-2xl font-bold text-gray-900 mb-1">How should we deliver?</h1>
-              <p className="text-sm text-gray-600 mb-6">
+        <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6 lg:gap-8">
+          <Card className="border-0 shadow-[0_2px_12px_-6px_rgba(0,0,0,0.12)]">
+            <CardHeader className="gap-2">
+              <CardTitle className="text-2xl font-semibold">How should we deliver?</CardTitle>
+              <CardDescription className="text-sm">
                 Digital invitations are sent via WhatsApp and email. Printed cards are mailed to you.
-              </p>
+              </CardDescription>
+            </CardHeader>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-7">
+            <CardContent className="space-y-7">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <ModeCard
                   active={mode === 'digital'}
                   onClick={() => setMode('digital')}
@@ -163,52 +185,43 @@ export default function AddressPage() {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-1.5">
+                  <Label className="mb-1.5 text-gray-900">
                     Full name <span className="text-red-600">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="text"
                     value={fullName}
                     onChange={(e) => { setFullName(e.target.value); clearError('fullName') }}
                     placeholder="Mary Mwakasege"
                     aria-invalid={Boolean(errors.fullName)}
-                    className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
-                      errors.fullName ? 'border-red-500 focus:border-red-600' : 'border-gray-300 focus:border-gray-500'
-                    }`}
                   />
                   {errors.fullName && <FieldError>{errors.fullName}</FieldError>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-900 mb-1.5">
+                  <Label className="mb-1.5 text-gray-900">
                     Email address <span className="text-red-600">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="email"
                     value={email}
                     onChange={(e) => { setEmail(e.target.value); clearError('email') }}
                     placeholder="mary@example.com"
                     inputMode="email"
                     aria-invalid={Boolean(errors.email)}
-                    className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
-                      errors.email ? 'border-red-500 focus:border-red-600' : 'border-gray-300 focus:border-gray-500'
-                    }`}
                   />
                   {errors.email && <FieldError>{errors.email}</FieldError>}
                 </div>
                 <div className="sm:col-span-2">
-                  <label className="block text-sm font-medium text-gray-900 mb-1.5">
+                  <Label className="mb-1.5 text-gray-900">
                     WhatsApp / phone number <span className="text-red-600">*</span>
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="tel"
                     value={phone}
                     onChange={(e) => { setPhone(e.target.value); clearError('phone') }}
                     placeholder="+255 7xx xxx xxx"
                     inputMode="tel"
                     aria-invalid={Boolean(errors.phone)}
-                    className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
-                      errors.phone ? 'border-red-500 focus:border-red-600' : 'border-gray-300 focus:border-gray-500'
-                    }`}
                   />
                   {errors.phone && <FieldError>{errors.phone}</FieldError>}
                 </div>
@@ -216,13 +229,13 @@ export default function AddressPage() {
                 {mode === 'print' && (
                   <>
                     <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
+                      <Label className="mb-1.5 text-gray-900">
                         City / region <span className="text-red-600">*</span>
-                      </label>
+                      </Label>
                       <select
                         value={city}
                         onChange={(e) => setCity(e.target.value)}
-                        className="w-full h-11 rounded-md border border-gray-300 bg-white px-3 text-sm focus:outline-none focus:border-gray-500"
+                        className={`${FIELD} h-9 bg-white`}
                       >
                         {TANZANIA_CITIES.map((c) => (
                           <option key={c}>{c}</option>
@@ -230,31 +243,26 @@ export default function AddressPage() {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
+                      <Label className="mb-1.5 text-gray-900">
                         Street address <span className="text-red-600">*</span>
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         type="text"
                         value={streetLine}
                         onChange={(e) => { setStreetLine(e.target.value); clearError('streetLine') }}
                         placeholder="House number, street, building name…"
                         aria-invalid={Boolean(errors.streetLine)}
-                        className={`w-full h-11 rounded-md border px-3 text-sm focus:outline-none ${
-                          errors.streetLine ? 'border-red-500 focus:border-red-600' : 'border-gray-300 focus:border-gray-500'
-                        }`}
                       />
                       {errors.streetLine && <FieldError>{errors.streetLine}</FieldError>}
                     </div>
                     <div className="sm:col-span-2">
-                      <label className="block text-sm font-medium text-gray-900 mb-1.5">
-                        Delivery notes
-                      </label>
+                      <Label className="mb-1.5 text-gray-900">Delivery notes</Label>
                       <textarea
                         value={notes}
                         onChange={(e) => setNotes(e.target.value)}
                         placeholder="Gate code, landmarks, best time to call…"
                         rows={3}
-                        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-gray-500 resize-none"
+                        className={`${FIELD} min-h-20 resize-none py-2`}
                       />
                     </div>
                   </>
@@ -264,38 +272,33 @@ export default function AddressPage() {
               <button
                 type="button"
                 onClick={handleContinue}
-                className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full bg-[#1A1A1A] px-6 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.08em] text-white transition hover:bg-[#333]"
+                className="inline-flex w-full items-center justify-center gap-2 whitespace-nowrap rounded-full bg-(--accent) px-6 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.06em] text-(--on-accent) transition hover:bg-(--accent-hover)"
               >
                 Continue to payment
+                <ArrowRight size={15} className="shrink-0" />
               </button>
-            </section>
+            </CardContent>
+          </Card>
 
-            <aside className="space-y-5">
-              <div className="rounded-2xl bg-white border border-gray-200 p-5">
-                <h2 className="text-base font-bold text-gray-900 mb-3">What to expect</h2>
+          <aside className="space-y-5">
+            <Card className="border-0 shadow-[0_2px_12px_-6px_rgba(0,0,0,0.12)]">
+              <CardHeader>
+                <CardTitle className="text-xl font-semibold">What to expect</CardTitle>
+              </CardHeader>
+              <CardContent>
                 <ul className="space-y-2.5 text-sm text-gray-700">
-                  <li className="flex items-start gap-2.5">
-                    <Check size={16} className="mt-0.5 text-emerald-600 shrink-0" />
-                    Order confirmation sent immediately by email
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check size={16} className="mt-0.5 text-emerald-600 shrink-0" />
-                    Our design team polishes your card within 24 hours
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check size={16} className="mt-0.5 text-emerald-600 shrink-0" />
-                    One free round of revisions included
-                  </li>
-                  <li className="flex items-start gap-2.5">
-                    <Check size={16} className="mt-0.5 text-emerald-600 shrink-0" />
-                    Invitation links ready to share in WhatsApp
-                  </li>
+                  {expectations.map((item) => (
+                    <li key={item} className="flex items-start gap-2.5">
+                      <Check size={16} className="mt-0.5 text-emerald-600 shrink-0" />
+                      {item}
+                    </li>
+                  ))}
                 </ul>
-              </div>
-            </aside>
-          </div>
+              </CardContent>
+            </Card>
+          </aside>
         </div>
-      </main>
-    </>
+      </div>
+    </main>
   )
 }

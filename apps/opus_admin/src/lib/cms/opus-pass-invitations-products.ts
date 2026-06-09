@@ -55,6 +55,9 @@ export type InvitationProductRecord = {
   designer: string
   category: string
 
+  /** Short "Details" paragraph shown under the card on the product page. Falls back to auto-generated copy when empty. */
+  description: string
+
   /** Optional struck-through "before" total price (TZS). */
   price_was: number | null
   /** Current total price (TZS). */
@@ -75,6 +78,12 @@ export type InvitationProductRecord = {
   back_image_url: string
   /** Extra card views/scenes shown as gallery thumbnails. */
   gallery: string[]
+  /**
+   * Designer-uploaded finished card images (PNG/JPG/WebP/SVG), max 5, shown in
+   * the product detail carousel at the 5:7 card ratio. The primary card display —
+   * supersedes the legacy image_url/treatment/mockup compositing.
+   */
+  designs: string[]
 
   published: boolean
   sort_order: number
@@ -92,6 +101,7 @@ export function emptyInvitationProduct(
     name: '',
     designer: '',
     category: 'Wedding Invitations',
+    description: '',
     price_was: null,
     price_now: 0,
     digital_unit_price: 10000,
@@ -102,6 +112,7 @@ export function emptyInvitationProduct(
     image_url: '',
     back_image_url: '',
     gallery: [],
+    designs: [],
     published: true,
     sort_order: 0,
     created_at: new Date().toISOString(),

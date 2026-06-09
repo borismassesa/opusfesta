@@ -1,7 +1,11 @@
 'use client'
 
+import type { Treatment } from '@/components/guests/InvitationVisual'
+
 const CONTACT_KEY = 'opuspass.contact.v1'
 const ORDER_KEY = 'opuspass.lastOrder.v1'
+const ORDERS_KEY = 'opuspass.orders.v1'
+const ORDERS_MAX = 50
 
 export type DeliveryMode = 'digital' | 'print'
 
@@ -20,9 +24,17 @@ export type StoredOrderItem = {
   name: string
   summary: string
   total: number
+  /** Visual treatment for rendering a thumbnail on the confirmation page. */
+  treatment?: Treatment
+  /** Structured fields so the confirmation row mirrors the cart line item. */
+  tier?: string
+  tierId?: string
+  guests?: number
+  addOns?: string[]
 }
 
 export type StoredOrderContact = {
+  name?: string
   email: string
   phone: string
 }
@@ -30,11 +42,13 @@ export type StoredOrderContact = {
 export type StoredOrder = {
   ref: string
   paidAt: string
+  /** Wedding/event date (ISO), when known — surfaced on the invoice. */
+  eventDate?: string
   paymentLabel?: string
   contact: StoredOrderContact
   items: StoredOrderItem[]
   subtotal: number
-  vat: number
+  discount: number
   total: number
 }
 
@@ -73,17 +87,31 @@ function sanitizeOrderForStorage(order: StoredOrder): StoredOrder {
   return {
     ref: order.ref,
     paidAt: order.paidAt,
+    eventDate: order.eventDate,
     paymentLabel: order.paymentLabel,
     contact: order.contact,
     items: order.items,
     subtotal: order.subtotal,
-    vat: order.vat,
+    discount: order.discount,
     total: order.total,
   }
 }
 
 export function setLastOrder(order: StoredOrder): void {
-  write(ORDER_KEY, sanitizeOrderForStorage(order))
+  const clean = sanitizeOrderForStorage(order)
+  write(ORDER_KEY, clean)
+  // Maintain a newest-first order history (deduped by ref, capped).
+  const history = getOrders().filter((o) => o.ref !== clean.ref)
+  write(ORDERS_KEY, [clean, ...history].slice(0, ORDERS_MAX))
+}
+
+/** All past orders, newest first. */
+export function getOrders(): StoredOrder[] {
+  return read<StoredOrder[]>(ORDERS_KEY) ?? []
+}
+
+export function getOrder(ref: string): StoredOrder | undefined {
+  return getOrders().find((o) => o.ref === ref)
 }
 
 export function generateOrderRef(): string {

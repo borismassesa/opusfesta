@@ -254,8 +254,8 @@ export default function CustomiseClient({
   // Product palette selection
   const [paletteIndex, setPaletteIndex] = useState(0)
 
-  // Fetch design SVG client-side (mirrors MockupCarousel fallback) so basePath
-  // and Supabase storage URLs are resolved correctly in the browser.
+  // Fetch design SVG client-side so basePath and Supabase storage URLs are
+  // resolved correctly in the browser.
   // When no couple profile is present we also extract the SVG's existing text
   // to pre-populate the form fields with the template's placeholder values.
   const [designSvg, setDesignSvg] = useState<string | null>(null)

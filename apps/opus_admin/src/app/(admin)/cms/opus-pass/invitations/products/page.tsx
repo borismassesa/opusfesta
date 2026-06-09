@@ -14,15 +14,11 @@ const BASE = '/cms/opus-pass/invitations/products'
 
 type ListRow = Pick<
   InvitationProductRecord,
-  'id' | 'slug' | 'name' | 'designer' | 'category' | 'price_was' | 'price_now' |
-  'digital_unit_price' | 'treatment' | 'image_url' | 'published' | 'updated_at'
+  'id' | 'slug' | 'name' | 'designer' | 'category' |
+  'treatment' | 'image_url' | 'designs' | 'published' | 'updated_at'
 >
 
 type SearchParams = { q?: string; category?: string; page?: string }
-
-function tzs(n: number): string {
-  return `TZS ${n.toLocaleString('en-US')}`
-}
 
 export default async function InvitationProductsListPage({
   searchParams,
@@ -40,7 +36,7 @@ export default async function InvitationProductsListPage({
   let query = supabase
     .from('website_invitations_products')
     .select(
-      'id, slug, name, designer, category, price_was, price_now, digital_unit_price, treatment, image_url, published, updated_at',
+      'id, slug, name, designer, category, treatment, image_url, designs, published, updated_at',
       { count: 'exact' },
     )
     .order('sort_order', { ascending: true })
@@ -60,14 +56,14 @@ export default async function InvitationProductsListPage({
     <div className="py-2">
       <div className="flex items-center justify-between mb-4 gap-4">
         <p className="text-sm text-gray-500">
-          Invitation cards shown on /invitations and the product detail pages. {total} total.
+          Invitation cards shown on /invitations and the card detail pages. {total} total.
         </p>
         <Link
           href={`${BASE}/new`}
           className="flex items-center gap-2 text-sm font-semibold text-white bg-[#C9A0DC] hover:bg-[#b97fd0] px-4 py-2 rounded-lg transition-colors shrink-0"
         >
           <Plus className="w-4 h-4" />
-          New product
+          New card
         </Link>
       </div>
 
@@ -78,7 +74,7 @@ export default async function InvitationProductsListPage({
 
         {products.length === 0 ? (
           <div className="p-12 text-center text-sm text-gray-400">
-            {q || category ? 'No products match your filters.' : 'No products yet — create your first one.'}
+            {q || category ? 'No cards match your filters.' : 'No cards yet — create your first one.'}
           </div>
         ) : (
           <div className="overflow-x-auto">
@@ -88,8 +84,6 @@ export default async function InvitationProductsListPage({
                   <th className="text-left px-4 py-3">Card</th>
                   <th className="text-left px-4 py-3">Category</th>
                   <th className="text-left px-4 py-3">Designer</th>
-                  <th className="text-left px-4 py-3">Price</th>
-                  <th className="text-left px-4 py-3">Per card</th>
                   <th className="text-left px-4 py-3">Status</th>
                   <th className="text-right px-4 py-3 w-px">Actions</th>
                 </tr>
@@ -100,18 +94,21 @@ export default async function InvitationProductsListPage({
                     <td className="px-4 py-3">
                       <Link href={`${BASE}/${p.id}`} className="flex items-center gap-3 group">
                         <div className="w-10 h-12 rounded-md overflow-hidden bg-gray-100 shrink-0 ring-1 ring-gray-200">
-                          {p.image_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img
-                              src={resolveOpusPassAssetUrl(p.image_url)}
-                              alt=""
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <span className="flex h-full w-full items-center justify-center text-[8px] font-medium uppercase tracking-wide text-gray-400">
-                              CSS
-                            </span>
-                          )}
+                          {(() => {
+                            const thumb = (Array.isArray(p.designs) ? p.designs.find(Boolean) : '') || p.image_url
+                            return thumb ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={resolveOpusPassAssetUrl(thumb)}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="flex h-full w-full items-center justify-center text-[8px] font-medium uppercase tracking-wide text-gray-400">
+                                CSS
+                              </span>
+                            )
+                          })()}
                         </div>
                         <div className="min-w-0">
                           <p className="font-semibold text-gray-900 group-hover:text-[#7E5896] truncate">
@@ -123,15 +120,6 @@ export default async function InvitationProductsListPage({
                     </td>
                     <td className="px-4 py-3 text-gray-600">{p.category}</td>
                     <td className="px-4 py-3 text-gray-600">{p.designer}</td>
-                    <td className="px-4 py-3 text-gray-700 text-xs tabular-nums whitespace-nowrap">
-                      <span className="font-semibold">{tzs(p.price_now)}</span>
-                      {p.price_was ? (
-                        <span className="ml-1.5 text-gray-400 line-through">{tzs(p.price_was)}</span>
-                      ) : null}
-                    </td>
-                    <td className="px-4 py-3 text-gray-500 text-xs tabular-nums whitespace-nowrap">
-                      {tzs(p.digital_unit_price)}
-                    </td>
                     <td className="px-4 py-3">
                       {p.published ? (
                         <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-700">
