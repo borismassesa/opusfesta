@@ -213,7 +213,9 @@ function FeaturedSuite({ content }: { content: InvitationsFeaturedSuiteContent }
               <span className="h-px w-5 bg-[#5C6B4D]/40" />
             </span>
 
-            <h2 className="text-[2rem] sm:text-[2.6rem] md:text-5xl lg:text-[3.2rem] font-black uppercase tracking-tighter leading-[1] text-[#1A1A1A]">
+            {/* Clamp tracks the viewport so each CMS line stays a single line on
+                narrow phones instead of orphaning its last word */}
+            <h2 className="text-[clamp(1.35rem,6.8vw,2rem)] sm:text-[2.6rem] md:text-5xl lg:text-[3.2rem] font-black uppercase tracking-tighter leading-[1.05] sm:leading-[1] text-[#1A1A1A]">
               {content.headline_line_1}<br />
               {content.headline_line_2}
             </h2>
@@ -318,11 +320,13 @@ function EditorsPicks({ rows: cmsRows }: { rows: InvitationsEditorsPicksContent[
         {cmsRows.map((row) => (
           <div
             key={row.id}
-            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-8 sm:gap-x-6 sm:gap-y-10"
+            className="grid grid-cols-2 md:grid-cols-4 gap-x-3 gap-y-6 sm:gap-x-6 sm:gap-y-10"
           >
             {/* Title is always first in DOM order (mobile reads top-to-bottom);
-                on desktop, right-aligned rows move the title to the end via md:order-last */}
-            <div className={cn('sm:col-span-2 md:col-span-1', row.align === 'right' && 'md:order-last')}>
+                on desktop, right-aligned rows move the title to the end via md:order-last.
+                Two pick columns on phones keep the cards browsable without the
+                page stretching to ~12k px of single-column squares. */}
+            <div className={cn('col-span-2 md:col-span-1', row.align === 'right' && 'md:order-last')}>
               <EditorialTitleCell
                 title={
                   <>
