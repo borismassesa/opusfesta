@@ -11,6 +11,7 @@ import {
   PartyPopper,
   Wand2,
   Building2,
+  HelpCircle,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -42,7 +43,15 @@ export const VENDOR_CATEGORIES: VendorCategory[] = [
   { id: 'beauty', label: 'Beauty professional', profileLabel: 'Beauty pro', icon: Wand2 },
 ]
 
+export const OTHER_CATEGORY: VendorCategory = {
+  id: 'other',
+  label: 'Something else',
+  profileLabel: 'Other',
+  icon: HelpCircle,
+}
+
 export function findCategory(id: string | null | undefined): VendorCategory | undefined {
   if (!id) return undefined
+  if (id === 'other') return OTHER_CATEGORY
   return VENDOR_CATEGORIES.find((c) => c.id === id)
 }

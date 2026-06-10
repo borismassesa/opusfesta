@@ -41,6 +41,7 @@ const CATEGORY_TO_DB: Record<string, string> = {
   officiant: 'Officiants',
   beauty: 'Beauty & Makeup',
   extras: 'Decorators',
+  other: 'Other',
 }
 
 // Maps the onboarding payout-method tag to the v_b-lite enum.
@@ -118,7 +119,9 @@ function buildSnapshotLabels(draft: OnboardingDraft) {
   const services = draft.categoryId ? getServicesForCategory(draft.categoryId) : []
   const homeMarket = SERVICE_MARKETS.find((m) => m.id === draft.homeMarket)
   return {
-    category: draft.categoryId ? findCategory(draft.categoryId)?.profileLabel ?? null : null,
+    category: draft.categoryId === 'other'
+      ? (draft.customCategoryLabel || 'Other')
+      : (draft.categoryId ? findCategory(draft.categoryId)?.profileLabel ?? null : null),
     region: TZ_REGIONS.find((r) => r.code === draft.region)?.name ?? null,
     homeMarket: homeMarket?.name ?? null,
     serviceMarkets: draft.serviceMarkets
@@ -605,7 +608,9 @@ export async function submitApplication(
         vendorId,
         vendorCode: codeRow.data?.vendor_code ?? null,
         businessName: draft.businessName.trim(),
-        category: findCategory(draft.categoryId!)?.profileLabel ?? dbCategory,
+        category: draft.categoryId === 'other'
+          ? (draft.customCategoryLabel || 'Other')
+          : (findCategory(draft.categoryId!)?.profileLabel ?? dbCategory),
         region,
         city: draft.city.trim() || null,
         vendorContactEmail: draft.email?.trim() || email,

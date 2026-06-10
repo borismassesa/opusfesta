@@ -99,6 +99,7 @@ export type ReschedulePolicy = 'one-free' | 'unlimited' | 'none' | null
 
 export type OnboardingDraft = {
   categoryId: string | null
+  customCategoryLabel: string
   vowsAccepted: boolean
   firstName: string
   lastName: string
@@ -190,6 +191,7 @@ function storageKey(userId: string): string {
 
 const EMPTY: OnboardingDraft = {
   categoryId: null,
+  customCategoryLabel: '',
   vowsAccepted: false,
   firstName: '',
   lastName: '',
