@@ -377,11 +377,14 @@ export async function acceptInvitation(input: AcceptInvitationInput): Promise<Ac
   }
 
   // Pull the role so we can write the correct Clerk metadata.
-  const { data: roleRow } = await supabase
+  const { data: roleRow, error: roleError } = await supabase
     .from('workforce_roles')
     .select('slug, permission_keys')
     .eq('id', invite.role_id)
     .maybeSingle<{ slug: string; permission_keys: string[] }>()
+  if (roleError) {
+    console.warn('[workforce-invitations] could not fetch role during accept', roleError)
+  }
   const legacyRole = legacyRoleBucket(roleRow?.slug ?? '', roleRow?.permission_keys ?? [])
 
   // Pull the freshly-signed-up Clerk user so we can cache their profile
