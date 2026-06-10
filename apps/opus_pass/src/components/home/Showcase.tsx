@@ -14,16 +14,19 @@ import {
 // the floating pills attach to a card by their `slot` (also that index).
 type CardSlot = { i: number; aspect: string }
 
+// Column stagger offsets shrink on phones: the cards there are ~120px wide, so
+// the desktop offsets (mt-52 = 208px) would leave a dead gap taller than the
+// cards themselves.
 const COLUMNS: { className: string; cards: CardSlot[]; hasCaption?: boolean }[] = [
-  { className: 'flex mt-52', cards: [{ i: 0, aspect: 'aspect-[3/4]' }] },
+  { className: 'flex mt-20 sm:mt-52', cards: [{ i: 0, aspect: 'aspect-[3/4]' }] },
   {
-    className: 'flex mt-4',
+    className: 'flex mt-2 sm:mt-4',
     cards: [
       { i: 1, aspect: 'aspect-[4/5]' },
       { i: 2, aspect: 'aspect-[4/5]' },
     ],
   },
-  { className: 'flex mt-24', cards: [{ i: 3, aspect: 'aspect-[2/3]' }], hasCaption: true },
+  { className: 'flex mt-10 sm:mt-24', cards: [{ i: 3, aspect: 'aspect-[2/3]' }], hasCaption: true },
   {
     className: 'hidden sm:flex mt-0',
     cards: [
@@ -61,9 +64,9 @@ function VisitPill({ pill, delay }: { pill: HomepageShowcasePill; delay: string 
         style={
           { '--pill-delay': delay, '--pill-dur': '8s', backgroundColor: pill.color, color: fg } as CSSProperties
         }
-        className="animate-pill-pop inline-flex items-center gap-1.5 rounded-full px-4 py-2.5 text-sm font-bold shadow-[0_12px_30px_-8px_rgba(0,0,0,0.45)] ring-1 ring-black/[0.05]"
+        className="animate-pill-pop inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[11px] font-bold shadow-[0_12px_30px_-8px_rgba(0,0,0,0.45)] ring-1 ring-black/[0.05] sm:gap-1.5 sm:px-4 sm:py-2.5 sm:text-sm"
       >
-        <ArrowUpRight className="h-4 w-4" />
+        <ArrowUpRight className="h-3 w-3 sm:h-4 sm:w-4" />
         {pill.label}
       </span>
     </span>
@@ -175,25 +178,27 @@ export async function Showcase() {
               })}
 
               {col.hasCaption ? (
+                // Hidden on phones: this column bleeds off the right edge there,
+                // so the caption would render clipped and unreadable.
                 <div
-                  className="animate-pill-pop mt-1 px-1"
+                  className="animate-pill-pop mt-1 hidden px-1 sm:block"
                   style={{ '--pill-dur': '7s' } as CSSProperties}
                 >
-                  <h3 className="text-lg font-bold leading-tight tracking-tight text-[#1A1A1A] sm:text-xl">
+                  <h3 className="text-sm font-bold leading-tight tracking-tight text-[#1A1A1A] sm:text-xl">
                     {content.caption.title}
                   </h3>
-                  <div className="mt-3 flex items-center gap-3">
+                  <div className="mt-2 flex items-center gap-2 sm:mt-3 sm:gap-3">
                     <span
-                      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-extrabold text-[#1A1A1A]"
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-extrabold text-[#1A1A1A] sm:h-9 sm:w-9 sm:text-sm"
                       style={{ backgroundColor: content.accent_color }}
                     >
                       {content.caption.badge}
                     </span>
                     <span className="leading-tight">
-                      <span className="block text-sm font-bold text-[#1A1A1A]">
+                      <span className="block text-xs font-bold text-[#1A1A1A] sm:text-sm">
                         {content.caption.by}
                       </span>
-                      <span className="block text-sm text-[#1A1A1A]/65">{content.caption.brand}</span>
+                      <span className="block text-xs text-[#1A1A1A]/65 sm:text-sm">{content.caption.brand}</span>
                     </span>
                   </div>
                 </div>

@@ -52,6 +52,13 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
   const line1Head = line1LastSpace === -1 ? '' : line1.slice(0, line1LastSpace + 1)
   const line1LastWord = line1LastSpace === -1 ? line1 : line1.slice(line1LastSpace + 1)
 
+  // Keep the ⚡ glued to line 2's last word so it can never orphan onto its
+  // own line on narrow screens.
+  const line2 = HERO.headline_line_2.trim()
+  const line2LastSpace = line2.lastIndexOf(' ')
+  const line2Head = line2LastSpace === -1 ? '' : line2.slice(0, line2LastSpace + 1)
+  const line2LastWord = line2LastSpace === -1 ? line2 : line2.slice(line2LastSpace + 1)
+
   // Drop blank entries an editor may have added — an empty avatar src would
   // otherwise crash next/image, taking down both the home and /websites pages.
   const avatarList = (HERO.avatars ?? []).filter((s) => s.trim())
@@ -66,7 +73,7 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
   const hasHalf = ratingNum - fullStars >= 0.5
 
   return (
-    <section className="px-2 sm:px-3 pt-10 sm:pt-14 md:pt-16">
+    <section className="px-4 sm:px-6 pt-10 sm:pt-14 md:pt-16">
       <div className="mx-auto max-w-5xl text-center">
         {/* Trust badge — avatar cluster + star rating */}
         <div className="flex items-center justify-center gap-3">
@@ -74,7 +81,7 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
             {avatars.map((src, i) => (
               <span
                 key={`${src}-${i}`}
-                className="relative inline-block h-9 w-9 sm:h-10 sm:w-10 overflow-hidden rounded-full ring-2 ring-white shadow-sm"
+                className="relative inline-block h-8 w-8 sm:h-10 sm:w-10 overflow-hidden rounded-full ring-2 ring-white shadow-sm"
                 style={{ zIndex: avatars.length - i }}
               >
                 <Image src={src} alt="" fill sizes="40px" className="object-cover" />
@@ -89,59 +96,89 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
                 aria-label={`Rated ${ratingValue} out of 5`}
               >
                 {Array.from({ length: fullStars }).map((_, i) => (
-                  <Star key={i} size={15} className="fill-current" strokeWidth={0} />
+                  <Star key={i} className="h-3.5 w-3.5 sm:h-[15px] sm:w-[15px] fill-current" strokeWidth={0} />
                 ))}
-                {hasHalf && <StarHalf size={15} className="fill-current" strokeWidth={0} />}
+                {hasHalf && <StarHalf className="h-3.5 w-3.5 sm:h-[15px] sm:w-[15px] fill-current" strokeWidth={0} />}
               </div>
-              <span className="text-[13px] font-extrabold text-[#1A1A1A]">{ratingValue}</span>
+              <span className="text-[12px] sm:text-[13px] font-extrabold text-[#1A1A1A]">{ratingValue}</span>
             </div>
-            <p className="mt-0.5 text-[12px] sm:text-[13px] leading-tight text-[#1A1A1A]/70">
+            <p className="mt-0.5 text-[11px] sm:text-[13px] leading-tight text-[#1A1A1A]/70">
               Trusted by <span className="font-extrabold text-[#1A1A1A]">{trustCount}</span> couples
             </p>
           </div>
         </div>
 
-        {/* Headline — line 1's last word carries the underline accent, line 2 the ⚡ */}
-        <h1 className="mt-7 sm:mt-8 text-[2.1rem] sm:text-[3rem] md:text-[3.6rem] lg:text-[4rem] font-black tracking-tight leading-[1.08] text-[#1A1A1A]">
+        {/* Headline — line 1's last word carries the underline accent, line 2 the ⚡.
+            Base size tracks the viewport (clamp) so both lines survive narrow
+            phones without wrapping into 3–4 lines. */}
+        <h1 className="mt-6 sm:mt-8 text-[clamp(1.5rem,7.6vw,2.1rem)] sm:text-[3rem] md:text-[3.6rem] lg:text-[4rem] font-black tracking-tight leading-[1.12] sm:leading-[1.08] text-[#1A1A1A]">
           {line1Head}
-          <span className="underline decoration-[#1A1A1A] decoration-[6px] underline-offset-[8px]">
+          <span className="underline decoration-[#1A1A1A] decoration-4 sm:decoration-[6px] underline-offset-4 sm:underline-offset-[8px]">
             {line1LastWord}
           </span>
           <br />
-          {HERO.headline_line_2}{' '}
-          <span aria-hidden>⚡</span>
+          {line2Head}
+          <span className="whitespace-nowrap">
+            {line2LastWord}&nbsp;<span aria-hidden>⚡</span>
+          </span>
         </h1>
 
         {/* Subheading */}
-        <p className="mx-auto mt-6 sm:mt-7 max-w-2xl text-[16px] sm:text-[18px] md:text-[19px] leading-[1.7] text-[#1A1A1A]/70">
+        <p className="mx-auto mt-5 sm:mt-7 max-w-2xl text-[14px] sm:text-[18px] md:text-[19px] leading-[1.65] sm:leading-[1.7] text-[#1A1A1A]/70">
           {HERO.description}
         </p>
 
-        {/* CTAs */}
-        <div className="mt-9 sm:mt-10 flex flex-wrap items-center justify-center gap-x-4 gap-y-3">
+        {/* CTAs — one row on phones (equal halves so any label length fits),
+            auto-width inline pair from sm: up */}
+        <div className="mt-7 sm:mt-10 flex items-center justify-center gap-2.5 sm:flex-wrap sm:gap-x-4 sm:gap-y-3">
           <Link
             href={HERO.primary_cta_href}
-            className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3 text-[13px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
+            className="inline-flex flex-1 items-center justify-center whitespace-nowrap rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-4 py-2.5 sm:flex-initial sm:px-7 sm:py-3 text-[12px] sm:text-[14px] font-extrabold uppercase tracking-[0.1em]"
           >
             {HERO.primary_cta_label}
           </Link>
           <Link
             href={HERO.secondary_cta_href}
-            className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-6 py-3 text-[13px] sm:text-[14px] font-semibold text-[#1A1A1A] hover:border-gray-300 hover:bg-gray-50"
+            className="inline-flex flex-1 items-center justify-center gap-1.5 whitespace-nowrap rounded-full border border-gray-200 bg-white px-4 py-2.5 sm:flex-initial sm:px-6 sm:py-3 text-[12px] sm:text-[14px] font-semibold text-[#1A1A1A] hover:border-gray-300 hover:bg-gray-50"
           >
             {HERO.secondary_cta_label}
-            <ArrowRight size={15} aria-hidden="true" />
+            <ArrowRight className="h-3.5 w-3.5 sm:h-[15px] sm:w-[15px]" aria-hidden="true" />
           </Link>
         </div>
 
         {/* As featured in — left-aligned label beside the press wordmarks,
-            rising over a sparkle horizon */}
-        <div className="relative mt-12 sm:mt-14">
+            rising over a sparkle horizon. On phones the wordmarks become an
+            edge-faded marquee strip instead of wrapping into ragged rows. */}
+        <div className="relative mt-10 sm:mt-14">
           <div className="relative z-10 flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-x-8">
-            <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#1A1A1A]/40">
+            <p className="shrink-0 text-[10px] sm:text-[11px] font-semibold uppercase tracking-[0.18em] text-[#1A1A1A]/40">
               As featured in
             </p>
-            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:gap-x-10">
+
+            {/* Phones: marquee. Tripled list + the project's marquee keyframe
+                (translateX −33.333%) loop seamlessly; trailing pr-8 matches
+                gap-x-8 so the seam is invisible. */}
+            <div className="w-full overflow-hidden [mask-image:linear-gradient(to_right,transparent,white_15%,white_85%,transparent)] sm:hidden">
+              <div
+                className="flex w-max animate-marquee items-center gap-x-8 pr-8 motion-reduce:animate-none"
+                style={{ animationDuration: '18s' }}
+              >
+                {[...featured, ...featured, ...featured].map((name, i) => (
+                  <span
+                    key={`${name}-${i}`}
+                    className={cn(
+                      'whitespace-nowrap text-base text-[#1A1A1A]/40',
+                      FEATURED_STYLES[i % FEATURED_STYLES.length],
+                    )}
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* sm+: the original static row */}
+            <div className="hidden flex-wrap items-center justify-center gap-x-8 gap-y-3 sm:flex sm:gap-x-10">
               {featured.map((name, i) => (
                 <span
                   key={`${name}-${i}`}
@@ -159,7 +196,7 @@ export function LandingHero({ content: HERO }: { content: LandingHeroContent }) 
           {/* Sparkle horizon — violet particles rising in the "sky" above a
               softly glowing curved horizon. The white "ground" below the curve
               clips the lower sparkles so the horizon line stays clean. */}
-          <div className="pointer-events-none relative -mt-2 h-64 w-full overflow-hidden [mask-image:radial-gradient(65%_65%,white,transparent)] sm:h-72">
+          <div className="pointer-events-none relative -mt-2 h-48 w-full overflow-hidden [mask-image:radial-gradient(65%_65%,white,transparent)] sm:h-72">
             <div className="absolute inset-0 before:absolute before:inset-0 before:bg-[radial-gradient(circle_at_bottom_center,var(--gradient-color),transparent_70%)] before:opacity-45" />
             <SparkleField
               density={700}

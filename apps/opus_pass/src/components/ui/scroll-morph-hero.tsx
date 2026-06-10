@@ -229,7 +229,7 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
                 : { opacity: 0, filter: 'blur(10px)' }
             }
             transition={{ duration: 1 }}
-            className="text-2xl font-semibold tracking-tight text-gray-800 md:text-4xl"
+            className="max-w-[190px] text-xl font-semibold tracking-tight text-gray-800 sm:max-w-none sm:text-2xl md:text-4xl"
           >
             {hero.intro_headline}
           </motion.h1>
@@ -242,17 +242,19 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
             }
             transition={{ duration: 0.9, delay: 0.15 }}
             style={{ pointerEvents: introPhase === 'circle' && morphValue < 0.4 ? 'auto' : 'none' }}
-            className="mt-7 flex flex-wrap items-center justify-center gap-3"
+            className="mt-5 flex flex-col items-center justify-center gap-2 sm:mt-7 sm:flex-row sm:flex-wrap sm:gap-3"
           >
+            {/* Stacked + compact on phones so the pair stays inside the ring's
+                ~200px inner hole; side-by-side from sm: up */}
             <Link
               href={hero.primary_cta_href}
-              className="inline-flex items-center rounded-full bg-[#1A1A1A] px-7 py-3 text-sm font-bold text-white transition-colors hover:bg-black"
+              className="inline-flex items-center rounded-full bg-[#1A1A1A] px-5 py-2 text-xs font-bold text-white transition-colors hover:bg-black sm:px-7 sm:py-3 sm:text-sm"
             >
               {hero.primary_cta_label}
             </Link>
             <Link
               href={hero.secondary_cta_href}
-              className="inline-flex items-center rounded-full border border-[#1A1A1A]/20 bg-white px-7 py-3 text-sm font-bold text-[#1A1A1A] transition-colors hover:border-[#1A1A1A]"
+              className="inline-flex items-center rounded-full border border-[#1A1A1A]/20 bg-white px-5 py-2 text-xs font-bold text-[#1A1A1A] transition-colors hover:border-[#1A1A1A] sm:px-7 sm:py-3 sm:text-sm"
             >
               {hero.secondary_cta_label}
             </Link>
