@@ -394,11 +394,13 @@ export default function ReviewPage() {
             </div>
           ) : null}
           <div className="flex items-center gap-6">
-            <p className="flex-1 min-w-0 text-sm text-gray-600 leading-relaxed">
+            {/* On phones the lead text squeezes into a sliver next to the
+                button, so it's hidden and the button takes the full width. */}
+            <p className="hidden sm:block flex-1 min-w-0 text-sm text-gray-600 leading-relaxed">
               <span className="text-gray-900 font-semibold">
                 {isEdit ? 'Save your changes.' : 'Ready when you are.'}
               </span>{' '}
-              <span className="hidden sm:inline">
+              <span>
                 {isEdit
                   ? 'We’ll update your storefront — you’ll stay exactly where you are in the process.'
                   : 'Once you submit, we’ll ask for a couple of documents to verify your business.'}
@@ -409,7 +411,7 @@ export default function ReviewPage() {
               onClick={onSubmit}
               disabled={submitting}
               className={
-                'group shrink-0 inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px disabled:shadow-none disabled:hover:translate-y-0'
+                'group shrink-0 inline-flex w-full sm:w-auto items-center justify-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px disabled:shadow-none disabled:hover:translate-y-0'
               }
             >
               {submitting ? (

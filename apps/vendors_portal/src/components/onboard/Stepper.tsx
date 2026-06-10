@@ -80,19 +80,34 @@ export function Stepper({
         Math.max(8, ((steps.findIndex((s) => s.key === current) + 0.5) / steps.length) * 100)
       : (completedCount / steps.length) * 100
 
+  const activeIndex = steps.findIndex((s) => s.key === current)
+  const activeStep = activeIndex >= 0 ? steps[activeIndex] : null
+
   return (
     <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
-      <div className="relative px-6 lg:px-12 py-4 flex items-center justify-center overflow-x-auto">
+      <div className="relative px-4 sm:px-6 lg:px-12 py-4 flex items-center justify-center">
         <Link
           href="/"
           aria-label="OpusFesta home"
-          className="absolute left-6 lg:left-12 top-1/2 -translate-y-1/2 shrink-0"
+          className="absolute left-4 sm:left-6 lg:left-12 top-1/2 -translate-y-1/2 shrink-0"
         >
           <Logo className="h-7 w-auto text-gray-900" />
         </Link>
 
+        {/* Phones: the full step row collides with the logo, so show a
+            compact "Step n of 4 · label" indicator instead. The progress
+            bar below still conveys overall completion. */}
+        {activeStep ? (
+          <p className="sm:hidden ml-auto min-w-0 max-w-[55%] text-xs font-semibold text-gray-900 text-right">
+            Step {activeIndex + 1} of {steps.length}
+            <span className="block truncate font-medium text-gray-500">
+              {activeStep.label}
+            </span>
+          </p>
+        ) : null}
+
         <ol
-          className="flex items-center gap-1 lg:gap-2 text-sm"
+          className="hidden sm:flex items-center gap-1 lg:gap-2 text-sm"
           aria-label="Onboarding progress"
         >
           {steps.map((step, i) => {
@@ -167,9 +182,11 @@ function StepItem({
   )
 
   const text = (
+    // Hidden below lg: between 640px and 1024px the circles alone fit next
+    // to the absolutely-positioned logo; full labels need the wide header.
     <span
       className={cn(
-        'whitespace-nowrap transition-colors duration-200',
+        'hidden lg:inline whitespace-nowrap transition-colors duration-200',
         isActive && 'text-gray-900 font-semibold',
         isComplete && 'text-emerald-700 font-semibold',
         !isActive && !isComplete && 'text-gray-400 font-medium',
