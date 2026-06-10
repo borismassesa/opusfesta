@@ -34,7 +34,16 @@ export async function downloadInvoice(order: StoredOrder): Promise<void> {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(order),
       })
-      if (!res.ok) throw new Error(`invoice api ${res.status}`)
+      if (!res.ok) {
+        // The form fallback would hit the same server error invisibly — tell
+        // the user instead. (Network exceptions still fall through: the form
+        // POST goes via the browser's own navigation stack, which can succeed
+        // where fetch is blocked.)
+        toast.error('Could not download the invoice', {
+          description: 'Please try again, or contact us on WhatsApp at +255 799 242 475.',
+        })
+        return
+      }
       const blob = await res.blob()
       const file = new File([blob], filename, { type: 'application/pdf' })
       if (navigator.canShare({ files: [file] })) {

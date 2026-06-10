@@ -65,9 +65,14 @@ async function readPayload(req: NextRequest): Promise<unknown> {
   if (contentType.includes('application/x-www-form-urlencoded') || contentType.includes('multipart/form-data')) {
     const form = await req.formData()
     const raw = form.get('order')
-    return typeof raw === 'string' ? JSON.parse(raw) : null
+    if (typeof raw !== 'string' || raw.length > MAX_BODY_BYTES) return null
+    return JSON.parse(raw)
   }
-  return req.json()
+  // Read as text first so the size cap holds even for chunked requests that
+  // omit Content-Length (the header check below is advisory only).
+  const text = await req.text()
+  if (text.length > MAX_BODY_BYTES) return null
+  return JSON.parse(text)
 }
 
 export async function POST(req: NextRequest) {
