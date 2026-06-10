@@ -71,9 +71,26 @@ const PRICING_FAQS: { id: string; q: string; a: string }[] = [
 ]
 
 export default async function PricingPage() {
-  const { tiers, features, note } = await loadPackagesContent()
-  const included = features.filter((f) => f.group === 'included')
-  const upgrades = features.filter((f) => f.group === 'upgrade')
+  const { tiers, note } = await loadPackagesContent()
+
+  // Reconstruct a comparison matrix from each tier's bullet list: the union of
+  // all bullet labels (in tier order), with each tier's value = its emphasis
+  // note, "Yes" when present without a note, or "—" when the tier lacks it.
+  const allLabels: string[] = []
+  for (const t of tiers) for (const b of t.includes) if (!allLabels.includes(b.label)) allLabels.push(b.label)
+  const rows = allLabels.map((label, i) => {
+    const values: Record<string, string> = {}
+    for (const t of tiers) {
+      const b = t.includes.find((x) => x.label === label)
+      values[t.id] = b ? b.note || 'Yes' : '—'
+    }
+    return { id: `r${i}`, label, values }
+  })
+  // "Included in every package" = present in every tier as a plain Yes.
+  const everyTierPlainYes = (r: { values: Record<string, string> }) =>
+    tiers.length > 0 && tiers.every((t) => r.values[t.id] === 'Yes')
+  const included = rows.filter(everyTierPlainYes)
+  const upgrades = rows.filter((r) => !everyTierPlainYes(r))
 
   return (
     <>

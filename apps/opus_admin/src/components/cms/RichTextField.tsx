@@ -26,10 +26,18 @@ import '@/components/tiptap-node/paragraph-node/paragraph-node.scss'
 // plain <textarea> can't render bullet lists, bold, or links.
 const EMPTY_DOC = '<p></p>'
 
-// Pressing Enter on an EMPTY list item exits the list (back to a normal
-// paragraph) instead of endlessly adding empty bullets. Higher priority than
-// the default list keymap so it runs first; returns false on non-empty items
-// so the normal "split into a new item" behaviour still applies.
+// Pressing Enter on an EMPTY list item leaves the list (back to a normal
+// paragraph) instead of endlessly adding empty bullets — so after a bulleted
+// section the admin can press Enter on the blank bullet and keep writing prose.
+// Higher priority than the default list keymap so it runs first; returns false
+// on non-empty items so the normal "split into a new item" behaviour still
+// applies.
+//
+// `liftListItem` handles every well-formed list, but designer-imported
+// descriptions can carry malformed list structures (stray bullets, hard breaks)
+// where a plain lift can no-op. The fallbacks guarantee the cursor is never
+// trapped inside a list: drop the empty block out, or clear list formatting
+// outright.
 const ListExitOnEnter = Extension.create({
   name: 'listExitOnEnter',
   priority: 1000,
@@ -40,7 +48,11 @@ const ListExitOnEnter = Extension.create({
         if (!editor.isActive('listItem')) return false
         const { $from, empty } = editor.state.selection
         if (!empty || $from.parent.content.size > 0) return false
-        return editor.chain().focus().liftListItem('listItem').run()
+        return (
+          editor.chain().focus().liftListItem('listItem').run() ||
+          editor.chain().focus().liftEmptyBlock().run() ||
+          editor.chain().focus().clearNodes().run()
+        )
       },
     }
   },

@@ -344,7 +344,7 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
       )}
 
       {/* Body */}
-      <div className={cn('flex-1 overflow-y-auto overflow-x-hidden', collapsed ? 'space-y-2' : 'space-y-1')}>
+      <div className={cn('flex-1 overflow-y-auto overflow-x-hidden', collapsed ? 'no-scrollbar space-y-2' : 'space-y-1')}>
         {/* Top items */}
         <nav className={cn(collapsed ? 'space-y-1' : 'space-y-1 mb-2')}>
           {topItems.map((item) => {

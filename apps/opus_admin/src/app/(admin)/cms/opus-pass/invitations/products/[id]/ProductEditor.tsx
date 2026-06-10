@@ -157,7 +157,7 @@ export default function ProductEditor({
           <Card title="Description">
             <Field
               label="Description"
-              hint="Shown as the “Description” section under the card on the product page. Use the toolbar for bold, lists, and links. Leave empty to auto-generate from the name and designer."
+              hint="Shown as the “Description” section under the card on the product page. Use the toolbar for bold, lists, and links — to leave a list and write a normal paragraph, press Enter on an empty bullet. Leave empty to auto-generate from the name and designer."
             >
               <RichTextField
                 value={product.description}

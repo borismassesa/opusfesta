@@ -3,7 +3,10 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Check, ChevronDown, ChevronRight, Crown, Diamond, Sparkles } from 'lucide-react'
+import {
+  ArrowRight, Award, Check, ChevronDown, ChevronRight, Crown, Diamond, Flame, Gem, Heart,
+  PartyPopper, Sparkles, Star, Zap, type LucideIcon,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import DOMPurify from 'dompurify'
 import { cn } from '@/lib/utils'
@@ -11,7 +14,7 @@ import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { DesignCarousel } from '@/components/guests/DesignCarousel'
 import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { CatalogProduct } from '@/data/invitations-products'
-import type { PackagesContent } from '@/lib/cms/packages'
+import type { PackagesContent, TierBadgeIcon, TierBadgeTone } from '@/lib/cms/packages'
 import { packageFromPrice } from '@/lib/cms/packages-pricing'
 import { useCart } from '@/components/providers/CartProvider'
 
@@ -25,6 +28,28 @@ const DOOR_SCAN_SERVICE_PRICE = 50000 // TZS — flat per event (on-site scannin
 // extra), so it no longer derives from a per-card price. Adjust here if needed.
 const PAPER_PRINT_UNIT_PRICE = 2000 // TZS per printed card
 const PAPER_MIN_QTY = 10
+
+// Admin-chosen badge icon → lucide component. 'none' renders a text-only pill.
+const TIER_BADGE_ICON: Record<TierBadgeIcon, LucideIcon | null> = {
+  none: null,
+  sparkles: Sparkles,
+  star: Star,
+  diamond: Diamond,
+  crown: Crown,
+  gem: Gem,
+  heart: Heart,
+  award: Award,
+  zap: Zap,
+  flame: Flame,
+  party: PartyPopper,
+}
+
+// Pill colour theme chosen per tier.
+const TIER_BADGE_TONE: Record<TierBadgeTone, string> = {
+  slate: 'bg-[#475569] text-white',
+  accent: 'bg-[var(--accent)] text-[var(--on-accent)]',
+  gold: 'bg-gradient-to-b from-[#E6C66E] to-[#C9A84C] text-[#3A2C06]',
+}
 
 // Product descriptions authored in the admin are rich HTML (TipTap); older ones
 // are plain text. Detect HTML so each is rendered appropriately.
@@ -40,6 +65,10 @@ const designerInitials = (name: string): string => {
 // Strip tags for a safe, escaped plain-text fallback (used during SSR before the
 // client-side sanitizer runs). Rendered as React text, so it's never injected.
 const stripTags = (s: string): string => s.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+
+// Description clamp applies below lg only — desktop shows the full text with no
+// Read More toggle; mobile/tablet keep the collapsed view.
+const DETAILS_CLAMP = 'max-h-[5.4em] overflow-hidden lg:max-h-none lg:overflow-visible'
 
 // Allowlist for the rendered description — only the marks/nodes the editor emits.
 const DESCRIPTION_SANITIZE = {
@@ -233,7 +262,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
               <div className="max-w-[720px] text-[14px] leading-[1.8] text-[#4B5563]">
                 {!description ? (
                   // Auto-generated fallback when no description is set.
-                  <div ref={detailsRef} className={cn('whitespace-pre-line', !detailsExpanded && 'max-h-[5.4em] overflow-hidden')}>
+                  <div ref={detailsRef} className={cn('whitespace-pre-line', !detailsExpanded && DETAILS_CLAMP)}>
                     {`${product.name} is a ${product.designer} signature design, sent digitally to every guest by WhatsApp or SMS.`}
                   </div>
                 ) : sanitizedDescription !== null ? (
@@ -243,19 +272,19 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                     ref={detailsRef}
                     className={cn(
                       'space-y-2 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_a]:underline [&_a]:text-emerald-700 [&_strong]:font-semibold',
-                      !detailsExpanded && 'max-h-[5.4em] overflow-hidden',
+                      !detailsExpanded && DETAILS_CLAMP,
                     )}
                     dangerouslySetInnerHTML={{ __html: sanitizedDescription }}
                   />
                 ) : (
                   // SSR / pre-sanitize fallback (HTML) and legacy plain-text both
                   // render as escaped text — never injected as markup.
-                  <div ref={detailsRef} className={cn('whitespace-pre-line', !detailsExpanded && 'max-h-[5.4em] overflow-hidden')}>
+                  <div ref={detailsRef} className={cn('whitespace-pre-line', !detailsExpanded && DETAILS_CLAMP)}>
                     {descriptionIsHtml ? stripTags(description) : description}
                   </div>
                 )}
                 {detailsOverflows && (
-                  <div className="mt-3">
+                  <div className="mt-3 lg:hidden">
                     <button
                       type="button"
                       onClick={() => setDetailsExpanded((v) => !v)}
@@ -336,57 +365,57 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                       aria-checked={active}
                       onClick={() => setSelectedTier(t.id)}
                       className={cn(
-                        'relative rounded-lg border p-3 text-left shadow-sm transition',
+                        'relative rounded-lg border p-2.5 text-left shadow-sm transition sm:p-3',
                         tierBg,
                         active
                           ? cn('ring-1', tierActive)
                           : tierBorder,
                       )}
                     >
-                      {t.id === 'lite' && (
-                        <span className="absolute -top-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-[#475569] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-white shadow-sm">
-                          <Sparkles size={12} strokeWidth={2.5} aria-hidden="true" />
-                          Basic
-                        </span>
-                      )}
-                      {t.featured && (
-                        <span className="absolute -top-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-[var(--accent)] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[var(--on-accent)]">
-                          <Diamond size={13} strokeWidth={2.5} aria-hidden="true" />
-                          Most popular
-                        </span>
-                      )}
-                      {t.id === 'signature' && (
-                        <span className="absolute -top-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-gradient-to-b from-[#E6C66E] to-[#C9A84C] px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#3A2C06] shadow-sm">
-                          <Crown size={12} strokeWidth={2.5} aria-hidden="true" />
-                          Premium
-                        </span>
-                      )}
-                      <p className="text-[13px] font-bold text-gray-900">{t.name}</p>
-                      <p className="mt-0.5 text-[15px] font-extrabold text-gray-900 tabular-nums">
-                        TZS {t.price_per_guest.toLocaleString('en-US')}
-                        <span className="ml-1 text-[10px] font-medium text-gray-500">per guest</span>
+                      {t.badge_label && (() => {
+                        const BadgeIcon = TIER_BADGE_ICON[t.badge_icon] ?? null
+                        return (
+                          <span
+                            className={cn(
+                              'absolute -top-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide shadow-sm',
+                              TIER_BADGE_TONE[t.badge_tone] ?? TIER_BADGE_TONE.slate,
+                            )}
+                          >
+                            {BadgeIcon && <BadgeIcon size={12} strokeWidth={2.5} aria-hidden="true" />}
+                            {t.badge_label}
+                          </span>
+                        )
+                      })()}
+                      <p className="text-[12px] font-bold text-gray-900 sm:text-[13px]">{t.name}</p>
+                      {/* "per guest" gets its own line on phones — inline it
+                          forces the price itself to wrap inside the ~108px tier card */}
+                      <p className="mt-0.5 text-[13px] font-extrabold text-gray-900 tabular-nums sm:text-[15px]">
+                        <span className="whitespace-nowrap">TZS {t.price_per_guest.toLocaleString('en-US')}</span>
+                        <span className="block text-[9px] font-medium text-gray-500 sm:ml-1 sm:inline sm:text-[10px]">per guest</span>
                       </p>
-                      <p className="mt-1.5 text-[10px] leading-tight text-gray-500">{t.best_for}</p>
+                      <p className="mt-1.5 text-[9px] leading-tight text-gray-500 sm:text-[10px]">{t.best_for}</p>
                     </button>
                   )
                 })}
               </div>
 
-              {/* Number of cards (= guests); minimum 100 */}
+              {/* Number of cards (= guests); minimum 100. The label column is
+                  flex-1 min-w-0 so its text wraps on phones while the stepper
+                  stays beside it on the same row, never clipped off-screen. */}
               <div className="flex items-center justify-between gap-3">
-                <div>
-                  <label htmlFor="card-count" className="text-[13px] font-bold text-gray-900">
+                <div className="min-w-0 flex-1">
+                  <label htmlFor="card-count" className="text-[12px] font-bold text-gray-900 sm:text-[13px]">
                     Number of digital cards &amp; OpusPass tickets
                   </label>
                   <p className="text-[11px] text-gray-500">Minimum {MIN_CARDS} guests</p>
                 </div>
-                <div className="inline-flex items-stretch overflow-hidden rounded-full border border-gray-300 bg-white">
+                <div className="ml-auto inline-flex shrink-0 items-stretch overflow-hidden rounded-full border border-gray-300 bg-white">
                   <button
                     type="button"
                     aria-label="Fewer cards"
                     onClick={() => setDigitalQty((q) => Math.max(MIN_CARDS, (Number.isNaN(q) ? MIN_CARDS : q) - 10))}
                     disabled={digitalQty <= MIN_CARDS}
-                    className="px-4 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200 disabled:opacity-40"
+                    className="px-3 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200 disabled:opacity-40 sm:px-4"
                   >
                     −
                   </button>
@@ -404,55 +433,40 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                     onBlur={() => {
                       if (Number.isNaN(digitalQty) || digitalQty < MIN_CARDS) setDigitalQty(MIN_CARDS)
                     }}
-                    className="w-16 border-x border-gray-200 bg-white py-2.5 text-center text-[15px] font-bold text-gray-900 tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                    className="w-14 border-x border-gray-200 bg-white py-2 text-center text-[14px] font-bold text-gray-900 tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none sm:w-16 sm:py-2.5 sm:text-[15px]"
                   />
                   <button
                     type="button"
                     aria-label="More cards"
                     onClick={() => setDigitalQty((q) => (Number.isNaN(q) ? MIN_CARDS : q) + 10)}
-                    className="px-4 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200"
+                    className="px-3 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200 sm:px-4"
                   >
                     +
                   </button>
                 </div>
               </div>
 
-              {/* What this tier includes (from the package feature matrix) */}
+              {/* What this tier includes — the tier's own bullet list */}
               <div>
                 <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-gray-700 mb-2.5">
                   {tier?.name} Package includes
                 </p>
                 <ul className="columns-1 gap-x-6 text-[13px] text-gray-700 sm:columns-2">
-                  {packages.features
-                    .filter((f) => {
-                      const v = f.values[tier?.id ?? ''] ?? '—'
-                      return f.group === 'included' || (f.group === 'upgrade' && v !== '—' && v !== 'Add-on')
-                    })
-                    .map((f) => {
-                      const v = f.values[tier?.id ?? ''] ?? ''
-                      const showValue = v && v !== 'Yes'
-                      return (
-                        <li key={f.id} className="mb-1.5 flex items-start gap-2 break-inside-avoid">
-                          <Check size={14} strokeWidth={3.25} className="shrink-0 mt-0.5 text-emerald-600" />
-                          <span>
-                            {f.label}
-                            {showValue && <span className="text-gray-500"> — {v}</span>}
-                          </span>
-                        </li>
-                      )
-                    })}
+                  {(tier?.includes ?? []).map((b) => (
+                    <li key={b.id} className="mb-1.5 flex items-start gap-2 break-inside-avoid">
+                      <Check size={14} strokeWidth={3.25} className="shrink-0 mt-0.5 text-emerald-600" />
+                      <span>
+                        {b.label}
+                        {b.note && <span className="text-gray-500"> — {b.note}</span>}
+                      </span>
+                    </li>
+                  ))}
                 </ul>
-                <p className="mt-3 text-[11px] text-gray-400">
-                  Available as add-ons:{' '}
-                  {[
-                    ...packages.features
-                      .filter((f) => f.group === 'upgrade' && (f.values[tier?.id ?? ''] ?? '') === 'Add-on')
-                      .map((f) => f.label.toLowerCase()),
-                    'extra SMS',
-                    'door attendant',
-                  ].join(', ')}
-                  .
-                </p>
+                {packages.addons.length > 0 && (
+                  <p className="mt-3 text-[11px] text-gray-400">
+                    Available as add-ons: {packages.addons.map((a) => a.label.toLowerCase()).join(', ')}.
+                  </p>
+                )}
               </div>
             </div>
 
@@ -470,17 +484,17 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
               >
                 {paperPrints && (
                   <div className="mt-4 flex items-center justify-between gap-3 border-t border-gray-100 pt-4">
-                    <div>
-                      <p className="text-[13px] font-bold text-gray-900">How many prints?</p>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[12px] font-bold text-gray-900 sm:text-[13px]">How many prints?</p>
                       <p className="text-[11px] text-gray-500">TZS {paperUnitPrice.toLocaleString('en-US')} each</p>
                     </div>
-                    <div className="inline-flex items-stretch overflow-hidden rounded-full border border-gray-300 bg-white">
+                    <div className="ml-auto inline-flex shrink-0 items-stretch overflow-hidden rounded-full border border-gray-300 bg-white">
                       <button
                         type="button"
                         aria-label="Fewer prints"
                         onClick={() => setPaperQty((q) => Math.max(PAPER_MIN_QTY, (Number.isNaN(q) ? PAPER_MIN_QTY : q) - 5))}
                         disabled={paperQty <= PAPER_MIN_QTY}
-                        className="px-4 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200 disabled:opacity-40"
+                        className="px-3 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200 disabled:opacity-40 sm:px-4"
                       >
                         −
                       </button>
@@ -498,13 +512,13 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                         onBlur={() => {
                           if (Number.isNaN(paperQty) || paperQty < PAPER_MIN_QTY) setPaperQty(PAPER_MIN_QTY)
                         }}
-                        className="w-16 border-x border-gray-200 bg-white py-2.5 text-center text-[15px] font-bold text-gray-900 tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                        className="w-14 border-x border-gray-200 bg-white py-2 text-center text-[14px] font-bold text-gray-900 tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none sm:w-16 sm:py-2.5 sm:text-[15px]"
                       />
                       <button
                         type="button"
                         aria-label="More prints"
                         onClick={() => setPaperQty((q) => (Number.isNaN(q) ? PAPER_MIN_QTY : q) + 5)}
-                        className="px-4 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200"
+                        className="px-3 text-lg font-semibold text-gray-600 transition bg-gray-100 hover:bg-gray-200 sm:px-4"
                       >
                         +
                       </button>

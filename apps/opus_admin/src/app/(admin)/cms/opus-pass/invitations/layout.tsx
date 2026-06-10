@@ -21,6 +21,7 @@ import {
   Star,
   Ticket,
   Trash2,
+  Wallet,
   type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -54,6 +55,14 @@ const sections: Section[] = [
     href: '/cms/opus-pass/invitations/products',
     status: 'live',
     description: 'Invitation card catalog — designs, prices, designer and details per card.',
+  },
+  {
+    key: 'packages',
+    label: 'Packages',
+    icon: Wallet,
+    href: '/cms/opus-pass/invitations/packages',
+    status: 'live',
+    description: 'Per-guest tiers, prices and the "package includes" matrix on the card detail page.',
   },
   {
     key: 'ticket',
