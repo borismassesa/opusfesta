@@ -1,5 +1,7 @@
+import { cookies } from 'next/headers'
 import { auth } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient } from './supabase'
+import { ACTIVE_VENDOR_COOKIE } from './vendor-cookie'
 
 export type CurrentVendor = {
   id: string
@@ -31,8 +33,18 @@ export type VendorOnboardingStatus =
   | 'active'
   | 'suspended'
 
+// One entry per vendor profile the user belongs to. A vendor can run several
+// businesses on the same account (one per category — e.g. Transportation +
+// Bridal Salons), so portal chrome renders a switcher from this list.
+export type VendorBusiness = {
+  id: string
+  name: string
+  category: string
+  status: VendorOnboardingStatus
+}
+
 export type CurrentVendorState =
-  | { kind: 'live'; vendor: CurrentVendor }
+  | { kind: 'live'; vendor: CurrentVendor; businesses: VendorBusiness[] }
   | { kind: 'no-application' }
   | {
       kind: 'pending-approval'
@@ -42,8 +54,14 @@ export type CurrentVendorState =
       // (which doc is uploaded, whether the agreement is signed) and reflect
       // it as per-step pills on the timeline.
       vendorId: string
+      businesses: VendorBusiness[]
     }
-  | { kind: 'suspended'; vendorName: string; vendorId: string }
+  | {
+      kind: 'suspended'
+      vendorName: string
+      vendorId: string
+      businesses: VendorBusiness[]
+    }
   | { kind: 'no-env' }
 
 type VendorRow = {
@@ -96,6 +114,13 @@ function normalizeStatus(
       )
       return 'verification_pending'
   }
+}
+
+// Full-range version of normalizeStatus — keeps active/suspended as-is and
+// coerces everything else to the closest pending value.
+function coerceStatus(raw: string): VendorOnboardingStatus {
+  if (raw === 'active' || raw === 'suspended') return raw
+  return normalizeStatus(raw)
 }
 
 /**
@@ -198,7 +223,7 @@ export async function getCurrentVendor(): Promise<CurrentVendorState> {
     .eq('user_id', supabaseUserId)
     .eq('status', 'active')
     .order('created_at', { ascending: true })
-    .limit(5)
+    .limit(20)
     .returns<MembershipRow[]>()
 
   if (error) {
@@ -213,27 +238,42 @@ export async function getCurrentVendor(): Promise<CurrentVendorState> {
     )
   }
 
-  if (data && data.length > 1) {
-    console.warn(
-      `[vendor] user has ${data.length} active vendor memberships — silently using the oldest. Vendor switcher ships when staff support lands.`,
-    )
-  }
+  // A user may belong to several vendor businesses (one profile per
+  // category). Drop orphaned memberships (null vendor join), then resolve the
+  // selected business from the active-vendor cookie — set on submit and by
+  // the portal's business switcher — falling back to the oldest.
+  const memberships = (data ?? []).flatMap((row) => {
+    const vendor = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors
+    if (!vendor) {
+      console.warn(
+        `[vendor] active membership has null vendor row — possible orphan (vendor_id=${row.vendor_id})`,
+      )
+      return []
+    }
+    return [{ row, vendor }]
+  })
 
-  const row = data?.[0]
-  if (!row) {
+  if (memberships.length === 0) {
     console.warn(
       `[vendor] no active vendor_memberships for users.id=${supabaseUserId} (clerk_id=${userId}). The vendor row may not have been inserted, or the ensure_vendor_owner_membership trigger didn't fire. Returning no-application.`,
     )
     return { kind: 'no-application' }
   }
 
-  const v = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors
-  if (!v) {
-    console.warn(
-      `[vendor] active membership has null vendor row — possible orphan (vendor_id=${row.vendor_id})`,
-    )
-    return { kind: 'no-application' }
-  }
+  const businesses: VendorBusiness[] = memberships.map(({ vendor }) => ({
+    id: vendor.id,
+    name: vendor.business_name,
+    category: vendor.category,
+    status: coerceStatus(vendor.onboarding_status),
+  }))
+
+  const cookieStore = await cookies()
+  const requestedId = cookieStore.get(ACTIVE_VENDOR_COOKIE)?.value ?? null
+  const selected =
+    (requestedId && memberships.find((m) => m.vendor.id === requestedId)) ||
+    memberships[0]
+  const row = selected.row
+  const v = selected.vendor
 
   console.log(
     `[vendor] resolved: clerk_id=${userId} users.id=${supabaseUserId} vendor.id=${v.id} status=${v.onboarding_status}`,
@@ -243,7 +283,12 @@ export async function getCurrentVendor(): Promise<CurrentVendorState> {
   // dashboard access; everything else funnels through /pending so the vendor
   // sees exactly which verification gate they're at.
   if (v.onboarding_status === 'suspended') {
-    return { kind: 'suspended', vendorName: v.business_name, vendorId: v.id }
+    return {
+      kind: 'suspended',
+      vendorName: v.business_name,
+      vendorId: v.id,
+      businesses,
+    }
   }
 
   if (v.onboarding_status !== 'active') {
@@ -257,6 +302,7 @@ export async function getCurrentVendor(): Promise<CurrentVendorState> {
       status,
       vendorName: v.business_name,
       vendorId: v.id,
+      businesses,
     }
   }
 
@@ -274,5 +320,6 @@ export async function getCurrentVendor(): Promise<CurrentVendorState> {
       role: row.role,
       stats: v.stats ?? DEFAULT_STATS,
     },
+    businesses,
   }
 }

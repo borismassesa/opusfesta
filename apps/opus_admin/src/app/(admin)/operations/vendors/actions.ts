@@ -1884,15 +1884,38 @@ export async function deleteVendor(
     }
   }
 
+  // One account can own several vendor profiles (one per category). If this
+  // user still has OTHER vendor rows, their login must survive this delete —
+  // removing it would lock them out of the businesses we're not touching.
+  let loginSharedWithOtherVendors = false
+  if (vendor.data.user_id) {
+    const siblings = await admin
+      .from('vendors')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', vendor.data.user_id)
+      .neq('id', vendorId)
+    if (siblings.error) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: `[admin] sibling vendor check failed: ${siblings.error.code} ${siblings.error.message}`,
+      }
+    }
+    loginSharedWithOtherVendors = (siblings.count ?? 0) > 0
+  }
+
   // Remove the Clerk login first. If this can't happen, abort before touching
   // any DB rows — otherwise we'd delete the vendor but leave the email stuck
   // as "taken", which is the exact problem this feature exists to fix.
-  const clerkRes = await deleteVendorClerkLogin({ clerkId, email: loginEmail })
-  if (!clerkRes.ok) {
-    return {
-      ok: false,
-      reason: 'unknown',
-      error: clerkRes.error ?? 'Could not delete the vendor login.',
+  // Skipped entirely when the login is shared with the user's other vendors.
+  if (!loginSharedWithOtherVendors) {
+    const clerkRes = await deleteVendorClerkLogin({ clerkId, email: loginEmail })
+    if (!clerkRes.ok) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: clerkRes.error ?? 'Could not delete the vendor login.',
+      }
     }
   }
 
@@ -1910,7 +1933,8 @@ export async function deleteVendor(
 
   // Clear the now-dangling Clerk link on the users row so a future sign-up
   // with the same email re-links instead of hitting the unique clerk_id.
-  if (vendor.data.user_id && clerkId) {
+  // When the login survives (user has other vendors) the link is still live.
+  if (vendor.data.user_id && clerkId && !loginSharedWithOtherVendors) {
     const clear = await admin
       .from('users')
       .update({ clerk_id: null })

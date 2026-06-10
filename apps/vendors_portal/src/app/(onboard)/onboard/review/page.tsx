@@ -203,7 +203,9 @@ export default function ReviewPage() {
       <div className="border-t border-gray-200">
         <Section title="Profile" editHref="/onboard/profile/name">
           <Row label="Business name">{draft.businessName || 'Not set'}</Row>
-          <Row label="Category">{category?.profileLabel ?? 'Not set'}</Row>
+          <Row label="Category">
+            {draft.customCategory.trim() || category?.profileLabel || 'Not set'}
+          </Row>
           <Row label="Owner">{fullName || 'Not set'}</Row>
           <Row label="Location">
             {[draft.city, regionLabel].filter(Boolean).join(', ') || 'Not set'}

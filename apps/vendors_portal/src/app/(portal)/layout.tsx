@@ -30,9 +30,16 @@ export default async function PortalLayout({
     state.kind === 'live' ? state.vendor.businessName : 'OpusFesta Photography'
   const vendorSlug =
     state.kind === 'live' ? state.vendor.slug : null
+  const businesses = state.kind === 'live' ? state.businesses : []
+  const activeVendorId = state.kind === 'live' ? state.vendor.id : null
 
   return (
-    <PortalShell vendorName={vendorName} vendorSlug={vendorSlug}>
+    <PortalShell
+      vendorName={vendorName}
+      vendorSlug={vendorSlug}
+      businesses={businesses}
+      activeVendorId={activeVendorId}
+    >
       {children}
     </PortalShell>
   )

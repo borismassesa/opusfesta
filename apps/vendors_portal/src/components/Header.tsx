@@ -5,6 +5,8 @@ import Link from 'next/link'
 import { Bell, ChevronRight, ExternalLink, HelpCircle } from 'lucide-react'
 import { usePathname } from 'next/navigation'
 import { useUser } from '@clerk/nextjs'
+import { BusinessSwitcher } from '@/components/BusinessSwitcher'
+import type { VendorBusiness } from '@/lib/vendor'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { bookings } from '@/lib/mock-data'
@@ -34,6 +36,10 @@ type HeaderProps = {
   // of the header when viewing /storefront pages. Null when the vendor
   // hasn't published yet — the link is hidden in that case.
   vendorSlug: string | null
+  // Every vendor business this user belongs to — the switcher renders when
+  // there's more than one (a vendor can run one profile per category).
+  businesses: VendorBusiness[]
+  activeVendorId: string | null
 }
 
 const PAGE_HEADINGS: Record<string, PageHeading> = {
@@ -105,7 +111,12 @@ function useBookingsHeading(pathname: string): PageHeading | null {
   }
 }
 
-export function Header({ vendorName, vendorSlug }: HeaderProps) {
+export function Header({
+  vendorName,
+  vendorSlug,
+  businesses,
+  activeVendorId,
+}: HeaderProps) {
   const pathname = usePathname()
   const crumbs = buildCrumbs(pathname)
   const storefrontHeading = useStorefrontHeading(pathname)
@@ -161,6 +172,12 @@ export function Header({ vendorName, vendorSlug }: HeaderProps) {
       )}
 
       <div className="flex items-center gap-4 shrink-0">
+        {businesses.length > 0 && activeVendorId ? (
+          // Rendered even with a single business — the dropdown doubles as
+          // the "Add another business" entry point.
+          <BusinessSwitcher businesses={businesses} activeId={activeVendorId} />
+        ) : null}
+
         {isStorefront && vendorSlug ? (
           <a
             href={`${(process.env.NEXT_PUBLIC_WEBSITE_URL ?? '').replace(/\/$/, '')}/vendors/${encodeURIComponent(vendorSlug)}`}

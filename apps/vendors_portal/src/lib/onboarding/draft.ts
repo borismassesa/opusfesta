@@ -99,6 +99,9 @@ export type ReschedulePolicy = 'one-free' | 'unlimited' | 'none' | null
 
 export type OnboardingDraft = {
   categoryId: string | null
+  // Free-text "what does your business do" — required when the chosen
+  // category has requiresDetail (the "Others" card), empty otherwise.
+  customCategory: string
   vowsAccepted: boolean
   firstName: string
   lastName: string
@@ -190,6 +193,7 @@ function storageKey(userId: string): string {
 
 const EMPTY: OnboardingDraft = {
   categoryId: null,
+  customCategory: '',
   vowsAccepted: false,
   firstName: '',
   lastName: '',

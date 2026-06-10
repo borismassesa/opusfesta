@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
+import { setActiveBusiness } from '@/lib/business'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { getCurrentVendor } from '@/lib/vendor'
+import { getCurrentVendor, type VendorBusiness } from '@/lib/vendor'
 import PendingClient, {
   type PendingVariant,
   type VerificationProgress,
@@ -76,9 +77,16 @@ export default async function PendingPage() {
 
   let variant: PendingVariant
   let progress: VerificationProgress | null = null
+  // The other businesses this user runs — lets a multi-profile vendor hop
+  // back to (say) their live Transportation profile while this Bridal Salons
+  // application waits for review.
+  let otherBusinesses: VendorBusiness[] = []
+  let activeVendorId: string | null = null
 
   switch (state.kind) {
     case 'pending-approval':
+      activeVendorId = state.vendorId
+      otherBusinesses = state.businesses.filter((b) => b.id !== state.vendorId)
       switch (state.status) {
         case 'application_in_progress':
           variant = 'application-in-progress'
@@ -98,6 +106,8 @@ export default async function PendingPage() {
       break
     case 'suspended':
       variant = 'suspended'
+      activeVendorId = state.vendorId
+      otherBusinesses = state.businesses.filter((b) => b.id !== state.vendorId)
       break
     case 'no-application':
       variant = 'no-application'
@@ -107,6 +117,27 @@ export default async function PendingPage() {
       break
   }
 
-  return <PendingClient variant={variant} progress={progress} />
-
+  return (
+    <>
+      {otherBusinesses.length > 0 && activeVendorId ? (
+        <div className="border-b border-gray-100 bg-gray-50 px-6 py-3">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center gap-2 text-sm text-gray-600">
+            <span className="font-medium">Your other businesses:</span>
+            {otherBusinesses.map((b) => (
+              <form key={b.id} action={setActiveBusiness.bind(null, b.id)}>
+                <button
+                  type="submit"
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1 text-xs font-semibold text-gray-800 transition-colors hover:bg-gray-100"
+                >
+                  {b.name}
+                  <span className="text-gray-400">· {b.status === 'active' ? 'Live' : 'Pending'}</span>
+                </button>
+              </form>
+            ))}
+          </div>
+        </div>
+      ) : null}
+      <PendingClient variant={variant} progress={progress} />
+    </>
+  )
 }

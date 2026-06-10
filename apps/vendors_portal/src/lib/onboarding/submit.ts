@@ -1,12 +1,14 @@
 'use server'
 
 import { randomBytes } from 'node:crypto'
+import { cookies } from 'next/headers'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import {
   createSupabaseAdminClient,
   createClerkSupabaseServerClient,
 } from '@/lib/supabase'
 import { notifyOnVendorSubmit } from '@/lib/email/notify-on-submit'
+import { ACTIVE_VENDOR_COOKIE } from '@/lib/vendor-cookie'
 import { findCategory } from './categories'
 import { LANGUAGES } from './languages'
 import { PERSONALITY_OPTIONS } from './personality'
@@ -40,6 +42,13 @@ const CATEGORY_TO_DB: Record<string, string> = {
   musician: 'DJs & Music',
   officiant: 'Officiants',
   beauty: 'Beauty & Makeup',
+  transport: 'Transportation',
+  'bridal-salon': 'Bridal Salons',
+  rentals: 'Rentals',
+  // "Others" — the vendor typed their real category into customCategory;
+  // admin recategorizes during review if a better enum value fits.
+  other: 'Other',
+  // Legacy drafts saved before "Event extras" was replaced by "Others".
   extras: 'Decorators',
 }
 
@@ -118,7 +127,11 @@ function buildSnapshotLabels(draft: OnboardingDraft) {
   const services = draft.categoryId ? getServicesForCategory(draft.categoryId) : []
   const homeMarket = SERVICE_MARKETS.find((m) => m.id === draft.homeMarket)
   return {
-    category: draft.categoryId ? findCategory(draft.categoryId)?.profileLabel ?? null : null,
+    // Prefer the vendor's own words ("Others" card) over the generic label so
+    // admin review sees exactly what they do.
+    category:
+      draft.customCategory?.trim() ||
+      (draft.categoryId ? findCategory(draft.categoryId)?.profileLabel ?? null : null),
     region: TZ_REGIONS.find((r) => r.code === draft.region)?.name ?? null,
     homeMarket: homeMarket?.name ?? null,
     serviceMarkets: draft.serviceMarkets
@@ -168,6 +181,12 @@ function buildServicesOfferedJsonb(draft: OnboardingDraft) {
 
 function validateDraft(draft: OnboardingDraft): string | null {
   if (!draft.categoryId) return 'Pick a category before submitting.'
+  if (
+    findCategory(draft.categoryId)?.requiresDetail &&
+    !draft.customCategory?.trim()
+  ) {
+    return 'Tell us what your business does — go back to the category step.'
+  }
   if (!draft.vowsAccepted) return 'Vendor Vows must be accepted before submitting.'
   if (!draft.businessName.trim()) return 'Add a business name before submitting.'
   if (!draft.region) return 'Add a region before submitting.'
@@ -314,15 +333,23 @@ export async function submitApplication(
 
   const baseSlug = slugify(draft.businessName) || 'vendor'
 
-  // Re-use an existing draft vendor row if the user already has one; otherwise
-  // create a fresh row. We look up by user_id since RLS won't filter against
-  // our admin client and slug collisions are common across re-attempts.
+  // Re-use an existing vendor row for THIS category if the user already has
+  // one; otherwise create a fresh row. A user may legitimately run several
+  // vendor profiles — one per category (e.g. Transportation + Bridal Salons)
+  // — so the lookup is scoped to (user_id, category), matching the
+  // unique_vendor_per_user_category constraint.
+  type ExistingVendorRow = {
+    id: string
+    slug: string
+    onboarding_status: string | null
+  }
   const existing = await admin
     .from('vendors')
     .select('id, slug, onboarding_status')
     .eq('user_id', supabaseUserId)
+    .eq('category', dbCategory)
     .limit(1)
-    .maybeSingle<{ id: string; slug: string; onboarding_status: string | null }>()
+    .maybeSingle<ExistingVendorRow>()
 
   if (existing.error) {
     return {
@@ -332,8 +359,30 @@ export async function submitApplication(
     }
   }
 
-  let slug = existing.data?.slug ?? baseSlug
-  if (!existing.data) {
+  let existingRow: ExistingVendorRow | null = existing.data
+  if (!existingRow) {
+    // No row for this category — but if the user has a pre-submit draft row
+    // (started onboarding, switched category, never submitted), reuse it
+    // instead of leaving an orphaned half-application behind.
+    const draftRow = await admin
+      .from('vendors')
+      .select('id, slug, onboarding_status')
+      .eq('user_id', supabaseUserId)
+      .eq('onboarding_status', 'application_in_progress')
+      .limit(1)
+      .maybeSingle<ExistingVendorRow>()
+    if (draftRow.error) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: `[submit] draft vendor lookup failed: ${draftRow.error.code} ${draftRow.error.message}`,
+      }
+    }
+    existingRow = draftRow.data
+  }
+
+  let slug = existingRow?.slug ?? baseSlug
+  if (!existingRow) {
     // Resolve slug collisions by appending a short random suffix on retry.
     const slugCheck = await admin
       .from('vendors')
@@ -359,8 +408,8 @@ export async function submitApplication(
   // editing a detail silently knocks an advanced vendor back to
   // verification_pending and resets their review SLA.
   const currentStatus =
-    existing.data?.onboarding_status ?? 'application_in_progress'
-  const isFirstSubmission = !existing.data || currentStatus === 'application_in_progress'
+    existingRow?.onboarding_status ?? 'application_in_progress'
+  const isFirstSubmission = !existingRow || currentStatus === 'application_in_progress'
 
   // Decide what (if anything) this submit does to the lifecycle:
   //  • First submission → advance to `verification_pending` + stamp the clock.
@@ -421,11 +470,11 @@ export async function submitApplication(
   }
 
   let vendorId: string
-  if (existing.data) {
+  if (existingRow) {
     const update = await admin
       .from('vendors')
       .update(corePayload)
-      .eq('id', existing.data.id)
+      .eq('id', existingRow.id)
       .select('id')
       .single<{ id: string }>()
     if (update.error) {
@@ -443,6 +492,20 @@ export async function submitApplication(
       .select('id')
       .single<{ id: string }>()
     if (insert.error) {
+      // 23505 on the legacy one-vendor-per-user constraint means migration
+      // 20260610... (multi-category vendors) hasn't been applied yet.
+      if (
+        insert.error.code === '23505' &&
+        insert.error.message.includes('unique_vendor_per_user') &&
+        !insert.error.message.includes('per_user_category')
+      ) {
+        return {
+          ok: false,
+          reason: 'unknown',
+          error:
+            '[submit] this account already has a vendor profile and the database still enforces one profile per account — apply the multi-category vendors migration.',
+        }
+      }
       return {
         ok: false,
         reason: 'unknown',
@@ -609,6 +672,24 @@ export async function submitApplication(
   } else {
     console.log(
       `[submit] vendor=${vendorId} edit (status=${currentStatus}) — skipping submit notifications`,
+    )
+  }
+
+  // Point the portal at the business that was just submitted, so a user with
+  // several profiles lands on THIS application's pending/verify flow instead
+  // of whichever business happened to be selected before.
+  try {
+    const cookieStore = await cookies()
+    cookieStore.set(ACTIVE_VENDOR_COOKIE, vendorId, {
+      path: '/',
+      httpOnly: true,
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 365,
+    })
+  } catch (err) {
+    console.warn(
+      `[submit] could not set active-vendor cookie for vendor=${vendorId}:`,
+      err instanceof Error ? err.message : err,
     )
   }
 

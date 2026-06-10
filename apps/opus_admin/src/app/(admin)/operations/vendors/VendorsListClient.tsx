@@ -50,6 +50,9 @@ const NEW_VENDOR_CATEGORIES = [
   'Officiants',
   'Rentals',
   'Transportation',
+  // Onboarding "Others" — vendor's real category is free text in the
+  // application snapshot; recategorize during review when an enum value fits.
+  'Other',
 ] as const
 
 type ListStatus = VendorStatus | 'all'
