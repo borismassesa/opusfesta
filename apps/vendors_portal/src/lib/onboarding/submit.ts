@@ -388,27 +388,11 @@ export async function submitApplication(
     }
   }
 
-  let existingRow: ExistingVendorRow | null = existing.data
-  if (!existingRow) {
-    // No row for this category — but if the user has a pre-submit draft row
-    // (started onboarding, switched category, never submitted), reuse it
-    // instead of leaving an orphaned half-application behind.
-    const draftRow = await admin
-      .from('vendors')
-      .select('id, slug, onboarding_status')
-      .eq('user_id', supabaseUserId)
-      .eq('onboarding_status', 'application_in_progress')
-      .limit(1)
-      .maybeSingle<ExistingVendorRow>()
-    if (draftRow.error) {
-      return {
-        ok: false,
-        reason: 'unknown',
-        error: `[submit] draft vendor lookup failed: ${draftRow.error.code} ${draftRow.error.message}`,
-      }
-    }
-    existingRow = draftRow.data
-  }
+  // No cross-category fallback here on purpose: the self-serve flow only
+  // creates vendor rows AT submit (already 'verification_pending'), so any
+  // 'application_in_progress' row in another category is admin-created —
+  // reusing it would silently rewrite that vendor's category.
+  const existingRow: ExistingVendorRow | null = existing.data
 
   let slug = existingRow?.slug ?? baseSlug
   if (!existingRow) {

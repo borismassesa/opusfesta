@@ -1166,6 +1166,10 @@ const VALID_VENDOR_CATEGORIES = [
   'Officiants',
   'Rentals',
   'Transportation',
+  // Onboarding "Others" — vendor's real category is free text in the
+  // application snapshot. Keep in sync with NEW_VENDOR_CATEGORIES in
+  // VendorsListClient.tsx.
+  'Other',
 ] as const
 
 export type VendorCategory = (typeof VALID_VENDOR_CATEGORIES)[number]
@@ -1266,20 +1270,22 @@ export async function createVendorAccount(
     slug = `${baseSlug}-${Math.random().toString(36).slice(2, 8)}`
   }
 
-  // Guard against a duplicate vendor row for the same user — if admin
-  // already created one for this contact email, surface a clear error
-  // rather than letting the insert blow up on a unique constraint.
+  // Guard against a duplicate vendor row for the same user IN THIS CATEGORY —
+  // surface a clear error rather than letting the insert blow up on the
+  // unique (user_id, category) index. One account may run several profiles,
+  // one per category, so a different category is a legitimate second vendor.
   const existing = await admin
     .from('vendors')
     .select('id, business_name')
     .eq('user_id', supabaseUserId)
+    .eq('category', category)
     .limit(1)
     .maybeSingle<{ id: string; business_name: string }>()
   if (existing.data) {
     return {
       ok: false,
       reason: 'duplicate',
-      error: `A vendor already exists for ${email}: ${existing.data.business_name}.`,
+      error: `A ${category} vendor already exists for ${email}: ${existing.data.business_name}.`,
     }
   }
 
