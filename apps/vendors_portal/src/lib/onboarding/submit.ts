@@ -277,7 +277,7 @@ export async function submitApplication(
   }
 
   // 1) Provision public.users row keyed on clerk_id, so RLS can resolve it.
-  const upsertUser = await admin
+  let upsertUser = await admin
     .from('users')
     .upsert(
       {
@@ -292,6 +292,18 @@ export async function submitApplication(
     )
     .select('id')
     .single<{ id: string }>()
+
+  // A legacy row may already exist with the same email but no/different clerk_id
+  // (e.g. pre-Clerk signup). In that case the INSERT conflicts on users_email_key
+  // (23505). Recover by updating that existing row to claim the current clerk_id.
+  if (upsertUser.error?.code === '23505') {
+    upsertUser = await admin
+      .from('users')
+      .update({ clerk_id: userId, name: fullName })
+      .eq('email', email)
+      .select('id')
+      .single<{ id: string }>()
+  }
 
   if (upsertUser.error) {
     return {
