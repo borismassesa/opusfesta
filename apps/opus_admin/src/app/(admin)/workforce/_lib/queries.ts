@@ -658,7 +658,7 @@ export async function getWorkforceInvitations(
   let query = supabase
     .from('workforce_invitations')
     .select(
-      'id, employee_id, email, role_id, status, invited_at, expires_at, accepted_at, revoked_at, workforce_employees(full_name, employee_code), workforce_roles(name)'
+      'id, employee_id, email, role_id, status, invited_at, expires_at, accepted_at, revoked_at, workforce_employees!employee_id(full_name, employee_code), workforce_roles(name)'
     )
     .order('invited_at', { ascending: false })
   if (status) query = query.eq('status', status)
