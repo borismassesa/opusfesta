@@ -32,8 +32,10 @@ export default function InvitationsChrome({ children }: { children: ReactNode })
       {isLanding ? (
         <div
           className={cn(
-            'fixed inset-x-0 top-0 z-50 transition-transform duration-300 ease-out',
-            pastHero ? 'translate-y-0' : '-translate-y-full',
+            // `invisible` backstops the translate: old WebViews (< Chromium 104) ignore
+            // the standalone `translate` property and the hidden bar would block taps.
+            'fixed inset-x-0 top-0 z-50 transition-[transform,translate,visibility] duration-300 ease-out',
+            pastHero ? 'visible translate-y-0' : 'invisible -translate-y-full',
           )}
         >
           <Navbar />
