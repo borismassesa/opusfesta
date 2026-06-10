@@ -33,6 +33,7 @@ function hasTempAdminCookie(req: Request): boolean {
 const isPublicRoute = createRouteMatcher([
   '/sign-in(.*)',
   '/sign-up(.*)',
+  '/auth-callback(.*)',
   // Shared temp-access passcode page — must render before any auth.
   '/temp-access(.*)',
   // Workforce invitation landing page renders before sign-in: if the
