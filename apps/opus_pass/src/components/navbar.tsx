@@ -195,11 +195,12 @@ export default function Navbar() {
 
           <div className="hidden lg:flex gap-1 font-semibold text-[15px]">
             {navItems.map((item) => (
-              <button
+              <Link
                 key={item.label}
+                href={getNavHref(item.card.href)}
                 onMouseEnter={() => setActiveMenu(item.label)}
                 onFocus={() => setActiveMenu(item.label)}
-                onClick={() => setActiveMenu((v) => v === item.label ? null : item.label)}
+                onClick={() => setActiveMenu(null)}
                 aria-expanded={activeMenu === item.label}
                 aria-haspopup="true"
                 className={`px-4 py-2.5 rounded-full transition-colors whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
@@ -209,7 +210,7 @@ export default function Navbar() {
                 }`}
               >
                 {item.label}
-              </button>
+              </Link>
             ))}
           </div>
         </div>

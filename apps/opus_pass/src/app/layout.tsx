@@ -11,6 +11,7 @@ import './globals.css'
 // opus_pass is indexed on its own standalone subdomain, served at the root.
 // Override per-env with NEXT_PUBLIC_APP_URL (e.g. https://opuspass.opusfesta.com).
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com'
+const OPUS_PASS_LOGO = '/assets/logo/OpusPass%20Logo.svg'
 
 const yellowtail   = Yellowtail(       { weight: '400',         subsets: ['latin'], variable: '--font-yellowtail',  display: 'swap' })
 const playfair     = Playfair_Display( { weight: ['400','700'], subsets: ['latin'], variable: '--font-playfair',   display: 'swap' })
@@ -24,13 +25,19 @@ export const metadata: Metadata = {
   description:
     'Digital invitations, live RSVP tracking, and a beautiful wedding website — all in one pass. Free to start. Built for couples in Tanzania.',
   metadataBase: new URL(BASE),
+  icons: {
+    icon: [{ url: OPUS_PASS_LOGO, type: 'image/svg+xml' }],
+    shortcut: [OPUS_PASS_LOGO],
+  },
   openGraph: {
     siteName: 'OpusPass',
     locale: 'en_TZ',
     type: 'website',
+    images: [{ url: OPUS_PASS_LOGO, alt: 'OpusPass' }],
   },
   twitter: {
     card: 'summary_large_image',
+    images: [OPUS_PASS_LOGO],
   },
 }
 
