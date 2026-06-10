@@ -11,6 +11,9 @@ import { InvitationShowcase } from '@/components/home/InvitationShowcase'
 import { Promises } from '@/components/home/Promises'
 import { Features } from '@/components/home/Features'
 
+const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com'
+const OPUS_PASS_LOGO = `${BASE}/assets/logo/OpusPass%20Logo.svg`
+
 // CMS-driven page: ISR safety net so published changes appear on the public
 // site within ~60s even if the admin's on-demand revalidation doesn't reach
 // this deployment. See apps/opus_admin/src/lib/revalidate.ts.
@@ -25,8 +28,12 @@ export const metadata: Metadata = {
     description:
       'Digital invitations, live RSVP tracking, and a beautiful wedding website — all in one pass.',
     // Absolute URL so link scrapers resolve the OG image against the subdomain.
-    images: [{ url: `${process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com'}/assets/images/churchcouples.jpg`, width: 1200, height: 630, alt: 'OpusPass — Wedding Invitations in Tanzania' }],
+    images: [{ url: OPUS_PASS_LOGO, alt: 'OpusPass' }],
     type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    images: [OPUS_PASS_LOGO],
   },
 }
 
