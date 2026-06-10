@@ -134,3 +134,4 @@ prisma/migrations/
 
 # Design source / reference folder (not part of the marketplace app)
 apps/opusfesta (1)/
+.worktrees/

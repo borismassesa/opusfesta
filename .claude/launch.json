@@ -45,6 +45,30 @@
       "port": 3008,
       "autoPort": true,
       "cwd": "apps/opus_pass"
+    },
+    {
+      "name": "vendors_portal_worktree",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "--port", "3021"],
+      "port": 3021,
+      "cwd": ".worktrees/of-multicat/apps/vendors_portal"
+    },
+    {
+      "name": "opus_pass_prod",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "start", "--port", "3019"],
+      "port": 3019,
+      "cwd": "apps/opus_pass",
+      "env": { "OPUS_PASS_DIST_DIR": ".next-prodtest" }
+    },
+    {
+      "name": "opus_pass_preview",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "dev", "--port", "3018"],
+      "port": 3018,
+      "autoPort": true,
+      "cwd": "apps/opus_pass",
+      "env": { "OPUS_PASS_DIST_DIR": ".next-preview" }
     }
   ]
 }
