@@ -4,7 +4,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Receipt, Download, Check, Clock, Package, ArrowRight, Ticket } from 'lucide-react'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
-import { getOrders, type StoredOrder } from '@/lib/cart-storage'
+import { getOrders, type StoredOrder, type StoredOrderItem } from '@/lib/cart-storage'
 import { downloadInvoice } from '@/lib/invoice'
 import { ORDER_STAGES, currentStageIndex, stageTone, type OrderStatusTone } from '@/lib/order-status'
 import { Card, StatCard, EmptyState } from '@/components/dashboard/primitives'
@@ -25,6 +25,51 @@ const TONE_PILL: Record<OrderStatusTone, string> = {
   neutral: 'bg-neutral-100 text-neutral-600 ring-neutral-500/20',
   amber: 'bg-amber-50 text-amber-700 ring-amber-600/20',
   emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-600/20',
+}
+
+const META_PILL = 'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium'
+const GREEN_PILL = 'bg-[#9FE870]/25 text-[#3f6b1f]'
+
+/** Tier pill colours — mirrors the cart card and the invoice PDF swatches. */
+function tierPillClass(item: StoredOrderItem): string {
+  const key = (item.tierId ?? item.tier ?? '').toLowerCase()
+  if (key === 'classic') return 'bg-[#EFE3FA] text-[#6B4E8C]'
+  if (key === 'signature') return 'bg-[#F5EACF] text-[#8A6B1E]'
+  return 'bg-[#E1E8F0] text-[#475569]'
+}
+
+/**
+ * Line-item config rendered as pills. Prefers the structured fields — the
+ * stored `summary` string is a snapshot taken at add-to-cart time and can
+ * carry a stale guest count if the order was edited in the cart, whereas
+ * `guests`/`tier`/`addOns` are kept current. The summary split is only a
+ * fallback for legacy orders stored before the structured fields existed.
+ */
+function ItemPills({ item }: { item: StoredOrderItem }) {
+  const hasStructured = Boolean(item.tier) || item.guests != null || (item.addOns?.length ?? 0) > 0
+  const pills = hasStructured
+    ? [
+        ...(item.tier ? [{ label: item.tier, className: tierPillClass(item) }] : []),
+        ...(item.guests != null
+          ? [{ label: `${item.guests.toLocaleString('en-US')} guests`, className: GREEN_PILL }]
+          : []),
+        ...(item.addOns ?? []).map((a) => ({ label: a, className: GREEN_PILL })),
+      ]
+    : item.summary
+        .split(' · ')
+        .filter(Boolean)
+        .map((part) => ({ label: part, className: GREEN_PILL }))
+
+  if (pills.length === 0) return null
+  return (
+    <div className="mt-1 flex flex-wrap gap-1">
+      {pills.map((p) => (
+        <span key={p.label} className={cn(META_PILL, p.className)}>
+          {p.label}
+        </span>
+      ))}
+    </div>
+  )
 }
 
 function OrderTracker({ activeIndex }: { activeIndex: number }) {
@@ -113,7 +158,7 @@ function OrderCard({ order }: { order: StoredOrder }) {
             </div>
             <div className="min-w-0 grow">
               <p className="truncate text-sm font-medium text-[#1A1A1A]">{item.name}</p>
-              {item.summary && <p className="truncate text-xs text-[#1A1A1A]/50">{item.summary}</p>}
+              <ItemPills item={item} />
             </div>
             <span className="shrink-0 whitespace-nowrap text-sm font-semibold text-[#1A1A1A] tabular-nums">
               {formatTzs(item.total)}
@@ -127,18 +172,26 @@ function OrderCard({ order }: { order: StoredOrder }) {
         <OrderTracker activeIndex={idx} />
         <p className="mt-3 flex items-center gap-1.5 text-xs text-[#1A1A1A]/55">
           <Clock className="size-3.5" />
-          {idx >= 2
+          {stage.id === 'delivered'
             ? 'Delivered — your design and OpusPass tickets are ready.'
-            : 'Being personalised — ready within 24 hours of payment.'}
+            : stage.id === 'payment_review'
+              ? `Awaiting payment confirmation from the OpusFesta team${order.paymentRef ? ` — ref ${order.paymentRef}` : ''}.`
+              : 'Being personalised — ready within 24 hours of payment.'}
         </p>
       </div>
 
       {/* Actions */}
       <div className="flex items-center justify-between gap-3 border-t border-black/[0.06] bg-black/[0.015] px-5 py-3">
-        <span className="text-xs text-[#1A1A1A]/50">
-          {itemCount} {itemCount === 1 ? 'design' : 'designs'}
-          {order.paymentLabel ? ` · ${order.paymentLabel}` : ''}
-        </span>
+        <div className="flex flex-wrap items-center gap-1">
+          <span className={cn(META_PILL, GREEN_PILL)}>
+            {itemCount} {itemCount === 1 ? 'design' : 'designs'}
+          </span>
+          {(order.paymentLabel?.split(' · ') ?? []).filter(Boolean).map((part) => (
+            <span key={part} className={cn(META_PILL, GREEN_PILL)}>
+              {part}
+            </span>
+          ))}
+        </div>
         <Button variant="secondary" onClick={() => downloadInvoice(order)}>
           <Download className="size-4" /> Invoice
         </Button>
@@ -157,7 +210,7 @@ export default function OrdersManager() {
   }, [])
 
   const stats = useMemo(() => {
-    const inProgress = orders.filter((o) => currentStageIndex(o) < 2).length
+    const inProgress = orders.filter((o) => ORDER_STAGES[currentStageIndex(o)].id !== 'delivered').length
     const delivered = orders.length - inProgress
     return { total: orders.length, inProgress, delivered }
   }, [orders])

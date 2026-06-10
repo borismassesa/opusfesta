@@ -31,7 +31,32 @@ function formatDate(iso: string, offsetDays = 0): string {
     : new Date(iso)
   if (Number.isNaN(d.getTime())) return ''
   if (offsetDays) d.setDate(d.getDate() + offsetDays)
-  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+  return d.toLocaleDateString('en-GB', {
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+    // Timestamps render in East Africa Time so the server's timezone (UTC on
+    // Vercel) can't shift the date; date-only values already parsed as local.
+    ...(dateOnly ? {} : { timeZone: 'Africa/Dar_es_Salaam' }),
+  })
+}
+
+/** Payment timestamp pinned to East Africa Time so the server's timezone never shifts it. */
+function formatPaidOn(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  const date = d.toLocaleDateString('en-GB', {
+    timeZone: 'Africa/Dar_es_Salaam',
+    day: 'numeric',
+    month: 'long',
+    year: 'numeric',
+  })
+  const time = d.toLocaleTimeString('en-GB', {
+    timeZone: 'Africa/Dar_es_Salaam',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  return `${date}, ${time} EAT`
 }
 
 /** Coloured tier pill — mirrors the classic/signature swatches used on the cart card. */
@@ -61,10 +86,7 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     paddingHorizontal: 11,
     borderRadius: 999,
-    backgroundColor: '#ecfdf5',
     borderWidth: 1,
-    borderColor: '#6ee7b7',
-    color: '#047857',
     fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     letterSpacing: 0.8,
@@ -148,6 +170,30 @@ const s = StyleSheet.create({
   },
   grand: { fontSize: 13, fontFamily: 'Helvetica-Bold' },
   pay: { marginTop: 22, color: '#4b5563' },
+  payCard: {
+    marginTop: 8,
+    width: 260,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+    borderRadius: 8,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+  },
+  payBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    alignSelf: 'flex-start',
+    paddingVertical: 3.5,
+    paddingHorizontal: 9,
+    borderRadius: 999,
+    borderWidth: 1,
+    marginBottom: 10,
+  },
+  payBadgeText: { fontSize: 8.5, fontFamily: 'Helvetica-Bold', letterSpacing: 0.4 },
+  payRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 2.5 },
+  payRowLabel: { width: 104, fontSize: 9, color: '#6b7280' },
+  payRowVal: { flex: 1, fontSize: 9.5, color: '#111827' },
   footer: {
     marginTop: 34,
     paddingTop: 16,
@@ -305,9 +351,49 @@ function ItemRow({ item }: { item: StoredOrder['items'][number] }) {
   )
 }
 
+/**
+ * Structured payment block — status badge plus scannable label/value rows,
+ * instead of the legacy one-line "M-Pesa Lipa Namba … · … · Ref …" string.
+ * The payer's phone stays off the invoice; the reference and paid-on time
+ * are what customers need for support and verification.
+ */
+function PaymentCard({ order }: { order: StoredOrder }) {
+  const pay = order.payment!
+  const verifying = order.paymentStatus === 'verifying'
+  const badge = verifying
+    ? { bg: '#fffbeb', border: '#fcd34d', fg: '#b45309', text: `${pay.provider} — verifying payment` }
+    : { bg: '#ecfdf5', border: '#6ee7b7', fg: '#047857', text: `Paid via ${pay.provider}` }
+  const paidOn = formatPaidOn(order.paidAt)
+  const rows: Array<{ label: string; value: string; bold?: boolean }> = []
+  if (pay.businessNumber) rows.push({ label: 'Business number', value: pay.businessNumber })
+  if (pay.cardLast4) rows.push({ label: 'Card', value: `•••• ${pay.cardLast4}` })
+  if (pay.payerName) rows.push({ label: 'Paid by', value: pay.payerName })
+  if (pay.reference) rows.push({ label: 'Reference', value: pay.reference, bold: true })
+  if (paidOn) rows.push({ label: verifying ? 'Submitted on' : 'Paid on', value: paidOn })
+  return (
+    <View style={s.payCard}>
+      <View style={[s.payBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
+        <Svg width={6} height={6} viewBox="0 0 6 6">
+          <Circle cx={3} cy={3} r={3} fill={badge.fg} />
+        </Svg>
+        <Text style={[s.payBadgeText, { color: badge.fg }]}>{badge.text}</Text>
+      </View>
+      {rows.map((row) => (
+        <View key={row.label} style={s.payRow}>
+          <Text style={s.payRowLabel}>{row.label}</Text>
+          <Text style={row.bold ? [s.payRowVal, { fontFamily: 'Helvetica-Bold' }] : s.payRowVal}>
+            {row.value}
+          </Text>
+        </View>
+      ))}
+    </View>
+  )
+}
+
 export function InvoicePdf({ order }: { order: StoredOrder }) {
   const paidDate = formatDate(order.paidAt)
   const eventDate = order.eventDate ? formatDate(order.eventDate) : ''
+  const verifying = order.paymentStatus === 'verifying'
   return (
     <Document title={`OpusFesta-Invoice-${order.ref}`}>
       <Page size="A4" style={s.page}>
@@ -315,7 +401,16 @@ export function InvoicePdf({ order }: { order: StoredOrder }) {
           <Image style={s.logo} src={{ data: Buffer.from(INVOICE_LOGO_PNG_BASE64, 'base64'), format: 'png' }} />
           <View style={s.docTitle}>
             <Text style={s.h1}>INVOICE</Text>
-            <Text style={s.paid}>PAID</Text>
+            <Text
+              style={[
+                s.paid,
+                verifying
+                  ? { backgroundColor: '#fffbeb', borderColor: '#fcd34d', color: '#b45309' }
+                  : { backgroundColor: '#ecfdf5', borderColor: '#6ee7b7', color: '#047857' },
+              ]}
+            >
+              {verifying ? 'PAYMENT VERIFYING' : 'PAID'}
+            </Text>
           </View>
         </View>
 
@@ -327,7 +422,7 @@ export function InvoicePdf({ order }: { order: StoredOrder }) {
             </View>
             {paidDate ? (
               <View style={s.mi}>
-                <Text style={s.label}>Payment date</Text>
+                <Text style={s.label}>{verifying ? 'Order date' : 'Payment date'}</Text>
                 <Text>{paidDate}</Text>
               </View>
             ) : null}
@@ -386,15 +481,19 @@ export function InvoicePdf({ order }: { order: StoredOrder }) {
             <Text style={s.totalNum}>Free</Text>
           </View>
           <View style={s.grandRow}>
-            <Text style={s.grand}>Total paid</Text>
+            <Text style={s.grand}>{verifying ? 'Total' : 'Total paid'}</Text>
             <Text style={s.grand}>{tzs(order.total)}</Text>
           </View>
         </View>
 
-        {order.paymentLabel ? (
-          <View style={s.pay}>
+        {order.payment || order.paymentLabel ? (
+          <View style={s.pay} wrap={false}>
             <Text style={s.label}>Payment method</Text>
-            <Text>{order.paymentLabel}</Text>
+            {order.payment ? (
+              <PaymentCard order={order} />
+            ) : (
+              <Text>{order.paymentLabel}</Text>
+            )}
           </View>
         ) : null}
 

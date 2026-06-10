@@ -12,6 +12,7 @@ import {
   generateOrderRef,
   setLastOrder,
   type StoredContact,
+  type StoredOrderPayment,
 } from '@/lib/cart-storage'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -33,22 +34,8 @@ const PAYMENT_METHODS: PaymentMethod[] = [
     id: 'mpesa',
     kind: 'mobile',
     provider: 'M-Pesa',
-    desc: 'Approve the prompt on your phone',
+    desc: 'Lipa Namba or QR — pay from any network or bank',
     logos: [{ src: '/assets/payment-logos/m-pesa-logo.png', w: 600, h: 400, cls: 'h-6 w-auto' }],
-  },
-  {
-    id: 'airtel',
-    kind: 'mobile',
-    provider: 'Airtel Money',
-    desc: 'Approve the prompt on your phone',
-    logos: [{ src: '/assets/payment-logos/airtel-money.png', w: 390, h: 230, cls: 'h-5 w-auto' }],
-  },
-  {
-    id: 'mixx',
-    kind: 'mobile',
-    provider: 'Mixx by Yas',
-    desc: 'Mixx by Yas (Tigo Pesa)',
-    logos: [{ src: '/assets/payment-logos/mixx-by-yass-tigo-pesa.png', w: 600, h: 400, cls: 'h-6 w-auto' }],
   },
   {
     id: 'card',
@@ -62,16 +49,80 @@ const PAYMENT_METHODS: PaymentMethod[] = [
   },
 ]
 
-// OpusFesta's M-Pesa Lipa Namba (Buy Goods / till number).
-// TODO: replace the placeholder with the real business number.
-const MPESA_LIPA_NAMBA = '000000'
-const MPESA_LIPA_NAME = 'OpusFesta'
+// OpusFesta's M-Pesa Lipa Namba (TIPS / Tan QR merchant number) — from the
+// official Vodacom "Pesa ni M-Pesa" merchant poster.
+const MPESA_LIPA_NAMBA = '350298654'
+const MPESA_LIPA_NAME = 'OPUSFESTA COMPANY LIMITED'
+const MPESA_LIPA_POSTER_SRC = '/assets/payment/opusfesta-mpesa-lipa-poster.png'
+
+// Payment steps per network, transcribed from the merchant poster
+// ("Jinsi ya kufanya malipo kwa Tan QR Code"). The USSD menus are in
+// Swahili on every Tanzanian handset, so the steps stay in Swahili.
+type LipaStep = { do: string; detail: string }
+type LipaNetwork = { id: string; name: string; dial: string; steps: LipaStep[] }
+
+const LIPA_NETWORKS: LipaNetwork[] = [
+  {
+    id: 'vodacom',
+    name: 'Vodacom M-Pesa',
+    dial: '*150*00#',
+    steps: [
+      { do: 'Chagua 4', detail: 'LIPA kwa M-Pesa' },
+      { do: 'Chagua 1', detail: 'LIPA kwa Simu' },
+      { do: 'Weka Lipa Namba', detail: MPESA_LIPA_NAMBA },
+      { do: 'Weka kiasi', detail: 'cha kulipa' },
+      { do: 'Weka namba ya siri', detail: 'kuthibitisha malipo' },
+    ],
+  },
+  {
+    id: 'tigo',
+    name: 'Tigo Pesa (Mixx by Yas)',
+    dial: '*150*01#',
+    steps: [
+      { do: 'Chagua 5', detail: 'LIPA KWA SIMU' },
+      { do: 'Chagua 3', detail: 'Kwenda Mitandao mingine' },
+      { do: 'Chagua 1', detail: 'M-Pesa' },
+      { do: 'Weka M-Pesa Lipa Namba', detail: MPESA_LIPA_NAMBA },
+      { do: 'Weka kiasi', detail: 'unacholipa' },
+      { do: 'Weka namba ya Siri', detail: 'kuthibitisha' },
+    ],
+  },
+  {
+    id: 'airtel',
+    name: 'Airtel Money',
+    dial: '*150*60#',
+    steps: [
+      { do: 'Chagua 5', detail: 'Lipia Bili' },
+      { do: 'Chagua 1', detail: 'Lipa kwa simu (Mitandao yote)' },
+      { do: 'Chagua 2', detail: 'Lipa kwa Voda Lipa' },
+      { do: 'Ingiza kiasi', detail: 'cha pesa' },
+      { do: 'Ingiza namba ya kumbukumbu', detail: MPESA_LIPA_NAMBA },
+      { do: 'Weka namba ya Siri', detail: 'kuthibitisha' },
+    ],
+  },
+  {
+    id: 'other',
+    name: 'Mitandao mingine & benki',
+    dial: 'Menyu ya huduma za kifedha ya mtandao wako',
+    steps: [
+      { do: 'Chagua', detail: 'LIPA KWA SIMU' },
+      { do: 'Chagua', detail: 'Kwenda Mitandao Mingine' },
+      { do: 'Chagua', detail: 'M-Pesa' },
+      { do: 'Ingiza namba ya Mfanyabiashara', detail: MPESA_LIPA_NAMBA },
+      { do: 'Ingiza kiasi', detail: 'cha kulipa' },
+      { do: 'Ingiza namba ya siri', detail: 'kuthibitisha' },
+    ],
+  },
+]
 
 function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
 }
 
 const PHONE_RE = /^\+?(?:[\d](?:[\s().-]?)){9,}$/
+// Transaction confirmation codes vary per network (M-Pesa: 10 alphanumeric,
+// Tigo/Airtel: digits, banks may include dots/dashes) — keep it lenient.
+const PAYREF_RE = /^[A-Za-z0-9.\-]{6,25}$/
 const CARD_NUMBER_RE = /^\d{13,19}$/
 const EXPIRY_RE = /^(0[1-9]|1[0-2])\/\d{2}$/
 const CVV_RE = /^\d{3,4}$/
@@ -87,7 +138,7 @@ function isExpiryInPast(value: string): boolean {
 
 type Errors = Partial<
   Record<
-    'cardName' | 'cardNumber' | 'cardExpiry' | 'cardCvv' | 'mobilePhone' | 'cart' | 'contact',
+    'cardName' | 'cardNumber' | 'cardExpiry' | 'cardCvv' | 'mobilePhone' | 'payerName' | 'payRef' | 'cart' | 'contact',
     string
   >
 >
@@ -125,27 +176,30 @@ export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart()
 
   const [selected, setSelected] = useState<string>('mpesa')
-  // M-Pesa supports two flows: STK push to phone, or pay to our Lipa Namba.
-  const [mpesaMode, setMpesaMode] = useState<'phone' | 'lipa'>('phone')
+  const [lipaNetwork, setLipaNetwork] = useState<string>('vodacom')
 
   const [cardName, setCardName] = useState('')
   const [cardNumber, setCardNumber] = useState('')
   const [cardExpiry, setCardExpiry] = useState('')
   const [cardCvv, setCardCvv] = useState('')
   const [mobilePhone, setMobilePhone] = useState('')
+  const [payerName, setPayerName] = useState('')
+  const [payRef, setPayRef] = useState('')
 
   const [errors, setErrors] = useState<Errors>({})
   const [submitting, setSubmitting] = useState(false)
   const [contact, setContactState] = useState<StoredContact | null>(null)
 
   useEffect(() => {
-    setContactState(getContact())
+    queueMicrotask(() => setContactState(getContact()))
   }, [])
 
   const method = PAYMENT_METHODS.find((m) => m.id === selected) ?? PAYMENT_METHODS[0]
   const isCard = method.kind === 'card'
   const isMpesa = method.id === 'mpesa'
-  const useLipa = isMpesa && mpesaMode === 'lipa'
+  // M-Pesa is paid to our Lipa Namba — how it's done in Tanzania,
+  // works from every network and bank.
+  const useLipa = isMpesa
 
   // Digital product — prices are final (VAT-inclusive) and delivery is free.
   const discount = 0
@@ -161,8 +215,22 @@ export default function CheckoutPage() {
 
   const paymentLabel = (): string => {
     if (isCard) return `Card ending in ${cardNumber.replace(/\s/g, '').slice(-4)}`
-    if (useLipa) return `M-Pesa Lipa Namba ${MPESA_LIPA_NAMBA} · ${mobilePhone.trim()}`
+    if (useLipa)
+      return `M-Pesa Lipa Namba ${MPESA_LIPA_NAMBA} · ${payerName.trim()} · ${mobilePhone.trim()} · Ref ${payRef.trim().toUpperCase()}`
     return `${method.provider} ${mobilePhone.trim()}`
+  }
+
+  const paymentDetails = (): StoredOrderPayment => {
+    if (isCard) return { provider: 'Card', cardLast4: cardNumber.replace(/\s/g, '').slice(-4) }
+    if (useLipa)
+      return {
+        provider: 'M-Pesa',
+        businessNumber: MPESA_LIPA_NAMBA,
+        payerPhone: mobilePhone.trim(),
+        payerName: payerName.trim(),
+        reference: payRef.trim().toUpperCase(),
+      }
+    return { provider: method.provider, payerPhone: mobilePhone.trim() }
   }
 
   const validate = (): Errors => {
@@ -176,8 +244,16 @@ export default function CheckoutPage() {
       if (!EXPIRY_RE.test(cardExpiry)) e.cardExpiry = 'Use MM/YY format.'
       else if (isExpiryInPast(cardExpiry)) e.cardExpiry = 'This card has expired.'
       if (!CVV_RE.test(cardCvv)) e.cardCvv = '3 or 4 digits.'
-    } else if (!PHONE_RE.test(mobilePhone.trim())) {
-      e.mobilePhone = 'Enter a valid phone number.'
+    } else {
+      if (!PHONE_RE.test(mobilePhone.trim())) {
+        e.mobilePhone = 'Enter a valid phone number.'
+      }
+      if (useLipa && payerName.trim().length < 3) {
+        e.payerName = 'Enter the name on the account the payment came from.'
+      }
+      if (useLipa && !PAYREF_RE.test(payRef.trim())) {
+        e.payRef = 'Enter the confirmation code from your payment SMS (6–25 letters or numbers).'
+      }
     }
     return e
   }
@@ -194,6 +270,11 @@ export default function CheckoutPage() {
         ref,
         paidAt: new Date().toISOString(),
         paymentLabel: paymentLabel(),
+        payment: paymentDetails(),
+        paymentRef: useLipa ? payRef.trim().toUpperCase() : undefined,
+        // Lipa Namba payments are only considered paid once the OpusFesta
+        // team confirms the transaction against the M-Pesa statement.
+        paymentStatus: useLipa ? 'verifying' : 'paid',
         contact: { name: contact.fullName, email: contact.email, phone: contact.phone },
         items: items.map((i) => ({
           id: i.id,
@@ -402,81 +483,122 @@ export default function CheckoutPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* M-Pesa offers two flows: STK push, or pay to our Lipa Namba */}
-                  {isMpesa && (
-                    <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1">
-                      <button
-                        type="button"
-                        onClick={() => setMpesaMode('phone')}
-                        className={cn(
-                          'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
-                          mpesaMode === 'phone' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
-                        )}
-                      >
-                        Phone prompt
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setMpesaMode('lipa')}
-                        className={cn(
-                          'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
-                          mpesaMode === 'lipa' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
-                        )}
-                      >
-                        Lipa Namba
-                      </button>
+                  {useLipa && (
+                    <div className="overflow-hidden rounded-2xl border border-gray-200">
+                      <div className="flex justify-center bg-white p-3 sm:p-4">
+                        <Image
+                          src={MPESA_LIPA_POSTER_SRC}
+                          alt={`M-Pesa Lipa Namba poster for ${MPESA_LIPA_NAME}`}
+                          width={1749}
+                          height={2481}
+                          quality={100}
+                          sizes="(min-width: 1024px) 360px, (min-width: 640px) 420px, 82vw"
+                          className="h-auto max-h-[420px] w-auto max-w-full object-contain sm:max-h-[500px] lg:max-h-[560px]"
+                        />
+                      </div>
+
+                      {/* Amount to send */}
+                      <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-gray-50 px-4 py-3">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+                          Amount to send
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xl font-bold text-gray-900 tabular-nums">
+                            {formatTzs(total)}
+                          </span>
+                          <CopyButton value={String(total)} label="amount" />
+                        </div>
+                      </div>
+
+                      {/* Jinsi ya kufanya malipo — per-network instructions */}
+                      <div className="p-4">
+                        <p className="text-sm font-semibold text-gray-900">Jinsi ya kufanya malipo</p>
+                        <p className="mt-0.5 text-xs text-gray-500">
+                          How to pay — choose your network and follow the steps.
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-1.5" role="tablist" aria-label="Mtandao wa malipo">
+                          {LIPA_NETWORKS.map((n) => {
+                            const active = lipaNetwork === n.id
+                            return (
+                              <button
+                                key={n.id}
+                                type="button"
+                                role="tab"
+                                aria-selected={active}
+                                onClick={() => setLipaNetwork(n.id)}
+                                className={cn(
+                                  'rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors',
+                                  active
+                                    ? 'border-[#E60000] bg-[#E60000] text-white'
+                                    : 'border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:text-gray-900',
+                                )}
+                              >
+                                {n.name}
+                              </button>
+                            )
+                          })}
+                        </div>
+                        {LIPA_NETWORKS.filter((n) => n.id === lipaNetwork).map((n) => (
+                          <div key={n.id} className="mt-4">
+                            <p className="text-xs font-semibold text-gray-700">
+                              {n.id === 'other' ? (
+                                <>Ingia kwenye <span className="font-bold">{n.dial}</span></>
+                              ) : (
+                                <>Piga <span className="rounded-md bg-gray-900 px-2 py-0.5 font-mono text-[13px] font-bold text-white">{n.dial}</span></>
+                              )}
+                            </p>
+                            <ol className="mt-3 space-y-2.5">
+                              {n.steps.map((step, i) => (
+                                <li key={i} className="flex items-start gap-3">
+                                  <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-[#E60000] text-[11px] font-bold text-white tabular-nums">
+                                    {i + 1}
+                                  </span>
+                                  <p className="text-xs leading-relaxed text-gray-700">
+                                    <span className="font-bold text-gray-900">{step.do}</span>
+                                    {' — '}
+                                    {step.detail}
+                                  </p>
+                                </li>
+                              ))}
+                            </ol>
+                            {n.id === 'vodacom' && (
+                              <p className="mt-3 rounded-lg bg-gray-50 px-3 py-2.5 text-xs leading-relaxed text-gray-600">
+                                <span className="font-semibold text-gray-900">Au scan QR code:</span>{' '}
+                                fungua M-Pesa App, bonyeza kitufe cha QR, scan picha ya QR hapo juu,
+                                kisha weka kiasi na PIN yako kukamilisha malipo.
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   )}
 
                   {useLipa && (
-                    <div className="overflow-hidden rounded-xl border border-gray-200">
-                      {/* Lipa Namba + amount, both copyable */}
-                      <div className="grid grid-cols-2 divide-x divide-gray-200 border-b border-gray-200 bg-gray-50">
-                        <div className="p-4">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
-                            Lipa Namba
-                          </p>
-                          <div className="mt-1.5 flex items-center gap-2">
-                            <span className="text-2xl font-bold tracking-wide text-gray-900 tabular-nums">
-                              {MPESA_LIPA_NAMBA}
-                            </span>
-                            <CopyButton value={MPESA_LIPA_NAMBA} label="Lipa Namba" />
-                          </div>
-                          <p className="mt-0.5 text-xs text-gray-500">{MPESA_LIPA_NAME}</p>
-                        </div>
-                        <div className="p-4">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
-                            Amount
-                          </p>
-                          <div className="mt-1.5 flex items-center gap-2">
-                            <span className="text-2xl font-bold text-gray-900 tabular-nums">
-                              {formatTzs(total)}
-                            </span>
-                            <CopyButton value={String(total)} label="amount" />
-                          </div>
-                        </div>
-                      </div>
-                      {/* Step-by-step */}
-                      <ol className="space-y-3 p-4">
-                        {[
-                          'Open the M-Pesa menu → Lipa kwa M-Pesa → Lipa Namba',
-                          'Enter the Lipa Namba and amount shown above',
-                          'Confirm with your PIN, then tap Pay below',
-                        ].map((step, i) => (
-                          <li key={i} className="flex items-start gap-3">
-                            <span className="flex size-5 shrink-0 items-center justify-center rounded-full bg-gray-900 text-[11px] font-bold text-white tabular-nums">
-                              {i + 1}
-                            </span>
-                            <p className="text-xs leading-relaxed text-gray-700">{step}</p>
-                          </li>
-                        ))}
-                      </ol>
+                    <div>
+                      <Label htmlFor="payer-name" className="mb-1.5 text-gray-900">
+                        Name on the account that paid <span className="text-red-600">*</span>
+                      </Label>
+                      <Input
+                        id="payer-name"
+                        type="text"
+                        value={payerName}
+                        onChange={(e) => { setPayerName(e.target.value); clearError('payerName') }}
+                        placeholder="e.g. Mary Mwakasege"
+                        autoComplete="name"
+                        aria-invalid={Boolean(errors.payerName)}
+                      />
+                      {errors.payerName && <FieldError>{errors.payerName}</FieldError>}
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        The account holder name the payment came from — as registered with the
+                        mobile network or bank.
+                      </p>
                     </div>
                   )}
 
                   <div>
                     <Label htmlFor="mobile-phone" className="mb-1.5 text-gray-900">
-                      {useLipa ? 'Your M-Pesa number (for confirmation)' : `${method.provider} phone number`}{' '}
+                      {useLipa ? 'Your phone number to confirm your payment' : `${method.provider} phone number`}{' '}
                       <span className="text-red-600">*</span>
                     </Label>
                     <Input
@@ -495,6 +617,31 @@ export default function CheckoutPage() {
                       </p>
                     )}
                   </div>
+
+                  {useLipa && (
+                    <div>
+                      <Label htmlFor="pay-ref" className="mb-1.5 text-gray-900">
+                        Transaction reference number <span className="text-red-600">*</span>
+                      </Label>
+                      <Input
+                        id="pay-ref"
+                        type="text"
+                        value={payRef}
+                        onChange={(e) => { setPayRef(e.target.value); clearError('payRef') }}
+                        placeholder="e.g. 9XJ45KQ2RT"
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        spellCheck={false}
+                        className="uppercase placeholder:normal-case"
+                        aria-invalid={Boolean(errors.payRef)}
+                      />
+                      {errors.payRef && <FieldError>{errors.payRef}</FieldError>}
+                      <p className="mt-1.5 text-xs text-gray-500">
+                        The confirmation code in the SMS you received after paying. The OpusFesta
+                        team uses it to verify your payment.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -504,12 +651,18 @@ export default function CheckoutPage() {
                 disabled={submitting || items.length === 0}
                 className="inline-flex w-full items-center justify-center rounded-full bg-(--accent) px-6 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.06em] text-(--on-accent) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
               >
-                {submitting ? 'Processing…' : `Pay ${formatTzs(total)}`}
+                {submitting
+                  ? 'Processing…'
+                  : useLipa
+                    ? `I've paid ${formatTzs(total)} — submit order`
+                    : `Pay ${formatTzs(total)}`}
               </button>
 
               <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
                 <ShieldCheck size={13} className="text-emerald-600" />
-                Payments are processed securely. Your design goes live within 24 hours of confirmation.
+                {useLipa
+                  ? 'Your order is confirmed once the OpusFesta team verifies the transaction. Your design goes live within 24 hours of confirmation.'
+                  : 'Payments are processed securely. Your design goes live within 24 hours of confirmation.'}
               </p>
             </CardContent>
           </Card>
