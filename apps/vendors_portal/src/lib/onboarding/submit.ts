@@ -312,14 +312,43 @@ export async function submitApplication(
     .select('id')
     .single<{ id: string }>()
 
-  if (upsertUser.error) {
+  let supabaseUserId: string
+  if (!upsertUser.error) {
+    supabaseUserId = upsertUser.data.id
+  } else if (
+    upsertUser.error.code === '23505' &&
+    upsertUser.error.message.includes('users_email_key')
+  ) {
+    // The email already has a users row under a different (or cleared)
+    // clerk_id — e.g. an account created on the website app, or a vendor
+    // whose Clerk user was deleted and who signed up again. The caller has
+    // proven ownership of this email (Clerk verified it at sign-up), so
+    // re-link the existing row to the current Clerk user instead of failing
+    // the whole submission with a duplicate-email error.
+    const relink = await admin
+      .from('users')
+      .update({ clerk_id: userId, name: fullName ?? undefined })
+      .eq('email', email)
+      .select('id')
+      .single<{ id: string }>()
+    if (relink.error) {
+      return {
+        ok: false,
+        reason: 'unknown',
+        error: `[submit] users re-link by email failed: ${relink.error.code} ${relink.error.message}`,
+      }
+    }
+    console.log(
+      `[submit] re-linked users row for ${email} to clerk_id=${userId}`,
+    )
+    supabaseUserId = relink.data.id
+  } else {
     return {
       ok: false,
       reason: 'unknown',
       error: `[submit] users upsert failed: ${upsertUser.error.code} ${upsertUser.error.message}`,
     }
   }
-  const supabaseUserId = upsertUser.data.id
 
   // 2) Build the vendors row payload.
   const dbCategory = CATEGORY_TO_DB[draft.categoryId!]
