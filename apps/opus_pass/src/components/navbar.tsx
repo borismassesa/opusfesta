@@ -358,13 +358,17 @@ export default function Navbar() {
         </div>
       )}
 
-      {/* ── Mobile: full-screen menu ── */}
+      {/* ── Mobile: full-screen menu ──
+          `invisible` must accompany the off-screen translate: Tailwind v4 compiles
+          translate utilities to the standalone `translate` property, which old
+          Android WebViews (< Chromium 104, e.g. WhatsApp in-app browsers) ignore —
+          without visibility the closed menu covers the page and blocks every tap. */}
       <div
         role="dialog"
         aria-modal="true"
         aria-label="Navigation menu"
-        className={`lg:hidden fixed inset-0 bg-white z-50 flex flex-col transition-transform duration-300 ease-in-out ${
-          mobileOpen ? 'translate-y-0' : '-translate-y-full'
+        className={`lg:hidden fixed inset-0 bg-white z-50 flex flex-col transition-[transform,translate,visibility] duration-300 ease-in-out ${
+          mobileOpen ? 'visible translate-y-0' : 'invisible -translate-y-full'
         }`}
       >
         {/* Header — changes based on which panel is active */}
@@ -397,8 +401,8 @@ export default function Navbar() {
         <div className="flex-1 overflow-hidden relative">
           {/* Panel 1 — main nav list */}
           <div
-            className={`absolute inset-0 flex flex-col transition-transform duration-300 ease-in-out ${
-              mobileExpanded ? '-translate-x-full' : 'translate-x-0'
+            className={`absolute inset-0 flex flex-col transition-[transform,translate,visibility] duration-300 ease-in-out ${
+              mobileExpanded ? 'invisible -translate-x-full' : 'visible translate-x-0'
             }`}
           >
             <div className="flex-1 overflow-y-auto py-3 px-3">
@@ -447,8 +451,8 @@ export default function Navbar() {
 
           {/* Panel 2 — sub-items for the selected section */}
           <div
-            className={`absolute inset-0 flex flex-col transition-transform duration-300 ease-in-out ${
-              mobileExpanded ? 'translate-x-0' : 'translate-x-full'
+            className={`absolute inset-0 flex flex-col transition-[transform,translate,visibility] duration-300 ease-in-out ${
+              mobileExpanded ? 'visible translate-x-0' : 'invisible translate-x-full'
             }`}
           >
             {(() => {

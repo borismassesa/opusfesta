@@ -489,8 +489,10 @@ function InvitationsFilterDrawer({
         aria-label="All filters"
         data-lenis-prevent
         className={cn(
-          'fixed inset-y-0 left-0 w-full max-w-md bg-white z-50 shadow-xl overflow-y-auto overscroll-contain transition-transform duration-200',
-          open ? 'translate-x-0' : '-translate-x-full',
+          // `invisible` backstops the translate: old WebViews (< Chromium 104) ignore
+          // the standalone `translate` property and the closed drawer would block taps.
+          'fixed inset-y-0 left-0 w-full max-w-md bg-white z-50 shadow-xl overflow-y-auto overscroll-contain transition-[transform,translate,visibility] duration-200',
+          open ? 'visible translate-x-0' : 'invisible -translate-x-full',
         )}
       >
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between z-10">
