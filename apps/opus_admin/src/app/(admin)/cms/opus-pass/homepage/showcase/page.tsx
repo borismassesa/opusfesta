@@ -26,7 +26,13 @@ export default async function OpusPassHomepageShowcaseEditorPage() {
           stored.images && Array.isArray(stored.images) && stored.images.length > 0
             ? stored.images
             : OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK.images,
-        pills: { ...OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK.pills, ...stored.pills },
+        pills: Array.isArray(stored.pills)
+          ? stored.pills
+          : stored.pills && typeof stored.pills === 'object'
+            ? // Recover drafts saved while pills were corrupted into a
+              // numeric-keyed object by the old object-spread merge.
+              Object.values(stored.pills)
+            : OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK.pills,
         accent_color: stored.accent_color || OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK.accent_color,
       }
     : OPUS_PASS_HOMEPAGE_SHOWCASE_FALLBACK

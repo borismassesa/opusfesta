@@ -52,6 +52,8 @@ function randomId(): string {
 export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft }: Props) {
   const [draft, setDraft] = useState<OpusPassTestimonialsContent>(initial)
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(initial))
+  const isDirty = JSON.stringify(draft) !== savedSnapshot
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -132,6 +134,7 @@ export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft 
     runAction(async () => {
       await saveOpusPassTestimonialsDraft(draft)
       setHasDraft(true)
+      setSavedSnapshot(JSON.stringify(draft))
       setMessage('Draft saved.')
     })
 
@@ -140,6 +143,7 @@ export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft 
       await saveOpusPassTestimonialsDraft(draft)
       await publishOpusPassTestimonials()
       setHasDraft(false)
+      setSavedSnapshot(JSON.stringify(draft))
       setMessage('Published — changes are live.')
     })
 
@@ -148,12 +152,14 @@ export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft 
       await discardOpusPassTestimonialsDraft()
       setDraft(initial)
       setHasDraft(false)
+      setSavedSnapshot(JSON.stringify(initial))
       setMessage('Draft discarded.')
     })
 
   useEffect(() => {
     bind({
       hasDraft,
+      isDirty,
       pending,
       message,
       error,
@@ -163,7 +169,7 @@ export default function TestimonialsEditor({ initial, hasDraft: initialHasDraft 
     })
     return () => unbind()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasDraft, pending, message, error, draft])
+  }, [hasDraft, isDirty, pending, message, error, draft])
 
   const renderColumn = (col: Column) => (
     <div className="space-y-3">

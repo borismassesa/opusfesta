@@ -4,6 +4,8 @@ import { createContext, useCallback, useContext, useMemo, useState, type ReactNo
 
 export type EditorActionsState = {
   hasDraft: boolean
+  /** Local edits not yet saved as a draft on the server. */
+  isDirty: boolean
   pending: boolean
   message: string | null
   error?: string | null

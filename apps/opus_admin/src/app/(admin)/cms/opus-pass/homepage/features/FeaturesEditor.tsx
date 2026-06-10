@@ -46,6 +46,8 @@ function randomId(): string {
 export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: Props) {
   const [draft, setDraft] = useState<OpusPassFeaturesContent>(initial)
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
+  const [savedSnapshot, setSavedSnapshot] = useState(() => JSON.stringify(initial))
+  const isDirty = JSON.stringify(draft) !== savedSnapshot
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -127,6 +129,7 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
     runAction(async () => {
       await saveOpusPassFeaturesDraft(draft)
       setHasDraft(true)
+      setSavedSnapshot(JSON.stringify(draft))
       setMessage('Draft saved.')
     })
 
@@ -135,6 +138,7 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
       await saveOpusPassFeaturesDraft(draft)
       await publishOpusPassFeatures()
       setHasDraft(false)
+      setSavedSnapshot(JSON.stringify(draft))
       setMessage('Published — changes are live.')
     })
 
@@ -143,12 +147,14 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
       await discardOpusPassFeaturesDraft()
       setDraft(initial)
       setHasDraft(false)
+      setSavedSnapshot(JSON.stringify(initial))
       setMessage('Draft discarded.')
     })
 
   useEffect(() => {
     bind({
       hasDraft,
+      isDirty,
       pending,
       message,
       error,
@@ -158,7 +164,7 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
     })
     return () => unbind()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasDraft, pending, message, error, draft])
+  }, [hasDraft, isDirty, pending, message, error, draft])
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start pb-12">

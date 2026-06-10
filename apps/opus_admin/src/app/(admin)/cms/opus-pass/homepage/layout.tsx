@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition, type ReactNode } from 'react'
+import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
@@ -23,6 +23,9 @@ import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { EditorActionsProvider, useEditorActions } from './EditorActionsContext'
 import { getOpusPassPreviewUrl } from './preview-action'
+import { getSectionDraftFlags } from './draft-flags-action'
+
+const UNSAVED_WARNING = 'You have unsaved changes that will be lost. Leave anyway?'
 
 type Section = {
   key: string
@@ -103,6 +106,33 @@ export default function OpusPassHomepageCmsLayout({ children }: { children: Reac
 
 function OpusPassHomepageCmsShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const { bound } = useEditorActions()
+  const isDirty = bound?.isDirty ?? false
+  const hasDraft = bound?.hasDraft ?? false
+
+  // Warn before the tab closes / hard-navigates away with unsaved edits.
+  useEffect(() => {
+    if (!isDirty) return
+    const onBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = UNSAVED_WARNING
+    }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
+  }, [isDirty])
+
+  // Which sections have an unpublished draft (amber dot in the sidebar).
+  // Refetched whenever the active editor's draft state flips (save/publish/discard).
+  const [draftSections, setDraftSections] = useState<string[]>([])
+  useEffect(() => {
+    let cancelled = false
+    getSectionDraftFlags().then((keys) => {
+      if (!cancelled) setDraftSections(keys)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [hasDraft])
   // opus_pass is mounted under basePath '/opuspass' — link straight to it.
   const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}`
   const activeSection = sections.find((s) => s.href && pathname.startsWith(s.href)) ?? sections[0]
@@ -139,7 +169,13 @@ function OpusPassHomepageCmsShell({ children }: { children: ReactNode }) {
           <div className="sticky top-6 px-3 py-1 space-y-5">
             <SectionGroup label="Sections">
               {liveSections.map((s) => (
-                <SectionLink key={s.key} section={s} pathname={pathname} />
+                <SectionLink
+                  key={s.key}
+                  section={s}
+                  pathname={pathname}
+                  isDirty={isDirty}
+                  hasDraftDot={s.key === activeSection.key ? hasDraft : draftSections.includes(s.key)}
+                />
               ))}
             </SectionGroup>
 
@@ -168,12 +204,25 @@ function SectionGroup({ label, children }: { label: string; children: ReactNode 
   )
 }
 
-function SectionLink({ section, pathname }: { section: Section; pathname: string }) {
+function SectionLink({
+  section,
+  pathname,
+  isDirty,
+  hasDraftDot,
+}: {
+  section: Section
+  pathname: string
+  isDirty: boolean
+  hasDraftDot: boolean
+}) {
   const Icon = section.icon
   const isActive = section.href && pathname.startsWith(section.href)
   return (
     <Link
       href={section.href!}
+      onClick={(e) => {
+        if (!isActive && isDirty && !window.confirm(UNSAVED_WARNING)) e.preventDefault()
+      }}
       className={cn(
         'flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors',
         isActive ? 'bg-[#F0DFF6] text-[#7E5896]' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
@@ -181,6 +230,13 @@ function SectionLink({ section, pathname }: { section: Section; pathname: string
     >
       <Icon className={cn('w-4 h-4 stroke-[1.5] shrink-0', isActive ? 'text-[#7E5896]' : 'text-gray-400')} />
       <span className="truncate">{section.label}</span>
+      {hasDraftDot && (
+        <span
+          className="ml-auto w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0"
+          title="Unpublished draft"
+          aria-label="Unpublished draft"
+        />
+      )}
     </Link>
   )
 }
@@ -201,15 +257,19 @@ function SectionItemSoon({ section }: { section: Section }) {
 function EditorStatusBadge() {
   const { bound } = useEditorActions()
   if (!bound) return null
-  const { hasDraft } = bound
+  const { hasDraft, isDirty } = bound
   return (
     <span
       className={cn(
         'inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full',
-        hasDraft ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700'
+        isDirty
+          ? 'bg-orange-50 text-orange-700'
+          : hasDraft
+            ? 'bg-amber-50 text-amber-700'
+            : 'bg-emerald-50 text-emerald-700'
       )}
     >
-      {hasDraft ? 'Unpublished draft' : 'All changes published'}
+      {isDirty ? 'Unsaved changes' : hasDraft ? 'Unpublished draft' : 'All changes published'}
     </span>
   )
 }
@@ -230,7 +290,9 @@ function EditorActionButtons() {
       {hasDraft && (
         <button
           type="button"
-          onClick={onDiscard}
+          onClick={() => {
+            if (window.confirm('Discard this draft? Unpublished changes will be lost.')) onDiscard()
+          }}
           disabled={pending}
           className="flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors disabled:opacity-50"
         >
