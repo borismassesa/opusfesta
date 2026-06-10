@@ -72,7 +72,9 @@ export default function CheckoutStepper({ current }: { current: CheckoutStep }) 
                 <span aria-current={status === 'current' ? 'step' : undefined}>{content}</span>
               )}
               {i < STEPS.length - 1 && (
-                <ChevronRight className="h-3.5 w-3.5 text-gray-300 sm:h-4 sm:w-4" aria-hidden="true" />
+                // self-start + margin centers the chevron on the icon circle
+                // (h-9 / sm:h-12) rather than on the taller icon+label column
+                <ChevronRight className="h-3.5 w-3.5 self-start mt-[11px] text-gray-300 sm:h-4 sm:w-4 sm:mt-4" aria-hidden="true" />
               )}
             </li>
           )
