@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
@@ -146,6 +147,7 @@ const navItems: Array<{
 ]
 
 export default function Navbar() {
+  const router = useRouter()
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
@@ -195,12 +197,15 @@ export default function Navbar() {
 
           <div className="hidden lg:flex gap-1 font-semibold text-[15px]">
             {navItems.map((item) => (
-              <Link
+              <button
                 key={item.label}
-                href={getNavHref(item.card.href)}
+                type="button"
                 onMouseEnter={() => setActiveMenu(item.label)}
                 onFocus={() => setActiveMenu(item.label)}
-                onClick={() => setActiveMenu(null)}
+                onClick={() => {
+                  setActiveMenu(null)
+                  router.push(getNavHref(item.card.href))
+                }}
                 aria-expanded={activeMenu === item.label}
                 aria-haspopup="true"
                 className={`px-4 py-2.5 rounded-full transition-colors whitespace-nowrap outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2 ${
@@ -210,7 +215,7 @@ export default function Navbar() {
                 }`}
               >
                 {item.label}
-              </Link>
+              </button>
             ))}
           </div>
         </div>
