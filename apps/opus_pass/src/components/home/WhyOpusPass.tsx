@@ -28,9 +28,11 @@ export async function WhyOpusPass() {
               />
             </div>
 
-            {/* Floating product chip — straddling the top-left edge */}
-            <div className="absolute left-0 top-12 flex -translate-x-[50%] items-center gap-3 rounded-[20px] bg-white px-3.5 py-3 shadow-[0_14px_35px_-10px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.05]">
-              <span className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-gray-100">
+            {/* Floating product chip — straddling the top-left edge. On phones the
+                card nearly fills the viewport, so cap the overhang at the section
+                padding (12px) or the chip gets clipped by the body's overflow clip. */}
+            <div className="absolute left-0 top-12 flex -translate-x-3 items-center gap-3 rounded-[20px] bg-white px-3 py-2.5 shadow-[0_14px_35px_-10px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.05] sm:-translate-x-1/2 sm:px-3.5 sm:py-3">
+              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-gray-100 sm:h-12 sm:w-12">
                 <Image
                   src={content.chip_image_url}
                   alt=""
@@ -40,15 +42,16 @@ export async function WhyOpusPass() {
                 />
               </span>
               <span className="pr-1 leading-tight">
-                <span className="block text-base font-extrabold text-[#1A1A1A]">{content.chip_title}</span>
-                <span className="block text-sm text-[#1A1A1A]/55">{content.chip_subtitle}</span>
+                <span className="block text-sm font-extrabold text-[#1A1A1A] sm:text-base">{content.chip_title}</span>
+                <span className="block text-xs text-[#1A1A1A]/55 sm:text-sm">{content.chip_subtitle}</span>
               </span>
             </div>
 
-            {/* Floating CTA pill — straddling the bottom edge */}
+            {/* Floating CTA pill — straddling the bottom edge; same clipped-overhang
+                cap on phones as the chip above */}
             <Link
               href={content.floating_cta_href}
-              className="absolute bottom-12 right-0 inline-flex translate-x-[50%] items-center gap-2.5 rounded-full bg-[var(--accent)] px-8 py-4 text-base font-extrabold text-[var(--on-accent)] shadow-[0_16px_35px_-10px_rgba(0,0,0,0.4)] transition-colors hover:bg-[var(--accent-hover)]"
+              className="absolute bottom-12 right-0 inline-flex translate-x-3 items-center gap-2.5 rounded-full bg-[var(--accent)] px-6 py-3.5 text-sm font-extrabold text-[var(--on-accent)] shadow-[0_16px_35px_-10px_rgba(0,0,0,0.4)] transition-colors hover:bg-[var(--accent-hover)] sm:translate-x-1/2 sm:px-8 sm:py-4 sm:text-base"
             >
               <Tag className="h-5 w-5" />
               {content.floating_cta_label}
