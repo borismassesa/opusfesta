@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { ArrowRight, Mail } from 'lucide-react'
+import { Mail } from 'lucide-react'
 import { resolveContributorAccess } from '@/lib/contribute/auth'
+import SwitchAccountButton from './SwitchAccountButton'
 import { isSupabaseAdminConfigError } from '@/lib/supabase'
 
 export const dynamic = 'force-dynamic'
@@ -55,20 +56,13 @@ function RestrictedNotice({
 
       <div className="mt-8 flex flex-wrap items-center gap-3">
         {signedIn ? (
-          <Link
-            href="/sign-in?redirect_url=%2Fcontribute"
-            className="inline-flex items-center gap-2 rounded-lg bg-[#C9A0DC] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#b97fd0]"
-          >
-            Switch account
-            <ArrowRight className="h-4 w-4" />
-          </Link>
+          <SwitchAccountButton />
         ) : (
           <Link
             href="/sign-in?redirect_url=%2Fcontribute"
             className="inline-flex items-center gap-2 rounded-lg bg-[#C9A0DC] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#b97fd0]"
           >
             Sign in
-            <ArrowRight className="h-4 w-4" />
           </Link>
         )}
         <Link

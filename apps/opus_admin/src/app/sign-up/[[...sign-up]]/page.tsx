@@ -11,10 +11,6 @@ function safeLocalRedirect(value: string | null): string | undefined {
   return value
 }
 
-// Sign-up route mirrors /sign-in. Without this page the Clerk widget's
-// "Sign up" affordance (and any direct /sign-up link from a contributor
-// invite email) 404s — the middleware whitelisted the path but the Next
-// route was missing.
 export default async function SignUpPage({
   searchParams,
 }: {
@@ -25,21 +21,17 @@ export default async function SignUpPage({
     firstParam(params?.redirect_url) || firstParam(params?.redirectUrl)
   )
 
+  const callbackUrl = redirectUrl
+    ? `/auth-callback?next=${encodeURIComponent(redirectUrl)}`
+    : '/auth-callback'
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#FDFDFD] px-4">
       <SignUp
-        forceRedirectUrl={redirectUrl}
-        fallbackRedirectUrl="/"
-        signInForceRedirectUrl={redirectUrl}
-        signInFallbackRedirectUrl="/"
-        appearance={{
-          elements: {
-            formButtonPrimary: 'bg-[#C9A0DC] hover:bg-[#b97fd0] text-[#1A1A1A]',
-            // Hide Clerk's footer (dev-mode branding + "Secured by Clerk").
-            // The sign-in <-> sign-up cross-link still works via direct URLs.
-            footer: 'hidden',
-          },
-        }}
+        forceRedirectUrl={callbackUrl}
+        fallbackRedirectUrl="/auth-callback"
+        signInForceRedirectUrl={callbackUrl}
+        signInFallbackRedirectUrl="/auth-callback"
       />
     </div>
   )
