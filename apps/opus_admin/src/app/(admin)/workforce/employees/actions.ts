@@ -6,7 +6,6 @@ import { getCallerEmail, requirePermission } from '@/lib/admin-auth'
 import {
   inviteEmployee as inviteEmployeeViaClerk,
   revokeInvitation as revokeWorkforceInvitation,
-  type GrantMethod,
 } from '@/lib/workforce-invitations'
 import type {
   Department,
@@ -161,6 +160,7 @@ export async function createEmployee(input: CreateEmployeeInput): Promise<Create
 
   revalidatePath('/workforce/employees')
   revalidatePath('/workforce/schedule')
+
   return { ok: true, id: data.id, employeeCode: data.employee_code }
 }
 
@@ -262,18 +262,17 @@ export async function deleteEmployee(id: string): Promise<void> {
 // ---------------------------------------------------------------------------
 // Dashboard access (RBAC + invitations)
 // ---------------------------------------------------------------------------
-// Granting access is a two-step gesture: assign the role on the row,
-// then send a Clerk invitation. The actual `dashboard_access` flag only
-// flips to true after the invitee accepts (acceptInvitation in
-// workforce-invitations.ts), which is when the trigger mirrors them
-// into admin_whitelist and they can sign in.
+// Granting access sends a Clerk invitation. The actual `dashboard_access`
+// flag flips to true after the invitee accepts (acceptInvitation in
+// workforce-invitations.ts), at which point Clerk metadata is eagerly
+// synced and the new resolver in admin-auth.ts picks them up.
 
-async function getCallerWhitelistId(): Promise<string | null> {
+async function getCallerEmployeeId(): Promise<string | null> {
   const email = await getCallerEmail()
   if (!email) return null
   const supabase = createSupabaseAdminClient()
   const { data } = await supabase
-    .from('admin_whitelist')
+    .from('workforce_employees')
     .select('id')
     .ilike('email', email)
     .maybeSingle<{ id: string }>()
@@ -284,23 +283,19 @@ export type GrantDashboardAccessResult = {
   invitationId: string
   emailSent: boolean
   emailReason?: string
-  mode: 'invited' | 'created_login' | 'granted_existing'
-  // Plaintext temporary password, returned ONLY for mode === 'created_login'
-  // so the dialog can show it once for the admin to hand over. Never stored.
-  tempPassword?: string
+  mode: 'invited' | 'granted_existing'
 }
 
 export async function grantDashboardAccess(
   employeeId: string,
   roleId: string,
-  method: GrantMethod = 'invite',
 ): Promise<GrantDashboardAccessResult> {
   // Granting dashboard access is a privileged operation — it determines
   // who can sign in and what they can do. Only owners can do it.
   await requirePermission('platform.admin')
 
-  const invitedById = await getCallerWhitelistId()
-  const result = await inviteEmployeeViaClerk({ employeeId, roleId, invitedById, method })
+  const invitedById = await getCallerEmployeeId()
+  const result = await inviteEmployeeViaClerk({ employeeId, roleId, invitedById })
 
   revalidatePath('/workforce/employees')
   revalidatePath('/workforce/roles')
@@ -309,7 +304,6 @@ export async function grantDashboardAccess(
     emailSent: result.emailSent,
     emailReason: result.emailReason,
     mode: result.mode,
-    tempPassword: result.tempPassword,
   }
 }
 

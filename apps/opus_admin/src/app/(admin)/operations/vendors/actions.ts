@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { auth } from '@clerk/nextjs/server'
-import { requireAdminRole } from '@/lib/admin-auth'
+import { requirePermission } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { isEmailConfigured, sendEmail } from '@/lib/email'
 import {
@@ -43,6 +43,7 @@ export async function generateSignedUrl(
 ): Promise<SignedUrlResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, error: 'Sign in as an admin first.' }
+  try { await requirePermission('vendor.read') } catch { return { ok: false, error: "You don't have permission for that." } }
   if (!storagePath) return { ok: false, error: 'Missing storage path.' }
 
   const admin = createSupabaseAdminClient()
@@ -98,6 +99,7 @@ export async function approveDocument(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
 
   const admin = createSupabaseAdminClient()
   const reviewerId = await resolveAdminUserId(admin, userId)
@@ -137,6 +139,7 @@ export async function rejectDocument(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
   if (!reason.trim()) {
     return {
       ok: false,
@@ -281,10 +284,9 @@ async function resolveAdminBccRecipients(
   }
 
   const { data, error } = await admin
-    .from('admin_whitelist')
-    .select('email, role, is_active')
-    .eq('is_active', true)
-    .in('role', ['owner', 'admin'])
+    .from('workforce_employees')
+    .select('email, workforce_roles!dashboard_role_id(slug)')
+    .eq('dashboard_access', true)
 
   if (error) {
     console.warn(`[email] admin BCC lookup failed: ${error.message}`)
@@ -292,7 +294,11 @@ async function resolveAdminBccRecipients(
   }
   if (!data) return []
   const emails = data
-    .map((row) => row.email?.trim().toLowerCase())
+    .filter((row) => {
+      const slug = (row.workforce_roles as { slug?: string } | null)?.slug
+      return slug === 'owner' || slug === 'admin'
+    })
+    .map((row) => (row.email as string)?.trim().toLowerCase())
     .filter((email): email is string => Boolean(email && email.includes('@')))
   return dedupe(emails)
 }
@@ -307,6 +313,7 @@ async function resolveAdminBccRecipients(
 export async function approveVendor(vendorId: string): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
 
   const admin = createSupabaseAdminClient()
   const { error } = await admin
@@ -350,6 +357,7 @@ export async function requestCorrections(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
 
   const admin = createSupabaseAdminClient()
   const { error } = await admin
@@ -392,6 +400,7 @@ export async function suspendVendor(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
 
   const admin = createSupabaseAdminClient()
   const { error } = await admin
@@ -463,6 +472,7 @@ export async function saveVendorPayoutMethod(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
 
   if (!VALID_PAYOUT_METHODS.includes(fields.methodType)) {
     return { ok: false, reason: 'invalid', error: 'Unknown payout method.' }
@@ -575,6 +585,7 @@ export async function setPrimaryPayoutMethod(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
   if (!payoutId) {
     return { ok: false, reason: 'invalid', error: 'Missing payout method.' }
   }
@@ -616,6 +627,7 @@ export async function deleteVendorPayoutMethod(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
   if (!payoutId) {
     return { ok: false, reason: 'invalid', error: 'Missing payout method.' }
   }
@@ -685,6 +697,7 @@ export async function setSectionStatus(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
   if (!VALID_SECTIONS.includes(section)) {
     return { ok: false, reason: 'invalid', error: 'Unknown section.' }
   }
@@ -816,6 +829,7 @@ export async function updateStorefrontSection(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
 
   const admin = createSupabaseAdminClient()
 
@@ -1202,6 +1216,7 @@ export async function createVendorAccount(
 ): Promise<CreateVendorResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
 
   const businessName = input.businessName?.trim()
   const email = input.contactEmail?.trim().toLowerCase()
@@ -1373,6 +1388,7 @@ export async function adminUploadVendorPhoto(
 ): Promise<AdminUploadResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
 
   const vendorId = formData.get('vendorId')
   const kind = formData.get('kind')
@@ -1433,6 +1449,7 @@ export async function adminCreateVendorVideoUploadUrl(input: {
 }): Promise<AdminVideoUploadUrlResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
   if (!input.vendorId) {
     return { ok: false, reason: 'invalid', error: 'Missing vendor id.' }
   }
@@ -1487,6 +1504,7 @@ export async function reactivateVendor(
 ): Promise<ActionResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
 
   const admin = createSupabaseAdminClient()
   const { error } = await admin
@@ -1563,7 +1581,7 @@ export async function getVendorDeletionImpact(
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
   try {
-    await requireAdminRole(['owner', 'admin'])
+    await requirePermission('vendor.moderate')
   } catch {
     return { ok: false, reason: 'unauth', error: "You don't have permission for that." }
   }
@@ -1826,7 +1844,7 @@ export async function deleteVendor(
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
   try {
-    await requireAdminRole(['owner', 'admin'])
+    await requirePermission('vendor.moderate')
   } catch {
     return { ok: false, reason: 'unauth', error: "You don't have permission for that." }
   }
@@ -1956,7 +1974,7 @@ export async function mergeVendors(input: {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
   try {
-    await requireAdminRole(['owner', 'admin'])
+    await requirePermission('vendor.moderate')
   } catch {
     return { ok: false, reason: 'unauth', error: "You don't have permission for that." }
   }

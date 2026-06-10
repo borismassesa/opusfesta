@@ -5,7 +5,6 @@ import { Header } from '@/components/Header'
 import { PageHeadingProvider } from '@/components/PageHeading'
 import { PageSearchProvider } from '@/components/PageSearch'
 import {
-  callerMustResetPassword,
   getAdminAccessRole,
   getCallerPermissions,
   isAdminDashboardRole,
@@ -16,10 +15,6 @@ export const dynamic = 'force-dynamic'
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const role = await getAdminAccessRole()
   if (!isAdminDashboardRole(role)) redirect('/contribute')
-
-  // Accounts provisioned with a temporary password must set their own
-  // before using the dashboard. No-op for everyone who never had one.
-  if (await callerMustResetPassword()) redirect('/set-password')
 
   // Resolve the caller's full permission set once on the layout and
   // pass it into the Sidebar so each NavItem can declare a required

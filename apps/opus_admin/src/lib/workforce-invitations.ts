@@ -17,10 +17,10 @@ import { createHash, randomBytes } from 'crypto'
 import { headers } from 'next/headers'
 import { clerkClient } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { generateTempPassword } from '@/lib/temp-password'
 import { sendEmail } from '@/lib/email'
 import { buildWorkforceInviteEmail } from '@/lib/workforce-invite-email'
 import { auditInviteFailed } from '@/lib/audit-log'
+import { legacyRoleBucket } from '@/lib/admin-auth'
 
 export type WorkforceInvitationRow = {
   id: string
@@ -71,21 +71,10 @@ async function appUrl(): Promise<string> {
   return `${proto}://${host}`
 }
 
-// How the admin wants to bring a brand-new (no existing Clerk account)
-// teammate online:
-//   - 'invite'       → email them a Clerk invitation; they self-sign-up.
-//   - 'create_login' → create the Clerk user right now with a temporary
-//                      password the admin hands over, and force a reset on
-//                      first sign-in. No email round-trip — works even when
-//                      Clerk email delivery is down.
-// Employees who ALREADY have a Clerk account are granted directly either way.
-export type GrantMethod = 'invite' | 'create_login'
-
 export type InviteEmployeeInput = {
   employeeId: string
   roleId: string
   invitedById: string | null
-  method?: GrantMethod
 }
 
 export type InviteResult = {
@@ -94,16 +83,9 @@ export type InviteResult = {
   emailSent: boolean
   emailReason?: string
   // 'invited'          → invitation email path (self sign-up pending)
-  // 'created_login'    → Clerk user created now; tempPassword returned
   // 'granted_existing' → email already had a Clerk account; access flipped
-  mode: 'invited' | 'created_login' | 'granted_existing'
-  // Only set for mode === 'created_login'. Plaintext, shown once to the
-  // admin to hand over — never persisted on our side.
-  tempPassword?: string
+  mode: 'invited' | 'granted_existing'
 }
-
-// Temp password for the create-login path lives in its own pure module so
-// it can be unit-tested without this file's server-only deps.
 
 // Clerk's SDK throws ClerkAPIResponseError carrying a `errors[]` array
 // where each entry has { code, message, longMessage }. The default toString
@@ -137,9 +119,9 @@ export async function inviteEmployee(input: InviteEmployeeInput): Promise<Invite
 
   const { data: role, error: roleError } = await supabase
     .from('workforce_roles')
-    .select('id, name')
+    .select('id, name, slug, permission_keys')
     .eq('id', input.roleId)
-    .maybeSingle<{ id: string; name: string }>()
+    .maybeSingle<{ id: string; name: string; slug: string; permission_keys: string[] }>()
   if (roleError) throw roleError
   if (!role) throw new Error('Role not found.')
 
@@ -204,14 +186,14 @@ export async function inviteEmployee(input: InviteEmployeeInput): Promise<Invite
       .eq('id', employee.id)
     if (updateEmployeeError) throw updateEmployeeError
 
-    // Mirror the role into Clerk's publicMetadata so the resolver in
+    // Eagerly write role into Clerk publicMetadata so the resolver in
     // admin-auth.ts has a hint without needing the workforce join.
     try {
       const fresh = await clerk.users.getUser(existingClerkUserId)
       await clerk.users.updateUserMetadata(existingClerkUserId, {
         publicMetadata: {
           ...(fresh.publicMetadata ?? {}),
-          role: 'admin',
+          role: legacyRoleBucket(role.slug, role.permission_keys),
           workforceRoleId: role.id,
         },
       })
@@ -246,101 +228,15 @@ export async function inviteEmployee(input: InviteEmployeeInput): Promise<Invite
     }
   }
 
-  // No existing account, create-login path → provision the Clerk user
-  // directly with a temporary password and force a reset on first sign-in.
-  // Access is granted immediately (no acceptance step), mirroring the
-  // existing-user fast path above. No email is sent.
-  if (input.method === 'create_login') {
-    const tempPassword = generateTempPassword()
-
-    let createdUserId: string
-    try {
-      const [firstName, ...rest] = employee.full_name.trim().split(/\s+/)
-      const created = await clerk.users.createUser({
-        emailAddress: [employee.email],
-        password: tempPassword,
-        firstName: firstName || undefined,
-        lastName: rest.length ? rest.join(' ') : undefined,
-        publicMetadata: {
-          role: 'admin',
-          workforceRoleId: role.id,
-          mustResetPassword: true,
-        },
-      })
-      createdUserId = created.id
-    } catch (err) {
-      throw new Error(`Could not create the login: ${describeClerkError(err)}`)
-    }
-
-    // The Clerk user now EXISTS. If any of the following DB writes fail we
-    // MUST delete it again — otherwise it's orphaned with
-    // mustResetPassword=true and a temp password no one holds (the action
-    // errored before returning it), and a retry would hit the existing-user
-    // fast path above (granted_existing) and never surface a new temp
-    // password, leaving the teammate permanently unable to sign in.
-    let createdLedgerId: string
-    try {
-      const { error: updateEmployeeError } = await supabase
-        .from('workforce_employees')
-        .update({
-          dashboard_access: true,
-          dashboard_role_id: role.id,
-          clerk_user_id: createdUserId,
-          invited_at: new Date().toISOString(),
-        })
-        .eq('id', employee.id)
-      if (updateEmployeeError) throw updateEmployeeError
-
-      const { data: ledger, error: ledgerError } = await supabase
-        .from('workforce_invitations')
-        .insert({
-          employee_id: employee.id,
-          email: employee.email,
-          role_id: role.id,
-          clerk_invitation_id: null,
-          token_hash: tokenHash,
-          status: 'accepted',
-          invited_by: input.invitedById,
-          accepted_at: new Date().toISOString(),
-        })
-        .select('id')
-        .single<{ id: string }>()
-      if (ledgerError) throw ledgerError
-      createdLedgerId = ledger.id
-    } catch (err) {
-      // Roll back the just-created Clerk user so a retry is clean. The
-      // employee row (if its update landed) self-heals on retry: the deleted
-      // user won't be found, so create_login runs again and overwrites it.
-      try {
-        await clerk.users.deleteUser(createdUserId)
-      } catch (rollbackErr) {
-        console.error(
-          '[workforce-invitations] FAILED to roll back orphaned Clerk user after create_login error — manual cleanup needed',
-          { createdUserId, email: employee.email, rollbackErr },
-        )
-      }
-      throw err
-    }
-
-    return {
-      invitationId: createdLedgerId,
-      inviteLink,
-      emailSent: false,
-      emailReason: 'no_email_needed_created_login',
-      mode: 'created_login',
-      tempPassword,
-    }
-  }
-
   // No existing account → create a Clerk invitation. publicMetadata.role
-  // hints at the role so it's available in sessionClaims even before our
-  // acceptance flow runs — the resolver in admin-auth.ts uses it.
+  // is written eagerly so it's available in sessionClaims even before our
+  // acceptance flow runs.
   let clerkInvitationId: string | null = null
   try {
     const clerkInvite = await clerk.invitations.createInvitation({
       emailAddress: employee.email,
       redirectUrl: inviteLink,
-      publicMetadata: { role: 'admin', workforceRoleId: role.id },
+      publicMetadata: { role: legacyRoleBucket(role.slug, role.permission_keys), workforceRoleId: role.id },
       notify: false, // we send our own branded email below
     })
     clerkInvitationId = clerkInvite.id
@@ -480,21 +376,36 @@ export async function acceptInvitation(input: AcceptInvitationInput): Promise<Ac
     )
   }
 
+  // Pull the role so we can write the correct Clerk metadata.
+  const { data: roleRow } = await supabase
+    .from('workforce_roles')
+    .select('slug, permission_keys')
+    .eq('id', invite.role_id)
+    .maybeSingle<{ slug: string; permission_keys: string[] }>()
+  const legacyRole = legacyRoleBucket(roleRow?.slug ?? '', roleRow?.permission_keys ?? [])
+
   // Pull the freshly-signed-up Clerk user so we can cache their profile
   // picture URL alongside the access flip. Clerk hands out a default
   // avatar even when the user hasn't uploaded one, so this is safe to
-  // store unconditionally.
+  // store unconditionally. Also write the correct role into publicMetadata
+  // so the dashboard auth resolver has it as an eager hint.
   let clerkImageUrl: string | null = null
   try {
     const clerk = await clerkClient()
     const fresh = await clerk.users.getUser(input.clerkUserId)
     clerkImageUrl = fresh.imageUrl ?? null
+    await clerk.users.updateUserMetadata(input.clerkUserId, {
+      publicMetadata: {
+        ...(fresh.publicMetadata ?? {}),
+        role: legacyRole,
+        workforceRoleId: invite.role_id,
+      },
+    })
   } catch (err) {
-    console.warn('[workforce-invitations] could not fetch Clerk imageUrl during accept', err)
+    console.warn('[workforce-invitations] could not sync Clerk metadata during accept', err)
   }
 
-  // Flip the employee row → grants dashboard access (the trigger then
-  // mirrors them into admin_whitelist) AND records the Clerk linkage.
+  // Flip the employee row → grants dashboard access and records the Clerk linkage.
   const employeeUpdate: Record<string, unknown> = {
     dashboard_access: true,
     dashboard_role_id: invite.role_id,

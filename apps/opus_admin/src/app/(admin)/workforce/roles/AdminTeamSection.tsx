@@ -584,7 +584,7 @@ function GrantAccessDialog({
             Grant dashboard access
           </h2>
           <p className="mt-1 text-sm text-gray-500">
-            Pick an employee and the role they should hold. We’ll send them an
+            Pick an employee and the role they should hold. We'll send them an
             invitation email; access only turns on after they accept.
           </p>
         </div>
@@ -674,7 +674,7 @@ function GrantAccessDialog({
                 ))}
             </select>
             <span className="mt-1 block text-[11px] text-gray-400">
-              Author is excluded — Authors live under /contribute and don’t need
+              Author is excluded — Authors live under /contribute and don't need
               dashboard access.
             </span>
           </label>

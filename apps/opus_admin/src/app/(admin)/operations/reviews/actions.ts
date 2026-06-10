@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { auth } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 
 export type ReviewModerationResult =
   | { ok: true }
@@ -38,6 +39,7 @@ export async function publishReview(
 ): Promise<ReviewModerationResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
 
   const admin = createSupabaseAdminClient()
   const reviewerId = await resolveAdminUserId(admin, userId)
@@ -97,6 +99,7 @@ export async function rejectReview(
 ): Promise<ReviewModerationResult> {
   const { userId } = await auth()
   if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
   if (!reason.trim()) {
     return {
       ok: false,
