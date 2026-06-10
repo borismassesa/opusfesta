@@ -2,7 +2,8 @@ import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
 import { PreviewBanner } from '@/components/PreviewBanner'
 import { loadInvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-banner'
-import { loadInvitationsStyleStripContent } from '@/lib/cms/invitations-style-strip'
+import { loadInvitationCategoriesList } from '@/lib/cms/invitations-categories'
+import { styleStripFromCategories } from '@/lib/cms/invitations-style-strip'
 import { loadInvitationsExploreStylesContent } from '@/lib/cms/invitations-explore-styles'
 import { loadInvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-free-website-promo'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
@@ -21,12 +22,12 @@ export const metadata: Metadata = {
 }
 
 export default async function InvitationsCatalogPage() {
-  const [{ isEnabled: isDraft }, products, promoBanner, styleStrip, exploreStyles, freeWebsitePromo, packages] =
+  const [{ isEnabled: isDraft }, products, promoBanner, categories, exploreStyles, freeWebsitePromo, packages] =
     await Promise.all([
       draftMode(),
       loadInvitationProducts(),
       loadInvitationsPromoBannerContent(),
-      loadInvitationsStyleStripContent(),
+      loadInvitationCategoriesList(),
       loadInvitationsExploreStylesContent(),
       loadInvitationsFreeWebsitePromoContent(),
       loadPackagesContent(),
@@ -38,7 +39,7 @@ export default async function InvitationsCatalogPage() {
         products={products}
         fromGuestPrice={packageFromPrice(packages)}
         promoBanner={promoBanner}
-        styleStrip={styleStrip}
+        styleStrip={styleStripFromCategories(categories)}
         exploreStyles={exploreStyles}
         freeWebsitePromo={freeWebsitePromo}
       />
