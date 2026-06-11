@@ -14,12 +14,15 @@ import { isEmailConfigured, sendEmail } from './email'
 import { resolveAdminRecipients } from './admin-recipients'
 import { buildVendorSubmitNotificationEmail } from './vendor-submit-notification-email'
 import { buildVendorSubmitConfirmationEmail } from './vendor-submit-confirmation-email'
+import { buildCategoryRequestNotificationEmail } from './category-request-notification-email'
 
 export type NotifyOnSubmitInput = {
   vendorId: string
   vendorCode: string | null
   businessName: string
   category: string | null
+  /** Set when the vendor chose "other" and typed a custom label. */
+  customCategoryLabel: string | null
   region: string | null
   city: string | null
   vendorContactEmail: string | null
@@ -55,6 +58,8 @@ async function notifyAdmins(input: NotifyOnSubmitInput): Promise<void> {
     return
   }
 
+  const reviewLink = adminReviewUrl(input.vendorId)
+
   const message = buildVendorSubmitNotificationEmail({
     businessName: input.businessName,
     vendorCode: input.vendorCode,
@@ -64,20 +69,41 @@ async function notifyAdmins(input: NotifyOnSubmitInput): Promise<void> {
     vendorContactEmail: input.vendorContactEmail,
     vendorContactPhone: input.vendorContactPhone,
     submittedAt: input.submittedAt,
-    reviewLink: adminReviewUrl(input.vendorId),
+    reviewLink,
   })
 
-  const result = await sendEmail({
-    to: recipients,
-    subject: message.subject,
-    html: message.html,
-    text: message.text,
-  })
-  if (!result.sent) {
-    console.warn(
-      `[email] admin submit notify failed (vendor=${input.vendorId}): ${result.reason}${result.error ? ` — ${result.error}` : ''}`,
+  const sends: Promise<void>[] = [
+    sendEmail({ to: recipients, subject: message.subject, html: message.html, text: message.text })
+      .then((result) => {
+        if (!result.sent) {
+          console.warn(
+            `[email] admin submit notify failed (vendor=${input.vendorId}): ${result.reason}${result.error ? ` — ${result.error}` : ''}`,
+          )
+        }
+      }),
+  ]
+
+  if (input.customCategoryLabel) {
+    const catMessage = buildCategoryRequestNotificationEmail({
+      businessName: input.businessName,
+      vendorCode: input.vendorCode,
+      requestedLabel: input.customCategoryLabel,
+      reviewLink: `${adminReviewUrl(input.vendorId).replace('/operations/vendors/', '/operations/category-requests')}`,
+      submittedAt: input.submittedAt,
+    })
+    sends.push(
+      sendEmail({ to: recipients, subject: catMessage.subject, html: catMessage.html, text: catMessage.text })
+        .then((result) => {
+          if (!result.sent) {
+            console.warn(
+              `[email] category request notify failed (vendor=${input.vendorId}): ${result.reason}${result.error ? ` — ${result.error}` : ''}`,
+            )
+          }
+        }),
     )
   }
+
+  await Promise.allSettled(sends)
 }
 
 async function notifyVendor(input: NotifyOnSubmitInput): Promise<void> {

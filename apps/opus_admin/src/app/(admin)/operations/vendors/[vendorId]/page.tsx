@@ -363,7 +363,19 @@ export default async function VendorReviewPage({
     }
   })
 
+  // Fetch category request (if any) for this vendor — best effort
+  let categoryRequest: { requested_label: string; status: string } | null = null
+  {
+    const { data: catReq } = await admin
+      .from('vendor_category_requests')
+      .select('requested_label, status')
+      .eq('vendor_id', v.id)
+      .maybeSingle<{ requested_label: string; status: string }>()
+    categoryRequest = catReq ?? null
+  }
+
   const props: VendorReviewProps = {
+    categoryRequest,
     vendor: {
       id: v.id,
       vendorCode: v.vendor_code,

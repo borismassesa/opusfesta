@@ -36,6 +36,9 @@ export default function ReviewPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
   const category = findCategory(draft.categoryId)
+  const categoryLabel = draft.categoryId === 'other'
+    ? (draft.customCategoryLabel || 'Other')
+    : (category?.profileLabel ?? 'Not set')
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -184,7 +187,7 @@ export default function ReviewPage() {
   return (
     <OnboardShell
       step="review"
-      profileLabel={category?.profileLabel ?? 'Vendor'}
+      profileLabel={categoryLabel}
       backHref="/onboard/pricing/payout"
     >
       {/* Page heading */}
@@ -203,7 +206,7 @@ export default function ReviewPage() {
       <div className="border-t border-gray-200">
         <Section title="Profile" editHref="/onboard/profile/name">
           <Row label="Business name">{draft.businessName || 'Not set'}</Row>
-          <Row label="Category">{category?.profileLabel ?? 'Not set'}</Row>
+          <Row label="Category">{categoryLabel}</Row>
           <Row label="Owner">{fullName || 'Not set'}</Row>
           <Row label="Location">
             {[draft.city, regionLabel].filter(Boolean).join(', ') || 'Not set'}

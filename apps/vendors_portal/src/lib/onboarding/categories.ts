@@ -3,7 +3,6 @@ import {
   Video,
   Flower2,
   Music2,
-  Sparkles,
   ChefHat,
   Cake,
   ClipboardList,
@@ -11,6 +10,8 @@ import {
   PartyPopper,
   Wand2,
   Building2,
+  HelpCircle,
+  Tag,
   type LucideIcon,
 } from 'lucide-react'
 
@@ -22,6 +23,7 @@ export type VendorCategory = {
   hint?: string
 }
 
+// Fallback list used when the DB query fails or the table doesn't exist yet.
 export const VENDOR_CATEGORIES: VendorCategory[] = [
   { id: 'venue', label: 'Venue or event space', profileLabel: 'Venue', icon: Building2 },
   { id: 'caterer', label: 'Caterer / Bar services', profileLabel: 'Caterer', icon: ChefHat },
@@ -42,7 +44,68 @@ export const VENDOR_CATEGORIES: VendorCategory[] = [
   { id: 'beauty', label: 'Beauty professional', profileLabel: 'Beauty pro', icon: Wand2 },
 ]
 
+export const OTHER_CATEGORY: VendorCategory = {
+  id: 'other',
+  label: 'Something else',
+  profileLabel: 'Other',
+  icon: HelpCircle,
+}
+
+// Maps lucide icon name strings (stored in DB) to components.
+const ICON_MAP: Record<string, LucideIcon> = {
+  Building2, ChefHat, Camera, Cake, Flower2, ClipboardList, Music2,
+  Heart, Video, PartyPopper, Wand2, HelpCircle, Tag,
+}
+
+function iconFromName(name: string): LucideIcon {
+  return ICON_MAP[name] ?? Tag
+}
+
+export type VendorCategoryRow = {
+  slug: string
+  label: string
+  profile_label: string
+  db_value: string
+  icon: string
+  sort_order: number
+}
+
+export function rowToCategory(row: VendorCategoryRow): VendorCategory {
+  return {
+    id: row.slug,
+    label: row.label,
+    profileLabel: row.profile_label,
+    icon: iconFromName(row.icon),
+  }
+}
+
+// Icon name strings for the fallback list — used when the DB isn't available
+// so the server page can pass plain-object data to the client component.
+export const FALLBACK_ICON_NAMES: Record<string, string> = {
+  venue: 'Building2',
+  caterer: 'ChefHat',
+  photographer: 'Camera',
+  cakes: 'Cake',
+  florist: 'Flower2',
+  planner: 'ClipboardList',
+  musician: 'Music2',
+  officiant: 'Heart',
+  videographer: 'Video',
+  extras: 'PartyPopper',
+  beauty: 'Wand2',
+  other: 'HelpCircle',
+}
+
 export function findCategory(id: string | null | undefined): VendorCategory | undefined {
   if (!id) return undefined
+  if (id === 'other') return OTHER_CATEGORY
   return VENDOR_CATEGORIES.find((c) => c.id === id)
+}
+
+export function displayCategoryLabel(
+  categoryId: string | null | undefined,
+  customCategoryLabel: string,
+): string {
+  if (categoryId === 'other') return customCategoryLabel || 'Other'
+  return findCategory(categoryId)?.profileLabel ?? 'Not set'
 }

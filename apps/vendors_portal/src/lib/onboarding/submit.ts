@@ -7,7 +7,7 @@ import {
   createClerkSupabaseServerClient,
 } from '@/lib/supabase'
 import { notifyOnVendorSubmit } from '@/lib/email/notify-on-submit'
-import { findCategory } from './categories'
+import { findCategory, displayCategoryLabel } from './categories'
 import { LANGUAGES } from './languages'
 import { PERSONALITY_OPTIONS } from './personality'
 import { CANCELLATION_OPTIONS, RESCHEDULE_OPTIONS } from './policies'
@@ -41,6 +41,7 @@ const CATEGORY_TO_DB: Record<string, string> = {
   officiant: 'Officiants',
   beauty: 'Beauty & Makeup',
   extras: 'Decorators',
+  other: 'Other',
 }
 
 // Maps the onboarding payout-method tag to the v_b-lite enum.
@@ -118,7 +119,7 @@ function buildSnapshotLabels(draft: OnboardingDraft) {
   const services = draft.categoryId ? getServicesForCategory(draft.categoryId) : []
   const homeMarket = SERVICE_MARKETS.find((m) => m.id === draft.homeMarket)
   return {
-    category: draft.categoryId ? findCategory(draft.categoryId)?.profileLabel ?? null : null,
+    category: displayCategoryLabel(draft.categoryId, draft.customCategoryLabel),
     region: TZ_REGIONS.find((r) => r.code === draft.region)?.name ?? null,
     homeMarket: homeMarket?.name ?? null,
     serviceMarkets: draft.serviceMarkets
@@ -570,6 +571,24 @@ export async function submitApplication(
     }
   }
 
+  // 4a) Persist vendor category request when the vendor chose "other".
+  //     Best-effort — upserts on vendor_id so re-submits update the label
+  //     rather than duplicate. Never blocks the submit.
+  if (draft.categoryId === 'other' && draft.customCategoryLabel.trim()) {
+    const label = draft.customCategoryLabel.trim().slice(0, 80)
+    const { error: reqErr } = await admin
+      .from('vendor_category_requests')
+      .upsert(
+        { vendor_id: vendorId, requested_label: label, status: 'pending' },
+        { onConflict: 'vendor_id' },
+      )
+    if (reqErr) {
+      console.warn(
+        `[submit] vendor_category_requests upsert failed for vendor=${vendorId}: ${reqErr.code} ${reqErr.message}`,
+      )
+    }
+  }
+
   // 4) Vendor agreement: NOT recorded here. Vendor Vows is a values pledge —
   // a separate, optional commitment. The legally-binding vendor agreement is
   // an explicit e-signature step on /verify *after* the document uploads.
@@ -605,7 +624,10 @@ export async function submitApplication(
         vendorId,
         vendorCode: codeRow.data?.vendor_code ?? null,
         businessName: draft.businessName.trim(),
-        category: findCategory(draft.categoryId!)?.profileLabel ?? dbCategory,
+        category: displayCategoryLabel(draft.categoryId, draft.customCategoryLabel),
+        customCategoryLabel: draft.categoryId === 'other' && draft.customCategoryLabel.trim()
+          ? draft.customCategoryLabel.trim()
+          : null,
         region,
         city: draft.city.trim() || null,
         vendorContactEmail: draft.email?.trim() || email,

@@ -1,61 +1,42 @@
-'use client'
+import { createClerkSupabaseServerClient } from '@/lib/supabase'
+import { VENDOR_CATEGORIES, OTHER_CATEGORY, FALLBACK_ICON_NAMES } from '@/lib/onboarding/categories'
+import type { VendorCategoryRow } from '@/lib/onboarding/categories'
+import CategoryPageClient, { type ClientCategory } from './CategoryPageClient'
 
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-import Logo from '@/components/ui/Logo'
-import { OnboardHeading } from '@/components/onboard/OnboardHeading'
-import { OptionCard } from '@/components/onboard/OptionCard'
-import { useOnboardingDraft } from '@/lib/onboarding/draft'
-import { VENDOR_CATEGORIES } from '@/lib/onboarding/categories'
+async function fetchCategories(): Promise<ClientCategory[]> {
+  try {
+    const supabase = await createClerkSupabaseServerClient()
+    const { data, error } = await supabase
+      .from('vendor_categories')
+      .select('slug, label, profile_label, db_value, icon, sort_order')
+      .eq('active', true)
+      .neq('slug', 'other')
+      .order('sort_order', { ascending: true })
+      .returns<VendorCategoryRow[]>()
 
-export default function CategoryPage() {
-  const router = useRouter()
-  const { draft, update, hydrated } = useOnboardingDraft()
-
-  const select = (id: string) => {
-    update({ categoryId: id })
-    router.push('/onboard/vows')
+    if (error || !data?.length) throw new Error('fallback')
+    return data.map((row) => ({
+      id: row.slug,
+      label: row.label,
+      iconName: row.icon,
+      hint: undefined,
+    }))
+  } catch {
+    return VENDOR_CATEGORIES.map((cat) => ({
+      id: cat.id,
+      label: cat.label,
+      iconName: FALLBACK_ICON_NAMES[cat.id] ?? 'Tag',
+      hint: cat.hint,
+    }))
   }
+}
 
-  return (
-    <div className="min-h-screen bg-white text-gray-900">
-      <header className="bg-white border-b border-gray-100">
-        <div className="px-6 lg:px-12 py-4 flex items-center">
-          <Link href="/" aria-label="OpusFesta home" className="shrink-0">
-            <Logo className="h-7 w-auto text-gray-900" />
-          </Link>
-        </div>
-      </header>
-
-      <main className="px-6 lg:px-12 py-10 lg:py-14">
-        <div className="max-w-3xl mx-auto pb-24">
-          <OnboardHeading title="What type of vendor are you?" />
-
-          <div className="grid sm:grid-cols-2 gap-3 lg:gap-4">
-            {VENDOR_CATEGORIES.map((cat) => {
-              const Icon = cat.icon
-              return (
-                <OptionCard
-                  key={cat.id}
-                  variant="plain"
-                  selected={hydrated && draft.categoryId === cat.id}
-                  onToggle={() => select(cat.id)}
-                  label={cat.label}
-                  icon={<Icon className="w-5 h-5" />}
-                  hint={cat.hint}
-                />
-              )
-            })}
-          </div>
-
-          <Link
-            href="mailto:vendors@opusfesta.co?subject=New%20vendor%20category%20request"
-            className="inline-flex items-center gap-2 mt-10 text-sm font-semibold text-gray-900 hover:text-gray-600"
-          >
-            Don’t see your category? Let us know <span aria-hidden>→</span>
-          </Link>
-        </div>
-      </main>
-    </div>
-  )
+export default async function CategoryPage() {
+  const categories = await fetchCategories()
+  const otherCategory: ClientCategory = {
+    id: OTHER_CATEGORY.id,
+    label: OTHER_CATEGORY.label,
+    iconName: 'HelpCircle',
+  }
+  return <CategoryPageClient categories={categories} otherCategory={otherCategory} />
 }
