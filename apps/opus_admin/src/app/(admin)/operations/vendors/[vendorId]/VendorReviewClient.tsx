@@ -24,6 +24,7 @@ import {
   ScanFace,
   ShieldCheck,
   Star,
+  Tag,
   ThumbsDown,
   ThumbsUp,
   Trash2,
@@ -86,6 +87,7 @@ export type DocSummary = {
 }
 
 export type VendorReviewProps = {
+  categoryRequest: { requested_label: string; status: string } | null
   vendor: {
     id: string
     vendorCode: string | null
@@ -267,6 +269,7 @@ const TAB_ORDER: ReadonlyArray<{ id: VendorTab; label: string }> = [
 
 export default function VendorReviewClient(props: VendorReviewProps) {
   const {
+    categoryRequest,
     vendor,
     tin,
     license,
@@ -456,6 +459,19 @@ export default function VendorReviewClient(props: VendorReviewProps) {
             <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
             <p className="text-xs text-rose-800 leading-relaxed">
               {bannerError}
+            </p>
+          </div>
+        )}
+
+        {categoryRequest && categoryRequest.status === 'pending' && (
+          <div className="mb-4 flex items-start gap-2 rounded-lg bg-[#F0DFF6] border border-[#E0C7E8] px-3 py-2.5">
+            <Tag className="w-4 h-4 text-[#7E5896] mt-0.5 shrink-0" />
+            <p className="text-xs text-[#5C3A73] leading-relaxed flex-1">
+              <strong>New category requested:</strong> &ldquo;{categoryRequest.requested_label}&rdquo; —
+              this vendor doesn&apos;t fit an existing category.{' '}
+              <Link href="/operations/category-requests" className="underline hover:no-underline font-semibold">
+                Review request →
+              </Link>
             </p>
           </div>
         )}

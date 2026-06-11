@@ -140,6 +140,8 @@ const sections: NavSection[] = [
       { icon: Heart, label: "Clients", href: "/operations/clients", requiredPermission: "bookings.read" },
       { icon: Building2, label: "Vendor Accounts", href: "/operations/vendors", requiredPermission: "vendor.read" },
       { icon: Handshake, label: "Partnerships", href: "/operations/partnerships", requiredPermission: "vendor.read" },
+      { icon: Store, label: "Vendor Categories", href: "/operations/categories", requiredPermission: "vendor.read" },
+      { icon: HelpCircle, label: "Category Requests", href: "/operations/category-requests", requiredPermission: "vendor.read" },
       { icon: Star, label: "Reviews & Moderation", href: "/operations/reviews", requiredPermission: "vendor.moderate" },
       { icon: Calendar, label: "Calendar", href: "/operations/calendar", requiredPermission: "bookings.read" },
       {
