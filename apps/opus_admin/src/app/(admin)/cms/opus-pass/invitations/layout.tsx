@@ -4,7 +4,6 @@ import { useTransition, type ReactNode } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
-  Circle,
   Compass,
   Eye,
   ExternalLink,
@@ -111,14 +110,6 @@ const sections: Section[] = [
     href: '/cms/opus-pass/invitations/promo-banner',
     status: 'live',
     description: 'Sitewide catalog promo strip — discount text + promo code.',
-  },
-  {
-    key: 'style-strip',
-    label: 'Style Strip',
-    icon: Circle,
-    href: '/cms/opus-pass/invitations/style-strip',
-    status: 'live',
-    description: 'Catalog circular-photo style filters — label + image per chip.',
   },
   {
     key: 'explore-styles',

@@ -28,6 +28,21 @@ export type CartItem = {
 /** Minimum guest count (matches the product page). */
 export const MIN_GUESTS = 100
 
+/**
+ * Canonical line summary, e.g. "Signature · 120 guests · On-site attendant".
+ * Single source for the summary string so it can be rebuilt whenever the
+ * structured fields change (the cart lets users edit the guest count).
+ */
+export function buildItemSummary(parts: { tier?: string; guests?: number; addOns?: string[] }): string {
+  return [
+    parts.tier,
+    parts.guests != null ? `${parts.guests.toLocaleString('en-US')} guests` : null,
+    ...(parts.addOns ?? []),
+  ]
+    .filter(Boolean)
+    .join(' · ')
+}
+
 type CartContextValue = {
   items: CartItem[]
   count: number
@@ -85,7 +100,14 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         // Prefer the stored breakdown; fall back to deriving it for legacy items.
         const perGuest = i.pricePerGuest ?? (i.guests ? Math.round(i.total / i.guests) : 0)
         const extras = i.extrasTotal ?? 0
-        return { ...i, guests: g, total: Math.round(perGuest * g + extras) }
+        return {
+          ...i,
+          guests: g,
+          total: Math.round(perGuest * g + extras),
+          // The summary is a denormalised snapshot — rebuild it so orders
+          // placed after a guest-count edit don't show the stale count.
+          summary: buildItemSummary({ tier: i.tier, guests: g, addOns: i.addOns }),
+        }
       }),
     )
   }, [])

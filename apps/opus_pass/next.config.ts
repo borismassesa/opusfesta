@@ -2,6 +2,9 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Lets tooling build/serve from an alternate dist dir (e.g. .next-preview)
+  // without fighting a dev server that holds .next. Unset in normal use.
+  distDir: process.env.OPUS_PASS_DIST_DIR || '.next',
   // opus_pass is served at the root of its own subdomain (opuspass.opusfesta.com).
   // The marketing site links straight to that subdomain; opusfesta.com/opuspass/*
   // is kept alive as a 308 redirect to the subdomain (see opus_website/next.config.ts),

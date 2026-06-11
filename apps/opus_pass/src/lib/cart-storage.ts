@@ -39,12 +39,37 @@ export type StoredOrderContact = {
   phone: string
 }
 
+/** Structured payment details — rendered as label/value rows on the invoice. */
+export type StoredOrderPayment = {
+  /** Provider name, e.g. 'M-Pesa', 'Airtel Money', 'Card'. */
+  provider: string
+  /** OpusFesta's Lipa Namba the customer paid to. */
+  businessNumber?: string
+  /** Payer's mobile number (kept for support/verification, not shown on the invoice). */
+  payerPhone?: string
+  /** Account holder name the payment came from — as registered with the mobile network. */
+  payerName?: string
+  /** Last four digits of the card, for card payments. */
+  cardLast4?: string
+  /** Transaction confirmation code from the payer's M-Pesa/network SMS. */
+  reference?: string
+}
+
 export type StoredOrder = {
   ref: string
   paidAt: string
   /** Wedding/event date (ISO), when known — surfaced on the invoice. */
   eventDate?: string
   paymentLabel?: string
+  /** Structured payment details for the invoice; paymentLabel remains the legacy fallback. */
+  payment?: StoredOrderPayment
+  /** Transaction confirmation code from the payer's M-Pesa/network SMS. */
+  paymentRef?: string
+  /**
+   * Lipa Namba payments start as 'verifying' — the OpusFesta team has to
+   * confirm the transaction before the order counts as paid.
+   */
+  paymentStatus?: 'verifying' | 'paid'
   contact: StoredOrderContact
   items: StoredOrderItem[]
   subtotal: number
@@ -89,6 +114,9 @@ function sanitizeOrderForStorage(order: StoredOrder): StoredOrder {
     paidAt: order.paidAt,
     eventDate: order.eventDate,
     paymentLabel: order.paymentLabel,
+    payment: order.payment,
+    paymentRef: order.paymentRef,
+    paymentStatus: order.paymentStatus,
     contact: order.contact,
     items: order.items,
     subtotal: order.subtotal,

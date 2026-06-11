@@ -26,28 +26,34 @@ export type CommittedFilters = {
   priceRange: string
   customLow: string
   customHigh: string
-  styles: string[]
-  formats: string[]
-  printEdges: string[]
-  foil: string
-  seasons: string[]
-  photoCount: string[]
+  categories: string[]
+  designers: string[]
+  freeSampleOnly: boolean
 }
 
 const EMPTY_FILTERS: CommittedFilters = {
   priceRange: 'any',
   customLow: '',
   customHigh: '',
-  styles: [],
-  formats: [],
-  printEdges: [],
-  foil: 'any',
-  seasons: [],
-  photoCount: [],
+  categories: [],
+  designers: [],
+  freeSampleOnly: false,
+}
+
+function countActiveFilters(f: CommittedFilters): number {
+  return (
+    (f.priceRange !== 'any' ? 1 : 0) +
+    f.categories.length +
+    f.designers.length +
+    (f.freeSampleOnly ? 1 : 0)
+  )
 }
 
 function applyFilters(products: Product[], f: CommittedFilters): Product[] {
   return products.filter((p) => {
+    if (f.categories.length > 0 && !f.categories.includes(p.category)) return false
+    if (f.designers.length > 0 && !f.designers.includes(p.designer)) return false
+    if (f.freeSampleOnly && !p.freeSample) return false
     // Price filter — operates on priceNow (product data)
     if (f.priceRange !== 'any') {
       const price = p.priceNow
@@ -112,6 +118,17 @@ export default function InvitationsCatalogClient({
   const [autoLoads, setAutoLoads] = useState(0)
 
   const filteredProducts = useMemo(() => applyFilters(products, filters), [products, filters])
+
+  // Filter options are derived from the products on this page, so the drawer
+  // only ever offers choices that can actually match something.
+  const categoryOptions = useMemo(
+    () => [...new Set(products.map((p) => p.category))].sort(),
+    [products],
+  )
+  const designerOptions = useMemo(
+    () => [...new Set(products.map((p) => p.designer))].sort(),
+    [products],
+  )
 
   // Reset the visible window whenever filters or source products change
   useEffect(() => {
@@ -188,7 +205,12 @@ export default function InvitationsCatalogClient({
       <div className="px-4 sm:px-6">
         <div className="mx-auto max-w-7xl pt-8 sm:pt-10">
           <div className="flex flex-wrap items-center gap-3 mb-6 sm:mb-8">
-            <InvitationsFilterDrawer filters={filters} onApply={setFilters} />
+            <InvitationsFilterDrawer
+              filters={filters}
+              onApply={setFilters}
+              categoryOptions={categoryOptions}
+              designerOptions={designerOptions}
+            />
           </div>
           <ProductGrid
             products={visibleProducts}
@@ -310,17 +332,6 @@ const PRICE_RANGES = [
   { id: 'over-200k',   label: 'Over TZS 200,000' },
 ]
 
-const STYLES = ['Modern', 'Classic', 'Rustic', 'Elegant', 'Heritage Karibu']
-const FORMATS = ['Standard', 'Postcard', 'Foil-pressed', 'Vellum overlay', 'Trifold']
-const PRINT_EDGES = ['Straight', 'Rounded', 'Deckled', 'Scalloped']
-const SEASONS = ['Summer', 'Spring', 'Winter', 'Long rains', 'Short rains']
-const PHOTO_COUNTS = ['0 photos', '1 photo', '2 photos', '3 photos', '4+ photos']
-const FOIL_OPTIONS = [
-  { id: 'any', label: 'Any' },
-  { id: 'yes', label: 'Yes — foil-pressed' },
-  { id: 'no',  label: 'No foil' },
-]
-
 function FilterSection({
   title,
   subtitle,
@@ -395,9 +406,13 @@ function RadioRow({
 function InvitationsFilterDrawer({
   filters,
   onApply,
+  categoryOptions,
+  designerOptions,
 }: {
   filters: CommittedFilters
   onApply: (f: CommittedFilters) => void
+  categoryOptions: string[]
+  designerOptions: string[]
 }) {
   const [open, setOpen] = useState(false)
 
@@ -405,12 +420,11 @@ function InvitationsFilterDrawer({
   const [priceRange, setPriceRange] = useState(filters.priceRange)
   const [customLow, setCustomLow] = useState(filters.customLow)
   const [customHigh, setCustomHigh] = useState(filters.customHigh)
-  const [styles, setStyles] = useState<Set<string>>(new Set(filters.styles))
-  const [formats, setFormats] = useState<Set<string>>(new Set(filters.formats))
-  const [printEdges, setPrintEdges] = useState<Set<string>>(new Set(filters.printEdges))
-  const [foil, setFoil] = useState(filters.foil)
-  const [seasons, setSeasons] = useState<Set<string>>(new Set(filters.seasons))
-  const [photoCount, setPhotoCount] = useState<Set<string>>(new Set(filters.photoCount))
+  const [categories, setCategories] = useState<Set<string>>(new Set(filters.categories))
+  const [designers, setDesigners] = useState<Set<string>>(new Set(filters.designers))
+  const [freeSampleOnly, setFreeSampleOnly] = useState(filters.freeSampleOnly)
+
+  const activeCount = countActiveFilters(filters)
 
   useBodyLock(open)
 
@@ -434,12 +448,9 @@ function InvitationsFilterDrawer({
     setPriceRange('any')
     setCustomLow('')
     setCustomHigh('')
-    setStyles(new Set())
-    setFormats(new Set())
-    setPrintEdges(new Set())
-    setFoil('any')
-    setSeasons(new Set())
-    setPhotoCount(new Set())
+    setCategories(new Set())
+    setDesigners(new Set())
+    setFreeSampleOnly(false)
     onApply(EMPTY_FILTERS)
   }
 
@@ -448,12 +459,9 @@ function InvitationsFilterDrawer({
       priceRange,
       customLow,
       customHigh,
-      styles: [...styles],
-      formats: [...formats],
-      printEdges: [...printEdges],
-      foil,
-      seasons: [...seasons],
-      photoCount: [...photoCount],
+      categories: [...categories],
+      designers: [...designers],
+      freeSampleOnly,
     })
     setOpen(false)
   }
@@ -469,6 +477,11 @@ function InvitationsFilterDrawer({
       >
         <SlidersHorizontal size={14} />
         All filters
+        {activeCount > 0 && (
+          <span className="ml-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-gray-900 px-1.5 text-[11px] font-bold leading-none text-white">
+            {activeCount}
+          </span>
+        )}
       </button>
 
       <div
@@ -558,77 +571,41 @@ function InvitationsFilterDrawer({
             </div>
           </FilterSection>
 
-          <FilterSection title="Style">
-            {STYLES.map((s) => (
-              <FilterCheckbox
-                key={s}
-                id={`style-${s}`}
-                label={s}
-                checked={styles.has(s)}
-                onChange={() => toggle(styles, s, setStyles)}
-              />
-            ))}
-          </FilterSection>
+          {categoryOptions.length > 1 && (
+            <FilterSection title="Card type">
+              {categoryOptions.map((c) => (
+                <FilterCheckbox
+                  key={c}
+                  id={`cat-${c}`}
+                  label={c}
+                  checked={categories.has(c)}
+                  onChange={() => toggle(categories, c, setCategories)}
+                />
+              ))}
+            </FilterSection>
+          )}
 
-          <FilterSection title="Format">
-            {FORMATS.map((f) => (
-              <FilterCheckbox
-                key={f}
-                id={`fmt-${f}`}
-                label={f}
-                checked={formats.has(f)}
-                onChange={() => toggle(formats, f, setFormats)}
-              />
-            ))}
-          </FilterSection>
+          {designerOptions.length > 1 && (
+            <FilterSection title="Designer">
+              {designerOptions.map((d) => (
+                <FilterCheckbox
+                  key={d}
+                  id={`designer-${d}`}
+                  label={d}
+                  checked={designers.has(d)}
+                  onChange={() => toggle(designers, d, setDesigners)}
+                />
+              ))}
+            </FilterSection>
+          )}
 
-          <FilterSection title="Print edges">
-            {PRINT_EDGES.map((e) => (
-              <FilterCheckbox
-                key={e}
-                id={`edge-${e}`}
-                label={e}
-                checked={printEdges.has(e)}
-                onChange={() => toggle(printEdges, e, setPrintEdges)}
-              />
-            ))}
-          </FilterSection>
-
-          <FilterSection title="Foil">
-            {FOIL_OPTIONS.map((f) => (
-              <RadioRow
-                key={f.id}
-                name="foil"
-                id={`foil-${f.id}`}
-                label={f.label}
-                checked={foil === f.id}
-                onChange={() => setFoil(f.id)}
-              />
-            ))}
-          </FilterSection>
-
-          <FilterSection title="Season">
-            {SEASONS.map((s) => (
-              <FilterCheckbox
-                key={s}
-                id={`season-${s}`}
-                label={s}
-                checked={seasons.has(s)}
-                onChange={() => toggle(seasons, s, setSeasons)}
-              />
-            ))}
-          </FilterSection>
-
-          <FilterSection title="Number of photos">
-            {PHOTO_COUNTS.map((p) => (
-              <FilterCheckbox
-                key={p}
-                id={`photo-${p}`}
-                label={p}
-                checked={photoCount.has(p)}
-                onChange={() => toggle(photoCount, p, setPhotoCount)}
-              />
-            ))}
+          <FilterSection title="Free sample">
+            <FilterCheckbox
+              id="free-sample-only"
+              label="Only show designs with a free sample"
+              checked={freeSampleOnly}
+              onChange={setFreeSampleOnly}
+            />
           </FilterSection>
         </div>
 

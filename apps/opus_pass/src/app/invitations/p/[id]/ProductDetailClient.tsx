@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import {
@@ -16,7 +16,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { CatalogProduct } from '@/data/invitations-products'
 import type { PackagesContent, TierBadgeIcon, TierBadgeTone } from '@/lib/cms/packages'
 import { packageFromPrice } from '@/lib/cms/packages-pricing'
-import { useCart } from '@/components/providers/CartProvider'
+import { buildItemSummary, useCart } from '@/components/providers/CartProvider'
 
 // Pricing model:
 //   • Digital suite — `tier.price_per_guest × digitalQty` (per-guest package: Lite/Classic/Signature)
@@ -181,12 +181,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
     doorScan && 'On-site attendant',
   ].filter(Boolean) as string[]
 
-  const cartSummary = [
-    `${tier?.name ?? ''} · ${digitalQty.toLocaleString('en-US')} guests`,
-    ...cartAddOns,
-  ]
-    .filter(Boolean)
-    .join(' · ')
+  const cartSummary = buildItemSummary({ tier: tier?.name, guests: digitalQty, addOns: cartAddOns })
 
   const buildCartItem = () => ({
     id: product.id,
@@ -735,7 +730,12 @@ function Accordion({
   children: React.ReactNode
 }) {
   const [open, setOpen] = useState(defaultOpen)
-  const panelId = useId()
+  // Deterministic id from the (unique) title — NOT useId. useId is derived from
+  // the component's position in the tree, and Next 16's dev-only segment-explorer
+  // wrappers shift that position between SSR and hydration, spamming the console
+  // with hydration-mismatch errors in dev (prod is unaffected). A title-derived
+  // id is identical on both sides by construction.
+  const panelId = `accordion-${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`
   return (
     <div className="border-b border-gray-200">
       <button
