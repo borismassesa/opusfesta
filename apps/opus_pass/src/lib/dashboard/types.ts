@@ -2,8 +2,13 @@ export type EventType =
   | 'wedding'
   | 'send_off'
   | 'kitchen_party'
-  | 'engagement'
-  | 'reception'
+  | 'save_the_date'
+  | 'kadi_za_michango'
+  | 'anniversary'
+  | 'communio'
+  | 'birthday'
+  | 'gala_dinner'
+  | 'muslim_wedding'
   | 'other'
 
 export type RsvpStatus = 'pending' | 'attending' | 'declined' | 'maybe'
@@ -108,10 +113,15 @@ export interface DashboardStats {
 
 export const EVENT_TYPE_LABELS: Record<EventType, string> = {
   wedding: 'Wedding',
-  send_off: 'Send-Off',
-  kitchen_party: 'Kitchen Party',
-  engagement: 'Engagement',
-  reception: 'Reception',
+  send_off: 'Sendoff',
+  kitchen_party: 'Kitchen party',
+  save_the_date: 'Save the date',
+  kadi_za_michango: 'Kadi za michango',
+  anniversary: 'Anniversary',
+  communio: 'Communio',
+  birthday: 'Birthday',
+  gala_dinner: 'Gala Dinner',
+  muslim_wedding: 'Muslim Wedding',
   other: 'Other',
 }
 
