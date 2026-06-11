@@ -8,6 +8,7 @@ node_modules/
 
 # Production builds
 .next/
+.next-*/
 out/
 build/
 dist/
@@ -133,10 +134,12 @@ prisma/migrations/
 
 # Design source / reference folder (not part of the marketplace app)
 apps/opusfesta (1)/
-
 # Backups & one-off data exports (never commit)
 *.bak
 *.pre-theme
 clerk-*.json
 *-export-*.json
 clerk-import-errors-*.json
+
+# Claude Code temporary worktrees
+.worktrees/

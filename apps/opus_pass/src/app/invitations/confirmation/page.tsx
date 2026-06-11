@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   Mail,
-  Smartphone,
   Clock,
   Sparkles,
   Ticket,
@@ -12,6 +11,9 @@ import {
   ShoppingBag,
   Download,
   CreditCard,
+  AlertCircle,
+  CheckCircle2,
+  ChevronDown,
 } from 'lucide-react'
 import Image from 'next/image'
 import CheckoutStepper from '@/components/invitations/CheckoutStepper'
@@ -25,6 +27,22 @@ import { Button } from '@/components/ui/button'
 
 function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
+}
+
+function formatPaidAt(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d
+    .toLocaleString('en-GB', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true,
+    })
+    .replace(',', ' •')
+    .replace(/\b(am|pm)\b/i, (match) => match.toUpperCase())
 }
 
 // Digital designs are delivered within 24h of payment.
@@ -55,6 +73,108 @@ function PaymentBadge({ label }: { label?: string }) {
     <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-gray-900">
       <CreditCard size={18} className="text-gray-700" /> Card
     </span>
+  )
+}
+
+function PaymentStatusCard({ order }: { order: StoredOrder }) {
+  const payment = order.payment
+  const reference = payment?.reference ?? order.paymentRef
+  const provider =
+    payment?.provider ??
+    (order.paymentLabel
+      ? /m-?pesa/i.test(order.paymentLabel)
+        ? 'M-Pesa'
+        : /card/i.test(order.paymentLabel)
+          ? 'Card'
+          : undefined
+      : undefined)
+  const paidAt = formatPaidAt(order.paidAt)
+  const verifying = order.paymentStatus === 'verifying'
+  const details = [
+    payment?.provider && {
+      label: 'Method',
+      value:
+        payment.provider === 'M-Pesa' && payment.businessNumber
+          ? 'M-Pesa Lipa Namba'
+          : payment.provider,
+    },
+    payment?.businessNumber && { label: 'Business Number', value: payment.businessNumber },
+    payment?.payerName && { label: 'Payer', value: payment.payerName },
+    payment?.payerPhone && { label: 'Phone', value: payment.payerPhone },
+    reference && { label: 'Reference', value: reference },
+    !payment && order.paymentLabel && { label: 'Payment', value: order.paymentLabel },
+  ].filter(Boolean) as Array<{ label: string; value: string }>
+
+  return (
+    <div
+      className={
+        verifying
+          ? 'rounded-lg border border-amber-200 bg-[#FEF3C7] p-4 text-amber-950'
+          : 'rounded-lg border border-emerald-200 bg-emerald-50 p-4 text-emerald-950'
+      }
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={
+            verifying
+              ? 'mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-amber-400 text-white'
+              : 'mt-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white'
+          }
+        >
+          {verifying ? <AlertCircle size={15} /> : <CheckCircle2 size={15} />}
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold">
+            {verifying ? 'Payment Under Review' : 'Payment Confirmed'}
+          </p>
+          {verifying ? (
+            <p className="mt-1 text-xs leading-relaxed text-amber-900/80">
+              Your payment has been received and is being verified.
+            </p>
+          ) : provider ? (
+            <p className="mt-1 text-xs leading-relaxed text-emerald-900/75">
+              Paid via {provider}
+            </p>
+          ) : null}
+          {reference && (
+            <p className="mt-2 text-xs text-gray-900">
+              <span className="font-medium">Reference:</span>{' '}
+              <span className="font-semibold tracking-[0.02em]">{reference}</span>
+            </p>
+          )}
+          {verifying ? (
+            <p className="mt-3 max-w-[15rem] text-xs leading-relaxed text-amber-900/75">
+              Usually verified within 15 minutes.
+            </p>
+          ) : paidAt ? (
+            <p className="mt-2 text-xs font-medium text-emerald-900/70">{paidAt}</p>
+          ) : null}
+
+          {details.length > 0 && (
+            <details className="group mt-3 border-t border-black/10 pt-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs font-semibold text-gray-900">
+                Payment details
+                <ChevronDown
+                  size={14}
+                  className="shrink-0 transition group-open:rotate-180"
+                  aria-hidden="true"
+                />
+              </summary>
+              <dl className="mt-3 space-y-2 text-xs">
+                {details.map((detail) => (
+                  <div key={detail.label} className="flex items-start justify-between gap-4">
+                    <dt className="text-gray-700">{detail.label}</dt>
+                    <dd className="max-w-[11rem] text-right font-medium text-gray-950">
+                      {detail.value}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </details>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -89,20 +209,22 @@ export default function ConfirmationPage() {
       const c = getContact()
       if (c?.fullName) o.contact = { ...o.contact, name: c.fullName }
     }
-    setOrder(o)
-    setMounted(true)
-    // Fire confetti once per order (not on every refresh of this page).
-    if (o) {
-      const key = `opuspass.celebrated.${o.ref}`
-      try {
-        if (!sessionStorage.getItem(key)) {
+    queueMicrotask(() => {
+      setOrder(o)
+      setMounted(true)
+      // Fire confetti once per order (not on every refresh of this page).
+      if (o) {
+        const key = `opuspass.celebrated.${o.ref}`
+        try {
+          if (!sessionStorage.getItem(key)) {
+            setCelebrate(true)
+            sessionStorage.setItem(key, '1')
+          }
+        } catch {
           setCelebrate(true)
-          sessionStorage.setItem(key, '1')
         }
-      } catch {
-        setCelebrate(true)
       }
-    }
+    })
   }, [])
 
   return (
@@ -146,13 +268,30 @@ export default function ConfirmationPage() {
                   🎉
                 </span>
                 <h1 className="text-2xl font-semibold text-gray-900 sm:text-3xl">
-                  Thank you — your order is confirmed
+                  {order.paymentStatus === 'verifying'
+                    ? 'Asante — we’ve received your order'
+                    : 'Thank you — your order is confirmed'}
                 </h1>
-                <p className="text-muted-foreground max-w-md text-sm">
-                  We&apos;ve emailed your receipt to{' '}
-                  <span className="font-medium text-gray-900">{order.contact.email}</span>. Your design
-                  goes live within 24 hours.
-                </p>
+                {order.paymentStatus === 'verifying' ? (
+                  <p className="text-muted-foreground max-w-md text-sm">
+                    The OpusFesta team is verifying your payment
+                    {order.paymentRef && (
+                      <>
+                        {' '}
+                        (ref <span className="font-medium text-gray-900">{order.paymentRef}</span>)
+                      </>
+                    )}
+                    . Once confirmed, we&apos;ll email your receipt to{' '}
+                    <span className="font-medium text-gray-900">{order.contact.email}</span> and your
+                    design goes live within 24 hours.
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground max-w-md text-sm">
+                    We&apos;ve emailed your receipt to{' '}
+                    <span className="font-medium text-gray-900">{order.contact.email}</span>. Your design
+                    goes live within 24 hours.
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -321,17 +460,14 @@ export default function ConfirmationPage() {
                     </div>
                     <Separator />
                     <div className="flex items-center justify-between">
-                      <span className="text-base font-semibold text-gray-900">Total paid</span>
+                      <span className="text-base font-semibold text-gray-900">
+                        {order.paymentStatus === 'verifying' ? 'Total' : 'Total paid'}
+                      </span>
                       <span className="text-xl font-semibold text-gray-900 tabular-nums">
                         {formatTzs(order.total)}
                       </span>
                     </div>
-                    {order.paymentLabel && (
-                      <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                        <Smartphone size={12} className="shrink-0" />
-                        Paid with {order.paymentLabel}
-                      </p>
-                    )}
+                    <PaymentStatusCard order={order} />
                     <Separator />
                     <Button
                       variant="outline"
