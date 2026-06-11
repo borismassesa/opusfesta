@@ -2,7 +2,7 @@
 
 import { AuthenticateWithRedirectCallback } from '@clerk/nextjs'
 
-// Landing route for headless OAuth (Google/Apple). Clerk redirects the
+// Landing route for headless OAuth (Google). Clerk redirects the
 // provider hand-off back here; this component finishes the transfer and then
 // sends new vendors to /onboard and returning vendors to /dashboard.
 export default function SSOCallbackPage() {
