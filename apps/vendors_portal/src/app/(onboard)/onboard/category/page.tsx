@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import Logo from '@/components/ui/Logo'
@@ -13,6 +13,12 @@ export default function CategoryPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
   const [customLabel, setCustomLabel] = useState(draft.customCategoryLabel ?? '')
+
+  useEffect(() => {
+    if (hydrated) {
+      setCustomLabel(draft.customCategoryLabel ?? '')
+    }
+  }, [hydrated, draft.customCategoryLabel])
 
   const select = (id: string) => {
     if (id !== 'other') {
@@ -86,6 +92,7 @@ export default function CategoryPage() {
                 onChange={(e) => setCustomLabel(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && confirmOther()}
                 placeholder="Describe your vendor type…"
+                aria-label="Vendor type description"
                 className="w-full border border-gray-300 rounded-lg px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-gray-900"
                 autoFocus
               />
