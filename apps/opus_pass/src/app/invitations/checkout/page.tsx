@@ -54,6 +54,14 @@ const PAYMENT_METHODS: PaymentMethod[] = [
 
 // OpusFesta's M-Pesa Lipa Namba (TIPS / Tan QR merchant number) — from the
 // official Vodacom "Pesa ni M-Pesa" merchant poster.
+// Automated Selcom payments (M-Pesa STK push + card) are gated behind this flag.
+// Until OpusFesta has a Selcom merchant account, it stays OFF and checkout uses
+// only the manual Lipa Namba flow: the customer pays externally and enters their
+// name, phone, and transaction reference; the OpusFesta team confirms it.
+// Flip NEXT_PUBLIC_PAYMENTS_SELCOM_ENABLED=true (with SELCOM_* server creds) to
+// turn the automated push + card options on.
+const SELCOM_ENABLED = process.env.NEXT_PUBLIC_PAYMENTS_SELCOM_ENABLED === 'true'
+
 const MPESA_LIPA_NAMBA = '350298654'
 const MPESA_LIPA_NAME = 'OPUSFESTA COMPANY LIMITED'
 const MPESA_LIPA_POSTER_SRC = '/assets/payment/opusfesta-mpesa-lipa-poster.png'
@@ -166,7 +174,8 @@ export default function CheckoutPage() {
   const [selected, setSelected] = useState<string>('mpesa')
   // M-Pesa offers two paths: an automated STK push (PIN prompt on the phone)
   // and the manual Lipa Namba flow (pay externally, enter the confirmation code).
-  const [mpesaMode, setMpesaMode] = useState<'push' | 'lipa'>('push')
+  // With Selcom off, only the manual flow is available, so default to it.
+  const [mpesaMode, setMpesaMode] = useState<'push' | 'lipa'>(SELCOM_ENABLED ? 'push' : 'lipa')
   const [lipaNetwork, setLipaNetwork] = useState<string>('vodacom')
 
   // Automated-payment phase: while we wait for the customer to enter their PIN
@@ -187,6 +196,12 @@ export default function CheckoutPage() {
   useEffect(() => {
     queueMicrotask(() => setContactState(getContact()))
   }, [])
+
+  // Card requires the Selcom hosted page — hide it until Selcom is enabled
+  // (otherwise there's no way to actually charge a card).
+  const visibleMethods = SELCOM_ENABLED
+    ? PAYMENT_METHODS
+    : PAYMENT_METHODS.filter((m) => m.id !== 'card')
 
   const method = PAYMENT_METHODS.find((m) => m.id === selected) ?? PAYMENT_METHODS[0]
   const isCard = method.kind === 'card'
@@ -481,7 +496,7 @@ export default function CheckoutPage() {
               <div className="space-y-3">
                 <h2 className="text-base font-semibold text-gray-900">Choose how to pay</h2>
                 <div role="radiogroup" aria-label="Payment method" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {PAYMENT_METHODS.map((m) => {
+                  {visibleMethods.map((m) => {
                     const checked = selected === m.id
                     return (
                       <label
@@ -559,31 +574,35 @@ export default function CheckoutPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* M-Pesa path toggle: automated phone prompt vs. manual Lipa Namba */}
-                  <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1">
-                    <button
-                      type="button"
-                      onClick={() => { setMpesaMode('push'); setPayError(null) }}
-                      aria-pressed={mpesaMode === 'push'}
-                      className={cn(
-                        'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
-                        mpesaMode === 'push' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
-                      )}
-                    >
-                      Phone prompt
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setMpesaMode('lipa'); setPayError(null) }}
-                      aria-pressed={mpesaMode === 'lipa'}
-                      className={cn(
-                        'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
-                        mpesaMode === 'lipa' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
-                      )}
-                    >
-                      Lipa Namba
-                    </button>
-                  </div>
+                  {/* M-Pesa path toggle: automated phone prompt vs. manual Lipa
+                      Namba. Only shown when Selcom is enabled — otherwise the
+                      manual flow is the only option. */}
+                  {SELCOM_ENABLED && (
+                    <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1">
+                      <button
+                        type="button"
+                        onClick={() => { setMpesaMode('push'); setPayError(null) }}
+                        aria-pressed={mpesaMode === 'push'}
+                        className={cn(
+                          'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+                          mpesaMode === 'push' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+                        )}
+                      >
+                        Phone prompt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setMpesaMode('lipa'); setPayError(null) }}
+                        aria-pressed={mpesaMode === 'lipa'}
+                        className={cn(
+                          'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+                          mpesaMode === 'lipa' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+                        )}
+                      >
+                        Lipa Namba
+                      </button>
+                    </div>
+                  )}
 
                   {usePush && (
                     <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
