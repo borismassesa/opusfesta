@@ -264,7 +264,7 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
             {/* Single horizontal row: 3 circles in view on phones (4 on sm, 6 on
                 lg), the rest reached by horizontal scroll. gap-4 (1rem) is kept
                 constant so the basis calc lands an exact N-in-view. */}
-            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-pl-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {hero.suite_categories.map((cat) => (
                 <Link
                   key={cat.id}
