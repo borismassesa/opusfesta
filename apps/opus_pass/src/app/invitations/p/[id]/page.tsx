@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   if (!product) return { title: 'Product not found | OpusFesta' }
   return {
     title: `${product.name} | OpusFesta`,
-    description: `${product.name} — ${product.category} by ${product.designer}. Bilingual digital invitation, sent by WhatsApp or SMS.`,
+    description: `${product.name} — ${product.category}. Bilingual digital invitation, sent by WhatsApp or SMS.`,
   }
 }
 

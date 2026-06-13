@@ -10,17 +10,17 @@ import type { InvitationsHeroContent } from '@/lib/cms/invitations-hero'
 // --- Types ---
 export type AnimationPhase = 'scatter' | 'line' | 'circle' | 'bottom-strip'
 
-interface FlipCardProps {
+interface HeroCardProps {
   src: string
   index: number
   target: { x: number; y: number; rotation: number; scale: number; opacity: number }
 }
 
-// --- FlipCard Component ---
+// --- HeroCard Component ---
 const IMG_WIDTH = 60
 const IMG_HEIGHT = 85
 
-function FlipCard({ src, index, target }: FlipCardProps) {
+function HeroCard({ src, index, target }: HeroCardProps) {
   return (
     <motion.div
       animate={{
@@ -35,63 +35,44 @@ function FlipCard({ src, index, target }: FlipCardProps) {
         position: 'absolute',
         width: IMG_WIDTH,
         height: IMG_HEIGHT,
-        transformStyle: 'preserve-3d',
-        perspective: '1000px',
       }}
-      className="group cursor-pointer"
+      className="group"
     >
-      <motion.div
-        className="relative h-full w-full"
-        style={{ transformStyle: 'preserve-3d' }}
-        transition={{ duration: 0.6, type: 'spring', stiffness: 260, damping: 20 }}
-        whileHover={{ rotateY: 180 }}
-      >
-        {/* Front Face */}
-        <div
-          className="absolute inset-0 h-full w-full overflow-hidden rounded-xl bg-gray-200 shadow-lg"
-          style={{ backfaceVisibility: 'hidden' }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={assetPath(src)} alt={`Invitation design ${index + 1}`} className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-black/10 transition-colors group-hover:bg-transparent" />
-        </div>
-
-        {/* Back Face */}
-        <div
-          className="absolute inset-0 flex h-full w-full flex-col items-center justify-center overflow-hidden rounded-xl border border-[#C9A0DC]/40 bg-[#1A1A1A] p-4 shadow-lg"
-          style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
-        >
-          <div className="text-center">
-            <p className="mb-1 text-[8px] font-bold uppercase tracking-widest text-[#C9A0DC]">View</p>
-            <p className="text-xs font-medium text-white">Design</p>
-          </div>
-        </div>
-      </motion.div>
+      <div className="relative h-full w-full overflow-hidden rounded-xl bg-gray-200 shadow-lg">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={assetPath(src)} alt={`Invitation design ${index + 1}`} className="h-full w-full object-cover" />
+        <div className="absolute inset-0 bg-black/10 transition-colors group-hover:bg-transparent" />
+      </div>
     </motion.div>
   )
 }
 
 // --- Main Hero Component ---
 const TOTAL_IMAGES = 20
+// Phones render a reduced ring — 20 large cards crowd a narrow arc.
+const MOBILE_IMAGES = 12
 
-// Invitation card templates + real wedding moments.
+// Invitation card templates + real wedding moments, INTERLEAVED (a template
+// roughly every 3rd slot) so any prefix — e.g. the 12-card mobile slice — gets an
+// even spread of templates and photos instead of all templates bunching at one
+// end of the arc.
 const IMAGES = [
-  '/assets/invitation-svgs/classic-serif.svg',
-  '/assets/invitation-svgs/cultural-red.svg',
-  '/assets/invitation-svgs/floral-border.svg',
-  '/assets/invitation-svgs/navy-gold.svg',
   '/assets/invitation-svgs/card-template.svg',
-  '/assets/invitation-svgs/card-template-4.svg',
   '/assets/images/cutesy_couple.jpg',
   '/assets/images/authentic_couple.jpg',
+  '/assets/invitation-svgs/card-template-4.svg',
   '/assets/images/beautiful_bride.jpg',
   '/assets/images/bride_umbrella.jpg',
+  '/assets/invitation-svgs/floral-border.svg',
   '/assets/images/brideincar.jpg',
   '/assets/images/bridering.jpg',
+  '/assets/invitation-svgs/navy-gold.svg',
   '/assets/images/bridewithumbrella.jpg',
   '/assets/images/churchcouples.jpg',
+  '/assets/invitation-svgs/cultural-red.svg',
   '/assets/images/couples_together.jpg',
   '/assets/images/coupleswithpiano.jpg',
+  '/assets/invitation-svgs/classic-serif.svg',
   '/assets/images/flowers_pinky.jpg',
   '/assets/images/hand_rings.jpg',
   '/assets/images/mauzo_crew.jpg',
@@ -212,6 +193,11 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
   const contentOpacity = useTransform(scrollYProgress, [0.62, 0.82], [0, 1])
   const contentY = useTransform(scrollYProgress, [0.62, 0.82], [30, 0])
 
+  // Phones render fewer ring cards; desktop keeps the full set. Width is 0 until
+  // the ResizeObserver measures, so unmeasured falls back to the desktop count.
+  const isMobile = containerSize.width > 0 && containerSize.width < 768
+  const visibleCount = isMobile ? MOBILE_IMAGES : TOTAL_IMAGES
+
   return (
     <div ref={wrapperRef} className="relative h-[230vh] w-full">
       <div
@@ -275,12 +261,15 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
                 {hero.suite_body}
               </p>
             </div>
-            <div className="flex flex-wrap justify-center gap-5 sm:gap-6 md:flex-nowrap md:gap-8">
+            {/* Single horizontal row: 3 circles in view on phones (4 on sm, 6 on
+                lg), the rest reached by horizontal scroll. gap-4 (1rem) is kept
+                constant so the basis calc lands an exact N-in-view. */}
+            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto scroll-pl-4 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {hero.suite_categories.map((cat) => (
                 <Link
                   key={cat.id}
                   href="/invitations/catalog"
-                  className="group flex w-[110px] shrink-0 flex-col items-center text-center sm:w-[130px] md:w-auto md:flex-1 md:basis-0 md:min-w-0 md:max-w-[200px]"
+                  className="group flex shrink-0 snap-start basis-[calc((100%-2rem)/3)] flex-col items-center text-center sm:basis-[calc((100%-3rem)/4)] lg:basis-[calc((100%-5rem)/6)]"
                 >
                   <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-full bg-white ring-1 ring-gray-200 transition-shadow group-hover:shadow-md">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -307,22 +296,21 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
 
         {/* Main Container */}
         <div className="relative flex h-full w-full items-center justify-center">
-          {IMAGES.slice(0, TOTAL_IMAGES).map((src, i) => {
+          {IMAGES.slice(0, visibleCount).map((src, i) => {
             let target = { x: 0, y: 0, rotation: 0, scale: 1, opacity: 1 }
 
             if (introPhase === 'scatter') {
               target = scatterPositions[i]
             } else if (introPhase === 'line') {
               const lineSpacing = 70
-              const lineTotalWidth = TOTAL_IMAGES * lineSpacing
+              const lineTotalWidth = visibleCount * lineSpacing
               const lineX = i * lineSpacing - lineTotalWidth / 2
               target = { x: lineX, y: 0, rotation: 0, scale: 1, opacity: 1 }
             } else {
-              const isMobile = containerSize.width < 768
               const minDimension = Math.min(containerSize.width, containerSize.height)
 
               const circleRadius = Math.min(minDimension * 0.38, 380)
-              const circleAngle = (i / TOTAL_IMAGES) * 360
+              const circleAngle = (i / visibleCount) * 360
               const circleRad = (circleAngle * Math.PI) / 180
               const circlePos = {
                 x: Math.cos(circleRad) * circleRadius,
@@ -338,7 +326,7 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
 
               const spreadAngle = isMobile ? 100 : 130
               const startAngle = -90 - spreadAngle / 2
-              const step = spreadAngle / (TOTAL_IMAGES - 1)
+              const step = spreadAngle / (visibleCount - 1)
 
               const scrollProgress = Math.min(Math.max(rotateValue / 360, 0), 1)
               const maxRotation = spreadAngle * 0.8
@@ -363,7 +351,7 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
               }
             }
 
-            return <FlipCard key={i} src={src} index={i} target={target} />
+            return <HeroCard key={i} src={src} index={i} target={target} />
           })}
         </div>
         </div>

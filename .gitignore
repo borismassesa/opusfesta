@@ -67,6 +67,11 @@ jspm_packages/
 
 # next.js build output
 .next
+# Throwaway preview/prodtest build outputs — must be ignored so Tailwind v4's
+# source scanner doesn't read their minified chunks as class candidates
+# (it emits broken `[key:…]` CSS → dev-server 500). See globals.css parse error.
+.next-preview
+.next-prodtest
 
 # TypeScript incremental build cache (per-app, regenerates on every type-check)
 *.tsbuildinfo

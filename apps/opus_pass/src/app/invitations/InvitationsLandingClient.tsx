@@ -314,8 +314,10 @@ function pickToProduct(pick: InvitationsEditorsPicksPick): Product {
 }
 
 function EditorsPicks({ rows: cmsRows }: { rows: InvitationsEditorsPicksContent['rows'] }) {
+  // The negative top margin on phones reclaims the empty band the pinned hero
+  // leaves below its content (top-[55%]); desktop keeps its natural spacing.
   return (
-    <section className="px-4 sm:px-6">
+    <section className="relative z-10 -mt-[28vh] px-4 sm:mt-0 sm:px-6">
       <div className="mx-auto max-w-7xl pt-4 sm:pt-6 space-y-12 sm:space-y-14 md:space-y-16">
         {cmsRows.map((row) => (
           <div
@@ -337,10 +339,17 @@ function EditorsPicks({ rows: cmsRows }: { rows: InvitationsEditorsPicksContent[
                 align={row.align}
               />
             </div>
-            {row.picks.map((p) => {
+            {row.picks.map((p, i) => {
               const productHref = `/invitations/p/${p.product_id ?? p.id}`
               return (
-                <Link key={p.id} href={productHref} className="flex flex-col group/pick">
+                <Link
+                  key={p.id}
+                  href={productHref}
+                  // Phones show a clean 2-up grid (title spans both columns, then
+                  // two picks). Any 3rd+ pick is hidden on mobile to avoid a lonely
+                  // half-row, and reappears at md where the row is title + 3 cards.
+                  className={cn('flex flex-col group/pick', i >= 2 && 'hidden md:flex')}
+                >
                   <PickCard
                     overlay={p.overlay === 'play' ? <PlayIcon /> : p.overlay === 'heart' ? <HeartIcon /> : undefined}
                     background={p.background}
@@ -369,16 +378,18 @@ function EditorialTitleCell({
   return (
     <div
       className={cn(
-        'flex h-full flex-col justify-center',
+        // Phones: title on the left, button on the right (one row). Desktop keeps
+        // the original stacked column.
+        'flex h-full flex-row items-start justify-between gap-3 md:flex-col md:items-start md:justify-center',
         align === 'left' ? 'md:pr-2' : 'md:pl-2',
       )}
     >
-      <h3 className="font-serif text-[24px] sm:text-[30px] md:text-[34px] lg:text-[38px] leading-[1.05] text-[#1A1A1A]">
+      <h3 className="min-w-0 font-serif text-[24px] sm:text-[30px] md:text-[34px] lg:text-[38px] leading-[1.05] text-[#1A1A1A]">
         {title}
       </h3>
       <Link
         href="/invitations/catalog"
-        className="mt-5 inline-flex w-fit items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-5 py-2.5 text-[12px] font-extrabold uppercase tracking-[0.12em]"
+        className="inline-flex w-fit shrink-0 items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-4 py-2 sm:px-5 sm:py-2.5 text-[11px] sm:text-[12px] font-extrabold uppercase tracking-[0.1em] sm:tracking-[0.12em] md:mt-5"
       >
         Explore designs
       </Link>
