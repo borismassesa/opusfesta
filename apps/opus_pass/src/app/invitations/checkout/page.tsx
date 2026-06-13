@@ -1,19 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Smartphone, ShieldCheck, AlertCircle, Mail, Clock, Sparkles, MapPin, Pencil, Copy, Check } from 'lucide-react'
+import { Smartphone, ShieldCheck, AlertCircle, Mail, Clock, Sparkles, MapPin, Pencil, Copy, Check, Loader2, Lock } from 'lucide-react'
 import CheckoutStepper from '@/components/invitations/CheckoutStepper'
 import { useCart } from '@/components/providers/CartProvider'
 import {
   getContact,
+  getLastOrder,
   generateOrderRef,
   setLastOrder,
   type StoredContact,
+  type StoredOrder,
   type StoredOrderPayment,
 } from '@/lib/cart-storage'
+import type { InitiateRequest, InitiateResponse, StatusResponse } from '@/lib/payments/types'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -51,6 +54,14 @@ const PAYMENT_METHODS: PaymentMethod[] = [
 
 // OpusFesta's M-Pesa Lipa Namba (TIPS / Tan QR merchant number) — from the
 // official Vodacom "Pesa ni M-Pesa" merchant poster.
+// Automated Selcom payments (M-Pesa STK push + card) are gated behind this flag.
+// Until OpusFesta has a Selcom merchant account, it stays OFF and checkout uses
+// only the manual Lipa Namba flow: the customer pays externally and enters their
+// name, phone, and transaction reference; the OpusFesta team confirms it.
+// Flip NEXT_PUBLIC_PAYMENTS_SELCOM_ENABLED=true (with SELCOM_* server creds) to
+// turn the automated push + card options on.
+const SELCOM_ENABLED = process.env.NEXT_PUBLIC_PAYMENTS_SELCOM_ENABLED === 'true'
+
 const MPESA_LIPA_NAMBA = '350298654'
 const MPESA_LIPA_NAME = 'OPUSFESTA COMPANY LIMITED'
 const MPESA_LIPA_POSTER_SRC = '/assets/payment/opusfesta-mpesa-lipa-poster.png'
@@ -123,24 +134,9 @@ const PHONE_RE = /^\+?(?:[\d](?:[\s().-]?)){9,}$/
 // Transaction confirmation codes vary per network (M-Pesa: 10 alphanumeric,
 // Tigo/Airtel: digits, banks may include dots/dashes) — keep it lenient.
 const PAYREF_RE = /^[A-Za-z0-9.\-]{6,25}$/
-const CARD_NUMBER_RE = /^\d{13,19}$/
-const EXPIRY_RE = /^(0[1-9]|1[0-2])\/\d{2}$/
-const CVV_RE = /^\d{3,4}$/
-
-function isExpiryInPast(value: string): boolean {
-  const m = value.match(EXPIRY_RE)
-  if (!m) return false
-  const month = Number(m[1])
-  const year = 2000 + Number(value.slice(3, 5))
-  const expiryEnd = new Date(year, month, 0, 23, 59, 59)
-  return expiryEnd.getTime() < Date.now()
-}
 
 type Errors = Partial<
-  Record<
-    'cardName' | 'cardNumber' | 'cardExpiry' | 'cardCvv' | 'mobilePhone' | 'payerName' | 'payRef' | 'cart' | 'contact',
-    string
-  >
+  Record<'mobilePhone' | 'payerName' | 'payRef' | 'cart' | 'contact', string>
 >
 
 function FieldError({ children }: { children: React.ReactNode }) {
@@ -176,12 +172,19 @@ export default function CheckoutPage() {
   const { items, subtotal, clear } = useCart()
 
   const [selected, setSelected] = useState<string>('mpesa')
+  // M-Pesa offers two paths: an automated STK push (PIN prompt on the phone)
+  // and the manual Lipa Namba flow (pay externally, enter the confirmation code).
+  // With Selcom off, only the manual flow is available, so default to it.
+  const [mpesaMode, setMpesaMode] = useState<'push' | 'lipa'>(SELCOM_ENABLED ? 'push' : 'lipa')
   const [lipaNetwork, setLipaNetwork] = useState<string>('vodacom')
 
-  const [cardName, setCardName] = useState('')
-  const [cardNumber, setCardNumber] = useState('')
-  const [cardExpiry, setCardExpiry] = useState('')
-  const [cardCvv, setCardCvv] = useState('')
+  // Automated-payment phase: while we wait for the customer to enter their PIN
+  // we show a blocking modal and poll the order status until it resolves.
+  const [payPhase, setPayPhase] = useState<'idle' | 'awaiting' | 'redirecting'>('idle')
+  const [payError, setPayError] = useState<string | null>(null)
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => { if (pollTimer.current) clearTimeout(pollTimer.current) }, [])
+
   const [mobilePhone, setMobilePhone] = useState('')
   const [payerName, setPayerName] = useState('')
   const [payRef, setPayRef] = useState('')
@@ -194,12 +197,18 @@ export default function CheckoutPage() {
     queueMicrotask(() => setContactState(getContact()))
   }, [])
 
+  // Card requires the Selcom hosted page — hide it until Selcom is enabled
+  // (otherwise there's no way to actually charge a card).
+  const visibleMethods = SELCOM_ENABLED
+    ? PAYMENT_METHODS
+    : PAYMENT_METHODS.filter((m) => m.id !== 'card')
+
   const method = PAYMENT_METHODS.find((m) => m.id === selected) ?? PAYMENT_METHODS[0]
   const isCard = method.kind === 'card'
   const isMpesa = method.id === 'mpesa'
-  // M-Pesa is paid to our Lipa Namba — how it's done in Tanzania,
-  // works from every network and bank.
-  const useLipa = isMpesa
+  // Automated M-Pesa push (default) vs. the manual Lipa Namba fallback.
+  const usePush = isMpesa && mpesaMode === 'push'
+  const useLipa = isMpesa && mpesaMode === 'lipa'
 
   // Digital product — prices are final (VAT-inclusive) and delivery is free.
   const discount = 0
@@ -214,14 +223,14 @@ export default function CheckoutPage() {
     })
 
   const paymentLabel = (): string => {
-    if (isCard) return `Card ending in ${cardNumber.replace(/\s/g, '').slice(-4)}`
+    if (isCard) return 'Card (Visa / Mastercard)'
     if (useLipa)
       return `M-Pesa Lipa Namba ${MPESA_LIPA_NAMBA} · ${payerName.trim()} · ${mobilePhone.trim()} · Ref ${payRef.trim().toUpperCase()}`
     return `${method.provider} ${mobilePhone.trim()}`
   }
 
   const paymentDetails = (): StoredOrderPayment => {
-    if (isCard) return { provider: 'Card', cardLast4: cardNumber.replace(/\s/g, '').slice(-4) }
+    if (isCard) return { provider: 'Card' }
     if (useLipa)
       return {
         provider: 'M-Pesa',
@@ -238,12 +247,8 @@ export default function CheckoutPage() {
     if (items.length === 0) e.cart = 'Your cart is empty — add a design before paying.'
     if (!contact) e.contact = 'Please add your contact details before paying.'
     if (isCard) {
-      if (!cardName.trim()) e.cardName = 'Name on card is required.'
-      if (!CARD_NUMBER_RE.test(cardNumber.replace(/\s/g, '')))
-        e.cardNumber = 'Enter a 13–19 digit card number.'
-      if (!EXPIRY_RE.test(cardExpiry)) e.cardExpiry = 'Use MM/YY format.'
-      else if (isExpiryInPast(cardExpiry)) e.cardExpiry = 'This card has expired.'
-      if (!CVV_RE.test(cardCvv)) e.cardCvv = '3 or 4 digits.'
+      // Card details are collected on Selcom's secure hosted page — nothing to
+      // validate here (we never touch the raw card number).
     } else {
       if (!PHONE_RE.test(mobilePhone.trim())) {
         e.mobilePhone = 'Enter a valid phone number.'
@@ -258,43 +263,169 @@ export default function CheckoutPage() {
     return e
   }
 
-  const handlePay = () => {
+  // Cart lines in the shape /api/payments/initiate expects (the server
+  // re-prices these against the CMS — the totals here are not trusted).
+  const itemsPayload = (): InitiateRequest['items'] =>
+    items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      summary: i.summary,
+      tier: i.tier,
+      tierId: i.tierId,
+      guests: i.guests,
+      pricePerGuest: i.pricePerGuest,
+      extrasTotal: i.extrasTotal,
+      addOns: i.addOns,
+      total: i.total,
+    }))
+
+  // Local snapshot for the confirmation page's display. The authoritative
+  // paid/failed state always comes from the server (fetched by ref); this is a
+  // placeholder shown while that loads.
+  const buildLocalOrder = (
+    ref: string,
+    paymentStatus: 'verifying' | 'paid',
+  ): StoredOrder => ({
+    ref,
+    paidAt: new Date().toISOString(),
+    paymentLabel: paymentLabel(),
+    payment: paymentDetails(),
+    paymentRef: useLipa ? payRef.trim().toUpperCase() : undefined,
+    paymentStatus,
+    contact: { name: contact!.fullName, email: contact!.email, phone: contact!.phone },
+    items: items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      summary: i.summary,
+      total: i.total,
+      treatment: i.treatment,
+      tier: i.tier,
+      tierId: i.tierId,
+      guests: i.guests,
+      addOns: i.addOns,
+    })),
+    subtotal,
+    discount,
+    total,
+  })
+
+  // Poll the order status while the customer enters their PIN, until the
+  // payment resolves or we hit the timeout.
+  const pollUntilResolved = (ref: string) => {
+    const startedAt = Date.now()
+    const TIMEOUT_MS = 120_000
+    const tick = async () => {
+      try {
+        const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(ref)}`, {
+          cache: 'no-store',
+        })
+        if (res.status === 404) {
+          // Order vanished — surface immediately rather than waiting out the timeout.
+          setPayPhase('idle')
+          setSubmitting(false)
+          setPayError('We could not find your order. Please try again.')
+          return
+        }
+        const data = (await res.json()) as StatusResponse
+        if (data.status === 'paid') {
+          // Promote the local snapshot to paid so the confirmation page and
+          // invoice read 'paid' immediately, before the server re-confirms.
+          const stored = getLastOrder()
+          if (stored && stored.ref === ref) setLastOrder({ ...stored, paymentStatus: 'paid' })
+          clear()
+          router.push(`/invitations/confirmation?ref=${ref}`)
+          return
+        }
+        if (data.status === 'failed' || data.status === 'expired') {
+          setPayPhase('idle')
+          setSubmitting(false)
+          setPayError('The payment was declined or cancelled. Please try again.')
+          return
+        }
+      } catch {
+        /* transient network blip — keep polling */
+      }
+      if (Date.now() - startedAt > TIMEOUT_MS) {
+        setPayPhase('idle')
+        setSubmitting(false)
+        setPayError(
+          "We didn't get a confirmation in time. If you approved the prompt, your order will appear shortly — otherwise please try again.",
+        )
+        return
+      }
+      pollTimer.current = setTimeout(tick, 3000)
+    }
+    pollTimer.current = setTimeout(tick, 3000)
+  }
+
+  const handlePay = async () => {
+    setPayError(null)
     const e = validate()
     setErrors(e)
     if (Object.keys(e).length > 0) return
     if (!contact) return
+
+    // ── Manual Lipa Namba: the customer paid externally and entered their
+    // confirmation code. Recorded as 'verifying' for the team to reconcile.
+    if (useLipa) {
+      setSubmitting(true)
+      try {
+        const ref = generateOrderRef()
+        setLastOrder(buildLocalOrder(ref, 'verifying'))
+        clear()
+        router.push('/invitations/confirmation')
+      } finally {
+        setSubmitting(false)
+      }
+      return
+    }
+
+    // ── Automated Selcom flows: M-Pesa push or card redirect.
     setSubmitting(true)
+    setPayPhase(isCard ? 'redirecting' : 'awaiting')
     try {
-      const ref = generateOrderRef()
-      setLastOrder({
-        ref,
-        paidAt: new Date().toISOString(),
-        paymentLabel: paymentLabel(),
-        payment: paymentDetails(),
-        paymentRef: useLipa ? payRef.trim().toUpperCase() : undefined,
-        // Lipa Namba payments are only considered paid once the OpusFesta
-        // team confirms the transaction against the M-Pesa statement.
-        paymentStatus: useLipa ? 'verifying' : 'paid',
+      const payload: InitiateRequest = {
+        method: isCard ? 'card' : 'mobile',
+        phone: isCard ? undefined : mobilePhone.trim(),
         contact: { name: contact.fullName, email: contact.email, phone: contact.phone },
-        items: items.map((i) => ({
-          id: i.id,
-          name: i.name,
-          summary: i.summary,
-          total: i.total,
-          treatment: i.treatment,
-          tier: i.tier,
-          tierId: i.tierId,
-          guests: i.guests,
-          addOns: i.addOns,
-        })),
-        subtotal,
-        discount,
-        total,
+        items: itemsPayload(),
+        paymentLabel: paymentLabel(),
+      }
+      const res = await fetch('/api/payments/initiate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       })
-      clear()
-      router.push('/invitations/confirmation')
-    } finally {
+      const data = (await res.json()) as InitiateResponse
+      if (!res.ok || data.status === 'failed' || !data.ref) {
+        setPayPhase('idle')
+        setSubmitting(false)
+        setPayError(data.message ?? 'Payment could not be started. Please try again.')
+        return
+      }
+
+      // Keep a local copy so the confirmation page can render immediately; the
+      // real paid state is fetched there by ref.
+      setLastOrder(buildLocalOrder(data.ref, 'verifying'))
+
+      if (isCard) {
+        if (!data.redirectUrl) {
+          setPayPhase('idle')
+          setSubmitting(false)
+          setPayError('Card payment is unavailable right now. Please try M-Pesa.')
+          return
+        }
+        // Hand off to Selcom's secure hosted card page.
+        window.location.href = data.redirectUrl
+        return
+      }
+
+      // Mobile push sent — wait for the PIN approval.
+      pollUntilResolved(data.ref)
+    } catch {
+      setPayPhase('idle')
       setSubmitting(false)
+      setPayError('Something went wrong starting the payment. Please try again.')
     }
   }
 
@@ -365,7 +496,7 @@ export default function CheckoutPage() {
               <div className="space-y-3">
                 <h2 className="text-base font-semibold text-gray-900">Choose how to pay</h2>
                 <div role="radiogroup" aria-label="Payment method" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {PAYMENT_METHODS.map((m) => {
+                  {visibleMethods.map((m) => {
                     const checked = selected === m.id
                     return (
                       <label
@@ -419,70 +550,73 @@ export default function CheckoutPage() {
 
               {/* Method-specific details */}
               {isCard ? (
-                <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2">
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="card-name" className="mb-1.5 text-gray-900">
-                      Full name (as on card) <span className="text-red-600">*</span>
-                    </Label>
-                    <Input
-                      id="card-name"
-                      type="text"
-                      value={cardName}
-                      onChange={(e) => { setCardName(e.target.value); clearError('cardName') }}
-                      placeholder="Mary Mwakasege"
-                      aria-invalid={Boolean(errors.cardName)}
-                    />
-                    {errors.cardName && <FieldError>{errors.cardName}</FieldError>}
-                  </div>
-                  <div className="sm:col-span-2">
-                    <Label htmlFor="card-number" className="mb-1.5 text-gray-900">
-                      Card number <span className="text-red-600">*</span>
-                    </Label>
-                    <Input
-                      id="card-number"
-                      type="text"
-                      value={cardNumber}
-                      onChange={(e) => { setCardNumber(e.target.value); clearError('cardNumber') }}
-                      placeholder="xxxx xxxx xxxx xxxx"
-                      inputMode="numeric"
-                      aria-invalid={Boolean(errors.cardNumber)}
-                    />
-                    {errors.cardNumber && <FieldError>{errors.cardNumber}</FieldError>}
-                  </div>
-                  <div>
-                    <Label htmlFor="card-expiry" className="mb-1.5 text-gray-900">
-                      Card expiration <span className="text-red-600">*</span>
-                    </Label>
-                    <Input
-                      id="card-expiry"
-                      type="text"
-                      value={cardExpiry}
-                      onChange={(e) => { setCardExpiry(e.target.value); clearError('cardExpiry') }}
-                      placeholder="MM/YY"
-                      inputMode="numeric"
-                      aria-invalid={Boolean(errors.cardExpiry)}
-                    />
-                    {errors.cardExpiry && <FieldError>{errors.cardExpiry}</FieldError>}
-                  </div>
-                  <div>
-                    <Label htmlFor="card-cvv" className="mb-1.5 text-gray-900">
-                      CVV <span className="text-red-600">*</span>
-                    </Label>
-                    <Input
-                      id="card-cvv"
-                      type="text"
-                      value={cardCvv}
-                      onChange={(e) => { setCardCvv(e.target.value); clearError('cardCvv') }}
-                      placeholder="123"
-                      inputMode="numeric"
-                      maxLength={4}
-                      aria-invalid={Boolean(errors.cardCvv)}
-                    />
-                    {errors.cardCvv && <FieldError>{errors.cardCvv}</FieldError>}
+                <div className="rounded-xl border border-gray-200 bg-gray-50 p-5">
+                  <div className="flex items-start gap-3">
+                    <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-gray-900 ring-1 ring-gray-200">
+                      <Lock size={16} />
+                    </span>
+                    <div className="space-y-1.5">
+                      <p className="text-sm font-semibold text-gray-900">
+                        Secure card payment
+                      </p>
+                      <p className="text-xs leading-relaxed text-gray-600">
+                        When you continue, we&apos;ll take you to our payment
+                        partner&apos;s secure page to enter your Visa or Mastercard details
+                        and complete 3-D Secure verification. OpusFesta never sees or stores
+                        your card number.
+                      </p>
+                      <div className="flex items-center gap-2 pt-1">
+                        <Image src="/assets/payment-logos/visa.svg" alt="Visa" width={1000} height={325} className="h-4 w-auto" />
+                        <Image src="/assets/payment-logos/mastercard.svg" alt="Mastercard" width={1000} height={618} className="h-6 w-auto" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {/* M-Pesa path toggle: automated phone prompt vs. manual Lipa
+                      Namba. Only shown when Selcom is enabled — otherwise the
+                      manual flow is the only option. */}
+                  {SELCOM_ENABLED && (
+                    <div className="inline-flex rounded-full border border-gray-200 bg-gray-50 p-1">
+                      <button
+                        type="button"
+                        onClick={() => { setMpesaMode('push'); setPayError(null) }}
+                        aria-pressed={mpesaMode === 'push'}
+                        className={cn(
+                          'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+                          mpesaMode === 'push' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+                        )}
+                      >
+                        Phone prompt
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setMpesaMode('lipa'); setPayError(null) }}
+                        aria-pressed={mpesaMode === 'lipa'}
+                        className={cn(
+                          'rounded-full px-4 py-1.5 text-sm font-semibold transition-colors',
+                          mpesaMode === 'lipa' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600 hover:text-gray-900',
+                        )}
+                      >
+                        Lipa Namba
+                      </button>
+                    </div>
+                  )}
+
+                  {usePush && (
+                    <div className="flex items-start gap-3 rounded-xl border border-gray-200 bg-gray-50 p-4">
+                      <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-white text-gray-900 ring-1 ring-gray-200">
+                        <Smartphone size={16} />
+                      </span>
+                      <p className="text-xs leading-relaxed text-gray-600">
+                        Enter your M-Pesa number below and tap <span className="font-semibold text-gray-900">Pay</span>.
+                        A prompt pops up on your phone — enter your PIN to approve. We confirm
+                        automatically, no codes to copy.
+                      </p>
+                    </div>
+                  )}
+
                   {useLipa && (
                     <div className="overflow-hidden rounded-2xl border border-gray-200">
                       <div className="flex justify-center bg-white p-3 sm:p-4">
@@ -645,24 +779,40 @@ export default function CheckoutPage() {
                 </div>
               )}
 
+              {payError && (
+                <div className="flex items-start gap-2 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-800">
+                  <AlertCircle size={15} className="mt-0.5 shrink-0" />
+                  <span>{payError}</span>
+                </div>
+              )}
+
               <button
                 type="button"
                 onClick={handlePay}
-                disabled={submitting || items.length === 0}
-                className="inline-flex w-full items-center justify-center rounded-full bg-(--accent) px-6 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.06em] text-(--on-accent) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
+                disabled={submitting || payPhase !== 'idle' || items.length === 0}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-(--accent) px-6 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.06em] text-(--on-accent) transition hover:bg-(--accent-hover) disabled:cursor-not-allowed disabled:bg-gray-300 disabled:text-gray-500"
               >
+                {submitting && <Loader2 size={15} className="animate-spin" />}
                 {submitting
-                  ? 'Processing…'
-                  : useLipa
-                    ? `I've paid ${formatTzs(total)} — submit order`
-                    : `Pay ${formatTzs(total)}`}
+                  ? payPhase === 'redirecting'
+                    ? 'Redirecting…'
+                    : payPhase === 'awaiting'
+                      ? 'Waiting for approval…'
+                      : 'Processing…'
+                  : isCard
+                    ? `Continue to secure card payment`
+                    : useLipa
+                      ? `I've paid ${formatTzs(total)} — submit order`
+                      : `Pay ${formatTzs(total)}`}
               </button>
 
               <p className="text-xs text-gray-500 inline-flex items-center gap-1.5">
                 <ShieldCheck size={13} className="text-emerald-600" />
                 {useLipa
                   ? 'Your order is confirmed once the OpusFesta team verifies the transaction. Your design goes live within 24 hours of confirmation.'
-                  : 'Payments are processed securely. Your design goes live within 24 hours of confirmation.'}
+                  : isCard
+                    ? 'Card payments are processed securely by our payment partner (3-D Secure). Your design goes live within 24 hours of confirmation.'
+                    : 'Approve the prompt on your phone to pay. Your design goes live within 24 hours of confirmation.'}
               </p>
             </CardContent>
           </Card>
@@ -722,6 +872,35 @@ export default function CheckoutPage() {
           </aside>
         </div>
       </div>
+
+      {/* Waiting overlay — shown while the M-Pesa PIN prompt is on the phone. */}
+      {payPhase === 'awaiting' && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Awaiting payment approval"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-7 text-center shadow-2xl">
+            <span className="mx-auto mb-4 flex size-14 items-center justify-center rounded-full bg-(--accent)/15 text-gray-900">
+              <Smartphone size={26} />
+            </span>
+            <h2 className="text-lg font-semibold text-gray-900">Check your phone</h2>
+            <p className="mt-1.5 text-sm leading-relaxed text-gray-600">
+              We sent a payment prompt to{' '}
+              <span className="font-semibold text-gray-900">{mobilePhone.trim()}</span>. Enter your
+              M-Pesa PIN to approve <span className="font-semibold text-gray-900">{formatTzs(total)}</span>.
+            </p>
+            <div className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-gray-500">
+              <Loader2 size={16} className="animate-spin" />
+              Waiting for confirmation…
+            </div>
+            <p className="mt-4 text-xs text-gray-400">
+              Keep this page open — it updates automatically once you approve.
+            </p>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
   Mail,
@@ -19,7 +19,9 @@ import Image from 'next/image'
 import CheckoutStepper from '@/components/invitations/CheckoutStepper'
 import Confetti from '@/components/invitations/Confetti'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
-import { getContact, getLastOrder, type StoredOrder } from '@/lib/cart-storage'
+import { getContact, getLastOrder, setLastOrder, type StoredOrder } from '@/lib/cart-storage'
+import { useCart } from '@/components/providers/CartProvider'
+import type { StatusResponse } from '@/lib/payments/types'
 import { downloadInvoice } from '@/lib/invoice'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -197,9 +199,57 @@ const NEXT_STEPS = [
 ]
 
 export default function ConfirmationPage() {
+  const { clear } = useCart()
   const [order, setOrder] = useState<StoredOrder | null>(null)
   const [mounted, setMounted] = useState(false)
   const [celebrate, setCelebrate] = useState(false)
+  const cartCleared = useRef(false)
+
+  // Reconcile against the authoritative server status by ref. This is what
+  // makes the page honest after a card redirect (the local copy is 'verifying'
+  // until Selcom's webhook lands) and a no-op for manual Lipa orders (which
+  // aren't tracked server-side → 404, left as 'verifying').
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const ref = params.get('ref') ?? order?.ref
+    if (!ref) return
+    let cancelled = false
+    let attempts = 0
+    const sync = async () => {
+      attempts++
+      try {
+        const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(ref)}`, {
+          cache: 'no-store',
+        })
+        if (res.status === 404) return // untracked (manual Lipa) — leave as-is
+        if (res.ok) {
+          const data = (await res.json()) as StatusResponse
+          if (cancelled) return
+          if (data.status === 'paid') {
+            setOrder((prev) => {
+              if (!prev || prev.ref !== ref) return prev
+              const next: StoredOrder = { ...prev, paymentStatus: 'paid' }
+              setLastOrder(next)
+              return next
+            })
+            if (!cartCleared.current) {
+              cartCleared.current = true
+              clear()
+            }
+            return
+          }
+          if (data.status === 'failed' || data.status === 'expired') return
+        }
+      } catch {
+        /* transient — retry */
+      }
+      if (!cancelled && attempts < 8) window.setTimeout(sync, 3000)
+    }
+    void sync()
+    return () => {
+      cancelled = true
+    }
+  }, [order?.ref, clear])
 
   useEffect(() => {
     const o = getLastOrder()
