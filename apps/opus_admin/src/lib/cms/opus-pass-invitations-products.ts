@@ -33,6 +33,19 @@ export const PRODUCT_TREATMENTS = [
 
 export type ProductTreatment = (typeof PRODUCT_TREATMENTS)[number]
 
+// Promotional status badge shown above the card on the OpusPass storefront.
+// Kept in sync with the DB CHECK constraint (migration 20260613000002) and the
+// opus_pass BADGE_META map. null = no badge.
+export const PRODUCT_BADGES = ['most_popular', 'premium', 'trending'] as const
+export type ProductBadge = (typeof PRODUCT_BADGES)[number]
+
+/** Admin-facing label for each badge value (storefront copy lives in opus_pass). */
+export const PRODUCT_BADGE_LABELS: Record<ProductBadge, string> = {
+  most_popular: '🟡 Most Popular',
+  premium: '✨ Premium Template',
+  trending: '🔥 Trending This Week',
+}
+
 export const PRODUCT_CATEGORIES = [
   'Wedding Invitations',
   'All-in-One Wedding Invitations',
@@ -57,6 +70,9 @@ export type InvitationProductRecord = {
 
   /** Short "Details" paragraph shown under the card on the product page. Falls back to auto-generated copy when empty. */
   description: string
+
+  /** Promotional status badge shown above the card on the storefront. null = none. */
+  badge: ProductBadge | null
 
   /** Optional struck-through "before" total price (TZS). */
   price_was: number | null
@@ -102,6 +118,7 @@ export function emptyInvitationProduct(
     designer: '',
     category: 'Wedding Invitations',
     description: '',
+    badge: null,
     price_was: null,
     price_now: 0,
     digital_unit_price: 10000,

@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import type { CatalogProduct } from '@/data/invitations-products'
 
 export type InvitationsEditorsPicksRowAlign = 'left' | 'right'
 
@@ -29,6 +30,8 @@ export type InvitationsEditorsPicksPick = {
   name: string
   price_was?: number
   price_now: number
+  /** Per-digital-card price. Its presence (with a `fromGuestPrice`) selects the per-guest "from" pricing shown for real catalog products. */
+  digital_unit_price?: number
   swatches: string[]
   media_url?: string
   media_type?: InvitationsEditorsPicksMediaType
@@ -86,6 +89,62 @@ export const INVITATIONS_EDITORS_PICKS_FALLBACK: InvitationsEditorsPicksContent 
       ],
     },
   ],
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  REAL-PRODUCT PICKS
+//  The landing page's Editors' Picks shows live products from
+//  `website_invitations_products` (the same table the catalog uses) rather than
+//  the curated/dummy picks stored in the CMS section. We keep the CMS rows only
+//  for their editorial headings + alignment, and slot real products into them so
+//  every card links to a real product page and shows real DB pricing/artwork.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PICKS_PER_ROW = 3
+
+function productToPick(product: CatalogProduct): InvitationsEditorsPicksPick {
+  const media = product.imageUrl || product.designs?.[0]
+  return {
+    id: product.id,
+    product_id: product.id,
+    category: product.category,
+    name: product.name,
+    price_was: product.priceWas,
+    price_now: product.priceNow,
+    digital_unit_price: product.digitalUnitPrice,
+    swatches: Array.isArray(product.swatches) ? product.swatches : [],
+    media_url: media,
+    media_type: media ? 'image' : undefined,
+    // No artwork → fall back to the built-in CSS treatment so the card isn't blank.
+    treatment: media ? undefined : (product.treatment as InvitationsEditorsPicksTreatment),
+    overlay: 'none',
+  }
+}
+
+/**
+ * Build Editors' Picks rows from live catalog products, borrowing each row's
+ * heading/alignment from the CMS template. Returns the CMS template untouched
+ * when there are no products (e.g. DB unreachable) so the section never renders
+ * empty.
+ */
+export function editorsPicksRowsFromProducts(
+  products: CatalogProduct[],
+  template: InvitationsEditorsPicksContent,
+): InvitationsEditorsPicksContent {
+  if (products.length === 0) return template
+  const rows: InvitationsEditorsPicksRow[] = []
+  for (let i = 0; i < products.length; i += PICKS_PER_ROW) {
+    const rowIndex = i / PICKS_PER_ROW
+    const tmpl = template.rows[rowIndex]
+    rows.push({
+      id: tmpl?.id ?? `row-${rowIndex + 1}`,
+      title_line_1: tmpl?.title_line_1 ?? 'Wedding invitations',
+      title_line_2: tmpl?.title_line_2 ?? 'designed for you',
+      align: tmpl?.align ?? (rowIndex % 2 === 0 ? 'left' : 'right'),
+      picks: products.slice(i, i + PICKS_PER_ROW).map(productToPick),
+    })
+  }
+  return { rows }
 }
 
 export async function loadInvitationsEditorsPicksContent(): Promise<InvitationsEditorsPicksContent> {

@@ -81,6 +81,46 @@ const IMAGES = [
 
 const lerp = (start: number, end: number, t: number) => start * (1 - t) + end * t
 
+// Horizontal scroll-snap row of category circles — shared by the desktop
+// animated hero (suite phase) and the static mobile hero.
+function SuiteCategoryRow({
+  categories,
+}: {
+  categories: InvitationsHeroContent['suite_categories']
+}) {
+  return (
+    // Single horizontal row: 3 circles in view on phones (4 on sm, 6 on lg),
+    // the rest reached by horizontal scroll. gap-4 (1rem) is kept constant so
+    // the basis calc lands an exact N-in-view.
+    <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      {categories.map((cat) => (
+        <Link
+          key={cat.id}
+          href="/invitations/catalog"
+          className="group flex shrink-0 snap-start basis-[calc((100%-2rem)/3)] flex-col items-center text-center sm:basis-[calc((100%-3rem)/4)] lg:basis-[calc((100%-5rem)/6)]"
+        >
+          <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-full bg-white ring-1 ring-gray-200 transition-shadow group-hover:shadow-md">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={assetPath(cat.image)}
+              alt={cat.alt}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          </div>
+          <span className="inline-flex items-center gap-1 text-xs font-medium leading-tight text-gray-800 group-hover:underline md:text-sm">
+            {cat.label}
+            <ArrowRight
+              size={14}
+              className="shrink-0 transition-transform group-hover:translate-x-0.5"
+              aria-hidden="true"
+            />
+          </span>
+        </Link>
+      ))}
+    </div>
+  )
+}
+
 export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent }) {
   const [introPhase, setIntroPhase] = useState<AnimationPhase>('scatter')
   const [containerSize, setContainerSize] = useState({ width: 0, height: 0 })
@@ -199,11 +239,26 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
   const visibleCount = isMobile ? MOBILE_IMAGES : TOTAL_IMAGES
 
   return (
-    <div ref={wrapperRef} className="relative h-[230vh] w-full">
-      <div
-        ref={containerRef}
-        className="sticky top-0 h-screen w-full overflow-hidden bg-white"
-      >
+    <>
+      {/* Mobile / tablet (below lg): static hero — no scattered card ring, no
+          scroll-driven animation, and no intro headline/CTAs. Just the suite
+          heading + category circles in normal flow. The animated scroll-morph
+          hero below (with the intro + ring) is desktop-only. */}
+      <section className="lg:hidden bg-white px-4 pt-8 pb-4">
+        <div className="mx-auto max-w-7xl">
+          <h2 className="mb-4 text-center font-serif text-xl font-medium text-gray-900 sm:text-2xl">
+            {hero.suite_heading}
+          </h2>
+          <SuiteCategoryRow categories={hero.suite_categories} />
+        </div>
+      </section>
+
+      {/* Desktop (lg+): animated scroll-morph hero */}
+      <div ref={wrapperRef} className="relative hidden h-[230vh] w-full lg:block">
+        <div
+          ref={containerRef}
+          className="sticky top-0 h-screen w-full overflow-hidden bg-white"
+        >
         <div className="perspective-1000 flex h-full w-full -translate-y-[4%] flex-col items-center justify-center">
         {/* Intro: title + CTA buttons (in front of the ring, fades out on scroll) */}
         <div className="pointer-events-none absolute top-1/2 z-20 flex -translate-y-1/2 flex-col items-center justify-center px-4 text-center">
@@ -261,36 +316,11 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
                 {hero.suite_body}
               </p>
             </div>
-            {/* Single horizontal row: 3 circles in view on phones (4 on sm, 6 on
-                lg), the rest reached by horizontal scroll. gap-4 (1rem) is kept
-                constant so the basis calc lands an exact N-in-view. */}
-            <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-              {hero.suite_categories.map((cat) => (
-                <Link
-                  key={cat.id}
-                  href="/invitations/catalog"
-                  className="group flex shrink-0 snap-start basis-[calc((100%-2rem)/3)] flex-col items-center text-center sm:basis-[calc((100%-3rem)/4)] lg:basis-[calc((100%-5rem)/6)]"
-                >
-                  <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-full bg-white ring-1 ring-gray-200 transition-shadow group-hover:shadow-md">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={assetPath(cat.image)}
-                      alt={cat.alt}
-                      className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    />
-                  </div>
-                  <span className="inline-flex items-center gap-1 text-xs font-medium leading-tight text-gray-800 group-hover:underline md:text-sm">
-                    {cat.label}
-                    <ArrowRight
-                      size={14}
-                      className="shrink-0 transition-transform group-hover:translate-x-0.5"
-                      aria-hidden="true"
-                    />
-                  </span>
-                </Link>
-              ))}
-            </div>
-            <div className="mt-12 border-t border-gray-200 sm:mt-16" />
+            <SuiteCategoryRow categories={hero.suite_categories} />
+            {/* Hidden on phones: EditorsPicks' -mt-[28vh] (mobile-only) lifts its
+                heading row over this rule, leaving a stray line in the gap between
+                the title and its CTA. Shown from sm+ where that overlap is gone. */}
+            <div className="hidden border-t border-gray-200 sm:mt-16 sm:block" />
           </div>
         </motion.div>
 
@@ -357,5 +387,6 @@ export default function ScrollMorphHero({ hero }: { hero: InvitationsHeroContent
         </div>
       </div>
     </div>
+    </>
   )
 }

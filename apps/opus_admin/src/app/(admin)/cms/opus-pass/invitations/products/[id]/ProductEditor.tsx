@@ -8,6 +8,8 @@ import { ImageUploadField } from '@/components/cms/ImageUploadField'
 import { RichTextField } from '@/components/cms/RichTextField'
 import {
   PRODUCT_CATEGORIES,
+  PRODUCT_BADGES,
+  PRODUCT_BADGE_LABELS,
   slugifyProductName,
   type InvitationProductRecord,
 } from '@/lib/cms/opus-pass-invitations-products'
@@ -151,6 +153,18 @@ export default function ProductEditor({
                 <input type="number" value={product.sort_order} onChange={(e) => set('sort_order', Number(e.target.value) || 0)} className={inputCls} />
               </Field>
             </div>
+            <Field label="Status badge" hint="Promotional pill shown above the card on the storefront.">
+              <select
+                value={product.badge ?? ''}
+                onChange={(e) => set('badge', (e.target.value || null) as InvitationProductRecord['badge'])}
+                className={inputCls}
+              >
+                <option value="">No badge</option>
+                {PRODUCT_BADGES.map((b) => (
+                  <option key={b} value={b}>{PRODUCT_BADGE_LABELS[b]}</option>
+                ))}
+              </select>
+            </Field>
           </Card>
 
           {/* Description */}

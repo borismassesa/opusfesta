@@ -7,6 +7,7 @@ import { ArrowRight, ChevronLeft, ChevronRight, Heart } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { PROMO_CODE, ProductInfo } from '@/components/guests/productInfo'
+import ProductBadgePill from '@/components/invitations/ProductBadge'
 import type { CatalogProduct } from '@/data/invitations-products'
 import { useScrollCarousel } from '@/hooks/useScrollCarousel'
 import type { InvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-banner'
@@ -301,6 +302,11 @@ function ProductCard({
             <InvitationVisual treatment={product.treatment} />
           )}
         </span>
+
+        {/* Status badge — admin-set promotional pill, top-left above the artwork */}
+        {product.badge && (
+          <ProductBadgePill badge={product.badge} className="absolute left-2 top-2 z-10" />
+        )}
 
         {/* Heart button — stays put (above zoom layer) */}
         <button

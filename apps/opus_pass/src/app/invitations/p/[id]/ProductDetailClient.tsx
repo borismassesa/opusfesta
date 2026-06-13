@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { DesignCarousel } from '@/components/guests/DesignCarousel'
 import type { CatalogProduct } from '@/data/invitations-products'
+import ProductBadgePill from '@/components/invitations/ProductBadge'
 import type { PackagesContent, TierBadgeIcon, TierBadgeTone } from '@/lib/cms/packages'
 import { packageFromPrice } from '@/lib/cms/packages-pricing'
 import { buildItemSummary, useCart } from '@/components/providers/CartProvider'
@@ -234,12 +235,12 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
         )}
         aria-label="Breadcrumb"
       >
-        <div className="mx-auto max-w-7xl flex min-w-0 flex-nowrap items-center gap-1.5 text-xs text-gray-600">
-          <Link href="/invitations" className="shrink-0 whitespace-nowrap hover:text-gray-900 hover:underline">Invitations</Link>
-          <ChevronRight size={12} className="shrink-0 text-gray-400" />
-          <Link href="/invitations/catalog" className="shrink-0 whitespace-nowrap hover:text-gray-900 hover:underline">{product.category}</Link>
-          <ChevronRight size={12} className="shrink-0 text-gray-400" />
-          <span className="min-w-0 truncate text-gray-900">{product.name}</span>
+        <div className="mx-auto max-w-7xl flex min-w-0 flex-nowrap items-center gap-1.5 text-[11px] tracking-wide text-gray-400">
+          <Link href="/invitations" className="shrink-0 whitespace-nowrap transition-colors hover:text-gray-700">Invitations</Link>
+          <ChevronRight size={11} className="shrink-0 text-gray-300" />
+          <Link href="/invitations/catalog" className="shrink-0 whitespace-nowrap transition-colors hover:text-gray-700">{product.category}</Link>
+          <ChevronRight size={11} className="shrink-0 text-gray-300" />
+          <span className="min-w-0 truncate font-medium text-(--accent)">{product.name}</span>
         </div>
       </nav>
 
@@ -252,13 +253,23 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
               height clamp/internal scroll, so a tall portrait card never clips
               the description below it (the page scrolls naturally instead). ─── */}
           <div className="space-y-8 lg:sticky lg:top-[4rem]">
-            <DesignCarousel
-              hero={heroImage}
-              designs={designViews}
-              treatment={product.treatment}
-              favourited={favourited}
-              onFavourite={() => setFavourited((v) => !v)}
-            />
+            {/* On phones the preview gets 24px side padding (~87% width) on top of
+                the layout's 16px gutter so it no longer spans edge-to-edge; from
+                sm+ it fills its column. */}
+            <div className="px-2 sm:px-0">
+              {product.badge && (
+                <div className="mb-3 flex">
+                  <ProductBadgePill badge={product.badge} />
+                </div>
+              )}
+              <DesignCarousel
+                hero={heroImage}
+                designs={designViews}
+                treatment={product.treatment}
+                favourited={favourited}
+                onFavourite={() => setFavourited((v) => !v)}
+              />
+            </div>
 
             {/* Description — below the card */}
             <div className="border-t border-gray-200 pt-5">

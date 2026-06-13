@@ -26,6 +26,7 @@ export default function InvitationsLandingClient({
   featuredSuite,
   faqs,
   editorsPicks,
+  fromGuestPrice,
   testimonials,
 }: {
   hero: InvitationsHeroContent
@@ -33,12 +34,14 @@ export default function InvitationsLandingClient({
   featuredSuite: InvitationsFeaturedSuiteContent
   faqs: InvitationsFaqsContent
   editorsPicks: InvitationsEditorsPicksContent
+  /** Lowest per-guest package price — shown as the digital "from" anchor on real products. */
+  fromGuestPrice?: number
   testimonials?: React.ReactNode
 }) {
   return (
     <div className="bg-white text-[#1A1A1A]">
       <ScrollMorphHero hero={hero} />
-      <EditorsPicks rows={editorsPicks.rows} />
+      <EditorsPicks rows={editorsPicks.rows} fromGuestPrice={fromGuestPrice} />
       <SectionDivider />
       <section className="px-4 sm:px-6">
         <div className="mx-auto max-w-7xl pt-10 sm:pt-14">
@@ -309,15 +312,25 @@ function pickToProduct(pick: InvitationsEditorsPicksPick): Product {
     name: pick.name,
     priceWas: pick.price_was,
     priceNow: pick.price_now,
+    digitalUnitPrice: pick.digital_unit_price,
     swatches: pick.swatches,
   }
 }
 
-function EditorsPicks({ rows: cmsRows }: { rows: InvitationsEditorsPicksContent['rows'] }) {
-  // The negative top margin on phones reclaims the empty band the pinned hero
-  // leaves below its content (top-[55%]); desktop keeps its natural spacing.
+function EditorsPicks({
+  rows: cmsRows,
+  fromGuestPrice,
+}: {
+  rows: InvitationsEditorsPicksContent['rows']
+  fromGuestPrice?: number
+}) {
+  // Mobile/tablet show a static (non-pinned) hero, so this section flows normally
+  // with no margin to reclaim. On desktop (lg+) the pinned scroll-morph hero ends
+  // with its category circles anchored at ~55% of the final frame, leaving a tall
+  // empty band below them; the negative top margin lifts this section up into that
+  // band so the products sit just under the hero instead of a screen-height gap.
   return (
-    <section className="relative z-10 -mt-[28vh] px-4 sm:mt-0 sm:px-6">
+    <section className="relative z-10 px-4 sm:px-6 lg:-mt-[34vh]">
       <div className="mx-auto max-w-7xl pt-4 sm:pt-6 space-y-12 sm:space-y-14 md:space-y-16">
         {cmsRows.map((row) => (
           <div
@@ -357,7 +370,7 @@ function EditorsPicks({ rows: cmsRows }: { rows: InvitationsEditorsPicksContent[
                   >
                     <PickVisual pick={p} />
                   </PickCard>
-                  <ProductInfo product={pickToProduct(p)} href={productHref} />
+                  <ProductInfo product={pickToProduct(p)} href={productHref} fromGuestPrice={fromGuestPrice} />
                 </Link>
               )
             })}
