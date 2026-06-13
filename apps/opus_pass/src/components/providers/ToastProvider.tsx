@@ -18,7 +18,8 @@ const TOAST_BASE =
 export default function ToastProvider() {
   return (
     <Toaster
-      position="top-right"
+      position="bottom-right"
+      closeButton
       gap={10}
       offset={20}
       icons={{
@@ -38,7 +39,7 @@ export default function ToastProvider() {
           cancelButton:
             '!bg-transparent !text-[#1A1A1A]/65 !rounded-full !px-3 !py-1.5 !text-xs !font-semibold hover:!bg-black/[0.05]',
           closeButton:
-            '!left-auto !right-2 !top-2 !h-6 !w-6 !rounded-md !border-0 !bg-transparent !text-[#1A1A1A]/45 hover:!bg-black/[0.05] hover:!text-[#1A1A1A]',
+            '!left-auto !right-2.5 !top-2.5 !h-6 !w-6 !rounded-full !border-0 !bg-transparent !text-[#1A1A1A]/45 hover:!bg-black/[0.05] hover:!text-[#1A1A1A]',
         },
       }}
     />

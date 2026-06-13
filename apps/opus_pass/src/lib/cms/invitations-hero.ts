@@ -34,11 +34,16 @@ export const INVITATIONS_HERO_FALLBACK: InvitationsHeroContent = {
   suite_body:
     'Pick one design once, and every card across your day matches your suite. No mixing fonts, no clashing palettes, no last-minute hunt for matching paper.',
   suite_categories: [
-    { id: 'save-the-date', label: 'Save the Date', alt: 'Save the Date', image: '/assets/images/bridering.jpg' },
     { id: 'wedding', label: 'Wedding', alt: 'Wedding ceremony', image: '/assets/images/churchcouples.jpg' },
     { id: 'send-off', label: 'Send-Off', alt: 'Send-Off', image: '/assets/images/brideincar.jpg' },
     { id: 'kitchen-party', label: 'Kitchen Party', alt: 'Kitchen Party — bridal shower florals', image: '/assets/images/flowers_pinky.jpg' },
-    { id: 'michango-vikao', label: 'Kadi za Michango & Vikao', alt: 'Kadi za Michango & Vikao', image: '/assets/images/mauzo_crew.jpg' },
+    { id: 'save-the-date', label: 'Save the Date', alt: 'Save the Date', image: '/assets/images/bridering.jpg' },
+    { id: 'michango', label: 'Kadi za Michango', alt: 'Kadi za Michango', image: '/assets/images/mauzo_crew.jpg' },
+    { id: 'anniversary', label: 'Anniversary', alt: 'Anniversary celebration', image: '/assets/images/ring_piano.jpg' },
+    { id: 'communion', label: 'Communion', alt: 'Communion celebration', image: '/assets/images/couples_together.jpg' },
+    { id: 'birthday', label: 'Birthday', alt: 'Birthday celebration', image: '/assets/images/cutesy_couple.jpg' },
+    { id: 'gala-dinner', label: 'Gala Dinner', alt: 'Gala dinner', image: '/assets/images/coupleswithpiano.jpg' },
+    { id: 'muslim-wedding', label: 'Muslim Wedding', alt: 'Muslim wedding', image: '/assets/images/bridewithumbrella.jpg' },
   ],
 }
 
