@@ -47,9 +47,12 @@ export async function POST(req: Request): Promise<NextResponse> {
     return NextResponse.json({ received: true })
   }
 
-  // Idempotency: a repeat of the same event (same transid/reference) is dropped.
-  const eventId = body.transid ?? body.reference ?? null
+  // Idempotency: a repeat of the same event is dropped. Fall back to a
+  // deterministic key when the callback carries neither a transid nor a
+  // reference, so a duplicate of such a callback still dedupes (SQL NULLs don't
+  // collide on the UNIQUE index, so a literal null would let repeats through).
   const callbackStatus = mapSelcomStatus(body.payment_status ?? body.result)
+  const eventId = body.transid ?? body.reference ?? `${ref}:${callbackStatus}`
   const isNew = await recordPaymentEvent({
     orderId: order.id,
     providerEventId: eventId,
@@ -58,14 +61,19 @@ export async function POST(req: Request): Promise<NextResponse> {
   })
   if (!isNew) return NextResponse.json({ received: true, duplicate: true })
 
-  // Confirm authoritatively against Selcom before trusting the status.
-  let confirmed: 'paid' | 'failed' | 'pending' = callbackStatus
+  // SECURITY: never trust the callback body to move money. The webhook is
+  // unauthenticated and forgeable, so a transition is driven ONLY by a
+  // server-side re-query of Selcom's order-status API. If that query fails we
+  // leave the order pending and defer — the status poll (or a later callback)
+  // resolves it. Trusting the callback status here would let a forged "paid"
+  // callback mark an order paid whenever Selcom is unreachable.
+  let confirmed: 'paid' | 'failed' | 'pending'
   try {
     const status = await queryOrderStatus(ref)
     confirmed = mapSelcomStatus(status.data?.[0]?.payment_status ?? status.result)
   } catch (err) {
-    // Fall back to the (already-recorded) callback status if the query fails.
-    console.error('[payments] order-status confirm failed, using callback status', err)
+    console.error('[payments] order-status confirm failed; leaving order pending', err)
+    return NextResponse.json({ received: true, deferred: true })
   }
 
   if (confirmed === 'paid') {

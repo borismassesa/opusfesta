@@ -105,8 +105,22 @@ export async function transitionOrder(
 
   const patch: Record<string, unknown> = { status: next }
   if (next === 'paid') patch.paid_at = new Date().toISOString()
-  const { error } = await supabase.from('invitation_orders').update(patch).eq('ref', ref)
+  // Guard the UPDATE itself against terminal states so the read-then-write is
+  // atomic: if a concurrent webhook/poll already moved the row to a terminal
+  // state, this update matches zero rows rather than overwriting it (e.g. a
+  // late 'failed' callback must not un-pay an already-'paid' order).
+  const { data, error } = await supabase
+    .from('invitation_orders')
+    .update(patch)
+    .eq('ref', ref)
+    .not('status', 'in', '(paid,failed,expired,refunded)')
+    .select('status')
   if (error) throw new Error(`transitionOrder failed: ${error.message}`)
+  if (!data || data.length === 0) {
+    // Lost the race — report whatever terminal state actually won.
+    const latest = await getOrderByRef(ref)
+    return latest?.status ?? current.status
+  }
   return next
 }
 

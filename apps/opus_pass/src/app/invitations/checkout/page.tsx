@@ -304,6 +304,13 @@ export default function CheckoutPage() {
         const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(ref)}`, {
           cache: 'no-store',
         })
+        if (res.status === 404) {
+          // Order vanished — surface immediately rather than waiting out the timeout.
+          setPayPhase('idle')
+          setSubmitting(false)
+          setPayError('We could not find your order. Please try again.')
+          return
+        }
         const data = (await res.json()) as StatusResponse
         if (data.status === 'paid') {
           // Promote the local snapshot to paid so the confirmation page and
