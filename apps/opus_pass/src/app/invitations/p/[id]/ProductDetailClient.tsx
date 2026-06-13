@@ -240,7 +240,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
           <ChevronRight size={11} className="shrink-0 text-gray-300" />
           <Link href="/invitations/catalog" className="shrink-0 whitespace-nowrap transition-colors hover:text-gray-700">{product.category}</Link>
           <ChevronRight size={11} className="shrink-0 text-gray-300" />
-          <span className="min-w-0 truncate font-medium text-(--accent)">{product.name}</span>
+          <span className="min-w-0 truncate font-medium text-[#1A1A1A]">{product.name}</span>
         </div>
       </nav>
 
