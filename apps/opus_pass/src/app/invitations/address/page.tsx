@@ -161,7 +161,7 @@ export default function AddressPage() {
             <CardHeader className="gap-2">
               <CardTitle className="text-2xl font-semibold">How should we deliver?</CardTitle>
               <CardDescription className="text-sm">
-                Digital invitations are sent via WhatsApp and email. Printed cards are mailed to you.
+                Every order includes your digital invitation, sent via WhatsApp and email. Add printed cards to have them mailed to you too.
               </CardDescription>
             </CardHeader>
 
@@ -178,8 +178,8 @@ export default function AddressPage() {
                   active={mode === 'print'}
                   onClick={() => setMode('print')}
                   Icon={Printer}
-                  title="Printed cards"
-                  caption="High-quality prints mailed to your address in 7–14 days."
+                  title="Digital + printed cards"
+                  caption="Everything digital, plus high-quality prints mailed to your address in 7–14 days."
                 />
               </div>
 
