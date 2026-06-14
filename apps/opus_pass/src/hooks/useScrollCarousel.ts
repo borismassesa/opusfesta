@@ -5,21 +5,32 @@ import { useEffect, useRef, useState } from 'react'
 export function useScrollCarousel() {
   const scrollRef = useRef<HTMLDivElement>(null)
   const [progress, setProgress] = useState(0)
+  // True briefly after a scroll, so the nav arrows can reveal on scroll (in
+  // addition to hover). Cleared ~1s after scrolling stops.
+  const [scrolling, setScrolling] = useState(false)
 
   useEffect(() => {
     const el = scrollRef.current
     if (!el) return
-    const update = () => {
+    let idleTimer: ReturnType<typeof setTimeout> | undefined
+    const updateProgress = () => {
       const max = el.scrollWidth - el.clientWidth
       setProgress(max > 0 ? (el.scrollLeft / max) * 100 : 0)
     }
-    update()
-    el.addEventListener('scroll', update, { passive: true })
-    const ro = new ResizeObserver(update)
+    const onScroll = () => {
+      updateProgress()
+      setScrolling(true)
+      if (idleTimer) clearTimeout(idleTimer)
+      idleTimer = setTimeout(() => setScrolling(false), 1000)
+    }
+    updateProgress()
+    el.addEventListener('scroll', onScroll, { passive: true })
+    const ro = new ResizeObserver(updateProgress)
     ro.observe(el)
     return () => {
-      el.removeEventListener('scroll', update)
+      el.removeEventListener('scroll', onScroll)
       ro.disconnect()
+      if (idleTimer) clearTimeout(idleTimer)
     }
   }, [])
 
@@ -37,5 +48,5 @@ export function useScrollCarousel() {
     el.scrollBy({ left: -(el.clientWidth + gap), behavior: 'smooth' })
   }
 
-  return { scrollRef, progress, scrollNext, scrollPrev }
+  return { scrollRef, progress, scrolling, scrollNext, scrollPrev }
 }

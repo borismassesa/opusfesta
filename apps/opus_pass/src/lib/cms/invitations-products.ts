@@ -25,6 +25,7 @@ type ProductRow = {
   badge: string | null
   published: boolean
   sort_order: number
+  created_at: string | null
 }
 
 function rowToProduct(row: ProductRow): CatalogProduct {
@@ -48,6 +49,7 @@ function rowToProduct(row: ProductRow): CatalogProduct {
     gallery:          Array.isArray(row.gallery) ? row.gallery.filter(Boolean) : [],
     designs:          Array.isArray(row.designs) ? row.designs.filter(Boolean) : [],
     badge:            isProductBadge(row.badge) ? row.badge : undefined,
+    createdAt:        row.created_at ?? undefined,
   }
 }
 

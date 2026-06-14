@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
 import { PreviewBanner } from '@/components/PreviewBanner'
-import { loadInvitationsHeroContent } from '@/lib/cms/invitations-hero'
 import { loadInvitationsFeaturesContent } from '@/lib/cms/invitations-features'
 import { loadInvitationsFeaturedSuiteContent } from '@/lib/cms/invitations-featured-suite'
 import { loadInvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
@@ -9,6 +8,8 @@ import {
   loadInvitationsEditorsPicksContent,
   editorsPicksRowsFromProducts,
 } from '@/lib/cms/invitations-editors-picks'
+import { loadInvitationCategoriesList } from '@/lib/cms/invitations-categories'
+import { styleStripFromCategories } from '@/lib/cms/invitations-style-strip'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import { loadPackagesContent, packageFromPrice } from '@/lib/cms/packages'
 import { InvitationShowcase } from '@/components/home/InvitationShowcase'
@@ -29,7 +30,7 @@ export const metadata: Metadata = {
 export default async function InvitationsLandingPage() {
   const [
     { isEnabled: isDraft },
-    hero,
+    categories,
     features,
     featuredSuite,
     faqs,
@@ -38,7 +39,7 @@ export default async function InvitationsLandingPage() {
     packages,
   ] = await Promise.all([
     draftMode(),
-    loadInvitationsHeroContent(),
+    loadInvitationCategoriesList(),
     loadInvitationsFeaturesContent(),
     loadInvitationsFeaturedSuiteContent(),
     loadInvitationsFaqsContent(),
@@ -46,6 +47,7 @@ export default async function InvitationsLandingPage() {
     loadInvitationProducts(),
     loadPackagesContent(),
   ])
+  const styleStrip = styleStripFromCategories(categories)
   // Editors' Picks renders live products from the DB (same source as the
   // catalog); the CMS section only supplies the editorial row headings.
   const editorsPicks = editorsPicksRowsFromProducts(products, editorsPicksTemplate)
@@ -67,7 +69,7 @@ export default async function InvitationsLandingPage() {
       {faqSchema && <JsonLd data={faqSchema} />}
       {isDraft && <PreviewBanner />}
       <InvitationsLandingClient
-        hero={hero}
+        styleStrip={styleStrip}
         features={features}
         featuredSuite={featuredSuite}
         faqs={faqs}

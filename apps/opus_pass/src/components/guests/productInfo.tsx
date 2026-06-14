@@ -58,14 +58,18 @@ export function ProductInfo({
         )}
       </p>
 
-      {/* Pricing — digital per-guest package "from" price is primary for catalog
-          products; editorial/feature products fall back to paper per-pack. */}
-      {product.digitalUnitPrice && fromGuestPrice ? (
+      {/* Pricing — digital products price per-guest (via packages), so they show
+          the "from" package price; the per-design digitalUnitPrice is a safe
+          fallback when no package price is available so a 0 paper price can never
+          surface as "TZS 0 ea.". Editorial/feature products use paper per-pack. */}
+      {product.digitalUnitPrice ? (
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-[15px] sm:text-[16px] font-bold text-[#1A1A1A]">
-            From TZS {fromGuestPrice.toLocaleString('en-US')}
+            From TZS {(fromGuestPrice ?? product.digitalUnitPrice).toLocaleString('en-US')}
           </span>
-          <span className="text-[11px] text-[#1A1A1A]/60">per guest</span>
+          <span className="text-[11px] text-[#1A1A1A]/60">
+            {fromGuestPrice ? 'per guest' : 'per design'}
+          </span>
         </div>
       ) : (
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">

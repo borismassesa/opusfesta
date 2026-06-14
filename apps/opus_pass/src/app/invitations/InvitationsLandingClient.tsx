@@ -1,12 +1,11 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Heart, Play } from 'lucide-react'
+import { ArrowRight, Heart, Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { ProductInfo, type Product } from '@/components/guests/productInfo'
 import { FAQItem } from './FAQAccordion'
-import ScrollMorphHero from '@/components/ui/scroll-morph-hero-client'
-import type { InvitationsHeroContent } from '@/lib/cms/invitations-hero'
+import type { InvitationsStyleStripContent } from '@/lib/cms/invitations-style-strip'
 import type { InvitationsFeaturesContent, InvitationsFeatureCard } from '@/lib/cms/invitations-features'
 import type { InvitationsFeaturedSuiteContent } from '@/lib/cms/invitations-featured-suite'
 import type { InvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
@@ -21,7 +20,7 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function InvitationsLandingClient({
-  hero,
+  styleStrip,
   features,
   featuredSuite,
   faqs,
@@ -29,7 +28,7 @@ export default function InvitationsLandingClient({
   fromGuestPrice,
   testimonials,
 }: {
-  hero: InvitationsHeroContent
+  styleStrip: InvitationsStyleStripContent
   features: InvitationsFeaturesContent
   featuredSuite: InvitationsFeaturedSuiteContent
   faqs: InvitationsFaqsContent
@@ -40,7 +39,7 @@ export default function InvitationsLandingClient({
 }) {
   return (
     <div className="bg-white text-[#1A1A1A]">
-      <ScrollMorphHero hero={hero} />
+      <SuiteHero items={styleStrip.items} />
       <EditorsPicks rows={editorsPicks.rows} fromGuestPrice={fromGuestPrice} />
       <SectionDivider />
       <section className="px-4 sm:px-6">
@@ -58,6 +57,58 @@ export default function InvitationsLandingClient({
       {testimonials}
       <FAQs content={faqs} />
     </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  SUITE HERO — "shop by moment" heading + category circles (static, no morph)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function SuiteHero({ items }: { items: InvitationsStyleStripContent['items'] }) {
+  return (
+    <section className="bg-white px-4 pb-2 pt-8 sm:px-6 sm:pt-12 lg:pt-16">
+      <div className="mx-auto max-w-7xl text-center">
+        <h2 className="font-serif text-2xl font-medium text-gray-900 sm:text-3xl lg:text-4xl">
+          Invitations for Every Moment
+        </h2>
+        <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-gray-700 md:text-base">
+          Pick one design once, and every card across your day matches your suite. No mixing fonts,
+          no clashing palettes, no last-minute hunt for matching paper.
+        </p>
+      </div>
+
+      {/* Single horizontal row: 3 circles in view on phones (4 on sm, 6 on lg),
+          the rest reached by horizontal scroll. */}
+      <div className="mx-auto mt-8 max-w-7xl sm:mt-10">
+        <div className="flex snap-x snap-mandatory gap-4 overflow-x-auto pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          {items.map((cat) => (
+            <Link
+              key={cat.id}
+              href={cat.href ?? '/invitations/catalog'}
+              className="group flex shrink-0 snap-start basis-[calc((100%-2rem)/3)] flex-col items-center text-center sm:basis-[calc((100%-3rem)/4)] lg:basis-[calc((100%-5rem)/6)]"
+            >
+              <div className="relative mb-3 aspect-square w-full overflow-hidden rounded-full bg-white ring-1 ring-gray-200 transition-shadow group-hover:shadow-md">
+                <Image
+                  src={cat.img}
+                  alt={cat.alt}
+                  fill
+                  sizes="(min-width: 1024px) 16vw, (min-width: 640px) 25vw, 33vw"
+                  className="object-cover transition-transform duration-500 group-hover:scale-105"
+                />
+              </div>
+              <span className="inline-flex items-center gap-1 text-xs font-medium leading-tight text-gray-800 group-hover:underline md:text-sm">
+                {cat.label}
+                <ArrowRight
+                  size={14}
+                  className="shrink-0 transition-transform group-hover:translate-x-0.5"
+                  aria-hidden="true"
+                />
+              </span>
+            </Link>
+          ))}
+        </div>
+      </div>
+    </section>
   )
 }
 
@@ -324,13 +375,10 @@ function EditorsPicks({
   rows: InvitationsEditorsPicksContent['rows']
   fromGuestPrice?: number
 }) {
-  // Mobile/tablet show a static (non-pinned) hero, so this section flows normally
-  // with no margin to reclaim. On desktop (lg+) the pinned scroll-morph hero ends
-  // with its category circles anchored at ~55% of the final frame, leaving a tall
-  // empty band below them; the negative top margin lifts this section up into that
-  // band so the products sit just under the hero instead of a screen-height gap.
+  // Keep the first catalog section close to the page chrome now that the landing
+  // hero has been removed.
   return (
-    <section className="relative z-10 px-4 sm:px-6 lg:-mt-[34vh]">
+    <section className="relative z-10 px-4 sm:px-6">
       <div className="mx-auto max-w-7xl pt-4 sm:pt-6 space-y-12 sm:space-y-14 md:space-y-16">
         {cmsRows.map((row) => (
           <div
@@ -525,6 +573,4 @@ function FAQs({ content }: { content: InvitationsFaqsContent }) {
     </section>
   )
 }
-
-
 

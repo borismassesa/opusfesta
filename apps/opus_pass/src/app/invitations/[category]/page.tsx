@@ -6,8 +6,6 @@ import { findCategory } from '@/data/invitations-categories'
 import { loadInvitationCategoriesList } from '@/lib/cms/invitations-categories'
 import { loadInvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-banner'
 import { styleStripFromCategories } from '@/lib/cms/invitations-style-strip'
-import { loadInvitationsExploreStylesContent } from '@/lib/cms/invitations-explore-styles'
-import { loadInvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-free-website-promo'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import InvitationsCategoryClient from './InvitationsCategoryClient'
 
@@ -43,14 +41,12 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function InvitationsCategoryPage({ params }: { params: Promise<Params> }) {
   const { category } = await params
-  const [{ isEnabled: isDraft }, categories, products, promoBanner, exploreStyles, freeWebsitePromo] =
+  const [{ isEnabled: isDraft }, categories, products, promoBanner] =
     await Promise.all([
       draftMode(),
       loadInvitationCategoriesList(),
       loadInvitationProducts(),
       loadInvitationsPromoBannerContent(),
-      loadInvitationsExploreStylesContent(),
-      loadInvitationsFreeWebsitePromoContent(),
     ])
   const cat = findCategory(categories, category)
   if (!cat) return notFound()
@@ -63,8 +59,6 @@ export default async function InvitationsCategoryPage({ params }: { params: Prom
         products={products}
         promoBanner={promoBanner}
         styleStrip={styleStripFromCategories(categories)}
-        exploreStyles={exploreStyles}
-        freeWebsitePromo={freeWebsitePromo}
       />
     </>
   )

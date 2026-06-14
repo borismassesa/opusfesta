@@ -29,6 +29,8 @@ export type CatalogProduct = BaseProduct & {
   palettes: InvitationPalette[]
   /** Admin-set promotional status badge shown above the card. Undefined → none. */
   badge?: ProductBadge
+  /** ISO creation timestamp — drives the catalog's Newest/Oldest sort. */
+  createdAt?: string
 }
 
 // ── Promotional status badge ──────────────────────────────────────────────────
