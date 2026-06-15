@@ -2,7 +2,15 @@ import { NextResponse } from 'next/server'
 import { randomUUID } from 'node:crypto'
 import type { InitiateRequest, InitiateResponse } from '@/lib/payments/types'
 import { priceOrder } from '@/lib/payments/pricing'
-import { createPendingOrder, setProviderOrderId, transitionOrder } from '@/lib/payments/orders'
+import { getDashboardUser } from '@/lib/dashboard/auth'
+import { createNotification } from '@/lib/dashboard/notifications'
+import {
+  createPendingOrder,
+  markManualPaymentEmails,
+  setProviderOrderId,
+  transitionOrder,
+} from '@/lib/payments/orders'
+import { sendManualPaymentSubmittedEmails } from '@/lib/payments/email'
 import {
   isSelcomConfigured,
   createOrder,
@@ -16,6 +24,7 @@ export const dynamic = 'force-dynamic'
 export const runtime = 'nodejs'
 
 const PHONE_RE = /^\+?(?:[\d](?:[\s().-]?)){9,}$/
+const PAYREF_RE = /^[A-Za-z0-9.\-]{6,25}$/
 
 function generateRef(): string {
   const year = new Date().getFullYear()
@@ -27,6 +36,10 @@ function appOrigin(req: Request): string {
   // Prefer the configured public URL (the webhook must be publicly reachable);
   // fall back to the request origin for local dev.
   return (process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? new URL(req.url).origin).replace(/\/$/, '')
+}
+
+function formatTzs(value: number): string {
+  return `TZS ${value.toLocaleString('en-US')}`
 }
 
 export async function POST(req: Request): Promise<NextResponse<InitiateResponse>> {
@@ -42,7 +55,7 @@ export async function POST(req: Request): Promise<NextResponse<InitiateResponse>
 
   // ── Validate ──────────────────────────────────────────────────────────────
   const { method, contact, items } = body
-  if (method !== 'mobile' && method !== 'card') {
+  if (method !== 'mobile' && method !== 'card' && method !== 'lipa_namba') {
     return bad('Choose a payment method.')
   }
   if (!Array.isArray(items) || items.length === 0) {
@@ -55,14 +68,15 @@ export async function POST(req: Request): Promise<NextResponse<InitiateResponse>
     const phone = body.phone?.trim()
     if (!phone || !PHONE_RE.test(phone)) return bad('Enter a valid M-Pesa phone number.')
   }
-
-  // Fail loudly when the gateway isn't wired up — better an honest error than a
-  // fake "paid" screen (the bug this whole feature fixes).
-  if (!isSelcomConfigured()) {
-    return NextResponse.json(
-      { ref: '', status: 'failed', message: 'Payments are not available right now. Please try again later.' },
-      { status: 503 },
-    )
+  if (method === 'lipa_namba') {
+    const phone = body.phone?.trim()
+    if (!phone || !PHONE_RE.test(phone)) return bad('Enter the phone number used to pay.')
+    if (!body.payerName?.trim() || body.payerName.trim().length < 3) {
+      return bad('Enter the name on the account used to pay.')
+    }
+    if (!body.paymentReference?.trim() || !PAYREF_RE.test(body.paymentReference.trim())) {
+      return bad('Enter the payment reference from your confirmation SMS.')
+    }
   }
 
   // ── Authoritative amount (never trust the client's totals) ──────────────────
@@ -74,11 +88,69 @@ export async function POST(req: Request): Promise<NextResponse<InitiateResponse>
 
   const ref = generateRef()
   const origin = appOrigin(req)
-  const payerPhone = method === 'mobile' ? normalizeMsisdn(body.phone!.trim()) : null
+  const dashboardUser = await getDashboardUser().catch((error) => {
+    console.error('[payments] dashboard user lookup failed', error)
+    return null
+  })
+  const payerPhone = method === 'mobile' || method === 'lipa_namba'
+    ? normalizeMsisdn(body.phone!.trim())
+    : null
+
+  if (method === 'lipa_namba') {
+    const payerName = body.payerName?.trim() ?? ''
+    const paymentReference = body.paymentReference?.trim().toUpperCase() ?? ''
+    const order = await createPendingOrder({
+      ref,
+      userId: dashboardUser?.id ?? null,
+      currency: pricing.currency,
+      subtotal: pricing.subtotal,
+      discount: pricing.discount,
+      amountTotal: pricing.amountTotal,
+      contact: { name: contact.name, email: contact.email, phone: contact.phone },
+      eventDate: body.eventDate ?? null,
+      items: pricing.items,
+      status: 'processing',
+      provider: 'mpesa_lipa_namba',
+      paymentMethod: 'lipa_namba',
+      payerPhone,
+      payerName,
+      paymentReference,
+      paymentSubmittedAt: new Date().toISOString(),
+      paymentLabel: body.paymentLabel ?? null,
+    })
+    const emailFlags = await sendManualPaymentSubmittedEmails(order)
+    await Promise.all([
+      markManualPaymentEmails(ref, emailFlags),
+      dashboardUser
+        ? createNotification({
+            userId: dashboardUser.id,
+            type: 'system',
+            title: 'Invitation payment submitted',
+            body: `${formatTzs(pricing.amountTotal)} is under finance review${paymentReference ? ` · ref ${paymentReference}` : ''}`,
+            href: '/my/dashboard/orders',
+          })
+        : Promise.resolve(),
+    ])
+    return NextResponse.json({
+      ref,
+      status: 'processing',
+      message: 'Payment submitted for review.',
+    })
+  }
+
+  // Fail loudly when the automated gateway isn't wired up. Manual Lipa Namba is
+  // handled above because the customer already paid externally.
+  if (!isSelcomConfigured()) {
+    return NextResponse.json(
+      { ref: '', status: 'failed', message: 'Payments are not available right now. Please try again later.' },
+      { status: 503 },
+    )
+  }
 
   // ── Persist as pending BEFORE talking to Selcom ─────────────────────────────
   await createPendingOrder({
     ref,
+    userId: dashboardUser?.id ?? null,
     currency: pricing.currency,
     subtotal: pricing.subtotal,
     discount: pricing.discount,

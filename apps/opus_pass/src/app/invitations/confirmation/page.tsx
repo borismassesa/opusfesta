@@ -206,9 +206,7 @@ export default function ConfirmationPage() {
   const cartCleared = useRef(false)
 
   // Reconcile against the authoritative server status by ref. This is what
-  // makes the page honest after a card redirect (the local copy is 'verifying'
-  // until Selcom's webhook lands) and a no-op for manual Lipa orders (which
-  // aren't tracked server-side → 404, left as 'verifying').
+  // makes the page honest after a card redirect or manual finance approval.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const ref = params.get('ref') ?? order?.ref
@@ -221,14 +219,18 @@ export default function ConfirmationPage() {
         const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(ref)}`, {
           cache: 'no-store',
         })
-        if (res.status === 404) return // untracked (manual Lipa) — leave as-is
+        if (res.status === 404) return
         if (res.ok) {
           const data = (await res.json()) as StatusResponse
           if (cancelled) return
           if (data.status === 'paid') {
             setOrder((prev) => {
               if (!prev || prev.ref !== ref) return prev
-              const next: StoredOrder = { ...prev, paymentStatus: 'paid' }
+              const next: StoredOrder = {
+                ...prev,
+                paidAt: data.paidAt ?? prev.paidAt,
+                paymentStatus: 'paid',
+              }
               setLastOrder(next)
               return next
             })
@@ -237,6 +239,14 @@ export default function ConfirmationPage() {
               clear()
             }
             return
+          }
+          if (data.status === 'processing' || data.status === 'pending') {
+            setOrder((prev) => {
+              if (!prev || prev.ref !== ref || prev.paymentStatus === 'verifying') return prev
+              const next: StoredOrder = { ...prev, paymentStatus: 'verifying' }
+              setLastOrder(next)
+              return next
+            })
           }
           if (data.status === 'failed' || data.status === 'expired') return
         }
@@ -353,17 +363,17 @@ export default function ConfirmationPage() {
 
                   {/* Meta strip — delivery date · order ID · payment method */}
                   <div className="grid grid-cols-1 divide-y divide-gray-200 rounded-2xl bg-white p-5 shadow-[0_2px_12px_-6px_rgba(0,0,0,0.12)] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-                    <div className="pb-4 sm:pb-0 sm:pr-5">
+                    <div className="flex items-center justify-between gap-3 pb-4 sm:block sm:pb-0 sm:pr-5">
                       <p className="text-muted-foreground text-sm">Delivery date</p>
-                      <p className="mt-1 font-semibold text-gray-900">{estimatedDelivery(order.paidAt)}</p>
+                      <p className="font-semibold text-gray-900 sm:mt-1">{estimatedDelivery(order.paidAt)}</p>
                     </div>
-                    <div className="py-4 sm:px-5 sm:py-0">
+                    <div className="flex items-center justify-between gap-3 py-4 sm:block sm:px-5 sm:py-0">
                       <p className="text-muted-foreground text-sm">Order ID</p>
-                      <p className="mt-1 font-semibold text-gray-900">#{order.ref}</p>
+                      <p className="font-semibold text-gray-900 sm:mt-1">#{order.ref}</p>
                     </div>
-                    <div className="pt-4 sm:pl-5 sm:pt-0">
+                    <div className="flex items-center justify-between gap-3 pt-4 sm:block sm:pl-5 sm:pt-0">
                       <p className="text-muted-foreground text-sm">Payment method</p>
-                      <div className="mt-1">
+                      <div className="sm:mt-1">
                         <PaymentBadge label={order.paymentLabel} />
                       </div>
                     </div>
@@ -376,7 +386,7 @@ export default function ConfirmationPage() {
                       const pill =
                         key === 'classic'
                           ? 'bg-[#EFE3FA] text-[#6B4E8C]'
-                          : key === 'signature'
+                          : key === 'elegant' || key === 'signature'
                             ? 'bg-[#F5EACF] text-[#8A6B1E]'
                             : 'bg-gray-100 text-gray-700'
                       return (

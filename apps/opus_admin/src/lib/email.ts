@@ -37,6 +37,7 @@ export type EmailPayload = {
   replyTo?: string
   cc?: string | string[]
   bcc?: string | string[]
+  attachments?: { filename: string; content: Buffer | string }[]
 }
 
 export type EmailResult =
@@ -65,6 +66,7 @@ export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
       replyTo: payload.replyTo,
       ...(payload.cc ? { cc: payload.cc } : {}),
       ...(payload.bcc ? { bcc: payload.bcc } : {}),
+      ...(payload.attachments?.length ? { attachments: payload.attachments } : {}),
     })
     if (result.error) {
       console.error('[email] resend error:', result.error)

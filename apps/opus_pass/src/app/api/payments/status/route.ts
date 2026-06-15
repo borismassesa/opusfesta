@@ -18,7 +18,7 @@ export async function GET(req: Request): Promise<NextResponse> {
   if (!order) return NextResponse.json({ message: 'Order not found.' }, { status: 404 })
 
   let status = order.status
-  if (!isTerminal(status) && isSelcomConfigured()) {
+  if (order.provider === 'selcom' && !isTerminal(status) && isSelcomConfigured()) {
     try {
       const res = await queryOrderStatus(ref)
       const confirmed = mapSelcomStatus(res.data?.[0]?.payment_status ?? res.result)
@@ -35,6 +35,7 @@ export async function GET(req: Request): Promise<NextResponse> {
     amountTotal: Number(order.amount_total),
     currency: order.currency,
     paymentLabel: order.payment_label ?? undefined,
+    paidAt: order.paid_at ?? undefined,
   }
   return NextResponse.json(payload)
 }

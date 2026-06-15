@@ -10,7 +10,6 @@ import { useCart } from '@/components/providers/CartProvider'
 import {
   getContact,
   getLastOrder,
-  generateOrderRef,
   setLastOrder,
   type StoredContact,
   type StoredOrder,
@@ -269,6 +268,7 @@ export default function CheckoutPage() {
     items.map((i) => ({
       id: i.id,
       name: i.name,
+      image: i.image,
       summary: i.summary,
       tier: i.tier,
       tierId: i.tierId,
@@ -371,10 +371,29 @@ export default function CheckoutPage() {
     if (useLipa) {
       setSubmitting(true)
       try {
-        const ref = generateOrderRef()
-        setLastOrder(buildLocalOrder(ref, 'verifying'))
+        const payload: InitiateRequest = {
+          method: 'lipa_namba',
+          phone: mobilePhone.trim(),
+          payerName: payerName.trim(),
+          paymentReference: payRef.trim().toUpperCase(),
+          contact: { name: contact.fullName, email: contact.email, phone: contact.phone },
+          items: itemsPayload(),
+          paymentLabel: paymentLabel(),
+        }
+        const res = await fetch('/api/payments/initiate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const data = (await res.json()) as InitiateResponse
+        if (!res.ok || !data.ref) {
+          setSubmitting(false)
+          setPayError(data.message ?? 'Payment could not be submitted. Please try again.')
+          return
+        }
+        setLastOrder(buildLocalOrder(data.ref, 'verifying'))
         clear()
-        router.push('/invitations/confirmation')
+        router.push(`/invitations/confirmation?ref=${encodeURIComponent(data.ref)}`)
       } finally {
         setSubmitting(false)
       }

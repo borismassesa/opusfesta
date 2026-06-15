@@ -1,5 +1,6 @@
 import 'server-only'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import type { StoredOrder } from '@/lib/cart-storage'
 import type { InitiateItem, OrderStatus } from './types'
 import { isTerminal } from './types'
 
@@ -9,6 +10,7 @@ import { isTerminal } from './types'
 export type OrderRow = {
   id: string
   ref: string
+  user_id: string | null
   status: OrderStatus
   currency: string
   subtotal: number
@@ -19,15 +21,19 @@ export type OrderRow = {
   contact_phone: string
   event_date: string | null
   items: InitiateItem[]
+  provider: string
   payment_method: string | null
   payer_phone: string | null
+  payer_name: string | null
+  payment_reference: string | null
   provider_order_id: string | null
   payment_label: string | null
+  payment_submitted_at: string | null
   paid_at: string | null
 }
 
 const SELECT_COLS =
-  'id, ref, status, currency, subtotal, discount, amount_total, contact_name, contact_email, contact_phone, event_date, items, payment_method, payer_phone, provider_order_id, payment_label, paid_at'
+  'id, ref, user_id, status, currency, subtotal, discount, amount_total, contact_name, contact_email, contact_phone, event_date, items, provider, payment_method, payer_phone, payer_name, payment_reference, provider_order_id, payment_label, payment_submitted_at, paid_at'
 
 export async function createPendingOrder(input: {
   ref: string
@@ -39,9 +45,14 @@ export async function createPendingOrder(input: {
   contact: { name?: string; email: string; phone: string }
   eventDate?: string | null
   items: InitiateItem[]
-  paymentMethod: 'mobile' | 'card'
+  status?: OrderStatus
+  provider?: string
+  paymentMethod: 'mobile' | 'card' | 'lipa_namba'
   payerPhone?: string | null
+  payerName?: string | null
+  paymentReference?: string | null
   paymentLabel?: string | null
+  paymentSubmittedAt?: string | null
 }): Promise<OrderRow> {
   const supabase = createSupabaseServerClient()
   const { data, error } = await supabase
@@ -49,7 +60,7 @@ export async function createPendingOrder(input: {
     .insert({
       ref: input.ref,
       user_id: input.userId ?? null,
-      status: 'pending',
+      status: input.status ?? 'pending',
       currency: input.currency,
       subtotal: input.subtotal,
       discount: input.discount,
@@ -59,10 +70,13 @@ export async function createPendingOrder(input: {
       contact_phone: input.contact.phone,
       event_date: input.eventDate ?? null,
       items: input.items,
-      provider: 'selcom',
+      provider: input.provider ?? 'selcom',
       payment_method: input.paymentMethod,
       payer_phone: input.payerPhone ?? null,
+      payer_name: input.payerName ?? null,
+      payment_reference: input.paymentReference ?? null,
       payment_label: input.paymentLabel ?? null,
+      payment_submitted_at: input.paymentSubmittedAt ?? null,
     })
     .select(SELECT_COLS)
     .single()
@@ -81,12 +95,66 @@ export async function getOrderByRef(ref: string): Promise<OrderRow | null> {
   return (data as OrderRow) ?? null
 }
 
+// Map a server OrderRow into the StoredOrder shape the invoice PDF renders from.
+// paymentStatus reflects the order's current stage (paid → "PAID", else
+// "PAYMENT VERIFYING"). Shared by the email sender and the /api/invoice route.
+export function orderRowToStoredOrder(order: OrderRow): StoredOrder {
+  return {
+    ref: order.ref,
+    paidAt: order.paid_at ?? order.payment_submitted_at ?? new Date().toISOString(),
+    eventDate: order.event_date ?? undefined,
+    paymentLabel: order.payment_label ?? undefined,
+    payment: {
+      provider: order.payment_label || 'M-Pesa Lipa Namba',
+      payerName: order.payer_name ?? undefined,
+      payerPhone: order.payer_phone ?? undefined,
+      reference: order.payment_reference ?? undefined,
+    },
+    paymentRef: order.payment_reference ?? undefined,
+    paymentStatus: order.status === 'paid' ? 'paid' : 'verifying',
+    contact: {
+      name: order.contact_name ?? undefined,
+      email: order.contact_email,
+      phone: order.contact_phone,
+    },
+    items: order.items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      image: i.image,
+      summary: i.summary ?? '',
+      total: i.total,
+      tier: i.tier,
+      tierId: i.tierId,
+      guests: i.guests,
+      addOns: i.addOns,
+    })),
+    subtotal: order.subtotal,
+    discount: order.discount,
+    total: order.amount_total,
+  }
+}
+
 export async function setProviderOrderId(ref: string, providerOrderId: string): Promise<void> {
   const supabase = createSupabaseServerClient()
   await supabase
     .from('invitation_orders')
     .update({ provider_order_id: providerOrderId })
     .eq('ref', ref)
+}
+
+export async function markManualPaymentEmails(
+  ref: string,
+  flags: { customerSent: boolean; adminSent: boolean },
+): Promise<void> {
+  const patch: Record<string, string> = {}
+  const now = new Date().toISOString()
+  if (flags.customerSent) patch.customer_invoice_emailed_at = now
+  if (flags.adminSent) patch.admin_notified_at = now
+  if (Object.keys(patch).length === 0) return
+
+  const supabase = createSupabaseServerClient()
+  const { error } = await supabase.from('invitation_orders').update(patch).eq('ref', ref)
+  if (error) console.error('[payments] could not mark manual payment emails', error)
 }
 
 /**

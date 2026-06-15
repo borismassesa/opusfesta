@@ -22,12 +22,14 @@ export function isTerminal(status: OrderStatus): boolean {
   return TERMINAL_STATUSES.has(status)
 }
 
-export type PaymentMethod = 'mobile' | 'card'
+export type PaymentMethod = 'mobile' | 'card' | 'lipa_namba'
 
 /** One cart line as sent from the browser to /api/payments/initiate. */
 export type InitiateItem = {
   id: string
   name: string
+  /** Selected card's hero image — persisted so admin/email/dashboard can render it. */
+  image?: string
   summary?: string
   tier?: string
   tierId?: string
@@ -51,6 +53,10 @@ export type InitiateRequest = {
   method: PaymentMethod
   /** msisdn that should receive the M-Pesa push (mobile method only). */
   phone?: string
+  /** Manual Lipa Namba account holder name as entered by the customer. */
+  payerName?: string
+  /** Manual Lipa Namba transaction confirmation code/reference. */
+  paymentReference?: string
   contact: InitiateContact
   items: InitiateItem[]
   eventDate?: string
@@ -75,4 +81,5 @@ export type StatusResponse = {
   amountTotal: number
   currency: string
   paymentLabel?: string
+  paidAt?: string
 }

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Check, ArrowRight, Sparkles, PartyPopper, Crown, ShieldCheck, Lock } from 'lucide-react'
+import { Check, ArrowRight, Sparkles, PartyPopper, Gem, Crown, ShieldCheck, Lock } from 'lucide-react'
 import { loadPackagesContent } from '@/lib/cms/packages'
 import { FAQItem } from '@/app/invitations/FAQAccordion'
 
@@ -13,17 +13,19 @@ export const revalidate = 60
 export const metadata: Metadata = {
   title: 'Pricing | OpusPass',
   description:
-    'Simple per-guest pricing. Choose Essential, Elegant or Signature — every package includes the digital card, ticket, delivery and door check-in. Pay by mobile money or card.',
+    'Simple per-guest pricing. Choose Essential, Classic, Elegant or Signature — every package includes the digital card, ticket, delivery and door check-in. Pay by mobile money or card.',
 }
 
 const tzs = (n: number) => `TZS ${n.toLocaleString('en-US')}`
 
 // Per-tier pastel palette — mirrors the package selector on the product detail page
-// (slate = Essential / lavender = Elegant / gold = Signature) so pricing feels like
-// the same product. Keyed by the stable tier id ('lite' | 'classic' | 'signature').
+// (slate = Essential / lavender = Classic / blush = Elegant / gold = Signature) so
+// pricing feels like the same product. Keyed by the stable tier id
+// ('lite' | 'classic' | 'elegant' | 'signature').
 const TIER_STYLES: Record<string, { card: string; price: string; chip: string; col: string }> = {
   lite: { card: 'bg-[#E1E8F0] border-[#D3DBE5]', price: 'text-[#475569]', chip: 'bg-[#E1E8F0] text-[#3F4E63]', col: '' },
   classic: { card: 'bg-[#ECDDF7] border-[#E3D2F2]', price: 'text-[#403d39]', chip: 'bg-[#E4D3F4] text-[#7B4FB0]', col: 'bg-[#F6EEFB]' },
+  elegant: { card: 'bg-[#F4E3EC] border-[#ECD3DF]', price: 'text-[#8A4E68]', chip: 'bg-[#F0D8E4] text-[#97506E]', col: '' },
   signature: { card: 'bg-[#F5E7BF] border-[#EBDCAE]', price: 'text-[#7A6418]', chip: 'bg-[#F3E3B2] text-[#7A6012]', col: '' },
 }
 const DEFAULT_TIER_STYLE = { card: 'bg-white border-gray-200', price: 'text-[#1A1A1A]', chip: 'bg-gray-100 text-gray-700', col: '' }
@@ -109,7 +111,7 @@ export default async function PricingPage() {
 
       {/* Tier cards */}
       <section className="px-4 sm:px-6">
-        <div className="mx-auto max-w-5xl grid gap-5 sm:grid-cols-3">
+        <div className="mx-auto max-w-6xl grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
           {tiers.map((t) => {
             const style = TIER_STYLES[t.id] ?? DEFAULT_TIER_STYLE
             return (
@@ -129,15 +131,21 @@ export default async function PricingPage() {
                     Most popular
                   </span>
                 )}
+                {t.id === 'elegant' && (
+                  <span className="absolute -top-2.5 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-[#C98BA8] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+                    <Gem size={12} strokeWidth={2.5} aria-hidden="true" />
+                    Premium
+                  </span>
+                )}
                 {t.id === 'signature' && (
                   <span className="absolute -top-2.5 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 whitespace-nowrap rounded-full bg-gradient-to-b from-[#E6C66E] to-[#C9A84C] px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[#3A2C06] shadow-sm">
                     <Crown size={12} strokeWidth={2.5} aria-hidden="true" />
-                    Premium
+                    Luxury
                   </span>
                 )}
                 <h2 className="mt-2 font-serif text-xl text-[#403d39]">{t.name}</h2>
                 <p className="mt-1 text-[13px] text-gray-600">{t.best_for}</p>
-                <p className="mt-5">
+                <p className="mt-5 whitespace-nowrap">
                   <span className={`font-serif text-3xl ${style.price}`}>{tzs(t.price_per_guest)}</span>
                   <span className="text-[14px] text-gray-500"> / guest</span>
                 </p>
@@ -180,7 +188,7 @@ export default async function PricingPage() {
           </p>
 
           <div className="mt-6 overflow-x-auto">
-            <table className="w-full min-w-[560px] border-separate border-spacing-0 text-left">
+            <table className="w-full min-w-[680px] border-separate border-spacing-0 text-left">
               <thead>
                 <tr>
                   <th className="w-[34%] pb-3 align-bottom" />

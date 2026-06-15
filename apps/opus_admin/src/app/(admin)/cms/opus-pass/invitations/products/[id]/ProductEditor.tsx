@@ -205,6 +205,10 @@ export default function ProductEditor({
               Up to {MAX_DESIGNS} images for the carousel on the card <em>details</em> page. Design these at{' '}
               <strong>800 × 600 (4:3 landscape)</strong> so they fill the carousel frame cleanly.
             </p>
+            <p className="rounded-lg border border-[#F0DFF6] bg-[#FCF7FF] px-3 py-2 text-[11px] text-[#6B4E8C]">
+              The three OpusPass ticket mockups (Light, Classic, Signature) are appended to every card&apos;s
+              preview carousel automatically — no need to upload them here.
+            </p>
             <DesignsEditor value={product.designs} onChange={(v) => set('designs', v)} />
           </Card>
 
