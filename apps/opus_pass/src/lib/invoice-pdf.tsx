@@ -116,6 +116,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#f3f4f6',
   },
+  itemThumb: { width: 34, height: 48, borderRadius: 3, objectFit: 'cover' },
   itemMain: { flex: 1 },
   itemName: { fontFamily: 'Helvetica-Bold', fontSize: 11, color: '#111827' },
   itemMetaRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 7, marginTop: 7 },
@@ -311,8 +312,12 @@ const LinkedInIcon = () => (
 
 function ItemRow({ item }: { item: StoredOrder['items'][number] }) {
   const pill = tierPillColors(item)
+  // react-pdf can only render remote PNG/JPG; guard so an unsupported format
+  // (e.g. webp) or a relative path can never throw and break the whole invoice.
+  const thumb = item.image && /^https?:\/\/.+\.(jpe?g|png)(\?|#|$)/i.test(item.image) ? item.image : null
   return (
     <View style={s.itemRow} wrap={false}>
+      {thumb ? <Image style={s.itemThumb} src={thumb} /> : null}
       <View style={s.itemMain}>
         <Text style={s.itemName}>{item.name}</Text>
         {item.tier ? (

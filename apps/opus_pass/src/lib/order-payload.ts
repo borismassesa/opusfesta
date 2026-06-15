@@ -28,6 +28,9 @@ export function parseOrder(raw: unknown): StoredOrder | null {
       name: str(i.name, 200) || 'Item',
       summary: str(i.summary, 400),
       total: num(i.total),
+      // Selected card's hero image — kept so the invoice/email/admin/dashboard
+      // can render the real artwork the customer chose.
+      image: str(i.image, 600) || undefined,
       tier: str(i.tier, 60) || undefined,
       tierId: str(i.tierId, 60) || undefined,
       guests: typeof i.guests === 'number' && Number.isFinite(i.guests) ? i.guests : undefined,

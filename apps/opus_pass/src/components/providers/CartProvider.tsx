@@ -9,6 +9,10 @@ export type CartItem = {
   name: string
   designer: string
   treatment: Treatment
+  /** Real card artwork (hero image, else first uploaded design) the customer
+   *  selected. Cart thumbnails render this; `treatment` is only the fallback
+   *  for products with no uploaded image. */
+  image?: string
   /** Short config summary, e.g. "Digital cards · 150 guests" (fallback for list views). */
   summary: string
   /** Structured config — used to render a clean breakdown in the cart. */
