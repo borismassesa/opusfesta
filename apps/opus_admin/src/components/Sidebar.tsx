@@ -125,7 +125,7 @@ const sections: NavSection[] = [
     requiredPermission: "cms.read",
     items: [
       { icon: Home, label: "Homepage", href: "/cms/opus-pass/homepage", requiredPermission: "cms.read" },
-      { icon: FileText, label: "Invitations", href: "/cms/opus-pass/invitations/hero", requiredPermission: "cms.read" },
+      { icon: FileText, label: "Invitations", href: "/cms/opus-pass/invitations", requiredPermission: "cms.read" },
       { icon: UserCheck, label: "Guests & RSVPs", href: "/cms/opus-pass/guests-rsvps", requiredPermission: "cms.read" },
       { icon: Globe2, label: "Wedding Website", href: "/cms/opus-pass/wedding-website", requiredPermission: "cms.read" },
       { icon: LayoutDashboard, label: "OpusPass Dashboard", href: "/cms/opus-pass/dashboard", requiredPermission: "cms.read" },
