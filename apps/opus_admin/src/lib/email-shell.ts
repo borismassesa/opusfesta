@@ -121,7 +121,12 @@ function reviewerSignatureHtml(args: {
     </tr>`
 }
 
-function footerHtml(): string {
+// `note` overrides the default "editorial account" line — used for emails to
+// external customers (e.g. invitation buyers) who have no editorial account.
+function footerHtml(note?: string): string {
+  const reason =
+    note ??
+    'You received this because you have an OpusFesta editorial account. This is an automated message — replies route to a human editor when applicable.'
   return `
     <tr>
       <td style="padding:28px 32px 20px;border-top:1px solid ${BRAND.ink.line};">
@@ -129,7 +134,7 @@ function footerHtml(): string {
           OpusFesta · Dar es Salaam, Tanzania
         </p>
         <p style="margin:6px 0 0;font-size:12px;line-height:1.65;color:${BRAND.ink.muted};">
-          You received this because you have an OpusFesta editorial account. This is an automated message — replies route to a human editor when applicable.
+          ${escapeHtml(reason)}
         </p>
       </td>
     </tr>`
@@ -252,6 +257,9 @@ export function renderEmail(args: {
   sections: EmailSection[]
   reviewer?: { name: string | null; email: string | null; role?: string } | null
   closing?: string
+  // Overrides the default "editorial account" footer line — pass a
+  // customer-appropriate note for emails to external recipients.
+  footerNote?: string
 }): string {
   const sections = args.sections.map((s) => renderSection(s)).join('')
   const reviewerSig = args.reviewer
@@ -323,7 +331,7 @@ export function renderEmail(args: {
             ${closing}
             ${reviewerSig}
             <tr><td style="font-size:0;line-height:0;height:24px;">&nbsp;</td></tr>
-            ${footerHtml()}
+            ${footerHtml(args.footerNote)}
           </table>
         </td>
       </tr>

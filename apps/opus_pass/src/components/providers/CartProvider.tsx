@@ -17,7 +17,7 @@ export type CartItem = {
   summary: string
   /** Structured config — used to render a clean breakdown in the cart. */
   tier?: string
-  /** Tier id (lite/classic/signature) — drives the package pill colour. */
+  /** Tier id (lite/classic/elegant/signature) — drives the package pill colour. */
   tierId?: string
   guests?: number
   /** Per-guest tier price (TZS) — lets the cart recompute the line when guests change. */

@@ -239,7 +239,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8">
+    <main className="min-h-screen bg-gray-50 pt-8 pb-28 lg:pb-8">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
         <Link
           href="/invitations/catalog"
@@ -285,7 +285,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                     const pill =
                       key === 'classic'
                         ? 'bg-[#EFE3FA] text-[#6B4E8C]'
-                        : key === 'signature'
+                        : key === 'elegant' || key === 'signature'
                           ? 'bg-[#F5EACF] text-[#8A6B1E]'
                           : 'bg-gray-100 text-gray-700'
                     return (
@@ -340,7 +340,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-5 sm:gap-8">
+                      <div className="flex items-center justify-between gap-4 sm:justify-start sm:gap-8">
                         {item.guests != null && (
                           <div className="flex flex-col items-center gap-1.5">
                             <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
@@ -349,8 +349,11 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                             <GuestStepper value={item.guests} onChange={(n) => setGuests(item.id, n)} />
                           </div>
                         )}
-                        <p className="shrink-0 whitespace-nowrap text-lg font-semibold text-gray-900 tabular-nums">{formatTzs(item.total)}</p>
-                        <DeleteButton name={item.name} onConfirm={() => removeItem(item.id)} />
+                        {/* Price + delete grouped so the amount sits at the right end on mobile */}
+                        <div className="flex items-center gap-3 sm:gap-8">
+                          <p className="shrink-0 whitespace-nowrap text-lg font-semibold text-gray-900 tabular-nums">{formatTzs(item.total)}</p>
+                          <DeleteButton name={item.name} onConfirm={() => removeItem(item.id)} />
+                        </div>
                       </div>
                     </div>
                     )
@@ -437,6 +440,28 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
 
         <ExploreMore products={products} fromGuestPrice={fromGuestPrice} />
       </div>
+
+      {/* Mobile sticky checkout bar — shows item count + total and keeps the
+          checkout action reachable without scrolling past every item. */}
+      {items.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
+            <div className="leading-tight">
+              <p className="text-[11px] text-muted-foreground">
+                {items.length} {items.length === 1 ? 'item' : 'items'}
+              </p>
+              <p className="text-lg font-semibold tabular-nums text-gray-900">{formatTzs(total)}</p>
+            </div>
+            <Link
+              href="/invitations/address"
+              className="inline-flex flex-1 max-w-[58%] items-center justify-center gap-2 whitespace-nowrap rounded-full bg-(--accent) px-6 py-3 text-[13px] font-extrabold uppercase tracking-[0.06em] text-(--on-accent) transition hover:bg-(--accent-hover)"
+            >
+              Checkout
+              <ArrowRight size={15} className="shrink-0" />
+            </Link>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

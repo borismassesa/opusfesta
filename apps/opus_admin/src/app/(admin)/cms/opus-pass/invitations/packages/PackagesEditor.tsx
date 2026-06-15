@@ -400,7 +400,7 @@ function PackagesPreview({ content }: { content: OpusPassPackagesContent }) {
         <p className="text-[10px] uppercase tracking-[0.22em] font-bold text-gray-500">{content.heading || 'Choose your package'}</p>
         <p className="mt-1 text-[11px] text-gray-500">{content.subheading}</p>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-2 gap-2">
         {content.tiers.map((t) => (
           <div key={t.id} className={`relative rounded-lg border p-2.5 ${t.featured ? 'border-[#B98FD6] bg-[#ECDDF7]' : 'border-gray-200 bg-gray-50'}`}>
             {t.badge_label && (

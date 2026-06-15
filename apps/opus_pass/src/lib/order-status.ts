@@ -23,18 +23,13 @@ export const ORDER_STAGES: OrderStage[] = [
 
 const HOUR = 1000 * 60 * 60
 
-// Lipa Namba orders stay in review until the team confirms the transaction.
-// Until an orders backend can record that confirmation, approximate the
-// team's verification SLA with a time window.
-const VERIFY_WINDOW_HOURS = 3
-
 /** Index of the order's current stage in ORDER_STAGES. */
 export function currentStageIndex(order: StoredOrder): number {
   const verifying = order.paymentStatus === 'verifying'
   const paid = new Date(order.paidAt).getTime()
   if (Number.isNaN(paid)) return verifying ? 0 : 2
   const hours = (Date.now() - paid) / HOUR
-  if (verifying && hours < VERIFY_WINDOW_HOURS) return 0 // payment under review
+  if (verifying) return 0 // payment under review until finance approves
   if (hours >= 24) return 3 // delivered
   return 2 // in design
 }

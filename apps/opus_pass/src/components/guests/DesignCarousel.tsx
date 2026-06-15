@@ -14,6 +14,14 @@ import { InvitationVisual, COUPLE_DEFAULT, type Treatment } from '@/components/g
 // frame ratio). Falls back to the built-in CSS `treatment` when nothing is set.
 type Slide = { url: string; portrait: boolean }
 
+// OpusPass ticket mockups appended to every card's carousel — they show the
+// physical/digital ticket each guest receives, across the three finishes.
+const TICKET_MOCKUPS: Slide[] = [
+  { url: '/assets/tickets-mockups/light_ticket_mockup_8k.jpg', portrait: false },
+  { url: '/assets/tickets-mockups/classic_ticket_mockup_8k.jpg', portrait: false },
+  { url: '/assets/tickets-mockups/signature_ticket_mockup_8k.jpg', portrait: false },
+]
+
 export function DesignCarousel({
   hero,
   designs,
@@ -30,6 +38,7 @@ export function DesignCarousel({
   const slides: Slide[] = [
     ...(hero ? [{ url: hero, portrait: true }] : []),
     ...designs.filter(Boolean).map((url) => ({ url, portrait: false })),
+    ...TICKET_MOCKUPS,
   ]
   const [active, setActive] = useState(0)
   const activeIndex = Math.min(active, Math.max(0, slides.length - 1))

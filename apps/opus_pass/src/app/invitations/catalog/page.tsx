@@ -14,7 +14,7 @@ import InvitationsCatalogClient from './InvitationsCatalogClient'
 export const revalidate = 60
 
 export const metadata: Metadata = {
-  title: 'Wedding Invitations | OpusFesta',
+  title: 'Wedding Invitations | OpusPass',
   description:
     'Browse wedding invitations, save the dates, and RSVP cards. Personalise with your colours, photos, and bilingual copy — designed for Tanzanian weddings.',
 }

@@ -2,12 +2,16 @@ import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  Per-guest wedding packages (Essential / Elegant / Signature).
+//  Per-guest wedding packages (Essential / Classic / Elegant / Signature).
 //  Each tier carries its OWN badge (label + icon + colour) and its OWN list of
 //  "package includes" bullet points — so the admin edits each tier directly
 //  instead of a cross-tier feature matrix. Pricing is per guest × guest count.
 //  Bilingual (English + Kiswahili). Stored as one CMS config — page_key
 //  'opus-pass-packages', section_key 'wedding-tiers'.
+//
+//  Stable internal ids map 1:1 to the public names: lite=Essential,
+//  classic=Classic (the featured "most popular" pick), elegant=Elegant,
+//  signature=Signature.
 // ─────────────────────────────────────────────────────────────────────────────
 
 // Icon keys an admin can choose for a tier's badge pill. Mapped to lucide icons
@@ -41,7 +45,7 @@ export type PackageBullet = {
 }
 
 export type PackageTier = {
-  id: string // 'lite' | 'classic' | 'signature' — stable internal key
+  id: string // 'lite' | 'classic' | 'elegant' | 'signature' — stable internal key
   name: string
   name_sw: string
   featured: boolean
@@ -109,8 +113,8 @@ export const PACKAGES_FALLBACK: PackagesContent = {
       name_sw: 'Essential',
       featured: false,
       price_per_guest: 1500,
-      best_for: 'Everything you need',
-      best_for_sw: 'Kila unachohitaji',
+      best_for: 'Just the essentials',
+      best_for_sw: 'Mahitaji ya msingi',
       badge_label: 'Basic',
       badge_label_sw: 'Msingi',
       badge_icon: 'sparkles',
@@ -123,24 +127,45 @@ export const PACKAGES_FALLBACK: PackagesContent = {
     },
     {
       id: 'classic',
-      name: 'Elegant',
-      name_sw: 'Elegant',
+      name: 'Classic',
+      name_sw: 'Classic',
       featured: true,
-      price_per_guest: 2500,
-      best_for: 'More customization & style',
-      best_for_sw: 'Ubinafsishaji na mtindo zaidi',
+      price_per_guest: 2000,
+      best_for: 'Best for most weddings',
+      best_for_sw: 'Bora kwa harusi nyingi',
       badge_label: 'Most popular',
       badge_label_sw: 'Maarufu zaidi',
-      badge_icon: 'diamond',
+      badge_icon: 'star',
       badge_tone: 'accent',
       includes: [
         ...common(),
         B('Card design', 'Muundo wa kadi', 'Custom branded', 'Maalum, chapa ya OpusFesta'),
-        B('RSVP dashboard', 'Dashibodi ya RSVP', 'Live confirmations & check-ins', 'Uthibitisho na ukaguzi wa moja kwa moja'),
-        B('Notification reminders', 'Vikumbusho vya arifa'),
+        B('RSVP dashboard', 'Dashibodi ya RSVP', 'Live confirmations', 'Uthibitisho wa moja kwa moja'),
         B('Pledge / contribution collection', 'Ukusanyaji wa michango'),
-        B('Seat planning', 'Mpangilio wa viti'),
         B('Thank-you message blast', 'Ujumbe wa shukrani'),
+      ],
+    },
+    {
+      id: 'elegant',
+      name: 'Elegant',
+      name_sw: 'Elegant',
+      featured: false,
+      price_per_guest: 2500,
+      best_for: 'Added extras & polish',
+      best_for_sw: 'Nyongeza na mapambo zaidi',
+      badge_label: 'Premium',
+      badge_label_sw: 'Premium',
+      badge_icon: 'gem',
+      badge_tone: 'gold',
+      includes: [
+        ...common(),
+        B('Card design', 'Muundo wa kadi', 'Premium bespoke', 'Bespoke ya hali ya juu'),
+        B('RSVP dashboard', 'Dashibodi ya RSVP', 'Live + reporting', 'Live + ripoti'),
+        B('Pledge / contribution collection', 'Ukusanyaji wa michango'),
+        B('Thank-you message blast', 'Ujumbe wa shukrani'),
+        B('On-site scanning attendant', 'Mhudumu wa kukagua mlangoni', 'Scaled to crowd', 'Kulingana na wageni'),
+        B('Save-the-Date', 'Save-the-Date', 'Single send', 'Mara moja'),
+        B('Event schedule or menu design', 'Muundo wa ratiba au menyu'),
       ],
     },
     {
@@ -148,21 +173,22 @@ export const PACKAGES_FALLBACK: PackagesContent = {
       name: 'Signature',
       name_sw: 'Signature',
       featured: false,
-      price_per_guest: 4000,
-      best_for: 'Premium, exclusive experience',
-      best_for_sw: 'Hali ya kifahari, ya kipekee',
-      badge_label: 'Premium',
-      badge_label_sw: 'Premium',
+      price_per_guest: 3500,
+      best_for: 'Full-service & premium',
+      best_for_sw: 'Huduma kamili, ya kifahari',
+      badge_label: 'Luxury',
+      badge_label_sw: 'Kifahari',
       badge_icon: 'crown',
       badge_tone: 'gold',
       includes: [
         ...common(),
         B('Card design', 'Muundo wa kadi', 'Bespoke + animation', 'Ya kipekee + mwendo'),
         B('RSVP dashboard', 'Dashibodi ya RSVP', 'Live + analytics', 'Live + uchambuzi'),
-        B('Notification reminders', 'Vikumbusho vya arifa'),
         B('Pledge / contribution collection', 'Ukusanyaji wa michango'),
-        B('Seat planning', 'Mpangilio wa viti'),
         B('Thank-you message blast', 'Ujumbe wa shukrani'),
+        B('On-site scanning attendant', 'Mhudumu wa kukagua mlangoni', 'Scaled to crowd', 'Kulingana na wageni'),
+        B('Save-the-Date', 'Save-the-Date', 'Animated, two-stage', 'Yenye mwendo, hatua mbili'),
+        B('Event schedule or menu design', 'Muundo wa ratiba au menyu'),
         B('Digital guestbook', 'Kitabu cha wageni cha kidijitali'),
         B('Dedicated coordinator', 'Mratibu maalum'),
         B('Wedding website', 'Tovuti ya harusi', 'Included', 'Imejumuishwa'),
@@ -170,10 +196,8 @@ export const PACKAGES_FALLBACK: PackagesContent = {
     },
   ],
   addons: [
-    { id: 'a1', label: 'Wedding website', label_sw: 'Tovuti ya harusi' },
+    { id: 'a1', label: 'Human follow-up calling', label_sw: 'Kupiga simu za ufuatiliaji' },
     { id: 'a2', label: 'Paper card prints', label_sw: 'Machapisho ya kadi (karatasi)' },
-    { id: 'a3', label: 'Extra SMS credits', label_sw: 'Salio la ziada la SMS' },
-    { id: 'a4', label: 'On-site door scanning attendant', label_sw: 'Mhudumu wa kukagua mlangoni' },
   ],
 }
 
