@@ -239,7 +239,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
   }
 
   return (
-    <main className="min-h-screen bg-gray-50 py-8">
+    <main className="min-h-screen bg-gray-50 pt-8 pb-28 lg:pb-8">
       <div className="mx-auto max-w-7xl px-4 lg:px-8">
         <Link
           href="/invitations/catalog"
@@ -437,6 +437,28 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
 
         <ExploreMore products={products} fromGuestPrice={fromGuestPrice} />
       </div>
+
+      {/* Mobile sticky checkout bar — shows item count + total and keeps the
+          checkout action reachable without scrolling past every item. */}
+      {items.length > 0 && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+          <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
+            <div className="leading-tight">
+              <p className="text-[11px] text-muted-foreground">
+                {items.length} {items.length === 1 ? 'item' : 'items'}
+              </p>
+              <p className="text-lg font-semibold tabular-nums text-gray-900">{formatTzs(total)}</p>
+            </div>
+            <Link
+              href="/invitations/address"
+              className="inline-flex flex-1 max-w-[58%] items-center justify-center gap-2 whitespace-nowrap rounded-full bg-(--accent) px-6 py-3 text-[13px] font-extrabold uppercase tracking-[0.06em] text-(--on-accent) transition hover:bg-(--accent-hover)"
+            >
+              Checkout
+              <ArrowRight size={15} className="shrink-0" />
+            </Link>
+          </div>
+        </div>
+      )}
     </main>
   )
 }

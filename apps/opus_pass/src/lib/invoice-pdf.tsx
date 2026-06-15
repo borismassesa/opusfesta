@@ -138,6 +138,8 @@ const s = StyleSheet.create({
     borderRadius: 3,
     textTransform: 'uppercase',
   },
+  addonRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 2 },
+  addonIcon: { marginTop: 1 },
   addonLine: { fontSize: 9, color: '#4b5563', lineHeight: 1.5 },
   delivery: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 8, color: '#6b7280' },
   itemRight: { flexDirection: 'row', alignItems: 'center', gap: 20 },
@@ -331,9 +333,12 @@ function ItemRow({ item }: { item: StoredOrder['items'][number] }) {
             <Text style={s.itemMetaLabel}>Add-ons</Text>
             <View>
               {item.addOns.map((a, i) => (
-                <Text key={i} style={s.addonLine}>
-                  {'•'}  {a}
-                </Text>
+                <View key={i} style={s.addonRow}>
+                  <Svg width={8} height={8} viewBox="0 0 24 24" style={s.addonIcon}>
+                    <Polyline points="20 6 9 17 4 12" fill="none" stroke={BRAND} strokeWidth={3} />
+                  </Svg>
+                  <Text style={s.addonLine}>{a}</Text>
+                </View>
               ))}
             </View>
           </View>
@@ -378,8 +383,10 @@ function PaymentCard({ order }: { order: StoredOrder }) {
   return (
     <View style={s.payCard}>
       <View style={[s.payBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-        <Svg width={6} height={6} viewBox="0 0 6 6">
-          <Circle cx={3} cy={3} r={3} fill={badge.fg} />
+        <Svg width={11} height={11} viewBox="0 0 24 24">
+          <Path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" fill="none" stroke={badge.fg} strokeWidth={2} />
+          <Path d="M3 5v14a2 2 0 0 0 2 2h16v-5" fill="none" stroke={badge.fg} strokeWidth={2} />
+          <Path d="M18 12a2 2 0 0 0 0 4h4v-4Z" fill="none" stroke={badge.fg} strokeWidth={2} />
         </Svg>
         <Text style={[s.payBadgeText, { color: badge.fg }]}>{badge.text}</Text>
       </View>
@@ -517,8 +524,7 @@ export function InvoicePdf({ order }: { order: StoredOrder }) {
         <View style={s.letterhead} fixed>
           <View style={s.lhCols}>
             <View style={s.lhBlock}>
-              <Text style={s.lhName}>OpusPass by OpusFesta</Text>
-              <Text>OpusFesta Company Limited</Text>
+              <Text style={s.lhName}>OpusFesta Company Limited</Text>
               <Text>Samaki Wabichi Annex, Mbezi Beach</Text>
               <Text>P.O.Box 7787 Dar es Salaam, Tanzania</Text>
             </View>
