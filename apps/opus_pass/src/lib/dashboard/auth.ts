@@ -18,10 +18,13 @@ export interface DashboardUser {
  * one if the Clerk sync webhook hasn't run yet. Returns null when no Clerk
  * session is present.
  *
- * The 23505 (unique violation) branch lets a Clerk identity adopt a
- * pre-existing row when the email collides — needed because the marketplace
- * app may have provisioned the row from an earlier sign-up. Other insert
- * errors propagate so they don't silently rebind unrelated rows.
+ * Provisioning is concurrency-safe: a page fires several auth checks in
+ * parallel, so the insert uses ON CONFLICT (clerk_id) DO NOTHING and re-reads
+ * the row when another request beat it. The 23505 (unique violation) branch
+ * lets a Clerk identity adopt a pre-existing row when the email collides —
+ * needed because the marketplace app may have provisioned the row from an
+ * earlier sign-up. Neither path mutates the row's `id`, so foreign keys that
+ * reference it (vendors, couple_profiles, …) stay intact.
  */
 export async function getDashboardUser(): Promise<DashboardUser | null> {
   const { userId } = await auth()
@@ -51,6 +54,13 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
     null
   const name = [clerk?.firstName, clerk?.lastName].filter(Boolean).join(' ') || null
 
+  // `ignoreDuplicates` => INSERT ... ON CONFLICT (clerk_id) DO NOTHING. Crucially
+  // it never runs a DO UPDATE, so a row that already carries this clerk_id (e.g. a
+  // concurrent request just provisioned it) is left untouched. The previous
+  // upsert-with-update rewrote the row's primary key `id` to a fresh UUID on
+  // conflict, which breaks FKs that reference it (vendors.user_id,
+  // couple_profiles, …) and threw `23503`. A real insert returns the new row; a
+  // no-op returns nothing, so we re-read by clerk_id below.
   const { data: inserted, error } = await supabase
     .from('users')
     .upsert(
@@ -63,10 +73,10 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
         role: 'user',
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'clerk_id' },
+      { onConflict: 'clerk_id', ignoreDuplicates: true },
     )
     .select('id, clerk_id, email, name')
-    .single<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
+    .maybeSingle<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
 
   if (inserted) {
     return {
@@ -77,6 +87,30 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
     }
   }
 
+  // No row + no error => the insert was a no-op because another request already
+  // provisioned this clerk_id (the page fires several auth checks in parallel).
+  // Re-read the existing row instead of trying to write again.
+  if (!error) {
+    const { data: byClerk } = await supabase
+      .from('users')
+      .select('id, clerk_id, email, name')
+      .eq('clerk_id', userId)
+      .maybeSingle<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
+    if (byClerk) {
+      return {
+        id: byClerk.id,
+        clerkId: byClerk.clerk_id,
+        email: byClerk.email ?? '',
+        name: byClerk.name,
+      }
+    }
+  }
+
+  // The email already belongs to a row provisioned WITHOUT a Clerk identity
+  // (e.g. the marketplace app pre-created it). Adopt it for this Clerk user —
+  // but ONLY when its clerk_id is still null. The `.is('clerk_id', null)` guard
+  // means we never rebind a row that already belongs to another Clerk account,
+  // which would sever that owner from their data (events, guests, vendor row).
   const isEmailConflict =
     (error as { code?: string } | null)?.code === '23505' &&
     (error?.message?.includes('email') ?? false)
@@ -85,6 +119,7 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
       .from('users')
       .update({ clerk_id: userId, updated_at: new Date().toISOString() })
       .eq('email', email)
+      .is('clerk_id', null)
       .select('id, clerk_id, email, name')
       .maybeSingle<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
     if (byEmail) {
@@ -94,6 +129,23 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
         email: byEmail.email ?? '',
         name: byEmail.name,
       }
+    }
+  }
+
+  // Last resort: a concurrent request may have provisioned (or adopted) the row
+  // under this clerk_id while we were racing. One final read before giving up,
+  // so a lost race redirects to sign-in only when the row genuinely isn't there.
+  const { data: finalByClerk } = await supabase
+    .from('users')
+    .select('id, clerk_id, email, name')
+    .eq('clerk_id', userId)
+    .maybeSingle<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
+  if (finalByClerk) {
+    return {
+      id: finalByClerk.id,
+      clerkId: finalByClerk.clerk_id,
+      email: finalByClerk.email ?? '',
+      name: finalByClerk.name,
     }
   }
 

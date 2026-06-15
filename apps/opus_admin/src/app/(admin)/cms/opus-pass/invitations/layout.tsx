@@ -16,7 +16,6 @@ import {
   Save,
   Send,
   Star,
-  Ticket,
   Trash2,
   Wallet,
   type LucideIcon,
@@ -52,14 +51,6 @@ const sections: Section[] = [
     href: '/cms/opus-pass/invitations/packages',
     status: 'live',
     description: 'Per-guest tiers, prices and the "package includes" matrix on the card detail page.',
-  },
-  {
-    key: 'ticket',
-    label: 'Wedding Ticket',
-    icon: Ticket,
-    href: '/cms/opus-pass/ticket',
-    status: 'live',
-    description: 'Upload the wedding ticket SVG and configure accent colour options.',
   },
   {
     key: 'categories',

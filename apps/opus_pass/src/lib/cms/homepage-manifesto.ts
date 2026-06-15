@@ -20,11 +20,14 @@ export const HOMEPAGE_MANIFESTO_FALLBACK: HomepageManifestoContent = {
   segment_1: 'OpusPass brings your invites,',
   pill_label: 'RSVP',
   segment_2: 'guest list and wedding website into one beautifully simple place. Send a',
-  invite_image_url: '/assets/invitation-svgs/classic-serif.svg',
+  // Inline images intentionally left empty — the manifesto reads as clean text.
+  // The admin can re-add them per-slot via the CMS editor (InlineThumb hides any
+  // empty slot).
+  invite_image_url: '',
   segment_3: 'design by WhatsApp or SMS, let guests',
-  guest_image_url: '/assets/images/cutesy_couple.jpg',
+  guest_image_url: '',
   segment_4: 'tap to confirm — designed for couples in',
-  place_image_url: '/assets/images/flowers_pinky.jpg',
+  place_image_url: '',
   segment_5: 'Tanzania.',
 }
 
