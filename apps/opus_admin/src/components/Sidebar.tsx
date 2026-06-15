@@ -178,7 +178,7 @@ const sections: NavSection[] = [
     requiredPermission: undefined,
     items: [
       { icon: Receipt, label: "Invoices", href: "/finance/invoices", requiredPermission: "finance.read" },
-      { icon: CreditCard, label: "Payments", href: "/finance/payments", requiredPermission: "finance.read" },
+      { icon: CreditCard, label: "Invitation Payments", href: "/finance/payments", requiredPermission: "finance.read" },
       { icon: Receipt, label: "Expenses", href: "/finance/expenses", requiredPermission: "finance.read" },
       { icon: Wallet, label: "Payroll", href: "/finance/payroll", requiredPermission: "workforce.payroll" },
       { icon: Wallet, label: "Vendor Payouts", href: "/finance/payouts", requiredPermission: "finance.write" },

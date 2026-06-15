@@ -5,9 +5,10 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Receipt, Download, Check, Clock, Package, ArrowRight, Ticket } from 'lucide-react'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
-import { getOrders, type StoredOrder, type StoredOrderItem } from '@/lib/cart-storage'
+import { getOrders, setLastOrder, type StoredOrder, type StoredOrderItem } from '@/lib/cart-storage'
 import { downloadInvoice } from '@/lib/invoice'
 import { ORDER_STAGES, currentStageIndex, stageTone, type OrderStatusTone } from '@/lib/order-status'
+import type { StatusResponse } from '@/lib/payments/types'
 import { Card, StatCard, EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
 import { cn } from '@/lib/utils'
@@ -211,6 +212,37 @@ export default function OrdersManager() {
     setOrders(getOrders())
     setMounted(true)
   }, [])
+
+  useEffect(() => {
+    if (!mounted || orders.length === 0) return
+    let cancelled = false
+    async function sync() {
+      let changed = false
+      for (const order of orders) {
+        try {
+          const res = await fetch(`/api/payments/status?ref=${encodeURIComponent(order.ref)}`, {
+            cache: 'no-store',
+          })
+          if (!res.ok) continue
+          const data = (await res.json()) as StatusResponse
+          if (data.status !== 'paid' || order.paymentStatus === 'paid') continue
+          setLastOrder({
+            ...order,
+            paidAt: data.paidAt ?? order.paidAt,
+            paymentStatus: 'paid',
+          })
+          changed = true
+        } catch {
+          /* keep the local order snapshot if the status check fails */
+        }
+      }
+      if (!cancelled && changed) setOrders(getOrders())
+    }
+    void sync()
+    return () => {
+      cancelled = true
+    }
+  }, [mounted, orders])
 
   const stats = useMemo(() => {
     const inProgress = orders.filter((o) => ORDER_STAGES[currentStageIndex(o)].id !== 'delivered').length
