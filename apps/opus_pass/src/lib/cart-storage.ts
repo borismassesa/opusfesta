@@ -24,7 +24,9 @@ export type StoredOrderItem = {
   name: string
   summary: string
   total: number
-  /** Visual treatment for rendering a thumbnail on the confirmation page. */
+  /** Selected card's hero image — rendered as the confirmation thumbnail. */
+  image?: string
+  /** Visual treatment — fallback thumbnail when the card has no image. */
   treatment?: Treatment
   /** Structured fields so the confirmation row mirrors the cart line item. */
   tier?: string

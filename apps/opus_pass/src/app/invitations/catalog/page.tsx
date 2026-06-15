@@ -4,8 +4,6 @@ import { PreviewBanner } from '@/components/PreviewBanner'
 import { loadInvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-banner'
 import { loadInvitationCategoriesList } from '@/lib/cms/invitations-categories'
 import { styleStripFromCategories } from '@/lib/cms/invitations-style-strip'
-import { loadInvitationsExploreStylesContent } from '@/lib/cms/invitations-explore-styles'
-import { loadInvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-free-website-promo'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import { loadPackagesContent, packageFromPrice } from '@/lib/cms/packages'
 import InvitationsCatalogClient from './InvitationsCatalogClient'
@@ -22,14 +20,12 @@ export const metadata: Metadata = {
 }
 
 export default async function InvitationsCatalogPage() {
-  const [{ isEnabled: isDraft }, products, promoBanner, categories, exploreStyles, freeWebsitePromo, packages] =
+  const [{ isEnabled: isDraft }, products, promoBanner, categories, packages] =
     await Promise.all([
       draftMode(),
       loadInvitationProducts(),
       loadInvitationsPromoBannerContent(),
       loadInvitationCategoriesList(),
-      loadInvitationsExploreStylesContent(),
-      loadInvitationsFreeWebsitePromoContent(),
       loadPackagesContent(),
     ])
   return (
@@ -40,8 +36,6 @@ export default async function InvitationsCatalogPage() {
         fromGuestPrice={packageFromPrice(packages)}
         promoBanner={promoBanner}
         styleStrip={styleStripFromCategories(categories)}
-        exploreStyles={exploreStyles}
-        freeWebsitePromo={freeWebsitePromo}
       />
     </>
   )

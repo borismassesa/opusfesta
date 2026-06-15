@@ -298,7 +298,11 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                           href={`/invitations/p/${item.id}`}
                           className="relative aspect-[5/7] w-20 shrink-0 overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/5"
                         >
-                          <InvitationVisual treatment={item.treatment} />
+                          {item.image ? (
+                            <Image src={item.image} alt="" fill sizes="80px" className="object-cover" unoptimized />
+                          ) : (
+                            <InvitationVisual treatment={item.treatment} />
+                          )}
                         </Link>
 
                         <div className="flex flex-col justify-between gap-3">

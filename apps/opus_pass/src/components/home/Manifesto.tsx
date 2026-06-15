@@ -22,29 +22,28 @@ export async function Manifesto() {
           <Check className="h-[1.6em] w-[1.6em] text-[#3f6b1f]" />
         </span>{' '}
         {content.segment_2}{' '}
-        {/* Inline thumbnail */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={assetPath(content.invite_image_url)}
-          alt=""
-          className="inline-block h-[1.05em] w-[0.85em] -translate-y-[0.08em] rounded-[0.18em] object-cover align-middle shadow-sm ring-1 ring-black/10"
-        />{' '}
+        <InlineThumb src={content.invite_image_url} />{' '}
         {content.segment_3}{' '}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={assetPath(content.guest_image_url)}
-          alt=""
-          className="inline-block h-[1.05em] w-[0.85em] -translate-y-[0.08em] rounded-[0.18em] object-cover align-middle shadow-sm ring-1 ring-black/10"
-        />{' '}
+        <InlineThumb src={content.guest_image_url} />{' '}
         {content.segment_4}{' '}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={assetPath(content.place_image_url)}
-          alt=""
-          className="inline-block h-[1.05em] w-[0.85em] -translate-y-[0.08em] rounded-[0.18em] object-cover align-middle shadow-sm ring-1 ring-black/10"
-        />{' '}
+        <InlineThumb src={content.place_image_url} />{' '}
         {content.segment_5}
       </p>
     </section>
+  )
+}
+
+// Inline thumbnail rendered between manifesto phrases. Skips rendering entirely
+// when the CMS leaves the image empty — passing an empty src makes the browser
+// refetch the whole page (and logs a console error).
+function InlineThumb({ src }: { src: string }) {
+  if (!src) return null
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={assetPath(src)}
+      alt=""
+      className="inline-block h-[1.05em] w-[0.85em] -translate-y-[0.08em] rounded-[0.18em] object-cover align-middle shadow-sm ring-1 ring-black/10"
+    />
   )
 }

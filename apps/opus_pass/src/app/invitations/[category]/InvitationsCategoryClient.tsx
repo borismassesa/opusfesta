@@ -5,26 +5,23 @@ import { filterProductsByCategory, type InvitationCategory } from '@/data/invita
 import type { CatalogProduct } from '@/data/invitations-products'
 import type { InvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-banner'
 import type { InvitationsStyleStripContent } from '@/lib/cms/invitations-style-strip'
-import type { InvitationsExploreStylesContent } from '@/lib/cms/invitations-explore-styles'
-import type { InvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-free-website-promo'
 import InvitationsCatalogClient from '../catalog/InvitationsCatalogClient'
 
 export default function InvitationsCategoryClient({
   category,
   categories,
   products: allProducts,
+  fromGuestPrice,
   promoBanner,
   styleStrip,
-  exploreStyles,
-  freeWebsitePromo,
 }: {
   category: InvitationCategory
   categories: InvitationCategory[]
   products: CatalogProduct[]
+  /** Lowest per-guest package price — keeps card pricing identical to the main catalog. */
+  fromGuestPrice?: number
   promoBanner: InvitationsPromoBannerContent
   styleStrip: InvitationsStyleStripContent
-  exploreStyles: InvitationsExploreStylesContent
-  freeWebsitePromo: InvitationsFreeWebsitePromoContent
 }) {
   const filtered = useMemo(
     () => filterProductsByCategory(categories, allProducts, category.slug),
@@ -39,12 +36,11 @@ export default function InvitationsCategoryClient({
   return (
     <InvitationsCatalogClient
       products={products}
+      fromGuestPrice={fromGuestPrice}
       title={category.label}
       subtitle={category.subtitle}
       promoBanner={promoBanner}
       styleStrip={styleStrip}
-      exploreStyles={exploreStyles}
-      freeWebsitePromo={freeWebsitePromo}
     />
   )
 }

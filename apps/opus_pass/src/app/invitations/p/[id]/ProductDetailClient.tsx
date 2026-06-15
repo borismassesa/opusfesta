@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
   ArrowRight, Award, Check, ChevronDown, ChevronRight, Crown, Diamond, Flame, Gem, Heart,
@@ -12,8 +13,8 @@ import DOMPurify from 'dompurify'
 import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { DesignCarousel } from '@/components/guests/DesignCarousel'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import type { CatalogProduct } from '@/data/invitations-products'
+import ProductBadgePill from '@/components/invitations/ProductBadge'
 import type { PackagesContent, TierBadgeIcon, TierBadgeTone } from '@/lib/cms/packages'
 import { packageFromPrice } from '@/lib/cms/packages-pricing'
 import { buildItemSummary, useCart } from '@/components/providers/CartProvider'
@@ -56,10 +57,18 @@ const TIER_BADGE_TONE: Record<TierBadgeTone, string> = {
 const containsHtml = (s: string): boolean => /<\/?[a-z][\s\S]*?>/i.test(s)
 
 // Up-to-two-letter initials from the designer name for the avatar fallback.
-const designerInitials = (name: string): string => {
-  const parts = name.trim().split(/\s+/).filter(Boolean)
-  const initials = parts.slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('')
-  return initials || '★'
+// Category eyebrow + product name. Rendered twice with responsive visibility:
+// above the preview on mobile, in the right column on desktop — so the title
+// always leads on phones.
+function TitleBlock({ product, className }: { product: CatalogProduct; className?: string }) {
+  return (
+    <div className={className}>
+      <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-gray-500 mb-2">{product.category}</p>
+      <h1 className="text-2xl md:text-3xl lg:text-[34px] font-serif font-medium text-gray-900 leading-tight">
+        {product.name}
+      </h1>
+    </div>
+  )
 }
 
 // Strip tags for a safe, escaped plain-text fallback (used during SSR before the
@@ -78,7 +87,7 @@ const DESCRIPTION_SANITIZE = {
 
 export default function ProductDetailClient({ product, allProducts, packages }: { product: CatalogProduct; allProducts: CatalogProduct[]; packages: PackagesContent }) {
   const router = useRouter()
-  const { addItem } = useCart()
+  const { addItem, items } = useCart()
 
   // Detail carousel = the portrait hero card (image_url) followed by the
   // landscape 800×600 "mockup" design views (designs[]). Each renders at its
@@ -188,6 +197,10 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
     name: product.name,
     designer: product.designer,
     treatment: product.treatment,
+    // The actual artwork the customer is viewing/selecting — hero image, else
+    // the first uploaded design. Falls back to the CSS treatment only when the
+    // product has no image at all.
+    image: product.imageUrl || product.designs?.[0],
     summary: cartSummary,
     tier: tier?.name,
     tierId: tier?.id,
@@ -205,8 +218,12 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
   }
 
   const handleAddToCart = () => {
+    // One line per design: re-adding a design already in the cart updates that
+    // line (new guest count / options) rather than stacking a duplicate, so the
+    // toast must say "Updated" — otherwise the unchanged cart badge looks broken.
+    const alreadyInCart = items.some((i) => i.id === product.id)
     addItem(buildCartItem())
-    toast.success('Added to cart', {
+    toast.success(alreadyInCart ? 'Updated in your cart' : 'Added to cart', {
       description: `${product.name} — TZS ${total.toLocaleString('en-US')}`,
       action: {
         label: 'Start guest list',
@@ -227,29 +244,41 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
         )}
         aria-label="Breadcrumb"
       >
-        <div className="mx-auto max-w-7xl flex items-center gap-1.5 text-xs text-gray-600 flex-wrap">
-          <Link href="/invitations" className="hover:text-gray-900 hover:underline">Invitations</Link>
-          <ChevronRight size={12} className="text-gray-400" />
-          <Link href="/invitations/catalog" className="hover:text-gray-900 hover:underline">{product.category}</Link>
-          <ChevronRight size={12} className="text-gray-400" />
-          <span className="text-gray-900">{product.name}</span>
+        <div className="mx-auto max-w-7xl flex min-w-0 flex-nowrap items-center gap-1.5 text-[11px] tracking-wide text-gray-400">
+          <Link href="/invitations" className="shrink-0 whitespace-nowrap transition-colors hover:text-gray-700">Invitations</Link>
+          <ChevronRight size={11} className="shrink-0 text-gray-300" />
+          <Link href="/invitations/catalog" className="shrink-0 whitespace-nowrap transition-colors hover:text-gray-700">{product.category}</Link>
+          <ChevronRight size={11} className="shrink-0 text-gray-300" />
+          <span className="min-w-0 truncate font-medium text-[#1A1A1A]">{product.name}</span>
         </div>
       </nav>
 
       {/* Main 2-column layout */}
       <div className="px-4 sm:px-6 pt-6 sm:pt-8 pb-12 sm:pb-16">
+        {/* Mobile: title leads, above the preview. Desktop renders it in the right column instead. */}
+        <TitleBlock product={product} className="lg:hidden mx-auto max-w-7xl mb-6" />
         <div className="mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12 items-start">
           {/* ─── LEFT: card + description — pinned to the top of the column. No
               height clamp/internal scroll, so a tall portrait card never clips
               the description below it (the page scrolls naturally instead). ─── */}
           <div className="space-y-8 lg:sticky lg:top-[4rem]">
-            <DesignCarousel
-              hero={heroImage}
-              designs={designViews}
-              treatment={product.treatment}
-              favourited={favourited}
-              onFavourite={() => setFavourited((v) => !v)}
-            />
+            {/* On phones the preview gets 24px side padding (~87% width) on top of
+                the layout's 16px gutter so it no longer spans edge-to-edge; from
+                sm+ it fills its column. */}
+            <div className="px-2 sm:px-0">
+              {product.badge && (
+                <div className="mb-3 flex">
+                  <ProductBadgePill badge={product.badge} />
+                </div>
+              )}
+              <DesignCarousel
+                hero={heroImage}
+                designs={designViews}
+                treatment={product.treatment}
+                favourited={favourited}
+                onFavourite={() => setFavourited((v) => !v)}
+              />
+            </div>
 
             {/* Description — below the card */}
             <div className="border-t border-gray-200 pt-5">
@@ -258,7 +287,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                 {!description ? (
                   // Auto-generated fallback when no description is set.
                   <div ref={detailsRef} className={cn('whitespace-pre-line', !detailsExpanded && DETAILS_CLAMP)}>
-                    {`${product.name} is a ${product.designer} signature design, sent digitally to every guest by WhatsApp or SMS.`}
+                    {`${product.name} is a signature design, sent digitally to every guest by WhatsApp or SMS.`}
                   </div>
                 ) : sanitizedDescription !== null ? (
                   // Rich text from the admin TipTap editor — sanitized client-side,
@@ -305,24 +334,8 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
 
           {/* ─── RIGHT: scrollable configurator ─── */}
           <div className="space-y-7">
-            {/* Title block */}
-            <div>
-              <p className="text-[11px] uppercase tracking-[0.22em] font-bold text-gray-500 mb-2">{product.category}</p>
-              <h1 className="text-2xl md:text-3xl lg:text-[34px] font-serif font-medium text-gray-900 leading-tight">
-                {product.name}
-              </h1>
-
-              {/* Designer — "by [avatar] Name" */}
-              <div className="mt-3.5 flex items-center gap-2 text-[13px] text-gray-500">
-                <span>by</span>
-                <Avatar className="size-7 ring-1 ring-gray-200">
-                  <AvatarFallback className="bg-gradient-to-br from-[#ECDDF7] to-[#E1E8F0] text-[11px] font-bold text-[#5A4A6A]">
-                    {designerInitials(product.designer)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="font-semibold text-gray-900">{product.designer}</span>
-              </div>
-            </div>
+            {/* Title block — desktop only; on mobile it renders above the preview */}
+            <TitleBlock product={product} className="hidden lg:block" />
 
             {/* Package selector — price is per guest, design-independent */}
             <div className="space-y-4">
@@ -646,20 +659,29 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
               Explore similar designs
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-              {recommendations.map((p) => (
+              {recommendations.map((p) => {
+                // Prefer the real card artwork (hero image, then first uploaded
+                // design); fall back to the CSS treatment only when a product has
+                // no image at all — same rule as the catalog grid.
+                const cardImage = p.imageUrl || p.designs?.[0]
+                return (
                 <Link key={p.id} href={`/invitations/p/${p.id}`} className="group flex flex-col">
                   <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_16px_-8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_4px_8px_rgba(0,0,0,0.06),0_18px_32px_-12px_rgba(0,0,0,0.18)]">
                     <span className="absolute inset-0">
-                      <InvitationVisual treatment={p.treatment} />
+                      {cardImage ? (
+                        <Image src={cardImage} alt="" fill sizes="(min-width: 768px) 25vw, 50vw" className="object-cover" unoptimized />
+                      ) : (
+                        <InvitationVisual treatment={p.treatment} />
+                      )}
                     </span>
                   </div>
-                  <p className="mt-2.5 text-[11px] uppercase tracking-[0.18em] text-gray-500">{p.designer}</p>
-                  <p className="mt-0.5 text-[14px] font-bold text-gray-900 leading-snug line-clamp-2">{p.name}</p>
+                  <p className="mt-2.5 text-[14px] font-bold text-gray-900 leading-snug line-clamp-2">{p.name}</p>
                   <p className="mt-1 text-[13px] text-gray-700">
                     From TZS {fromGuestPrice.toLocaleString('en-US')} per guest
                   </p>
                 </Link>
-              ))}
+                )
+              })}
             </div>
           </div>
         </section>

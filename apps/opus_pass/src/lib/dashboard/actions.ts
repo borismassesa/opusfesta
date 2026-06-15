@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
+import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
 import type {
@@ -727,9 +728,9 @@ export async function submitPublicRsvp(
   // Resolve the guest by token; this is the bearer secret gating access.
   const { data: guest, error: guestErr } = await supabase
     .from('guest_contacts')
-    .select('id, max_party_size')
+    .select('id, max_party_size, user_id, full_name')
     .eq('public_token', token)
-    .maybeSingle<{ id: string; max_party_size: number }>()
+    .maybeSingle<{ id: string; max_party_size: number; user_id: string; full_name: string }>()
   if (guestErr) {
     console.error('[public-rsvp] guest lookup failed', guestErr)
     return { ok: false, error: 'Something went wrong — please try again in a moment.' }
@@ -748,6 +749,11 @@ export async function submitPublicRsvp(
   const ownedIds = new Set((owned ?? []).map((r) => r.id as string))
 
   const now = new Date().toISOString()
+  let applied = 0
+  // Representative response for the notification: prefer "attending" if the guest
+  // is coming to any event, otherwise the last status they submitted.
+  let summaryStatus: RsvpStatus | null = null
+  let attendingParty = 0
   for (const r of responses) {
     if (!ownedIds.has(r.invitationId)) continue
     const partySize = Math.max(1, Math.min(r.party_size || 1, guest.max_party_size))
@@ -764,6 +770,29 @@ export async function submitPublicRsvp(
       .eq('id', r.invitationId)
       .eq('guest_contact_id', guest.id)
     if (error) return { ok: false, error: error.message }
+    applied += 1
+    if (r.rsvp_status === 'attending') {
+      attendingParty = Math.max(attendingParty, partySize)
+    }
+    if (summaryStatus !== 'attending') summaryStatus = r.rsvp_status
+  }
+
+  if (applied > 0 && summaryStatus) {
+    const label =
+      summaryStatus === 'attending'
+        ? `Attending${attendingParty > 1 ? ` · party of ${attendingParty}` : ''}`
+        : summaryStatus === 'declined'
+          ? 'Declined'
+          : summaryStatus === 'maybe'
+            ? 'Maybe'
+            : 'Responded'
+    await createNotification({
+      userId: guest.user_id,
+      type: 'rsvp_received',
+      title: `${guest.full_name} responded to your invitation`,
+      body: label,
+      href: '/my/dashboard/rsvps',
+    })
   }
 
   revalidatePath(`/rsvp/${token}`)
