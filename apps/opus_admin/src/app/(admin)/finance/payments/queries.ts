@@ -127,15 +127,82 @@ function mapPayment(row: InvitationPaymentRow): InvitationPayment {
   }
 }
 
-export async function getInvitationPayments(): Promise<InvitationPayment[]> {
+export type PaymentFilter = 'all' | 'review' | 'paid' | 'failed'
+
+/** Statuses that still need a finance decision. */
+const REVIEW_STATUSES = ['processing', 'pending']
+
+export const PAYMENTS_PAGE_SIZE = 50
+
+export async function getInvitationPayments(
+  opts: { filter?: PaymentFilter; q?: string; limit?: number } = {},
+): Promise<InvitationPayment[]> {
+  const { filter = 'all', q, limit = PAYMENTS_PAGE_SIZE } = opts
   const supabase = createSupabaseAdminClient()
-  const { data, error } = await supabase
+  let query = supabase
     .from('invitation_orders')
     .select(COLUMNS)
     .eq('provider', 'mpesa_lipa_namba')
+
+  if (filter === 'review') query = query.in('status', REVIEW_STATUSES)
+  else if (filter === 'paid') query = query.eq('status', 'paid')
+  else if (filter === 'failed') query = query.eq('status', 'failed')
+
+  // Sanitize before interpolating into the PostgREST `or` filter (strip commas,
+  // parens and wildcards that would otherwise break out of the filter clause).
+  const term = (q ?? '').replace(/[^a-zA-Z0-9@.\-_ ]/g, '').trim()
+  if (term) {
+    query = query.or(
+      [
+        `ref.ilike.%${term}%`,
+        `contact_name.ilike.%${term}%`,
+        `contact_email.ilike.%${term}%`,
+        `payer_name.ilike.%${term}%`,
+        `payment_reference.ilike.%${term}%`,
+      ].join(','),
+    )
+  }
+
+  const { data, error } = await query
     .order('payment_submitted_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false })
+    .limit(limit)
 
   if (error) throw new Error(error.message)
   return ((data ?? []) as InvitationPaymentRow[]).map(mapPayment)
+}
+
+/** Totals for the KPI tiles — independent of the current filter/search. */
+export async function getInvitationPaymentSummary(): Promise<{
+  review: number
+  paid: number
+  failed: number
+  reviewValue: number
+}> {
+  const supabase = createSupabaseAdminClient()
+  const base = () =>
+    supabase.from('invitation_orders').select('id', { count: 'exact', head: true }).eq('provider', 'mpesa_lipa_namba')
+
+  const [reviewRes, paidRes, failedRes, reviewRows] = await Promise.all([
+    base().in('status', REVIEW_STATUSES),
+    base().eq('status', 'paid'),
+    base().eq('status', 'failed'),
+    supabase
+      .from('invitation_orders')
+      .select('amount_total')
+      .eq('provider', 'mpesa_lipa_namba')
+      .in('status', REVIEW_STATUSES),
+  ])
+
+  const reviewValue = ((reviewRows.data ?? []) as { amount_total: string | number }[]).reduce(
+    (sum, r) => sum + Number(r.amount_total),
+    0,
+  )
+
+  return {
+    review: reviewRes.count ?? 0,
+    paid: paidRes.count ?? 0,
+    failed: failedRes.count ?? 0,
+    reviewValue,
+  }
 }

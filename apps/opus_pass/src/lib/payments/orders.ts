@@ -1,5 +1,6 @@
 import 'server-only'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import type { StoredOrder } from '@/lib/cart-storage'
 import type { InitiateItem, OrderStatus } from './types'
 import { isTerminal } from './types'
 
@@ -92,6 +93,45 @@ export async function getOrderByRef(ref: string): Promise<OrderRow | null> {
     .maybeSingle()
   if (error) throw new Error(`getOrderByRef failed: ${error.message}`)
   return (data as OrderRow) ?? null
+}
+
+// Map a server OrderRow into the StoredOrder shape the invoice PDF renders from.
+// paymentStatus reflects the order's current stage (paid → "PAID", else
+// "PAYMENT VERIFYING"). Shared by the email sender and the /api/invoice route.
+export function orderRowToStoredOrder(order: OrderRow): StoredOrder {
+  return {
+    ref: order.ref,
+    paidAt: order.paid_at ?? order.payment_submitted_at ?? new Date().toISOString(),
+    eventDate: order.event_date ?? undefined,
+    paymentLabel: order.payment_label ?? undefined,
+    payment: {
+      provider: order.payment_label || 'M-Pesa Lipa Namba',
+      payerName: order.payer_name ?? undefined,
+      payerPhone: order.payer_phone ?? undefined,
+      reference: order.payment_reference ?? undefined,
+    },
+    paymentRef: order.payment_reference ?? undefined,
+    paymentStatus: order.status === 'paid' ? 'paid' : 'verifying',
+    contact: {
+      name: order.contact_name ?? undefined,
+      email: order.contact_email,
+      phone: order.contact_phone,
+    },
+    items: order.items.map((i) => ({
+      id: i.id,
+      name: i.name,
+      image: i.image,
+      summary: i.summary ?? '',
+      total: i.total,
+      tier: i.tier,
+      tierId: i.tierId,
+      guests: i.guests,
+      addOns: i.addOns,
+    })),
+    subtotal: order.subtotal,
+    discount: order.discount,
+    total: order.amount_total,
+  }
 }
 
 export async function setProviderOrderId(ref: string, providerOrderId: string): Promise<void> {

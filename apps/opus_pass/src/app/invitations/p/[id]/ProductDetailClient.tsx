@@ -20,7 +20,7 @@ import { packageFromPrice } from '@/lib/cms/packages-pricing'
 import { buildItemSummary, useCart } from '@/components/providers/CartProvider'
 
 // Pricing model:
-//   • Digital suite — `tier.price_per_guest × digitalQty` (per-guest package: Lite/Classic/Signature)
+//   • Digital suite — `tier.price_per_guest × digitalQty` (per-guest package: Essential/Classic/Elegant/Signature)
 //   • Paper prints  — `PAPER_PRINT_UNIT_PRICE × paperQty` (optional physical add-on, flat per-print)
 //   • Door-scan     — flat base fee per event (on-site scanning attendant)
 const DOOR_SCAN_SERVICE_PRICE = 50000 // TZS — flat per event (on-site scanning attendant at venue entrance)
@@ -51,6 +51,18 @@ const TIER_BADGE_TONE: Record<TierBadgeTone, string> = {
   accent: 'bg-[var(--accent)] text-[var(--on-accent)]',
   gold: 'bg-gradient-to-b from-[#E6C66E] to-[#C9A84C] text-[#3A2C06]',
 }
+
+// Per-tier pastel card palette for the package selector, keyed by stable tier id.
+// slate = Essential, lavender = Classic, blush = Elegant, gold = Signature.
+// `bg` is the resting card fill, `active` the selected ring/border, `border` the
+// idle border + hover. Unknown ids fall back to slate.
+const TIER_PILL: Record<string, { bg: string; active: string; border: string }> = {
+  lite: { bg: 'bg-[#E1E8F0]', active: 'border-[#475569] ring-[#475569]', border: 'border-[#D3DBE5] hover:border-[#9FB0C2]' },
+  classic: { bg: 'bg-[#ECDDF7]', active: 'border-[#B98FD6] ring-[#B98FD6]', border: 'border-[#E3D2F2] hover:border-[#C9A0DC]' },
+  elegant: { bg: 'bg-[#F4E3EC]', active: 'border-[#C98BA8] ring-[#C98BA8]', border: 'border-[#ECD3DF] hover:border-[#DCAFC4]' },
+  signature: { bg: 'bg-[#F5E7BF]', active: 'border-[#C9A84C] ring-[#C9A84C]', border: 'border-[#EBDCAE] hover:border-[#D6BC72]' },
+}
+const TIER_PILL_DEFAULT = TIER_PILL.lite
 
 // Product descriptions authored in the admin are rich HTML (TipTap); older ones
 // are plain text. Detect HTML so each is rendered appropriately.
@@ -99,13 +111,17 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
   const MIN_CARDS = 100
   const [digitalQty, setDigitalQty] = useState<number>(MIN_CARDS)
 
-  // Package tier (Lite / Classic / Signature) — price is per guest × guest count,
+  // Package tier (Essential / Classic / Elegant / Signature) — price is per guest × guest count,
   // independent of the chosen design. Default to the featured tier.
   const [selectedTier, setSelectedTier] = useState<string>(
     () => packages.tiers.find((t) => t.featured)?.id ?? packages.tiers[0]?.id ?? '',
   )
   const tier = packages.tiers.find((t) => t.id === selectedTier) ?? packages.tiers[0]
   const pricePerGuest = tier?.price_per_guest ?? 0
+  // The on-site scanning attendant is bundled into the higher tiers (Elegant,
+  // Signature). Essential and Classic don't include it, so they instead see it
+  // as an optional paid add-on. Keyed by stable tier id.
+  const attendantIncluded = tier?.id === 'elegant' || tier?.id === 'signature'
   // Lowest per-guest package price — the "From TZS X per guest" anchor on the
   // similar-designs footer (replaces the retired per-card price).
   const fromGuestPrice = packageFromPrice(packages)
@@ -137,6 +153,12 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
   const [paperPrints, setPaperPrints] = useState(false)
   const [paperQty, setPaperQty] = useState<number>(25)
   const [doorScan, setDoorScan] = useState(false)
+
+  // Switching to a tier that already bundles the attendant clears any paid
+  // selection so the included coverage is never offered or double-charged.
+  useEffect(() => {
+    if (attendantIncluded) setDoorScan(false)
+  }, [attendantIncluded])
 
   const [favourited, setFavourited] = useState(false)
 
@@ -178,7 +200,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
   const digitalSubtotal = pricePerGuest * digitalQty
   const paperUnitPrice = PAPER_PRINT_UNIT_PRICE
   const paperSubtotal = paperPrints ? paperUnitPrice * paperQty : 0
-  const doorScanSubtotal = doorScan ? DOOR_SCAN_SERVICE_PRICE : 0
+  const doorScanSubtotal = doorScan && !attendantIncluded ? DOOR_SCAN_SERVICE_PRICE : 0
   const total = digitalSubtotal + paperSubtotal + doorScanSubtotal
 
   const sameCategory = allProducts.filter((p) => p.id !== product.id && p.category === product.category)
@@ -344,27 +366,13 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                 <p className="mt-1 text-[12px] text-gray-500">{packages.subheading}</p>
               </div>
 
-              <div className="grid grid-cols-3 gap-2.5" role="radiogroup" aria-label="Package tier">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-2.5" role="radiogroup" aria-label="Package tier">
                 {packages.tiers.map((t) => {
                   const active = t.id === selectedTier
-                  const tierBg =
-                    t.id === 'classic'
-                      ? 'bg-[#ECDDF7]' // lavender — Elegant
-                      : t.id === 'signature'
-                        ? 'bg-[#F5E7BF]' // gold — Signature
-                        : 'bg-[#E1E8F0]' // slate — Essential
-                  const tierActive =
-                    t.id === 'classic'
-                      ? 'border-[#B98FD6] ring-[#B98FD6]' // lavender
-                      : t.id === 'signature'
-                        ? 'border-[#C9A84C] ring-[#C9A84C]' // gold
-                        : 'border-[#475569] ring-[#475569]' // slate
-                  const tierBorder =
-                    t.id === 'classic'
-                      ? 'border-[#E3D2F2] hover:border-[#C9A0DC]' // lavender
-                      : t.id === 'signature'
-                        ? 'border-[#EBDCAE] hover:border-[#D6BC72]' // gold
-                        : 'border-[#D3DBE5] hover:border-[#9FB0C2]' // slate
+                  const pill = TIER_PILL[t.id] ?? TIER_PILL_DEFAULT
+                  const tierBg = pill.bg
+                  const tierActive = pill.active
+                  const tierBorder = pill.border
                   return (
                     <button
                       key={t.id}
@@ -373,7 +381,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                       aria-checked={active}
                       onClick={() => setSelectedTier(t.id)}
                       className={cn(
-                        'relative rounded-lg border p-2.5 text-left shadow-sm transition sm:p-3',
+                        'relative rounded-lg border p-2 text-left shadow-sm transition sm:p-3',
                         tierBg,
                         active
                           ? cn('ring-1', tierActive)
@@ -395,11 +403,13 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                         )
                       })()}
                       <p className="text-[12px] font-bold text-gray-900 sm:text-[13px]">{t.name}</p>
-                      {/* "per guest" gets its own line on phones — inline it
-                          forces the price itself to wrap inside the ~108px tier card */}
-                      <p className="mt-0.5 text-[13px] font-extrabold text-gray-900 tabular-nums sm:text-[15px]">
-                        <span className="whitespace-nowrap">TZS {t.price_per_guest.toLocaleString('en-US')}</span>
-                        <span className="block text-[9px] font-medium text-gray-500 sm:ml-1 sm:inline sm:text-[10px]">per guest</span>
+                      {/* Price + "per guest" stay on one line as a unit — the
+                          whole <p> is nowrap so the phrase never splits across
+                          lines. The 2-up-on-phones grid keeps the card wide
+                          enough for it to fit at every breakpoint. */}
+                      <p className="mt-0.5 whitespace-nowrap tabular-nums">
+                        <span className="text-[12px] font-extrabold text-gray-900 sm:text-[14px]">TZS {t.price_per_guest.toLocaleString('en-US')}</span>
+                        <span className="ml-1 text-[9px] font-medium text-gray-500 sm:text-[10px]">per guest</span>
                       </p>
                       <p className="mt-1.5 text-[9px] leading-tight text-gray-500 sm:text-[10px]">{t.best_for}</p>
                     </button>
@@ -535,23 +545,33 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                 )}
               </AddOnCard>
 
-              {/* Door-scan service toggle */}
-              <AddOnCard
-                checked={doorScan}
-                onToggle={() => setDoorScan((v) => !v)}
-                title="On-site scanning attendant"
-                description="Scanning is built into every package — this add-on sends a trained OpusFesta attendant to your venue to do it for you. They scan each guest's ticket QR at the entrance and tick them off your live guest list in real time, so you don't need to assign your own staff."
-                priceLabel={`TZS ${DOOR_SCAN_SERVICE_PRICE.toLocaleString('en-US')} flat fee per event`}
-              />
-              {doorScan && (
-                // Boarding-pass ticket — both ends (OpusPass stub + QR) are taken
-                // verbatim from src/assets/lite_ticket_pass.svg; only the middle copy differs.
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={`/assets/guest-ticket-card-${tier?.id ?? 'classic'}.svg`}
-                  alt="Every guest gets a personalised OpusPass ticket with their name, event details, and a unique QR code that your attendant scans at the door for seamless entry."
-                  className="-mt-1 mb-3 h-auto w-full [filter:drop-shadow(0_1px_2px_rgba(0,0,0,0.10))_drop-shadow(0_12px_26px_rgba(30,20,40,0.12))]"
+              {/* On-site scanning attendant. Elegant & Signature bundle it in, so
+                  they see an "included" card; Essential & Classic get the paid toggle. */}
+              {attendantIncluded ? (
+                <IncludedAddOnCard
+                  title="On-site scanning attendant"
+                  description="A trained OpusFesta attendant comes to your venue and scans each guest's ticket QR at the door, ticking them off your live guest list in real time — no extra cost, no need to assign your own staff."
                 />
+              ) : (
+                <>
+                  <AddOnCard
+                    checked={doorScan}
+                    onToggle={() => setDoorScan((v) => !v)}
+                    title="On-site scanning attendant"
+                    description="Every package includes barcode check-in — this add-on sends a trained OpusFesta attendant to your venue to do it for you. They scan each guest's ticket QR at the entrance and tick them off your live guest list in real time, so you don't need to assign your own staff."
+                    priceLabel={`TZS ${DOOR_SCAN_SERVICE_PRICE.toLocaleString('en-US')} flat fee per event`}
+                  />
+                  {doorScan && (
+                    // Boarding-pass ticket — both ends (OpusPass stub + QR) are taken
+                    // verbatim from src/assets/lite_ticket_pass.svg; only the middle copy differs.
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={`/assets/guest-ticket-card-${tier?.id ?? 'classic'}.svg`}
+                      alt="Every guest gets a personalised OpusPass ticket with their name, event details, and a unique QR code that your attendant scans at the door for seamless entry."
+                      className="-mt-1 mb-3 h-auto w-full [filter:drop-shadow(0_1px_2px_rgba(0,0,0,0.10))_drop-shadow(0_12px_26px_rgba(30,20,40,0.12))]"
+                    />
+                  )}
+                </>
               )}
               
             </div>
@@ -601,8 +621,9 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                 <p>
                   Every package includes a dashboard to run your event end to end — create the event, build
                   and organise your guest list, and send invites from one place. Watch RSVPs land in real time
-                  with live headcounts and meal choices. Classic and Signature add live check-ins, seating
-                  plans, pledge collection and response analytics.
+                  with live headcounts and meal choices. Classic and up add live check-ins, pledge
+                  collection and a thank-you blast; Elegant and Signature add save-the-dates, schedule
+                  or menu design and richer reporting.
                 </p>
               </Accordion>
 
@@ -729,6 +750,32 @@ function AddOnCard({
         </div>
       </label>
       {children && <div className="px-4 pb-4">{children}</div>}
+    </div>
+  )
+}
+
+// Non-interactive variant of AddOnCard for coverage that's bundled into the
+// chosen tier — shows an "Included" pill instead of a checkbox + price.
+function IncludedAddOnCard({ title, description }: { title: string; description: string }) {
+  return (
+    <div className="mb-3 rounded-md border border-[#CDEBA6] bg-[#F4FBE9]">
+      <div className="flex items-start gap-3 p-4">
+        <span
+          aria-hidden
+          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-[#5C6B4D] text-white"
+        >
+          <Check size={13} strokeWidth={3} />
+        </span>
+        <div className="grow">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="text-[14px] font-bold text-gray-900">{title}</p>
+            <span className="rounded-full bg-[#9FE870] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-[#1A1A1A]">
+              Included
+            </span>
+          </div>
+          <p className="mt-1 text-[12px] text-gray-600 leading-relaxed">{description}</p>
+        </div>
+      </div>
     </div>
   )
 }

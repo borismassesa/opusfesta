@@ -340,7 +340,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-5 sm:gap-8">
+                      <div className="flex items-center justify-between gap-4 sm:justify-start sm:gap-8">
                         {item.guests != null && (
                           <div className="flex flex-col items-center gap-1.5">
                             <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
@@ -349,8 +349,11 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                             <GuestStepper value={item.guests} onChange={(n) => setGuests(item.id, n)} />
                           </div>
                         )}
-                        <p className="shrink-0 whitespace-nowrap text-lg font-semibold text-gray-900 tabular-nums">{formatTzs(item.total)}</p>
-                        <DeleteButton name={item.name} onConfirm={() => removeItem(item.id)} />
+                        {/* Price + delete grouped so the amount sits at the right end on mobile */}
+                        <div className="flex items-center gap-3 sm:gap-8">
+                          <p className="shrink-0 whitespace-nowrap text-lg font-semibold text-gray-900 tabular-nums">{formatTzs(item.total)}</p>
+                          <DeleteButton name={item.name} onConfirm={() => removeItem(item.id)} />
+                        </div>
                       </div>
                     </div>
                     )

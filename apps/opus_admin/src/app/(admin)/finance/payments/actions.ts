@@ -60,6 +60,31 @@ async function createCustomerNotification(args: {
   }
 }
 
+// Fetch the persisted order's invoice PDF from opus_pass (authenticated, ref
+// mode). Best-effort — a failure must never block the approval email.
+async function fetchInvoicePdf(
+  ref: string,
+): Promise<{ filename: string; content: Buffer } | null> {
+  const base = process.env.NEXT_PUBLIC_OPUS_PASS_URL
+  const secret = process.env.OPUS_PASS_REVALIDATE_SECRET
+  if (!base || !secret) return null
+  try {
+    const res = await fetch(`${base.replace(/\/$/, '')}/api/invoice`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${secret}` },
+      body: JSON.stringify({ ref }),
+    })
+    if (!res.ok) {
+      console.error(`[invitation-payments] invoice fetch failed: ${res.status}`)
+      return null
+    }
+    return { filename: `OpusFesta-Invoice-${ref}.pdf`, content: Buffer.from(await res.arrayBuffer()) }
+  } catch (error) {
+    console.error('[invitation-payments] invoice fetch error', error)
+    return null
+  }
+}
+
 async function emailCustomer(args: {
   payment: PaymentEmailRow
   kind: 'approved' | 'rejected'
@@ -95,11 +120,14 @@ async function emailCustomer(args: {
             : []),
         ],
       },
-      ...(args.note
-        ? [{ kind: 'notesCard' as const, label: 'Finance note', body: args.note }]
-        : []),
+      // The review note is an INTERNAL finance record — never surface it to the
+      // customer. It stays on the order (review_note) and shows in the admin only.
     ],
+    footerNote:
+      'You received this because you placed an invitation order with OpusFesta. This is an automated message about your purchase.',
   })
+  // The paid/confirmed invoice PDF accompanies the approval email.
+  const invoice = approved ? await fetchInvoicePdf(args.payment.ref) : null
   await sendEmail({
     to: args.payment.contact_email,
     subject,
@@ -109,8 +137,8 @@ async function emailCustomer(args: {
       `Order: ${args.payment.ref}`,
       `Amount: ${formatTzs(args.payment.amount_total)}`,
       args.payment.payment_reference ? `Reference: ${args.payment.payment_reference}` : null,
-      args.note ? `Finance note: ${args.note}` : null,
     ]),
+    attachments: invoice ? [invoice] : undefined,
   })
 }
 

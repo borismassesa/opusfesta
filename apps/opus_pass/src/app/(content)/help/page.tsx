@@ -78,12 +78,12 @@ const FAQS: { id: string; q: string; a: string }[] = [
   {
     id: 'cost',
     q: 'How much does OpusPass cost?',
-    a: 'Pricing is per guest, and you choose from three packages — Essential, Elegant and Signature — so the price scales with your headcount. Every package includes the digital card, ticket, delivery and door check-in. See the Pricing page for the full breakdown and what each tier adds.',
+    a: 'Pricing is per guest, and you choose from four packages — Essential, Classic, Elegant and Signature — so the price scales with your headcount. Every package includes the digital card, ticket, delivery and door check-in. See the Pricing page for the full breakdown and what each tier adds.',
   },
   {
     id: 'payment-methods',
     q: 'What payment methods can my guests and I use?',
-    a: 'We accept M-Pesa, Airtel Money, Mixx by Yas and Selcom Pesa, plus Visa and Mastercard. Contribution collection (where guests pledge straight into one event account) is available on the Elegant and Signature packages.',
+    a: 'We accept M-Pesa, Airtel Money, Mixx by Yas and Selcom Pesa, plus Visa and Mastercard. Contribution collection (where guests pledge straight into one event account) is available on the Classic, Elegant and Signature packages.',
   },
   {
     id: 'guest-experience',
