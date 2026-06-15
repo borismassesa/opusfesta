@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { Receipt, Download, Check, Clock, Package, ArrowRight, Ticket } from 'lucide-react'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { getOrders, type StoredOrder, type StoredOrderItem } from '@/lib/cart-storage'
@@ -148,7 +149,9 @@ function OrderCard({ order }: { order: StoredOrder }) {
         {order.items.map((item) => (
           <div key={item.id} className="flex items-center gap-3 px-5 py-3">
             <div className="relative aspect-[5/7] w-10 shrink-0 overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/5">
-              {item.treatment ? (
+              {item.image ? (
+                <Image src={item.image} alt="" fill sizes="40px" className="object-cover" unoptimized />
+              ) : item.treatment ? (
                 <InvitationVisual treatment={item.treatment} />
               ) : (
                 <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-[#C9A0DC]/20 to-[#C9A0DC]/5 text-[#7C5AA6]">

@@ -7,7 +7,6 @@ import {
   Compass,
   Eye,
   ExternalLink,
-  Globe,
   Grid3X3,
   HelpCircle,
   Heart,
@@ -16,7 +15,6 @@ import {
   Megaphone,
   Save,
   Send,
-  Sparkles,
   Star,
   Ticket,
   Trash2,
@@ -39,14 +37,6 @@ type Section = {
 }
 
 const sections: Section[] = [
-  {
-    key: 'hero',
-    label: 'Hero',
-    icon: Sparkles,
-    href: '/cms/opus-pass/invitations/hero',
-    status: 'live',
-    description: 'Top banner with the lead headline, description and primary/secondary CTAs.',
-  },
   {
     key: 'products',
     label: 'Cards',
@@ -118,14 +108,6 @@ const sections: Section[] = [
     href: '/cms/opus-pass/invitations/explore-styles',
     status: 'live',
     description: 'Catalog footer link columns — group heading + link list per column.',
-  },
-  {
-    key: 'free-website-promo',
-    label: 'Free Website Promo',
-    icon: Globe,
-    href: '/cms/opus-pass/invitations/free-website-promo',
-    status: 'live',
-    description: 'Catalog bottom CTA — "Get a free wedding website" promo block.',
   },
   {
     key: 'faqs',

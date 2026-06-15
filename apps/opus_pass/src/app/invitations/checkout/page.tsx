@@ -298,6 +298,7 @@ export default function CheckoutPage() {
       name: i.name,
       summary: i.summary,
       total: i.total,
+      image: i.image,
       treatment: i.treatment,
       tier: i.tier,
       tierId: i.tierId,

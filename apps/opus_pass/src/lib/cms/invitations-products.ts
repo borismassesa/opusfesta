@@ -2,7 +2,7 @@ import 'server-only'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import type { Treatment } from '@/components/guests/InvitationVisual'
 import type { InvitationPalette } from '@/components/guests/invitation-templates/_types'
-import type { CatalogProduct } from '@/data/invitations-products'
+import { isProductBadge, type CatalogProduct } from '@/data/invitations-products'
 
 type ProductRow = {
   id: string
@@ -22,8 +22,10 @@ type ProductRow = {
   back_image_url: string | null
   gallery: string[] | null
   designs: string[] | null
+  badge: string | null
   published: boolean
   sort_order: number
+  created_at: string | null
 }
 
 function rowToProduct(row: ProductRow): CatalogProduct {
@@ -46,6 +48,8 @@ function rowToProduct(row: ProductRow): CatalogProduct {
     designImage:      imageUrl,
     gallery:          Array.isArray(row.gallery) ? row.gallery.filter(Boolean) : [],
     designs:          Array.isArray(row.designs) ? row.designs.filter(Boolean) : [],
+    badge:            isProductBadge(row.badge) ? row.badge : undefined,
+    createdAt:        row.created_at ?? undefined,
   }
 }
 

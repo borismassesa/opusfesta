@@ -389,7 +389,9 @@ export default function ConfirmationPage() {
                               href={`/invitations/p/${item.id}`}
                               className="relative aspect-[5/7] w-20 shrink-0 overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/5"
                             >
-                              {item.treatment ? (
+                              {item.image ? (
+                                <Image src={item.image} alt="" fill sizes="80px" className="object-cover" unoptimized />
+                              ) : item.treatment ? (
                                 <InvitationVisual treatment={item.treatment} />
                               ) : (
                                 <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-(--accent)/20 to-(--accent)/5 text-[#7C5AA6]">

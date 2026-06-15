@@ -27,4 +27,41 @@ export type CatalogProduct = BaseProduct & {
   designImage?: string
   /** Per-swatch palettes — index matches swatches[]. */
   palettes: InvitationPalette[]
+  /** Admin-set promotional status badge shown above the card. Undefined → none. */
+  badge?: ProductBadge
+  /** ISO creation timestamp — drives the catalog's Newest/Oldest sort. */
+  createdAt?: string
+}
+
+// ── Promotional status badge ──────────────────────────────────────────────────
+// Admin-set per design. Kept in sync with the DB CHECK constraint in migration
+// 20260613000002_invitations_products_badge.sql and the admin editor's options.
+
+export const PRODUCT_BADGES = ['most_popular', 'premium', 'trending'] as const
+export type ProductBadge = (typeof PRODUCT_BADGES)[number]
+
+export function isProductBadge(v: unknown): v is ProductBadge {
+  return typeof v === 'string' && (PRODUCT_BADGES as readonly string[]).includes(v)
+}
+
+/** Display metadata for each badge: emoji, label, and pill tone classes. */
+export const BADGE_META: Record<
+  ProductBadge,
+  { emoji: string; label: string; className: string }
+> = {
+  most_popular: {
+    emoji: '🟡',
+    label: 'Most Popular',
+    className: 'bg-amber-50 text-amber-800 ring-amber-200',
+  },
+  premium: {
+    emoji: '✨',
+    label: 'Premium Template',
+    className: 'bg-[#F4ECDD] text-[#8A6D1F] ring-[#E2CF9E]',
+  },
+  trending: {
+    emoji: '🔥',
+    label: 'Trending This Week',
+    className: 'bg-rose-50 text-rose-700 ring-rose-200',
+  },
 }

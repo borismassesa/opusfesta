@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import {
   ArrowRight, Award, Check, ChevronDown, ChevronRight, Crown, Diamond, Flame, Gem, Heart,
@@ -13,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { DesignCarousel } from '@/components/guests/DesignCarousel'
 import type { CatalogProduct } from '@/data/invitations-products'
+import ProductBadgePill from '@/components/invitations/ProductBadge'
 import type { PackagesContent, TierBadgeIcon, TierBadgeTone } from '@/lib/cms/packages'
 import { packageFromPrice } from '@/lib/cms/packages-pricing'
 import { buildItemSummary, useCart } from '@/components/providers/CartProvider'
@@ -85,7 +87,7 @@ const DESCRIPTION_SANITIZE = {
 
 export default function ProductDetailClient({ product, allProducts, packages }: { product: CatalogProduct; allProducts: CatalogProduct[]; packages: PackagesContent }) {
   const router = useRouter()
-  const { addItem } = useCart()
+  const { addItem, items } = useCart()
 
   // Detail carousel = the portrait hero card (image_url) followed by the
   // landscape 800×600 "mockup" design views (designs[]). Each renders at its
@@ -195,6 +197,10 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
     name: product.name,
     designer: product.designer,
     treatment: product.treatment,
+    // The actual artwork the customer is viewing/selecting — hero image, else
+    // the first uploaded design. Falls back to the CSS treatment only when the
+    // product has no image at all.
+    image: product.imageUrl || product.designs?.[0],
     summary: cartSummary,
     tier: tier?.name,
     tierId: tier?.id,
@@ -212,8 +218,12 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
   }
 
   const handleAddToCart = () => {
+    // One line per design: re-adding a design already in the cart updates that
+    // line (new guest count / options) rather than stacking a duplicate, so the
+    // toast must say "Updated" — otherwise the unchanged cart badge looks broken.
+    const alreadyInCart = items.some((i) => i.id === product.id)
     addItem(buildCartItem())
-    toast.success('Added to cart', {
+    toast.success(alreadyInCart ? 'Updated in your cart' : 'Added to cart', {
       description: `${product.name} — TZS ${total.toLocaleString('en-US')}`,
       action: {
         label: 'Start guest list',
@@ -234,12 +244,12 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
         )}
         aria-label="Breadcrumb"
       >
-        <div className="mx-auto max-w-7xl flex min-w-0 flex-nowrap items-center gap-1.5 text-xs text-gray-600">
-          <Link href="/invitations" className="shrink-0 whitespace-nowrap hover:text-gray-900 hover:underline">Invitations</Link>
-          <ChevronRight size={12} className="shrink-0 text-gray-400" />
-          <Link href="/invitations/catalog" className="shrink-0 whitespace-nowrap hover:text-gray-900 hover:underline">{product.category}</Link>
-          <ChevronRight size={12} className="shrink-0 text-gray-400" />
-          <span className="min-w-0 truncate text-gray-900">{product.name}</span>
+        <div className="mx-auto max-w-7xl flex min-w-0 flex-nowrap items-center gap-1.5 text-[11px] tracking-wide text-gray-400">
+          <Link href="/invitations" className="shrink-0 whitespace-nowrap transition-colors hover:text-gray-700">Invitations</Link>
+          <ChevronRight size={11} className="shrink-0 text-gray-300" />
+          <Link href="/invitations/catalog" className="shrink-0 whitespace-nowrap transition-colors hover:text-gray-700">{product.category}</Link>
+          <ChevronRight size={11} className="shrink-0 text-gray-300" />
+          <span className="min-w-0 truncate font-medium text-[#1A1A1A]">{product.name}</span>
         </div>
       </nav>
 
@@ -252,13 +262,23 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
               height clamp/internal scroll, so a tall portrait card never clips
               the description below it (the page scrolls naturally instead). ─── */}
           <div className="space-y-8 lg:sticky lg:top-[4rem]">
-            <DesignCarousel
-              hero={heroImage}
-              designs={designViews}
-              treatment={product.treatment}
-              favourited={favourited}
-              onFavourite={() => setFavourited((v) => !v)}
-            />
+            {/* On phones the preview gets 24px side padding (~87% width) on top of
+                the layout's 16px gutter so it no longer spans edge-to-edge; from
+                sm+ it fills its column. */}
+            <div className="px-2 sm:px-0">
+              {product.badge && (
+                <div className="mb-3 flex">
+                  <ProductBadgePill badge={product.badge} />
+                </div>
+              )}
+              <DesignCarousel
+                hero={heroImage}
+                designs={designViews}
+                treatment={product.treatment}
+                favourited={favourited}
+                onFavourite={() => setFavourited((v) => !v)}
+              />
+            </div>
 
             {/* Description — below the card */}
             <div className="border-t border-gray-200 pt-5">
@@ -639,11 +659,20 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
               Explore similar designs
             </h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6">
-              {recommendations.map((p) => (
+              {recommendations.map((p) => {
+                // Prefer the real card artwork (hero image, then first uploaded
+                // design); fall back to the CSS treatment only when a product has
+                // no image at all — same rule as the catalog grid.
+                const cardImage = p.imageUrl || p.designs?.[0]
+                return (
                 <Link key={p.id} href={`/invitations/p/${p.id}`} className="group flex flex-col">
                   <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_16px_-8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_4px_8px_rgba(0,0,0,0.06),0_18px_32px_-12px_rgba(0,0,0,0.18)]">
                     <span className="absolute inset-0">
-                      <InvitationVisual treatment={p.treatment} />
+                      {cardImage ? (
+                        <Image src={cardImage} alt="" fill sizes="(min-width: 768px) 25vw, 50vw" className="object-cover" unoptimized />
+                      ) : (
+                        <InvitationVisual treatment={p.treatment} />
+                      )}
                     </span>
                   </div>
                   <p className="mt-2.5 text-[14px] font-bold text-gray-900 leading-snug line-clamp-2">{p.name}</p>
@@ -651,7 +680,8 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                     From TZS {fromGuestPrice.toLocaleString('en-US')} per guest
                   </p>
                 </Link>
-              ))}
+                )
+              })}
             </div>
           </div>
         </section>

@@ -1,10 +1,19 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
-// Couple dashboard lives under /my and requires a signed-in user. Clerk
-// middleware bounces unauthenticated visitors to /sign-in with the original
-// URL preserved as redirect_url, so the post-sign-in landing carries any
-// ?seed=1 the CTA started with.
-const isProtectedRoute = createRouteMatcher(['/my(.*)'])
+// Routes that require a signed-in user. Clerk middleware bounces unauthenticated
+// visitors to /sign-in with the original URL preserved as redirect_url, so the
+// post-sign-in landing returns them to where they were headed.
+//
+// - /my            — the couple dashboard.
+// - the cart + checkout funnel — a customer must be signed in to open their cart
+//   or pay, so every order is tied to a real account (order history, RSVP/guest
+//   management, and the couple dashboard all key off the signed-in user).
+const isProtectedRoute = createRouteMatcher([
+  '/my(.*)',
+  '/invitations/cart(.*)',
+  '/invitations/address(.*)',
+  '/invitations/checkout(.*)',
+])
 
 export default clerkMiddleware(async (auth, req) => {
   if (isProtectedRoute(req)) {

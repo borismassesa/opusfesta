@@ -6,9 +6,8 @@ import { findCategory } from '@/data/invitations-categories'
 import { loadInvitationCategoriesList } from '@/lib/cms/invitations-categories'
 import { loadInvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-banner'
 import { styleStripFromCategories } from '@/lib/cms/invitations-style-strip'
-import { loadInvitationsExploreStylesContent } from '@/lib/cms/invitations-explore-styles'
-import { loadInvitationsFreeWebsitePromoContent } from '@/lib/cms/invitations-free-website-promo'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
+import { loadPackagesContent, packageFromPrice } from '@/lib/cms/packages'
 import InvitationsCategoryClient from './InvitationsCategoryClient'
 
 // CMS-driven page: ISR safety net so published changes appear on the public
@@ -43,14 +42,13 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function InvitationsCategoryPage({ params }: { params: Promise<Params> }) {
   const { category } = await params
-  const [{ isEnabled: isDraft }, categories, products, promoBanner, exploreStyles, freeWebsitePromo] =
+  const [{ isEnabled: isDraft }, categories, products, promoBanner, packages] =
     await Promise.all([
       draftMode(),
       loadInvitationCategoriesList(),
       loadInvitationProducts(),
       loadInvitationsPromoBannerContent(),
-      loadInvitationsExploreStylesContent(),
-      loadInvitationsFreeWebsitePromoContent(),
+      loadPackagesContent(),
     ])
   const cat = findCategory(categories, category)
   if (!cat) return notFound()
@@ -61,10 +59,9 @@ export default async function InvitationsCategoryPage({ params }: { params: Prom
         category={cat}
         categories={categories}
         products={products}
+        fromGuestPrice={packageFromPrice(packages)}
         promoBanner={promoBanner}
         styleStrip={styleStripFromCategories(categories)}
-        exploreStyles={exploreStyles}
-        freeWebsitePromo={freeWebsitePromo}
       />
     </>
   )

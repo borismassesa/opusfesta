@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import CartMenu from '@/components/CartMenu'
+import NotificationsBell from '@/components/NotificationsBell'
 import { UserButton, useUser } from '@clerk/nextjs'
 import {
   Menu,
@@ -249,6 +250,7 @@ export default function Navbar() {
               >
                 Dashboard
               </Link>
+              <NotificationsBell />
               <UserButton appearance={{ elements: { avatarBox: 'h-8 w-8' } }} />
             </>
           ) : null}

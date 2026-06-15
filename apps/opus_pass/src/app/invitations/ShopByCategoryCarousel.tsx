@@ -3,18 +3,38 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { useScrollCarousel } from '@/hooks/useScrollCarousel'
 import type { InvitationCategoryCms } from '@/lib/cms/invitations-categories'
 
 export function ShopByCategoryCarousel({ categories }: { categories: InvitationCategoryCms[] }) {
-  const { scrollRef, progress, scrollNext, scrollPrev } = useScrollCarousel()
+  const { scrollRef, progress, scrolling, scrollNext, scrollPrev } = useScrollCarousel()
+  // Arrows stay hidden until the user hovers the row or scrolls it.
+  const arrowReveal = scrolling
+    ? 'opacity-100'
+    : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100'
 
   return (
     <div>
-      <div className="relative group">
+      {/* Arrows flank the row (outside the circles), not overlapping them, and
+          only appear on hover or while scrolling. */}
+      <div className="group flex items-center gap-2 sm:gap-3">
+        <button
+          type="button"
+          onClick={scrollPrev}
+          disabled={progress <= 1}
+          aria-label="Scroll left"
+          className={cn(
+            'hidden md:grid shrink-0 h-10 w-10 place-items-center rounded-full bg-[#1A1A1A]/80 shadow-lg transition hover:bg-[#1A1A1A] disabled:pointer-events-none disabled:bg-[#1A1A1A]/40',
+            arrowReveal,
+          )}
+        >
+          <ChevronLeft className="h-5 w-5 text-white" />
+        </button>
+
         <div
           ref={scrollRef}
-          className="flex gap-5 sm:gap-6 md:gap-8 overflow-x-auto pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
+          className="flex min-w-0 flex-1 gap-5 sm:gap-6 md:gap-8 overflow-x-auto pb-2 snap-x snap-mandatory [&::-webkit-scrollbar]:hidden"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' } as React.CSSProperties}
         >
           {categories.map((cat) => (
@@ -40,27 +60,18 @@ export function ShopByCategoryCarousel({ categories }: { categories: InvitationC
           ))}
         </div>
 
-        {progress > 1 && (
-          <button
-            type="button"
-            onClick={scrollPrev}
-            aria-label="Scroll left"
-            className="hidden md:grid absolute top-1/2 -translate-y-1/2 left-2 h-10 w-10 place-items-center rounded-full bg-[#1A1A1A]/80 shadow-lg hover:bg-[#1A1A1A] z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200"
-          >
-            <ChevronLeft className="h-5 w-5 text-white" />
-          </button>
-        )}
-
-        {progress < 99 && (
-          <button
-            type="button"
-            onClick={scrollNext}
-            aria-label="Scroll right"
-            className="hidden md:grid absolute top-1/2 -translate-y-1/2 right-2 h-10 w-10 place-items-center rounded-full bg-[#1A1A1A]/80 shadow-lg hover:bg-[#1A1A1A] z-10 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 transition-opacity duration-200"
-          >
-            <ChevronRight className="h-5 w-5 text-white" />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={scrollNext}
+          disabled={progress >= 99}
+          aria-label="Scroll right"
+          className={cn(
+            'hidden md:grid shrink-0 h-10 w-10 place-items-center rounded-full bg-[#1A1A1A]/80 shadow-lg transition hover:bg-[#1A1A1A] disabled:pointer-events-none disabled:bg-[#1A1A1A]/40',
+            arrowReveal,
+          )}
+        >
+          <ChevronRight className="h-5 w-5 text-white" />
+        </button>
       </div>
     </div>
   )

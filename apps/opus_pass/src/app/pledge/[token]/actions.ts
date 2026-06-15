@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { createDashboardClient } from '@/lib/dashboard/supabase'
+import { createNotification } from '@/lib/dashboard/notifications'
 
 export interface PublicPledgeInput {
   full_name: string
@@ -65,6 +66,14 @@ export async function submitPublicPledge(token: string, input: PublicPledgeInput
     notes: input.message?.trim() || null,
   })
   if (pledgeErr) throw new Error(pledgeErr.message)
+
+  await createNotification({
+    userId: owner.id,
+    type: 'pledge_received',
+    title: `${cleanName} pledged a contribution`,
+    body: `TZS ${amount.toLocaleString('en-US')}${input.promised_date ? ` · by ${input.promised_date}` : ''}`,
+    href: '/my/dashboard/pledges',
+  })
 
   revalidatePath('/my/dashboard/pledges')
   revalidatePath('/my/dashboard/guests')
