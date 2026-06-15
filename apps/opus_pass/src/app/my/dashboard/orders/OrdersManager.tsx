@@ -36,7 +36,7 @@ const GREEN_PILL = 'bg-[#9FE870]/25 text-[#3f6b1f]'
 function tierPillClass(item: StoredOrderItem): string {
   const key = (item.tierId ?? item.tier ?? '').toLowerCase()
   if (key === 'classic') return 'bg-[#EFE3FA] text-[#6B4E8C]'
-  if (key === 'signature') return 'bg-[#F5EACF] text-[#8A6B1E]'
+  if (key === 'elegant' || key === 'signature') return 'bg-[#F5EACF] text-[#8A6B1E]'
   return 'bg-[#E1E8F0] text-[#475569]'
 }
 

@@ -285,7 +285,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                     const pill =
                       key === 'classic'
                         ? 'bg-[#EFE3FA] text-[#6B4E8C]'
-                        : key === 'signature'
+                        : key === 'elegant' || key === 'signature'
                           ? 'bg-[#F5EACF] text-[#8A6B1E]'
                           : 'bg-gray-100 text-gray-700'
                     return (

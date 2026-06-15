@@ -221,9 +221,9 @@ function financeVerificationEmail(order: OrderRow): string {
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#F4FBF6;border:1px solid #CDE7D6;border-radius:12px;">
           <tr><td style="padding:18px 20px 8px;">
             <div class="lbl" style="color:#2D6A4F;margin-bottom:10px;">Check these against your statement</div>
-            <div style="font-size:13px;color:#8A8278;margin-bottom:2px;">Amount paid</div>
+            <div style="font-size:13px;color:#8A8278;margin-bottom:2px;">Order total to confirm</div>
             <div class="hero-amt display" style="font-size:38px;font-weight:700;color:#1A1A1A;line-height:1;margin-bottom:4px;">${escapeHtml(amount)}</div>
-            <div style="font-size:12px;color:#8A8278;">Expected for this order: <strong style="color:#2D6A4F;">${escapeHtml(amount)}</strong> &nbsp;✓ matches</div>
+            <div style="font-size:12px;color:#8A8278;">Confirm the customer paid this exact amount before approving.</div>
           </td></tr>
           <tr><td style="padding:6px 20px 18px;">
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>

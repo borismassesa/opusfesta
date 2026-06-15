@@ -63,7 +63,7 @@ function formatPaidOn(iso: string): string {
 function tierPillColors(item: StoredOrder['items'][number]): { bg: string; fg: string } {
   const key = (item.tierId ?? item.tier ?? '').toLowerCase()
   if (key === 'classic') return { bg: '#EFE3FA', fg: '#6B4E8C' }
-  if (key === 'signature') return { bg: '#F5EACF', fg: '#8A6B1E' }
+  if (key === 'elegant' || key === 'signature') return { bg: '#F5EACF', fg: '#8A6B1E' }
   return { bg: '#f3f4f6', fg: '#374151' }
 }
 
