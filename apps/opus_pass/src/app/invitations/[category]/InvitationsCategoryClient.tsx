@@ -11,12 +11,15 @@ export default function InvitationsCategoryClient({
   category,
   categories,
   products: allProducts,
+  fromGuestPrice,
   promoBanner,
   styleStrip,
 }: {
   category: InvitationCategory
   categories: InvitationCategory[]
   products: CatalogProduct[]
+  /** Lowest per-guest package price — keeps card pricing identical to the main catalog. */
+  fromGuestPrice?: number
   promoBanner: InvitationsPromoBannerContent
   styleStrip: InvitationsStyleStripContent
 }) {
@@ -33,6 +36,7 @@ export default function InvitationsCategoryClient({
   return (
     <InvitationsCatalogClient
       products={products}
+      fromGuestPrice={fromGuestPrice}
       title={category.label}
       subtitle={category.subtitle}
       promoBanner={promoBanner}

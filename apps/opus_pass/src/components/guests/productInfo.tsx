@@ -43,6 +43,9 @@ export function ProductInfo({
   const unitWas = product.priceWas
     ? Math.round(product.priceWas / PACK_QTY / 10) * 10
     : undefined
+  // Treat a 0 / missing package price as absent so the digital branch never
+  // renders "From TZS 0" — it falls back to the per-design price instead.
+  const perGuest = fromGuestPrice && fromGuestPrice > 0 ? fromGuestPrice : undefined
 
   return (
     <>
@@ -65,10 +68,10 @@ export function ProductInfo({
       {product.digitalUnitPrice ? (
         <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
           <span className="text-[15px] sm:text-[16px] font-bold text-[#1A1A1A]">
-            From TZS {(fromGuestPrice ?? product.digitalUnitPrice).toLocaleString('en-US')}
+            From TZS {(perGuest ?? product.digitalUnitPrice).toLocaleString('en-US')}
           </span>
           <span className="text-[11px] text-[#1A1A1A]/60">
-            {fromGuestPrice ? 'per guest' : 'per design'}
+            {perGuest ? 'per guest' : 'per design'}
           </span>
         </div>
       ) : (
