@@ -2,7 +2,6 @@ import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
 import { PreviewBanner } from '@/components/PreviewBanner'
 import { loadInvitationsFeaturesContent } from '@/lib/cms/invitations-features'
-import { loadInvitationsFeaturedSuiteContent } from '@/lib/cms/invitations-featured-suite'
 import { loadInvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
 import {
   loadInvitationsEditorsPicksContent,
@@ -32,7 +31,6 @@ export default async function InvitationsLandingPage() {
     { isEnabled: isDraft },
     categories,
     features,
-    featuredSuite,
     faqs,
     editorsPicksTemplate,
     products,
@@ -41,7 +39,6 @@ export default async function InvitationsLandingPage() {
     draftMode(),
     loadInvitationCategoriesList(),
     loadInvitationsFeaturesContent(),
-    loadInvitationsFeaturedSuiteContent(),
     loadInvitationsFaqsContent(),
     loadInvitationsEditorsPicksContent(),
     loadInvitationProducts(),
@@ -71,7 +68,6 @@ export default async function InvitationsLandingPage() {
       <InvitationsLandingClient
         styleStrip={styleStrip}
         features={features}
-        featuredSuite={featuredSuite}
         faqs={faqs}
         editorsPicks={editorsPicks}
         fromGuestPrice={fromGuestPrice}

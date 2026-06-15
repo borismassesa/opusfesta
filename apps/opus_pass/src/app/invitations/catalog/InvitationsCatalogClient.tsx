@@ -186,7 +186,7 @@ export default function InvitationsCatalogClient({
 
       {/* Product grid (full-width) */}
       <div className="px-4 sm:px-6">
-        <div className="mx-auto max-w-7xl pt-14 sm:pt-20">
+        <div className="mx-auto max-w-7xl pt-14 sm:pt-20 pb-20 sm:pb-28">
           {/* Search + filter toolbar — search and all filters share one row */}
           <div className="mb-6 sm:mb-8">
             <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">

@@ -7,7 +7,6 @@ import { ProductInfo, type Product } from '@/components/guests/productInfo'
 import { FAQItem } from './FAQAccordion'
 import type { InvitationsStyleStripContent } from '@/lib/cms/invitations-style-strip'
 import type { InvitationsFeaturesContent, InvitationsFeatureCard } from '@/lib/cms/invitations-features'
-import type { InvitationsFeaturedSuiteContent } from '@/lib/cms/invitations-featured-suite'
 import type { InvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
 import type {
   InvitationsEditorsPicksContent,
@@ -22,7 +21,6 @@ import type {
 export default function InvitationsLandingClient({
   styleStrip,
   features,
-  featuredSuite,
   faqs,
   editorsPicks,
   fromGuestPrice,
@@ -30,7 +28,6 @@ export default function InvitationsLandingClient({
 }: {
   styleStrip: InvitationsStyleStripContent
   features: InvitationsFeaturesContent
-  featuredSuite: InvitationsFeaturedSuiteContent
   faqs: InvitationsFaqsContent
   editorsPicks: InvitationsEditorsPicksContent
   /** Lowest per-guest package price — shown as the digital "from" anchor on real products. */
@@ -53,7 +50,6 @@ export default function InvitationsLandingClient({
         </div>
       </section>
       <SectionDivider />
-      <FeaturedSuite content={featuredSuite} />
       {testimonials}
       <FAQs content={faqs} />
     </div>
@@ -66,7 +62,7 @@ export default function InvitationsLandingClient({
 
 function SuiteHero({ items }: { items: InvitationsStyleStripContent['items'] }) {
   return (
-    <section className="bg-white px-4 pb-2 pt-8 sm:px-6 sm:pt-12 lg:pt-16">
+    <section className="bg-white px-4 pb-10 pt-8 sm:px-6 sm:pb-14 sm:pt-12 lg:pb-16 lg:pt-16">
       <div className="mx-auto max-w-7xl text-center">
         <h2 className="font-serif text-2xl font-medium text-gray-900 sm:text-3xl lg:text-4xl">
           Invitations for Every Moment
@@ -232,84 +228,6 @@ function FeatureVisualEnvelope() {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  FEATURED SUITE — celebrity-couple editorial spread (copy + flat-lay)
-// ─────────────────────────────────────────────────────────────────────────────
-
-function FeaturedSuite({ content }: { content: InvitationsFeaturedSuiteContent }) {
-  return (
-    <section className="px-4 sm:px-6 pb-20 sm:pb-28 md:pb-32">
-      <div className="mx-auto max-w-7xl pt-16 sm:pt-20 md:pt-24">
-        <div className="relative overflow-hidden rounded-md bg-[#F5EFE3] grid grid-cols-1 md:grid-cols-2">
-          {/* Photo — left on desktop, top on mobile */}
-          <div className="relative aspect-[4/3] md:aspect-auto md:min-h-[520px]">
-            <Image
-              src={content.image_url}
-              alt=""
-              fill
-              sizes="(min-width: 768px) 50vw, 100vw"
-              className="object-cover"
-            />
-            {/* Quiet duotone wash for warmth + contrast */}
-            <div
-              aria-hidden
-              className="absolute inset-0 pointer-events-none mix-blend-multiply"
-              style={{ background: 'linear-gradient(135deg, rgba(245,239,227,0.10) 0%, rgba(122,31,43,0.10) 100%)' }}
-            />
-          </div>
-
-          {/* Copy panel */}
-          <div className="relative px-6 py-10 sm:px-10 sm:py-14 md:px-14 md:py-16 lg:px-16 flex flex-col justify-center">
-            {/* Sage tick-mark accent — top-right of panel */}
-            <span aria-hidden className="absolute right-6 top-8 hidden md:flex flex-col gap-1.5">
-              <span className="h-px w-14 bg-[#5C6B4D]" />
-              <span className="h-px w-9 bg-[#5C6B4D]/70" />
-              <span className="h-px w-5 bg-[#5C6B4D]/40" />
-            </span>
-
-            {/* Clamp tracks the viewport so each CMS line stays a single line on
-                narrow phones instead of orphaning its last word */}
-            <h2 className="text-[clamp(1.35rem,6.8vw,2rem)] sm:text-[2.6rem] md:text-5xl lg:text-[3.2rem] font-black uppercase tracking-tighter leading-[1.05] sm:leading-[1] text-[#1A1A1A]">
-              {content.headline_line_1}<br />
-              {content.headline_line_2}
-            </h2>
-
-            <p className="mt-6 text-[15px] sm:text-[16px] text-[#1A1A1A]/75 leading-relaxed max-w-md">
-              {content.body}
-            </p>
-
-            <div className="mt-8 flex flex-wrap items-center gap-x-5 gap-y-3">
-              <Link
-                href={content.primary_cta_href}
-                className="inline-flex items-center rounded-full bg-[var(--accent)] hover:bg-[var(--accent-hover)] text-[var(--on-accent)] px-7 py-3.5 text-[13px] font-extrabold uppercase tracking-[0.12em]"
-              >
-                {content.primary_cta_label}
-              </Link>
-              <Link
-                href={content.secondary_cta_href}
-                className="inline-flex items-center gap-1.5 text-[13px] font-semibold text-[#1A1A1A] underline underline-offset-[6px] decoration-[#1A1A1A]/40 hover:decoration-[#1A1A1A]"
-              >
-                {content.secondary_cta_label} <span aria-hidden>→</span>
-              </Link>
-            </div>
-
-            {/* Trust strip */}
-            <div className="mt-8 pt-6 border-t border-[#1A1A1A]/10 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-[11px] text-[#1A1A1A]/60">
-              {content.trust_strip.map((item, i) => (
-                <span key={i} className="flex items-center gap-x-5">
-                  <span>{item}</span>
-                  {i < content.trust_strip.length - 1 && (
-                    <span aria-hidden className="text-[#1A1A1A]/25">·</span>
-                  )}
-                </span>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-  )
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  EDITORS' PICKS — 4 editorial rows; alternating title + 3 picks per row
