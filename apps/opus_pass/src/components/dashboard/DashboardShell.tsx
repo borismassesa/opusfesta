@@ -16,7 +16,6 @@ import {
   Receipt,
   Settings,
   Menu,
-  X,
   ExternalLink,
   PanelLeftClose,
   PanelLeftOpen,
@@ -182,22 +181,24 @@ export default function DashboardShell({
       {open ? (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/30" onClick={() => setOpen(false)} />
-          <div className="absolute inset-y-0 left-0 w-72 bg-white px-4 py-6 shadow-xl">
+          <div className="absolute inset-y-0 left-0 flex w-72 flex-col bg-white px-4 py-6 shadow-xl">
             <div className="flex items-center justify-between">
               <Logo className="text-xl" />
               <button
                 type="button"
                 onClick={() => setOpen(false)}
                 aria-label="Close menu"
-                className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-black/[0.05]"
+                title="Close menu"
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-[#1A1A1A]/45 transition-colors hover:bg-black/[0.05] hover:text-[#1A1A1A]"
               >
-                <X className="h-5 w-5" />
+                <PanelLeftClose className="h-[18px] w-[18px]" />
               </button>
             </div>
             {coupleName && coupleName !== 'The Couple' ? (
               <p className="mt-1 text-xs text-[#1A1A1A]/45">{coupleName}</p>
             ) : null}
-            <div className="mt-6">
+            {/* Nav grows to fill, pushing the account block to the bottom */}
+            <div className="mt-6 flex-1 overflow-y-auto">
               <NavLinks onNavigate={() => setOpen(false)} />
             </div>
             <div className="mt-6 border-t border-black/[0.06] pt-4">
