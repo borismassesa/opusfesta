@@ -106,6 +106,11 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
     }
   }
 
+  // The email already belongs to a row provisioned WITHOUT a Clerk identity
+  // (e.g. the marketplace app pre-created it). Adopt it for this Clerk user —
+  // but ONLY when its clerk_id is still null. The `.is('clerk_id', null)` guard
+  // means we never rebind a row that already belongs to another Clerk account,
+  // which would sever that owner from their data (events, guests, vendor row).
   const isEmailConflict =
     (error as { code?: string } | null)?.code === '23505' &&
     (error?.message?.includes('email') ?? false)
@@ -114,6 +119,7 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
       .from('users')
       .update({ clerk_id: userId, updated_at: new Date().toISOString() })
       .eq('email', email)
+      .is('clerk_id', null)
       .select('id, clerk_id, email, name')
       .maybeSingle<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
     if (byEmail) {
@@ -123,6 +129,23 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
         email: byEmail.email ?? '',
         name: byEmail.name,
       }
+    }
+  }
+
+  // Last resort: a concurrent request may have provisioned (or adopted) the row
+  // under this clerk_id while we were racing. One final read before giving up,
+  // so a lost race redirects to sign-in only when the row genuinely isn't there.
+  const { data: finalByClerk } = await supabase
+    .from('users')
+    .select('id, clerk_id, email, name')
+    .eq('clerk_id', userId)
+    .maybeSingle<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
+  if (finalByClerk) {
+    return {
+      id: finalByClerk.id,
+      clerkId: finalByClerk.clerk_id,
+      email: finalByClerk.email ?? '',
+      name: finalByClerk.name,
     }
   }
 
