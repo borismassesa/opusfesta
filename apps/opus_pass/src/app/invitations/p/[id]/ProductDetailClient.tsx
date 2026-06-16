@@ -107,8 +107,8 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
   const heroImage = product.imageUrl
   const designViews = product.designs ?? []
 
-  // Number of cards (= guests). Minimum 100; pricing is per-guest × this count.
-  const MIN_CARDS = 100
+  // Number of cards (= guests). Minimum 50; pricing is per-guest × this count.
+  const MIN_CARDS = 50
   const [digitalQty, setDigitalQty] = useState<number>(MIN_CARDS)
 
   // Package tier (Essential / Classic / Elegant / Signature) — price is per guest × guest count,
@@ -417,7 +417,7 @@ export default function ProductDetailClient({ product, allProducts, packages }: 
                 })}
               </div>
 
-              {/* Number of cards (= guests); minimum 100. The label column is
+              {/* Number of cards (= guests); minimum 50. The label column is
                   flex-1 min-w-0 so its text wraps on phones while the stepper
                   stays beside it on the same row, never clipped off-screen. */}
               <div className="flex items-center justify-between gap-3">

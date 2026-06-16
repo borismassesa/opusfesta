@@ -6,7 +6,6 @@ import { InvitationVisual } from '@/components/guests/InvitationVisual'
 import { ProductInfo, type Product } from '@/components/guests/productInfo'
 import { FAQItem } from './FAQAccordion'
 import type { InvitationsStyleStripContent } from '@/lib/cms/invitations-style-strip'
-import type { InvitationsFeaturesContent, InvitationsFeatureCard } from '@/lib/cms/invitations-features'
 import type { InvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
 import type {
   InvitationsEditorsPicksContent,
@@ -20,14 +19,12 @@ import type {
 
 export default function InvitationsLandingClient({
   styleStrip,
-  features,
   faqs,
   editorsPicks,
   fromGuestPrice,
   testimonials,
 }: {
   styleStrip: InvitationsStyleStripContent
-  features: InvitationsFeaturesContent
   faqs: InvitationsFaqsContent
   editorsPicks: InvitationsEditorsPicksContent
   /** Lowest per-guest package price — shown as the digital "from" anchor on real products. */
@@ -38,17 +35,6 @@ export default function InvitationsLandingClient({
     <div className="bg-white text-[#1A1A1A]">
       <SuiteHero items={styleStrip.items} />
       <EditorsPicks rows={editorsPicks.rows} fromGuestPrice={fromGuestPrice} />
-      <SectionDivider />
-      <section className="px-4 sm:px-6">
-        <div className="mx-auto max-w-7xl pt-10 sm:pt-14">
-          <div className="text-center mb-8 sm:mb-10">
-            <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-gray-900">
-              {features.heading}
-            </h2>
-          </div>
-          <FeatureRow cards={features.cards} />
-        </div>
-      </section>
       <SectionDivider />
       {testimonials}
       <FAQs content={faqs} />
@@ -121,113 +107,6 @@ function SectionDivider() {
     </div>
   )
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-//  3 PEACH FEATURE CARDS
-// ─────────────────────────────────────────────────────────────────────────────
-
-function renderFeatureVisual(card: InvitationsFeatureCard) {
-  if (card.image_url) {
-    return (
-      <div className="relative h-full w-full overflow-hidden rounded-md">
-        <Image
-          src={card.image_url}
-          alt={card.title}
-          fill
-          sizes="(min-width: 768px) 33vw, 100vw"
-          className="object-cover"
-        />
-      </div>
-    )
-  }
-  if (card.visual === 'phone') return <FeatureVisualPhone />
-  if (card.visual === 'envelope') return <FeatureVisualEnvelope />
-  return <FeatureVisualInvitations />
-}
-
-function FeatureRow({ cards }: { cards: InvitationsFeatureCard[] }) {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
-      {cards.map((c) => (
-        <div key={c.id} className="bg-[#FCE9C2] rounded-md p-6 sm:p-7 flex flex-col items-center text-center">
-          <h3 className="text-[18px] sm:text-[20px] font-extrabold tracking-tight text-[#1A1A1A]">{c.title}</h3>
-          <p className="mt-3 text-[13px] text-[#1A1A1A]/75 leading-relaxed max-w-[280px]">{c.body}</p>
-          <Link href={c.cta_href} className="mt-3 text-[13px] font-bold text-[#1A1A1A] underline underline-offset-2 hover:text-[var(--accent-hover)]">
-            {c.cta_label}
-          </Link>
-          <div className="mt-7 sm:mt-9 w-full h-[180px] sm:h-[200px]">
-            {renderFeatureVisual(c)}
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function FeatureVisualInvitations() {
-  // Stack of 3 fanned invitation mocks
-  return (
-    <div className="relative h-full w-full">
-      <div className="absolute left-1/2 top-[8%] -translate-x-1/2 w-[44%] aspect-[3/4] rotate-[-8deg] shadow-md">
-        <div className="absolute inset-0"><InvitationVisual treatment="floral-border" /></div>
-      </div>
-      <div className="absolute left-1/2 top-[6%] -translate-x-1/2 w-[44%] aspect-[3/4] rotate-[3deg] shadow-md ml-[10%]">
-        <div className="absolute inset-0"><InvitationVisual treatment="navy-gold" /></div>
-      </div>
-      <div className="absolute left-1/2 top-[4%] -translate-x-1/2 w-[44%] aspect-[3/4] rotate-[-2deg] shadow-md -ml-[8%]">
-        <div className="absolute inset-0"><InvitationVisual treatment="classic-serif" /></div>
-      </div>
-    </div>
-  )
-}
-
-function FeatureVisualPhone() {
-  // CSS phone frame showing wedding website preview
-  return (
-    <div className="relative h-full w-full flex justify-center">
-      <div className="relative w-[120px] sm:w-[130px] h-full rounded-[18px] bg-[#1A1A1A] p-[5px] shadow-lg">
-        <div className="relative h-full w-full overflow-hidden rounded-[14px] bg-white">
-          <div className="absolute top-[4px] left-1/2 -translate-x-1/2 w-[40px] h-[12px] bg-[#1A1A1A] rounded-b-md z-10" />
-          <div className="relative h-[55%] bg-[#A6B89A]/40">
-            <Image src="/assets/images/authentic_couple.jpg" alt="" fill sizes="130px" className="object-cover" />
-          </div>
-          <div className="p-2.5 text-center">
-            <p className="font-serif text-[11px] text-[#1A1A1A] leading-tight">Amani &amp; Neema</p>
-            <p className="mt-1 text-[7px] uppercase tracking-[0.18em] text-gray-400">22 · 08 · 2026</p>
-            <button className="mt-2 inline-block text-[7px] font-extrabold uppercase tracking-[0.18em] text-white bg-[#1A1A1A] rounded-full px-2.5 py-1">
-              RSVP
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function FeatureVisualEnvelope() {
-  // Cream envelope with handwritten-style address
-  return (
-    <div className="relative h-full w-full flex items-center justify-center">
-      <div className="relative w-[80%] aspect-[3/2] bg-[#F5EFE3] rounded-sm shadow-md overflow-hidden">
-        {/* Envelope flap */}
-        <div className="absolute inset-x-0 top-0 h-[55%]" style={{ background: 'linear-gradient(180deg, #FBF7F2 0%, #F5EFE3 100%)', clipPath: 'polygon(0 0, 100% 0, 50% 100%)' }} />
-        {/* Address */}
-        <div className="absolute left-[12%] bottom-[16%] right-[18%] text-left">
-          <p className="font-serif italic text-[10px] sm:text-[11px] text-[#1A1A1A] leading-snug">
-            The Mwakalinga Family<br />
-            Plot 14, Mikocheni Road<br />
-            Dar es Salaam
-          </p>
-        </div>
-        {/* Stamp */}
-        <div className="absolute top-2 right-2 w-[28px] h-[34px] bg-white border border-gray-200 rounded-sm flex items-center justify-center">
-          <span className="text-[7px] font-bold text-[#7A1F2B]">TZ</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  EDITORS' PICKS — 4 editorial rows; alternating title + 3 picks per row
@@ -408,7 +287,7 @@ function PickCard({
 }) {
   return (
     <div
-      className="group relative aspect-square overflow-hidden rounded-sm"
+      className="group relative aspect-[3/4] overflow-hidden rounded-sm bg-[#FAF7F2]"
       style={background ? { backgroundColor: background } : undefined}
     >
       {children}

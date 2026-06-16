@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useState } from 'react'
+import { useState, type ReactNode } from 'react'
 import { Search } from 'lucide-react'
 import { PRODUCT_CATEGORIES } from '@/lib/cms/opus-pass-invitations-products'
 
@@ -10,9 +10,12 @@ const BASE = '/cms/opus-pass/invitations/products'
 export default function ProductsToolbar({
   initialQ,
   initialCategory,
+  actions,
 }: {
   initialQ: string
   initialCategory: string
+  /** Right-aligned slot (e.g. the "New card" button) shown inside the toolbar. */
+  actions?: ReactNode
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -67,6 +70,7 @@ export default function ProductsToolbar({
           Clear
         </button>
       )}
+      {actions && <div className="ml-auto shrink-0">{actions}</div>}
     </div>
   )
 }

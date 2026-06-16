@@ -100,7 +100,7 @@ function DeleteButton({ name, onConfirm }: { name: string; onConfirm: () => void
   )
 }
 
-// Editable guest count — clean shadcn stepper (min 100, step 10). Free typing allowed.
+// Editable guest count — clean shadcn stepper (min 50, step 10). Free typing allowed.
 function GuestStepper({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   const [draft, setDraft] = useState<string | null>(null)
   const displayValue = draft ?? String(value)

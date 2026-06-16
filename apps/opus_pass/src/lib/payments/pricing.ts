@@ -12,7 +12,7 @@ import type { InitiateItem } from './types'
 //
 // Mirrors CartProvider.MIN_GUESTS — the product page won't let guests go below
 // this, so the server enforces the same floor.
-const MIN_GUESTS = 100
+const MIN_GUESTS = 50
 
 export type PricedItem = InitiateItem & { total: number }
 

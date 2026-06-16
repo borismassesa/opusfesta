@@ -682,17 +682,16 @@ function VendorCard({
   const inProgress = IN_PROGRESS_STATUSES.has(vendor.status)
   const suspended = vendor.status === 'suspended'
 
-  // Warm-brutalist surfaces with a hard (no-blur) offset shadow. State drives
-  // the treatment so the grid is scannable: in-progress = dashed/flat,
-  // suspended = muted, everything else (live + in-queue) = neutral gray
-  // border with a soft lavender offset shadow + lavender hover accent.
-  // Status itself is read from the pill, so we keep one calm treatment across
-  // the grid rather than colour-coding live vs. queued.
+  // Flat surfaces — a border carries the card, no drop shadow. State drives the
+  // treatment so the grid is scannable: in-progress = dashed/flat, suspended =
+  // muted, everything else (live + in-queue) = neutral gray border with a
+  // lavender hover accent. Status itself is read from the pill, so we keep one
+  // calm treatment across the grid rather than colour-coding live vs. queued.
   const surface = inProgress
     ? 'border-2 border-dashed border-gray-300 bg-gray-50/50 hover:border-[#C9A0DC]'
     : suspended
       ? 'border-2 border-gray-200 bg-gray-50/70 hover:border-gray-300'
-      : 'border-2 border-gray-200 bg-white shadow-[3px_3px_0_0_#EFE7F3] hover:-translate-x-0.5 hover:-translate-y-0.5 hover:border-[#C9A0DC] hover:shadow-[5px_5px_0_0_#C9A0DC]'
+      : 'border-2 border-gray-200 bg-white hover:border-[#C9A0DC]'
 
   const reviewHref = `/operations/vendors/${vendor.id}`
 
@@ -732,11 +731,11 @@ function VendorCard({
             {vendor.businessName}
           </p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
-            <span className="inline-flex items-center rounded-full bg-[#F0DFF6] px-2 py-0.5 text-[11px] font-semibold text-[#5B2D8E]">
+            <span className="inline-flex items-center whitespace-nowrap rounded-full bg-[#F0DFF6] px-2 py-0.5 text-[11px] font-semibold text-[#5B2D8E]">
               {titleCaseCategory(vendor.category) || 'Uncategorized'}
             </span>
             {inProgress && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-dashed border-[#C9A0DC] px-2 py-0.5 text-[11px] font-semibold text-[#7E5896]">
+              <span className="inline-flex items-center gap-1 whitespace-nowrap rounded-full border border-dashed border-[#C9A0DC] px-2 py-0.5 text-[11px] font-semibold text-[#7E5896]">
                 {vendor.documentsTotal > 0
                   ? `Docs ${vendor.documentsVerified}/${vendor.documentsTotal}`
                   : 'Awaiting docs'}
@@ -758,8 +757,9 @@ function VendorCard({
         </span>
       </div>
 
-      {/* Footer: demoted ID caption + hover quick-actions */}
-      <div className="mt-2.5 flex items-center justify-between gap-2">
+      {/* Footer: demoted ID caption + hover quick-actions. mt-auto pins it to the
+          bottom so it stays aligned across cards of differing content height. */}
+      <div className="mt-auto flex items-center justify-between gap-2 pt-2.5">
         <span className="font-mono text-[10px] font-medium uppercase tracking-wider text-gray-400 tabular-nums">
           {vendor.publicId}
         </span>

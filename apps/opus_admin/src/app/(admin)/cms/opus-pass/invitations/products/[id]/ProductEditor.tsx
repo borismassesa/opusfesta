@@ -59,11 +59,16 @@ export default function ProductEditor({
 
     startTransition(async () => {
       try {
-        await upsertInvitationProduct(record)
+        const res = await upsertInvitationProduct(record)
+        if (!res.ok) {
+          setError(res.error)
+          return
+        }
         router.push(LIST)
         router.refresh()
       } catch (err) {
-        setError(err instanceof Error ? err.message : String(err))
+        // Auth / network failures still throw; DB errors come back via res.error.
+        setError(err instanceof Error ? err.message : 'Could not save the card. Please try again.')
       }
     })
   }
