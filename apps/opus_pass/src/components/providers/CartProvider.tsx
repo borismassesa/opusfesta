@@ -30,7 +30,7 @@ export type CartItem = {
 }
 
 /** Minimum guest count (matches the product page). */
-export const MIN_GUESTS = 100
+export const MIN_GUESTS = 50
 
 /**
  * Canonical line summary, e.g. "Signature · 120 guests · On-site attendant".
