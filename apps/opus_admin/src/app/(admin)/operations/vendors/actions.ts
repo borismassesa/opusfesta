@@ -11,7 +11,7 @@ import {
 } from '@/lib/vendor-status-email'
 
 export type ActionResult =
-  | { ok: true }
+  | { ok: true; warning?: string }
   | {
       ok: false
       error: string
@@ -1578,12 +1578,14 @@ export type VendorDeletionImpactResult =
 export async function getVendorDeletionImpact(
   vendorId: string
 ): Promise<VendorDeletionImpactResult> {
-  const { userId } = await auth()
-  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  // Gate via requireAdminRole, which resolves the caller across all three auth
+  // paths — Clerk session, temp shared-passcode access, and DISABLE_ADMIN_AUTH
+  // dev. A raw Clerk `userId` check wrongly rejects temp/dev admins (who have an
+  // owner role but no Clerk session) with "Sign in first".
   try {
     await requirePermission('vendor.moderate')
   } catch {
-    return { ok: false, reason: 'unauth', error: "You don't have permission for that." }
+    return { ok: false, reason: 'unauth', error: 'Sign in as an admin first.' }
   }
 
   const admin = createSupabaseAdminClient()
@@ -1758,20 +1760,24 @@ const CLERK_API_BASE = 'https://api.clerk.com/v1'
  * admin-created vendors whose users row was never linked).
  *
  * Returns `{ ok: true }` when there's nothing to remove (no login exists) or
- * the user is already gone (404) — those are success states. Returns an error
- * only when the secret is missing or Clerk rejects the call, so the caller can
- * abort before deleting DB rows and leaving the email stuck as "taken".
+ * the user is already gone (404) — those are success states.
+ *
+ * When the secret is NOT configured, returns `{ ok: true, warning }` rather than
+ * an error: a missing platform config shouldn't block a core admin operation, so
+ * the caller proceeds with the DB deletion and surfaces the warning (the email
+ * may stay reserved in the vendors portal until the key is set). A genuine Clerk
+ * rejection still returns `{ ok: false }` so the caller can abort.
  */
 async function deleteVendorClerkLogin(opts: {
   clerkId: string | null
   email: string | null
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<{ ok: boolean; error?: string; warning?: string }> {
   const secret = process.env.VENDORS_CLERK_SECRET_KEY?.trim()
   if (!secret) {
     return {
-      ok: false,
-      error:
-        'Vendor login deletion is not configured. Set VENDORS_CLERK_SECRET_KEY (the vendors-portal Clerk secret) on the admin app, then try again.',
+      ok: true,
+      warning:
+        'The vendor record was deleted, but their portal sign-in login was NOT removed — VENDORS_CLERK_SECRET_KEY (the vendors-portal Clerk secret) is not configured on the admin app. That email may stay reserved in the vendors portal until the key is set and the login is cleared.',
     }
   }
   const headers = { Authorization: `Bearer ${secret}` }
@@ -1841,12 +1847,14 @@ export async function deleteVendor(
   vendorId: string,
   confirmName: string
 ): Promise<ActionResult> {
-  const { userId } = await auth()
-  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  // Gate via requireAdminRole, which resolves the caller across all three auth
+  // paths — Clerk session, temp shared-passcode access, and DISABLE_ADMIN_AUTH
+  // dev. A raw Clerk `userId` check wrongly rejects temp/dev admins (who have an
+  // owner role but no Clerk session) with "Sign in first".
   try {
     await requirePermission('vendor.moderate')
   } catch {
-    return { ok: false, reason: 'unauth', error: "You don't have permission for that." }
+    return { ok: false, reason: 'unauth', error: 'Sign in as an admin first.' }
   }
   if (!vendorId) {
     return { ok: false, reason: 'invalid', error: 'Missing vendor id.' }
@@ -1902,9 +1910,10 @@ export async function deleteVendor(
     }
   }
 
-  // Remove the Clerk login first. If this can't happen, abort before touching
-  // any DB rows — otherwise we'd delete the vendor but leave the email stuck
-  // as "taken", which is the exact problem this feature exists to fix.
+  // Remove the Clerk login first. A genuine Clerk failure aborts before we touch
+  // any DB rows — otherwise we'd delete the vendor but leave the email stuck as
+  // "taken". A missing secret is NOT a failure: it returns ok with a warning, so
+  // the deletion still proceeds and we surface the warning to the admin.
   const clerkRes = await deleteVendorClerkLogin({ clerkId, email: loginEmail })
   if (!clerkRes.ok) {
     return {
@@ -1942,7 +1951,7 @@ export async function deleteVendor(
 
   revalidatePath('/operations/vendors')
   revalidatePath(`/operations/vendors/${vendorId}`)
-  return { ok: true }
+  return { ok: true, warning: clerkRes.warning }
 }
 
 /**
@@ -1971,12 +1980,14 @@ export async function mergeVendors(input: {
   loserId: string
   confirmName: string
 }): Promise<ActionResult> {
-  const { userId } = await auth()
-  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  // Gate via requireAdminRole, which resolves the caller across all three auth
+  // paths — Clerk session, temp shared-passcode access, and DISABLE_ADMIN_AUTH
+  // dev. A raw Clerk `userId` check wrongly rejects temp/dev admins (who have an
+  // owner role but no Clerk session) with "Sign in first".
   try {
     await requirePermission('vendor.moderate')
   } catch {
-    return { ok: false, reason: 'unauth', error: "You don't have permission for that." }
+    return { ok: false, reason: 'unauth', error: 'Sign in as an admin first.' }
   }
 
   const { survivorId, loserId, confirmName } = input
@@ -2073,6 +2084,7 @@ export async function mergeVendors(input: {
   const sharesOwner =
     (loserLogin.clerkId != null && loserLogin.clerkId === survivorLogin.clerkId) ||
     (loser.user_id != null && loser.user_id === survivor.user_id)
+  let loginWarning: string | undefined
   if (!sharesOwner && loserLogin.clerkId) {
     const clerkRes = await deleteVendorClerkLogin({
       clerkId: loserLogin.clerkId,
@@ -2087,6 +2099,7 @@ export async function mergeVendors(input: {
           ' The records were merged; only the duplicate login removal failed.',
       }
     }
+    loginWarning = clerkRes.warning
   }
 
   // 3) Delete the now child-less loser row. NOT its storage — those files back
@@ -2119,5 +2132,5 @@ export async function mergeVendors(input: {
   // Drop the loser's cached detail route too — its row is gone on success, and
   // if step 3 ever fails mid-way this keeps a stale page from lingering.
   revalidatePath(`/operations/vendors/${loserId}`)
-  return { ok: true }
+  return { ok: true, warning: loginWarning }
 }

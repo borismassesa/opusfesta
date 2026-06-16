@@ -285,6 +285,16 @@ export default function VendorReviewClient(props: VendorReviewProps) {
   const [bannerError, setBannerError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState<VendorTab>('profile')
   const [deleteOpen, setDeleteOpen] = useState(false)
+  // Drives the in-app note prompt (replaces window.prompt) for the optional
+  // message that rides along with Suspend / Request-corrections. `run` receives
+  // the typed note when the admin confirms.
+  const [notePrompt, setNotePrompt] = useState<{
+    title: string
+    label: string
+    placeholder: string
+    confirmLabel: string
+    run: (note: string) => void
+  } | null>(null)
 
   const isApproved = vendor.onboardingStatus === 'active'
   const isSuspended = vendor.onboardingStatus === 'suspended'
@@ -362,16 +372,19 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           {isApproved ? (
             <button
               type="button"
-              onClick={() => {
-                const reason = window.prompt(
-                  'Reason for suspension (optional — included in the notification email to the vendor):',
-                  ''
-                )
-                if (reason === null) return
-                runAction('Suspend', () =>
-                  suspendVendor(vendor.id, reason || undefined)
-                )
-              }}
+              onClick={() =>
+                setNotePrompt({
+                  title: 'Suspend vendor',
+                  label:
+                    'Reason for suspension (optional — included in the notification email to the vendor):',
+                  placeholder: 'e.g. Reported by multiple couples for no-shows…',
+                  confirmLabel: 'Suspend vendor',
+                  run: (note) =>
+                    runAction('Suspend', () =>
+                      suspendVendor(vendor.id, note || undefined)
+                    ),
+                })
+              }
               disabled={pending}
               className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50 transition-colors"
             >
@@ -394,16 +407,19 @@ export default function VendorReviewClient(props: VendorReviewProps) {
             <>
               <button
                 type="button"
-                onClick={() => {
-                  const note = window.prompt(
-                    'What does the vendor need to fix? (optional — included in the email to the vendor):',
-                    ''
-                  )
-                  if (note === null) return
-                  runAction('Request corrections', () =>
-                    requestCorrections(vendor.id, note || undefined)
-                  )
-                }}
+                onClick={() =>
+                  setNotePrompt({
+                    title: 'Request corrections',
+                    label:
+                      'What does the vendor need to fix? (optional — included in the email to the vendor):',
+                    placeholder: 'e.g. The business licence is expired — please re-upload a current one.',
+                    confirmLabel: 'Request corrections',
+                    run: (note) =>
+                      runAction('Request corrections', () =>
+                        requestCorrections(vendor.id, note || undefined)
+                      ),
+                  })
+                }
                 disabled={pending}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50 transition-colors"
               >
@@ -784,6 +800,15 @@ export default function VendorReviewClient(props: VendorReviewProps) {
         businessName={vendor.businessName}
         onDeleted={() => router.push('/operations/vendors')}
       />
+      <NotePromptDialog
+        prompt={notePrompt}
+        pending={pending}
+        onCancel={() => setNotePrompt(null)}
+        onConfirm={(note) => {
+          notePrompt?.run(note)
+          setNotePrompt(null)
+        }}
+      />
       <GlobalSaveBar />
     </div>
     </VendorEditorProvider>
@@ -883,6 +908,10 @@ function DeleteVendorDialog({
   const [impact, setImpact] = useState<VendorDeletionImpact | null>(null)
   const [loadingImpact, setLoadingImpact] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Set when the delete succeeded but the action returned a warning (e.g. the
+  // vendor's portal login couldn't be removed). We hold the dialog open on this
+  // notice so the admin reads it, then "Done" navigates away.
+  const [notice, setNotice] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
   // Reset the form each time the dialog opens, and fetch the impact summary
@@ -892,6 +921,7 @@ function DeleteVendorDialog({
     if (!open) return
     setConfirmText('')
     setError(null)
+    setNotice(null)
     setImpact(null)
     setLoadingImpact(true)
     getVendorDeletionImpact(vendorId).then((res) => {
@@ -925,8 +955,56 @@ function DeleteVendorDialog({
         setError(res.error ?? 'Delete failed.')
         return
       }
+      // Deleted, but the action flagged a caveat (e.g. the portal login wasn't
+      // removed). Hold the dialog open on the notice instead of navigating, so
+      // the admin sees what still needs attention.
+      if (res.warning) {
+        setNotice(res.warning)
+        return
+      }
       onDeleted()
     })
+  }
+
+  // Post-delete notice: the record is already gone, so this is a calm amber
+  // "done, but read this" panel — not the destructive red form — with a single
+  // "Done" action that navigates away.
+  if (notice) {
+    return (
+      <div
+        className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="delete-vendor-notice-title"
+      >
+        <div className="relative w-full max-w-lg rounded-2xl border border-gray-100 bg-white shadow-xl">
+          <header className="flex items-start gap-3 px-6 pt-5 pb-4 border-b border-gray-100">
+            <div className="w-10 h-10 rounded-full bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-5 h-5" strokeWidth={1.75} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h2
+                id="delete-vendor-notice-title"
+                className="text-base font-semibold text-amber-900"
+              >
+                Vendor deleted — one thing to note
+              </h2>
+              <p className="text-xs text-amber-800/90 mt-1 leading-relaxed">{notice}</p>
+            </div>
+          </header>
+          <div className="flex items-center justify-end px-6 py-3 border-t border-gray-100">
+            <button
+              type="button"
+              onClick={onDeleted}
+              autoFocus
+              className="inline-flex items-center text-sm font-semibold px-4 py-2 rounded-full bg-[#7E5896] hover:bg-[#6B4880] text-white shadow-sm transition-colors"
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -1044,6 +1122,105 @@ function DeleteVendorDialog({
               <Trash2 className="w-3.5 h-3.5" />
             )}
             {pending ? 'Deleting…' : 'Permanently delete'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// In-app replacement for window.prompt — collects an optional note (suspension
+// reason / correction request) in a styled modal. Controlled by a `prompt`
+// config object: non-null = open. The textarea resets each time it opens.
+function NotePromptDialog({
+  prompt,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  prompt: {
+    title: string
+    label: string
+    placeholder: string
+    confirmLabel: string
+  } | null
+  pending: boolean
+  onCancel: () => void
+  onConfirm: (note: string) => void
+}) {
+  const [note, setNote] = useState('')
+
+  // Reset the field whenever a new prompt opens.
+  useEffect(() => {
+    if (prompt) setNote('')
+  }, [prompt])
+
+  // Esc cancels (unless a request is mid-flight).
+  useEffect(() => {
+    if (!prompt) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !pending) onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [prompt, pending, onCancel])
+
+  if (!prompt) return null
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="note-prompt-title"
+      onClick={(e) => {
+        if (e.target === e.currentTarget && !pending) onCancel()
+      }}
+    >
+      <div className="relative w-full max-w-lg rounded-2xl border border-gray-100 bg-white shadow-xl">
+        <header className="px-6 pt-5 pb-4 border-b border-gray-100">
+          <h2 id="note-prompt-title" className="text-base font-semibold text-gray-900">
+            {prompt.title}
+          </h2>
+        </header>
+        <div className="px-6 py-4">
+          <label htmlFor="note-prompt-field" className="block text-sm text-gray-600 leading-relaxed">
+            {prompt.label}
+          </label>
+          <textarea
+            id="note-prompt-field"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder={prompt.placeholder}
+            rows={3}
+            autoFocus
+            onKeyDown={(e) => {
+              // ⌘/Ctrl + Enter submits, matching common note fields.
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !pending) {
+                e.preventDefault()
+                onConfirm(note.trim())
+              }
+            }}
+            className="mt-2 w-full px-3 py-2 text-sm border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent"
+          />
+        </div>
+        <div className="flex items-center justify-end gap-2 px-6 py-3 border-t border-gray-100">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="inline-flex items-center text-sm font-semibold px-4 py-2 rounded-full text-gray-700 hover:bg-gray-100 disabled:opacity-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(note.trim())}
+            disabled={pending}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-[#7E5896] hover:bg-[#6B4880] text-white shadow-sm disabled:opacity-50 transition-colors"
+          >
+            {pending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+            {prompt.confirmLabel}
           </button>
         </div>
       </div>
