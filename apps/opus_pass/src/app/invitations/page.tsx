@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
 import { PreviewBanner } from '@/components/PreviewBanner'
-import { loadInvitationsFeaturesContent } from '@/lib/cms/invitations-features'
 import { loadInvitationsFaqsContent } from '@/lib/cms/invitations-faqs'
 import {
   loadInvitationsEditorsPicksContent,
@@ -30,7 +29,6 @@ export default async function InvitationsLandingPage() {
   const [
     { isEnabled: isDraft },
     categories,
-    features,
     faqs,
     editorsPicksTemplate,
     products,
@@ -38,7 +36,6 @@ export default async function InvitationsLandingPage() {
   ] = await Promise.all([
     draftMode(),
     loadInvitationCategoriesList(),
-    loadInvitationsFeaturesContent(),
     loadInvitationsFaqsContent(),
     loadInvitationsEditorsPicksContent(),
     loadInvitationProducts(),
@@ -67,7 +64,6 @@ export default async function InvitationsLandingPage() {
       {isDraft && <PreviewBanner />}
       <InvitationsLandingClient
         styleStrip={styleStrip}
-        features={features}
         faqs={faqs}
         editorsPicks={editorsPicks}
         fromGuestPrice={fromGuestPrice}

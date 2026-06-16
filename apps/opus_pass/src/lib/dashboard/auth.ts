@@ -106,26 +106,35 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
     }
   }
 
-  // The email already belongs to a row provisioned WITHOUT a Clerk identity
-  // (e.g. the marketplace app pre-created it). Adopt it for this Clerk user —
-  // but ONLY when its clerk_id is still null. The `.is('clerk_id', null)` guard
-  // means we never rebind a row that already belongs to another Clerk account,
-  // which would sever that owner from their data (events, guests, vendor row).
+  // The email already belongs to a users row (email is UNIQUE). Resolve to it so
+  // the verified email owner can use the dashboard — Clerk only issues a session
+  // for an email the user controls, so an email match is the same person.
+  //
+  // We stamp our clerk_id onto the row ONLY when it's still unclaimed (null), the
+  // marketplace pre-provision case. If the row already carries a clerk_id — e.g.
+  // the same person's vendor account, possibly under a different Clerk instance —
+  // we return it READ-ONLY without rewriting clerk_id, so we never hijack a
+  // binding another app keys on (and never sever an owner from their data).
   const isEmailConflict =
     (error as { code?: string } | null)?.code === '23505' &&
     (error?.message?.includes('email') ?? false)
   if (email && isEmailConflict) {
     const { data: byEmail } = await supabase
       .from('users')
-      .update({ clerk_id: userId, updated_at: new Date().toISOString() })
-      .eq('email', email)
-      .is('clerk_id', null)
       .select('id, clerk_id, email, name')
-      .maybeSingle<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
+      .eq('email', email)
+      .maybeSingle<{ id: string; clerk_id: string | null; email: string | null; name: string | null }>()
     if (byEmail) {
+      if (!byEmail.clerk_id) {
+        await supabase
+          .from('users')
+          .update({ clerk_id: userId, updated_at: new Date().toISOString() })
+          .eq('id', byEmail.id)
+          .is('clerk_id', null)
+      }
       return {
         id: byEmail.id,
-        clerkId: byEmail.clerk_id,
+        clerkId: userId,
         email: byEmail.email ?? '',
         name: byEmail.name,
       }

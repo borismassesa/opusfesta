@@ -125,9 +125,10 @@ export function DesignCarousel({
         )}
       </div>
 
-      {/* Thumbnail strip — uniform squares so portrait + landscape sit in one tidy row. */}
+      {/* Thumbnail strip — uniform squares kept on a single row; scrolls
+          horizontally rather than wrapping when there are many slides. */}
       {slides.length > 1 && (
-        <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {slides.map((slide, i) => {
             const thumbActive = i === activeIndex
             return (

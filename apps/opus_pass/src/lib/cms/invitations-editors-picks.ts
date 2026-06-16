@@ -133,17 +133,24 @@ export function editorsPicksRowsFromProducts(
 ): InvitationsEditorsPicksContent {
   if (products.length === 0) return template
   const rows: InvitationsEditorsPicksRow[] = []
-  for (let i = 0; i < products.length; i += PICKS_PER_ROW) {
-    const rowIndex = i / PICKS_PER_ROW
-    const tmpl = template.rows[rowIndex]
+
+  // One curated editorial row per CMS heading, each pairing a title cell with
+  // PICKS_PER_ROW products. Products beyond the curated headings are NOT shown
+  // here — they live on the full catalog page (/invitations/catalog), so the
+  // landing stays a tight, editorial teaser rather than a repeating wall.
+  let cursor = 0
+  for (const tmpl of template.rows) {
+    if (cursor >= products.length) break
     rows.push({
-      id: tmpl?.id ?? `row-${rowIndex + 1}`,
-      title_line_1: tmpl?.title_line_1 ?? 'Wedding invitations',
-      title_line_2: tmpl?.title_line_2 ?? 'designed for you',
-      align: tmpl?.align ?? (rowIndex % 2 === 0 ? 'left' : 'right'),
-      picks: products.slice(i, i + PICKS_PER_ROW).map(productToPick),
+      id: tmpl.id,
+      title_line_1: tmpl.title_line_1,
+      title_line_2: tmpl.title_line_2,
+      align: tmpl.align,
+      picks: products.slice(cursor, cursor + PICKS_PER_ROW).map(productToPick),
     })
+    cursor += PICKS_PER_ROW
   }
+
   return { rows }
 }
 
