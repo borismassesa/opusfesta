@@ -1,10 +1,9 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { UserButton } from '@clerk/nextjs'
-import { UserCircle } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import { resolveContributorAccess } from '@/lib/contribute/auth'
 import { isSupabaseAdminConfigError } from '@/lib/supabase'
+import { ContributorUserButton } from './ContributorUserButton'
 
 export const dynamic = 'force-dynamic'
 
@@ -38,23 +37,7 @@ export default async function ContributorLayout({ children }: { children: ReactN
                 Sign in
               </Link>
             ) : (
-              <UserButton
-                afterSignOutUrl="/"
-                appearance={{
-                  elements: {
-                    avatarBox: 'h-9 w-9',
-                    userButtonPopoverFooter: 'hidden',
-                  },
-                }}
-              >
-                <UserButton.MenuItems>
-                  <UserButton.Link
-                    label="Profile"
-                    labelIcon={<UserCircle className="h-4 w-4" />}
-                    href="/contribute/profile"
-                  />
-                </UserButton.MenuItems>
-              </UserButton>
+              <ContributorUserButton />
             )}
           </div>
         </div>
