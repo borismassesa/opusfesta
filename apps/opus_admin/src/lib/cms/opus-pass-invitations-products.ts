@@ -47,18 +47,16 @@ export const PRODUCT_BADGE_LABELS: Record<ProductBadge, string> = {
 }
 
 export const PRODUCT_CATEGORIES = [
-  'Wedding Invitations',
-  'All-in-One Wedding Invitations',
-  'Save the Dates',
-  'Engagement Invitations',
-  'Bridal Shower Invitations',
-  'Reception Cards',
-  'Wedding Programmes',
-  'Menu Cards',
-  'Thank You Cards',
-  'Birthday Invitations',
-  'Welcome Signs',
-  'Event Tickets',
+  'Wedding',
+  'Sendoff',
+  'Kitchen Party',
+  'Save the Date',
+  'Kadi za Michango',
+  'Anniversary',
+  'Communio',
+  'Birthday',
+  'Gala Dinner',
+  'Muslim Wedding',
 ] as const
 
 export type InvitationProductRecord = {
