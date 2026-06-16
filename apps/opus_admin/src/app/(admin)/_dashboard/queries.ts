@@ -689,15 +689,8 @@ async function buildContentLane(supabase: ReturnType<typeof createSupabaseAdminC
 async function buildMarketingLane(supabase: ReturnType<typeof createSupabaseAdminClient>): Promise<DepartmentLane> {
   const sevenDaysAgo = new Date(Date.now() - 7 * DAY).toISOString()
   const ninetyDaysAgo = new Date(Date.now() - 90 * DAY).toISOString()
-  const fiveDaysAgo = new Date(Date.now() - 5 * DAY).toISOString()
 
-  const [
-    signupsThisWeek,
-    unpublishedSignups,
-    newLeads,
-    staleLeads,
-    leadsToShowRes,
-  ] = await Promise.all([
+  const [signupsThisWeek, unpublishedSignups] = await Promise.all([
     safeCount(
       supabase
         .from('vendors')
@@ -711,61 +704,12 @@ async function buildMarketingLane(supabase: ReturnType<typeof createSupabaseAdmi
         .neq('onboarding_status', 'active')
         .lt('created_at', ninetyDaysAgo),
     ),
-    safeCount(
-      supabase
-        .from('partnership_leads')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'New'),
-    ),
-    safeCount(
-      supabase
-        .from('partnership_leads')
-        .select('id', { count: 'exact', head: true })
-        .in('status', ['New', 'Contacted', 'Negotiating'])
-        .lt('last_activity_at', fiveDaysAgo),
-    ),
-    supabase
-      .from('partnership_leads')
-      .select('id, contact_name, company_name, status, last_activity_at, lead_type')
-      .in('status', ['New', 'Contacted', 'Negotiating'])
-      .order('last_activity_at', { ascending: true })
-      .limit(5),
   ])
-
-  const leadItems: LaneListItem[] = (
-    (leadsToShowRes.data as Array<{
-      id: string
-      contact_name: string
-      company_name: string | null
-      status: string
-      last_activity_at: string
-      lead_type: string
-    }> | null) ?? []
-  ).map((row) => ({
-    primary: row.company_name?.trim() || row.contact_name,
-    secondary: `${row.lead_type} · ${row.status}`,
-    meta: relativeShort(row.last_activity_at),
-    href: '/operations/partnerships',
-  }))
 
   return {
     department: 'Marketing & Partnership',
     title: 'Marketing — pipeline & traction',
     cards: [
-      {
-        tone: newLeads > 0 ? 'amber' : 'gray',
-        label: 'New partnership leads',
-        count: newLeads,
-        hint: 'In the inbox awaiting first contact',
-        href: '/operations/partnerships',
-      },
-      {
-        tone: staleLeads > 0 ? 'red' : 'gray',
-        label: 'Leads going cold',
-        count: staleLeads,
-        hint: 'No follow-up in 5+ days',
-        href: '/operations/partnerships',
-      },
       {
         tone: 'blue',
         label: 'Vendor signups this week',
@@ -781,13 +725,6 @@ async function buildMarketingLane(supabase: ReturnType<typeof createSupabaseAdmi
         href: '/operations/vendors',
       },
     ],
-    list: leadItems.length > 0
-      ? {
-          title: 'Leads needing attention',
-          items: leadItems,
-          emptyMessage: 'No open leads',
-        }
-      : undefined,
   }
 }
 

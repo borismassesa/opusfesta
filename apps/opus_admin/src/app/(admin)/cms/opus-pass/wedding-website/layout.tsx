@@ -19,7 +19,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSetPageHeading } from '@/components/PageHeading'
-import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
+import { HeaderActionsSlot, HeaderBadgeSlot, SecondarySidebarSlot } from '@/components/HeaderPortals'
 import { EditorActionsProvider, useEditorActions } from './EditorActionsContext'
 import { getOpusPassWebsitesPreviewUrl } from './preview-action'
 
@@ -106,7 +106,7 @@ function OpusPassWeddingWebsiteCmsShell({ children }: { children: ReactNode }) {
   })
 
   return (
-    <div className="pt-2 pb-6">
+    <>
       <HeaderBadgeSlot>
         <EditorStatusBadge />
       </HeaderBadgeSlot>
@@ -124,28 +124,27 @@ function OpusPassWeddingWebsiteCmsShell({ children }: { children: ReactNode }) {
         </a>
       </HeaderActionsSlot>
 
-      <div className="flex items-start gap-0">
-        <aside className="w-[240px] shrink-0 border-r border-gray-100 self-stretch">
-          <div className="sticky top-6 px-3 py-1 space-y-5">
-            <SectionGroup label="Sections">
-              {liveSections.map((s) => (
-                <SectionLink key={s.key} section={s} pathname={pathname} />
+      <SecondarySidebarSlot>
+        <aside className="flex h-full w-[240px] flex-col gap-4 overflow-y-auto border-r border-gray-100 px-3 py-6">
+          <h2 className="px-2 text-base font-bold tracking-tight text-gray-900">Wedding website</h2>
+          <SectionGroup label="Sections">
+            {liveSections.map((s) => (
+              <SectionLink key={s.key} section={s} pathname={pathname} />
+            ))}
+          </SectionGroup>
+
+          {soonSections.length > 0 && (
+            <SectionGroup label="Coming soon">
+              {soonSections.map((s) => (
+                <SectionItemSoon key={s.key} section={s} />
               ))}
             </SectionGroup>
-
-            {soonSections.length > 0 && (
-              <SectionGroup label="Coming soon">
-                {soonSections.map((s) => (
-                  <SectionItemSoon key={s.key} section={s} />
-                ))}
-              </SectionGroup>
-            )}
-          </div>
+          )}
         </aside>
+      </SecondarySidebarSlot>
 
-        <section className="flex-1 min-w-0 px-8">{children}</section>
-      </div>
-    </div>
+      <div className="px-8 pt-2 pb-6">{children}</div>
+    </>
   )
 }
 

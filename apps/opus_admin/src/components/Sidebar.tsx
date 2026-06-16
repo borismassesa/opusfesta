@@ -1,13 +1,11 @@
 'use client'
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   Briefcase,
   Building2,
-  Calendar,
   CalendarCheck,
   ChevronDown,
   ChevronRight,
@@ -20,28 +18,22 @@ import {
   Gift,
   Globe,
   Globe2,
-  Handshake,
-  Heart,
-  HelpCircle,
-  History,
   Home,
   Landmark,
   LayoutDashboard,
+  LayoutGrid,
   Lightbulb,
   ListTodo,
-  MessageSquare,
+  LogOut,
   Newspaper,
   PanelLeftClose,
   PanelLeftOpen,
   Plane,
-  Plug,
   Receipt,
   RefreshCw,
   Search,
   Settings,
   Shield,
-  ShieldCheck,
-  Smartphone,
   Star,
   Store,
   TrendingUp,
@@ -51,10 +43,13 @@ import {
   Users,
   Wallet,
   Wrench,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import { cn } from "../lib/utils";
 import Logo from "./ui/Logo";
+import { adminSignOut } from "./sidebar-actions";
+import type { CallerProfile } from "@/lib/admin-auth";
 
 type NavItem = {
   icon: LucideIcon;
@@ -137,11 +132,8 @@ const sections: NavSection[] = [
     icon: Briefcase,
     items: [
       { icon: CalendarCheck, label: "Bookings", href: "/operations/bookings", requiredPermission: "bookings.read" },
-      { icon: Heart, label: "Clients", href: "/operations/clients", requiredPermission: "bookings.read" },
       { icon: Building2, label: "Vendor Accounts", href: "/operations/vendors", requiredPermission: "vendor.read" },
-      { icon: Handshake, label: "Partnerships", href: "/operations/partnerships", requiredPermission: "vendor.read" },
       { icon: Star, label: "Reviews & Moderation", href: "/operations/reviews", requiredPermission: "vendor.moderate" },
-      { icon: Calendar, label: "Calendar", href: "/operations/calendar", requiredPermission: "bookings.read" },
       {
         icon: Newspaper,
         label: "Articles",
@@ -183,8 +175,6 @@ const sections: NavSection[] = [
       { icon: Wallet, label: "Payroll", href: "/finance/payroll", requiredPermission: "workforce.payroll" },
       { icon: Wallet, label: "Vendor Payouts", href: "/finance/payouts", requiredPermission: "finance.write" },
       { icon: RefreshCw, label: "Refunds", href: "/finance/refunds", requiredPermission: "finance.write" },
-      { icon: FileText, label: "Tax & VAT", href: "/finance/tax", requiredPermission: "finance.read" },
-      { icon: Smartphone, label: "M-Pesa Reconciliation", href: "/finance/mpesa", requiredPermission: "finance.read" },
     ],
   },
   {
@@ -205,27 +195,28 @@ const sections: NavSection[] = [
       { icon: UserPlus, label: "Recruitment", href: "/workforce/recruitment", requiredPermission: "workforce.write" },
     ],
   },
-  {
-    id: "insights",
-    label: "Insights",
-    icon: BarChart3,
-    requiredPermission: "insights.read",
-    items: [
-      { icon: TrendingUp, label: "Analytics", href: "/insights/analytics", requiredPermission: "insights.read" },
-      { icon: History, label: "Activity Log", href: "/insights/activity", requiredPermission: "insights.read" },
-      { icon: ShieldCheck, label: "Audit Log", href: "/insights/audit", requiredPermission: "insights.read" },
-    ],
-  },
 ];
 
-const bottomNavItems: NavItem[] = [
-  { icon: Plug, label: "Integrations", href: "/integrations" },
-  { icon: HelpCircle, label: "Help Center", href: "/help" },
-  { icon: MessageSquare, label: "Feedback", href: "/feedback" },
-  { icon: Settings, label: "Settings", href: "/settings" },
-];
+// The three CMS modules are grouped under one collapsible "Control
+// Management System" parent in the sidebar. Each listed section keeps its
+// own structure (it's still an independent collapsible section); the parent
+// just nests them one level deeper.
+const CMS_GROUP = {
+  id: "cms",
+  label: "System Management",
+  icon: LayoutGrid,
+  sectionIds: ["website-cms", "vendors-portal-cms", "opus-pass-cms"] as string[],
+}
 
 const COLLAPSED_KEY = 'opusfesta:sidebar-collapsed'
+const WIDTH_KEY = 'opusfesta:sidebar-width'
+// Expanded-rail width: default a touch wider than before, drag-resizable
+// within these bounds. (Collapsed rail stays a fixed 72px.)
+const DEFAULT_WIDTH = 288
+const MIN_WIDTH = 240
+const MAX_WIDTH = 420
+
+const clampWidth = (n: number) => Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, n))
 
 function isItemActive(pathname: string, item: NavItem) {
   if (item.href === '/') return pathname === '/'
@@ -239,7 +230,13 @@ function isSectionActive(pathname: string, section: NavSection) {
   return section.items.some((i) => isItemActive(pathname, i))
 }
 
-export function Sidebar({ permissions }: { permissions: string[] }) {
+export function Sidebar({
+  permissions,
+  profile,
+}: {
+  permissions: string[]
+  profile: CallerProfile
+}) {
   const pathname = usePathname();
   // Filter sections + items by permission. An item without a
   // requiredPermission is always visible (e.g. Dashboard, Inbox); a
@@ -265,6 +262,11 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
     }))
     .filter((section) => section.items.length > 0);
 
+  // Split the CMS modules out so they render nested under the
+  // "Control Management System" group; everything else renders as before.
+  const cmsGroupSections = visibleSections.filter((s) => CMS_GROUP.sectionIds.includes(s.id));
+  const otherSections = visibleSections.filter((s) => !CMS_GROUP.sectionIds.includes(s.id));
+
   // Only auto-open the section that owns the active route. For top-level
   // routes that aren't inside any section (Dashboard `/`, Inbox `/inbox`,
   // Help, Settings, etc.), leave every section collapsed so the sidebar
@@ -272,13 +274,39 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
   // to sit first in the list.
   const initialSection = visibleSections.find((s) => isSectionActive(pathname, s))?.id ?? "";
   const [openSection, setOpenSection] = useState<string>(initialSection);
+  // The CMS parent group auto-opens when the active route lives inside it.
+  const [openGroup, setOpenGroup] = useState<boolean>(
+    cmsGroupSections.some((s) => isSectionActive(pathname, s))
+  );
   const [search, setSearch] = useState("");
+  // Live nav filter — when the search box has a query, show only items whose
+  // label matches and force the matching sections open.
+  const query = search.trim().toLowerCase();
+  const matchesQuery = (label: string) => label.toLowerCase().includes(query);
+  const filterSectionItems = (section: NavSection): NavSection => ({
+    ...section,
+    items: section.items.filter((i) => matchesQuery(i.label)),
+  });
+  const filteredTopItems = query ? topItems.filter((i) => matchesQuery(i.label)) : topItems;
+  const cmsGroupRender = query
+    ? cmsGroupSections.map(filterSectionItems).filter((s) => s.items.length > 0 || matchesQuery(s.label))
+    : cmsGroupSections;
+  const otherRender = query
+    ? otherSections.map(filterSectionItems).filter((s) => s.items.length > 0 || matchesQuery(s.label))
+    : otherSections;
+  const noMatches =
+    query !== '' && filteredTopItems.length === 0 && cmsGroupRender.length === 0 && otherRender.length === 0;
   const [collapsed, setCollapsed] = useState(false);
+  const [width, setWidth] = useState(DEFAULT_WIDTH);
+  const [resizing, setResizing] = useState(false);
+  const asideRef = useRef<HTMLElement>(null);
 
-  // Hydrate collapsed state from localStorage on mount
+  // Hydrate collapsed + width state from localStorage on mount
   useEffect(() => {
     if (typeof window === 'undefined') return
     if (window.localStorage.getItem(COLLAPSED_KEY) === '1') setCollapsed(true)
+    const savedWidth = Number(window.localStorage.getItem(WIDTH_KEY))
+    if (Number.isFinite(savedWidth) && savedWidth > 0) setWidth(clampWidth(savedWidth))
   }, [])
 
   useEffect(() => {
@@ -286,14 +314,127 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
     window.localStorage.setItem(COLLAPSED_KEY, collapsed ? '1' : '0')
   }, [collapsed])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.localStorage.setItem(WIDTH_KEY, String(width))
+  }, [width])
+
+  // While dragging the resize handle, track the pointer and clamp the width
+  // to the rail's left edge. Lock the cursor + disable text selection so the
+  // drag feels continuous even when the pointer leaves the handle.
+  useEffect(() => {
+    if (!resizing) return
+    const onMove = (e: PointerEvent) => {
+      const left = asideRef.current?.getBoundingClientRect().left ?? 0
+      setWidth(clampWidth(e.clientX - left))
+    }
+    const onUp = () => setResizing(false)
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    document.body.style.cursor = 'col-resize'
+    document.body.style.userSelect = 'none'
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [resizing])
+
   const expand = () => setCollapsed(false)
   const toggle = () => setCollapsed((c) => !c)
 
+  const GroupIcon = CMS_GROUP.icon
+  const cmsGroupActive = cmsGroupSections.some((s) => isSectionActive(pathname, s))
+
+  // Collapsed (icon-only) rail: each section is a single icon button that
+  // expands the sidebar and opens that section.
+  const renderSectionCollapsed = (section: NavSection) => {
+    const SectionIcon = section.icon
+    const isActive = isSectionActive(pathname, section)
+    return (
+      <button
+        key={section.id}
+        type="button"
+        onClick={() => {
+          setCollapsed(false)
+          setOpenSection(section.id)
+        }}
+        aria-label={section.label}
+        title={section.label}
+        className={cn(
+          'flex items-center justify-center w-12 h-12 mx-auto rounded-xl transition-colors',
+          isActive
+            ? 'text-[#7E5896] bg-[#F0DFF6]'
+            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+        )}
+      >
+        <SectionIcon className="w-5 h-5 stroke-[1.5]" />
+      </button>
+    )
+  }
+
+  // Expanded section: collapsible header + its item links. `nested` shrinks
+  // the icon a touch so CMS sub-sections read as a level below the group.
+  const renderSection = (section: NavSection, nested: boolean) => {
+    const SectionIcon = section.icon
+    // A search query force-opens every matching section so results are visible.
+    const isOpen = query !== '' || openSection === section.id
+    return (
+      <div key={section.id}>
+        <button
+          onClick={() => setOpenSection(isOpen ? "" : section.id)}
+          className={cn(
+            'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors',
+            isOpen ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <SectionIcon className={cn('stroke-[1.5]', nested ? 'w-4 h-4' : 'w-5 h-5')} />
+            {section.label}
+          </div>
+          {isOpen ? (
+            <ChevronDown className="w-4 h-4 text-gray-400" />
+          ) : (
+            <ChevronRight className="w-4 h-4 text-gray-400" />
+          )}
+        </button>
+
+        {isOpen && (
+          <nav className="mt-1 mb-2 space-y-0.5 pl-2 border-l border-gray-100 ml-5">
+            {section.items.map((item) => {
+              const Icon = item.icon
+              const itemActive = isItemActive(pathname, item)
+              return (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className={cn(
+                    'w-full flex items-center gap-3 pl-3 pr-3 py-2 rounded-lg text-sm font-medium transition-colors text-left',
+                    itemActive
+                      ? 'bg-[#F0DFF6] text-[#7E5896]'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  )}
+                >
+                  <Icon className="w-4 h-4 stroke-[1.5] shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </Link>
+              )
+            })}
+          </nav>
+        )}
+      </div>
+    )
+  }
+
   return (
     <aside
+      ref={asideRef}
+      style={collapsed ? undefined : { width }}
       className={cn(
-        'bg-white border-r border-gray-100 flex flex-col h-full h-screen sticky top-0 py-6 transition-[width] duration-200 ease-out',
-        collapsed ? 'w-[72px] px-2' : 'w-64 px-4'
+        'relative bg-white border-r border-gray-100 flex flex-col h-full h-screen sticky top-0 py-6 ease-out',
+        !resizing && 'transition-[width] duration-200',
+        collapsed ? 'w-[72px] px-2' : 'px-4'
       )}
     >
       {/* Header: logo + toggle */}
@@ -328,26 +469,33 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
       ) : (
         <div className="px-1 mb-4">
           <div className="relative flex items-center">
-            <Search className="w-4 h-4 text-gray-400 absolute left-3" />
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search…"
+              placeholder="Search menu…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="pl-9 pr-12 py-2 bg-gray-50 border border-gray-100 rounded-lg w-full text-sm focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all"
+              className="pl-9 pr-9 py-2 bg-gray-50 border border-gray-200 rounded-lg w-full text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all"
             />
-            <span className="absolute right-2 text-[10px] text-gray-400 font-medium border border-gray-200 bg-white rounded px-1.5 py-0.5">
-              ⌘K
-            </span>
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                aria-label="Clear search"
+                className="absolute right-2 grid place-items-center w-5 h-5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
           </div>
         </div>
       )}
 
       {/* Body */}
-      <div className={cn('flex-1 overflow-y-auto overflow-x-hidden', collapsed ? 'no-scrollbar space-y-2' : 'space-y-1')}>
+      <div className={cn('flex-1 overflow-y-auto overflow-x-hidden no-scrollbar', collapsed ? 'space-y-2' : 'space-y-1')}>
         {/* Top items */}
         <nav className={cn(collapsed ? 'space-y-1' : 'space-y-1 mb-2')}>
-          {topItems.map((item) => {
+          {(collapsed ? topItems : filteredTopItems).map((item) => {
             const Icon = item.icon;
             const isActive = isItemActive(pathname, item);
             return (
@@ -391,105 +539,223 @@ export function Sidebar({ permissions }: { permissions: string[] }) {
         </nav>
 
         {/* Sections */}
-        {visibleSections.map((section) => {
-          const SectionIcon = section.icon;
-          const isOpen = openSection === section.id;
-          const isActive = isSectionActive(pathname, section);
-
-          if (collapsed) {
-            // Single icon button — clicking expands sidebar AND opens this section
-            return (
+        {collapsed ? (
+          <>
+            {cmsGroupSections.length > 0 && (
               <button
-                key={section.id}
                 type="button"
                 onClick={() => {
                   setCollapsed(false)
-                  setOpenSection(section.id)
+                  setOpenGroup(true)
                 }}
-                aria-label={section.label}
-                title={section.label}
+                aria-label={CMS_GROUP.label}
+                title={CMS_GROUP.label}
                 className={cn(
                   'flex items-center justify-center w-12 h-12 mx-auto rounded-xl transition-colors',
-                  isActive
+                  cmsGroupActive
                     ? 'text-[#7E5896] bg-[#F0DFF6]'
                     : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                 )}
               >
-                <SectionIcon className="w-5 h-5 stroke-[1.5]" />
+                <GroupIcon className="w-5 h-5 stroke-[1.5]" />
               </button>
-            )
-          }
+            )}
+            {otherSections.map(renderSectionCollapsed)}
+          </>
+        ) : (
+          <>
+            {cmsGroupRender.length > 0 && (
+              <div>
+                <button
+                  onClick={() => setOpenGroup((o) => !o)}
+                  className={cn(
+                    'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors',
+                    openGroup ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <GroupIcon className="w-5 h-5 stroke-[1.5]" />
+                    {CMS_GROUP.label}
+                  </div>
+                  {query !== '' || openGroup ? (
+                    <ChevronDown className="w-4 h-4 text-gray-400" />
+                  ) : (
+                    <ChevronRight className="w-4 h-4 text-gray-400" />
+                  )}
+                </button>
 
-          return (
-            <div key={section.id}>
-              <button
-                onClick={() => setOpenSection(isOpen ? "" : section.id)}
-                className={cn(
-                  'w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-semibold transition-colors',
-                  isOpen ? 'text-gray-900' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                {(query !== '' || openGroup) && (
+                  <div className="mt-1 mb-1 ml-3 pl-1 border-l border-gray-100 space-y-0.5">
+                    {cmsGroupRender.map((s) => renderSection(s, true))}
+                  </div>
                 )}
-              >
-                <div className="flex items-center gap-3">
-                  <SectionIcon className="w-5 h-5 stroke-[1.5]" />
-                  {section.label}
-                </div>
-                {isOpen ? (
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
-                ) : (
-                  <ChevronRight className="w-4 h-4 text-gray-400" />
-                )}
-              </button>
-
-              {isOpen && (
-                <nav className="mt-1 mb-2 space-y-0.5 pl-2 border-l border-gray-100 ml-5">
-                  {section.items.map((item) => {
-                    const Icon = item.icon;
-                    const itemActive = isItemActive(pathname, item);
-                    return (
-                      <Link
-                        key={item.label}
-                        href={item.href}
-                        className={cn(
-                          'w-full flex items-center gap-3 pl-3 pr-3 py-2 rounded-lg text-sm font-medium transition-colors text-left',
-                          itemActive
-                            ? 'bg-[#F0DFF6] text-[#7E5896]'
-                            : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
-                        )}
-                      >
-                        <Icon className="w-4 h-4 stroke-[1.5] shrink-0" />
-                        <span className="truncate">{item.label}</span>
-                      </Link>
-                    );
-                  })}
-                </nav>
-              )}
-            </div>
-          );
-        })}
+              </div>
+            )}
+            {otherRender.map((s) => renderSection(s, false))}
+            {noMatches && (
+              <p className="px-3 py-6 text-center text-sm text-gray-400">
+                No menu items match “{search.trim()}”.
+              </p>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Footer */}
-      <div className={cn('mt-auto border-t border-gray-100 pt-4', collapsed ? 'space-y-1' : 'space-y-1')}>
-        {bottomNavItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.label}
-              href={item.href}
-              title={collapsed ? item.label : undefined}
-              className={cn(
-                'flex items-center rounded-xl text-sm font-medium text-gray-500 hover:text-gray-900 hover:bg-gray-50 transition-colors',
-                collapsed
-                  ? 'justify-center w-12 h-12 mx-auto'
-                  : 'gap-3 px-3 py-2'
-              )}
-            >
-              <Icon className="w-5 h-5 stroke-[1.5]" />
-              {!collapsed && item.label}
-            </Link>
-          );
-        })}
+      {/* Footer — account profile with a Settings / Log out menu. */}
+      <div className="mt-auto border-t border-gray-100 pt-3">
+        <SidebarProfile profile={profile} collapsed={collapsed} />
       </div>
+
+      {/* Drag-to-resize handle on the right edge (expanded rail only).
+          Double-click resets to the default width. */}
+      {!collapsed && (
+        <div
+          onPointerDown={(e) => {
+            e.preventDefault()
+            setResizing(true)
+          }}
+          onDoubleClick={() => setWidth(DEFAULT_WIDTH)}
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="Resize sidebar"
+          title="Drag to resize"
+          className="group absolute inset-y-0 right-0 w-1.5 translate-x-1/2 cursor-col-resize"
+        >
+          <div
+            className={cn(
+              'absolute inset-y-0 right-1.5 w-px transition-colors',
+              resizing ? 'bg-[#C9A0DC]' : 'bg-transparent group-hover:bg-[#C9A0DC]/60'
+            )}
+          />
+        </div>
+      )}
     </aside>
   );
+}
+
+// Account row pinned to the bottom of the sidebar: avatar + name, opening a
+// small popover with Settings and Log out. Mirrors the familiar app-shell
+// account control rather than a list of loose footer links.
+function SidebarProfile({
+  profile,
+  collapsed,
+}: {
+  profile: CallerProfile
+  collapsed: boolean
+}) {
+  const [open, setOpen] = useState(false)
+  const [pending, startTransition] = useTransition()
+  const ref = useRef<HTMLDivElement>(null)
+
+  // Close on outside click / Esc.
+  useEffect(() => {
+    if (!open) return
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    document.addEventListener('mousedown', onClick)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onClick)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+
+  const initials =
+    profile.name
+      .split(/\s+/)
+      .map((p) => p[0])
+      .filter(Boolean)
+      .slice(0, 2)
+      .join('')
+      .toUpperCase() || 'A'
+
+  const handleLogout = () => {
+    startTransition(async () => {
+      // Sign out entirely server-side (revoke Clerk session + clear cookies) so
+      // we never call Clerk's useClerk() hook here — it throws when the Clerk
+      // React context isn't an ancestor of the admin layout's SSR tree. Then
+      // land on Clerk sign-in.
+      await adminSignOut()
+      window.location.href = '/sign-in'
+    })
+  }
+
+  const avatar = (
+    <span className="relative grid h-8 w-8 shrink-0 place-items-center overflow-hidden rounded-full bg-[#F0DFF6] text-xs font-bold text-[#7E5896] ring-1 ring-black/5">
+      {profile.imageUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={profile.imageUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        initials
+      )}
+    </span>
+  )
+
+  return (
+    <div ref={ref} className="relative">
+      {open && (
+        <div
+          role="menu"
+          className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-lg"
+        >
+          <Link
+            href="/settings"
+            role="menuitem"
+            onClick={() => setOpen(false)}
+            className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Settings className="h-4 w-4 stroke-[1.5] text-gray-400" />
+            Settings
+          </Link>
+          <div className="my-1 border-t border-gray-100" />
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleLogout}
+            disabled={pending}
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4 stroke-[1.5]" />
+            {pending ? 'Logging out…' : 'Log out'}
+          </button>
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        title={collapsed ? profile.name : undefined}
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className={cn(
+          'flex items-center rounded-xl transition-colors hover:bg-gray-50',
+          collapsed ? 'justify-center w-12 h-12 mx-auto' : 'w-full gap-3 px-2 py-2',
+        )}
+      >
+        {avatar}
+        {!collapsed && (
+          <>
+            <span className="min-w-0 flex-1 text-left">
+              <span className="block truncate text-sm font-semibold text-gray-900">
+                {profile.name}
+              </span>
+              {profile.email && (
+                <span className="block truncate text-xs text-gray-400">{profile.email}</span>
+              )}
+            </span>
+            <ChevronDown
+              className={cn(
+                'h-4 w-4 shrink-0 text-gray-400 transition-transform',
+                open && 'rotate-180',
+              )}
+            />
+          </>
+        )}
+      </button>
+    </div>
+  )
 }

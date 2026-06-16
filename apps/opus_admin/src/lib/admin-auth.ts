@@ -3,7 +3,6 @@ import { auth, clerkClient, currentUser } from '@clerk/nextjs/server'
 import type { User } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient, hasSupabaseAdminConfig } from '@/lib/supabase'
 import { auditPermissionDenied, recordAuditEvent } from '@/lib/audit-log'
-import { hasTempAdminAccess } from '@/lib/temp-admin'
 
 export type AdminAccessRole = 'owner' | 'admin' | 'editor' | 'author' | 'viewer'
 
@@ -67,8 +66,6 @@ export function isAdminDashboardRole(role: AdminAccessRole | null): boolean {
 // never given a temp password, so it's a no-op for existing admins.
 export const callerMustResetPassword = cache(async (): Promise<boolean> => {
   if (isAdminAuthDisabled()) return false
-  // Temp shared-access users never had a Clerk password to reset.
-  if (await hasTempAdminAccess()) return false
   const { userId } = await auth()
   if (!userId) return false
   const user = await currentUser()
@@ -181,8 +178,6 @@ async function syncClerkRoleIfStale(
 export const getAdminAccessRole = cache(
   async (): Promise<AdminAccessRole | null> => {
     if (isAdminAuthDisabled()) return 'owner'
-    // Shared temp-access cookie → full owner control (see lib/temp-admin.ts).
-    if (await hasTempAdminAccess()) return 'owner'
     const { userId, sessionClaims } = await auth()
     if (!userId) return null
 
@@ -271,7 +266,6 @@ export function escapeLike(value: string): string {
 
 export const getCallerEmail = cache(async (): Promise<string | null> => {
   if (isAdminAuthDisabled()) return 'dev@opusfesta.com'
-  if (await hasTempAdminAccess()) return 'temp-admin@opusfesta.com'
   const { userId, sessionClaims } = await auth()
   if (!userId) return null
   const user = await currentUser()
@@ -280,6 +274,81 @@ export const getCallerEmail = cache(async (): Promise<string | null> => {
     user?.emailAddresses?.[0]?.emailAddress ||
     readClaimEmail(sessionClaims)
   return email ? email.trim().toLowerCase() : null
+})
+
+export type CallerProfile = {
+  name: string
+  email: string | null
+  imageUrl: string | null
+}
+
+/**
+ * Display identity for the signed-in admin — name, email, and avatar — for the
+ * sidebar profile row. A real Clerk session resolves the full name / image; the
+ * DISABLE_ADMIN_AUTH dev bypass (no Clerk user) gets a placeholder.
+ */
+export const getCallerProfile = cache(async (): Promise<CallerProfile> => {
+  // Prefer the REAL signed-in identity whenever there's a Clerk session — even
+  // when access was actually granted by the DISABLE_ADMIN_AUTH dev flag. The
+  // sidebar should show who you logged in as, not a bypass placeholder.
+  const { userId, sessionClaims } = await auth()
+  if (userId) {
+    const user = await currentUser()
+    const email =
+      user?.primaryEmailAddress?.emailAddress ||
+      user?.emailAddresses?.[0]?.emailAddress ||
+      readClaimEmail(sessionClaims) ||
+      null
+    const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim()
+    const name = fullName || user?.username || email?.split('@')[0] || 'Admin'
+    return {
+      name,
+      email: email ? email.trim().toLowerCase() : null,
+      imageUrl: user?.imageUrl || null,
+    }
+  }
+  // No Clerk session — only the dev bypass can reach here.
+  if (isAdminAuthDisabled()) {
+    return { name: 'Dev admin', email: 'dev@opusfesta.com', imageUrl: null }
+  }
+  return { name: 'Admin', email: null, imageUrl: null }
+})
+
+// How fresh a stored last_dashboard_login has to be before we skip the
+// write. Keeps an active browsing session to ~one stamp per window instead
+// of one per navigation (the admin layout is force-dynamic, so it renders
+// on every page load).
+const LOGIN_STAMP_THROTTLE_MS = 15 * 60 * 1000
+
+// Stamp the signed-in admin's last dashboard sign-in onto their
+// workforce_employees row. Previously last_dashboard_login was only written
+// once — at invite-acceptance — so directly-seeded accounts (and everyone
+// after their first visit) showed "never" on the Roles page. This runs on
+// each admin layout render but the write is throttled in SQL (only when the
+// stored value is null or older than the window), and it never throws — a
+// failed stamp must not take down the dashboard. Cached so it fires at most
+// once per request.
+export const recordDashboardLogin = cache(async (): Promise<void> => {
+  if (isAdminAuthDisabled()) return
+  const { userId } = await auth()
+  if (!userId) return
+  if (!hasSupabaseAdminConfig()) return
+  const email = await getCallerEmail()
+  if (!email) return
+
+  try {
+    const supabase = createSupabaseAdminClient()
+    const now = new Date()
+    const cutoff = new Date(now.getTime() - LOGIN_STAMP_THROTTLE_MS).toISOString()
+    await supabase
+      .from('workforce_employees')
+      .update({ last_dashboard_login: now.toISOString() })
+      .ilike('email', escapeLike(email))
+      // Only write when stale/unset — avoids a row write on every navigation.
+      .or(`last_dashboard_login.is.null,last_dashboard_login.lt.${cutoff}`)
+  } catch (err) {
+    console.warn('[admin-auth] could not stamp last_dashboard_login', err)
+  }
 })
 
 export async function requireAdminRole(

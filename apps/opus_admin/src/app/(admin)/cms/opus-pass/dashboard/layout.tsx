@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSetPageHeading } from '@/components/PageHeading'
-import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
+import { HeaderActionsSlot, HeaderBadgeSlot, SecondarySidebarSlot } from '@/components/HeaderPortals'
 import {
   DASHBOARD_HERO_LABEL,
   DASHBOARD_HERO_PUBLIC_PATH,
@@ -90,7 +90,7 @@ function Shell({ children }: { children: ReactNode }) {
   })
 
   return (
-    <div className="pt-2 pb-6">
+    <>
       <HeaderBadgeSlot>
         <EditorStatusBadge />
       </HeaderBadgeSlot>
@@ -107,9 +107,9 @@ function Shell({ children }: { children: ReactNode }) {
         </a>
       </HeaderActionsSlot>
 
-      <div className="flex items-start gap-0">
-        <aside className="w-[240px] shrink-0 border-r border-gray-100 self-stretch">
-          <div className="sticky top-6 px-3 py-1 space-y-5">
+      <SecondarySidebarSlot>
+        <aside className="flex h-full w-[240px] flex-col gap-4 overflow-y-auto border-r border-gray-100 px-3 py-6">
+            <h2 className="px-2 text-base font-bold tracking-tight text-gray-900">Dashboard</h2>
             <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400 px-2 mb-2">
               Dashboard pages
             </p>
@@ -163,12 +163,11 @@ function Shell({ children }: { children: ReactNode }) {
                 )
               })}
             </nav>
-          </div>
         </aside>
+      </SecondarySidebarSlot>
 
-        <section className="flex-1 min-w-0 px-8">{children}</section>
-      </div>
-    </div>
+      <div className="px-8 pt-2 pb-6">{children}</div>
+    </>
   )
 }
 
