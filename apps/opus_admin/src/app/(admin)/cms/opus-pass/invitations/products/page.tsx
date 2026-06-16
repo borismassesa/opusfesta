@@ -54,22 +54,21 @@ export default async function InvitationProductsListPage({
 
   return (
     <div className="py-2">
-      <div className="flex items-center justify-between mb-4 gap-4">
-        <p className="text-sm text-gray-500">
-          Invitation cards shown on /invitations and the card detail pages. {total} total.
-        </p>
-        <Link
-          href={`${BASE}/new`}
-          className="flex items-center gap-2 text-sm font-semibold text-white bg-[#C9A0DC] hover:bg-[#b97fd0] px-4 py-2 rounded-lg transition-colors shrink-0"
-        >
-          <Plus className="w-4 h-4" />
-          New card
-        </Link>
-      </div>
-
       <div className="bg-white border border-gray-100 rounded-2xl shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] overflow-hidden">
         <Suspense fallback={<div className="p-4 text-sm text-gray-400">Loading filters…</div>}>
-          <ProductsToolbar initialQ={q} initialCategory={category} />
+          <ProductsToolbar
+            initialQ={q}
+            initialCategory={category}
+            actions={
+              <Link
+                href={`${BASE}/new`}
+                className="flex items-center gap-2 text-sm font-semibold text-white bg-[#C9A0DC] hover:bg-[#b97fd0] px-4 py-2 rounded-lg transition-colors shrink-0"
+              >
+                <Plus className="w-4 h-4" />
+                New card
+              </Link>
+            }
+          />
         </Suspense>
 
         {products.length === 0 ? (
@@ -176,7 +175,11 @@ function PageLink({
   children: React.ReactNode
 }) {
   if (disabled) {
-    return <span className="px-3 py-1 rounded-lg border border-gray-100 text-gray-300">{children}</span>
+    return (
+      <span className="px-3 py-1 rounded-lg border border-gray-200 text-gray-400 cursor-not-allowed select-none">
+        {children}
+      </span>
+    )
   }
   const params = new URLSearchParams()
   if (q) params.set('q', q)
@@ -184,7 +187,10 @@ function PageLink({
   if (page > 1) params.set('page', String(page))
   const href = BASE + (params.toString() ? `?${params}` : '')
   return (
-    <Link href={href} className="px-3 py-1 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">
+    <Link
+      href={href}
+      className="px-3 py-1 rounded-lg border border-gray-300 font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-400 transition-colors"
+    >
       {children}
     </Link>
   )
