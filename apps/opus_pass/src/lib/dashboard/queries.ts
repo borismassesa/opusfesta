@@ -1,14 +1,22 @@
 import 'server-only'
 import { createDashboardClient } from './supabase'
 import { requireDashboardUser } from './auth'
+import { formatLongDate, publicOrigin } from './share'
+import { getWhatsAppProvider } from '@/lib/whatsapp'
+import { eventTypeLabel } from './types'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import type {
   DashboardStats,
   EventPledge,
   GuestInvitation,
   GuestWithInvitations,
+  LastSend,
   PledgeStats,
   PledgeWithContact,
+  SeatableGuest,
+  SeatingData,
+  SeatingTable,
+  SendChannel,
   WeddingEvent,
 } from './types'
 
@@ -51,6 +59,31 @@ export async function getGuestsWithInvitations(): Promise<GuestWithInvitations[]
     ...g,
     invitations: byGuest.get(g.id) ?? [],
   }))
+}
+
+/** When/how each guest was last contacted — keyed by guest_contact_id.
+ *  Powers the "Replied via" column on the RSVP tracker. Latest send wins. */
+export async function getLastSendByGuest(): Promise<Record<string, LastSend>> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('guest_message_log')
+    .select('guest_contact_id, channel, created_at')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false })
+
+  const map: Record<string, LastSend> = {}
+  for (const row of (data ?? []) as {
+    guest_contact_id: string
+    channel: SendChannel
+    created_at: string
+  }[]) {
+    // Rows arrive newest-first, so the first one seen per guest is the latest.
+    if (!map[row.guest_contact_id]) {
+      map[row.guest_contact_id] = { channel: row.channel, at: row.created_at }
+    }
+  }
+  return map
 }
 
 export async function getStats(): Promise<DashboardStats> {
@@ -104,6 +137,109 @@ export async function getStats(): Promise<DashboardStats> {
       .map(([choice, count]) => ({ choice, count }))
       .sort((a, b) => b.count - a.count),
   }
+}
+
+// ──────────────────────────────── Seat collection ────────────────────────────────
+
+/**
+ * The seating planner for one event: its tables, plus every attending guest
+ * party (confirmed roster only) tagged with the table they're seated at — or
+ * null when still in the "to be seated" pool. Returns null when the event isn't
+ * found / not owned by the signed-in couple.
+ *
+ * Seats a party occupies come from their attending invitation's `party_size`
+ * (live, not denormalized), so editing a headcount updates the plan immediately.
+ */
+export async function getSeatingData(eventId: string): Promise<SeatingData | null> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const { data: event } = await supabase
+    .from('wedding_events')
+    .select('*')
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+    .maybeSingle<WeddingEvent>()
+  if (!event) return null
+
+  const [{ data: tables, error: tErr }, { data: invitations, error: iErr }, { data: assignments, error: aErr }] =
+    await Promise.all([
+      supabase
+        .from('seating_tables')
+        .select('*')
+        .eq('user_id', user.id)
+        .eq('event_id', eventId)
+        .order('is_head', { ascending: false })
+        .order('sort_order', { ascending: true })
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('guest_invitations')
+        .select('guest_contact_id, party_size, meal_choice, dietary_notes')
+        .eq('user_id', user.id)
+        .eq('event_id', eventId)
+        .eq('rsvp_status', 'attending'),
+      supabase
+        .from('seating_assignments')
+        .select('guest_contact_id, table_id')
+        .eq('user_id', user.id)
+        .eq('event_id', eventId),
+    ])
+  if (tErr) throw new Error(tErr.message)
+  if (iErr) throw new Error(iErr.message)
+  if (aErr) throw new Error(aErr.message)
+
+  const attending = (invitations ?? []) as {
+    guest_contact_id: string
+    party_size: number
+    meal_choice: string | null
+    dietary_notes: string | null
+  }[]
+
+  // Name + group for each attending guest (skip public self-RSVPs awaiting review).
+  const guestIds = attending.map((i) => i.guest_contact_id)
+  const contactById = new Map<string, { full_name: string; group_tag: string | null }>()
+  if (guestIds.length > 0) {
+    const { data: contacts } = await supabase
+      .from('guest_contacts')
+      .select('id, full_name, group_tag, review_status')
+      .eq('user_id', user.id)
+      .in('id', guestIds)
+    for (const c of (contacts ?? []) as {
+      id: string
+      full_name: string
+      group_tag: string | null
+      review_status: string
+    }[]) {
+      if (c.review_status === 'unconfirmed') continue
+      contactById.set(c.id, { full_name: c.full_name, group_tag: c.group_tag })
+    }
+  }
+
+  const tableById = new Map((tables ?? []).map((t) => [t.id as string, t as SeatingTable]))
+  const tableByGuest = new Map<string, string>()
+  for (const a of (assignments ?? []) as { guest_contact_id: string; table_id: string }[]) {
+    // Ignore stale assignments whose table was removed.
+    if (tableById.has(a.table_id)) tableByGuest.set(a.guest_contact_id, a.table_id)
+  }
+
+  const guests: SeatableGuest[] = attending
+    .map((inv) => {
+      const contact = contactById.get(inv.guest_contact_id)
+      if (!contact) return null
+      return {
+        guest_contact_id: inv.guest_contact_id,
+        full_name: contact.full_name,
+        seats: Math.max(1, inv.party_size ?? 1),
+        meal_choice: inv.meal_choice,
+        dietary_notes: inv.dietary_notes,
+        group_tag: contact.group_tag,
+        table_id: tableByGuest.get(inv.guest_contact_id) ?? null,
+      }
+    })
+    .filter((g): g is SeatableGuest => g !== null)
+    .sort((a, b) => a.full_name.localeCompare(b.full_name))
+
+  return { event, tables: (tables ?? []) as SeatingTable[], guests }
 }
 
 // ──────────────────────────────── Pledges ────────────────────────────────
@@ -397,5 +533,433 @@ export async function getPublicRsvpData(token: string): Promise<PublicRsvpData |
     weddingDate: profile?.wedding_date ?? null,
     events: merged,
   }
+}
+
+// ──────────────────────────── Public invitation hub ────────────────────────────
+
+/** A non-PII projection of an event for the public /i/<slug> hub + OG card. */
+export interface PublicInviteEvent {
+  id: string
+  name: string
+  event_type: string
+  description: string | null
+  venue_name: string | null
+  address: string | null
+  city: string | null
+  starts_at: string | null
+  ends_at: string | null
+  dress_code: string | null
+  allow_rsvp: boolean
+}
+
+export interface PublicInviteData {
+  slug: string
+  coupleName: string
+  weddingDate: string | null
+  city: string | null
+  coverImageUrl: string | null
+  /** True once the wedding date has passed — the hub closes RSVPs. */
+  hasPassed: boolean
+  /** Any public event accepts RSVPs AND the wedding hasn't passed. */
+  allowRsvp: boolean
+  events: PublicInviteEvent[]
+}
+
+/**
+ * Public, slug-scoped fetch for the shareable invitation hub (no auth, no PII).
+ * Returns null when the slug is unknown or the couple has sharing disabled —
+ * so a revoked link 404s. Reads run through the service-role client; only the
+ * non-PII projection above is ever exposed.
+ */
+export async function getPublicInvite(slug: string): Promise<PublicInviteData | null> {
+  if (!slug) return null
+  const supabase = createDashboardClient()
+
+  const { data: profile, error } = await supabase
+    .from('couple_profiles')
+    .select(
+      'user_id, partner1_name, partner2_name, wedding_date, city, cover_image_url, public_sharing_enabled',
+    )
+    .eq('public_slug', slug)
+    .maybeSingle<{
+      user_id: string
+      partner1_name: string | null
+      partner2_name: string | null
+      wedding_date: string | null
+      city: string | null
+      cover_image_url: string | null
+      public_sharing_enabled: boolean
+    }>()
+  if (error) {
+    console.error('[public-invite] profile lookup failed', error)
+    throw error
+  }
+  if (!profile || !profile.public_sharing_enabled) return null
+
+  const { data: events } = await supabase
+    .from('wedding_events')
+    .select(
+      'id, name, event_type, description, venue_name, address, city, starts_at, ends_at, dress_code, allow_rsvp, sort_order',
+    )
+    .eq('user_id', profile.user_id)
+    .eq('is_public', true)
+    .order('sort_order', { ascending: true })
+    .order('starts_at', { ascending: true, nullsFirst: false })
+
+  const publicEvents: PublicInviteEvent[] = (events ?? []).map((e) => ({
+    id: e.id as string,
+    name: e.name as string,
+    event_type: e.event_type as string,
+    description: (e.description as string | null) ?? null,
+    venue_name: (e.venue_name as string | null) ?? null,
+    address: (e.address as string | null) ?? null,
+    city: (e.city as string | null) ?? null,
+    starts_at: (e.starts_at as string | null) ?? null,
+    ends_at: (e.ends_at as string | null) ?? null,
+    dress_code: (e.dress_code as string | null) ?? null,
+    allow_rsvp: Boolean(e.allow_rsvp),
+  }))
+
+  const names = [profile.partner1_name, profile.partner2_name].filter(Boolean)
+  const hasPassed = profile.wedding_date ? profile.wedding_date < todayISODate() : false
+
+  return {
+    slug,
+    coupleName: names.length ? names.join(' & ') : 'The Couple',
+    weddingDate: profile.wedding_date,
+    city: profile.city,
+    coverImageUrl: profile.cover_image_url,
+    hasPassed,
+    allowRsvp: !hasPassed && publicEvents.some((e) => e.allow_rsvp),
+    events: publicEvents,
+  }
+}
+
+/** Today's date as YYYY-MM-DD (wedding_date is a DATE column). */
+function todayISODate(): string {
+  return new Date().toISOString().slice(0, 10)
+}
+
+/** The signed-in couple's public-invite sharing state (for the dashboard). */
+export interface MyPublicInvite {
+  slug: string | null
+  enabled: boolean
+  coverImageUrl: string | null
+  coupleName: string
+}
+
+export async function getMyPublicInvite(): Promise<MyPublicInvite> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data } = await supabase
+    .from('couple_profiles')
+    .select('partner1_name, partner2_name, public_slug, public_sharing_enabled, cover_image_url')
+    .eq('user_id', user.id)
+    .maybeSingle<{
+      partner1_name: string | null
+      partner2_name: string | null
+      public_slug: string | null
+      public_sharing_enabled: boolean | null
+      cover_image_url: string | null
+    }>()
+  const names = [data?.partner1_name, data?.partner2_name].filter(Boolean)
+  return {
+    slug: data?.public_slug ?? null,
+    enabled: Boolean(data?.public_sharing_enabled),
+    coverImageUrl: data?.cover_image_url ?? null,
+    coupleName: names.length ? names.join(' & ') : 'The Couple',
+  }
+}
+
+/**
+ * WhatsApp send entitlement = how many invitation "credits" the couple paid for
+ * vs how many they've used. Credits are the sum of `guests` across their PAID
+ * invitation_orders; usage is the number of DISTINCT guests already sent a
+ * WhatsApp invite (re-sends don't consume a credit). Orders link by user_id or
+ * by matching the couple's email/phone (guest checkout allows a null user_id).
+ */
+export interface WhatsAppEntitlement {
+  purchased: number
+  used: number
+  remaining: number
+  hasPaidOrder: boolean
+  /** The paid invitation card's hero image — used as the WhatsApp header. */
+  cardImageUrl: string | null
+  /** The paid card's tier (e.g. "Signature"), for the "card purchased" badge. */
+  cardTier: string | null
+  /** The paid card/product name (e.g. "The Couple"). */
+  cardName: string | null
+  /** Distinct add-ons purchased across paid orders (prints, swag, etc.). */
+  addOns: string[]
+  /** Couple/honoree display name for the template body ({{2}}). */
+  coupleName: string
+  /** guest_contact_ids already sent a WhatsApp invite (re-sends don't re-charge). */
+  alreadySentIds: string[]
+}
+
+interface PaidOrderItem {
+  name?: string
+  guests?: number
+  image?: string
+  tier?: string
+  addOns?: string[]
+}
+
+export async function getWhatsAppEntitlement(): Promise<WhatsAppEntitlement> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('whatsapp_phone, partner1_name, partner2_name')
+    .eq('user_id', user.id)
+    .maybeSingle<{ whatsapp_phone: string | null; partner1_name: string | null; partner2_name: string | null }>()
+  const coupleNames = [profile?.partner1_name, profile?.partner2_name].filter(Boolean)
+  const coupleName = coupleNames.length ? coupleNames.join(' & ') : 'The Couple'
+
+  // Match paid orders to this couple: explicit user_id, or buyer email/phone.
+  const ors = [`user_id.eq.${user.id}`]
+  if (user.email) ors.push(`contact_email.eq.${user.email}`)
+  if (profile?.whatsapp_phone) ors.push(`contact_phone.eq.${profile.whatsapp_phone}`)
+
+  const { data: orders } = await supabase
+    .from('invitation_orders')
+    .select('items, paid_at')
+    .eq('status', 'paid')
+    .or(ors.join(','))
+    .order('paid_at', { ascending: false })
+
+  let purchased = 0
+  let cardImageUrl: string | null = null
+  let cardTier: string | null = null
+  let cardName: string | null = null
+  const addOnSet = new Set<string>()
+  for (const o of (orders ?? []) as { items: PaidOrderItem[] | null }[]) {
+    for (const item of o.items ?? []) {
+      if (typeof item.guests === 'number' && item.guests > 0) purchased += Math.floor(item.guests)
+      // The card they paid for: first hero image/tier/name found (orders are newest-first).
+      if (!cardImageUrl && item.image) cardImageUrl = item.image
+      if (!cardTier && item.tier) cardTier = item.tier
+      if (!cardName && item.name) cardName = item.name
+      for (const a of item.addOns ?? []) {
+        const label = a.trim()
+        if (label) addOnSet.add(label)
+      }
+    }
+  }
+  const addOns = [...addOnSet]
+
+  // Used = distinct guests already sent a WhatsApp invite.
+  const { data: sent } = await supabase
+    .from('whatsapp_messages')
+    .select('guest_contact_id')
+    .eq('user_id', user.id)
+    .eq('direction', 'out')
+    .eq('kind', 'invite')
+    .eq('status', 'sent')
+  const alreadySentIds = [
+    ...new Set((sent ?? []).map((r) => r.guest_contact_id as string | null).filter((x): x is string => Boolean(x))),
+  ]
+
+  return {
+    purchased,
+    used: alreadySentIds.length,
+    remaining: Math.max(0, purchased - alreadySentIds.length),
+    hasPaidOrder: (orders ?? []).length > 0,
+    cardImageUrl,
+    cardTier,
+    cardName,
+    addOns,
+    coupleName,
+    alreadySentIds,
+  }
+}
+
+// ──────────────────────────── Send-invites page ────────────────────────────
+
+export type SendRowStatus = 'none' | 'sent' | 'viewed' | 'attending' | 'declined' | 'maybe'
+
+export interface SendGuestRow {
+  id: string
+  name: string
+  phone: string | null
+  whatsappPhone: string | null
+  /** Preferred channel from which number is present. */
+  channel: 'whatsapp' | 'sms'
+  status: SendRowStatus
+  statusLabel: string
+  /** Absolute personal RSVP link (for the per-row copy action). */
+  rsvpUrl: string
+}
+
+export interface SendInvitesData {
+  event: {
+    coupleName: string
+    /** The primary event's own name (e.g. "Boris & Lu") — the heading's display
+     *  name. Comes from wedding_events, NOT the profile. Null with no events. */
+    eventName: string | null
+    /** The primary event's type label (e.g. "Wedding") — the heading suffix. */
+    eventTypeLabel: string | null
+    dateLabel: string | null
+    venue: string | null
+    cardTier: string | null
+    /** The paid card/product name (e.g. "The Couple"). */
+    cardName: string | null
+    /** The paid card's hero artwork — rendered in the event-context preview. */
+    cardImageUrl: string | null
+    /** Distinct add-ons purchased across paid orders (prints, swag, etc.). */
+    addOns: string[]
+    hasPaidOrder: boolean
+  }
+  funnel: { invited: number; delivered: number; viewed: number; rsvpd: number }
+  quota: { used: number; purchased: number; remaining: number; hasPaidOrder: boolean }
+  publicLink: { enabled: boolean; slug: string | null; url: string | null }
+  whatsappLive: boolean
+  guests: SendGuestRow[]
+}
+
+export async function getSendInvitesData(): Promise<SendInvitesData> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const origin = publicOrigin()
+
+  const [entitlement, publicInvite, events, profile, guests] = await Promise.all([
+    getWhatsAppEntitlement(),
+    getMyPublicInvite(),
+    getEvents(),
+    getCoupleProfile(),
+    getGuestsWithInvitations(),
+  ])
+
+  // WhatsApp read receipts → "viewed" (real once delivery webhooks land).
+  const { data: readRows } = await supabase
+    .from('whatsapp_messages')
+    .select('guest_contact_id')
+    .eq('user_id', user.id)
+    .eq('direction', 'out')
+    .eq('status', 'read')
+  const readSet = new Set(
+    (readRows ?? []).map((r) => r.guest_contact_id as string | null).filter((x): x is string => Boolean(x)),
+  )
+
+  const roster = guests.filter((g) => g.review_status !== 'unconfirmed')
+
+  const rows: SendGuestRow[] = roster.map((g) => {
+    const invs = g.invitations
+    const attending = invs.find((i) => i.rsvp_status === 'attending')
+    const anyDeclined = invs.length > 0 && invs.every((i) => i.rsvp_status === 'declined')
+    const anyMaybe = invs.some((i) => i.rsvp_status === 'maybe')
+    const wasSent = Boolean(g.last_invited_at)
+    const wasRead = readSet.has(g.id)
+
+    let status: SendRowStatus = 'none'
+    let statusLabel = 'Not sent'
+    if (attending) {
+      status = 'attending'
+      statusLabel = attending.party_size > 1 ? `Attending · ${attending.party_size}` : 'Attending'
+    } else if (anyDeclined) {
+      status = 'declined'
+      statusLabel = 'Declined'
+    } else if (anyMaybe) {
+      status = 'maybe'
+      statusLabel = 'Maybe'
+    } else if (wasRead) {
+      status = 'viewed'
+      statusLabel = 'Viewed'
+    } else if (wasSent) {
+      status = 'sent'
+      statusLabel = 'Sent'
+    }
+
+    return {
+      id: g.id,
+      name: g.full_name,
+      phone: g.phone,
+      whatsappPhone: g.whatsapp_phone,
+      channel: g.whatsapp_phone ? 'whatsapp' : 'sms',
+      status,
+      statusLabel,
+      rsvpUrl: `${origin}/rsvp/${g.public_token}`,
+    }
+  })
+
+  const funnel = {
+    invited: roster.length,
+    delivered: roster.filter((g) => g.last_invited_at).length,
+    viewed: rows.filter((r) => r.status === 'viewed' || r.status === 'attending' || r.status === 'declined' || r.status === 'maybe').length,
+    rsvpd: roster.filter((g) => g.invitations.some((i) => i.responded_at)).length,
+  }
+
+  const soonestVenue = [...events]
+    .sort((a, b) => (a.starts_at ?? '').localeCompare(b.starts_at ?? ''))
+    .map((e) => [e.venue_name, e.city].filter(Boolean).join(', '))
+    .find(Boolean) ?? null
+
+  // Heading is sourced from the couple's primary event (first by their own sort
+  // order, already applied in getEvents) — the event NAME they typed, suffixed
+  // with the event TYPE. Not the profile partner names, never a hardcoded guess.
+  const primaryEvent = events[0] ?? null
+  const eventName = primaryEvent?.name?.trim() || null
+  const eventTypeLbl = primaryEvent ? eventTypeLabel(primaryEvent.event_type) : null
+
+  return {
+    event: {
+      coupleName: entitlement.coupleName,
+      eventName,
+      eventTypeLabel: eventTypeLbl,
+      dateLabel: formatLongDate(profile?.wedding_date ?? null) || null,
+      venue: soonestVenue,
+      cardTier: entitlement.cardTier,
+      cardName: entitlement.cardName,
+      cardImageUrl: entitlement.cardImageUrl,
+      addOns: entitlement.addOns,
+      hasPaidOrder: entitlement.hasPaidOrder,
+    },
+    funnel,
+    quota: {
+      used: entitlement.used,
+      purchased: entitlement.purchased,
+      remaining: entitlement.remaining,
+      hasPaidOrder: entitlement.hasPaidOrder,
+    },
+    publicLink: {
+      enabled: publicInvite.enabled,
+      slug: publicInvite.slug,
+      url: publicInvite.slug ? `${origin}/i/${publicInvite.slug}` : null,
+    },
+    whatsappLive: getWhatsAppProvider().live,
+    guests: rows,
+  }
+}
+
+/** Guests that self-registered via the public link and await host review. */
+export async function getGuestsAwaitingReview(): Promise<GuestWithInvitations[]> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data: guests, error } = await supabase
+    .from('guest_contacts')
+    .select('*')
+    .eq('user_id', user.id)
+    .eq('review_status', 'unconfirmed')
+    .order('created_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  const ids = (guests ?? []).map((g) => g.id as string)
+  if (ids.length === 0) return []
+
+  const { data: invitations } = await supabase
+    .from('guest_invitations')
+    .select('*')
+    .in('guest_contact_id', ids)
+
+  const byGuest = new Map<string, GuestInvitation[]>()
+  for (const inv of (invitations ?? []) as GuestInvitation[]) {
+    const list = byGuest.get(inv.guest_contact_id) ?? []
+    list.push(inv)
+    byGuest.set(inv.guest_contact_id, list)
+  }
+  return ((guests ?? []) as GuestWithInvitations[]).map((g) => ({
+    ...g,
+    invitations: byGuest.get(g.id) ?? [],
+  }))
 }
 

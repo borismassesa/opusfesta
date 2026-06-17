@@ -26,7 +26,7 @@ export const WEBSITES_HERO_FALLBACK: WebsitesHeroContent = {
   description:
     "Build a beautiful wedding website to share details, collect RSVPs and link your registry — all in one place. Free with every OpusPass, bilingual in Swahili and English.",
   primary_cta_label: 'Start your website',
-  primary_cta_href: '/sign-up',
+  primary_cta_href: '/website-builder',
   secondary_cta_label: 'Explore designs',
   secondary_cta_href: '#designs',
   rating: '4.5',
@@ -63,7 +63,10 @@ export async function loadWebsitesHeroContent(): Promise<WebsitesHeroContent> {
         headline_line_2: stored.headline_line_2 ?? WEBSITES_HERO_FALLBACK.headline_line_2,
         description: stored.description ?? WEBSITES_HERO_FALLBACK.description,
         primary_cta_label: stored.primary_cta_label ?? WEBSITES_HERO_FALLBACK.primary_cta_label,
-        primary_cta_href: stored.primary_cta_href ?? WEBSITES_HERO_FALLBACK.primary_cta_href,
+        // The primary CTA always opens the website builder. Hardcoded so it can
+        // never be overridden by a stale stored CMS value (e.g. legacy `/sign-up`,
+        // which bounced signed-in couples to /my/dashboard).
+        primary_cta_href: '/website-builder',
         secondary_cta_label: stored.secondary_cta_label ?? WEBSITES_HERO_FALLBACK.secondary_cta_label,
         secondary_cta_href: stored.secondary_cta_href ?? WEBSITES_HERO_FALLBACK.secondary_cta_href,
         rating: stored.rating ?? WEBSITES_HERO_FALLBACK.rating,

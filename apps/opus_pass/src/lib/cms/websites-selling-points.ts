@@ -34,7 +34,7 @@ export const WEBSITES_SELLING_POINTS_FALLBACK: WebsitesSellingPointsContent = {
       headline: 'Websites loved by couples and guests',
       body: "It's the easiest way to keep guests updated and for them to RSVP and shop your registry.",
       cta_label: 'Start website',
-      cta_href: '/sign-up',
+      cta_href: '/website-builder',
       image: '/assets/images/mauzo_crew.jpg',
     },
     {
@@ -65,13 +65,18 @@ export async function loadWebsitesSellingPointsContent(): Promise<WebsitesSellin
       | Partial<WebsitesSellingPointsContent>
       | undefined
     if (stored) {
+      const items =
+        stored.items && Array.isArray(stored.items) && stored.items.length > 0
+          ? stored.items
+          : WEBSITES_SELLING_POINTS_FALLBACK.items
       return {
         heading: stored.heading ?? WEBSITES_SELLING_POINTS_FALLBACK.heading,
         description: stored.description ?? WEBSITES_SELLING_POINTS_FALLBACK.description,
-        items:
-          stored.items && Array.isArray(stored.items) && stored.items.length > 0
-            ? stored.items
-            : WEBSITES_SELLING_POINTS_FALLBACK.items,
+        // Route any legacy "start your website" CTA to the builder, even if a
+        // stale CMS row still points it at /sign-up.
+        items: items.map((it) =>
+          it.cta_href === '/sign-up' ? { ...it, cta_href: '/website-builder' } : it,
+        ),
       }
     }
     return WEBSITES_SELLING_POINTS_FALLBACK

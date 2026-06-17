@@ -1,0 +1,64 @@
+import 'server-only'
+import { MetaWhatsAppProvider, readMetaConfig } from './meta'
+import { StubWhatsAppProvider } from './stub'
+import { BTN, type ButtonKind, type InboundButton, type WhatsAppProvider } from './types'
+
+export type { WhatsAppProvider, InviteSend, SendResult, InboundButton, ButtonKind } from './types'
+export { BTN } from './types'
+
+/** Returns the live Meta provider when credentials are set, else the dry-run stub. */
+export function getWhatsAppProvider(): WhatsAppProvider {
+  const cfg = readMetaConfig()
+  return cfg ? new MetaWhatsAppProvider(cfg) : new StubWhatsAppProvider()
+}
+
+/** The token the Meta webhook GET handshake must echo. */
+export function webhookVerifyToken(): string | undefined {
+  return process.env.WHATSAPP_WEBHOOK_VERIFY_TOKEN
+}
+
+/** Split a button payload "kind:token" into its parts. */
+function parsePayload(payload: string | undefined | null): { kind: ButtonKind | null; token: string | null } {
+  if (!payload) return { kind: null, token: null }
+  const [kind, token] = payload.split(':')
+  const known = Object.values(BTN).includes(kind as ButtonKind)
+  return { kind: known ? (kind as ButtonKind) : null, token: token || null }
+}
+
+/**
+ * Parse a Meta Cloud API webhook body into the button taps we care about.
+ * Tolerant of shape drift: anything that isn't a recognised quick-reply is
+ * ignored. Returns one InboundButton per actionable message.
+ */
+export function parseInboundButtons(body: unknown): InboundButton[] {
+  const out: InboundButton[] = []
+  const entries = (body as { entry?: unknown[] })?.entry
+  if (!Array.isArray(entries)) return out
+
+  for (const entry of entries) {
+    const changes = (entry as { changes?: unknown[] })?.changes
+    if (!Array.isArray(changes)) continue
+    for (const change of changes) {
+      const messages = (change as { value?: { messages?: unknown[] } })?.value?.messages
+      if (!Array.isArray(messages)) continue
+      for (const m of messages as Record<string, unknown>[]) {
+        const from = typeof m.from === 'string' ? m.from : null
+        const wamid = typeof m.id === 'string' ? m.id : null
+        if (!from || !wamid) continue
+
+        // Quick-reply taps arrive as interactive.button_reply or legacy button.
+        let payload: string | undefined
+        const interactive = m.interactive as { button_reply?: { id?: string } } | undefined
+        if (interactive?.button_reply?.id) payload = interactive.button_reply.id
+        const legacy = m.button as { payload?: string } | undefined
+        if (!payload && legacy?.payload) payload = legacy.payload
+        if (!payload) continue
+
+        const { kind, token } = parsePayload(payload)
+        if (!kind) continue
+        out.push({ from, wamid, kind, token })
+      }
+    }
+  }
+  return out
+}

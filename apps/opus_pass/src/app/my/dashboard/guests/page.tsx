@@ -8,6 +8,7 @@ import {
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
 import GuestsManager from './GuestsManager'
+import ReviewQueue from './ReviewQueue'
 
 export const dynamic = 'force-dynamic'
 
@@ -20,14 +21,24 @@ export default async function GuestsPage() {
     getMyCollectorToken(),
     loadDashboardCopy('guests'),
   ])
+
+  // Public self-RSVPs sit in a review queue until the host approves them, so
+  // keep them out of the main roster — a forwarded link can't silently pad the
+  // guest list.
+  const awaitingReview = guests.filter((g) => g.review_status === 'unconfirmed')
+  const confirmedGuests = guests.filter((g) => g.review_status !== 'unconfirmed')
+
   return (
-    <GuestsManager
-      initialGuests={guests}
-      events={events}
-      coupleName={coupleDisplayName(profile)}
-      hero={hero}
-      collectorToken={collectorToken}
-      copy={copy}
-    />
+    <>
+      <ReviewQueue initial={awaitingReview} />
+      <GuestsManager
+        initialGuests={confirmedGuests}
+        events={events}
+        coupleName={coupleDisplayName(profile)}
+        hero={hero}
+        collectorToken={collectorToken}
+        copy={copy}
+      />
+    </>
   )
 }

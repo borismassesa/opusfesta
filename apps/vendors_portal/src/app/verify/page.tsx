@@ -84,6 +84,7 @@ export default async function VerifyPage() {
       .select(
         'doc_type, status, rejection_reason, original_filename, uploaded_at',
       )
+      .eq('vendor_id', state.vendorId)
       .eq('is_latest', true)
       .order('uploaded_at', { ascending: false })
       .returns<VendorDocRow[]>(),
@@ -96,6 +97,7 @@ export default async function VerifyPage() {
     supabase
       .from('vendor_agreements')
       .select('agreement_version, signed_at')
+      .eq('vendor_id', state.vendorId)
       .in(
         'agreement_version',
         AGREEMENT_DOCS.map((d) => d.version),

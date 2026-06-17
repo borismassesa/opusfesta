@@ -15,6 +15,12 @@ export type RsvpStatus = 'pending' | 'attending' | 'declined' | 'maybe'
 
 export type SendChannel = 'whatsapp' | 'sms' | 'email' | 'link'
 
+/** How a guest entered the roster. 'public' = self-registered via /i/<slug>. */
+export type GuestSource = 'host' | 'public'
+
+/** Review state for a guest. 'unconfirmed' = a public self-RSVP awaiting the host. */
+export type GuestReviewStatus = 'confirmed' | 'unconfirmed'
+
 export interface WeddingEvent {
   id: string
   name: string
@@ -74,6 +80,10 @@ export interface GuestContact {
   address_postal_code: string | null
 
   public_token: string
+  /** 'host' (added by the couple) | 'public' (self-registered via /i/<slug>). */
+  source: GuestSource
+  /** 'confirmed' | 'unconfirmed' (public self-RSVP awaiting host approval). */
+  review_status: GuestReviewStatus
   last_invited_at: string | null
   invite_count: number
   created_at: string
@@ -97,6 +107,12 @@ export interface GuestInvitation {
 /** A guest row enriched with their invitations for dashboard tables. */
 export interface GuestWithInvitations extends GuestContact {
   invitations: GuestInvitation[]
+}
+
+/** When/how a guest was last contacted (latest send), for the RSVP tracker. */
+export interface LastSend {
+  channel: SendChannel
+  at: string
 }
 
 export interface DashboardStats {
@@ -138,6 +154,43 @@ export const RSVP_STATUS_LABELS: Record<RsvpStatus, string> = {
   attending: 'Attending',
   declined: 'Declined',
   maybe: 'Maybe',
+}
+
+// ──────────────────────────────── Seat collection ────────────────────────────────
+
+/** A table on an event's floor plan. */
+export interface SeatingTable {
+  id: string
+  event_id: string
+  name: string
+  capacity: number
+  /** The "Top table" — rendered first with a star, for the head party. */
+  is_head: boolean
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+/**
+ * An attending guest party for one event, with where they're seated.
+ * `seats` is the headcount they occupy (their confirmed RSVP party_size).
+ * `table_id` is null when the guest is still in the "to be seated" pool.
+ */
+export interface SeatableGuest {
+  guest_contact_id: string
+  full_name: string
+  seats: number
+  meal_choice: string | null
+  dietary_notes: string | null
+  group_tag: string | null
+  table_id: string | null
+}
+
+/** Everything the seating planner needs for a single event. */
+export interface SeatingData {
+  event: WeddingEvent
+  tables: SeatingTable[]
+  guests: SeatableGuest[]
 }
 
 // ──────────────────────────────── Pledges ("michango") ────────────────────────────────

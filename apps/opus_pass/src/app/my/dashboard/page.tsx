@@ -15,6 +15,7 @@ import {
   getGuestsWithInvitations,
   getCoupleProfile,
   coupleDisplayName,
+  getGuestsAwaitingReview,
 } from '@/lib/dashboard/queries'
 import { Card, StatCard, SectionTitle, ProgressBar, StatusPill, EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
@@ -35,14 +36,16 @@ function formatDate(value: string | null): string {
 }
 
 export default async function DashboardOverviewPage() {
-  const [stats, events, guests, profile, hero, copy] = await Promise.all([
+  const [stats, events, guests, profile, hero, copy, awaitingReview] = await Promise.all([
     getStats(),
     getEvents(),
     getGuestsWithInvitations(),
     getCoupleProfile(),
     loadDashboardHero('home'),
     loadDashboardCopy('home'),
+    getGuestsAwaitingReview(),
   ])
+  const reviewCount = awaitingReview.length
 
   const upcoming = events
     .filter((e) => e.starts_at && new Date(e.starts_at) >= new Date(new Date().toDateString()))
@@ -76,6 +79,26 @@ export default async function DashboardOverviewPage() {
           </Button>
         </Link>
       </header>
+
+      {reviewCount > 0 ? (
+        <Link
+          href="/my/dashboard/guests?review=1"
+          className="flex items-center justify-between gap-4 rounded-2xl border border-[#9FE870]/60 bg-[#9FE870]/15 px-5 py-4 transition hover:bg-[#9FE870]/25"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#14342B] text-sm font-bold text-white">
+              {reviewCount}
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-[#14342B]">
+                {reviewCount === 1 ? '1 guest needs review' : `${reviewCount} guests need review`}
+              </p>
+              <p className="text-xs text-[#1A1A1A]/60">RSVP’d via your shared link — approve or dismiss them.</p>
+            </div>
+          </div>
+          <ArrowRight className="h-4 w-4 shrink-0 text-[#14342B]" />
+        </Link>
+      ) : null}
 
       {empty ? (
         <EmptyState
