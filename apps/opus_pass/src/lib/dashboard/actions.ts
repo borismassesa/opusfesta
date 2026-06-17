@@ -6,6 +6,9 @@ import { requireDashboardUser } from './auth'
 import { createNotification } from './notifications'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
 import { paymentMethodsToText } from './pledge-page'
+import { coupleSlugBase, normalizePhone } from './share'
+import { getWhatsAppEntitlement } from './queries'
+import { getWhatsAppProvider } from '@/lib/whatsapp'
 import type {
   AttendanceAnswer,
   CardStatus,
@@ -26,6 +29,7 @@ function revalidateDashboard() {
   revalidatePath('/my/dashboard/rsvps')
   revalidatePath('/my/dashboard/pledges')
   revalidatePath('/my/dashboard/website')
+  revalidatePath('/my/dashboard/seating')
 }
 
 // ---------------------------------------------------------------- Events
@@ -797,4 +801,544 @@ export async function submitPublicRsvp(
 
   revalidatePath(`/rsvp/${token}`)
   return { ok: true }
+}
+
+// ---------------------------------------------------------------- Public invitation hub
+
+/**
+ * Turn on the couple's public, forwardable invite link, generating a readable
+ * slug from their names on first use (collision-suffixed). Idempotent: if a
+ * slug already exists it's reused and sharing is simply (re)enabled. Returns
+ * the slug so the dashboard can build the share URL.
+ */
+export async function enablePublicSharing(): Promise<{ slug: string }> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const { data: profile } = await supabase
+    .from('couple_profiles')
+    .select('partner1_name, partner2_name, public_slug')
+    .eq('user_id', user.id)
+    .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; public_slug: string | null }>()
+
+  let slug = profile?.public_slug ?? null
+  if (!slug) {
+    slug = await reserveUniqueSlug(
+      supabase,
+      coupleSlugBase(profile?.partner1_name ?? null, profile?.partner2_name ?? null),
+    )
+  }
+
+  const patch = { public_slug: slug, public_sharing_enabled: true, updated_at: new Date().toISOString() }
+  const { data: updated, error } = await supabase
+    .from('couple_profiles')
+    .update(patch)
+    .eq('user_id', user.id)
+    .select('id')
+  if (error) throw new Error(error.message)
+  if (!updated || updated.length === 0) {
+    const { error: insErr } = await supabase
+      .from('couple_profiles')
+      .insert({ user_id: user.id, partner1_name: 'The Couple', ...patch })
+    if (insErr) throw new Error(insErr.message)
+  }
+
+  revalidatePath('/my/dashboard')
+  return { slug }
+}
+
+/** Find an unused public_slug, appending -2, -3… on collision. */
+async function reserveUniqueSlug(
+  supabase: ReturnType<typeof createDashboardClient>,
+  base: string,
+): Promise<string> {
+  for (let n = 1; n < 50; n++) {
+    const candidate = n === 1 ? base : `${base}-${n}`
+    const { data } = await supabase
+      .from('couple_profiles')
+      .select('id')
+      .eq('public_slug', candidate)
+      .maybeSingle<{ id: string }>()
+    if (!data) return candidate
+  }
+  // Extremely unlikely; fall back to a random suffix.
+  return `${base}-${Math.floor(Date.now() % 100000)}`
+}
+
+/** Toggle the public link on/off (host-revocable kill switch). */
+export async function setPublicSharing(enabled: boolean): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('couple_profiles')
+    .update({ public_sharing_enabled: enabled, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidatePath('/my/dashboard')
+}
+
+/** Upload the cover image used by the public hub + OG card; persists the URL. */
+export async function uploadInviteCover(formData: FormData): Promise<string> {
+  const user = await requireDashboardUser()
+  const file = formData.get('file')
+  if (!(file instanceof File) || file.size === 0) throw new Error('No image selected')
+  if (!file.type.startsWith('image/')) throw new Error('Please choose an image file')
+  if (file.size > 5 * 1024 * 1024) throw new Error('Image must be 5MB or smaller')
+
+  const supabase = createDashboardClient()
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '')
+  const path = `${user.id}/invite-cover-${Date.now()}.${ext}`
+  // Reuse the existing public 'pledge-covers' bucket (couple-owned cover images).
+  const { error } = await supabase.storage
+    .from('pledge-covers')
+    .upload(path, file, { contentType: file.type, upsert: true })
+  if (error) throw new Error(error.message)
+
+  const { data } = supabase.storage.from('pledge-covers').getPublicUrl(path)
+  const url = data.publicUrl
+
+  const { data: updated, error: upErr } = await supabase
+    .from('couple_profiles')
+    .update({ cover_image_url: url, updated_at: new Date().toISOString() })
+    .eq('user_id', user.id)
+    .select('id')
+  if (upErr) throw new Error(upErr.message)
+  if (!updated || updated.length === 0) {
+    await supabase
+      .from('couple_profiles')
+      .insert({ user_id: user.id, partner1_name: 'The Couple', cover_image_url: url })
+  }
+  revalidatePath('/my/dashboard')
+  return url
+}
+
+// ----------------------------------------------- Public self-RSVP (no auth, anti-hijack)
+
+export interface PublicInviteRsvpInput {
+  fullName: string
+  phone: string
+  email?: string | null
+  status: RsvpStatus
+  partySize: number
+  message?: string | null
+}
+
+/**
+ * RSVP submitted from the forwardable /i/<slug> link by a brand-new guest.
+ *
+ * Anti-hijack: this ALWAYS lands in the review bucket (source='public',
+ * review_status='unconfirmed') and is keyed by phone, so it can never overwrite
+ * or impersonate an existing named (host-added) guest. A repeat self-RSVP from
+ * the same phone updates the prior self-registration rather than piling up
+ * duplicates. The host approves/merges these from the dashboard.
+ */
+export async function submitPublicInviteRsvp(
+  slug: string,
+  input: PublicInviteRsvpInput,
+): Promise<{ ok: boolean; error?: string }> {
+  const fullName = input.fullName?.trim()
+  const phone = normalizePhone(input.phone)
+  if (!fullName) return { ok: false, error: 'Please enter your name.' }
+  if (!phone) return { ok: false, error: 'Please enter a valid phone number.' }
+
+  const supabase = createDashboardClient()
+
+  // Resolve the couple by slug; sharing must be enabled.
+  const { data: profile, error: pErr } = await supabase
+    .from('couple_profiles')
+    .select('user_id, public_sharing_enabled, wedding_date')
+    .eq('public_slug', slug)
+    .maybeSingle<{ user_id: string; public_sharing_enabled: boolean; wedding_date: string | null }>()
+  if (pErr) {
+    console.error('[public-invite-rsvp] profile lookup failed', pErr)
+    return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+  }
+  if (!profile || !profile.public_sharing_enabled) return { ok: false, error: 'This invitation link is no longer active.' }
+  if (profile.wedding_date && profile.wedding_date < new Date().toISOString().slice(0, 10)) {
+    return { ok: false, error: 'RSVPs for this celebration have closed.' }
+  }
+
+  // Events that accept RSVPs from the public link.
+  const { data: events } = await supabase
+    .from('wedding_events')
+    .select('id')
+    .eq('user_id', profile.user_id)
+    .eq('is_public', true)
+    .eq('allow_rsvp', true)
+  const eventIds = (events ?? []).map((e) => e.id as string)
+  if (eventIds.length === 0) return { ok: false, error: 'RSVPs are not open for this invitation.' }
+
+  const partySize = Math.max(1, Math.min(Number(input.partySize) || 1, 20))
+
+  // Reuse this phone's prior self-registration; never touch a host-added guest.
+  const { data: existing } = await supabase
+    .from('guest_contacts')
+    .select('id')
+    .eq('user_id', profile.user_id)
+    .eq('source', 'public')
+    .eq('phone', phone)
+    .maybeSingle<{ id: string }>()
+
+  let guestId = existing?.id ?? null
+  if (guestId) {
+    await supabase
+      .from('guest_contacts')
+      .update({
+        full_name: fullName,
+        email: input.email?.trim() || null,
+        whatsapp_phone: phone,
+        max_party_size: Math.max(partySize, 1),
+        review_status: 'unconfirmed',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', guestId)
+  } else {
+    const { data: created, error: cErr } = await supabase
+      .from('guest_contacts')
+      .insert({
+        user_id: profile.user_id,
+        full_name: fullName,
+        phone,
+        whatsapp_phone: phone,
+        email: input.email?.trim() || null,
+        max_party_size: Math.max(partySize, 1),
+        source: 'public',
+        review_status: 'unconfirmed',
+        group_tag: 'Self-registered',
+      })
+      .select('id')
+      .single<{ id: string }>()
+    if (cErr || !created) {
+      console.error('[public-invite-rsvp] guest insert failed', cErr)
+      return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+    }
+    guestId = created.id
+  }
+
+  // Record their response against every RSVP-open event.
+  const now = new Date().toISOString()
+  const rows = eventIds.map((event_id) => ({
+    user_id: profile.user_id,
+    guest_contact_id: guestId as string,
+    event_id,
+    rsvp_status: input.status,
+    party_size: input.status === 'attending' ? partySize : 1,
+    guest_message: input.message?.trim() || null,
+    responded_at: now,
+  }))
+  const { error: invErr } = await supabase
+    .from('guest_invitations')
+    .upsert(rows, { onConflict: 'guest_contact_id,event_id' })
+  if (invErr) {
+    console.error('[public-invite-rsvp] invitation upsert failed', invErr)
+    return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+  }
+
+  const statusLabel =
+    input.status === 'attending'
+      ? `Attending${partySize > 1 ? ` · party of ${partySize}` : ''}`
+      : input.status === 'declined'
+        ? 'Declined'
+        : 'Maybe'
+  await createNotification({
+    userId: profile.user_id,
+    type: 'rsvp_received',
+    title: `${fullName} RSVP'd via your shared link`,
+    body: `${statusLabel} · needs review`,
+    href: '/my/dashboard/guests?review=1',
+  })
+
+  revalidatePath(`/i/${slug}`)
+  revalidateDashboard()
+  return { ok: true }
+}
+
+/** Approve a self-registered guest into the confirmed roster. */
+export async function approveReviewGuest(guestId: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('guest_contacts')
+    .update({ review_status: 'confirmed', updated_at: new Date().toISOString() })
+    .eq('id', guestId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Dismiss (delete) a self-registered guest the host doesn't recognise. */
+export async function dismissReviewGuest(guestId: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('guest_contacts')
+    .delete()
+    .eq('id', guestId)
+    .eq('user_id', user.id)
+    .eq('review_status', 'unconfirmed')
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+// ---------------------------------------------------------------- WhatsApp invitations
+
+export interface WhatsAppSendSummary {
+  sent: number
+  failed: number
+  /** Skipped because the guest has no phone number. */
+  skipped: number
+  /** Skipped because the couple has used up their paid invitation quota. */
+  blocked: number
+  /** True when handled by the dry-run stub (no live Meta account yet). */
+  dryRun: boolean
+  hasPaidOrder: boolean
+  /** Total invitation credits the couple paid for. */
+  purchased: number
+  /** Credits left after this run. */
+  remaining: number
+}
+
+/**
+ * Send the WhatsApp invitation to the given guests (or all confirmed guests
+ * when no ids are passed). The header image is the card the COUPLE PAID FOR
+ * (their purchased invitation design); the guest's first name goes in the
+ * template body. Gated by entitlement: a paid order grants N credits
+ * (= purchased guests) and each NEW guest consumes one — re-sends to a guest
+ * already invited are free. Sends stop once the quota is exhausted.
+ *
+ * Uses the configured provider (Meta when credentials exist, else a dry-run
+ * stub). Each send is logged to whatsapp_messages + guest_message_log.
+ */
+export async function sendWhatsAppInvites(guestIds?: string[]): Promise<WhatsAppSendSummary> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const provider = getWhatsAppProvider()
+  const ent = await getWhatsAppEntitlement()
+
+  const summary: WhatsAppSendSummary = {
+    sent: 0,
+    failed: 0,
+    skipped: 0,
+    blocked: 0,
+    dryRun: !provider.live,
+    hasPaidOrder: ent.hasPaidOrder,
+    purchased: ent.purchased,
+    remaining: ent.remaining,
+  }
+
+  // Nothing to send until the couple has paid for a card (gives both the header
+  // image and the credit quota).
+  if (!ent.cardImageUrl || ent.purchased <= 0) return summary
+
+  let q = supabase
+    .from('guest_contacts')
+    .select('id, full_name, phone, whatsapp_phone, public_token')
+    .eq('user_id', user.id)
+    .eq('review_status', 'confirmed')
+  if (guestIds && guestIds.length) q = q.in('id', guestIds)
+  const { data: guests, error } = await q
+  if (error) throw new Error(error.message)
+
+  const sentSet = new Set(ent.alreadySentIds)
+  let remaining = ent.remaining
+  const now = new Date().toISOString()
+
+  for (const g of (guests ?? []) as {
+    id: string
+    full_name: string
+    phone: string | null
+    whatsapp_phone: string | null
+    public_token: string
+  }[]) {
+    const to = normalizePhone(g.whatsapp_phone ?? g.phone)
+    if (!to) {
+      summary.skipped += 1
+      continue
+    }
+    const isResend = sentSet.has(g.id)
+    if (!isResend && remaining <= 0) {
+      summary.blocked += 1
+      continue
+    }
+
+    const result = await provider.sendInvite({
+      to,
+      guestFirstName: g.full_name.trim().split(/\s+/)[0] || g.full_name,
+      coupleName: ent.coupleName,
+      headerImageUrl: ent.cardImageUrl,
+      token: g.public_token,
+    })
+
+    await supabase.from('whatsapp_messages').insert({
+      user_id: user.id,
+      guest_contact_id: g.id,
+      direction: 'out',
+      wamid: result.wamid ?? null,
+      kind: 'invite',
+      status: result.ok ? 'sent' : 'failed',
+      error: result.error ?? null,
+    })
+
+    if (result.ok) {
+      summary.sent += 1
+      if (!isResend) {
+        remaining -= 1 // consume one paid credit per newly-invited guest
+        sentSet.add(g.id)
+      }
+      await supabase.from('guest_message_log').insert({
+        user_id: user.id,
+        guest_contact_id: g.id,
+        channel: 'whatsapp',
+      })
+      await supabase
+        .from('guest_contacts')
+        .update({ last_invited_at: now })
+        .eq('id', g.id)
+        .eq('user_id', user.id)
+    } else {
+      summary.failed += 1
+    }
+  }
+
+  summary.remaining = remaining
+  revalidateDashboard()
+  return summary
+}
+
+// ---------------------------------------------------------------- Seat collection
+
+/** Add a table to an event's floor plan. Returns the new table id. */
+export async function createSeatingTable(input: {
+  eventId: string
+  name?: string
+  capacity?: number
+  isHead?: boolean
+}): Promise<string> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  // Guard: the event must belong to the signed-in couple.
+  const { data: event } = await supabase
+    .from('wedding_events')
+    .select('id')
+    .eq('id', input.eventId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ id: string }>()
+  if (!event) throw new Error('Event not found')
+
+  // New tables append after existing ones.
+  const { data: last } = await supabase
+    .from('seating_tables')
+    .select('sort_order')
+    .eq('user_id', user.id)
+    .eq('event_id', input.eventId)
+    .order('sort_order', { ascending: false })
+    .limit(1)
+    .maybeSingle<{ sort_order: number }>()
+
+  const { data, error } = await supabase
+    .from('seating_tables')
+    .insert({
+      user_id: user.id,
+      event_id: input.eventId,
+      name: input.name?.trim() || 'New table',
+      capacity: Math.max(0, Math.floor(input.capacity ?? 10)),
+      is_head: input.isHead ?? false,
+      sort_order: (last?.sort_order ?? 0) + 1,
+    })
+    .select('id')
+    .single<{ id: string }>()
+  if (error || !data) throw new Error(error?.message ?? 'Failed to create table')
+  revalidateDashboard()
+  return data.id
+}
+
+/** Rename a table, change its capacity, or toggle its "head table" flag. */
+export async function updateSeatingTable(
+  tableId: string,
+  input: { name?: string; capacity?: number; isHead?: boolean },
+): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  const patch: Record<string, unknown> = {}
+  if (input.name !== undefined) patch.name = input.name.trim() || 'Table'
+  if (input.capacity !== undefined) patch.capacity = Math.max(0, Math.floor(input.capacity))
+  if (input.isHead !== undefined) patch.is_head = input.isHead
+  if (Object.keys(patch).length === 0) return
+
+  const { error } = await supabase
+    .from('seating_tables')
+    .update(patch)
+    .eq('id', tableId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Remove a table. Its assignments cascade away, returning guests to the pool. */
+export async function deleteSeatingTable(tableId: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('seating_tables')
+    .delete()
+    .eq('id', tableId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/**
+ * Seat a guest party at a table (or move them between tables). One assignment
+ * per guest per event, so this upserts on (guest_contact_id, event_id).
+ */
+export async function assignGuestToTable(input: {
+  eventId: string
+  guestContactId: string
+  tableId: string
+}): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+
+  // Guard: the table must belong to this couple AND this event.
+  const { data: table } = await supabase
+    .from('seating_tables')
+    .select('id')
+    .eq('id', input.tableId)
+    .eq('event_id', input.eventId)
+    .eq('user_id', user.id)
+    .maybeSingle<{ id: string }>()
+  if (!table) throw new Error('Table not found')
+
+  const { error } = await supabase
+    .from('seating_assignments')
+    .upsert(
+      {
+        user_id: user.id,
+        event_id: input.eventId,
+        table_id: input.tableId,
+        guest_contact_id: input.guestContactId,
+      },
+      { onConflict: 'guest_contact_id,event_id' },
+    )
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+/** Return a guest to the "to be seated" pool for an event. */
+export async function unassignGuest(input: {
+  eventId: string
+  guestContactId: string
+}): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('seating_assignments')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('event_id', input.eventId)
+    .eq('guest_contact_id', input.guestContactId)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
 }

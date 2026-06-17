@@ -146,7 +146,7 @@ function PickVisual({ pick }: { pick: InvitationsEditorsPicksPick }) {
   if (pick.centered) {
     return (
       <div className="absolute inset-0 flex items-center justify-center">
-        <div className="relative w-[58%] aspect-[3/4] shadow-lg">{visual}</div>
+        <div className="relative w-[58%] aspect-[5/7] shadow-lg">{visual}</div>
       </div>
     )
   }
@@ -287,7 +287,7 @@ function PickCard({
 }) {
   return (
     <div
-      className="group relative aspect-[3/4] overflow-hidden rounded-sm bg-[#FAF7F2]"
+      className="group relative aspect-[5/7] overflow-hidden rounded-sm bg-[#FAF7F2]"
       style={background ? { backgroundColor: background } : undefined}
     >
       {children}

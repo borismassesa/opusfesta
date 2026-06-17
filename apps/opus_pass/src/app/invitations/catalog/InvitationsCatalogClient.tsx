@@ -189,8 +189,8 @@ export default function InvitationsCatalogClient({
         <div className="mx-auto max-w-7xl pt-14 sm:pt-20 pb-20 sm:pb-28">
           {/* Search + filter toolbar — search and all filters share one row */}
           <div className="mb-6 sm:mb-8">
-            <div className="flex flex-wrap items-center gap-2.5 sm:gap-3">
-              <div className="relative min-w-[180px] flex-1">
+            <div className="flex flex-nowrap items-center gap-2.5 sm:gap-3">
+              <div className="relative min-w-0 flex-1">
                 <Search
                   className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#1A1A1A]/40"
                   aria-hidden="true"
@@ -205,7 +205,7 @@ export default function InvitationsCatalogClient({
                 />
               </div>
               {/* Sort: Popular / Recent */}
-              <div className="inline-flex rounded-full border border-[#1A1A1A]/12 bg-white p-0.5">
+              <div className="inline-flex shrink-0 rounded-full border border-[#1A1A1A]/12 bg-white p-0.5">
                 <SortToggle active={sort === 'popular'} onClick={() => setSort('popular')} icon={ListFilter} label="Popular" />
                 {/* Recent is hidden on phones to keep the toolbar compact */}
                 <span className="hidden sm:contents">
@@ -337,7 +337,7 @@ function FilterMenu<T extends string>({
   const current = options.find((o) => o.key === value) ?? options[0]
 
   return (
-    <div ref={ref} className="relative">
+    <div ref={ref} className="relative shrink-0">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -512,7 +512,7 @@ function ProductCard({
     <div className="group flex flex-col">
       <Link
         href={`/invitations/p/${product.id}`}
-        className="relative block aspect-[3/4] overflow-hidden rounded-sm bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_16px_-8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_4px_8px_rgba(0,0,0,0.06),0_18px_32px_-12px_rgba(0,0,0,0.18)]"
+        className="relative block aspect-[5/7] overflow-hidden rounded-sm bg-white shadow-[0_1px_2px_rgba(0,0,0,0.06),0_8px_16px_-8px_rgba(0,0,0,0.12)] transition-[transform,box-shadow] duration-300 ease-out group-hover:-translate-y-1 group-hover:shadow-[0_4px_8px_rgba(0,0,0,0.06),0_18px_32px_-12px_rgba(0,0,0,0.18)]"
       >
         <span className="absolute inset-0">
           {cardImage ? (

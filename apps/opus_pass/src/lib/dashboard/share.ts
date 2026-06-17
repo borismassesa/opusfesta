@@ -1,5 +1,60 @@
 import type { GuestContact } from './types'
 
+/**
+ * The app's public origin, used to build absolute links for sharing + OG tags.
+ * opus_pass serves at the root of its own subdomain (no basePath).
+ */
+export function publicOrigin(): string {
+  return (process.env.NEXT_PUBLIC_OPUS_PASS_URL || 'https://opuspass.opusfesta.com').replace(/\/$/, '')
+}
+
+/** Slugify free text for a URL handle: lowercase, ASCII, dash-separated. */
+export function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[̀-ͯ]/g, '') // strip diacritics
+    .replace(/&/g, ' na ') // "Asha & Juma" -> "asha na juma"
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 60)
+}
+
+/** Build a public-invite slug base from the couple's names ("asha-na-juma"). */
+export function coupleSlugBase(partner1: string | null, partner2: string | null): string {
+  const base = slugify([partner1, partner2].filter(Boolean).join(' na '))
+  return base || 'harusi'
+}
+
+/** Path to the couple's public invitation hub. */
+export function invitePath(slug: string): string {
+  return `/i/${slug}`
+}
+
+/** Absolute public-invite URL given a runtime origin. */
+export function inviteUrl(origin: string, slug: string): string {
+  return `${origin.replace(/\/$/, '')}${invitePath(slug)}`
+}
+
+/** Bilingual (SW/EN) broadcast message for the public, forwardable invite link. */
+export function publicInviteMessage(coupleNames: string, link: string): string {
+  return (
+    `Karibu kwenye harusi ya ${coupleNames}! 💚\n` +
+    `Bonyeza kuona mwaliko na kuthibitisha ujio wako: ${link}\n` +
+    `\n` +
+    `You're invited to ${coupleNames}'s wedding! ` +
+    `Tap to view the invitation and RSVP: ${link}`
+  )
+}
+
+/** Long, human date for a DATE/ISO string, e.g. "12 July 2026". Empty if null. */
+export function formatLongDate(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const d = new Date(iso.length <= 10 ? `${iso}T00:00:00` : iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
 /** Path (no origin) to a guest's public RSVP page. */
 export function rsvpPath(token: string): string {
   return `/rsvp/${token}`
@@ -96,6 +151,23 @@ export function inviteMessage(
     `Tafadhali tujibu hapa: ${rsvpLink}\n` +
     `\n` +
     `Hi ${firstName}! ${coupleNames} would love to see you at their wedding. ` +
+    `Please RSVP here: ${rsvpLink}`
+  )
+}
+
+/** A gentle follow-up for guests who were invited but haven't replied yet. */
+export function reminderMessage(
+  coupleNames: string,
+  guestName: string,
+  rsvpLink: string
+): string {
+  const firstName = guestName.split(/\s+/)[0] || guestName
+  return (
+    `Habari ${firstName}! 💚\n` +
+    `Ni ukumbusho mpole — ${coupleNames} bado wanasubiri jibu lako.\n` +
+    `Tafadhali tujibu hapa: ${rsvpLink}\n` +
+    `\n` +
+    `Hi ${firstName}! Just a gentle reminder — ${coupleNames} would still love to know if you can make it. ` +
     `Please RSVP here: ${rsvpLink}`
   )
 }

@@ -38,6 +38,7 @@ import {
   type GuestInput,
 } from '@/lib/dashboard/actions'
 import { emailShareUrl, inviteMessage, rsvpUrl, smsShareUrl, whatsappShareUrl } from '@/lib/dashboard/share'
+import { fileToImportLines, SpreadsheetError } from '@/lib/dashboard/import-spreadsheet'
 import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { GuestsDashboardCopy } from '@/lib/cms/dashboard-copy'
 import type {
@@ -471,10 +472,14 @@ export default function GuestsManager({
     const file = e.target.files?.[0]
     if (!file) return
     try {
-      const raw = await file.text()
-      setImportText(csvToImportLines(raw))
-    } catch {
-      toast.error('Could not read file')
+      const lines = await fileToImportLines(file)
+      if (!lines.trim()) {
+        toast.error('No guests found in that file')
+        return
+      }
+      setImportText(lines)
+    } catch (err) {
+      toast.error(err instanceof SpreadsheetError ? err.message : 'Could not read file')
     } finally {
       e.target.value = '' // allow re-selecting the same file
     }
@@ -1060,14 +1065,14 @@ export default function GuestsManager({
       >
         <div className="space-y-4">
           <div className="rounded-xl border border-dashed border-black/[0.15] bg-black/[0.02] p-4">
-            <p className="text-sm font-medium text-[#1A1A1A]">Drop a .csv file</p>
+            <p className="text-sm font-medium text-[#1A1A1A]">Upload a .csv or .xlsx file</p>
             <p className="mt-1 text-xs text-[#1A1A1A]/55">
-              Columns we recognize: <span className="font-medium">Name, Email, Phone, Group</span>. The first
+              Columns we recognize: <span className="font-medium">Name, Email, Phone</span>. The first
               row is treated as a header if it looks like one.
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
               <Button variant="secondary" onClick={pickImportFile}>
-                <Upload className="h-4 w-4" /> Choose CSV file
+                <Upload className="h-4 w-4" /> Choose file
               </Button>
               {importText ? (
                 <button
@@ -1082,7 +1087,7 @@ export default function GuestsManager({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,text/csv"
+              accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
               className="hidden"
               onChange={onImportFile}
             />
@@ -1696,85 +1701,3 @@ function RsvpsTab({
   )
 }
 
-/**
- * Convert raw CSV content into the line-based format `bulkImportGuests` expects:
- * `Name, email, phone` per line. Skips a leading header row when it looks like
- * one (i.e. cells contain the keywords name/email/phone). Tolerates quoted
- * fields and Windows line endings.
- */
-function csvToImportLines(raw: string): string {
-  const text = raw.replace(/\r\n?/g, '\n').trim()
-  if (!text) return ''
-  const rows = parseCsv(text)
-  if (rows.length === 0) return ''
-
-  const header = rows[0].map((c) => c.toLowerCase())
-  const looksLikeHeader =
-    header.some((c) => /(^|\b)(name|full ?name)\b/.test(c)) ||
-    header.some((c) => c.includes('email')) ||
-    header.some((c) => c.includes('phone'))
-
-  const colIndex = (matchers: RegExp[]) =>
-    header.findIndex((c) => matchers.some((re) => re.test(c)))
-
-  let nameIdx = 0
-  let emailIdx = 1
-  let phoneIdx = 2
-  if (looksLikeHeader) {
-    const n = colIndex([/(^|\b)name\b/, /full ?name/])
-    const e = colIndex([/email/])
-    const p = colIndex([/phone|mobile|whatsapp/])
-    if (n >= 0) nameIdx = n
-    if (e >= 0) emailIdx = e
-    if (p >= 0) phoneIdx = p
-  }
-
-  const dataRows = looksLikeHeader ? rows.slice(1) : rows
-  return dataRows
-    .map((cols) => {
-      const name = (cols[nameIdx] ?? '').trim()
-      const email = (cols[emailIdx] ?? '').trim()
-      const phone = (cols[phoneIdx] ?? '').trim()
-      if (!name) return null
-      return [name, email, phone].filter(Boolean).join(', ')
-    })
-    .filter((line): line is string => line !== null)
-    .join('\n')
-}
-
-function parseCsv(text: string): string[][] {
-  const rows: string[][] = []
-  let row: string[] = []
-  let cell = ''
-  let inQuotes = false
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]
-    if (inQuotes) {
-      if (ch === '"' && text[i + 1] === '"') {
-        cell += '"'
-        i++
-      } else if (ch === '"') {
-        inQuotes = false
-      } else {
-        cell += ch
-      }
-    } else if (ch === '"') {
-      inQuotes = true
-    } else if (ch === ',') {
-      row.push(cell)
-      cell = ''
-    } else if (ch === '\n') {
-      row.push(cell)
-      rows.push(row)
-      row = []
-      cell = ''
-    } else {
-      cell += ch
-    }
-  }
-  if (cell.length > 0 || row.length > 0) {
-    row.push(cell)
-    rows.push(row)
-  }
-  return rows.filter((r) => r.some((c) => c.trim().length > 0))
-}

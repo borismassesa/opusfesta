@@ -110,7 +110,7 @@ function DesignsPicker({ content }: { content: WebsitesDesignsContent }) {
             return (
               <Link
                 key={d.id}
-                href="/sign-up"
+                href="/website-builder"
                 className="group block"
               >
                 <div className="relative aspect-[3/2] overflow-hidden rounded-md shadow-sm ring-1 ring-black/5">
