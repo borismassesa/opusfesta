@@ -541,7 +541,7 @@ function OptionalDoc({
   isCorrection: boolean
 }) {
   return (
-    <div className="py-4 first:pt-0 last:pb-0">
+    <div className="py-4">
       <div className="flex items-start gap-3">
         <span
           className={cn(
