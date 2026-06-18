@@ -11,6 +11,21 @@
   80% { transform: translateX(4px); }
 }
 
+/* Native <select> chrome: the browser's default dropdown arrow renders
+   cramped and visually inconsistent next to our rounded input styling.
+   Replace it with a custom chevron and reserve room for it on the right.
+   Scoped to plain single-selects — multi/list selects keep native chrome. */
+select:not([multiple]):not([size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2.25' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.75rem center;
+  background-size: 0.9rem 0.9rem;
+  padding-right: 2.25rem;
+}
+
 /* Hide overflow scrollbars while keeping scroll behavior. Used on the
    workforce tables (`overflow-x-auto` containers) so a stray horizontal
    scrollbar doesn't sit beneath every list — content still scrolls via
