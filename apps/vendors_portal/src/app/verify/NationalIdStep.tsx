@@ -172,9 +172,11 @@ export default function NationalIdStep({
         icon={ScanFace}
         label="Liveness selfie"
         sublabel={
-          idDone
-            ? 'Take a quick selfie so we can confirm it’s really you.'
-            : 'Unlocks after both sides of your ID are captured.'
+          selfie
+            ? undefined
+            : idDone
+              ? 'Take a quick selfie so we can confirm it’s really you.'
+              : 'Unlocks after both sides of your ID are captured.'
         }
         done={selfie}
         locked={!idDone}
@@ -247,7 +249,7 @@ function CaptureTile({
       <div className="flex min-w-0 items-center gap-2.5">
         <span
           className={cn(
-            'inline-flex h-8 w-8 items-center justify-center rounded-lg',
+            'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg',
             done
               ? 'bg-emerald-500 text-white'
               : locked
