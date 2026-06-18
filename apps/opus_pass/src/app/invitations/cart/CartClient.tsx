@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { ShoppingBag, Trash2, ShieldCheck, ArrowRight, Clock, Minus, Plus } from 'lucide-react'
 import { toast } from 'sonner'
 import CheckoutStepper from '@/components/invitations/CheckoutStepper'
-import { InvitationVisual } from '@/components/guests/InvitationVisual'
+import { InvitationVisual, type Treatment } from '@/components/guests/InvitationVisual'
 import { ProductInfo } from '@/components/guests/productInfo'
 import type { CatalogProduct } from '@/data/invitations-products'
 import { useCart, MIN_GUESTS } from '@/components/providers/CartProvider'
@@ -17,6 +17,43 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 /** Max designs shown in the "you might also like" cross-sell row. */
 const EXPLORE_LIMIT = 8
+
+/**
+ * Cart line thumbnail. Renders the card's real artwork when present, but falls
+ * back to the treatment visual if the image is missing OR fails to load — a
+ * stale/broken stored image URL would otherwise leave an empty box.
+ */
+function CartThumbnail({
+  href,
+  image,
+  treatment,
+}: {
+  href: string
+  image?: string
+  treatment: Treatment
+}) {
+  const [errored, setErrored] = useState(false)
+  return (
+    <Link
+      href={href}
+      className="relative aspect-[5/7] w-20 shrink-0 overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/5"
+    >
+      {image && !errored ? (
+        <Image
+          src={image}
+          alt=""
+          fill
+          sizes="80px"
+          className="object-cover"
+          unoptimized
+          onError={() => setErrored(true)}
+        />
+      ) : (
+        <InvitationVisual treatment={treatment} />
+      )}
+    </Link>
+  )
+}
 
 function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
@@ -294,16 +331,11 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                         className="flex gap-6 rounded-xl border border-gray-200 p-4 sm:p-5 max-sm:flex-col sm:items-center"
                       >
                         <div className="flex grow items-center gap-4">
-                        <Link
+                        <CartThumbnail
                           href={`/invitations/p/${item.id}`}
-                          className="relative aspect-[5/7] w-20 shrink-0 overflow-hidden rounded-md bg-white shadow-sm ring-1 ring-black/5"
-                        >
-                          {item.image ? (
-                            <Image src={item.image} alt="" fill sizes="80px" className="object-cover" unoptimized />
-                          ) : (
-                            <InvitationVisual treatment={item.treatment} />
-                          )}
-                        </Link>
+                          image={item.image}
+                          treatment={item.treatment}
+                        />
 
                         <div className="flex flex-col justify-between gap-3">
                           <div className="flex flex-col gap-1.5">
