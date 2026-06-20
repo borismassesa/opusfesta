@@ -2,6 +2,8 @@
 // Editor lives at apps/opus_admin/src/app/(admin)/cms/opus-pass/dashboard/[page]/hero/.
 // Loader on the OpusPass side lives at apps/opus_pass/src/lib/cms/dashboard-hero.ts.
 
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type DashboardHeroSlug =
   | 'home'
   | 'invitations'
@@ -13,12 +15,14 @@ export type DashboardHeroSlug =
 export type DashboardHeroMediaType = 'image' | 'video' | 'none'
 
 export type DashboardHeroContent = {
-  eyebrow: string
-  title: string
-  subtitle: string
+  // Translatable text — stored as { en, sw } (or a legacy plain string).
+  eyebrow: MaybeLocalized
+  title: MaybeLocalized
+  subtitle: MaybeLocalized
+  media_alt: MaybeLocalized
+  // Non-translatable config.
   media_url: string
   media_type: DashboardHeroMediaType
-  media_alt: string
 }
 
 export type DashboardHeroRow = {

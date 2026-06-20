@@ -4,6 +4,7 @@ import {
   type HomepageTestimonialItem,
   type HomepageTestimonialsContent,
 } from '@/lib/cms/homepage-testimonials'
+import { getLocale } from '@/lib/cms/locale'
 import { assetPath } from '@/lib/asset-path'
 
 // Match the testimonial card design from /websites — dark/purple alternating
@@ -85,7 +86,7 @@ export async function InvitationShowcase({
 } = {}) {
   // Most pages share the homepage testimonial wall; the Guests & RSVPs page
   // passes its own CMS-managed content so it can be edited independently.
-  const content = contentProp ?? (await loadHomepageTestimonialsContent())
+  const content = contentProp ?? (await loadHomepageTestimonialsContent(await getLocale()))
   return (
     <div className="py-10 lg:py-12 w-full">
       <div className="max-w-7xl mx-auto px-4 lg:px-8">

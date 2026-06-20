@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 // Public read side for the editable page-level copy on every OpusPass couple
 // dashboard page (/my/dashboard/*). The hero banner of each page is handled
@@ -318,8 +319,14 @@ export const DASHBOARD_COPY_PAGE_KEY: Record<DashboardCopySlug, string> = {
 
 const SECTION_KEY = 'copy'
 
+// Stored shape: every copy field is translatable, so a stored value may be a
+// localized { en, sw } object OR a legacy plain string. Each key is resolved for
+// `locale`; the RETURNED record stays flat strings (consumers are unchanged).
+type StoredDashboardCopy = Record<string, MaybeLocalized>
+
 export async function loadDashboardCopy<S extends DashboardCopySlug>(
   slug: S,
+  locale: Locale = DEFAULT_LOCALE,
 ): Promise<DashboardCopyBySlug[S]> {
   const fallback = DASHBOARD_COPY_FALLBACKS[slug]
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
@@ -339,9 +346,25 @@ export async function loadDashboardCopy<S extends DashboardCopySlug>(
       return fallback
     }
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<DashboardCopyBySlug[S]>
+      | StoredDashboardCopy
       | undefined
-    if (stored) return { ...fallback, ...stored }
+    if (stored) {
+      // Resolve PER FIELD rather than spreading `{ ...fallback, ...stored }` —
+      // a blind spread would leak stored LocalizedText objects into the string
+      // consumers. Iterate the fallback's keys (the canonical field set) and for
+      // each key resolve the stored value (or the fallback) for `locale`. The
+      // fallback values are plain English strings, so resolveLocalized returns
+      // them unchanged when nothing is stored.
+      const resolved: Record<string, string> = {}
+      for (const key of Object.keys(fallback) as (keyof DashboardCopyBySlug[S])[]) {
+        const k = key as string
+        resolved[k] = resolveLocalized(stored[k] ?? (fallback[key] as MaybeLocalized), locale)
+      }
+      // `resolved` is built from exactly the fallback's keys with string values,
+      // so it matches the slug's flat copy type — but TS can't narrow a generic
+      // Record to the keyed type, so cast through unknown.
+      return resolved as unknown as DashboardCopyBySlug[S]
+    }
     return fallback
   } catch (err) {
     console.error(`[opus-pass cms] dashboard-copy (${slug}) load failed`, err)

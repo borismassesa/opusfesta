@@ -1,13 +1,17 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassHomepageManifestoContent = {
-  segment_1: string
-  pill_label: string
-  segment_2: string
+  // Translatable copy — stored as { en, sw } (or a legacy plain string).
+  segment_1: MaybeLocalized
+  pill_label: MaybeLocalized
+  segment_2: MaybeLocalized
+  segment_3: MaybeLocalized
+  segment_4: MaybeLocalized
+  segment_5: MaybeLocalized
+  // Non-translatable config (image URLs).
   invite_image_url: string
-  segment_3: string
   guest_image_url: string
-  segment_4: string
   place_image_url: string
-  segment_5: string
 }
 
 export type OpusPassHomepageManifestoRow = {

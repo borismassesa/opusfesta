@@ -5,6 +5,8 @@ import { ArrowRight, Plus, Star, Trash2 } from 'lucide-react'
 import type { OpusPassWebsitesHeroContent } from '@/lib/cms/opus-pass-websites-hero'
 import { cn } from '@/lib/utils'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { useEditorActions } from '../EditorActionsContext'
 import {
@@ -42,23 +44,13 @@ function FieldGroup({ label, children }: { label: string; children: React.ReactN
   )
 }
 
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span className={cn('tabular-nums font-medium', over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400')}>
-      {len}/{max}
-    </span>
-  )
-}
-
 export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props) {
   const [draft, setDraft] = useState<OpusPassWebsitesHeroContent>(initial)
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const set = <K extends keyof OpusPassWebsitesHeroContent>(
@@ -138,45 +130,39 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
             The last word of line 1 is underlined, and a ⚡ is appended after line 2 — automatically on
             the live page.
           </p>
-          <Field label="Line 1" hint={<CharCount value={draft.headline_line_1} max={60} />}>
-            <input
-              type="text"
-              value={draft.headline_line_1}
-              onChange={(e) => set('headline_line_1', e.target.value)}
-              placeholder="Create your wedding website"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Line 2" hint={<CharCount value={draft.headline_line_2} max={60} />}>
-            <input
-              type="text"
-              value={draft.headline_line_2}
-              onChange={(e) => set('headline_line_2', e.target.value)}
-              placeholder="in just minutes"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Description" hint={<CharCount value={draft.description} max={400} />}>
-            <textarea
-              rows={4}
-              value={draft.description}
-              onChange={(e) => set('description', e.target.value)}
-              placeholder="Build a beautiful wedding website…"
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Line 1"
+            value={draft.headline_line_1}
+            onChange={(v) => set('headline_line_1', v)}
+            placeholder="Create your wedding website"
+            max={60}
+          />
+          <BilingualField
+            label="Line 2"
+            value={draft.headline_line_2}
+            onChange={(v) => set('headline_line_2', v)}
+            placeholder="in just minutes"
+            max={60}
+          />
+          <BilingualField
+            label="Description"
+            value={draft.description}
+            onChange={(v) => set('description', v)}
+            placeholder="Build a beautiful wedding website…"
+            multiline
+            rows={4}
+            max={400}
+          />
         </FieldGroup>
 
         <FieldGroup label="Primary CTA (filled pill)">
-          <Field label="Label" hint={<CharCount value={draft.primary_cta_label} max={30} />}>
-            <input
-              type="text"
-              value={draft.primary_cta_label}
-              onChange={(e) => set('primary_cta_label', e.target.value)}
-              placeholder="Start your website"
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Label"
+            value={draft.primary_cta_label}
+            onChange={(v) => set('primary_cta_label', v)}
+            placeholder="Start your website"
+            max={30}
+          />
           <Field label="Destination URL">
             <input
               type="text"
@@ -189,15 +175,13 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
         </FieldGroup>
 
         <FieldGroup label="Secondary CTA (outline button)">
-          <Field label="Label" hint={<CharCount value={draft.secondary_cta_label} max={30} />}>
-            <input
-              type="text"
-              value={draft.secondary_cta_label}
-              onChange={(e) => set('secondary_cta_label', e.target.value)}
-              placeholder="Explore designs"
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Label"
+            value={draft.secondary_cta_label}
+            onChange={(v) => set('secondary_cta_label', v)}
+            placeholder="Explore designs"
+            max={30}
+          />
           <Field label="Destination URL">
             <input
               type="text"
@@ -307,17 +291,37 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <HeroPreview content={draft} />
+        <HeroPreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function HeroPreview({ content }: { content: OpusPassWebsitesHeroContent }) {
+function HeroPreview({ content, locale }: { content: OpusPassWebsitesHeroContent; locale: Locale }) {
+  const headline1 = resolveLocalized(content.headline_line_1, locale)
+  const headline2 = resolveLocalized(content.headline_line_2, locale)
+  const description = resolveLocalized(content.description, locale)
+  const primaryLabel = resolveLocalized(content.primary_cta_label, locale)
+  const secondaryLabel = resolveLocalized(content.secondary_cta_label, locale)
   // Mirror LandingHero: underline the last word of line 1.
-  const line1 = content.headline_line_1.trim().replace(/,\s*$/, '')
+  const line1 = headline1.trim().replace(/,\s*$/, '')
   const lastSpace = line1.lastIndexOf(' ')
   const head = lastSpace === -1 ? '' : line1.slice(0, lastSpace + 1)
   const lastWord = lastSpace === -1 ? line1 : line1.slice(lastSpace + 1)
@@ -358,21 +362,21 @@ function HeroPreview({ content }: { content: OpusPassWebsitesHeroContent }) {
         {head}
         <span className="underline decoration-[#1A1A1A] decoration-2 underline-offset-2">{lastWord}</span>
         <br />
-        {content.headline_line_2 || 'Headline line 2'} <span aria-hidden>⚡</span>
+        {headline2 || 'Headline line 2'} <span aria-hidden>⚡</span>
       </h1>
 
       {/* Description */}
       <p className="mx-auto mt-3 max-w-sm text-[11px] leading-relaxed text-[#1A1A1A]/70 line-clamp-4">
-        {content.description}
+        {description}
       </p>
 
       {/* CTAs */}
       <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
         <span className="inline-flex items-center rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.1em] text-[#1A1A1A]">
-          {content.primary_cta_label || 'Primary CTA'}
+          {primaryLabel || 'Primary CTA'}
         </span>
         <span className="inline-flex items-center gap-1 rounded-full border border-gray-200 px-3 py-1.5 text-[10px] font-semibold text-[#1A1A1A]">
-          {content.secondary_cta_label || 'Secondary CTA'}
+          {secondaryLabel || 'Secondary CTA'}
           <ArrowRight size={11} aria-hidden="true" />
         </span>
       </div>

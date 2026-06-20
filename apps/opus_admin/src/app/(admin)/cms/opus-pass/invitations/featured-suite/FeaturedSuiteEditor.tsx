@@ -4,6 +4,15 @@ import { useEffect, useState, useTransition } from 'react'
 import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react'
 import type { OpusPassInvitationsFeaturedSuiteContent } from '@/lib/cms/opus-pass-invitations-featured-suite'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { BilingualField } from '@/components/cms/BilingualField'
+import {
+  LOCALES,
+  LOCALE_LABELS,
+  resolveLocalized,
+  type Locale,
+  type MaybeLocalized,
+} from '@/lib/cms/localized'
+import { cn } from '@/lib/utils'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { useEditorActions } from '../EditorActionsContext'
 import {
@@ -44,6 +53,7 @@ export default function FeaturedSuiteEditor({ initial, hasDraft: initialHasDraft
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const set = <K extends keyof OpusPassInvitationsFeaturedSuiteContent>(
@@ -51,7 +61,7 @@ export default function FeaturedSuiteEditor({ initial, hasDraft: initialHasDraft
     value: OpusPassInvitationsFeaturedSuiteContent[K],
   ) => setDraft((d) => ({ ...d, [key]: value }))
 
-  const setTrust = (idx: number, value: string) =>
+  const setTrust = (idx: number, value: MaybeLocalized) =>
     setDraft((d) => ({ ...d, trust_strip: d.trust_strip.map((s, i) => (i === idx ? value : s)) }))
 
   const addTrust = () =>
@@ -134,44 +144,34 @@ export default function FeaturedSuiteEditor({ initial, hasDraft: initialHasDraft
         </FieldGroup>
 
         <FieldGroup label="Headline">
-          <Field label="Line 1">
-            <input
-              type="text"
-              value={draft.headline_line_1}
-              onChange={(e) => set('headline_line_1', e.target.value)}
-              placeholder="From Save the Date"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Line 2">
-            <input
-              type="text"
-              value={draft.headline_line_2}
-              onChange={(e) => set('headline_line_2', e.target.value)}
-              placeholder="to Thank You"
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Line 1"
+            value={draft.headline_line_1}
+            onChange={(v) => set('headline_line_1', v)}
+            placeholder="From Save the Date"
+          />
+          <BilingualField
+            label="Line 2"
+            value={draft.headline_line_2}
+            onChange={(v) => set('headline_line_2', v)}
+            placeholder="to Thank You"
+          />
         </FieldGroup>
 
-        <Field label="Body copy">
-          <textarea
-            rows={4}
-            value={draft.body}
-            onChange={(e) => set('body', e.target.value)}
-            className={inputCls}
-          />
-        </Field>
+        <BilingualField
+          label="Body copy"
+          value={draft.body}
+          onChange={(v) => set('body', v)}
+          multiline
+          rows={4}
+        />
 
         <FieldGroup label="Primary CTA (filled)">
-          <Field label="Label">
-            <input
-              type="text"
-              value={draft.primary_cta_label}
-              onChange={(e) => set('primary_cta_label', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Label"
+            value={draft.primary_cta_label}
+            onChange={(v) => set('primary_cta_label', v)}
+          />
           <Field label="Destination URL">
             <input
               type="text"
@@ -183,14 +183,11 @@ export default function FeaturedSuiteEditor({ initial, hasDraft: initialHasDraft
         </FieldGroup>
 
         <FieldGroup label="Secondary CTA (underline link)">
-          <Field label="Label">
-            <input
-              type="text"
-              value={draft.secondary_cta_label}
-              onChange={(e) => set('secondary_cta_label', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Label"
+            value={draft.secondary_cta_label}
+            onChange={(v) => set('secondary_cta_label', v)}
+          />
           <Field label="Destination URL">
             <input
               type="text"
@@ -203,40 +200,46 @@ export default function FeaturedSuiteEditor({ initial, hasDraft: initialHasDraft
 
         <FieldGroup label="Trust strip (dot-separated items at the bottom)">
           {draft.trust_strip.map((item, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <input
-                type="text"
+            <div key={idx} className="rounded-lg border border-gray-100 bg-gray-50 p-2 space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  Item {idx + 1}
+                </span>
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => moveTrust(idx, -1)}
+                    disabled={idx === 0}
+                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 shrink-0"
+                    aria-label="Move item up"
+                  >
+                    <ArrowUp className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => moveTrust(idx, 1)}
+                    disabled={idx === draft.trust_strip.length - 1}
+                    className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 shrink-0"
+                    aria-label="Move item down"
+                  >
+                    <ArrowDown className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => removeTrust(idx)}
+                    className="p-1 text-gray-400 hover:text-red-600 shrink-0"
+                    aria-label="Remove item"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <BilingualField
+                label=""
                 value={item}
-                onChange={(e) => setTrust(idx, e.target.value)}
+                onChange={(v) => setTrust(idx, v)}
                 placeholder="e.g. Share via WhatsApp & SMS"
-                className={inputCls}
               />
-              <button
-                type="button"
-                onClick={() => moveTrust(idx, -1)}
-                disabled={idx === 0}
-                className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 shrink-0"
-                aria-label="Move item up"
-              >
-                <ArrowUp className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => moveTrust(idx, 1)}
-                disabled={idx === draft.trust_strip.length - 1}
-                className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30 shrink-0"
-                aria-label="Move item down"
-              >
-                <ArrowDown className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => removeTrust(idx)}
-                className="p-1 text-gray-400 hover:text-red-600 shrink-0"
-                aria-label="Remove item"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
             </div>
           ))}
           <button
@@ -253,15 +256,36 @@ export default function FeaturedSuiteEditor({ initial, hasDraft: initialHasDraft
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <FeaturedSuitePreview content={draft} />
+        <FeaturedSuitePreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function FeaturedSuitePreview({ content }: { content: OpusPassInvitationsFeaturedSuiteContent }) {
+function FeaturedSuitePreview({
+  content,
+  locale,
+}: {
+  content: OpusPassInvitationsFeaturedSuiteContent
+  locale: Locale
+}) {
   return (
     <div className="relative overflow-hidden rounded-md bg-[#F5EFE3] grid grid-cols-1 sm:grid-cols-2">
       <div className="relative aspect-[4/3] sm:aspect-auto sm:min-h-[180px] bg-gray-100">
@@ -272,23 +296,25 @@ function FeaturedSuitePreview({ content }: { content: OpusPassInvitationsFeature
       </div>
       <div className="px-4 py-5 flex flex-col justify-center">
         <h2 className="text-sm sm:text-base font-black uppercase tracking-tighter leading-[1] text-[#1A1A1A]">
-          {content.headline_line_1 || 'Headline 1'}
+          {resolveLocalized(content.headline_line_1, locale) || 'Headline 1'}
           <br />
-          {content.headline_line_2 || 'Headline 2'}
+          {resolveLocalized(content.headline_line_2, locale) || 'Headline 2'}
         </h2>
-        <p className="mt-2 text-[10px] text-[#1A1A1A]/75 leading-relaxed line-clamp-4">{content.body}</p>
+        <p className="mt-2 text-[10px] text-[#1A1A1A]/75 leading-relaxed line-clamp-4">
+          {resolveLocalized(content.body, locale)}
+        </p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <span className="inline-flex items-center rounded-full bg-[#C9A0DC] text-[#1A1A1A] px-3 py-1 text-[9px] font-extrabold uppercase tracking-[0.1em]">
-            {content.primary_cta_label || 'Primary'}
+            {resolveLocalized(content.primary_cta_label, locale) || 'Primary'}
           </span>
           <span className="text-[9px] font-semibold text-[#1A1A1A] underline underline-offset-2 decoration-[#1A1A1A]/40">
-            {content.secondary_cta_label || 'Secondary'} →
+            {resolveLocalized(content.secondary_cta_label, locale) || 'Secondary'} →
           </span>
         </div>
         <div className="mt-3 pt-2 border-t border-[#1A1A1A]/10 flex flex-wrap items-center gap-x-2 gap-y-1 text-[9px] text-[#1A1A1A]/60">
           {content.trust_strip.map((item, i) => (
             <span key={i} className="flex items-center gap-2">
-              {item}
+              {resolveLocalized(item, locale)}
               {i < content.trust_strip.length - 1 && <span aria-hidden className="text-[#1A1A1A]/25">·</span>}
             </span>
           ))}

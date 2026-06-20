@@ -1,10 +1,13 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type PromiseIconKey = 'sparkles' | 'palette' | 'wand2' | 'message-circle' | 'heart' | 'shield-check' | 'star' | 'gem'
 
 export type OpusPassPromiseItem = {
   id: string
   icon: PromiseIconKey
-  title: string
-  description: string
+  // Translatable copy.
+  title: MaybeLocalized
+  description: MaybeLocalized
 }
 
 export type OpusPassPromisesContent = {

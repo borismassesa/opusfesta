@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type WebsitesDesignTreatment =
   | 'floral-cream'
@@ -40,7 +41,27 @@ export const WEBSITES_DESIGNS_FALLBACK: WebsitesDesignsContent = {
   ],
 }
 
-export async function loadWebsitesDesignsContent(): Promise<WebsitesDesignsContent> {
+// Stored shape: only the descriptive `heading` and per-design `name` are
+// translatable; `tabs` and per-design `tags` are filter keys matched verbatim
+// (enum-like), so they stay scalar. The loader resolves the translatable fields
+// for `locale` and returns the flat content the render components expect.
+type StoredWebsitesDesignItem = {
+  id?: string
+  name?: MaybeLocalized
+  tags?: string[]
+  treatment?: WebsitesDesignTreatment
+  photo?: string
+}
+
+type StoredWebsitesDesigns = {
+  heading?: MaybeLocalized
+  tabs?: string[]
+  designs?: StoredWebsitesDesignItem[]
+}
+
+export async function loadWebsitesDesignsContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<WebsitesDesignsContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return WEBSITES_DESIGNS_FALLBACK
   }
@@ -54,19 +75,26 @@ export async function loadWebsitesDesignsContent(): Promise<WebsitesDesignsConte
       .eq('section_key', 'designs')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<WebsitesDesignsContent>
+      | StoredWebsitesDesigns
       | undefined
     if (stored) {
+      const F = WEBSITES_DESIGNS_FALLBACK
       return {
-        heading: stored.heading ?? WEBSITES_DESIGNS_FALLBACK.heading,
+        heading: resolveLocalized(stored.heading ?? F.heading, locale),
         tabs:
           stored.tabs && Array.isArray(stored.tabs) && stored.tabs.length > 0
             ? stored.tabs
-            : WEBSITES_DESIGNS_FALLBACK.tabs,
+            : F.tabs,
         designs:
           stored.designs && Array.isArray(stored.designs) && stored.designs.length > 0
-            ? stored.designs
-            : WEBSITES_DESIGNS_FALLBACK.designs,
+            ? stored.designs.map((d) => ({
+                id: d.id ?? '',
+                name: resolveLocalized(d.name, locale),
+                tags: Array.isArray(d.tags) ? d.tags : [],
+                treatment: d.treatment ?? 'floral-cream',
+                photo: d.photo ?? '',
+              }))
+            : F.designs,
       }
     }
     return WEBSITES_DESIGNS_FALLBACK

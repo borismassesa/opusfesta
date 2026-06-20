@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type DashboardHeroSlug =
   | 'home'
@@ -11,6 +12,8 @@ export type DashboardHeroSlug =
 
 export type DashboardHeroMediaType = 'image' | 'video' | 'none'
 
+// Resolved (rendered) shape — translatable fields are flat strings for the locale,
+// so the render components stay unchanged.
 export interface DashboardHeroContent {
   eyebrow: string
   title: string
@@ -18,6 +21,17 @@ export interface DashboardHeroContent {
   media_url: string
   media_type: DashboardHeroMediaType
   media_alt: string
+}
+
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string. The loader resolves each for `locale`.
+type StoredDashboardHero = {
+  eyebrow?: MaybeLocalized
+  title?: MaybeLocalized
+  subtitle?: MaybeLocalized
+  media_alt?: MaybeLocalized
+  media_url?: string
+  media_type?: DashboardHeroMediaType
 }
 
 export const DASHBOARD_HERO_FALLBACKS: Record<DashboardHeroSlug, DashboardHeroContent> = {
@@ -82,7 +96,10 @@ export const DASHBOARD_HERO_PAGE_KEY: Record<DashboardHeroSlug, string> = {
   website: 'opus-pass-dashboard-website',
 }
 
-export async function loadDashboardHero(slug: DashboardHeroSlug): Promise<DashboardHeroContent> {
+export async function loadDashboardHero(
+  slug: DashboardHeroSlug,
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<DashboardHeroContent> {
   const fallback = DASHBOARD_HERO_FALLBACKS[slug]
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return fallback
@@ -101,9 +118,21 @@ export async function loadDashboardHero(slug: DashboardHeroSlug): Promise<Dashbo
       return fallback
     }
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<DashboardHeroContent>
+      | StoredDashboardHero
       | undefined
-    if (stored) return { ...fallback, ...stored }
+    if (stored) {
+      // Map fields explicitly (not a blind spread): translatable fields resolve to
+      // `locale`, scalar config falls back per-key. Returns flat strings so the
+      // render components need no changes.
+      return {
+        eyebrow: resolveLocalized(stored.eyebrow ?? fallback.eyebrow, locale),
+        title: resolveLocalized(stored.title ?? fallback.title, locale),
+        subtitle: resolveLocalized(stored.subtitle ?? fallback.subtitle, locale),
+        media_alt: resolveLocalized(stored.media_alt ?? fallback.media_alt, locale),
+        media_url: stored.media_url ?? fallback.media_url,
+        media_type: stored.media_type ?? fallback.media_type,
+      }
+    }
     return fallback
   } catch (err) {
     console.error(`[opus-pass cms] dashboard-hero (${slug}) load failed`, err)

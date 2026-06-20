@@ -1,17 +1,21 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassHomepageWhyOpusPassContent = {
-  headline: string
+  // Translatable copy.
+  headline: MaybeLocalized
+  main_image_alt: MaybeLocalized
+  chip_title: MaybeLocalized
+  chip_subtitle: MaybeLocalized
+  floating_cta_label: MaybeLocalized
+  subheadline: MaybeLocalized
+  body: MaybeLocalized
+  primary_button_label: MaybeLocalized
+  secondary_button_label: MaybeLocalized
+  // Non-translatable config (image URLs + hrefs).
   main_image_url: string
-  main_image_alt: string
   chip_image_url: string
-  chip_title: string
-  chip_subtitle: string
-  floating_cta_label: string
   floating_cta_href: string
-  subheadline: string
-  body: string
-  primary_button_label: string
   primary_button_href: string
-  secondary_button_label: string
   secondary_button_href: string
 }
 

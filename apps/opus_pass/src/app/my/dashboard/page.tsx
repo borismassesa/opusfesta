@@ -21,6 +21,7 @@ import { Card, StatCard, SectionTitle, ProgressBar, StatusPill, EmptyState } fro
 import { Button } from '@/components/dashboard/controls'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
+import { getLocale } from '@/lib/cms/locale'
 import { eventTypeLabel } from '@/lib/dashboard/types'
 
 export const dynamic = 'force-dynamic'
@@ -36,13 +37,14 @@ function formatDate(value: string | null): string {
 }
 
 export default async function DashboardOverviewPage() {
+  const locale = await getLocale()
   const [stats, events, guests, profile, hero, copy, awaitingReview] = await Promise.all([
     getStats(),
     getEvents(),
     getGuestsWithInvitations(),
     getCoupleProfile(),
-    loadDashboardHero('home'),
-    loadDashboardCopy('home'),
+    loadDashboardHero('home', locale),
+    loadDashboardCopy('home', locale),
     getGuestsAwaitingReview(),
   ])
   const reviewCount = awaitingReview.length

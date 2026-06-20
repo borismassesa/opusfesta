@@ -11,14 +11,17 @@ import { loadInvitationCategoriesList } from '@/lib/cms/invitations-categories'
 import { styleStripFromCategories } from '@/lib/cms/invitations-style-strip'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import { loadPackagesContent, packageFromPrice } from '@/lib/cms/packages'
+import { getLocale } from '@/lib/cms/locale'
 import { InvitationShowcase } from '@/components/home/InvitationShowcase'
 import InvitationsLandingClient from './InvitationsLandingClient'
 import JsonLd from '@/components/JsonLd'
 
-// CMS-driven page: ISR safety net so published changes appear on the public
-// site within ~60s even if the admin's on-demand revalidation doesn't reach
-// this deployment. See apps/opus_admin/src/lib/revalidate.ts.
-export const revalidate = 60
+// CMS-driven AND locale-aware: sections resolve content from the per-visitor
+// `opuspass_locale` cookie (see lib/cms/locale.ts), so this route must render
+// dynamically — a shared ISR cache entry keys only on path and would serve one
+// visitor's language to everyone. Published changes appear immediately (no ISR
+// window); the admin's on-demand revalidate is a harmless no-op for this route.
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Wedding Invitations | OpusPass',
@@ -27,6 +30,7 @@ export const metadata: Metadata = {
 }
 
 export default async function InvitationsLandingPage() {
+  const locale = await getLocale()
   const [
     { isEnabled: isDraft },
     categories,
@@ -37,10 +41,10 @@ export default async function InvitationsLandingPage() {
     packages,
   ] = await Promise.all([
     draftMode(),
-    loadInvitationCategoriesList(),
-    loadInvitationsFeaturesContent(),
-    loadInvitationsFaqsContent(),
-    loadInvitationsEditorsPicksContent(),
+    loadInvitationCategoriesList(locale),
+    loadInvitationsFeaturesContent(locale),
+    loadInvitationsFaqsContent(locale),
+    loadInvitationsEditorsPicksContent(locale),
     loadInvitationProducts(),
     loadPackagesContent(),
   ])

@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type HomepageShowcaseImage = {
   src: string
@@ -65,7 +66,39 @@ export const HOMEPAGE_SHOWCASE_FALLBACK: HomepageShowcaseContent = {
   accent_color: '#9FE870',
 }
 
-export async function loadHomepageShowcaseContent(): Promise<HomepageShowcaseContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; structural fields (src, colours, slots, kinds) are
+// scalar. The loader resolves each translatable field for `locale` and returns
+// the flat HomepageShowcaseContent the render component already expects.
+type StoredShowcaseCaption = {
+  title?: MaybeLocalized
+  by?: MaybeLocalized
+  brand?: string
+  badge?: string
+}
+type StoredShowcaseImage = {
+  src?: string
+  alt?: MaybeLocalized
+}
+type StoredShowcasePill = {
+  id?: string
+  kind?: HomepageShowcasePillKind
+  slot?: number
+  color?: string
+  side?: 'left' | 'right'
+  label?: MaybeLocalized
+  sublabel?: MaybeLocalized
+}
+type StoredHomepageShowcase = {
+  caption?: StoredShowcaseCaption
+  images?: StoredShowcaseImage[]
+  pills?: StoredShowcasePill[]
+  accent_color?: string
+}
+
+export async function loadHomepageShowcaseContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<HomepageShowcaseContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return HOMEPAGE_SHOWCASE_FALLBACK
   }
@@ -79,20 +112,38 @@ export async function loadHomepageShowcaseContent(): Promise<HomepageShowcaseCon
       .eq('section_key', 'showcase')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<HomepageShowcaseContent>
+      | StoredHomepageShowcase
       | undefined
     if (stored) {
+      const F = HOMEPAGE_SHOWCASE_FALLBACK
+      const cap = stored.caption
       return {
-        caption: { ...HOMEPAGE_SHOWCASE_FALLBACK.caption, ...stored.caption },
+        caption: {
+          title: resolveLocalized(cap?.title ?? F.caption.title, locale),
+          by: resolveLocalized(cap?.by ?? F.caption.by, locale),
+          brand: cap?.brand ?? F.caption.brand,
+          badge: cap?.badge ?? F.caption.badge,
+        },
         images:
           stored.images && Array.isArray(stored.images) && stored.images.length > 0
-            ? stored.images
-            : HOMEPAGE_SHOWCASE_FALLBACK.images,
+            ? stored.images.map((img) => ({
+                src: img.src ?? '',
+                alt: resolveLocalized(img.alt, locale),
+              }))
+            : F.images,
         pills:
           stored.pills && Array.isArray(stored.pills) && stored.pills.length > 0
-            ? stored.pills
-            : HOMEPAGE_SHOWCASE_FALLBACK.pills,
-        accent_color: stored.accent_color || HOMEPAGE_SHOWCASE_FALLBACK.accent_color,
+            ? stored.pills.map((pill, i) => ({
+                id: pill.id ?? `pill-${i}`,
+                kind: pill.kind ?? 'visit',
+                slot: pill.slot ?? 0,
+                color: pill.color ?? '#FFFFFF',
+                side: pill.side ?? 'left',
+                label: resolveLocalized(pill.label, locale),
+                sublabel: resolveLocalized(pill.sublabel, locale),
+              }))
+            : F.pills,
+        accent_color: stored.accent_color || F.accent_color,
       }
     }
     return HOMEPAGE_SHOWCASE_FALLBACK

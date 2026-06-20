@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 // Mirrors LandingHeroContent (components/LandingHero) — the /websites hero now
 // renders the shared centred sparkle hero, not the old two-column banner.
@@ -41,7 +42,27 @@ export const WEBSITES_HERO_FALLBACK: WebsitesHeroContent = {
   featured_in: ['The Citizen', 'Clouds FM', 'Bongo5', 'JamiiForums'],
 }
 
-export async function loadWebsitesHeroContent(): Promise<WebsitesHeroContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; non-text fields are scalar. The loader resolves each
+// translatable field for `locale` and returns the flat WebsitesHeroContent the
+// render components already expect — so no public component changes.
+type StoredWebsitesHero = {
+  headline_line_1?: MaybeLocalized
+  headline_line_2?: MaybeLocalized
+  description?: MaybeLocalized
+  primary_cta_label?: MaybeLocalized
+  secondary_cta_label?: MaybeLocalized
+  primary_cta_href?: string
+  secondary_cta_href?: string
+  rating?: string
+  trust_count?: string
+  avatars?: string[]
+  featured_in?: string[]
+}
+
+export async function loadWebsitesHeroContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<WebsitesHeroContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return WEBSITES_HERO_FALLBACK
   }
@@ -55,28 +76,29 @@ export async function loadWebsitesHeroContent(): Promise<WebsitesHeroContent> {
       .eq('section_key', 'hero')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<WebsitesHeroContent>
+      | StoredWebsitesHero
       | undefined
     if (stored) {
+      const F = WEBSITES_HERO_FALLBACK
       return {
-        headline_line_1: stored.headline_line_1 ?? WEBSITES_HERO_FALLBACK.headline_line_1,
-        headline_line_2: stored.headline_line_2 ?? WEBSITES_HERO_FALLBACK.headline_line_2,
-        description: stored.description ?? WEBSITES_HERO_FALLBACK.description,
-        primary_cta_label: stored.primary_cta_label ?? WEBSITES_HERO_FALLBACK.primary_cta_label,
+        headline_line_1: resolveLocalized(stored.headline_line_1 ?? F.headline_line_1, locale),
+        headline_line_2: resolveLocalized(stored.headline_line_2 ?? F.headline_line_2, locale),
+        description: resolveLocalized(stored.description ?? F.description, locale),
+        primary_cta_label: resolveLocalized(stored.primary_cta_label ?? F.primary_cta_label, locale),
         // The primary CTA always opens the website builder. Hardcoded so it can
         // never be overridden by a stale stored CMS value (e.g. legacy `/sign-up`,
         // which bounced signed-in couples to /my/dashboard).
         primary_cta_href: '/website-builder',
-        secondary_cta_label: stored.secondary_cta_label ?? WEBSITES_HERO_FALLBACK.secondary_cta_label,
-        secondary_cta_href: stored.secondary_cta_href ?? WEBSITES_HERO_FALLBACK.secondary_cta_href,
-        rating: stored.rating ?? WEBSITES_HERO_FALLBACK.rating,
-        trust_count: stored.trust_count ?? WEBSITES_HERO_FALLBACK.trust_count,
+        secondary_cta_label: resolveLocalized(stored.secondary_cta_label ?? F.secondary_cta_label, locale),
+        secondary_cta_href: stored.secondary_cta_href ?? F.secondary_cta_href,
+        rating: stored.rating ?? F.rating,
+        trust_count: stored.trust_count ?? F.trust_count,
         avatars:
-          stored.avatars && Array.isArray(stored.avatars) ? stored.avatars : WEBSITES_HERO_FALLBACK.avatars,
+          stored.avatars && Array.isArray(stored.avatars) ? stored.avatars : F.avatars,
         featured_in:
           stored.featured_in && Array.isArray(stored.featured_in)
             ? stored.featured_in
-            : WEBSITES_HERO_FALLBACK.featured_in,
+            : F.featured_in,
       }
     }
     return WEBSITES_HERO_FALLBACK

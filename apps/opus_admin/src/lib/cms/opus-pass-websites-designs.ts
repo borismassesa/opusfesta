@@ -1,3 +1,5 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassWebsitesDesignTreatment =
   | 'floral-cream'
   | 'botanical-sage'
@@ -21,14 +23,18 @@ export const OPUS_PASS_WEBSITES_DESIGN_TREATMENTS: OpusPassWebsitesDesignTreatme
 
 export type OpusPassWebsitesDesignItem = {
   id: string
-  name: string
+  // Translatable — descriptive design name.
+  name: MaybeLocalized
+  // Non-translatable — `tags` are filter keys matched verbatim against `tabs`,
+  // so they behave like an enum set (translating them would break filtering).
   tags: string[]
   treatment: OpusPassWebsitesDesignTreatment
   photo: string
 }
 
 export type OpusPassWebsitesDesignsContent = {
-  heading: string
+  heading: MaybeLocalized
+  // Filter keys — matched verbatim against each design's `tags` (see above).
   tabs: string[]
   designs: OpusPassWebsitesDesignItem[]
 }

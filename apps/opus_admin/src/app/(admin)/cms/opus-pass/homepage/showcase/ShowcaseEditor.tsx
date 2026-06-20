@@ -9,6 +9,8 @@ import type {
   OpusPassHomepageShowcasePillKind,
 } from '@/lib/cms/opus-pass-homepage-showcase'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
@@ -112,6 +114,7 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const setCaption = (patch: Partial<OpusPassHomepageShowcaseContent['caption']>) =>
@@ -220,32 +223,26 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
         </p>
 
         <FieldGroup label="Caption card">
-          <Field label="Title" hint={<CharCount value={draft.caption.title} max={48} />}>
+          <BilingualField
+            label="Title"
+            value={draft.caption.title}
+            onChange={(v) => setCaption({ title: v })}
+            max={48}
+          />
+          <BilingualField
+            label="“By” line"
+            value={draft.caption.by}
+            onChange={(v) => setCaption({ by: v })}
+            max={20}
+          />
+          <Field label="Brand" hint={<CharCount value={draft.caption.brand} max={20} />}>
             <input
               type="text"
-              value={draft.caption.title}
-              onChange={(e) => setCaption({ title: e.target.value })}
+              value={draft.caption.brand}
+              onChange={(e) => setCaption({ brand: e.target.value })}
               className={inputCls}
             />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="“By” line" hint={<CharCount value={draft.caption.by} max={20} />}>
-              <input
-                type="text"
-                value={draft.caption.by}
-                onChange={(e) => setCaption({ by: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Brand" hint={<CharCount value={draft.caption.brand} max={20} />}>
-              <input
-                type="text"
-                value={draft.caption.brand}
-                onChange={(e) => setCaption({ brand: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-          </div>
           <Field label="Badge initials (the coloured circle)" hint={<CharCount value={draft.caption.badge} max={3} />}>
             <input
               type="text"
@@ -325,26 +322,19 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
                   </select>
                 </Field>
               </div>
-              <Field
+              <BilingualField
                 label={pill.kind === 'stat' ? 'Title' : 'Label'}
-                hint={<CharCount value={pill.label} max={20} />}
-              >
-                <input
-                  type="text"
-                  value={pill.label}
-                  onChange={(e) => setPill(idx, { label: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+                value={pill.label}
+                onChange={(v) => setPill(idx, { label: v })}
+                max={20}
+              />
               {pill.kind === 'stat' && (
-                <Field label="Label under the chart" hint={<CharCount value={pill.sublabel} max={14} />}>
-                  <input
-                    type="text"
-                    value={pill.sublabel}
-                    onChange={(e) => setPill(idx, { sublabel: e.target.value })}
-                    className={inputCls}
-                  />
-                </Field>
+                <BilingualField
+                  label="Label under the chart"
+                  value={pill.sublabel}
+                  onChange={(v) => setPill(idx, { sublabel: v })}
+                  max={14}
+                />
               )}
               <div className="grid grid-cols-2 gap-3">
                 <ColorField
@@ -437,14 +427,12 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
                 previewAspect="aspect-[3/4]"
                 previewWidth="max-w-[140px]"
               />
-              <Field label="Alt text" hint={<CharCount value={image.alt} max={120} />}>
-                <input
-                  type="text"
-                  value={image.alt}
-                  onChange={(e) => setImage(idx, { alt: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+              <BilingualField
+                label="Alt text"
+                value={image.alt}
+                onChange={(v) => setImage(idx, { alt: v })}
+                max={120}
+              />
             </div>
           ))}
           <button
@@ -461,7 +449,22 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="mb-5 grid grid-cols-4 gap-1.5">
@@ -506,14 +509,16 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
                 className="inline-block h-2.5 w-2.5 shrink-0 rounded-full ring-1 ring-black/10"
                 style={{ backgroundColor: pill.color }}
               />
-              {pill.kind === 'visit' && <>↗ {pill.label || 'Visit'}</>}
+              {pill.kind === 'visit' && <>↗ {resolveLocalized(pill.label, previewLocale) || 'Visit'}</>}
               {pill.kind === 'stat' && (
                 <>
-                  {pill.label || 'Performance'} ·{' '}
-                  <span className="text-[#1A1A1A]/55">{pill.sublabel || 'Sales'}</span>
+                  {resolveLocalized(pill.label, previewLocale) || 'Performance'} ·{' '}
+                  <span className="text-[#1A1A1A]/55">
+                    {resolveLocalized(pill.sublabel, previewLocale) || 'Sales'}
+                  </span>
                 </>
               )}
-              {pill.kind === 'toggle' && <>{pill.label || 'Live RSVPs'}</>}
+              {pill.kind === 'toggle' && <>{resolveLocalized(pill.label, previewLocale) || 'Live RSVPs'}</>}
               <span className="text-[#1A1A1A]/40">· P{pill.slot + 1}</span>
             </span>
           ))}
@@ -521,7 +526,7 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
 
         <div className="px-1">
           <h3 className="text-lg font-bold leading-tight tracking-tight text-[#1A1A1A]">
-            {draft.caption.title || 'Caption title'}
+            {resolveLocalized(draft.caption.title, previewLocale) || 'Caption title'}
           </h3>
           <div className="mt-3 flex items-center gap-3">
             <span
@@ -531,7 +536,9 @@ export default function ShowcaseEditor({ initial, hasDraft: initialHasDraft }: P
               {draft.caption.badge || 'O.'}
             </span>
             <span className="leading-tight">
-              <span className="block text-sm font-bold text-[#1A1A1A]">{draft.caption.by}</span>
+              <span className="block text-sm font-bold text-[#1A1A1A]">
+                {resolveLocalized(draft.caption.by, previewLocale)}
+              </span>
               <span className="block text-sm text-[#1A1A1A]/65">{draft.caption.brand}</span>
             </span>
           </div>

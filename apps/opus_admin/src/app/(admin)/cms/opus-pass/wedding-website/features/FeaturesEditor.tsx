@@ -10,6 +10,9 @@ import {
 } from '@/lib/cms/opus-pass-websites-features'
 import { CollapsibleCard } from '@/components/cms/CollapsibleCard'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { cn } from '@/lib/utils'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { useEditorActions } from '../EditorActionsContext'
 import {
@@ -54,6 +57,7 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0]))
@@ -160,23 +164,19 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
         <h3 className="text-[15px] font-semibold text-gray-900">Features</h3>
 
         <FieldGroup label="Section header">
-          <Field label="Heading">
-            <input
-              type="text"
-              value={draft.heading}
-              onChange={(e) => setField('heading', e.target.value)}
-              placeholder="Create your free website"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Description">
-            <textarea
-              rows={2}
-              value={draft.description}
-              onChange={(e) => setField('description', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Heading"
+            value={draft.heading}
+            onChange={(v) => setField('heading', v)}
+            placeholder="Create your free website"
+          />
+          <BilingualField
+            label="Description"
+            value={draft.description}
+            onChange={(v) => setField('description', v)}
+            multiline
+            rows={2}
+          />
           <Field label="Card background colour (hex)">
             <div className="flex items-center gap-2">
               <input
@@ -213,7 +213,7 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
             <CollapsibleCard
               key={item.id}
               index={idx}
-              title={item.title || 'New card'}
+              title={resolveLocalized(item.title, previewLocale) || 'New card'}
               collapsed={!expanded.has(idx)}
               onToggle={() => toggleExpanded(idx)}
               onMoveUp={() => moveItem(idx, -1)}
@@ -254,31 +254,24 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
                   </select>
                 </Field>
               </div>
-              <Field label="Title">
-                <input
-                  type="text"
-                  value={item.title}
-                  onChange={(e) => setItem(idx, { title: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Body">
-                <textarea
-                  rows={3}
-                  value={item.body}
-                  onChange={(e) => setItem(idx, { body: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="CTA label">
-                  <input
-                    type="text"
-                    value={item.cta_label}
-                    onChange={(e) => setItem(idx, { cta_label: e.target.value })}
-                    className={inputCls}
-                  />
-                </Field>
+              <BilingualField
+                label="Title"
+                value={item.title}
+                onChange={(v) => setItem(idx, { title: v })}
+              />
+              <BilingualField
+                label="Body"
+                value={item.body}
+                onChange={(v) => setItem(idx, { body: v })}
+                multiline
+                rows={3}
+              />
+              <BilingualField
+                label="CTA label"
+                value={item.cta_label}
+                onChange={(v) => setItem(idx, { cta_label: v })}
+              />
+              <div className="grid grid-cols-1 gap-3">
                 <Field label="CTA destination">
                   <input
                     type="text"
@@ -317,60 +310,86 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <FeaturesPreview content={draft} />
+        <FeaturesPreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function FeaturesPreview({ content }: { content: OpusPassWebsitesFeaturesContent }) {
+function FeaturesPreview({
+  content,
+  locale,
+}: {
+  content: OpusPassWebsitesFeaturesContent
+  locale: Locale
+}) {
   return (
     <div>
       <div className="text-center mb-4">
         <h2 className="text-base font-serif font-medium text-gray-900 mb-1.5">
-          {content.heading || 'Section heading'}
+          {resolveLocalized(content.heading, locale) || 'Section heading'}
         </h2>
         <p className="text-[10px] text-gray-700 leading-relaxed line-clamp-2">
-          {content.description}
+          {resolveLocalized(content.description, locale)}
         </p>
       </div>
       <div className="grid grid-cols-3 gap-2">
-        {content.items.slice(0, 3).map((card) => (
-          <div
-            key={card.id}
-            className="rounded-md p-2.5 flex flex-col items-center text-center"
-            style={{ backgroundColor: content.background_color || '#FCE9C2' }}
-          >
-            <div className="w-6 h-6 rounded-full bg-white/70 mb-2" />
-            <p className="text-[10px] font-extrabold text-[#1A1A1A] leading-tight line-clamp-2">
-              {card.title || 'Card title'}
-            </p>
-            <p className="mt-1 text-[8px] text-[#1A1A1A]/75 leading-snug line-clamp-3">
-              {card.body}
-            </p>
-            {card.cta_label && (
-              <span className="mt-1.5 text-[8px] font-bold text-[#1A1A1A] underline">
-                {card.cta_label}
-              </span>
-            )}
-            <div className="mt-2 w-full h-[64px] rounded-sm overflow-hidden bg-white/40 relative">
-              {card.image_url ? (
-                /* eslint-disable-next-line @next/next/no-img-element */
-                <img
-                  src={resolveOpusPassAssetUrl(card.image_url)}
-                  alt={card.title}
-                  className="absolute inset-0 w-full h-full object-cover"
-                />
-              ) : (
-                <span className="absolute inset-0 flex items-center justify-center text-[7px] uppercase tracking-[0.14em] text-[#1A1A1A]/40">
-                  {card.visual}
+        {content.items.slice(0, 3).map((card) => {
+          const title = resolveLocalized(card.title, locale)
+          const body = resolveLocalized(card.body, locale)
+          const ctaLabel = resolveLocalized(card.cta_label, locale)
+          return (
+            <div
+              key={card.id}
+              className="rounded-md p-2.5 flex flex-col items-center text-center"
+              style={{ backgroundColor: content.background_color || '#FCE9C2' }}
+            >
+              <div className="w-6 h-6 rounded-full bg-white/70 mb-2" />
+              <p className="text-[10px] font-extrabold text-[#1A1A1A] leading-tight line-clamp-2">
+                {title || 'Card title'}
+              </p>
+              <p className="mt-1 text-[8px] text-[#1A1A1A]/75 leading-snug line-clamp-3">
+                {body}
+              </p>
+              {ctaLabel && (
+                <span className="mt-1.5 text-[8px] font-bold text-[#1A1A1A] underline">
+                  {ctaLabel}
                 </span>
               )}
+              <div className="mt-2 w-full h-[64px] rounded-sm overflow-hidden bg-white/40 relative">
+                {card.image_url ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={resolveOpusPassAssetUrl(card.image_url)}
+                    alt={title}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="absolute inset-0 flex items-center justify-center text-[7px] uppercase tracking-[0.14em] text-[#1A1A1A]/40">
+                    {card.visual}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        })}
       </div>
     </div>
   )

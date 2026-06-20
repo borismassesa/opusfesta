@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type HomepageTestimonialFg = 'light' | 'dark'
 
@@ -42,7 +43,43 @@ export const HOMEPAGE_TESTIMONIALS_FALLBACK: HomepageTestimonialsContent = {
   ],
 }
 
-export async function loadHomepageTestimonialsContent(): Promise<HomepageTestimonialsContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; names, locations, avatars, colours and the href are
+// scalar. The loader resolves each translatable field for `locale` and returns
+// the flat HomepageTestimonialsContent the render components already expect.
+type StoredTestimonialItem = {
+  id?: string
+  quote?: MaybeLocalized
+  name?: string
+  location?: string
+  avatar?: string
+  bg?: string
+  fg?: HomepageTestimonialFg
+}
+type StoredHomepageTestimonials = {
+  headline?: MaybeLocalized
+  description?: MaybeLocalized
+  cta_label?: MaybeLocalized
+  cta_href?: string
+  column1?: StoredTestimonialItem[]
+  column2?: StoredTestimonialItem[]
+}
+
+function resolveItem(item: StoredTestimonialItem, locale: Locale, i: number): HomepageTestimonialItem {
+  return {
+    id: item.id ?? `t-${i}`,
+    quote: resolveLocalized(item.quote, locale),
+    name: item.name ?? '',
+    location: item.location ?? '',
+    avatar: item.avatar ?? '',
+    bg: item.bg ?? 'bg-white',
+    fg: item.fg ?? 'light',
+  }
+}
+
+export async function loadHomepageTestimonialsContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<HomepageTestimonialsContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return HOMEPAGE_TESTIMONIALS_FALLBACK
   }
@@ -56,22 +93,23 @@ export async function loadHomepageTestimonialsContent(): Promise<HomepageTestimo
       .eq('section_key', 'testimonials')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<HomepageTestimonialsContent>
+      | StoredHomepageTestimonials
       | undefined
     if (stored) {
+      const F = HOMEPAGE_TESTIMONIALS_FALLBACK
       return {
-        headline: stored.headline ?? HOMEPAGE_TESTIMONIALS_FALLBACK.headline,
-        description: stored.description ?? HOMEPAGE_TESTIMONIALS_FALLBACK.description,
-        cta_label: stored.cta_label ?? HOMEPAGE_TESTIMONIALS_FALLBACK.cta_label,
-        cta_href: stored.cta_href ?? HOMEPAGE_TESTIMONIALS_FALLBACK.cta_href,
+        headline: resolveLocalized(stored.headline ?? F.headline, locale),
+        description: resolveLocalized(stored.description ?? F.description, locale),
+        cta_label: resolveLocalized(stored.cta_label ?? F.cta_label, locale),
+        cta_href: stored.cta_href ?? F.cta_href,
         column1:
           stored.column1 && Array.isArray(stored.column1) && stored.column1.length > 0
-            ? stored.column1
-            : HOMEPAGE_TESTIMONIALS_FALLBACK.column1,
+            ? stored.column1.map((t, i) => resolveItem(t, locale, i))
+            : F.column1,
         column2:
           stored.column2 && Array.isArray(stored.column2) && stored.column2.length > 0
-            ? stored.column2
-            : HOMEPAGE_TESTIMONIALS_FALLBACK.column2,
+            ? stored.column2.map((t, i) => resolveItem(t, locale, i))
+            : F.column2,
       }
     }
     return HOMEPAGE_TESTIMONIALS_FALLBACK

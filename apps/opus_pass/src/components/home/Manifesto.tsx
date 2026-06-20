@@ -1,10 +1,12 @@
 import { Check } from 'lucide-react'
 
 import { loadHomepageManifestoContent } from '@/lib/cms/homepage-manifesto'
+import { getLocale } from '@/lib/cms/locale'
 import { assetPath } from '@/lib/asset-path'
 
 export async function Manifesto() {
-  const content = await loadHomepageManifestoContent()
+  const locale = await getLocale()
+  const content = await loadHomepageManifestoContent(locale)
   return (
     <section className="px-4 pt-20 pb-10 sm:px-6 sm:pt-28 sm:pb-12 lg:pt-32">
       <p className="mx-auto max-w-4xl text-center text-[1.6rem] font-black leading-[1.3] tracking-tight text-[#1A1A1A] sm:text-4xl sm:leading-[1.3] lg:text-[3.1rem]">

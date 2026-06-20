@@ -1,3 +1,5 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 // Mirrors the public WebsitesTestimonialsContent — the /websites testimonials
 // wall is the shared <InvitationShowcase> (two scrolling columns of cards), so
 // the shape matches the homepage & guests testimonials editors.
@@ -5,7 +7,9 @@ export type OpusPassWebsitesTestimonialFg = 'light' | 'dark'
 
 export type OpusPassWebsitesTestimonialItem = {
   id: string
-  quote: string
+  // Translatable text.
+  quote: MaybeLocalized
+  // Non-translatable — proper name + place name + config.
   name: string
   location: string
   avatar: string
@@ -14,9 +18,9 @@ export type OpusPassWebsitesTestimonialItem = {
 }
 
 export type OpusPassWebsitesTestimonialsContent = {
-  headline: string
-  description: string
-  cta_label: string
+  headline: MaybeLocalized
+  description: MaybeLocalized
+  cta_label: MaybeLocalized
   cta_href: string
   column1: OpusPassWebsitesTestimonialItem[]
   column2: OpusPassWebsitesTestimonialItem[]

@@ -7,19 +7,21 @@ import {
 } from '@/lib/dashboard/queries'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
+import { getLocale } from '@/lib/cms/locale'
 import GuestsManager from './GuestsManager'
 import ReviewQueue from './ReviewQueue'
 
 export const dynamic = 'force-dynamic'
 
 export default async function GuestsPage() {
+  const locale = await getLocale()
   const [guests, events, profile, hero, collectorToken, copy] = await Promise.all([
     getGuestsWithInvitations(),
     getEvents(),
     getCoupleProfile(),
-    loadDashboardHero('guests'),
+    loadDashboardHero('guests', locale),
     getMyCollectorToken(),
-    loadDashboardCopy('guests'),
+    loadDashboardCopy('guests', locale),
   ])
 
   // Public self-RSVPs sit in a review queue until the host approves them, so

@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type HomepageFeatureBlock = {
   id: string
@@ -73,7 +74,60 @@ export const HOMEPAGE_FEATURES_FALLBACK: HomepageFeaturesContent = {
   ],
 }
 
-export async function loadHomepageFeaturesContent(): Promise<HomepageFeaturesContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; media URLs and hrefs are scalar. The loader resolves
+// each translatable field for `locale` and returns the flat
+// HomepageFeaturesContent the render components already expect.
+type StoredFeatureBlock = {
+  id?: string
+  reverse?: boolean
+  media_video?: string
+  media_main?: string
+  media_secondary?: string
+  media_overlay?: string
+  overlay_eyebrow?: MaybeLocalized
+  overlay_caption_line_1?: MaybeLocalized
+  overlay_caption_line_2?: MaybeLocalized
+  headline_line_1?: MaybeLocalized
+  headline_line_2?: MaybeLocalized
+  body?: MaybeLocalized
+  pills?: MaybeLocalized[]
+  primary_cta_label?: MaybeLocalized
+  primary_cta_href?: string
+  secondary_cta_label?: MaybeLocalized
+  secondary_cta_href?: string
+}
+type StoredHomepageFeatures = {
+  header_title?: MaybeLocalized
+  header_description?: MaybeLocalized
+  blocks?: StoredFeatureBlock[]
+}
+
+function resolveBlock(block: StoredFeatureBlock, locale: Locale, i: number): HomepageFeatureBlock {
+  return {
+    id: block.id ?? `block-${i}`,
+    reverse: block.reverse ?? false,
+    ...(block.media_video ? { media_video: block.media_video } : {}),
+    media_main: block.media_main ?? '',
+    media_secondary: block.media_secondary ?? '',
+    media_overlay: block.media_overlay ?? '',
+    overlay_eyebrow: resolveLocalized(block.overlay_eyebrow, locale),
+    overlay_caption_line_1: resolveLocalized(block.overlay_caption_line_1, locale),
+    overlay_caption_line_2: resolveLocalized(block.overlay_caption_line_2, locale),
+    headline_line_1: resolveLocalized(block.headline_line_1, locale),
+    headline_line_2: resolveLocalized(block.headline_line_2, locale),
+    body: resolveLocalized(block.body, locale),
+    pills: Array.isArray(block.pills) ? block.pills.map((p) => resolveLocalized(p, locale)) : [],
+    primary_cta_label: resolveLocalized(block.primary_cta_label, locale),
+    primary_cta_href: block.primary_cta_href ?? '',
+    secondary_cta_label: resolveLocalized(block.secondary_cta_label, locale),
+    secondary_cta_href: block.secondary_cta_href ?? '',
+  }
+}
+
+export async function loadHomepageFeaturesContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<HomepageFeaturesContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return HOMEPAGE_FEATURES_FALLBACK
   }
@@ -87,16 +141,17 @@ export async function loadHomepageFeaturesContent(): Promise<HomepageFeaturesCon
       .eq('section_key', 'features')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<HomepageFeaturesContent>
+      | StoredHomepageFeatures
       | undefined
     if (stored) {
+      const F = HOMEPAGE_FEATURES_FALLBACK
       return {
-        header_title: stored.header_title ?? HOMEPAGE_FEATURES_FALLBACK.header_title,
-        header_description: stored.header_description ?? HOMEPAGE_FEATURES_FALLBACK.header_description,
+        header_title: resolveLocalized(stored.header_title ?? F.header_title, locale),
+        header_description: resolveLocalized(stored.header_description ?? F.header_description, locale),
         blocks:
           stored.blocks && Array.isArray(stored.blocks) && stored.blocks.length > 0
-            ? stored.blocks
-            : HOMEPAGE_FEATURES_FALLBACK.blocks,
+            ? stored.blocks.map((b, i) => resolveBlock(b, locale, i))
+            : F.blocks,
       }
     }
     return HOMEPAGE_FEATURES_FALLBACK

@@ -1,3 +1,5 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassWebsitesFeatureIcon = 'sparkles' | 'users' | 'link'
 export type OpusPassWebsitesFeatureVisual = 'laptop' | 'rsvp' | 'registry'
 
@@ -15,9 +17,11 @@ export const OPUS_PASS_WEBSITES_FEATURE_VISUALS: OpusPassWebsitesFeatureVisual[]
 export type OpusPassWebsitesFeatureItem = {
   id: string
   icon: OpusPassWebsitesFeatureIcon
-  title: string
-  body: string
-  cta_label: string
+  // Translatable text.
+  title: MaybeLocalized
+  body: MaybeLocalized
+  cta_label: MaybeLocalized
+  // Non-translatable config.
   cta_href: string
   visual: OpusPassWebsitesFeatureVisual
   /** Optional uploaded image — replaces the CSS visual mock when set. */
@@ -25,8 +29,8 @@ export type OpusPassWebsitesFeatureItem = {
 }
 
 export type OpusPassWebsitesFeaturesContent = {
-  heading: string
-  description: string
+  heading: MaybeLocalized
+  description: MaybeLocalized
   background_color: string
   items: OpusPassWebsitesFeatureItem[]
 }

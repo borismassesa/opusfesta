@@ -1,6 +1,7 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import type { CatalogProduct } from '@/data/invitations-products'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type InvitationsEditorsPicksRowAlign = 'left' | 'right'
 
@@ -154,7 +155,24 @@ export function editorsPicksRowsFromProducts(
   return { rows }
 }
 
-export async function loadInvitationsEditorsPicksContent(): Promise<InvitationsEditorsPicksContent> {
+// Stored shape: only each row's two title lines are translatable (they may be a
+// localized { en, sw } object or a legacy plain string). Everything else on a
+// row/pick — align, and the picks themselves (which on the live landing page
+// are replaced by real catalog products) — is passed through unchanged. The
+// loader resolves the title lines for `locale` and returns the flat
+// InvitationsEditorsPicksContent the render path already expects.
+type StoredEditorsPicksRow = Omit<InvitationsEditorsPicksRow, 'title_line_1' | 'title_line_2'> & {
+  title_line_1?: MaybeLocalized
+  title_line_2?: MaybeLocalized
+}
+
+type StoredEditorsPicksContent = {
+  rows?: StoredEditorsPicksRow[]
+}
+
+export async function loadInvitationsEditorsPicksContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<InvitationsEditorsPicksContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return INVITATIONS_EDITORS_PICKS_FALLBACK
   }
@@ -168,10 +186,16 @@ export async function loadInvitationsEditorsPicksContent(): Promise<InvitationsE
       .eq('section_key', 'editors-picks')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<InvitationsEditorsPicksContent>
+      | StoredEditorsPicksContent
       | undefined
     if (stored?.rows && Array.isArray(stored.rows) && stored.rows.length > 0) {
-      return { rows: stored.rows }
+      return {
+        rows: stored.rows.map((row) => ({
+          ...row,
+          title_line_1: resolveLocalized(row.title_line_1, locale),
+          title_line_2: resolveLocalized(row.title_line_2, locale),
+        })),
+      }
     }
     return INVITATIONS_EDITORS_PICKS_FALLBACK
   } catch (err) {

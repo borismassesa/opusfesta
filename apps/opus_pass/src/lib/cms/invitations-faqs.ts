@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type InvitationsFaqItem = {
   id: string
@@ -26,7 +27,25 @@ export const INVITATIONS_FAQS_FALLBACK: InvitationsFaqsContent = {
   ],
 }
 
-export async function loadInvitationsFaqsContent(): Promise<InvitationsFaqsContent> {
+// Stored shape: translatable fields (heading, description, and each item's
+// question/answer) may be a localized { en, sw } object or a legacy plain
+// string. The loader resolves each translatable field for `locale` and returns
+// the flat InvitationsFaqsContent the render components already expect.
+type StoredFaqItem = {
+  id?: string
+  question?: MaybeLocalized
+  answer?: MaybeLocalized
+}
+
+type StoredFaqsContent = {
+  heading?: MaybeLocalized
+  description?: MaybeLocalized
+  items?: StoredFaqItem[]
+}
+
+export async function loadInvitationsFaqsContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<InvitationsFaqsContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return INVITATIONS_FAQS_FALLBACK
   }
@@ -40,16 +59,21 @@ export async function loadInvitationsFaqsContent(): Promise<InvitationsFaqsConte
       .eq('section_key', 'faqs')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<InvitationsFaqsContent>
+      | StoredFaqsContent
       | undefined
     if (stored) {
+      const F = INVITATIONS_FAQS_FALLBACK
       return {
-        heading: stored.heading ?? INVITATIONS_FAQS_FALLBACK.heading,
-        description: stored.description ?? INVITATIONS_FAQS_FALLBACK.description,
+        heading: resolveLocalized(stored.heading ?? F.heading, locale),
+        description: resolveLocalized(stored.description ?? F.description, locale),
         items:
           stored.items && Array.isArray(stored.items) && stored.items.length > 0
-            ? stored.items
-            : INVITATIONS_FAQS_FALLBACK.items,
+            ? stored.items.map((item, i) => ({
+                id: item.id ?? `faq-${i}`,
+                question: resolveLocalized(item.question, locale),
+                answer: resolveLocalized(item.answer, locale),
+              }))
+            : F.items,
       }
     }
     return INVITATIONS_FAQS_FALLBACK

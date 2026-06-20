@@ -1,12 +1,15 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassWebsitesFaqItem = {
   id: string
-  question: string
-  answer: string
+  // Translatable text.
+  question: MaybeLocalized
+  answer: MaybeLocalized
 }
 
 export type OpusPassWebsitesFaqsContent = {
-  heading: string
-  description: string
+  heading: MaybeLocalized
+  description: MaybeLocalized
   items: OpusPassWebsitesFaqItem[]
 }
 

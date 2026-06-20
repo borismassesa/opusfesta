@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type InvitationsPromoBannerContent = {
   eyebrow: string
@@ -15,7 +16,20 @@ export const INVITATIONS_PROMO_BANNER_FALLBACK: InvitationsPromoBannerContent = 
   background_color: '#FCE9C2',
 }
 
-export async function loadInvitationsPromoBannerContent(): Promise<InvitationsPromoBannerContent> {
+// Stored shape: the eyebrow + body copy are translatable (a localized
+// { en, sw } object or a legacy plain string); the promo code and background
+// colour are scalar. The loader resolves the translatable fields for `locale`
+// and returns the flat InvitationsPromoBannerContent the render path expects.
+type StoredPromoBannerContent = {
+  eyebrow?: MaybeLocalized
+  body?: MaybeLocalized
+  promo_code?: string
+  background_color?: string
+}
+
+export async function loadInvitationsPromoBannerContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<InvitationsPromoBannerContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return INVITATIONS_PROMO_BANNER_FALLBACK
   }
@@ -29,10 +43,16 @@ export async function loadInvitationsPromoBannerContent(): Promise<InvitationsPr
       .eq('section_key', 'promo-banner')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<InvitationsPromoBannerContent>
+      | StoredPromoBannerContent
       | undefined
     if (stored) {
-      return { ...INVITATIONS_PROMO_BANNER_FALLBACK, ...stored }
+      const F = INVITATIONS_PROMO_BANNER_FALLBACK
+      return {
+        eyebrow: resolveLocalized(stored.eyebrow ?? F.eyebrow, locale),
+        body: resolveLocalized(stored.body ?? F.body, locale),
+        promo_code: stored.promo_code ?? F.promo_code,
+        background_color: stored.background_color ?? F.background_color,
+      }
     }
     return INVITATIONS_PROMO_BANNER_FALLBACK
   } catch (err) {

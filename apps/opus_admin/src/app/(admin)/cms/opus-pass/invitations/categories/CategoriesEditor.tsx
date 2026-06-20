@@ -8,6 +8,9 @@ import type {
 } from '@/lib/cms/opus-pass-invitations-categories'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
 import { CollapsibleCard } from '@/components/cms/CollapsibleCard'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
+import { cn } from '@/lib/utils'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { useEditorActions } from '../EditorActionsContext'
 import {
@@ -72,6 +75,7 @@ export default function CategoriesEditor({ initial, hasDraft: initialHasDraft }:
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   // Tracks which category indices are expanded. Default = all collapsed because
@@ -183,23 +187,19 @@ export default function CategoriesEditor({ initial, hasDraft: initialHasDraft }:
         <h3 className="text-[15px] font-semibold text-gray-900">Categories content</h3>
 
         <FieldGroup label="Section header">
-          <Field label="Heading">
-            <input
-              type="text"
-              value={draft.heading}
-              onChange={(e) => setField('heading', e.target.value)}
-              placeholder="Invitations for Every Moment"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Description">
-            <textarea
-              rows={4}
-              value={draft.description}
-              onChange={(e) => setField('description', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Heading"
+            value={draft.heading}
+            onChange={(v) => setField('heading', v)}
+            placeholder="Invitations for Every Moment"
+          />
+          <BilingualField
+            label="Description"
+            value={draft.description}
+            onChange={(v) => setField('description', v)}
+            multiline
+            rows={4}
+          />
         </FieldGroup>
 
         <div className="space-y-3">
@@ -235,7 +235,7 @@ export default function CategoriesEditor({ initial, hasDraft: initialHasDraft }:
             <CollapsibleCard
               key={`${cat.slug}-${idx}`}
               index={idx}
-              title={cat.label || 'New category'}
+              title={resolveLocalized(cat.label, 'en') || 'New category'}
               subtitle={cat.slug}
               collapsed={!expanded.has(idx)}
               onToggle={() => toggleExpanded(idx)}
@@ -245,26 +245,21 @@ export default function CategoriesEditor({ initial, hasDraft: initialHasDraft }:
               disableMoveUp={idx === 0}
               disableMoveDown={idx === draft.categories.length - 1}
             >
-              <Field
+              <div className="flex items-center justify-end -mb-1">
+                <button
+                  type="button"
+                  onClick={() => setCat(idx, { slug: slugify(resolveLocalized(cat.label, 'en')) })}
+                  className="text-[11px] text-[#7E5896] hover:underline"
+                  title="Regenerate slug from label"
+                >
+                  sync slug
+                </button>
+              </div>
+              <BilingualField
                 label="Label (shown on the card)"
-                hint={
-                  <button
-                    type="button"
-                    onClick={() => setCat(idx, { slug: slugify(cat.label) })}
-                    className="text-[#7E5896] hover:underline"
-                    title="Regenerate slug from label"
-                  >
-                    sync slug
-                  </button>
-                }
-              >
-                <input
-                  type="text"
-                  value={cat.label}
-                  onChange={(e) => setCat(idx, { label: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+                value={cat.label}
+                onChange={(v) => setCat(idx, { label: v })}
+              />
 
               <Field label="URL slug (used in /invitations/<slug>)">
                 <input
@@ -285,23 +280,19 @@ export default function CategoriesEditor({ initial, hasDraft: initialHasDraft }:
                 previewWidth="max-w-[120px]"
               />
 
-              <Field label="Alt text">
-                <input
-                  type="text"
-                  value={cat.alt}
-                  onChange={(e) => setCat(idx, { alt: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+              <BilingualField
+                label="Alt text"
+                value={cat.alt}
+                onChange={(v) => setCat(idx, { alt: v })}
+              />
 
-              <Field label="Subtitle (shown beneath the title on the category page)">
-                <textarea
-                  rows={3}
-                  value={cat.subtitle}
-                  onChange={(e) => setCat(idx, { subtitle: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+              <BilingualField
+                label="Subtitle (shown beneath the title on the category page)"
+                value={cat.subtitle}
+                onChange={(v) => setCat(idx, { subtitle: v })}
+                multiline
+                rows={3}
+              />
 
               <Field label="Product matchers (one per line — substrings matched against product.category)">
                 <textarea
@@ -328,22 +319,45 @@ export default function CategoriesEditor({ initial, hasDraft: initialHasDraft }:
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <CategoriesPreview content={draft} />
+        <CategoriesPreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function CategoriesPreview({ content }: { content: OpusPassInvitationsCategoriesContent }) {
+function CategoriesPreview({
+  content,
+  locale,
+}: {
+  content: OpusPassInvitationsCategoriesContent
+  locale: Locale
+}) {
   return (
     <div>
       <div className="text-center mb-5">
         <h2 className="text-base font-serif font-medium text-gray-900 mb-1.5">
-          {content.heading || 'Section heading'}
+          {resolveLocalized(content.heading, locale) || 'Section heading'}
         </h2>
-        <p className="text-[10px] text-gray-700 leading-relaxed">{content.description}</p>
+        <p className="text-[10px] text-gray-700 leading-relaxed">
+          {resolveLocalized(content.description, locale)}
+        </p>
       </div>
       <div className="grid grid-cols-4 gap-2">
         {content.categories.slice(0, 16).map((cat, i) => (
@@ -355,7 +369,7 @@ function CategoriesPreview({ content }: { content: OpusPassInvitationsCategories
               ) : null}
             </div>
             <span className="text-[8px] text-center text-gray-700 leading-tight line-clamp-2">
-              {cat.label || cat.slug}
+              {resolveLocalized(cat.label, locale) || cat.slug}
             </span>
           </div>
         ))}

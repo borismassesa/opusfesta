@@ -1,8 +1,12 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassGuestsTestimonialFg = 'light' | 'dark'
 
 export type OpusPassGuestsTestimonialItem = {
   id: string
-  quote: string
+  // Translatable text — stored as { en, sw } (or a legacy plain string).
+  quote: MaybeLocalized
+  // Non-translatable: proper names, image keys, colour/enum config.
   name: string
   location: string
   avatar: string
@@ -11,9 +15,11 @@ export type OpusPassGuestsTestimonialItem = {
 }
 
 export type OpusPassGuestsTestimonialsContent = {
-  headline: string
-  description: string
-  cta_label: string
+  // Translatable text.
+  headline: MaybeLocalized
+  description: MaybeLocalized
+  cta_label: MaybeLocalized
+  // Non-translatable config.
   cta_href: string
   column1: OpusPassGuestsTestimonialItem[]
   column2: OpusPassGuestsTestimonialItem[]

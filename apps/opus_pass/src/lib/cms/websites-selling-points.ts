@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type WebsitesSellingPointItem = {
   id: string
@@ -48,7 +49,28 @@ export const WEBSITES_SELLING_POINTS_FALLBACK: WebsitesSellingPointsContent = {
   ],
 }
 
-export async function loadWebsitesSellingPointsContent(): Promise<WebsitesSellingPointsContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; non-text fields are scalar. The loader resolves each
+// translatable field for `locale` and returns the flat content the render
+// components already expect.
+type StoredWebsitesSellingPointItem = {
+  id?: string
+  headline?: MaybeLocalized
+  body?: MaybeLocalized
+  cta_label?: MaybeLocalized
+  cta_href?: string
+  image?: string
+}
+
+type StoredWebsitesSellingPoints = {
+  heading?: MaybeLocalized
+  description?: MaybeLocalized
+  items?: StoredWebsitesSellingPointItem[]
+}
+
+export async function loadWebsitesSellingPointsContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<WebsitesSellingPointsContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return WEBSITES_SELLING_POINTS_FALLBACK
   }
@@ -62,21 +84,27 @@ export async function loadWebsitesSellingPointsContent(): Promise<WebsitesSellin
       .eq('section_key', 'selling-points')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<WebsitesSellingPointsContent>
+      | StoredWebsitesSellingPoints
       | undefined
     if (stored) {
+      const F = WEBSITES_SELLING_POINTS_FALLBACK
       const items =
         stored.items && Array.isArray(stored.items) && stored.items.length > 0
           ? stored.items
-          : WEBSITES_SELLING_POINTS_FALLBACK.items
+          : F.items
       return {
-        heading: stored.heading ?? WEBSITES_SELLING_POINTS_FALLBACK.heading,
-        description: stored.description ?? WEBSITES_SELLING_POINTS_FALLBACK.description,
+        heading: resolveLocalized(stored.heading ?? F.heading, locale),
+        description: resolveLocalized(stored.description ?? F.description, locale),
         // Route any legacy "start your website" CTA to the builder, even if a
         // stale CMS row still points it at /sign-up.
-        items: items.map((it) =>
-          it.cta_href === '/sign-up' ? { ...it, cta_href: '/website-builder' } : it,
-        ),
+        items: items.map((it) => ({
+          id: it.id ?? '',
+          headline: resolveLocalized(it.headline, locale),
+          body: resolveLocalized(it.body, locale),
+          cta_label: resolveLocalized(it.cta_label, locale),
+          cta_href: it.cta_href === '/sign-up' ? '/website-builder' : it.cta_href ?? '',
+          image: it.image ?? '',
+        })),
       }
     }
     return WEBSITES_SELLING_POINTS_FALLBACK

@@ -1,10 +1,12 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassInvitationsFeatureVisual = 'invitations' | 'phone' | 'envelope'
 
 export type OpusPassInvitationsFeatureCard = {
   id: string
-  title: string
-  body: string
-  cta_label: string
+  title: MaybeLocalized
+  body: MaybeLocalized
+  cta_label: MaybeLocalized
   cta_href: string
   /** When set, renders this image instead of the built-in `visual` component. */
   image_url?: string
@@ -12,7 +14,7 @@ export type OpusPassInvitationsFeatureCard = {
 }
 
 export type OpusPassInvitationsFeaturesContent = {
-  heading: string
+  heading: MaybeLocalized
   cards: OpusPassInvitationsFeatureCard[]
 }
 

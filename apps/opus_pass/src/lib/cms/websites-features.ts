@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type WebsitesFeatureIcon = 'sparkles' | 'users' | 'link'
 export type WebsitesFeatureVisual = 'laptop' | 'rsvp' | 'registry'
@@ -62,7 +63,31 @@ export const WEBSITES_FEATURES_FALLBACK: WebsitesFeaturesContent = {
   ],
 }
 
-export async function loadWebsitesFeaturesContent(): Promise<WebsitesFeaturesContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; non-text fields are scalar. The loader resolves each
+// translatable field for `locale` and returns the flat WebsitesFeaturesContent
+// the render components already expect.
+type StoredWebsitesFeatureItem = {
+  id?: string
+  icon?: WebsitesFeatureIcon
+  title?: MaybeLocalized
+  body?: MaybeLocalized
+  cta_label?: MaybeLocalized
+  cta_href?: string
+  visual?: WebsitesFeatureVisual
+  image_url?: string
+}
+
+type StoredWebsitesFeatures = {
+  heading?: MaybeLocalized
+  description?: MaybeLocalized
+  background_color?: string
+  items?: StoredWebsitesFeatureItem[]
+}
+
+export async function loadWebsitesFeaturesContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<WebsitesFeaturesContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return WEBSITES_FEATURES_FALLBACK
   }
@@ -76,18 +101,27 @@ export async function loadWebsitesFeaturesContent(): Promise<WebsitesFeaturesCon
       .eq('section_key', 'features')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<WebsitesFeaturesContent>
+      | StoredWebsitesFeatures
       | undefined
     if (stored) {
+      const F = WEBSITES_FEATURES_FALLBACK
       return {
-        heading: stored.heading ?? WEBSITES_FEATURES_FALLBACK.heading,
-        description: stored.description ?? WEBSITES_FEATURES_FALLBACK.description,
-        background_color:
-          stored.background_color ?? WEBSITES_FEATURES_FALLBACK.background_color,
+        heading: resolveLocalized(stored.heading ?? F.heading, locale),
+        description: resolveLocalized(stored.description ?? F.description, locale),
+        background_color: stored.background_color ?? F.background_color,
         items:
           stored.items && Array.isArray(stored.items) && stored.items.length > 0
-            ? stored.items.map((it) => ({ ...it, image_url: it.image_url ?? '' }))
-            : WEBSITES_FEATURES_FALLBACK.items,
+            ? stored.items.map((it) => ({
+                id: it.id ?? '',
+                icon: it.icon ?? 'sparkles',
+                title: resolveLocalized(it.title, locale),
+                body: resolveLocalized(it.body, locale),
+                cta_label: resolveLocalized(it.cta_label, locale),
+                cta_href: it.cta_href ?? '',
+                visual: it.visual ?? 'laptop',
+                image_url: it.image_url ?? '',
+              }))
+            : F.items,
       }
     }
     return WEBSITES_FEATURES_FALLBACK

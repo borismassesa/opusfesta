@@ -1,8 +1,10 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassInvitationsPromoBannerContent = {
   /** Bold uppercase label on the left, e.g. "40% off". */
-  eyebrow: string
+  eyebrow: MaybeLocalized
   /** Body copy after the eyebrow, e.g. "wedding paper with code". */
-  body: string
+  body: MaybeLocalized
   /** Highlighted promo code at the end. Set to "" to hide. */
   promo_code: string
   /** Banner background colour (hex). */

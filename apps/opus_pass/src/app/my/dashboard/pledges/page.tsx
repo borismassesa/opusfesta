@@ -8,19 +8,21 @@ import {
 } from '@/lib/dashboard/queries'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
+import { getLocale } from '@/lib/cms/locale'
 import PledgesManager from './PledgesManager'
 
 export const dynamic = 'force-dynamic'
 
 export default async function PledgesPage() {
+  const locale = await getLocale()
   const [pledges, stats, guests, profile, hero, pledgeToken, copy] = await Promise.all([
     getPledges(),
     getPledgeStats(),
     getGuestsWithInvitations(),
     getCoupleProfile(),
-    loadDashboardHero('pledges'),
+    loadDashboardHero('pledges', locale),
     getMyPledgeToken(),
-    loadDashboardCopy('pledges'),
+    loadDashboardCopy('pledges', locale),
   ])
   return (
     <PledgesManager

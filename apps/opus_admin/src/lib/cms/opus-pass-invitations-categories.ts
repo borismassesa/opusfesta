@@ -1,17 +1,19 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassInvitationCategory = {
   slug: string
-  label: string
+  label: MaybeLocalized
   img: string
-  alt: string
+  alt: MaybeLocalized
   /** Subtitle shown beneath the category title on the category page. */
-  subtitle: string
+  subtitle: MaybeLocalized
   /** Substrings to match against `product.category` (case-insensitive). */
   product_matchers: string[]
 }
 
 export type OpusPassInvitationsCategoriesContent = {
-  heading: string
-  description: string
+  heading: MaybeLocalized
+  description: MaybeLocalized
   categories: OpusPassInvitationCategory[]
 }
 

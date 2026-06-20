@@ -1,18 +1,22 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassGuestsHeroImage = {
   src: string
-  alt: string
+  alt: MaybeLocalized
 }
 
 export type OpusPassGuestsHeroContent = {
-  headline_line_1: string
-  headline_line_2: string
-  description: string
-  primary_cta_label: string
+  // Translatable text — stored as { en, sw } (or a legacy plain string).
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  description: MaybeLocalized
+  primary_cta_label: MaybeLocalized
+  secondary_cta_label: MaybeLocalized
+  trust_lead: MaybeLocalized
+  trust_rest: MaybeLocalized
+  // Non-translatable config.
   primary_cta_href: string
-  secondary_cta_label: string
   secondary_cta_href: string
-  trust_lead: string
-  trust_rest: string
   avatars: string[]
   collage: OpusPassGuestsHeroImage[]
 }

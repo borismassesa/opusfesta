@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type PromiseIconKey = 'sparkles' | 'palette' | 'wand2' | 'message-circle' | 'heart' | 'shield-check' | 'star' | 'gem'
 
@@ -43,7 +44,23 @@ export const HOMEPAGE_PROMISES_FALLBACK: HomepagePromisesContent = {
   ],
 }
 
-export async function loadHomepagePromisesContent(): Promise<HomepagePromisesContent> {
+// Stored shape: per-item title/description may be a localized { en, sw } object
+// or a legacy plain string; id/icon are scalar. The loader resolves each
+// translatable field for `locale` and returns the flat HomepagePromisesContent
+// the render component already expects.
+type StoredPromiseItem = {
+  id?: string
+  icon?: PromiseIconKey
+  title?: MaybeLocalized
+  description?: MaybeLocalized
+}
+type StoredHomepagePromises = {
+  items?: StoredPromiseItem[]
+}
+
+export async function loadHomepagePromisesContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<HomepagePromisesContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return HOMEPAGE_PROMISES_FALLBACK
   }
@@ -57,10 +74,17 @@ export async function loadHomepagePromisesContent(): Promise<HomepagePromisesCon
       .eq('section_key', 'promises')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<HomepagePromisesContent>
+      | StoredHomepagePromises
       | undefined
     if (stored?.items && Array.isArray(stored.items) && stored.items.length > 0) {
-      return { items: stored.items }
+      return {
+        items: stored.items.map((item, i) => ({
+          id: item.id ?? `promise-${i}`,
+          icon: item.icon ?? 'sparkles',
+          title: resolveLocalized(item.title, locale),
+          description: resolveLocalized(item.description, locale),
+        })),
+      }
     }
     return HOMEPAGE_PROMISES_FALLBACK
   } catch (err) {

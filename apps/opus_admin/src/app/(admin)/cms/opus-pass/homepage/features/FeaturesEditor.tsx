@@ -1,11 +1,20 @@
 'use client'
 
 import { useEffect, useState, useTransition } from 'react'
-import { ChevronsDownUp, ChevronsUpDown, Plus } from 'lucide-react'
+import { ChevronsDownUp, ChevronsUpDown, Plus, Trash2 } from 'lucide-react'
 import type { OpusPassFeatureBlock, OpusPassFeaturesContent } from '@/lib/cms/opus-pass-features'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { BilingualField } from '@/components/cms/BilingualField'
 import { CollapsibleCard } from '@/components/cms/CollapsibleCard'
+import {
+  LOCALES,
+  LOCALE_LABELS,
+  resolveLocalized,
+  type Locale,
+  type LocalizedText,
+} from '@/lib/cms/localized'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
+import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardOpusPassFeaturesDraft,
@@ -51,6 +60,7 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0]))
@@ -73,8 +83,29 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
       blocks: d.blocks.map((b, i) => (i === idx ? { ...b, ...patch } : b)),
     }))
 
-  const setPills = (idx: number, pillsText: string) =>
-    setBlock(idx, { pills: pillsText.split('\n').map((s) => s.trim()).filter(Boolean) })
+  const setPill = (blockIdx: number, pillIdx: number, value: LocalizedText) =>
+    setDraft((d) => ({
+      ...d,
+      blocks: d.blocks.map((b, i) =>
+        i === blockIdx
+          ? { ...b, pills: b.pills.map((p, j) => (j === pillIdx ? value : p)) }
+          : b
+      ),
+    }))
+  const addPill = (blockIdx: number) =>
+    setDraft((d) => ({
+      ...d,
+      blocks: d.blocks.map((b, i) =>
+        i === blockIdx ? { ...b, pills: [...b.pills, { en: '', sw: '' }] } : b
+      ),
+    }))
+  const removePill = (blockIdx: number, pillIdx: number) =>
+    setDraft((d) => ({
+      ...d,
+      blocks: d.blocks.map((b, i) =>
+        i === blockIdx ? { ...b, pills: b.pills.filter((_, j) => j !== pillIdx) } : b
+      ),
+    }))
 
   const addBlock = () =>
     setDraft((d) => ({
@@ -171,22 +202,18 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] space-y-5">
         <h3 className="text-[15px] font-semibold text-gray-900">Features content</h3>
       <FieldGroup label="Section header">
-        <Field label="Title">
-          <input
-            type="text"
-            value={draft.header_title}
-            onChange={(e) => setField('header_title', e.target.value)}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Subhead / description">
-          <textarea
-            rows={2}
-            value={draft.header_description}
-            onChange={(e) => setField('header_description', e.target.value)}
-            className={inputCls}
-          />
-        </Field>
+        <BilingualField
+          label="Title"
+          value={draft.header_title}
+          onChange={(v) => setField('header_title', v)}
+        />
+        <BilingualField
+          label="Subhead / description"
+          value={draft.header_description}
+          onChange={(v) => setField('header_description', v)}
+          multiline
+          rows={2}
+        />
       </FieldGroup>
 
       <div className="space-y-3">
@@ -217,7 +244,12 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
           <CollapsibleCard
             key={block.id}
             index={idx}
-            title={`${block.headline_line_1} ${block.headline_line_2}`.trim() || 'New block'}
+            title={
+              `${resolveLocalized(block.headline_line_1, previewLocale)} ${resolveLocalized(
+                block.headline_line_2,
+                previewLocale
+              )}`.trim() || 'New block'
+            }
             subtitle={block.reverse ? 'reverse' : 'standard'}
             collapsed={!expanded.has(idx)}
             onToggle={() => toggleExpanded(idx)}
@@ -236,38 +268,56 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
               Reverse layout (image on right, text on left)
             </label>
 
-            <Field label="Headline — line 1">
-              <input
-                type="text"
-                value={block.headline_line_1}
-                onChange={(e) => setBlock(idx, { headline_line_1: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Headline — line 2">
-              <input
-                type="text"
-                value={block.headline_line_2}
-                onChange={(e) => setBlock(idx, { headline_line_2: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Body copy">
-              <textarea
-                rows={3}
-                value={block.body}
-                onChange={(e) => setBlock(idx, { body: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Pills (one per line)">
-              <textarea
-                rows={4}
-                value={block.pills.join('\n')}
-                onChange={(e) => setPills(idx, e.target.value)}
-                className={inputCls}
-              />
-            </Field>
+            <BilingualField
+              label="Headline — line 1"
+              value={block.headline_line_1}
+              onChange={(v) => setBlock(idx, { headline_line_1: v })}
+            />
+            <BilingualField
+              label="Headline — line 2"
+              value={block.headline_line_2}
+              onChange={(v) => setBlock(idx, { headline_line_2: v })}
+            />
+            <BilingualField
+              label="Body copy"
+              value={block.body}
+              onChange={(v) => setBlock(idx, { body: v })}
+              multiline
+              rows={3}
+            />
+            <div className="block">
+              <div className="mb-1.5 text-xs font-semibold text-gray-600">Pills</div>
+              <div className="space-y-3">
+                {block.pills.map((pill, pillIdx) => (
+                  <div key={pillIdx} className="flex items-start gap-2 rounded-lg border border-gray-200 p-3">
+                    <div className="flex-1">
+                      <BilingualField
+                        label={`Pill ${pillIdx + 1}`}
+                        value={pill}
+                        onChange={(v) => setPill(idx, pillIdx, v)}
+                        max={24}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removePill(idx, pillIdx)}
+                      className="mt-6 p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors shrink-0"
+                      aria-label="Remove pill"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => addPill(idx)}
+                  className="flex items-center gap-2 text-sm font-medium text-[#7E5896] hover:text-[#5d3a78] px-3 py-2 rounded-lg border border-dashed border-[#C9A0DC] hover:bg-[#F0DFF6] transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add pill
+                </button>
+              </div>
+            </div>
 
             <FieldGroup label="Media collage (2×2)">
               <ImageUploadField
@@ -294,41 +344,29 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
                 previewAspect="aspect-[4/3]"
                 previewWidth="max-w-xs"
               />
-              <Field label="Overlay eyebrow (small uppercase label)">
-                <input
-                  type="text"
-                  value={block.overlay_eyebrow}
-                  onChange={(e) => setBlock(idx, { overlay_eyebrow: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Overlay caption — line 1">
-                <input
-                  type="text"
-                  value={block.overlay_caption_line_1}
-                  onChange={(e) => setBlock(idx, { overlay_caption_line_1: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Overlay caption — line 2">
-                <input
-                  type="text"
-                  value={block.overlay_caption_line_2}
-                  onChange={(e) => setBlock(idx, { overlay_caption_line_2: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+              <BilingualField
+                label="Overlay eyebrow (small uppercase label)"
+                value={block.overlay_eyebrow}
+                onChange={(v) => setBlock(idx, { overlay_eyebrow: v })}
+              />
+              <BilingualField
+                label="Overlay caption — line 1"
+                value={block.overlay_caption_line_1}
+                onChange={(v) => setBlock(idx, { overlay_caption_line_1: v })}
+              />
+              <BilingualField
+                label="Overlay caption — line 2"
+                value={block.overlay_caption_line_2}
+                onChange={(v) => setBlock(idx, { overlay_caption_line_2: v })}
+              />
             </FieldGroup>
 
             <FieldGroup label="Primary CTA (filled)">
-              <Field label="Label">
-                <input
-                  type="text"
-                  value={block.primary_cta_label}
-                  onChange={(e) => setBlock(idx, { primary_cta_label: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+              <BilingualField
+                label="Label"
+                value={block.primary_cta_label}
+                onChange={(v) => setBlock(idx, { primary_cta_label: v })}
+              />
               <Field label="Destination URL">
                 <input
                   type="text"
@@ -340,14 +378,11 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
             </FieldGroup>
 
             <FieldGroup label="Secondary CTA (underline)">
-              <Field label="Label">
-                <input
-                  type="text"
-                  value={block.secondary_cta_label}
-                  onChange={(e) => setBlock(idx, { secondary_cta_label: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+              <BilingualField
+                label="Label"
+                value={block.secondary_cta_label}
+                onChange={(v) => setBlock(idx, { secondary_cta_label: v })}
+              />
               <Field label="Destination URL">
                 <input
                   type="text"
@@ -373,35 +408,50 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <FeaturesPreview content={draft} />
+        <FeaturesPreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function FeaturesPreview({ content }: { content: OpusPassFeaturesContent }) {
+function FeaturesPreview({ content, locale }: { content: OpusPassFeaturesContent; locale: Locale }) {
   return (
     <div className="space-y-6">
       <div className="text-center">
         <h2 className="text-base sm:text-lg font-serif font-bold text-gray-900 leading-tight">
-          {content.header_title || 'Section title'}
+          {resolveLocalized(content.header_title, locale) || 'Section title'}
         </h2>
         <p className="text-[11px] text-gray-600 mt-1.5 leading-relaxed">
-          {content.header_description || 'Subhead'}
+          {resolveLocalized(content.header_description, locale) || 'Subhead'}
         </p>
       </div>
       <div className="space-y-8">
         {content.blocks.map((block) => (
-          <FeatureBlockPreview key={block.id} block={block} />
+          <FeatureBlockPreview key={block.id} block={block} locale={locale} />
         ))}
       </div>
     </div>
   )
 }
 
-function FeatureBlockPreview({ block }: { block: OpusPassFeatureBlock }) {
+function FeatureBlockPreview({ block, locale }: { block: OpusPassFeatureBlock; locale: Locale }) {
   const reverseClass = block.reverse ? 'sm:flex-row-reverse' : 'sm:flex-row'
   return (
     <div className={`flex flex-col ${reverseClass} items-center gap-3`}>
@@ -426,36 +476,38 @@ function FeatureBlockPreview({ block }: { block: OpusPassFeatureBlock }) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           <div className="absolute bottom-1 left-1 right-1 text-white">
             <p className="text-[7px] font-semibold uppercase tracking-wider opacity-70">
-              {block.overlay_eyebrow}
+              {resolveLocalized(block.overlay_eyebrow, locale)}
             </p>
             <p className="text-[8px] font-serif leading-tight">
-              {block.overlay_caption_line_1}
+              {resolveLocalized(block.overlay_caption_line_1, locale)}
               <br />
-              {block.overlay_caption_line_2}
+              {resolveLocalized(block.overlay_caption_line_2, locale)}
             </p>
           </div>
         </div>
       </div>
       <div className="flex-1 text-center sm:text-left">
         <h2 className="text-sm font-serif font-bold leading-tight text-gray-900 mb-1.5">
-          {block.headline_line_1}
+          {resolveLocalized(block.headline_line_1, locale)}
           <br />
-          {block.headline_line_2}
+          {resolveLocalized(block.headline_line_2, locale)}
         </h2>
-        <p className="text-[10px] text-gray-600 mb-2 leading-relaxed line-clamp-3">{block.body}</p>
+        <p className="text-[10px] text-gray-600 mb-2 leading-relaxed line-clamp-3">
+          {resolveLocalized(block.body, locale)}
+        </p>
         <div className="flex flex-wrap justify-center sm:justify-start gap-1 mb-2">
-          {block.pills.map((p) => (
-            <span key={p} className="bg-gray-100 text-gray-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
-              {p}
+          {block.pills.map((p, i) => (
+            <span key={i} className="bg-gray-100 text-gray-700 text-[9px] font-semibold px-1.5 py-0.5 rounded-full">
+              {resolveLocalized(p, locale)}
             </span>
           ))}
         </div>
         <div className="flex flex-wrap justify-center sm:justify-start gap-1.5">
           <span className="inline-block bg-gray-900 text-white px-2 py-0.5 rounded-full text-[9px] font-medium">
-            {block.primary_cta_label || 'Primary'}
+            {resolveLocalized(block.primary_cta_label, locale) || 'Primary'}
           </span>
           <span className="inline-block text-gray-900 px-2 py-0.5 rounded-full text-[9px] font-medium underline">
-            {block.secondary_cta_label || 'Secondary'}
+            {resolveLocalized(block.secondary_cta_label, locale) || 'Secondary'}
           </span>
         </div>
       </div>

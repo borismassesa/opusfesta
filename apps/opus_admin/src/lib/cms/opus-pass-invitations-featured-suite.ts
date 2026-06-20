@@ -1,13 +1,15 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassInvitationsFeaturedSuiteContent = {
   image_url: string
-  headline_line_1: string
-  headline_line_2: string
-  body: string
-  primary_cta_label: string
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  body: MaybeLocalized
+  primary_cta_label: MaybeLocalized
   primary_cta_href: string
-  secondary_cta_label: string
+  secondary_cta_label: MaybeLocalized
   secondary_cta_href: string
-  trust_strip: string[]
+  trust_strip: MaybeLocalized[]
 }
 
 export type OpusPassInvitationsFeaturedSuiteRow = {

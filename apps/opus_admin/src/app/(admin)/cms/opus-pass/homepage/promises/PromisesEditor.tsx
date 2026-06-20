@@ -22,6 +22,9 @@ import {
   type PromiseIconKey,
 } from '@/lib/cms/opus-pass-promises'
 import { CollapsibleCard } from '@/components/cms/CollapsibleCard'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
+import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 
 const ICON_MAP: Record<PromiseIconKey, LucideIcon> = {
@@ -69,6 +72,7 @@ export default function PromisesEditor({ initial, hasDraft: initialHasDraft }: P
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set([0, 1, 2, 3]))
@@ -189,7 +193,7 @@ export default function PromisesEditor({ initial, hasDraft: initialHasDraft }: P
         <CollapsibleCard
           key={item.id}
           index={idx}
-          title={item.title || 'New pillar'}
+          title={resolveLocalized(item.title, previewLocale) || 'New pillar'}
           subtitle={item.icon}
           collapsed={!expanded.has(idx)}
           onToggle={() => toggleExpanded(idx)}
@@ -212,24 +216,20 @@ export default function PromisesEditor({ initial, hasDraft: initialHasDraft }: P
               ))}
             </select>
           </Field>
-          <Field label="Title">
-            <input
-              type="text"
-              value={item.title}
-              onChange={(e) => setItem(idx, { title: e.target.value })}
-              placeholder="Premium quality"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Description">
-            <textarea
-              rows={2}
-              value={item.description}
-              onChange={(e) => setItem(idx, { description: e.target.value })}
-              placeholder="Short, punchy explanation of this pillar."
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Title"
+            value={item.title}
+            onChange={(v) => setItem(idx, { title: v })}
+            placeholder="Premium quality"
+          />
+          <BilingualField
+            label="Description"
+            value={item.description}
+            onChange={(v) => setItem(idx, { description: v })}
+            placeholder="Short, punchy explanation of this pillar."
+            multiline
+            rows={2}
+          />
         </CollapsibleCard>
       ))}
       <button
@@ -245,15 +245,30 @@ export default function PromisesEditor({ initial, hasDraft: initialHasDraft }: P
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <PromisesPreview content={draft} />
+        <PromisesPreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function PromisesPreview({ content }: { content: OpusPassPromisesContent }) {
+function PromisesPreview({ content, locale }: { content: OpusPassPromisesContent; locale: Locale }) {
   return (
     <div className="border-t border-gray-200 pt-6">
       <div className="grid grid-cols-2 gap-x-4 gap-y-6">
@@ -264,9 +279,11 @@ function PromisesPreview({ content }: { content: OpusPassPromisesContent }) {
               <div className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center mb-3">
                 <Icon className="text-[#1A1A1A]" size={16} />
               </div>
-              <h4 className="font-bold text-xs text-[#1A1A1A] mb-1.5">{item.title || 'Title'}</h4>
+              <h4 className="font-bold text-xs text-[#1A1A1A] mb-1.5">
+                {resolveLocalized(item.title, locale) || 'Title'}
+              </h4>
               <p className="text-gray-600 text-[10px] leading-relaxed line-clamp-3">
-                {item.description}
+                {resolveLocalized(item.description, locale)}
               </p>
             </div>
           )

@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { loadHomepageFeaturesContent, type HomepageFeatureBlock } from '@/lib/cms/homepage-features'
+import { getLocale } from '@/lib/cms/locale'
 import { assetPath } from '@/lib/asset-path'
 
 function FeatureBlockSection({ block }: { block: HomepageFeatureBlock }) {
@@ -75,7 +76,8 @@ function FeatureBlockSection({ block }: { block: HomepageFeatureBlock }) {
 }
 
 export async function Features() {
-  const content = await loadHomepageFeaturesContent()
+  const locale = await getLocale()
+  const content = await loadHomepageFeaturesContent(locale)
   return (
     <section className="py-12 sm:py-16 md:py-20 px-4 lg:px-8 max-w-7xl mx-auto">
       <div className="text-center mb-10 sm:mb-14 md:mb-16">
