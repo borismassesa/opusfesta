@@ -8,6 +8,7 @@ import type { LucideIcon } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import CartMenu from '@/components/CartMenu'
 import NotificationsBell from '@/components/NotificationsBell'
+import { LocaleToggle } from '@/components/LocaleToggle'
 import { UserButton, useUser } from '@clerk/nextjs'
 import {
   Menu,
@@ -223,6 +224,10 @@ export default function Navbar() {
 
         {/* Right: cart + auth + hamburger */}
         <div className="flex shrink-0 items-center gap-1 font-semibold text-sm sm:gap-2 lg:text-[15px]">
+          {/* Language toggle — English / Kiswahili. Sets the opuspass_locale
+              cookie and refreshes so CMS content re-renders in the chosen language. */}
+          <LocaleToggle className="hidden sm:inline-flex" />
+
           {/* Cart — available signed in or out so guests can build an order pre-signup */}
           <CartMenu />
 

@@ -5,6 +5,8 @@ import { ArrowDown, ArrowUp, Plus, Star, StarHalf, Trash2 } from 'lucide-react'
 import type { OpusPassHeroContent } from '@/lib/cms/opus-pass-hero'
 import { cn } from '@/lib/utils'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { useEditorActions } from '../EditorActionsContext'
 import { discardOpusPassHeroDraft, publishOpusPassHero, saveOpusPassHeroDraft } from './actions'
@@ -65,6 +67,7 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const set = <K extends keyof OpusPassHeroContent>(key: K, value: OpusPassHeroContent[K]) =>
@@ -150,44 +153,37 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
         </p>
 
         <FieldGroup label="Headline">
-          <Field label="Line 1" hint={<CharCount value={draft.headline_line_1} max={40} />}>
-            <input
-              type="text"
-              value={draft.headline_line_1}
-              onChange={(e) => set('headline_line_1', e.target.value)}
-              placeholder="Your whole wedding day"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Line 2" hint={<CharCount value={draft.headline_line_2} max={40} />}>
-            <input
-              type="text"
-              value={draft.headline_line_2}
-              onChange={(e) => set('headline_line_2', e.target.value)}
-              placeholder="one beautiful pass"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Description" hint={<CharCount value={draft.description} max={220} />}>
-            <textarea
-              rows={3}
-              value={draft.description}
-              onChange={(e) => set('description', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Line 1"
+            value={draft.headline_line_1}
+            onChange={(v) => set('headline_line_1', v)}
+            placeholder="Your whole wedding day"
+            max={40}
+          />
+          <BilingualField
+            label="Line 2"
+            value={draft.headline_line_2}
+            onChange={(v) => set('headline_line_2', v)}
+            placeholder="one beautiful pass"
+            max={40}
+          />
+          <BilingualField
+            label="Description"
+            value={draft.description}
+            onChange={(v) => set('description', v)}
+            multiline
+            max={220}
+          />
         </FieldGroup>
 
         <FieldGroup label="Primary CTA (filled button)">
-          <Field label="Label" hint={<CharCount value={draft.primary_cta_label} max={24} />}>
-            <input
-              type="text"
-              value={draft.primary_cta_label}
-              onChange={(e) => set('primary_cta_label', e.target.value)}
-              placeholder="Get started"
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Label"
+            value={draft.primary_cta_label}
+            onChange={(v) => set('primary_cta_label', v)}
+            placeholder="Get started"
+            max={24}
+          />
           <Field label="Destination URL">
             <input
               type="text"
@@ -200,15 +196,13 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
         </FieldGroup>
 
         <FieldGroup label="Secondary CTA (outline button)">
-          <Field label="Label" hint={<CharCount value={draft.secondary_cta_label} max={24} />}>
-            <input
-              type="text"
-              value={draft.secondary_cta_label}
-              onChange={(e) => set('secondary_cta_label', e.target.value)}
-              placeholder="Browse invitations"
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Label"
+            value={draft.secondary_cta_label}
+            onChange={(v) => set('secondary_cta_label', v)}
+            placeholder="Browse invitations"
+            max={24}
+          />
           <Field label="Destination URL">
             <input
               type="text"
@@ -314,16 +308,36 @@ export default function HeroEditor({ initial, hasDraft: initialHasDraft }: Props
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <HeroPreview content={draft} />
+        <HeroPreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function HeroPreview({ content }: { content: OpusPassHeroContent }) {
-  const line1 = content.headline_line_1.trim().replace(/,\s*$/, '')
+function HeroPreview({ content, locale }: { content: OpusPassHeroContent; locale: Locale }) {
+  const headline1 = resolveLocalized(content.headline_line_1, locale)
+  const headline2 = resolveLocalized(content.headline_line_2, locale)
+  const description = resolveLocalized(content.description, locale)
+  const primaryLabel = resolveLocalized(content.primary_cta_label, locale)
+  const secondaryLabel = resolveLocalized(content.secondary_cta_label, locale)
+  const line1 = headline1.trim().replace(/,\s*$/, '')
   const lastSpace = line1.lastIndexOf(' ')
   const head = lastSpace === -1 ? '' : line1.slice(0, lastSpace + 1)
   const lastWord = lastSpace === -1 ? line1 : line1.slice(lastSpace + 1)
@@ -366,17 +380,17 @@ function HeroPreview({ content }: { content: OpusPassHeroContent }) {
         {head}
         <span className="underline decoration-[#1A1A1A] decoration-2 underline-offset-2">{lastWord}</span>
         <br />
-        {content.headline_line_2} <span aria-hidden>⚡</span>
+        {headline2} <span aria-hidden>⚡</span>
       </h1>
 
-      <p className="mx-auto mt-3 max-w-sm text-[11px] leading-relaxed text-gray-600">{content.description}</p>
+      <p className="mx-auto mt-3 max-w-sm text-[11px] leading-relaxed text-gray-600">{description}</p>
 
       <div className="mt-4 flex items-center justify-center gap-2">
         <span className="rounded-full bg-[#C9A0DC] px-4 py-1.5 text-[10px] font-extrabold uppercase tracking-wider text-white">
-          {content.primary_cta_label}
+          {primaryLabel}
         </span>
         <span className="rounded-full border border-gray-200 px-4 py-1.5 text-[10px] font-semibold text-gray-900">
-          {content.secondary_cta_label}
+          {secondaryLabel}
         </span>
       </div>
 

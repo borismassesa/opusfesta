@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type HomepageHeroContent = {
   headline_line_1: string
@@ -37,7 +38,27 @@ export const HOMEPAGE_HERO_FALLBACK: HomepageHeroContent = {
   featured_in: ['The Citizen', 'Clouds FM', 'Bongo5', 'JamiiForums'],
 }
 
-export async function loadHomepageHeroContent(): Promise<HomepageHeroContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; non-text fields are scalar. The loader resolves each
+// translatable field for `locale` and returns the flat HomepageHeroContent the
+// render components already expect — so no public component changes.
+type StoredHomepageHero = {
+  headline_line_1?: MaybeLocalized
+  headline_line_2?: MaybeLocalized
+  description?: MaybeLocalized
+  primary_cta_label?: MaybeLocalized
+  secondary_cta_label?: MaybeLocalized
+  primary_cta_href?: string
+  secondary_cta_href?: string
+  trust_count?: string
+  rating?: string
+  avatars?: string[]
+  featured_in?: string[]
+}
+
+export async function loadHomepageHeroContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<HomepageHeroContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return HOMEPAGE_HERO_FALLBACK
   }
@@ -51,20 +72,20 @@ export async function loadHomepageHeroContent(): Promise<HomepageHeroContent> {
       .eq('section_key', 'hero')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<HomepageHeroContent>
+      | StoredHomepageHero
       | undefined
     if (stored) {
       // Map fields explicitly (not a blind spread) so legacy keys from older
       // schemas — main_image_url, card_* from the old two-card hero — never leak
-      // into the rendered payload.
+      // into the rendered payload. Translatable fields resolve to `locale`.
       const F = HOMEPAGE_HERO_FALLBACK
       return {
-        headline_line_1: stored.headline_line_1 ?? F.headline_line_1,
-        headline_line_2: stored.headline_line_2 ?? F.headline_line_2,
-        description: stored.description ?? F.description,
-        primary_cta_label: stored.primary_cta_label ?? F.primary_cta_label,
+        headline_line_1: resolveLocalized(stored.headline_line_1 ?? F.headline_line_1, locale),
+        headline_line_2: resolveLocalized(stored.headline_line_2 ?? F.headline_line_2, locale),
+        description: resolveLocalized(stored.description ?? F.description, locale),
+        primary_cta_label: resolveLocalized(stored.primary_cta_label ?? F.primary_cta_label, locale),
         primary_cta_href: stored.primary_cta_href ?? F.primary_cta_href,
-        secondary_cta_label: stored.secondary_cta_label ?? F.secondary_cta_label,
+        secondary_cta_label: resolveLocalized(stored.secondary_cta_label ?? F.secondary_cta_label, locale),
         secondary_cta_href: stored.secondary_cta_href ?? F.secondary_cta_href,
         trust_count: stored.trust_count ?? F.trust_count,
         rating: stored.rating ?? F.rating,
