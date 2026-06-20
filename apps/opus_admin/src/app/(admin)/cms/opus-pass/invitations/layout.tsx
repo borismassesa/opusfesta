@@ -1,7 +1,6 @@
 'use client'
 
 import { useTransition, type ReactNode } from 'react'
-import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import {
   Compass,
@@ -17,24 +16,15 @@ import {
   Send,
   Trash2,
   Wallet,
-  type LucideIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useSetPageHeading } from '@/components/PageHeading'
-import { HeaderActionsSlot, HeaderBadgeSlot, SecondarySidebarSlot } from '@/components/HeaderPortals'
+import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
+import { CmsSecondarySidebar, type CmsSection } from '@/components/cms/CmsSecondarySidebar'
 import { EditorActionsProvider, useEditorActions } from './EditorActionsContext'
 import { getOpusPassInvitationsPreviewUrl } from './preview-action'
 
-type Section = {
-  key: string
-  label: string
-  icon: LucideIcon
-  href?: string
-  status: 'live' | 'soon'
-  description?: string
-}
-
-const sections: Section[] = [
+const sections: CmsSection[] = [
   {
     key: 'products',
     label: 'Cards',
@@ -115,9 +105,6 @@ function OpusPassInvitationsCmsShell({ children }: { children: ReactNode }) {
   const opusPassUrl = `${process.env.NEXT_PUBLIC_OPUS_PASS_URL ?? 'http://localhost:3008'}`
   const activeSection = sections.find((s) => s.href && pathname.startsWith(s.href)) ?? sections[0]
 
-  const liveSections = sections.filter((s) => s.status === 'live')
-  const soonSections = sections.filter((s) => s.status === 'soon')
-
   useSetPageHeading({
     title: activeSection.label,
     subtitle: activeSection.description ?? undefined,
@@ -142,68 +129,10 @@ function OpusPassInvitationsCmsShell({ children }: { children: ReactNode }) {
         </a>
       </HeaderActionsSlot>
 
-      {/* Full-height secondary nav — portaled to the shell column so it spans
-          the whole content area, with the Header sitting only above the body. */}
-      <SecondarySidebarSlot>
-        <aside className="flex h-full w-[240px] flex-col gap-4 overflow-y-auto border-r border-gray-100 px-3 py-6">
-          <h2 className="px-2 text-base font-bold tracking-tight text-gray-900">Invitations</h2>
-          <SectionGroup label="Sections">
-            {liveSections.map((s) => (
-              <SectionLink key={s.key} section={s} pathname={pathname} />
-            ))}
-          </SectionGroup>
-
-          {soonSections.length > 0 && (
-            <SectionGroup label="Coming soon">
-              {soonSections.map((s) => (
-                <SectionItemSoon key={s.key} section={s} />
-              ))}
-            </SectionGroup>
-          )}
-        </aside>
-      </SecondarySidebarSlot>
+      <CmsSecondarySidebar title="Invitations" sections={sections} pathname={pathname} />
 
       <div className="px-8 pt-2 pb-6">{children}</div>
     </>
-  )
-}
-
-function SectionGroup({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div>
-      <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400 px-2 mb-2">{label}</p>
-      <nav className="space-y-0.5">{children}</nav>
-    </div>
-  )
-}
-
-function SectionLink({ section, pathname }: { section: Section; pathname: string }) {
-  const Icon = section.icon
-  const isActive = section.href && pathname.startsWith(section.href)
-  return (
-    <Link
-      href={section.href!}
-      className={cn(
-        'flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm font-medium transition-colors',
-        isActive ? 'bg-[#F0DFF6] text-[#7E5896]' : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
-      )}
-    >
-      <Icon className={cn('w-4 h-4 stroke-[1.5] shrink-0', isActive ? 'text-[#7E5896]' : 'text-gray-400')} />
-      <span className="truncate">{section.label}</span>
-    </Link>
-  )
-}
-
-function SectionItemSoon({ section }: { section: Section }) {
-  const Icon = section.icon
-  return (
-    <div
-      className="flex items-center gap-2.5 px-2.5 py-2 text-sm text-gray-400 cursor-not-allowed select-none"
-      title="Coming soon"
-    >
-      <Icon className="w-4 h-4 stroke-[1.5] shrink-0 text-gray-300" />
-      <span className="truncate">{section.label}</span>
-    </div>
   )
 }
 
