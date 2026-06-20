@@ -8,6 +8,7 @@ import {
   HelpCircle,
   LayoutPanelTop,
   MessageSquareQuote,
+  PanelTop,
   Save,
   Send,
   Share2,
@@ -60,6 +61,14 @@ const sections: CmsSection[] = [
     href: '/cms/opus-pass/guests-rsvps/faqs',
     status: 'live',
     description: 'Guests & RSVPs FAQs — section heading plus add/remove Q&A pairs.',
+  },
+  {
+    key: 'navbar',
+    label: 'Navbar',
+    icon: PanelTop,
+    href: '/cms/opus-pass/guests-rsvps/navbar',
+    status: 'live',
+    description: 'Mega-menu labels & links shown in the top navigation.',
   },
 ]
 

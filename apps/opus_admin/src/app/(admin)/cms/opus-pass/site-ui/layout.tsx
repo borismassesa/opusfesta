@@ -11,12 +11,12 @@ import { EditorActionsProvider, useEditorActions } from './EditorActionsContext'
 const sections: CmsSection[] = [
   {
     key: 'navbar',
-    label: 'Navbar',
+    label: 'Navbar (shared)',
     icon: PanelTop,
     href: '/cms/opus-pass/site-ui/navbar',
     status: 'live',
     description:
-      'Top navigation + mega-menu labels, auth buttons and mobile menu controls — bilingual.',
+      'Shared navbar chrome — auth buttons and mobile menu controls. Each product’s mega-menu is edited in that product’s CMS.',
   },
   {
     key: 'footer',

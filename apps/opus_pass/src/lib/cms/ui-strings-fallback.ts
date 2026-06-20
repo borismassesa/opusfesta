@@ -13,10 +13,29 @@
 export type UiArea = 'navbar' | 'footer'
 
 // One CMS page row per area; section_key is always 'copy'.
+//
+// NOTE: for the navbar, 'opus-pass-ui-navbar' is now only the SHARED chrome
+// source (auth buttons + mobile menu controls). The product-specific mega-menu
+// strings live alongside each product's own CMS group and are MERGED at read
+// time — see NAVBAR_SOURCES below + loadUiStrings('navbar') in ./ui-strings.ts.
 export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   navbar: 'opus-pass-ui-navbar',
   footer: 'opus-pass-ui-footer',
 }
+
+// The public navbar reads ONE merged 'navbar' namespace, but its keys are now
+// authored across four CMS rows: each product's own mega-menu (edited inside
+// that product's CMS group) plus the shared navbar chrome (Site UI). The loader
+// queries every (page_key, section_key) pair below and Object.assigns them into
+// one map, then overlays it onto the canonical English fallback. Order is
+// product groups first, shared chrome last (no key overlap, so order is
+// cosmetic — kept stable for predictability).
+export const NAVBAR_SOURCES: { pageKey: string; sectionKey: string }[] = [
+  { pageKey: 'opus-pass-invitations', sectionKey: 'navbar' },
+  { pageKey: 'opus-pass-guests', sectionKey: 'navbar' },
+  { pageKey: 'opus-pass-websites', sectionKey: 'navbar' },
+  { pageKey: 'opus-pass-ui-navbar', sectionKey: 'copy' },
+]
 
 // Flat string interfaces — every key resolves to a plain string for consumers.
 export interface NavbarStrings {

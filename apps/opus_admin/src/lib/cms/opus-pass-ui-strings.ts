@@ -44,7 +44,7 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
 }
 
 export const UI_STRINGS_LABEL: Record<UiArea, string> = {
-  navbar: 'Navbar',
+  navbar: 'Navbar (shared)',
   footer: 'Footer',
 }
 
@@ -62,64 +62,11 @@ export function isUiArea(value: string): value is UiArea {
 }
 
 export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
+  // SHARED navbar chrome only. The product-specific mega-menu strings now live
+  // in each product's own CMS group (Invitations / Guests / Wedding Website →
+  // section_key 'navbar'); see opus-pass-<group>-navbar.ts. The public navbar
+  // merges all four sources back into one 'navbar' namespace at read time.
   navbar: {
-    nav_invitations: 'Invitations',
-    nav_guests: "Guests & RSVP's",
-    nav_website: 'Wedding Website',
-    mega_inv_title: 'WEDDING INVITATIONS',
-    mega_inv_desc:
-      'Designer-worthy digital invitations for every wedding moment, sent by WhatsApp or SMS.',
-    mega_inv_cta: 'Browse all designs',
-    inv_col_browse: 'Browse',
-    inv_col_resources: 'Resources',
-    inv_link_all_designs: 'All Designs',
-    inv_link_save_the_dates: 'Save the Dates',
-    inv_link_wedding: 'Wedding Invitations',
-    inv_link_send_off: 'Send-Off & Kitchen Party',
-    inv_link_kadi: 'Kadi za Michango',
-    inv_link_wording: 'Invitation Wording',
-    inv_link_rsvp_wording: 'RSVP Wording Ideas',
-    inv_grid_title: 'Wedding Paper',
-    inv_grid_guest_list: 'Guest List',
-    inv_grid_rsvp_tracking: 'RSVP Tracking',
-    inv_grid_invitations: 'Invitations',
-    inv_grid_seating_plan: 'Seating Plan',
-    mega_guests_title: 'GUESTS & RSVPS',
-    mega_guests_desc:
-      'Send digital invites by WhatsApp or SMS and watch RSVPs roll in live.',
-    mega_guests_cta: 'Manage your guests',
-    guests_col_manage: 'Manage',
-    guests_col_resources: 'Resources',
-    guests_link_list_manager: 'Guest List Manager',
-    guests_link_rsvp_tracking: 'RSVP Tracking',
-    guests_link_whatsapp_sms: 'WhatsApp & SMS Send',
-    guests_link_seating: 'Seating Chart',
-    guests_link_rsvp_wording: 'RSVP Wording Ideas',
-    guests_link_etiquette: 'Guest Etiquette Tips',
-    guests_grid_title: 'Guest Tools',
-    guests_grid_guest_list: 'Guest List',
-    guests_grid_rsvp_tracking: 'RSVP Tracking',
-    guests_grid_invitations: 'Invitations',
-    guests_grid_seating_plan: 'Seating Plan',
-    mega_website_title: 'WEDDING WEBSITE',
-    mega_website_desc:
-      'Build a beautiful wedding website in minutes and share it with your guests.',
-    mega_website_cta: 'Create your website',
-    website_col_features: 'Features',
-    website_col_resources: 'Resources',
-    website_link_free_site: 'Free Wedding Website',
-    website_link_custom_link: 'Custom Link',
-    website_link_templates: 'Beautiful Templates',
-    website_link_rsvp_collection: 'RSVP Collection',
-    website_link_venue_travel: 'Venue & Travel Info',
-    website_link_examples: 'Website Examples',
-    website_link_gallery_tips: 'Photo Gallery Tips',
-    website_link_sharing: 'Sharing with Guests',
-    website_grid_title: 'Website Ideas',
-    website_grid_templates: 'Templates',
-    website_grid_photo_gallery: 'Photo Gallery',
-    website_grid_rsvps: 'RSVPs',
-    website_grid_travel_info: 'Travel Info',
     auth_login: 'Log in',
     auth_signup: 'Sign up',
     auth_dashboard: 'Dashboard',
@@ -158,81 +105,8 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
 // ── Field schema that drives the generic editor ──────────────────────────────
 
 export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
+  // SHARED navbar chrome only — product mega-menus moved to their own CMS groups.
   navbar: [
-    {
-      legend: 'Top nav',
-      fields: [
-        { key: 'nav_invitations', label: 'Invitations', kind: 'text', max: 40 },
-        { key: 'nav_guests', label: "Guests & RSVP's", kind: 'text', max: 40 },
-        { key: 'nav_website', label: 'Wedding Website', kind: 'text', max: 40 },
-      ],
-    },
-    {
-      legend: 'Invitations mega-menu',
-      fields: [
-        { key: 'mega_inv_title', label: 'Card title', kind: 'text', max: 40 },
-        { key: 'mega_inv_desc', label: 'Card description', kind: 'textarea', max: 160 },
-        { key: 'mega_inv_cta', label: 'Card link', kind: 'text', max: 40 },
-        { key: 'inv_col_browse', label: 'Browse column heading', kind: 'text', max: 30 },
-        { key: 'inv_col_resources', label: 'Resources column heading', kind: 'text', max: 30 },
-        { key: 'inv_link_all_designs', label: 'Link — All Designs', kind: 'text', max: 40 },
-        { key: 'inv_link_save_the_dates', label: 'Link — Save the Dates', kind: 'text', max: 40 },
-        { key: 'inv_link_wedding', label: 'Link — Wedding Invitations', kind: 'text', max: 40 },
-        { key: 'inv_link_send_off', label: 'Link — Send-Off & Kitchen Party', kind: 'text', max: 40 },
-        { key: 'inv_link_kadi', label: 'Link — Kadi za Michango', kind: 'text', max: 40 },
-        { key: 'inv_link_wording', label: 'Link — Invitation Wording', kind: 'text', max: 40 },
-        { key: 'inv_link_rsvp_wording', label: 'Link — RSVP Wording Ideas', kind: 'text', max: 40 },
-        { key: 'inv_grid_title', label: 'Photo grid heading', kind: 'text', max: 30 },
-        { key: 'inv_grid_guest_list', label: 'Photo — Guest List', kind: 'text', max: 30 },
-        { key: 'inv_grid_rsvp_tracking', label: 'Photo — RSVP Tracking', kind: 'text', max: 30 },
-        { key: 'inv_grid_invitations', label: 'Photo — Invitations', kind: 'text', max: 30 },
-        { key: 'inv_grid_seating_plan', label: 'Photo — Seating Plan', kind: 'text', max: 30 },
-      ],
-    },
-    {
-      legend: "Guests & RSVP's mega-menu",
-      fields: [
-        { key: 'mega_guests_title', label: 'Card title', kind: 'text', max: 40 },
-        { key: 'mega_guests_desc', label: 'Card description', kind: 'textarea', max: 160 },
-        { key: 'mega_guests_cta', label: 'Card link', kind: 'text', max: 40 },
-        { key: 'guests_col_manage', label: 'Manage column heading', kind: 'text', max: 30 },
-        { key: 'guests_col_resources', label: 'Resources column heading', kind: 'text', max: 30 },
-        { key: 'guests_link_list_manager', label: 'Link — Guest List Manager', kind: 'text', max: 40 },
-        { key: 'guests_link_rsvp_tracking', label: 'Link — RSVP Tracking', kind: 'text', max: 40 },
-        { key: 'guests_link_whatsapp_sms', label: 'Link — WhatsApp & SMS Send', kind: 'text', max: 40 },
-        { key: 'guests_link_seating', label: 'Link — Seating Chart', kind: 'text', max: 40 },
-        { key: 'guests_link_rsvp_wording', label: 'Link — RSVP Wording Ideas', kind: 'text', max: 40 },
-        { key: 'guests_link_etiquette', label: 'Link — Guest Etiquette Tips', kind: 'text', max: 40 },
-        { key: 'guests_grid_title', label: 'Photo grid heading', kind: 'text', max: 30 },
-        { key: 'guests_grid_guest_list', label: 'Photo — Guest List', kind: 'text', max: 30 },
-        { key: 'guests_grid_rsvp_tracking', label: 'Photo — RSVP Tracking', kind: 'text', max: 30 },
-        { key: 'guests_grid_invitations', label: 'Photo — Invitations', kind: 'text', max: 30 },
-        { key: 'guests_grid_seating_plan', label: 'Photo — Seating Plan', kind: 'text', max: 30 },
-      ],
-    },
-    {
-      legend: 'Wedding Website mega-menu',
-      fields: [
-        { key: 'mega_website_title', label: 'Card title', kind: 'text', max: 40 },
-        { key: 'mega_website_desc', label: 'Card description', kind: 'textarea', max: 160 },
-        { key: 'mega_website_cta', label: 'Card link', kind: 'text', max: 40 },
-        { key: 'website_col_features', label: 'Features column heading', kind: 'text', max: 30 },
-        { key: 'website_col_resources', label: 'Resources column heading', kind: 'text', max: 30 },
-        { key: 'website_link_free_site', label: 'Link — Free Wedding Website', kind: 'text', max: 40 },
-        { key: 'website_link_custom_link', label: 'Link — Custom Link', kind: 'text', max: 40 },
-        { key: 'website_link_templates', label: 'Link — Beautiful Templates', kind: 'text', max: 40 },
-        { key: 'website_link_rsvp_collection', label: 'Link — RSVP Collection', kind: 'text', max: 40 },
-        { key: 'website_link_venue_travel', label: 'Link — Venue & Travel Info', kind: 'text', max: 40 },
-        { key: 'website_link_examples', label: 'Link — Website Examples', kind: 'text', max: 40 },
-        { key: 'website_link_gallery_tips', label: 'Link — Photo Gallery Tips', kind: 'text', max: 40 },
-        { key: 'website_link_sharing', label: 'Link — Sharing with Guests', kind: 'text', max: 40 },
-        { key: 'website_grid_title', label: 'Photo grid heading', kind: 'text', max: 30 },
-        { key: 'website_grid_templates', label: 'Photo — Templates', kind: 'text', max: 30 },
-        { key: 'website_grid_photo_gallery', label: 'Photo — Photo Gallery', kind: 'text', max: 30 },
-        { key: 'website_grid_rsvps', label: 'Photo — RSVPs', kind: 'text', max: 30 },
-        { key: 'website_grid_travel_info', label: 'Photo — Travel Info', kind: 'text', max: 30 },
-      ],
-    },
     {
       legend: 'Auth buttons',
       fields: [
