@@ -173,16 +173,27 @@ export function escapeLike(value: string): string {
   return value.replace(/[\\%_]/g, (c) => `\\${c}`)
 }
 
-export const getCallerEmail = cache(async (): Promise<string | null> => {
-  if (isAdminAuthDisabled()) return 'dev@opusfesta.com'
-  const { userId, sessionClaims } = await auth()
-  if (!userId) return null
-  const user = await currentUser()
+// Resolve the best email from a Clerk user + session claims (primary → first →
+// claim), normalised to lowercase, or null. No dev-bypass handling — callers
+// layer that on. Shared by getCallerEmail and getCallerProfile so the
+// resolution order stays in one place.
+function resolveUserEmail(
+  user: Awaited<ReturnType<typeof currentUser>>,
+  sessionClaims: unknown,
+): string | null {
   const email =
     user?.primaryEmailAddress?.emailAddress ||
     user?.emailAddresses?.[0]?.emailAddress ||
     readClaimEmail(sessionClaims)
   return email ? email.trim().toLowerCase() : null
+}
+
+export const getCallerEmail = cache(async (): Promise<string | null> => {
+  if (isAdminAuthDisabled()) return 'dev@opusfesta.com'
+  const { userId, sessionClaims } = await auth()
+  if (!userId) return null
+  const user = await currentUser()
+  return resolveUserEmail(user, sessionClaims)
 })
 
 export async function requireAdminRole(
@@ -373,16 +384,12 @@ export const getCallerProfile = cache(async (): Promise<CallerProfile> => {
   const { userId, sessionClaims } = await auth()
   if (userId) {
     const user = await currentUser()
-    const email =
-      user?.primaryEmailAddress?.emailAddress ||
-      user?.emailAddresses?.[0]?.emailAddress ||
-      readClaimEmail(sessionClaims) ||
-      null
+    const email = resolveUserEmail(user, sessionClaims)
     const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim()
     const name = fullName || user?.username || email?.split('@')[0] || 'Admin'
     return {
       name,
-      email: email ? email.trim().toLowerCase() : null,
+      email,
       imageUrl: user?.imageUrl || null,
     }
   }

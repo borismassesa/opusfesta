@@ -33,7 +33,6 @@ import {
   Receipt,
   RefreshCw,
   Search,
-  Settings,
   Shield,
   ShieldCheck,
   Star,
@@ -303,8 +302,14 @@ export function Sidebar({
     items: section.items.filter((i) => matchesQuery(i.label)),
   });
   const filteredTopItems = query ? topItems.filter((i) => matchesQuery(i.label)) : topItems;
+  // When the query matches the CMS group's own label (e.g. "System Management"),
+  // surface the whole group rather than filtering it out for having no matching
+  // child item/label.
+  const cmsGroupLabelMatches = query !== '' && matchesQuery(CMS_GROUP.label);
   const cmsGroupRender = query
-    ? cmsGroupSections.map(filterSectionItems).filter((s) => s.items.length > 0 || matchesQuery(s.label))
+    ? cmsGroupLabelMatches
+      ? cmsGroupSections
+      : cmsGroupSections.map(filterSectionItems).filter((s) => s.items.length > 0 || matchesQuery(s.label))
     : cmsGroupSections;
   const otherRender = query
     ? otherSections.map(filterSectionItems).filter((s) => s.items.length > 0 || matchesQuery(s.label))
@@ -616,7 +621,7 @@ export function Sidebar({
         )}
       </div>
 
-      {/* Footer — account profile with a Settings / Log out menu. */}
+      {/* Footer — account profile with a Log out menu. */}
       <div className="mt-auto border-t border-gray-100 pt-3">
         <SidebarProfile profile={profile} collapsed={collapsed} />
       </div>
@@ -649,8 +654,8 @@ export function Sidebar({
 }
 
 // Account row pinned to the bottom of the sidebar: avatar + name, opening a
-// small popover with Settings and Log out. Mirrors the familiar app-shell
-// account control rather than a list of loose footer links.
+// small popover with Log out. Mirrors the familiar app-shell account control
+// rather than a list of loose footer links.
 function SidebarProfile({
   profile,
   collapsed,
@@ -717,16 +722,6 @@ function SidebarProfile({
           role="menu"
           className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-lg"
         >
-          <Link
-            href="/settings"
-            role="menuitem"
-            onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <Settings className="h-4 w-4 stroke-[1.5] text-gray-400" />
-            Settings
-          </Link>
-          <div className="my-1 border-t border-gray-100" />
           <button
             type="button"
             role="menuitem"
