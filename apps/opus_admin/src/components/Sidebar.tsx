@@ -33,6 +33,7 @@ import {
   Receipt,
   RefreshCw,
   Search,
+  Settings,
   Shield,
   ShieldCheck,
   Star,
@@ -47,6 +48,7 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
+import { useClerk } from "@clerk/nextjs";
 import { cn } from "../lib/utils";
 import Logo from "./ui/Logo";
 import { adminSignOut } from "./sidebar-actions";
@@ -653,9 +655,10 @@ export function Sidebar({
   );
 }
 
-// Account row pinned to the bottom of the sidebar: avatar + name, opening a
-// small popover with Log out. Mirrors the familiar app-shell account control
-// rather than a list of loose footer links.
+// Account row pinned to the bottom of the sidebar: avatar + name + email,
+// opening a popover with Manage account + Sign out. This is the single account
+// control for the admin (the top-nav Clerk UserButton was removed in favour of
+// it), mirroring the familiar app-shell account menu.
 function SidebarProfile({
   profile,
   collapsed,
@@ -666,6 +669,14 @@ function SidebarProfile({
   const [open, setOpen] = useState(false)
   const [pending, startTransition] = useTransition()
   const ref = useRef<HTMLDivElement>(null)
+  // ClerkProvider wraps the whole app (root layout), so the client-side hook is
+  // safe here — it drives Clerk's hosted "Manage account" modal.
+  const { openUserProfile } = useClerk()
+
+  const handleManageAccount = () => {
+    setOpen(false)
+    openUserProfile()
+  }
 
   // Close on outside click / Esc.
   useEffect(() => {
@@ -695,10 +706,10 @@ function SidebarProfile({
 
   const handleLogout = () => {
     startTransition(async () => {
-      // Sign out entirely server-side (revoke Clerk session + clear cookies) so
-      // we never call Clerk's useClerk() hook here — it throws when the Clerk
-      // React context isn't an ancestor of the admin layout's SSR tree. Then
-      // land on Clerk sign-in.
+      // Sign out server-side (revoke Clerk session + clear the host- and
+      // apex-domain session cookies, including the legacy temp-access cookie),
+      // then land on Clerk sign-in. Kept as a server action — rather than
+      // Clerk's client signOut — so the apex-cookie clearing stays in one place.
       await adminSignOut()
       window.location.href = '/sign-in'
     })
@@ -722,6 +733,16 @@ function SidebarProfile({
           role="menu"
           className="absolute bottom-full left-0 right-0 mb-2 overflow-hidden rounded-xl border border-gray-100 bg-white py-1 shadow-lg"
         >
+          <button
+            type="button"
+            role="menuitem"
+            onClick={handleManageAccount}
+            className="flex w-full items-center gap-2.5 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+          >
+            <Settings className="h-4 w-4 stroke-[1.5] text-gray-400" />
+            Manage account
+          </button>
+          <div className="my-1 border-t border-gray-100" />
           <button
             type="button"
             role="menuitem"
