@@ -354,3 +354,79 @@ export async function hasAnyPermission(keys: readonly PermissionKey[]): Promise<
   const perms = await getCallerPermissions()
   return keys.some((k) => perms.has(k))
 }
+
+export type CallerProfile = {
+  name: string
+  email: string | null
+  imageUrl: string | null
+}
+
+/**
+ * Display identity for the signed-in admin — name, email, and avatar — for the
+ * sidebar profile row. A real Clerk session resolves the full name / image; the
+ * DISABLE_ADMIN_AUTH dev bypass (no Clerk user) gets a placeholder.
+ */
+export const getCallerProfile = cache(async (): Promise<CallerProfile> => {
+  // Prefer the REAL signed-in identity whenever there's a Clerk session — even
+  // when access was actually granted by the DISABLE_ADMIN_AUTH dev flag. The
+  // sidebar should show who you logged in as, not a bypass placeholder.
+  const { userId, sessionClaims } = await auth()
+  if (userId) {
+    const user = await currentUser()
+    const email =
+      user?.primaryEmailAddress?.emailAddress ||
+      user?.emailAddresses?.[0]?.emailAddress ||
+      readClaimEmail(sessionClaims) ||
+      null
+    const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(' ').trim()
+    const name = fullName || user?.username || email?.split('@')[0] || 'Admin'
+    return {
+      name,
+      email: email ? email.trim().toLowerCase() : null,
+      imageUrl: user?.imageUrl || null,
+    }
+  }
+  // No Clerk session — only the dev bypass can reach here.
+  if (isAdminAuthDisabled()) {
+    return { name: 'Dev admin', email: 'dev@opusfesta.com', imageUrl: null }
+  }
+  return { name: 'Admin', email: null, imageUrl: null }
+})
+
+// How fresh a stored last_dashboard_login has to be before we skip the
+// write. Keeps an active browsing session to ~one stamp per window instead
+// of one per navigation (the admin layout is force-dynamic, so it renders
+// on every page load).
+const LOGIN_STAMP_THROTTLE_MS = 15 * 60 * 1000
+
+// Stamp the signed-in admin's last dashboard sign-in onto their
+// workforce_employees row. Previously last_dashboard_login was only written
+// once — at invite-acceptance — so directly-seeded accounts (and everyone
+// after their first visit) showed "never" on the Roles page. The admin layout
+// schedules this via `after()` so it runs off the render critical path (the
+// write is also throttled in SQL — only when the stored value is null or older
+// than the window). The ENTIRE body is wrapped in try/catch so a failed stamp
+// — including a Clerk auth() hiccup — can never take down the dashboard.
+// Cached so it fires at most once per request.
+export const recordDashboardLogin = cache(async (): Promise<void> => {
+  try {
+    if (isAdminAuthDisabled()) return
+    const { userId } = await auth()
+    if (!userId) return
+    if (!hasSupabaseAdminConfig()) return
+    const email = await getCallerEmail()
+    if (!email) return
+
+    const supabase = createSupabaseAdminClient()
+    const now = new Date()
+    const cutoff = new Date(now.getTime() - LOGIN_STAMP_THROTTLE_MS).toISOString()
+    await supabase
+      .from('workforce_employees')
+      .update({ last_dashboard_login: now.toISOString() })
+      .ilike('email', escapeLike(email))
+      // Only write when stale/unset — avoids a row write on every navigation.
+      .or(`last_dashboard_login.is.null,last_dashboard_login.lt.${cutoff}`)
+  } catch (err) {
+    console.warn('[admin-auth] could not stamp last_dashboard_login', err)
+  }
+})
