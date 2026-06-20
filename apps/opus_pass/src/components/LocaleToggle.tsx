@@ -56,9 +56,15 @@ export function LocaleToggle({ className = '' }: { className?: string }) {
   }
 
   return (
+    // The active language is read from the cookie on the client, so for a
+    // visitor whose cookie is Swahili the highlighted button legitimately
+    // differs from the server's default-English render. suppressHydrationWarning
+    // tells React this attribute difference is expected (useSyncExternalStore
+    // re-renders it to the correct value right after hydration).
     <div
       role="group"
       aria-label="Language"
+      suppressHydrationWarning
       className={`inline-flex items-center rounded-full border border-gray-200 bg-white p-0.5 text-xs font-semibold ${className}`}
     >
       {LOCALES.map((l) => {
@@ -70,6 +76,7 @@ export function LocaleToggle({ className = '' }: { className?: string }) {
             onClick={() => choose(l)}
             disabled={pending}
             aria-pressed={active}
+            suppressHydrationWarning
             className={`rounded-full px-2.5 py-1 transition-colors disabled:opacity-60 ${
               active ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
             }`}
