@@ -35,6 +35,7 @@ import {
   Search,
   Settings,
   Shield,
+  ShieldCheck,
   Star,
   Store,
   TrendingUp,
@@ -196,6 +197,17 @@ const sections: NavSection[] = [
       { icon: Clock, label: "Timesheets", href: "/workforce/timesheets", requiredPermission: "workforce.read" },
       { icon: Shield, label: "Roles", href: "/workforce/roles", requiredPermission: "workforce.write" },
       { icon: UserPlus, label: "Recruitment", href: "/workforce/recruitment", requiredPermission: "workforce.write" },
+    ],
+  },
+  {
+    id: "insights",
+    label: "Insights",
+    icon: ShieldCheck,
+    requiredPermission: "insights.read",
+    items: [
+      // Only the Audit Log page is live today; Analytics/Activity routes don't
+      // exist yet, so they're intentionally omitted rather than left as dead links.
+      { icon: ShieldCheck, label: "Audit Log", href: "/insights/audit", requiredPermission: "insights.read" },
     ],
   },
 ];

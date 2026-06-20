@@ -402,20 +402,21 @@ const LOGIN_STAMP_THROTTLE_MS = 15 * 60 * 1000
 // Stamp the signed-in admin's last dashboard sign-in onto their
 // workforce_employees row. Previously last_dashboard_login was only written
 // once — at invite-acceptance — so directly-seeded accounts (and everyone
-// after their first visit) showed "never" on the Roles page. This runs on
-// each admin layout render but the write is throttled in SQL (only when the
-// stored value is null or older than the window), and it never throws — a
-// failed stamp must not take down the dashboard. Cached so it fires at most
-// once per request.
+// after their first visit) showed "never" on the Roles page. The admin layout
+// schedules this via `after()` so it runs off the render critical path (the
+// write is also throttled in SQL — only when the stored value is null or older
+// than the window). The ENTIRE body is wrapped in try/catch so a failed stamp
+// — including a Clerk auth() hiccup — can never take down the dashboard.
+// Cached so it fires at most once per request.
 export const recordDashboardLogin = cache(async (): Promise<void> => {
-  if (isAdminAuthDisabled()) return
-  const { userId } = await auth()
-  if (!userId) return
-  if (!hasSupabaseAdminConfig()) return
-  const email = await getCallerEmail()
-  if (!email) return
-
   try {
+    if (isAdminAuthDisabled()) return
+    const { userId } = await auth()
+    if (!userId) return
+    if (!hasSupabaseAdminConfig()) return
+    const email = await getCallerEmail()
+    if (!email) return
+
     const supabase = createSupabaseAdminClient()
     const now = new Date()
     const cutoff = new Date(now.getTime() - LOGIN_STAMP_THROTTLE_MS).toISOString()

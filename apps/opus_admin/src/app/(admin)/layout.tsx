@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
+import { after } from 'next/server'
 import { Sidebar } from '@/components/Sidebar'
 import { Header } from '@/components/Header'
 import { PageHeadingProvider } from '@/components/PageHeading'
@@ -18,15 +19,22 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   const role = await getAdminAccessRole()
   if (!isAdminDashboardRole(role)) redirect('/contribute')
 
-  // Resolve the caller's full permission set once on the layout and
-  // pass it into the Sidebar so each NavItem can declare a required
-  // permission (and items the caller can't see drop out of the menu).
-  const permissions = Array.from(await getCallerPermissions())
-  const profile = await getCallerProfile()
+  // Resolve the caller's full permission set + profile once on the layout and
+  // pass them into the Sidebar. Independent of each other, so run in parallel.
+  // Each NavItem can declare a required permission (items the caller can't see
+  // drop out of the menu); the profile drives the sidebar account footer.
+  const [permissionSet, profile] = await Promise.all([
+    getCallerPermissions(),
+    getCallerProfile(),
+  ])
+  const permissions = Array.from(permissionSet)
 
-  // Record this visit as the caller's last dashboard sign-in (throttled +
-  // non-throwing). Keeps the Roles page "Last sign-in" column accurate.
-  await recordDashboardLogin()
+  // Stamp this visit as the caller's last dashboard sign-in (throttled in SQL,
+  // fully non-throwing). Deferred via after() so the DB round-trip runs off the
+  // render critical path — this layout is force-dynamic, so it would otherwise
+  // add a Supabase round-trip to every navigation. Keeps the Roles page
+  // "Last sign-in" column accurate.
+  after(recordDashboardLogin)
 
   return (
     <PageHeadingProvider>
