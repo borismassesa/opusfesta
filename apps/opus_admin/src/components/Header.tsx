@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { Bell, ChevronLeft, HelpCircle, Search, X } from "lucide-react";
-import { UserButton } from "@clerk/nextjs";
 import { usePageHeading } from "./PageHeading";
 import { usePageSearch } from "./PageSearch";
 
@@ -112,12 +111,6 @@ export function Header() {
           <Bell className="w-5 h-5" />
           <span className="absolute top-0 right-0.5 w-2 h-2 bg-red-500 border-2 border-gray-50 rounded-full"></span>
         </button>
-
-        <UserButton
-          appearance={{
-            elements: { avatarBox: 'w-10 h-10 ring-2 ring-white shadow-sm' },
-          }}
-        />
       </div>
     </header>
   );
