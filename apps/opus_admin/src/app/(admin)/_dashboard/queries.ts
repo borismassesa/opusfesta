@@ -51,7 +51,7 @@ export type ActivityItem = {
 // itself by department. Null fields are non-fatal — callers without a
 // matching workforce_employees row (legacy admin_whitelist-only admins,
 // e.g. before they're onboarded as employees) get the generic dashboard.
-export type CallerProfile = {
+export type DashboardCaller = {
   employeeId: string | null
   department: Department | null
   jobTitle: string | null
@@ -123,7 +123,7 @@ export type DepartmentLane = {
 }
 
 export type DashboardSnapshot = {
-  caller: CallerProfile
+  caller: DashboardCaller
   actionQueue: ActionQueueCounts
   headline: HeadlineMetrics
   activity: ActivityItem[]
@@ -168,8 +168,8 @@ async function safeCount(
 // row so we can render department-flavoured content. Soft-fails to a
 // null profile when there's no match — the dashboard is still usable
 // without department context.
-async function getCallerProfile(): Promise<CallerProfile> {
-  const empty: CallerProfile = {
+async function getDashboardCaller(): Promise<DashboardCaller> {
+  const empty: DashboardCaller = {
     employeeId: null,
     department: null,
     jobTitle: null,
@@ -1006,7 +1006,7 @@ export async function getDashboardSnapshot(): Promise<DashboardSnapshot> {
   // Fire the caller profile lookup in parallel with the count batch
   // below — we'll await it before deciding whether to also fetch
   // platform pulse (Founders-only).
-  const callerPromise = getCallerProfile()
+  const callerPromise = getDashboardCaller()
 
   // --- Action queue + headline counts (all parallel) ---
   const [
