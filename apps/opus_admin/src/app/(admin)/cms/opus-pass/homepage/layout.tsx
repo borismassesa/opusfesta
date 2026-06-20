@@ -172,20 +172,18 @@ function OpusPassHomepageCmsShell({ children }: { children: ReactNode }) {
 
 function EditorStatusBadge() {
   const { bound } = useEditorActions()
-  if (!bound) return null
-  const { hasDraft, isDirty } = bound
+  const { hasDraft, isDirty } = bound ?? {}
+  // Only an actionable state shows a pill; a fully-published section shows
+  // none — the "Published — changes are live." message already says it's live.
+  if (!isDirty && !hasDraft) return null
   return (
     <span
       className={cn(
         'inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full',
-        isDirty
-          ? 'bg-orange-50 text-orange-700'
-          : hasDraft
-            ? 'bg-amber-50 text-amber-700'
-            : 'bg-emerald-50 text-emerald-700'
+        isDirty ? 'bg-orange-50 text-orange-700' : 'bg-amber-50 text-amber-700'
       )}
     >
-      {isDirty ? 'Unsaved changes' : hasDraft ? 'Unpublished draft' : 'All changes published'}
+      {isDirty ? 'Unsaved changes' : 'Unpublished draft'}
     </span>
   )
 }

@@ -173,15 +173,12 @@ function Shell({ children }: { children: ReactNode }) {
 
 function EditorStatusBadge() {
   const { bound } = useEditorActions()
-  if (!bound) return null
+  // Only an actionable state shows a pill; a fully-published section shows
+  // none — the "Published — changes are live." message already says it's live.
+  if (!bound || !bound.hasDraft) return null
   return (
-    <span
-      className={cn(
-        'inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full',
-        bound.hasDraft ? 'bg-amber-50 text-amber-700' : 'bg-emerald-50 text-emerald-700',
-      )}
-    >
-      {bound.hasDraft ? 'Unpublished draft' : 'All changes published'}
+    <span className="inline-flex items-center text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700">
+      Unpublished draft
     </span>
   )
 }
