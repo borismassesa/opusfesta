@@ -1,7 +1,6 @@
 import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
-import Navbar from '@/components/navbar'
-import Footer from '@/components/footer'
+import SiteChrome from '@/components/chrome/SiteChrome'
 import { PreviewBanner } from '@/components/PreviewBanner'
 import { Hero } from '@/components/home/Hero'
 import { Manifesto } from '@/components/home/Manifesto'
@@ -44,8 +43,7 @@ export default async function HomePage() {
   return (
     <>
       {isDraft && <PreviewBanner />}
-      <Navbar />
-      <main>
+      <SiteChrome>
         <Hero />
         <Showcase />
         <WhyOpusPass />
@@ -55,8 +53,7 @@ export default async function HomePage() {
           <Manifesto />
           <Promises />
         </div>
-      </main>
-      <Footer />
+      </SiteChrome>
     </>
   )
 }

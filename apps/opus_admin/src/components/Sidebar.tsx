@@ -29,6 +29,7 @@ import {
   Newspaper,
   PanelLeftClose,
   PanelLeftOpen,
+  PanelTop,
   Plane,
   Receipt,
   RefreshCw,
@@ -127,6 +128,7 @@ const sections: NavSection[] = [
       { icon: UserCheck, label: "Guests & RSVPs", href: "/cms/opus-pass/guests-rsvps", requiredPermission: "cms.read" },
       { icon: Globe2, label: "Wedding Website", href: "/cms/opus-pass/wedding-website", requiredPermission: "cms.read" },
       { icon: LayoutDashboard, label: "OpusPass Dashboard", href: "/cms/opus-pass/dashboard", requiredPermission: "cms.read" },
+      { icon: PanelTop, label: "Site UI", href: "/cms/opus-pass/site-ui/navbar", requiredPermission: "cms.read" },
     ],
   },
   {
