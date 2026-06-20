@@ -3,14 +3,19 @@ import { createSupabaseServerClient } from '@/lib/supabase'
 import type { Treatment } from '@/components/guests/InvitationVisual'
 import type { InvitationPalette } from '@/components/guests/invitation-templates/_types'
 import { isProductBadge, type CatalogProduct } from '@/data/invitations-products'
+import { DEFAULT_LOCALE, type Locale } from './localized'
 
 type ProductRow = {
   id: string
   slug: string
   name: string
+  // Swahili twins (added in 20260618000001). Optional so the loader stays safe
+  // before the migration lands — missing columns just resolve to English.
+  name_sw: string | null
   designer: string
   category: string
   description: string | null
+  description_sw: string | null
   price_was: number | null
   price_now: number
   digital_unit_price: number
@@ -28,15 +33,19 @@ type ProductRow = {
   created_at: string | null
 }
 
-function rowToProduct(row: ProductRow): CatalogProduct {
+function rowToProduct(row: ProductRow, locale: Locale): CatalogProduct {
   const imageUrl = row.image_url || undefined
+  // Swahili falls back to English when blank/absent.
+  const name = locale === 'sw' ? row.name_sw || row.name : row.name
+  const description =
+    locale === 'sw' ? row.description_sw || row.description : row.description
   return {
     id:               row.id,
     slug:             row.slug,
     category:         row.category,
-    name:             row.name,
+    name,
     designer:         row.designer,
-    description:      row.description?.trim() || undefined,
+    description:      description?.trim() || undefined,
     priceWas:         row.price_was ?? undefined,
     priceNow:         row.price_now,
     digitalUnitPrice: row.digital_unit_price,
@@ -54,7 +63,9 @@ function rowToProduct(row: ProductRow): CatalogProduct {
 }
 
 /** All published products, ordered for the catalog. */
-export async function loadInvitationProducts(): Promise<CatalogProduct[]> {
+export async function loadInvitationProducts(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CatalogProduct[]> {
   const supabase = createSupabaseServerClient()
   const { data, error } = await supabase
     .from('website_invitations_products')
@@ -63,11 +74,14 @@ export async function loadInvitationProducts(): Promise<CatalogProduct[]> {
     .order('sort_order', { ascending: true })
     .order('name', { ascending: true })
   if (error) throw error
-  return (data as ProductRow[]).map(rowToProduct)
+  return (data as ProductRow[]).map((row) => rowToProduct(row, locale))
 }
 
 /** A single published product by id. */
-export async function loadInvitationProduct(id: string): Promise<CatalogProduct | undefined> {
+export async function loadInvitationProduct(
+  id: string,
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CatalogProduct | undefined> {
   const supabase = createSupabaseServerClient()
   const { data, error } = await supabase
     .from('website_invitations_products')
@@ -77,5 +91,5 @@ export async function loadInvitationProduct(id: string): Promise<CatalogProduct 
     .maybeSingle<ProductRow>()
   if (error) throw error
   if (!data) return undefined
-  return rowToProduct(data)
+  return rowToProduct(data, locale)
 }

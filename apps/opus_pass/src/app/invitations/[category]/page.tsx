@@ -8,12 +8,12 @@ import { loadInvitationsPromoBannerContent } from '@/lib/cms/invitations-promo-b
 import { styleStripFromCategories } from '@/lib/cms/invitations-style-strip'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import { loadPackagesContent, packageFromPrice } from '@/lib/cms/packages'
+import { getLocale } from '@/lib/cms/locale'
 import InvitationsCategoryClient from './InvitationsCategoryClient'
 
-// CMS-driven page: ISR safety net so published changes appear on the public
-// site within ~60s even if the admin's on-demand revalidation doesn't reach
-// this deployment. See apps/opus_admin/src/lib/revalidate.ts.
-export const revalidate = 60
+// CMS-driven AND locale-aware (reads the opuspass_locale cookie), so it renders
+// dynamically — see lib/cms/locale.ts.
+export const dynamic = 'force-dynamic'
 
 type Params = { category: string }
 
@@ -42,13 +42,14 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 
 export default async function InvitationsCategoryPage({ params }: { params: Promise<Params> }) {
   const { category } = await params
+  const locale = await getLocale()
   const [{ isEnabled: isDraft }, categories, products, promoBanner, packages] =
     await Promise.all([
       draftMode(),
-      loadInvitationCategoriesList(),
-      loadInvitationProducts(),
-      loadInvitationsPromoBannerContent(),
-      loadPackagesContent(),
+      loadInvitationCategoriesList(locale),
+      loadInvitationProducts(locale),
+      loadInvitationsPromoBannerContent(locale),
+      loadPackagesContent(locale),
     ])
   const cat = findCategory(categories, category)
   if (!cat) return notFound()
