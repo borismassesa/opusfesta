@@ -45,8 +45,8 @@ export default async function InvitationsLandingPage() {
     loadInvitationsFeaturesContent(locale),
     loadInvitationsFaqsContent(locale),
     loadInvitationsEditorsPicksContent(locale),
-    loadInvitationProducts(),
-    loadPackagesContent(),
+    loadInvitationProducts(locale),
+    loadPackagesContent(locale),
   ])
   const styleStrip = styleStripFromCategories(categories)
   // Editors' Picks renders live products from the DB (same source as the
