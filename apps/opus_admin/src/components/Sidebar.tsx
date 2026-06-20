@@ -641,15 +641,8 @@ export function Sidebar({
           aria-orientation="vertical"
           aria-label="Resize sidebar"
           title="Drag to resize"
-          className="group absolute inset-y-0 right-0 w-1.5 translate-x-1/2 cursor-col-resize"
-        >
-          <div
-            className={cn(
-              'absolute inset-y-0 right-1.5 w-px transition-colors',
-              resizing ? 'bg-[#C9A0DC]' : 'bg-transparent group-hover:bg-[#C9A0DC]/60'
-            )}
-          />
-        </div>
+          className="absolute inset-y-0 right-0 w-1.5 translate-x-1/2 cursor-col-resize"
+        />
       )}
     </aside>
   );
