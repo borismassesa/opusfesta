@@ -14,10 +14,12 @@ import { Features } from '@/components/home/Features'
 const BASE = process.env.NEXT_PUBLIC_APP_URL ?? 'https://opuspass.opusfesta.com'
 const OPUS_PASS_LOGO = `${BASE}/assets/logo/OpusPass%20Logo.svg`
 
-// CMS-driven page: ISR safety net so published changes appear on the public
-// site within ~60s even if the admin's on-demand revalidation doesn't reach
-// this deployment. See apps/opus_admin/src/lib/revalidate.ts.
-export const revalidate = 60
+// CMS-driven AND locale-aware: sections resolve content from the per-visitor
+// `opuspass_locale` cookie (see lib/cms/locale.ts), so this route must render
+// dynamically — a shared ISR cache entry keys only on path and would serve one
+// visitor's language to everyone. Published changes appear immediately (no ISR
+// window); the admin's on-demand revalidate is a harmless no-op for this route.
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'OpusPass — Your wedding, in one digital pass',

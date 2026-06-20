@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState, useTransition, type ReactNode } from 'react'
-import { cn } from '@/lib/utils'
+import { BilingualField } from '@/components/cms/BilingualField'
+import type { LocalizedText } from '@/lib/cms/localized'
 import type {
   CopyFieldGroup,
   DashboardCopyContent,
@@ -20,45 +21,6 @@ type Props = {
   groups: CopyFieldGroup[]
   initial: DashboardCopyContent
   hasDraft: boolean
-}
-
-const inputCls =
-  'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
-
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span
-      className={cn(
-        'tabular-nums font-medium',
-        over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400',
-      )}
-    >
-      {len}/{max}
-    </span>
-  )
-}
-
-function Field({
-  label,
-  hint,
-  children,
-}: {
-  label: string
-  hint?: ReactNode
-  children: ReactNode
-}) {
-  return (
-    <label className="block">
-      <div className="flex items-baseline justify-between mb-1.5">
-        <span className="text-xs font-semibold text-gray-600">{label}</span>
-        {hint && <span className="text-[11px] text-gray-400">{hint}</span>}
-      </div>
-      {children}
-    </label>
-  )
 }
 
 function FieldGroup({ legend, children }: { legend: string; children: ReactNode }) {
@@ -95,7 +57,7 @@ export default function CopyEditor({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slug])
 
-  const set = (key: string, value: string) => setDraft((d) => ({ ...d, [key]: value }))
+  const set = (key: string, value: LocalizedText) => setDraft((d) => ({ ...d, [key]: value }))
 
   const runAction = (job: () => Promise<void>) =>
     startTransition(async () => {
@@ -156,50 +118,21 @@ export default function CopyEditor({
       {groups.map((group) => (
         <FieldGroup key={group.legend} legend={group.legend}>
           {group.fields.map((field) => {
-            const value = draft[field.key] ?? ''
-            if (field.kind === 'list') {
-              const lineCount = value ? value.split('\n').length : 0
-              return (
-                <Field
-                  key={field.key}
-                  label={field.label}
-                  hint={field.hint ?? `${lineCount} item${lineCount === 1 ? '' : 's'}`}
-                >
-                  <textarea
-                    rows={4}
-                    value={value}
-                    onChange={(e) => set(field.key, e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-              )
-            }
-            const hint = field.max ? (
-              <span className="flex items-center gap-2">
-                {field.hint && <span>{field.hint}</span>}
-                <CharCount value={value} max={field.max} />
-              </span>
-            ) : (
-              field.hint
-            )
+            // 'list' fields hold one item per line (e.g. the "What you get"
+            // features), so they render as a multiline bilingual field too.
+            const multiline = field.kind === 'textarea' || field.kind === 'list'
             return (
-              <Field key={field.key} label={field.label} hint={hint}>
-                {field.kind === 'textarea' ? (
-                  <textarea
-                    rows={3}
-                    value={value}
-                    onChange={(e) => set(field.key, e.target.value)}
-                    className={inputCls}
-                  />
-                ) : (
-                  <input
-                    type="text"
-                    value={value}
-                    onChange={(e) => set(field.key, e.target.value)}
-                    className={inputCls}
-                  />
-                )}
-              </Field>
+              <div key={field.key} className="space-y-1">
+                <BilingualField
+                  label={field.label}
+                  value={draft[field.key]}
+                  onChange={(v) => set(field.key, v)}
+                  multiline={multiline}
+                  rows={field.kind === 'list' ? 4 : 3}
+                  max={field.max}
+                />
+                {field.hint && <p className="text-[11px] text-gray-400">{field.hint}</p>}
+              </div>
             )
           })}
         </FieldGroup>

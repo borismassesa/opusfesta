@@ -1,11 +1,16 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassHomepageShowcaseImage = {
   src: string
-  alt: string
+  // Translatable alt text.
+  alt: MaybeLocalized
 }
 
 export type OpusPassHomepageShowcaseCaption = {
-  title: string
-  by: string
+  // Translatable copy.
+  title: MaybeLocalized
+  by: MaybeLocalized
+  // Proper brand name + brand initials glyph — non-translatable.
   brand: string
   badge: string
 }
@@ -18,8 +23,9 @@ export type OpusPassHomepageShowcasePill = {
   slot: number
   color: string
   side: 'left' | 'right'
-  label: string
-  sublabel: string
+  // Translatable copy.
+  label: MaybeLocalized
+  sublabel: MaybeLocalized
 }
 
 export type OpusPassHomepageShowcaseContent = {

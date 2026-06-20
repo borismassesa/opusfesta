@@ -63,11 +63,15 @@ export type InvitationProductRecord = {
   id: string
   slug: string
   name: string
+  /** Swahili card name. Blank = falls back to the English name on the public site. */
+  name_sw: string
   designer: string
   category: string
 
   /** Short "Details" paragraph shown under the card on the product page. Falls back to auto-generated copy when empty. */
   description: string
+  /** Swahili "Details" paragraph. Blank = falls back to the English description. */
+  description_sw: string
 
   /** Promotional status badge shown above the card on the storefront. null = none. */
   badge: ProductBadge | null
@@ -113,9 +117,11 @@ export function emptyInvitationProduct(
     id: '',
     slug: '',
     name: '',
+    name_sw: '',
     designer: '',
     category: 'Wedding Invitations',
     description: '',
+    description_sw: '',
     badge: null,
     price_was: null,
     price_now: 0,

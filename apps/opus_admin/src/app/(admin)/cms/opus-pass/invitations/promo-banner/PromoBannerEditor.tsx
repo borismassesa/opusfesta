@@ -3,6 +3,9 @@
 import { useEffect, useState, useTransition } from 'react'
 import { Trash2 } from 'lucide-react'
 import type { OpusPassInvitationsPromoBannerContent } from '@/lib/cms/opus-pass-invitations-promo-banner'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
+import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardOpusPassInvitationsPromoBannerDraft,
@@ -42,6 +45,7 @@ export default function PromoBannerEditor({ initial, hasDraft: initialHasDraft }
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const set = <K extends keyof OpusPassInvitationsPromoBannerContent>(
@@ -107,24 +111,18 @@ export default function PromoBannerEditor({ initial, hasDraft: initialHasDraft }
         </p>
 
         <FieldGroup label="Copy">
-          <Field label="Eyebrow (bold uppercase label)">
-            <input
-              type="text"
-              value={draft.eyebrow}
-              onChange={(e) => set('eyebrow', e.target.value)}
-              placeholder="40% off"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Body">
-            <input
-              type="text"
-              value={draft.body}
-              onChange={(e) => set('body', e.target.value)}
-              placeholder="wedding paper with code"
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Eyebrow (bold uppercase label)"
+            value={draft.eyebrow}
+            onChange={(v) => set('eyebrow', v)}
+            placeholder="40% off"
+          />
+          <BilingualField
+            label="Body"
+            value={draft.body}
+            onChange={(v) => set('body', v)}
+            placeholder="wedding paper with code"
+          />
           <Field label="Promo code (leave empty to hide)">
             <input
               type="text"
@@ -169,15 +167,36 @@ export default function PromoBannerEditor({ initial, hasDraft: initialHasDraft }
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <PromoBannerPreview content={draft} />
+        <PromoBannerPreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function PromoBannerPreview({ content }: { content: OpusPassInvitationsPromoBannerContent }) {
+function PromoBannerPreview({
+  content,
+  locale,
+}: {
+  content: OpusPassInvitationsPromoBannerContent
+  locale: Locale
+}) {
   return (
     <div
       className="border-b border-[#E8D9A7]/50 py-2.5 px-3 rounded"
@@ -185,10 +204,10 @@ function PromoBannerPreview({ content }: { content: OpusPassInvitationsPromoBann
     >
       <div className="flex items-center justify-center gap-2 text-center flex-wrap">
         <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#1A1A1A]">
-          {content.eyebrow || 'Eyebrow'}
+          {resolveLocalized(content.eyebrow, locale) || 'Eyebrow'}
         </span>
         <span className="text-[11px] text-[#1A1A1A]/85">
-          {content.body}
+          {resolveLocalized(content.body, locale)}
           {content.promo_code && (
             <>
               {' '}

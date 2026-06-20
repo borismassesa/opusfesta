@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react'
 import { Gem, Heart, MessageCircle, Palette, ShieldCheck, Sparkles, Star, Wand2 } from 'lucide-react'
 import { loadHomepagePromisesContent, type PromiseIconKey } from '@/lib/cms/homepage-promises'
+import { getLocale } from '@/lib/cms/locale'
 
 const ICON_MAP: Record<PromiseIconKey, LucideIcon> = {
   sparkles: Sparkles,
@@ -14,7 +15,8 @@ const ICON_MAP: Record<PromiseIconKey, LucideIcon> = {
 }
 
 export async function Promises() {
-  const content = await loadHomepagePromisesContent()
+  const locale = await getLocale()
+  const content = await loadHomepagePromisesContent(locale)
   return (
     <section className="px-6 pt-4 pb-20 sm:pb-24 max-w-6xl mx-auto">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">

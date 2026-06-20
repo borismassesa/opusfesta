@@ -135,8 +135,11 @@ export default function ProductEditor({
         <div className="space-y-6">
           {/* Basics */}
           <Card title="Basics">
-            <Field label="Name">
+            <Field label="Name (English)">
               <input value={product.name} onChange={(e) => onNameChange(e.target.value)} className={inputCls} placeholder="Botanical Frame Wedding Invitations" />
+            </Field>
+            <Field label="Name (Kiswahili)" hint="Shown when the visitor picks Swahili. Leave blank to fall back to English.">
+              <input value={product.name_sw} onChange={(e) => set('name_sw', e.target.value)} className={inputCls} placeholder="Mwaliko wa Harusi wa Botanical Frame" />
             </Field>
             <div className="grid grid-cols-2 gap-4">
               <Field label="Slug" hint="Used in the product URL.">
@@ -175,13 +178,23 @@ export default function ProductEditor({
           {/* Description */}
           <Card title="Description">
             <Field
-              label="Description"
+              label="Description (English)"
               hint="Shown as the “Description” section under the card on the product page. Use the toolbar for bold, lists, and links — to leave a list and write a normal paragraph, press Enter on an empty bullet. Leave empty to auto-generate from the name and designer."
             >
               <RichTextField
                 value={product.description}
                 onChange={(html) => set('description', html)}
                 placeholder="Botanical Frame is a Bagamoyo Press signature design — hand-illustrated foliage framing your names. Sent digitally to every guest by WhatsApp or SMS."
+              />
+            </Field>
+            <Field
+              label="Description (Kiswahili)"
+              hint="Shown when the visitor picks Swahili. Leave blank to fall back to the English description."
+            >
+              <RichTextField
+                value={product.description_sw}
+                onChange={(html) => set('description_sw', html)}
+                placeholder="Botanical Frame ni muundo maalum wa Bagamoyo Press — majani yaliyochorwa kwa mkono yakizunguka majina yenu. Hutumwa kidijitali kwa kila mgeni kwa WhatsApp au SMS."
               />
             </Field>
           </Card>

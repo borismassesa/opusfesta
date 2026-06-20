@@ -3,9 +3,11 @@ import Image from 'next/image'
 import { Tag } from 'lucide-react'
 
 import { loadHomepageWhyOpusPassContent } from '@/lib/cms/homepage-why-opus-pass'
+import { getLocale } from '@/lib/cms/locale'
 
 export async function WhyOpusPass() {
-  const content = await loadHomepageWhyOpusPassContent()
+  const locale = await getLocale()
+  const content = await loadHomepageWhyOpusPassContent(locale)
   return (
     <section className="px-4 py-16 sm:px-6 sm:py-20 lg:py-24">
       <div className="mx-auto max-w-6xl">

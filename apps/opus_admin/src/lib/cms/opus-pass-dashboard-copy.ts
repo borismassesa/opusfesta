@@ -11,6 +11,8 @@
 // renders fields generically from COPY_FIELD_SCHEMA, so adding/removing a field
 // is just an edit to the fallback + schema here (and the public consumer).
 
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type DashboardCopySlug =
   | 'home'
   | 'invitations'
@@ -19,7 +21,9 @@ export type DashboardCopySlug =
   | 'website'
   | 'pledges'
 
-export type DashboardCopyContent = Record<string, string>
+// Each copy field is translatable: stored as a localized { en, sw } object (or a
+// legacy plain string). The editor reads/writes this shape via <BilingualField>.
+export type DashboardCopyContent = Record<string, MaybeLocalized>
 
 export type DashboardCopyRow = {
   id: string

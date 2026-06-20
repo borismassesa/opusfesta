@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type GuestsHeroImage = {
   src: string
@@ -52,7 +53,32 @@ export const GUESTS_HERO_FALLBACK: GuestsHeroContent = {
   ],
 }
 
-export async function loadGuestsHeroContent(): Promise<GuestsHeroContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; non-text fields (URLs, image keys) stay scalar. The
+// loader resolves each translatable field for `locale` and returns the flat
+// GuestsHeroContent the render components already expect — no component changes.
+type StoredGuestsHeroImage = {
+  src?: string
+  alt?: MaybeLocalized
+}
+
+type StoredGuestsHero = {
+  headline_line_1?: MaybeLocalized
+  headline_line_2?: MaybeLocalized
+  description?: MaybeLocalized
+  primary_cta_label?: MaybeLocalized
+  secondary_cta_label?: MaybeLocalized
+  primary_cta_href?: string
+  secondary_cta_href?: string
+  trust_lead?: MaybeLocalized
+  trust_rest?: MaybeLocalized
+  avatars?: string[]
+  collage?: StoredGuestsHeroImage[]
+}
+
+export async function loadGuestsHeroContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<GuestsHeroContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return GUESTS_HERO_FALLBACK
   }
@@ -66,20 +92,31 @@ export async function loadGuestsHeroContent(): Promise<GuestsHeroContent> {
       .eq('section_key', 'hero')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<GuestsHeroContent>
+      | StoredGuestsHero
       | undefined
     if (stored) {
+      const F = GUESTS_HERO_FALLBACK
       return {
-        ...GUESTS_HERO_FALLBACK,
-        ...stored,
+        headline_line_1: resolveLocalized(stored.headline_line_1 ?? F.headline_line_1, locale),
+        headline_line_2: resolveLocalized(stored.headline_line_2 ?? F.headline_line_2, locale),
+        description: resolveLocalized(stored.description ?? F.description, locale),
+        primary_cta_label: resolveLocalized(stored.primary_cta_label ?? F.primary_cta_label, locale),
+        primary_cta_href: stored.primary_cta_href ?? F.primary_cta_href,
+        secondary_cta_label: resolveLocalized(stored.secondary_cta_label ?? F.secondary_cta_label, locale),
+        secondary_cta_href: stored.secondary_cta_href ?? F.secondary_cta_href,
+        trust_lead: resolveLocalized(stored.trust_lead ?? F.trust_lead, locale),
+        trust_rest: resolveLocalized(stored.trust_rest ?? F.trust_rest, locale),
         avatars:
           stored.avatars && Array.isArray(stored.avatars) && stored.avatars.length > 0
             ? stored.avatars
-            : GUESTS_HERO_FALLBACK.avatars,
+            : F.avatars,
         collage:
           stored.collage && Array.isArray(stored.collage) && stored.collage.length > 0
-            ? stored.collage
-            : GUESTS_HERO_FALLBACK.collage,
+            ? stored.collage.map((image) => ({
+                src: image.src ?? '',
+                alt: resolveLocalized(image.alt, locale),
+              }))
+            : F.collage,
       }
     }
     return GUESTS_HERO_FALLBACK

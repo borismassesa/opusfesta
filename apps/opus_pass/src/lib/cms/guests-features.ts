@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 // The Guests "features" section is the animated bento grid. Its data-viz widgets
 // (RSVP bars, pledge marquee, charts) are fixed illustration; only the section
@@ -50,7 +51,27 @@ export const GUESTS_FEATURES_FALLBACK: GuestsFeaturesContent = {
   ],
 }
 
-export async function loadGuestsFeaturesContent(): Promise<GuestsFeaturesContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; `id` and `cta_href` stay scalar. The loader resolves each
+// translatable field for `locale` and returns the flat GuestsFeaturesContent the
+// render components already expect — so no public component changes.
+type StoredGuestsFeatureCard = {
+  id?: string
+  title?: MaybeLocalized
+  description?: MaybeLocalized
+  cta_label?: MaybeLocalized
+  cta_href?: string
+}
+
+type StoredGuestsFeatures = {
+  heading?: MaybeLocalized
+  description?: MaybeLocalized
+  cards?: StoredGuestsFeatureCard[]
+}
+
+export async function loadGuestsFeaturesContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<GuestsFeaturesContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return GUESTS_FEATURES_FALLBACK
   }
@@ -64,16 +85,23 @@ export async function loadGuestsFeaturesContent(): Promise<GuestsFeaturesContent
       .eq('section_key', 'features')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<GuestsFeaturesContent>
+      | StoredGuestsFeatures
       | undefined
     if (stored) {
+      const F = GUESTS_FEATURES_FALLBACK
       return {
-        heading: stored.heading ?? GUESTS_FEATURES_FALLBACK.heading,
-        description: stored.description ?? GUESTS_FEATURES_FALLBACK.description,
+        heading: resolveLocalized(stored.heading ?? F.heading, locale),
+        description: resolveLocalized(stored.description ?? F.description, locale),
         cards:
           stored.cards && Array.isArray(stored.cards) && stored.cards.length > 0
-            ? stored.cards
-            : GUESTS_FEATURES_FALLBACK.cards,
+            ? stored.cards.map((card, i) => ({
+                id: card.id ?? F.cards[i]?.id ?? `card-${i}`,
+                title: resolveLocalized(card.title, locale),
+                description: resolveLocalized(card.description, locale),
+                cta_label: resolveLocalized(card.cta_label, locale),
+                cta_href: card.cta_href ?? '',
+              }))
+            : F.cards,
       }
     }
     return GUESTS_FEATURES_FALLBACK

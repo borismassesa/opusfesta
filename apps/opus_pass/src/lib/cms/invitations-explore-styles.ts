@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type InvitationsExploreStyleLink = {
   id: string
@@ -67,7 +68,31 @@ export const INVITATIONS_EXPLORE_STYLES_FALLBACK: InvitationsExploreStylesConten
   ],
 }
 
-export async function loadInvitationsExploreStylesContent(): Promise<InvitationsExploreStylesContent> {
+// Stored shape: translatable fields (the section heading, each column's heading,
+// and each link's label) may be a localized { en, sw } object or a legacy plain
+// string; the link href is scalar. The loader resolves each translatable field
+// for `locale` and returns the flat InvitationsExploreStylesContent the render
+// path already expects.
+type StoredExploreStyleLink = {
+  id?: string
+  label?: MaybeLocalized
+  href?: string
+}
+
+type StoredExploreStyleColumn = {
+  id?: string
+  heading?: MaybeLocalized
+  items?: StoredExploreStyleLink[]
+}
+
+type StoredExploreStylesContent = {
+  heading?: MaybeLocalized
+  columns?: StoredExploreStyleColumn[]
+}
+
+export async function loadInvitationsExploreStylesContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<InvitationsExploreStylesContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return INVITATIONS_EXPLORE_STYLES_FALLBACK
   }
@@ -81,15 +106,26 @@ export async function loadInvitationsExploreStylesContent(): Promise<Invitations
       .eq('section_key', 'explore-styles')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<InvitationsExploreStylesContent>
+      | StoredExploreStylesContent
       | undefined
     if (stored) {
+      const F = INVITATIONS_EXPLORE_STYLES_FALLBACK
       return {
-        heading: stored.heading ?? INVITATIONS_EXPLORE_STYLES_FALLBACK.heading,
+        heading: resolveLocalized(stored.heading ?? F.heading, locale),
         columns:
           stored.columns && Array.isArray(stored.columns) && stored.columns.length > 0
-            ? stored.columns
-            : INVITATIONS_EXPLORE_STYLES_FALLBACK.columns,
+            ? stored.columns.map((col, ci) => ({
+                id: col.id ?? `col-${ci}`,
+                heading: resolveLocalized(col.heading, locale),
+                items: Array.isArray(col.items)
+                  ? col.items.map((link, li) => ({
+                      id: link.id ?? `lnk-${ci}-${li}`,
+                      label: resolveLocalized(link.label, locale),
+                      href: link.href ?? '/invitations/catalog',
+                    }))
+                  : [],
+              }))
+            : F.columns,
       }
     }
     return INVITATIONS_EXPLORE_STYLES_FALLBACK

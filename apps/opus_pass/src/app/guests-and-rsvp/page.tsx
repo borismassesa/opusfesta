@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
 import { PreviewBanner } from '@/components/PreviewBanner'
 import { InvitationShowcase } from '@/components/home/InvitationShowcase'
+import { getLocale } from '@/lib/cms/locale'
 import { loadGuestsHeroContent } from '@/lib/cms/guests-hero'
 import { loadGuestsFeaturesContent } from '@/lib/cms/guests-features'
 import { loadGuestsSpreadContent } from '@/lib/cms/guests-spread-the-joy'
@@ -9,10 +10,12 @@ import { loadGuestsFaqsContent } from '@/lib/cms/guests-faqs'
 import { loadGuestsTestimonialsContent } from '@/lib/cms/guests-testimonials'
 import GuestsLandingClient from './GuestsLandingClient'
 
-// CMS-driven page: ISR safety net so published changes appear on the public
-// site within ~60s even if the admin's on-demand revalidation doesn't reach
-// this deployment. See apps/opus_admin/src/lib/revalidate.ts.
-export const revalidate = 60
+// CMS-driven AND locale-aware: sections resolve content from the per-visitor
+// `opuspass_locale` cookie (see lib/cms/locale.ts), so this route must render
+// dynamically — a shared ISR cache entry keys only on path and would serve one
+// visitor's language to everyone. Published changes appear immediately (no ISR
+// window); the admin's on-demand revalidate is a harmless no-op for this route.
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Guests & RSVPs | OpusPass',
@@ -22,12 +25,13 @@ export const metadata: Metadata = {
 
 export default async function GuestsLandingPage() {
   const { isEnabled: isDraft } = await draftMode()
+  const locale = await getLocale()
   const [hero, features, spread, faqs, testimonials] = await Promise.all([
-    loadGuestsHeroContent(),
-    loadGuestsFeaturesContent(),
-    loadGuestsSpreadContent(),
-    loadGuestsFaqsContent(),
-    loadGuestsTestimonialsContent(),
+    loadGuestsHeroContent(locale),
+    loadGuestsFeaturesContent(locale),
+    loadGuestsSpreadContent(locale),
+    loadGuestsFaqsContent(locale),
+    loadGuestsTestimonialsContent(locale),
   ])
   return (
     <>

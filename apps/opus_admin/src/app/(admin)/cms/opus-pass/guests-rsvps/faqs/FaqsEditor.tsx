@@ -6,7 +6,10 @@ import type {
   OpusPassGuestsFaqItem,
   OpusPassGuestsFaqsContent,
 } from '@/lib/cms/opus-pass-guests-faqs'
+import { cn } from '@/lib/utils'
 import { CollapsibleCard } from '@/components/cms/CollapsibleCard'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardOpusPassGuestsFaqsDraft,
@@ -17,18 +20,6 @@ import {
 type Props = {
   initial: OpusPassGuestsFaqsContent
   hasDraft: boolean
-}
-
-const inputCls =
-  'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="block">
-      <span className="block text-xs font-semibold text-gray-600 mb-1.5">{label}</span>
-      {children}
-    </label>
-  )
 }
 
 function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
@@ -50,6 +41,7 @@ export default function FaqsEditor({ initial, hasDraft: initialHasDraft }: Props
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set())
@@ -146,23 +138,19 @@ export default function FaqsEditor({ initial, hasDraft: initialHasDraft }: Props
         <h3 className="text-[15px] font-semibold text-gray-900">FAQs content</h3>
 
         <FieldGroup label="Section header">
-          <Field label="Heading">
-            <input
-              type="text"
-              value={draft.heading}
-              onChange={(e) => setField('heading', e.target.value)}
-              placeholder="Questions, answered."
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Description">
-            <textarea
-              rows={2}
-              value={draft.description}
-              onChange={(e) => setField('description', e.target.value)}
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Heading"
+            value={draft.heading}
+            onChange={(v) => setField('heading', v)}
+            placeholder="Questions, answered."
+          />
+          <BilingualField
+            label="Description"
+            value={draft.description}
+            onChange={(v) => setField('description', v)}
+            multiline
+            rows={2}
+          />
         </FieldGroup>
 
         <div className="space-y-3">
@@ -193,7 +181,7 @@ export default function FaqsEditor({ initial, hasDraft: initialHasDraft }: Props
             <CollapsibleCard
               key={item.id}
               index={idx}
-              title={item.question || 'New question'}
+              title={resolveLocalized(item.question, previewLocale) || 'New question'}
               collapsed={!expanded.has(idx)}
               onToggle={() => toggleExpanded(idx)}
               onMoveUp={() => moveItem(idx, -1)}
@@ -202,22 +190,18 @@ export default function FaqsEditor({ initial, hasDraft: initialHasDraft }: Props
               disableMoveUp={idx === 0}
               disableMoveDown={idx === draft.items.length - 1}
             >
-              <Field label="Question">
-                <input
-                  type="text"
-                  value={item.question}
-                  onChange={(e) => setItem(idx, { question: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Answer">
-                <textarea
-                  rows={4}
-                  value={item.answer}
-                  onChange={(e) => setItem(idx, { answer: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+              <BilingualField
+                label="Question"
+                value={item.question}
+                onChange={(v) => setItem(idx, { question: v })}
+              />
+              <BilingualField
+                label="Answer"
+                value={item.answer}
+                onChange={(v) => setItem(idx, { answer: v })}
+                multiline
+                rows={4}
+              />
             </CollapsibleCard>
           ))}
           <button
@@ -234,27 +218,46 @@ export default function FaqsEditor({ initial, hasDraft: initialHasDraft }: Props
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <FaqsPreview content={draft} />
+        <FaqsPreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function FaqsPreview({ content }: { content: OpusPassGuestsFaqsContent }) {
+function FaqsPreview({ content, locale }: { content: OpusPassGuestsFaqsContent; locale: Locale }) {
   return (
     <div>
       <div className="text-center mb-5">
         <h2 className="text-base font-serif font-medium text-gray-900 mb-1.5">
-          {content.heading || 'Section heading'}
+          {resolveLocalized(content.heading, locale) || 'Section heading'}
         </h2>
-        <p className="text-[10px] text-gray-700 leading-relaxed">{content.description}</p>
+        <p className="text-[10px] text-gray-700 leading-relaxed">
+          {resolveLocalized(content.description, locale)}
+        </p>
       </div>
       <div className="border-y border-gray-200">
         {content.items.map((item) => (
           <div key={item.id} className="border-b border-gray-200 last:border-b-0 py-3">
-            <p className="text-xs font-medium text-gray-900 leading-snug">{item.question}</p>
+            <p className="text-xs font-medium text-gray-900 leading-snug">
+              {resolveLocalized(item.question, locale)}
+            </p>
           </div>
         ))}
       </div>

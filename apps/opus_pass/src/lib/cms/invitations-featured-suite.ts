@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type InvitationsFeaturedSuiteContent = {
   image_url: string
@@ -26,7 +27,26 @@ export const INVITATIONS_FEATURED_SUITE_FALLBACK: InvitationsFeaturedSuiteConten
   trust_strip: ['Share via WhatsApp & SMS', 'Live RSVP tracking', 'Pay with M-Pesa or Airtel'],
 }
 
-export async function loadInvitationsFeaturedSuiteContent(): Promise<InvitationsFeaturedSuiteContent> {
+// Stored shape: translatable fields (headlines, body, CTA labels, and each
+// trust-strip item) may be a localized { en, sw } object or a legacy plain
+// string; the image URL and CTA hrefs are scalar. The loader resolves each
+// translatable field for `locale` and returns the flat
+// InvitationsFeaturedSuiteContent the render path already expects.
+type StoredFeaturedSuiteContent = {
+  image_url?: string
+  headline_line_1?: MaybeLocalized
+  headline_line_2?: MaybeLocalized
+  body?: MaybeLocalized
+  primary_cta_label?: MaybeLocalized
+  primary_cta_href?: string
+  secondary_cta_label?: MaybeLocalized
+  secondary_cta_href?: string
+  trust_strip?: MaybeLocalized[]
+}
+
+export async function loadInvitationsFeaturedSuiteContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<InvitationsFeaturedSuiteContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return INVITATIONS_FEATURED_SUITE_FALLBACK
   }
@@ -40,16 +60,26 @@ export async function loadInvitationsFeaturedSuiteContent(): Promise<Invitations
       .eq('section_key', 'featured-suite')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<InvitationsFeaturedSuiteContent>
+      | StoredFeaturedSuiteContent
       | undefined
     if (stored) {
+      const F = INVITATIONS_FEATURED_SUITE_FALLBACK
       return {
-        ...INVITATIONS_FEATURED_SUITE_FALLBACK,
-        ...stored,
+        image_url: stored.image_url ?? F.image_url,
+        headline_line_1: resolveLocalized(stored.headline_line_1 ?? F.headline_line_1, locale),
+        headline_line_2: resolveLocalized(stored.headline_line_2 ?? F.headline_line_2, locale),
+        body: resolveLocalized(stored.body ?? F.body, locale),
+        primary_cta_label: resolveLocalized(stored.primary_cta_label ?? F.primary_cta_label, locale),
+        primary_cta_href: stored.primary_cta_href ?? F.primary_cta_href,
+        secondary_cta_label: resolveLocalized(
+          stored.secondary_cta_label ?? F.secondary_cta_label,
+          locale
+        ),
+        secondary_cta_href: stored.secondary_cta_href ?? F.secondary_cta_href,
         trust_strip:
           stored.trust_strip && Array.isArray(stored.trust_strip) && stored.trust_strip.length > 0
-            ? stored.trust_strip
-            : INVITATIONS_FEATURED_SUITE_FALLBACK.trust_strip,
+            ? stored.trust_strip.map((item) => resolveLocalized(item, locale))
+            : F.trust_strip,
       }
     }
     return INVITATIONS_FEATURED_SUITE_FALLBACK

@@ -1,12 +1,16 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 // Mirrors the public LandingHeroContent — the /websites hero renders the shared
 // centred sparkle hero (trust badge + press strip), not the old two-column banner.
 export type OpusPassWebsitesHeroContent = {
-  headline_line_1: string
-  headline_line_2: string
-  description: string
-  primary_cta_label: string
+  // Translatable text — stored as { en, sw } (or a legacy plain string).
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  description: MaybeLocalized
+  primary_cta_label: MaybeLocalized
+  secondary_cta_label: MaybeLocalized
+  // Non-translatable config.
   primary_cta_href: string
-  secondary_cta_label: string
   secondary_cta_href: string
   /** Trust badge — star rating (e.g. "4.5") and couple count (e.g. "1000+"). */
   rating: string

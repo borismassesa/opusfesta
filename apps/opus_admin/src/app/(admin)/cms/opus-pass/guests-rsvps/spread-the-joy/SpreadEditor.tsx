@@ -7,7 +7,10 @@ import {
   type OpusPassGuestsSpreadItem,
   type OpusPassGuestsSpreadContent,
 } from '@/lib/cms/opus-pass-guests-spread-the-joy'
+import { cn } from '@/lib/utils'
 import { CollapsibleCard } from '@/components/cms/CollapsibleCard'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardOpusPassGuestsSpreadDraft,
@@ -51,6 +54,7 @@ export default function SpreadEditor({ initial, hasDraft: initialHasDraft }: Pro
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const [expanded, setExpanded] = useState<Set<number>>(() => new Set())
@@ -147,24 +151,18 @@ export default function SpreadEditor({ initial, hasDraft: initialHasDraft }: Pro
         <h3 className="text-[15px] font-semibold text-gray-900">Spread the Joy content</h3>
 
         <FieldGroup label="Section header">
-          <Field label="Heading">
-            <input
-              type="text"
-              value={draft.heading}
-              onChange={(e) => setField('heading', e.target.value)}
-              placeholder="Endless ways to spread the joy"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Description">
-            <input
-              type="text"
-              value={draft.description}
-              onChange={(e) => setField('description', e.target.value)}
-              placeholder="Design it once, share it everywhere!"
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Heading"
+            value={draft.heading}
+            onChange={(v) => setField('heading', v)}
+            placeholder="Endless ways to spread the joy"
+          />
+          <BilingualField
+            label="Description"
+            value={draft.description}
+            onChange={(v) => setField('description', v)}
+            placeholder="Design it once, share it everywhere!"
+          />
         </FieldGroup>
 
         <div className="space-y-3">
@@ -195,7 +193,7 @@ export default function SpreadEditor({ initial, hasDraft: initialHasDraft }: Pro
             <CollapsibleCard
               key={item.id}
               index={idx}
-              title={item.title || 'New item'}
+              title={resolveLocalized(item.title, previewLocale) || 'New item'}
               collapsed={!expanded.has(idx)}
               onToggle={() => toggleExpanded(idx)}
               onMoveUp={() => moveItem(idx, -1)}
@@ -217,22 +215,17 @@ export default function SpreadEditor({ initial, hasDraft: initialHasDraft }: Pro
                   ))}
                 </select>
               </Field>
-              <Field label="Title">
-                <input
-                  type="text"
-                  value={item.title}
-                  onChange={(e) => setItem(idx, { title: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Description">
-                <textarea
-                  rows={3}
-                  value={item.description}
-                  onChange={(e) => setItem(idx, { description: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+              <BilingualField
+                label="Title"
+                value={item.title}
+                onChange={(v) => setItem(idx, { title: v })}
+              />
+              <BilingualField
+                label="Description"
+                value={item.description}
+                onChange={(v) => setItem(idx, { description: v })}
+                multiline
+              />
             </CollapsibleCard>
           ))}
           <button
@@ -249,28 +242,49 @@ export default function SpreadEditor({ initial, hasDraft: initialHasDraft }: Pro
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <SpreadPreview content={draft} />
+        <SpreadPreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function SpreadPreview({ content }: { content: OpusPassGuestsSpreadContent }) {
+function SpreadPreview({ content, locale }: { content: OpusPassGuestsSpreadContent; locale: Locale }) {
   return (
     <div>
       <div className="text-center mb-5">
         <h2 className="text-base font-serif font-medium text-gray-900 mb-1.5">
-          {content.heading || 'Section heading'}
+          {resolveLocalized(content.heading, locale) || 'Section heading'}
         </h2>
-        <p className="text-[10px] text-gray-700 leading-relaxed">{content.description}</p>
+        <p className="text-[10px] text-gray-700 leading-relaxed">
+          {resolveLocalized(content.description, locale)}
+        </p>
       </div>
       <div className="grid grid-cols-2 gap-4">
         {content.items.map((item) => (
           <div key={item.id} className="flex flex-col items-center text-center gap-1.5">
-            <p className="text-xs font-bold text-gray-900">{item.title || 'Title'}</p>
-            <p className="text-[10px] text-gray-600 leading-relaxed">{item.description}</p>
+            <p className="text-xs font-bold text-gray-900">
+              {resolveLocalized(item.title, locale) || 'Title'}
+            </p>
+            <p className="text-[10px] text-gray-600 leading-relaxed">
+              {resolveLocalized(item.description, locale)}
+            </p>
           </div>
         ))}
       </div>

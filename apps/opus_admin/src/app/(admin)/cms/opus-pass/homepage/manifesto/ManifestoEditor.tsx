@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition } from 'react'
 import type { OpusPassHomepageManifestoContent } from '@/lib/cms/opus-pass-homepage-manifesto'
 import { ImageUploadField } from '@/components/cms/ImageUploadField'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { cn } from '@/lib/utils'
 import { useEditorActions } from '../EditorActionsContext'
@@ -15,32 +17,6 @@ import {
 type Props = {
   initial: OpusPassHomepageManifestoContent
   hasDraft: boolean
-}
-
-const inputCls =
-  'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
-
-function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: React.ReactNode }) {
-  return (
-    <label className="block">
-      <div className="flex items-baseline justify-between mb-1.5">
-        <span className="text-xs font-semibold text-gray-600">{label}</span>
-        {hint && <span className="text-[11px] text-gray-400">{hint}</span>}
-      </div>
-      {children}
-    </label>
-  )
-}
-
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span className={cn('tabular-nums font-medium', over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400')}>
-      {len}/{max}
-    </span>
-  )
 }
 
 function InlineImg({ src }: { src: string }) {
@@ -76,6 +52,7 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const setField = <K extends keyof OpusPassHomepageManifestoContent>(
@@ -144,30 +121,28 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
           segments (in order), the inline “RSVP” pill, and the three inline images.
         </p>
 
-        <Field label="Segment 1 (after the logo mark)" hint={<CharCount value={draft.segment_1} max={80} />}>
-          <textarea
-            rows={2}
-            value={draft.segment_1}
-            onChange={(e) => setField('segment_1', e.target.value)}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Inline pill label" hint={<CharCount value={draft.pill_label} max={12} />}>
-          <input
-            type="text"
-            value={draft.pill_label}
-            onChange={(e) => setField('pill_label', e.target.value)}
-            className={inputCls}
-          />
-        </Field>
-        <Field label="Segment 2" hint={<CharCount value={draft.segment_2} max={120} />}>
-          <textarea
-            rows={2}
-            value={draft.segment_2}
-            onChange={(e) => setField('segment_2', e.target.value)}
-            className={inputCls}
-          />
-        </Field>
+        <BilingualField
+          label="Segment 1 (after the logo mark)"
+          value={draft.segment_1}
+          onChange={(v) => setField('segment_1', v)}
+          multiline
+          rows={2}
+          max={80}
+        />
+        <BilingualField
+          label="Inline pill label"
+          value={draft.pill_label}
+          onChange={(v) => setField('pill_label', v)}
+          max={12}
+        />
+        <BilingualField
+          label="Segment 2"
+          value={draft.segment_2}
+          onChange={(v) => setField('segment_2', v)}
+          multiline
+          rows={2}
+          max={120}
+        />
         <FieldGroup label="Inline image 1 (invitation)">
           <ImageUploadField
             label="Image"
@@ -178,14 +153,14 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
             previewWidth="max-w-[80px]"
           />
         </FieldGroup>
-        <Field label="Segment 3" hint={<CharCount value={draft.segment_3} max={80} />}>
-          <textarea
-            rows={2}
-            value={draft.segment_3}
-            onChange={(e) => setField('segment_3', e.target.value)}
-            className={inputCls}
-          />
-        </Field>
+        <BilingualField
+          label="Segment 3"
+          value={draft.segment_3}
+          onChange={(v) => setField('segment_3', v)}
+          multiline
+          rows={2}
+          max={80}
+        />
         <FieldGroup label="Inline image 2 (guest)">
           <ImageUploadField
             label="Image"
@@ -196,14 +171,14 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
             previewWidth="max-w-[80px]"
           />
         </FieldGroup>
-        <Field label="Segment 4" hint={<CharCount value={draft.segment_4} max={80} />}>
-          <textarea
-            rows={2}
-            value={draft.segment_4}
-            onChange={(e) => setField('segment_4', e.target.value)}
-            className={inputCls}
-          />
-        </Field>
+        <BilingualField
+          label="Segment 4"
+          value={draft.segment_4}
+          onChange={(v) => setField('segment_4', v)}
+          multiline
+          rows={2}
+          max={80}
+        />
         <FieldGroup label="Inline image 3 (place)">
           <ImageUploadField
             label="Image"
@@ -214,29 +189,43 @@ export default function ManifestoEditor({ initial, hasDraft: initialHasDraft }: 
             previewWidth="max-w-[80px]"
           />
         </FieldGroup>
-        <Field label="Segment 5 (closing)" hint={<CharCount value={draft.segment_5} max={40} />}>
-          <input
-            type="text"
-            value={draft.segment_5}
-            onChange={(e) => setField('segment_5', e.target.value)}
-            className={inputCls}
-          />
-        </Field>
+        <BilingualField
+          label="Segment 5 (closing)"
+          value={draft.segment_5}
+          onChange={(v) => setField('segment_5', v)}
+          max={40}
+        />
       </div>
 
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
         <p className="text-center text-base font-black leading-[1.7] text-[#1A1A1A]">
-          {draft.segment_1}{' '}
+          {resolveLocalized(draft.segment_1, previewLocale)}{' '}
           <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-bold text-gray-700 align-middle">
-            {draft.pill_label} ✓
+            {resolveLocalized(draft.pill_label, previewLocale)} ✓
           </span>{' '}
-          {draft.segment_2} <InlineImg src={draft.invite_image_url} /> {draft.segment_3}{' '}
-          <InlineImg src={draft.guest_image_url} /> {draft.segment_4}{' '}
-          <InlineImg src={draft.place_image_url} /> {draft.segment_5}
+          {resolveLocalized(draft.segment_2, previewLocale)} <InlineImg src={draft.invite_image_url} />{' '}
+          {resolveLocalized(draft.segment_3, previewLocale)} <InlineImg src={draft.guest_image_url} />{' '}
+          {resolveLocalized(draft.segment_4, previewLocale)} <InlineImg src={draft.place_image_url} />{' '}
+          {resolveLocalized(draft.segment_5, previewLocale)}
         </p>
       </div>
     </div>

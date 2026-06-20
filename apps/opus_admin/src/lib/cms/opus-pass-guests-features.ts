@@ -1,14 +1,18 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassGuestsFeatureCard = {
   id: string
-  title: string
-  description: string
-  cta_label: string
+  // Translatable text — stored as { en, sw } (or a legacy plain string).
+  title: MaybeLocalized
+  description: MaybeLocalized
+  cta_label: MaybeLocalized
+  // Non-translatable config.
   cta_href: string
 }
 
 export type OpusPassGuestsFeaturesContent = {
-  heading: string
-  description: string
+  heading: MaybeLocalized
+  description: MaybeLocalized
   cards: OpusPassGuestsFeatureCard[]
 }
 

@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type InvitationsFeatureVisual = 'invitations' | 'phone' | 'envelope'
 
@@ -28,7 +29,29 @@ export const INVITATIONS_FEATURES_FALLBACK: InvitationsFeaturesContent = {
   ],
 }
 
-export async function loadInvitationsFeaturesContent(): Promise<InvitationsFeaturesContent> {
+// Stored shape: translatable fields (heading, and each card's title/body/
+// cta_label) may be a localized { en, sw } object or a legacy plain string;
+// non-text fields (cta_href, image_url, visual) are scalar. The loader resolves
+// each translatable field for `locale` and returns the flat
+// InvitationsFeaturesContent the render components already expect.
+type StoredFeatureCard = {
+  id?: string
+  title?: MaybeLocalized
+  body?: MaybeLocalized
+  cta_label?: MaybeLocalized
+  cta_href?: string
+  image_url?: string
+  visual?: InvitationsFeatureVisual
+}
+
+type StoredFeaturesContent = {
+  heading?: MaybeLocalized
+  cards?: StoredFeatureCard[]
+}
+
+export async function loadInvitationsFeaturesContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<InvitationsFeaturesContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return INVITATIONS_FEATURES_FALLBACK
   }
@@ -42,15 +65,24 @@ export async function loadInvitationsFeaturesContent(): Promise<InvitationsFeatu
       .eq('section_key', 'features')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<InvitationsFeaturesContent>
+      | StoredFeaturesContent
       | undefined
     if (stored) {
+      const F = INVITATIONS_FEATURES_FALLBACK
       return {
-        heading: stored.heading ?? INVITATIONS_FEATURES_FALLBACK.heading,
+        heading: resolveLocalized(stored.heading ?? F.heading, locale),
         cards:
           stored.cards && Array.isArray(stored.cards) && stored.cards.length > 0
-            ? stored.cards
-            : INVITATIONS_FEATURES_FALLBACK.cards,
+            ? stored.cards.map((c, i) => ({
+                id: c.id ?? `card-${i}`,
+                title: resolveLocalized(c.title, locale),
+                body: resolveLocalized(c.body, locale),
+                cta_label: resolveLocalized(c.cta_label, locale),
+                cta_href: c.cta_href ?? '',
+                image_url: c.image_url,
+                visual: c.visual ?? 'invitations',
+              }))
+            : F.cards,
       }
     }
     return INVITATIONS_FEATURES_FALLBACK

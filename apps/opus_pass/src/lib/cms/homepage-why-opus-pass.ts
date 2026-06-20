@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type HomepageWhyOpusPassContent = {
   headline: string
@@ -37,7 +38,30 @@ export const HOMEPAGE_WHY_OPUS_PASS_FALLBACK: HomepageWhyOpusPassContent = {
   secondary_button_href: '/invitations',
 }
 
-export async function loadHomepageWhyOpusPassContent(): Promise<HomepageWhyOpusPassContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; image URLs and hrefs are scalar. The loader resolves
+// each translatable field for `locale` and returns the flat
+// HomepageWhyOpusPassContent the render component already expects.
+type StoredHomepageWhyOpusPass = {
+  headline?: MaybeLocalized
+  main_image_alt?: MaybeLocalized
+  chip_title?: MaybeLocalized
+  chip_subtitle?: MaybeLocalized
+  floating_cta_label?: MaybeLocalized
+  subheadline?: MaybeLocalized
+  body?: MaybeLocalized
+  primary_button_label?: MaybeLocalized
+  secondary_button_label?: MaybeLocalized
+  main_image_url?: string
+  chip_image_url?: string
+  floating_cta_href?: string
+  primary_button_href?: string
+  secondary_button_href?: string
+}
+
+export async function loadHomepageWhyOpusPassContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<HomepageWhyOpusPassContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return HOMEPAGE_WHY_OPUS_PASS_FALLBACK
   }
@@ -51,10 +75,26 @@ export async function loadHomepageWhyOpusPassContent(): Promise<HomepageWhyOpusP
       .eq('section_key', 'why-opus-pass')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<HomepageWhyOpusPassContent>
+      | StoredHomepageWhyOpusPass
       | undefined
     if (stored) {
-      return { ...HOMEPAGE_WHY_OPUS_PASS_FALLBACK, ...stored }
+      const F = HOMEPAGE_WHY_OPUS_PASS_FALLBACK
+      return {
+        headline: resolveLocalized(stored.headline ?? F.headline, locale),
+        main_image_url: stored.main_image_url ?? F.main_image_url,
+        main_image_alt: resolveLocalized(stored.main_image_alt ?? F.main_image_alt, locale),
+        chip_image_url: stored.chip_image_url ?? F.chip_image_url,
+        chip_title: resolveLocalized(stored.chip_title ?? F.chip_title, locale),
+        chip_subtitle: resolveLocalized(stored.chip_subtitle ?? F.chip_subtitle, locale),
+        floating_cta_label: resolveLocalized(stored.floating_cta_label ?? F.floating_cta_label, locale),
+        floating_cta_href: stored.floating_cta_href ?? F.floating_cta_href,
+        subheadline: resolveLocalized(stored.subheadline ?? F.subheadline, locale),
+        body: resolveLocalized(stored.body ?? F.body, locale),
+        primary_button_label: resolveLocalized(stored.primary_button_label ?? F.primary_button_label, locale),
+        primary_button_href: stored.primary_button_href ?? F.primary_button_href,
+        secondary_button_label: resolveLocalized(stored.secondary_button_label ?? F.secondary_button_label, locale),
+        secondary_button_href: stored.secondary_button_href ?? F.secondary_button_href,
+      }
     }
     return HOMEPAGE_WHY_OPUS_PASS_FALLBACK
   } catch (err) {

@@ -1,10 +1,14 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassHeroContent = {
-  headline_line_1: string
-  headline_line_2: string
-  description: string
-  primary_cta_label: string
+  // Translatable text — stored as { en, sw } (or a legacy plain string).
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  description: MaybeLocalized
+  primary_cta_label: MaybeLocalized
+  secondary_cta_label: MaybeLocalized
+  // Non-translatable config.
   primary_cta_href: string
-  secondary_cta_label: string
   secondary_cta_href: string
   trust_count: string
   rating: string

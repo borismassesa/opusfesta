@@ -1,3 +1,5 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassEditorsPicksRowAlign = 'left' | 'right'
 
 export type OpusPassEditorsPicksMediaType = 'image' | 'video'
@@ -57,8 +59,8 @@ export type OpusPassEditorsPicksPick = {
 
 export type OpusPassEditorsPicksRow = {
   id: string
-  title_line_1: string
-  title_line_2: string
+  title_line_1: MaybeLocalized
+  title_line_2: MaybeLocalized
   align: OpusPassEditorsPicksRowAlign
   picks: OpusPassEditorsPicksPick[]
 }

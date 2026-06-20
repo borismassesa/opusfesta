@@ -5,13 +5,15 @@ import { Button } from '@/components/dashboard/controls'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
+import { getLocale } from '@/lib/cms/locale'
 
 export const dynamic = 'force-dynamic'
 
 export default async function WebsitePage() {
+  const locale = await getLocale()
   const [hero, copy] = await Promise.all([
-    loadDashboardHero('website'),
-    loadDashboardCopy('website'),
+    loadDashboardHero('website', locale),
+    loadDashboardCopy('website', locale),
   ])
 
   const benefits = copy.benefits_items

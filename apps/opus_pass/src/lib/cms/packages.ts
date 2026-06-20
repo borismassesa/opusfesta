@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, type Locale } from './localized'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  Per-guest wedding packages (Essential / Classic / Elegant / Signature).
@@ -206,9 +207,17 @@ export const PACKAGES_FALLBACK: PackagesContent = {
 // this file's server-only `next/headers` dependency.
 export { packageFromPrice } from './packages-pricing'
 
-export async function loadPackagesContent(): Promise<PackagesContent> {
+// Packages predate the LocalizedText convention and store Swahili in `_sw`
+// sibling fields. Pick the locale-appropriate value (Swahili falls back to
+// English when blank) so the renderer can keep reading the primary field.
+const pick = (en: string, sw: string | undefined, locale: Locale): string =>
+  locale === 'sw' ? sw || en : en
+
+export async function loadPackagesContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<PackagesContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
-    return PACKAGES_FALLBACK
+    return resolvePackagesLocale(PACKAGES_FALLBACK, locale)
   }
   try {
     const { isEnabled: isDraft } = await draftMode()
@@ -222,22 +231,48 @@ export async function loadPackagesContent(): Promise<PackagesContent> {
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
       | Partial<PackagesContent>
       | undefined
-    if (stored) {
-      return {
-        heading: stored.heading ?? PACKAGES_FALLBACK.heading,
-        heading_sw: stored.heading_sw ?? PACKAGES_FALLBACK.heading_sw,
-        subheading: stored.subheading ?? PACKAGES_FALLBACK.subheading,
-        subheading_sw: stored.subheading_sw ?? PACKAGES_FALLBACK.subheading_sw,
-        note: stored.note ?? PACKAGES_FALLBACK.note,
-        note_sw: stored.note_sw ?? PACKAGES_FALLBACK.note_sw,
-        tiers:
-          Array.isArray(stored.tiers) && stored.tiers.length > 0 ? stored.tiers : PACKAGES_FALLBACK.tiers,
-        addons: Array.isArray(stored.addons) ? stored.addons : PACKAGES_FALLBACK.addons,
-      }
-    }
-    return PACKAGES_FALLBACK
+    const merged: PackagesContent = stored
+      ? {
+          heading: stored.heading ?? PACKAGES_FALLBACK.heading,
+          heading_sw: stored.heading_sw ?? PACKAGES_FALLBACK.heading_sw,
+          subheading: stored.subheading ?? PACKAGES_FALLBACK.subheading,
+          subheading_sw: stored.subheading_sw ?? PACKAGES_FALLBACK.subheading_sw,
+          note: stored.note ?? PACKAGES_FALLBACK.note,
+          note_sw: stored.note_sw ?? PACKAGES_FALLBACK.note_sw,
+          tiers:
+            Array.isArray(stored.tiers) && stored.tiers.length > 0
+              ? stored.tiers
+              : PACKAGES_FALLBACK.tiers,
+          addons: Array.isArray(stored.addons) ? stored.addons : PACKAGES_FALLBACK.addons,
+        }
+      : PACKAGES_FALLBACK
+    return resolvePackagesLocale(merged, locale)
   } catch (err) {
     console.error('[opus-pass cms] packages load failed', err)
-    return PACKAGES_FALLBACK
+    return resolvePackagesLocale(PACKAGES_FALLBACK, locale)
+  }
+}
+
+// Resolve every translatable field into the primary key for `locale`, so the
+// public renderer keeps reading `.name` / `.label` / `.note` unchanged and gets
+// the chosen language. The `_sw` siblings are left intact but unused downstream.
+function resolvePackagesLocale(c: PackagesContent, locale: Locale): PackagesContent {
+  return {
+    ...c,
+    heading: pick(c.heading, c.heading_sw, locale),
+    subheading: pick(c.subheading, c.subheading_sw, locale),
+    note: pick(c.note, c.note_sw, locale),
+    tiers: c.tiers.map((t) => ({
+      ...t,
+      name: pick(t.name, t.name_sw, locale),
+      best_for: pick(t.best_for, t.best_for_sw, locale),
+      badge_label: pick(t.badge_label, t.badge_label_sw, locale),
+      includes: t.includes.map((b) => ({
+        ...b,
+        label: pick(b.label, b.label_sw, locale),
+        note: pick(b.note, b.note_sw, locale),
+      })),
+    })),
+    addons: c.addons.map((a) => ({ ...a, label: pick(a.label, a.label_sw, locale) })),
   }
 }

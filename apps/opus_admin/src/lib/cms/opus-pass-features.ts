@@ -1,25 +1,29 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassFeatureBlock = {
   id: string
   reverse: boolean
   media_main: string
   media_secondary: string
   media_overlay: string
-  overlay_eyebrow: string
-  overlay_caption_line_1: string
-  overlay_caption_line_2: string
-  headline_line_1: string
-  headline_line_2: string
-  body: string
-  pills: string[]
-  primary_cta_label: string
+  // Translatable copy.
+  overlay_eyebrow: MaybeLocalized
+  overlay_caption_line_1: MaybeLocalized
+  overlay_caption_line_2: MaybeLocalized
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  body: MaybeLocalized
+  pills: MaybeLocalized[]
+  primary_cta_label: MaybeLocalized
+  secondary_cta_label: MaybeLocalized
+  // Non-translatable config (hrefs).
   primary_cta_href: string
-  secondary_cta_label: string
   secondary_cta_href: string
 }
 
 export type OpusPassFeaturesContent = {
-  header_title: string
-  header_description: string
+  header_title: MaybeLocalized
+  header_description: MaybeLocalized
   blocks: OpusPassFeatureBlock[]
 }
 

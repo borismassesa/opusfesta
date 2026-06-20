@@ -15,6 +15,8 @@ import {
 } from '@/lib/cms/opus-pass-invitations-editors-picks'
 import { CollapsibleCard } from '@/components/cms/CollapsibleCard'
 import { MediaUploadField } from '@/components/cms/MediaUploadField'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { useEditorActions } from '../EditorActionsContext'
 import {
@@ -54,6 +56,7 @@ export default function EditorsPicksEditor({ initial, hasDraft: initialHasDraft 
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   // Row-level expand
@@ -246,7 +249,10 @@ export default function EditorsPicksEditor({ initial, hasDraft: initialHasDraft 
             <CollapsibleCard
               key={row.id}
               index={rIdx}
-              title={`${row.title_line_1} ${row.title_line_2}`.trim() || 'New row'}
+              title={
+                `${resolveLocalized(row.title_line_1, 'en')} ${resolveLocalized(row.title_line_2, 'en')}`.trim() ||
+                'New row'
+              }
               subtitle={`${row.align} · ${row.picks.length} picks`}
               collapsed={!expandedRows.has(rIdx)}
               onToggle={() => toggleRow(rIdx)}
@@ -256,22 +262,16 @@ export default function EditorsPicksEditor({ initial, hasDraft: initialHasDraft 
               disableMoveUp={rIdx === 0}
               disableMoveDown={rIdx === draft.rows.length - 1}
             >
-              <Field label="Title — line 1">
-                <input
-                  type="text"
-                  value={row.title_line_1}
-                  onChange={(e) => setRow(rIdx, { title_line_1: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Title — line 2">
-                <input
-                  type="text"
-                  value={row.title_line_2}
-                  onChange={(e) => setRow(rIdx, { title_line_2: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
+              <BilingualField
+                label="Title — line 1"
+                value={row.title_line_1}
+                onChange={(v) => setRow(rIdx, { title_line_1: v })}
+              />
+              <BilingualField
+                label="Title — line 2"
+                value={row.title_line_2}
+                onChange={(v) => setRow(rIdx, { title_line_2: v })}
+              />
               <Field label="Title alignment">
                 <select
                   value={row.align}
@@ -447,24 +447,45 @@ export default function EditorsPicksEditor({ initial, hasDraft: initialHasDraft 
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] xl:sticky xl:top-6 max-h-[calc(100vh-3rem)] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-          <span className="text-xs text-gray-400">Approximate</span>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
         </div>
-        <EditorsPicksPreview content={draft} />
+        <EditorsPicksPreview content={draft} locale={previewLocale} />
       </div>
     </div>
   )
 }
 
-function EditorsPicksPreview({ content }: { content: OpusPassInvitationsEditorsPicksContent }) {
+function EditorsPicksPreview({
+  content,
+  locale,
+}: {
+  content: OpusPassInvitationsEditorsPicksContent
+  locale: Locale
+}) {
   return (
     <div className="space-y-4">
       {content.rows.map((row) => (
         <div key={row.id} className="grid grid-cols-4 gap-2">
           <div className={row.align === 'right' ? 'order-last' : ''}>
             <p className="text-xs font-bold uppercase tracking-tight leading-tight text-gray-900">
-              {row.title_line_1 || 'Title line 1'}
+              {resolveLocalized(row.title_line_1, locale) || 'Title line 1'}
               <br />
-              {row.title_line_2 || 'Title line 2'}
+              {resolveLocalized(row.title_line_2, locale) || 'Title line 2'}
             </p>
           </div>
           {row.picks.slice(0, 3).map((pick) => (

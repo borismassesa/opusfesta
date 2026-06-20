@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { draftMode } from 'next/headers'
 import { PreviewBanner } from '@/components/PreviewBanner'
+import { getLocale } from '@/lib/cms/locale'
 import { loadWebsitesHeroContent } from '@/lib/cms/websites-hero'
 import { loadWebsitesDesignsContent } from '@/lib/cms/websites-designs'
 import { loadWebsitesSellingPointsContent } from '@/lib/cms/websites-selling-points'
@@ -10,10 +11,12 @@ import { loadWebsitesTestimonialsContent } from '@/lib/cms/websites-testimonials
 import { InvitationShowcase } from '@/components/home/InvitationShowcase'
 import WebsitesLandingClient from './WebsitesLandingClient'
 
-// CMS-driven page: ISR safety net so published changes appear on the public
-// site within ~60s even if the admin's on-demand revalidation doesn't reach
-// this deployment. See apps/opus_admin/src/lib/revalidate.ts.
-export const revalidate = 60
+// CMS-driven AND locale-aware: sections resolve content from the per-visitor
+// `opuspass_locale` cookie (see lib/cms/locale.ts), so this route must render
+// dynamically — a shared ISR cache entry keys only on path and would serve one
+// visitor's language to everyone. Published changes appear immediately (no ISR
+// window); the admin's on-demand revalidate is a harmless no-op for this route.
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Wedding Websites | OpusPass',
@@ -22,15 +25,16 @@ export const metadata: Metadata = {
 }
 
 export default async function WebsitesLandingPage() {
+  const locale = await getLocale()
   const [{ isEnabled: isDraft }, hero, designs, sellingPoints, features, faqs, testimonials] =
     await Promise.all([
       draftMode(),
-      loadWebsitesHeroContent(),
-      loadWebsitesDesignsContent(),
-      loadWebsitesSellingPointsContent(),
-      loadWebsitesFeaturesContent(),
-      loadWebsitesFaqsContent(),
-      loadWebsitesTestimonialsContent(),
+      loadWebsitesHeroContent(locale),
+      loadWebsitesDesignsContent(locale),
+      loadWebsitesSellingPointsContent(locale),
+      loadWebsitesFeaturesContent(locale),
+      loadWebsitesFaqsContent(locale),
+      loadWebsitesTestimonialsContent(locale),
     ])
   return (
     <>

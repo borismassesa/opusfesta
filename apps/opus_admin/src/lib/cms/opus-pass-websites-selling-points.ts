@@ -1,15 +1,19 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassWebsitesSellingPointItem = {
   id: string
-  headline: string
-  body: string
-  cta_label: string
+  // Translatable text.
+  headline: MaybeLocalized
+  body: MaybeLocalized
+  cta_label: MaybeLocalized
+  // Non-translatable config.
   cta_href: string
   image: string
 }
 
 export type OpusPassWebsitesSellingPointsContent = {
-  heading: string
-  description: string
+  heading: MaybeLocalized
+  description: MaybeLocalized
   items: OpusPassWebsitesSellingPointItem[]
 }
 

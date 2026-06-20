@@ -1,17 +1,19 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassExploreStyleLink = {
   id: string
-  label: string
+  label: MaybeLocalized
   href: string
 }
 
 export type OpusPassExploreStyleColumn = {
   id: string
-  heading: string
+  heading: MaybeLocalized
   items: OpusPassExploreStyleLink[]
 }
 
 export type OpusPassInvitationsExploreStylesContent = {
-  heading: string
+  heading: MaybeLocalized
   columns: OpusPassExploreStyleColumn[]
 }
 

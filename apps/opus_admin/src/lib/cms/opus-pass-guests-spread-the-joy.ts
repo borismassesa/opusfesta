@@ -1,3 +1,5 @@
+import type { MaybeLocalized } from '@/lib/cms/localized'
+
 export type OpusPassGuestsSpreadIconKey =
   | 'file-down'
   | 'printer'
@@ -26,13 +28,14 @@ export const OPUS_PASS_GUESTS_SPREAD_ICONS: { value: OpusPassGuestsSpreadIconKey
 export type OpusPassGuestsSpreadItem = {
   id: string
   icon: OpusPassGuestsSpreadIconKey
-  title: string
-  description: string
+  // Translatable text — stored as { en, sw } (or a legacy plain string).
+  title: MaybeLocalized
+  description: MaybeLocalized
 }
 
 export type OpusPassGuestsSpreadContent = {
-  heading: string
-  description: string
+  heading: MaybeLocalized
+  description: MaybeLocalized
   items: OpusPassGuestsSpreadItem[]
 }
 

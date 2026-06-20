@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type GuestsTestimonialFg = 'light' | 'dark'
 
@@ -43,7 +44,50 @@ export const GUESTS_TESTIMONIALS_FALLBACK: GuestsTestimonialsContent = {
   ],
 }
 
-export async function loadGuestsTestimonialsContent(): Promise<GuestsTestimonialsContent> {
+// Stored shape: translatable text (headline, description, cta_label, each item
+// quote) may be a localized { en, sw } object or a legacy plain string. The
+// proper names (name, location), URLs, image keys and colour/enum fields stay
+// scalar. The loader resolves each translatable field for `locale` and returns
+// the flat GuestsTestimonialsContent the render components already expect.
+type StoredGuestsTestimonialItem = {
+  id?: string
+  quote?: MaybeLocalized
+  name?: string
+  location?: string
+  avatar?: string
+  bg?: string
+  fg?: GuestsTestimonialFg
+}
+
+type StoredGuestsTestimonials = {
+  headline?: MaybeLocalized
+  description?: MaybeLocalized
+  cta_label?: MaybeLocalized
+  cta_href?: string
+  column1?: StoredGuestsTestimonialItem[]
+  column2?: StoredGuestsTestimonialItem[]
+}
+
+function resolveColumn(
+  items: StoredGuestsTestimonialItem[] | undefined,
+  fallback: GuestsTestimonialItem[],
+  locale: Locale
+): GuestsTestimonialItem[] {
+  if (!items || !Array.isArray(items) || items.length === 0) return fallback
+  return items.map((item, i) => ({
+    id: item.id ?? fallback[i]?.id ?? `t-${i}`,
+    quote: resolveLocalized(item.quote, locale),
+    name: item.name ?? '',
+    location: item.location ?? '',
+    avatar: item.avatar ?? '',
+    bg: item.bg ?? 'bg-white',
+    fg: item.fg ?? 'light',
+  }))
+}
+
+export async function loadGuestsTestimonialsContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<GuestsTestimonialsContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return GUESTS_TESTIMONIALS_FALLBACK
   }
@@ -57,22 +101,17 @@ export async function loadGuestsTestimonialsContent(): Promise<GuestsTestimonial
       .eq('section_key', 'testimonials')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<GuestsTestimonialsContent>
+      | StoredGuestsTestimonials
       | undefined
     if (stored) {
+      const F = GUESTS_TESTIMONIALS_FALLBACK
       return {
-        headline: stored.headline ?? GUESTS_TESTIMONIALS_FALLBACK.headline,
-        description: stored.description ?? GUESTS_TESTIMONIALS_FALLBACK.description,
-        cta_label: stored.cta_label ?? GUESTS_TESTIMONIALS_FALLBACK.cta_label,
-        cta_href: stored.cta_href ?? GUESTS_TESTIMONIALS_FALLBACK.cta_href,
-        column1:
-          stored.column1 && Array.isArray(stored.column1) && stored.column1.length > 0
-            ? stored.column1
-            : GUESTS_TESTIMONIALS_FALLBACK.column1,
-        column2:
-          stored.column2 && Array.isArray(stored.column2) && stored.column2.length > 0
-            ? stored.column2
-            : GUESTS_TESTIMONIALS_FALLBACK.column2,
+        headline: resolveLocalized(stored.headline ?? F.headline, locale),
+        description: resolveLocalized(stored.description ?? F.description, locale),
+        cta_label: resolveLocalized(stored.cta_label ?? F.cta_label, locale),
+        cta_href: stored.cta_href ?? F.cta_href,
+        column1: resolveColumn(stored.column1, F.column1, locale),
+        column2: resolveColumn(stored.column2, F.column2, locale),
       }
     }
     return GUESTS_TESTIMONIALS_FALLBACK

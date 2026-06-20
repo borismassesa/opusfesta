@@ -6,12 +6,12 @@ import { loadInvitationCategoriesList } from '@/lib/cms/invitations-categories'
 import { styleStripFromCategories } from '@/lib/cms/invitations-style-strip'
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import { loadPackagesContent, packageFromPrice } from '@/lib/cms/packages'
+import { getLocale } from '@/lib/cms/locale'
 import InvitationsCatalogClient from './InvitationsCatalogClient'
 
-// CMS-driven page: ISR safety net so published changes appear on the public
-// site within ~60s even if the admin's on-demand revalidation doesn't reach
-// this deployment. See apps/opus_admin/src/lib/revalidate.ts.
-export const revalidate = 60
+// CMS-driven AND locale-aware (reads the opuspass_locale cookie), so it renders
+// dynamically — see lib/cms/locale.ts.
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Wedding Invitations | OpusPass',
@@ -20,13 +20,14 @@ export const metadata: Metadata = {
 }
 
 export default async function InvitationsCatalogPage() {
+  const locale = await getLocale()
   const [{ isEnabled: isDraft }, products, promoBanner, categories, packages] =
     await Promise.all([
       draftMode(),
-      loadInvitationProducts(),
-      loadInvitationsPromoBannerContent(),
-      loadInvitationCategoriesList(),
-      loadPackagesContent(),
+      loadInvitationProducts(locale),
+      loadInvitationsPromoBannerContent(locale),
+      loadInvitationCategoriesList(locale),
+      loadPackagesContent(locale),
     ])
   return (
     <>

@@ -3,6 +3,8 @@
 import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { MediaUploadField } from '@/components/cms/MediaUploadField'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import type {
   DashboardHeroContent,
@@ -22,9 +24,6 @@ type Props = {
   initial: DashboardHeroContent
   hasDraft: boolean
 }
-
-const inputCls =
-  'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
 
 function Field({
   label,
@@ -46,22 +45,6 @@ function Field({
   )
 }
 
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span
-      className={cn(
-        'tabular-nums font-medium',
-        over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400',
-      )}
-    >
-      {len}/{max}
-    </span>
-  )
-}
-
 function FieldGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <fieldset className="border border-gray-200 rounded-lg p-3 pt-2 space-y-3">
@@ -79,6 +62,7 @@ export default function HeroEditor({ slug, label, initial, hasDraft: initialHasD
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   // When switching between dashboard slugs (the layout stays mounted), re-seed.
@@ -143,6 +127,10 @@ export default function HeroEditor({ slug, label, initial, hasDraft: initialHasD
 
   const hasMedia = draft.media_type !== 'none' && !!draft.media_url
   const previewMediaUrl = hasMedia ? resolveOpusPassAssetUrl(draft.media_url) : ''
+  const previewEyebrow = resolveLocalized(draft.eyebrow, previewLocale)
+  const previewTitle = resolveLocalized(draft.title, previewLocale)
+  const previewSubtitle = resolveLocalized(draft.subtitle, previewLocale)
+  const previewAlt = resolveLocalized(draft.media_alt, previewLocale)
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start pb-12">
@@ -150,33 +138,28 @@ export default function HeroEditor({ slug, label, initial, hasDraft: initialHasD
         <h3 className="text-[15px] font-semibold text-gray-900">{label} hero content</h3>
 
         <FieldGroup label="Text">
-          <Field label="Eyebrow" hint={<CharCount value={draft.eyebrow} max={40} />}>
-            <input
-              type="text"
-              value={draft.eyebrow}
-              onChange={(e) => set('eyebrow', e.target.value)}
-              placeholder="Dashboard"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Title" hint={<CharCount value={draft.title} max={80} />}>
-            <input
-              type="text"
-              value={draft.title}
-              onChange={(e) => set('title', e.target.value)}
-              placeholder="Welcome back"
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Subtitle" hint={<CharCount value={draft.subtitle} max={240} />}>
-            <textarea
-              rows={3}
-              value={draft.subtitle}
-              onChange={(e) => set('subtitle', e.target.value)}
-              placeholder="Plan, send and track everything in one place…"
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Eyebrow"
+            value={draft.eyebrow}
+            onChange={(v) => set('eyebrow', v)}
+            placeholder="Dashboard"
+            max={40}
+          />
+          <BilingualField
+            label="Title"
+            value={draft.title}
+            onChange={(v) => set('title', v)}
+            placeholder="Welcome back"
+            max={80}
+          />
+          <BilingualField
+            label="Subtitle"
+            value={draft.subtitle}
+            onChange={(v) => set('subtitle', v)}
+            placeholder="Plan, send and track everything in one place…"
+            multiline
+            max={240}
+          />
         </FieldGroup>
 
         <FieldGroup label="Cover media (optional)">
@@ -223,24 +206,42 @@ export default function HeroEditor({ slug, label, initial, hasDraft: initialHasD
                 previewAspect="aspect-[16/9]"
                 previewWidth="max-w-md"
               />
-              <Field label="Alt text" hint="Describe the image for screen readers / accessibility">
-                <input
-                  type="text"
-                  value={draft.media_alt}
-                  onChange={(e) => set('media_alt', e.target.value)}
-                  placeholder="Couple celebrating at sunset"
-                  className={inputCls}
-                />
-              </Field>
+              <BilingualField
+                label="Alt text"
+                value={draft.media_alt}
+                onChange={(v) => set('media_alt', v)}
+                placeholder="Couple celebrating at sunset"
+              />
+              <p className="-mt-1 text-[11px] text-gray-400">
+                Describe the image for screen readers / accessibility.
+              </p>
             </>
           )}
         </FieldGroup>
       </div>
 
       <div className="space-y-3 xl:sticky xl:top-6">
-        <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500 px-1">
-          Live preview
-        </p>
+        <div className="flex items-center justify-between px-1">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+            Live preview
+          </p>
+          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+            {LOCALES.map((l) => (
+              <button
+                key={l}
+                type="button"
+                onClick={() => setPreviewLocale(l)}
+                aria-pressed={previewLocale === l}
+                className={cn(
+                  'rounded-full px-2.5 py-0.5 transition-colors',
+                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900',
+                )}
+              >
+                {LOCALE_LABELS[l]}
+              </button>
+            ))}
+          </div>
+        </div>
         <div className="relative isolate overflow-hidden rounded-3xl border border-gray-200 shadow-[0_2px_10px_rgba(26,26,26,0.06)] bg-white">
           <div className="absolute inset-0 -z-10">
             {hasMedia ? (
@@ -259,7 +260,7 @@ export default function HeroEditor({ slug, label, initial, hasDraft: initialHasD
                 <img
                   key={previewMediaUrl}
                   src={previewMediaUrl}
-                  alt={draft.media_alt}
+                  alt={previewAlt}
                   className="h-full w-full object-cover"
                 />
               )
@@ -276,14 +277,14 @@ export default function HeroEditor({ slug, label, initial, hasDraft: initialHasD
             />
           </div>
           <div className="relative flex min-h-[260px] flex-col justify-end p-6 sm:p-8">
-            {draft.eyebrow && (
+            {previewEyebrow && (
               <p
                 className={cn(
                   'text-xs font-semibold uppercase tracking-[0.18em]',
                   hasMedia ? 'text-white/85' : 'text-[#1A1A1A]/55',
                 )}
               >
-                {draft.eyebrow}
+                {previewEyebrow}
               </p>
             )}
             <h1
@@ -292,16 +293,16 @@ export default function HeroEditor({ slug, label, initial, hasDraft: initialHasD
                 hasMedia ? 'text-white drop-shadow-sm' : 'text-[#1A1A1A]',
               )}
             >
-              {draft.title || 'Untitled'}
+              {previewTitle || 'Untitled'}
             </h1>
-            {draft.subtitle && (
+            {previewSubtitle && (
               <p
                 className={cn(
                   'mt-2 text-sm sm:text-base max-w-2xl',
                   hasMedia ? 'text-white/90' : 'text-[#1A1A1A]/70',
                 )}
               >
-                {draft.subtitle}
+                {previewSubtitle}
               </p>
             )}
           </div>

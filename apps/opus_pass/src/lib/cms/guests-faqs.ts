@@ -1,5 +1,6 @@
 import { draftMode } from 'next/headers'
 import { createSupabaseServerClient } from '@/lib/supabase'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type GuestsFaqItem = {
   id: string
@@ -56,7 +57,25 @@ export const GUESTS_FAQS_FALLBACK: GuestsFaqsContent = {
   ],
 }
 
-export async function loadGuestsFaqsContent(): Promise<GuestsFaqsContent> {
+// Stored shape: translatable fields may be a localized { en, sw } object or a
+// legacy plain string; `id` stays scalar. The loader resolves each translatable
+// field for `locale` and returns the flat GuestsFaqsContent the render
+// components already expect — so no public component changes.
+type StoredGuestsFaqItem = {
+  id?: string
+  question?: MaybeLocalized
+  answer?: MaybeLocalized
+}
+
+type StoredGuestsFaqs = {
+  heading?: MaybeLocalized
+  description?: MaybeLocalized
+  items?: StoredGuestsFaqItem[]
+}
+
+export async function loadGuestsFaqsContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<GuestsFaqsContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return GUESTS_FAQS_FALLBACK
   }
@@ -70,16 +89,21 @@ export async function loadGuestsFaqsContent(): Promise<GuestsFaqsContent> {
       .eq('section_key', 'faqs')
       .maybeSingle()
     const stored = (isDraft ? data?.draft_content ?? data?.content : data?.content) as
-      | Partial<GuestsFaqsContent>
+      | StoredGuestsFaqs
       | undefined
     if (stored) {
+      const F = GUESTS_FAQS_FALLBACK
       return {
-        heading: stored.heading ?? GUESTS_FAQS_FALLBACK.heading,
-        description: stored.description ?? GUESTS_FAQS_FALLBACK.description,
+        heading: resolveLocalized(stored.heading ?? F.heading, locale),
+        description: resolveLocalized(stored.description ?? F.description, locale),
         items:
           stored.items && Array.isArray(stored.items) && stored.items.length > 0
-            ? stored.items
-            : GUESTS_FAQS_FALLBACK.items,
+            ? stored.items.map((item, i) => ({
+                id: item.id ?? F.items[i]?.id ?? `faq-${i}`,
+                question: resolveLocalized(item.question, locale),
+                answer: resolveLocalized(item.answer, locale),
+              }))
+            : F.items,
       }
     }
     return GUESTS_FAQS_FALLBACK

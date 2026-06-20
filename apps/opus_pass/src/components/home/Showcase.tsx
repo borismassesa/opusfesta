@@ -7,6 +7,7 @@ import {
   loadHomepageShowcaseContent,
   type HomepageShowcasePill,
 } from '@/lib/cms/homepage-showcase'
+import { getLocale } from '@/lib/cms/locale'
 
 // Pinterest-style masonry: a row of columns, each offset vertically and holding
 // cards of varying heights. The layout and aspect ratios are fixed here; each
@@ -125,7 +126,8 @@ function TogglePill({ pill, delay }: { pill: HomepageShowcasePill; delay: string
 }
 
 export async function Showcase() {
-  const content = await loadHomepageShowcaseContent()
+  const locale = await getLocale()
+  const content = await loadHomepageShowcaseContent(locale)
   const imageAt = (i: number) => content.images[i] ?? { src: '', alt: '' }
 
   // Stagger the pop-in by list order so animation stays automatic regardless of
