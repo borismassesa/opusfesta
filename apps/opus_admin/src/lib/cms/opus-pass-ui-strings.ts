@@ -22,7 +22,7 @@ import type {
 
 export type { CopyField, CopyFieldGroup, CopyFieldKind }
 
-export type UiArea = 'navbar' | 'footer'
+export type UiArea = 'navbar' | 'footer' | 'help' | 'pricing' | 'how-it-works'
 
 // Each field is translatable: stored as a localized { en, sw } object (or a
 // legacy plain string). The editor reads/writes this shape via <BilingualField>.
@@ -41,21 +41,36 @@ export type UiStringsRow = {
 export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   navbar: 'opus-pass-ui-navbar',
   footer: 'opus-pass-ui-footer',
+  help: 'opus-pass-ui-help',
+  pricing: 'opus-pass-ui-pricing',
+  'how-it-works': 'opus-pass-ui-how-it-works',
 }
 
 export const UI_STRINGS_LABEL: Record<UiArea, string> = {
   navbar: 'Navbar (shared)',
   footer: 'Footer',
+  help: 'Help page',
+  pricing: 'Pricing page',
+  'how-it-works': 'How it works page',
 }
 
 // Navbar + footer appear on every public page; the home page ('/') is the
-// canonical surface to "view live".
+// canonical surface to "view live". The content areas point at their own route.
 export const UI_STRINGS_PUBLIC_PATH: Record<UiArea, string> = {
   navbar: '/',
   footer: '/',
+  help: '/help',
+  pricing: '/pricing',
+  'how-it-works': '/how-it-works',
 }
 
-export const UI_STRINGS_AREAS: readonly UiArea[] = ['navbar', 'footer'] as const
+export const UI_STRINGS_AREAS: readonly UiArea[] = [
+  'navbar',
+  'footer',
+  'help',
+  'pricing',
+  'how-it-works',
+] as const
 
 export function isUiArea(value: string): value is UiArea {
   return (UI_STRINGS_AREAS as readonly string[]).includes(value)
@@ -99,6 +114,138 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     legal_cookies: 'Cookie Policy',
     legal_copyright: 'Copyright',
     copyright: '© 2026 OpusPass. All rights reserved.',
+  },
+  help: {
+    eyebrow: 'Help Centre',
+    title: 'How can we help?',
+    intro:
+      'Answers about invitations, RSVPs, payments and your wedding website — plus a direct line to our team when you need a person.',
+    topic_getting_started_title: 'Getting started',
+    topic_getting_started_body:
+      'Create your event, build a guest list and send your first invitation in minutes.',
+    topic_getting_started_cta: 'See how it works',
+    topic_pricing_title: 'Pricing & payments',
+    topic_pricing_body:
+      'Per-guest packages, what each one includes, and the mobile-money and card options we accept.',
+    topic_pricing_cta: 'View pricing',
+    topic_invitations_title: 'Invitations & cards',
+    topic_invitations_body:
+      'Choose a design, customise your wording, preview a proof and deliver by WhatsApp or SMS.',
+    topic_invitations_cta: 'Browse designs',
+    topic_guests_title: 'Guests & RSVPs',
+    topic_guests_body:
+      'Track confirmations live, send reminders and scan tickets at the door on the day.',
+    topic_guests_cta: 'Explore guest tools',
+    topic_website_title: 'Wedding website',
+    topic_website_body:
+      'Share your story, schedule, venue map and a bilingual RSVP page on a personal site.',
+    topic_website_cta: 'See websites',
+    topic_contact_title: 'Contact support',
+    topic_contact_body:
+      'Still stuck? Reach the team by email or WhatsApp and we’ll reply within one business day.',
+    topic_contact_cta: 'Get in touch',
+    faq_title: 'Popular questions',
+    faq_intro:
+      'The things couples ask us most. Can’t find your answer? We’re one message away.',
+    faq_create_event_q: 'How do I create my event and start inviting guests?',
+    faq_create_event_a:
+      'Sign in, open your dashboard and create an event with your names, date and venue. Add guests by typing them in or pasting from a spreadsheet, then send each one a personal invitation link by WhatsApp, SMS or email — replies land in your dashboard live.',
+    faq_cost_q: 'How much does OpusPass cost?',
+    faq_cost_a:
+      'Pricing is per guest, and you choose from four packages — Essential, Classic, Elegant and Signature — so the price scales with your headcount. Every package includes the digital card, ticket, delivery and door check-in. See the Pricing page for the full breakdown and what each tier adds.',
+    faq_payment_methods_q: 'What payment methods can my guests and I use?',
+    faq_payment_methods_a:
+      'We accept M-Pesa, Airtel Money, Mixx by Yas and Selcom Pesa, plus Visa and Mastercard. Contribution collection (where guests pledge straight into one event account) is available on the Classic, Elegant and Signature packages.',
+    faq_guest_experience_q: 'What does a guest receive?',
+    faq_guest_experience_a:
+      'Each guest gets a digital invitation card with all your event details and a personal ticket with a unique barcode. They RSVP on a private bilingual page (English & Kiswahili), and on the day their ticket is scanned at the entrance to verify entry.',
+    faq_rsvp_tracking_q: 'Can I see who has confirmed and who has arrived?',
+    faq_rsvp_tracking_a:
+      'Yes. Your RSVP dashboard shows live confirmations and headcount, and on the higher packages it tracks check-ins at the door and shows analytics — so you can plan food and seating accurately.',
+    faq_paper_q: 'Do you still offer printed paper cards?',
+    faq_paper_a:
+      'Most couples go fully digital with a small print run for elders and VIPs. Paper card prints are available as an add-on on any package — just ask and we’ll arrange printing and delivery within Tanzania.',
+    faq_change_details_q: 'What if my venue or time changes after I’ve invited everyone?',
+    faq_change_details_a:
+      'You can message all guests at once from your dashboard — invitations, reminders or quick updates such as a venue or time change reach everyone instantly by WhatsApp or SMS.',
+    faq_support_speed_q: 'How quickly does support reply?',
+    faq_support_speed_a:
+      'We reply to email and WhatsApp within one business day, and usually much faster during office hours. Reach us any time via the Contact page.',
+    cta_title: 'Still need a hand?',
+    cta_body: 'Our team is based in Dar es Salaam and replies within one business day.',
+    cta_contact: 'Contact us',
+    cta_whatsapp: 'Chat on WhatsApp',
+  },
+  pricing: {
+    hero_title: 'Simple pricing, per guest.',
+    hero_subtitle:
+      'Choose the package that fits your celebration. Everything scales with your headcount — no setup fees, no surprises.',
+    badge_basic: 'Basic',
+    badge_popular: 'Most popular',
+    badge_premium: 'Premium',
+    badge_luxury: 'Luxury',
+    per_guest_suffix: '/ guest',
+    choose_prefix: 'Choose',
+    included_title: 'Included in every package',
+    upgrades_title: 'What the higher tiers add',
+    upgrades_intro: 'Compare what each package unlocks beyond the essentials.',
+    value_included: 'Included',
+    value_not_included: 'Not included',
+    pay_title: 'Ways to pay',
+    pay_intro:
+      'Pay by mobile money or card — in full or in instalments. Every payment is encrypted and handled by our trusted payment partners.',
+    security_encrypted:
+      'Card and mobile-money details are encrypted end-to-end and processed directly by the provider — OpusPass never sees or stores them.',
+    security_receipt:
+      'Each transaction is confirmed instantly with a receipt, and contributions go straight into one secure event account you control.',
+    faq_title: 'Pricing questions',
+    faq_intro:
+      'Everything about how billing works. Still curious about something? We’re happy to talk it through.',
+    contact_cta: 'Contact us',
+    help_link: 'Visit the Help Centre',
+    faq_how_charged_q: 'How is the price calculated?',
+    faq_how_charged_a:
+      'Pricing is per guest. Pick a package, enter your guest count, and the total is simply the per-guest rate times your headcount — so a smaller event costs less and a larger one scales predictably.',
+    faq_large_events_q: 'What about very large events?',
+    faq_large_events_a:
+      'Events above 600 guests get a capped, discounted per-guest rate. Reach out and we’ll confirm the exact figure for your headcount.',
+    faq_payment_q: 'What payment methods do you accept?',
+    faq_payment_a:
+      'M-Pesa, Airtel Money, Mixx by Yas and Selcom Pesa, plus Visa and Mastercard. You can pay in full or split into instalments.',
+    faq_paper_q: 'Is paper printing included?',
+    faq_paper_a:
+      'OpusPass is digital-first, so paper isn’t included by default. Paper card prints are an add-on on any package — we arrange printing and delivery within Tanzania on request.',
+  },
+  'how-it-works': {
+    eyebrow: 'How it works',
+    title: 'From first invite to final toast.',
+    intro:
+      'No more chasing replies in WhatsApp groups. Send once, track everywhere — and arrive on the day knowing exactly who’s coming.',
+    step_list_title: 'Build your list',
+    step_list_body:
+      'Create your event, then type names in or paste from a spreadsheet. Group by family, side or table.',
+    step_send_title: 'Send by WhatsApp or SMS',
+    step_send_body:
+      'One-tap send. Each guest gets a personal link, an animated digital card and their own ticket.',
+    step_replies_title: 'Watch replies live',
+    step_replies_body:
+      'Joyful yeses, regrets and meal picks land in your dashboard instantly — in English or Kiswahili.',
+    step_checkin_title: 'Plan & check in',
+    step_checkin_body:
+      'Arrange seating, send reminders, then scan tickets at the door to verify every guest on the day.',
+    guest_section_title: 'What every guest gets',
+    guest_section_intro: 'The experience is built for them too — not just for you.',
+    guest_card_title: 'A card and a ticket',
+    guest_card_body:
+      'Every guest receives a digital invitation with all your details plus a personal ticket with a unique barcode.',
+    guest_reminders_title: 'Gentle reminders',
+    guest_reminders_body:
+      'Automatic nudges before the day help guests confirm and cut down no-shows — no chasing in group chats.',
+    guest_entry_title: 'Fast entry',
+    guest_entry_body:
+      'At the gate their ticket is scanned to verify entry — stopping fake invitees and keeping the line moving.',
+    cta_primary: 'Start your guest list',
+    cta_secondary: 'See pricing',
   },
 }
 
@@ -182,6 +329,185 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
       legend: 'Copyright',
       fields: [
         { key: 'copyright', label: 'Copyright line', kind: 'text', max: 80 },
+      ],
+    },
+  ],
+  help: [
+    {
+      legend: 'Header',
+      fields: [
+        { key: 'eyebrow', label: 'Eyebrow', kind: 'text', max: 40 },
+        { key: 'title', label: 'Heading', kind: 'text', max: 80 },
+        { key: 'intro', label: 'Intro paragraph', kind: 'textarea', max: 240 },
+      ],
+    },
+    {
+      legend: 'Topic cards',
+      fields: [
+        { key: 'topic_getting_started_title', label: 'Getting started — title', kind: 'text', max: 40 },
+        { key: 'topic_getting_started_body', label: 'Getting started — body', kind: 'textarea', max: 200 },
+        { key: 'topic_getting_started_cta', label: 'Getting started — link', kind: 'text', max: 40 },
+        { key: 'topic_pricing_title', label: 'Pricing & payments — title', kind: 'text', max: 40 },
+        { key: 'topic_pricing_body', label: 'Pricing & payments — body', kind: 'textarea', max: 200 },
+        { key: 'topic_pricing_cta', label: 'Pricing & payments — link', kind: 'text', max: 40 },
+        { key: 'topic_invitations_title', label: 'Invitations & cards — title', kind: 'text', max: 40 },
+        { key: 'topic_invitations_body', label: 'Invitations & cards — body', kind: 'textarea', max: 200 },
+        { key: 'topic_invitations_cta', label: 'Invitations & cards — link', kind: 'text', max: 40 },
+        { key: 'topic_guests_title', label: 'Guests & RSVPs — title', kind: 'text', max: 40 },
+        { key: 'topic_guests_body', label: 'Guests & RSVPs — body', kind: 'textarea', max: 200 },
+        { key: 'topic_guests_cta', label: 'Guests & RSVPs — link', kind: 'text', max: 40 },
+        { key: 'topic_website_title', label: 'Wedding website — title', kind: 'text', max: 40 },
+        { key: 'topic_website_body', label: 'Wedding website — body', kind: 'textarea', max: 200 },
+        { key: 'topic_website_cta', label: 'Wedding website — link', kind: 'text', max: 40 },
+        { key: 'topic_contact_title', label: 'Contact support — title', kind: 'text', max: 40 },
+        { key: 'topic_contact_body', label: 'Contact support — body', kind: 'textarea', max: 200 },
+        { key: 'topic_contact_cta', label: 'Contact support — link', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'FAQ section',
+      fields: [
+        { key: 'faq_title', label: 'Section title', kind: 'text', max: 60 },
+        { key: 'faq_intro', label: 'Section intro', kind: 'textarea', max: 200 },
+      ],
+    },
+    {
+      legend: 'FAQs',
+      fields: [
+        { key: 'faq_create_event_q', label: 'Create event — question', kind: 'text', max: 160 },
+        { key: 'faq_create_event_a', label: 'Create event — answer', kind: 'textarea', max: 600 },
+        { key: 'faq_cost_q', label: 'Cost — question', kind: 'text', max: 160 },
+        { key: 'faq_cost_a', label: 'Cost — answer', kind: 'textarea', max: 600 },
+        { key: 'faq_payment_methods_q', label: 'Payment methods — question', kind: 'text', max: 160 },
+        { key: 'faq_payment_methods_a', label: 'Payment methods — answer', kind: 'textarea', max: 600 },
+        { key: 'faq_guest_experience_q', label: 'Guest experience — question', kind: 'text', max: 160 },
+        { key: 'faq_guest_experience_a', label: 'Guest experience — answer', kind: 'textarea', max: 600 },
+        { key: 'faq_rsvp_tracking_q', label: 'RSVP tracking — question', kind: 'text', max: 160 },
+        { key: 'faq_rsvp_tracking_a', label: 'RSVP tracking — answer', kind: 'textarea', max: 600 },
+        { key: 'faq_paper_q', label: 'Paper cards — question', kind: 'text', max: 160 },
+        { key: 'faq_paper_a', label: 'Paper cards — answer', kind: 'textarea', max: 600 },
+        { key: 'faq_change_details_q', label: 'Change details — question', kind: 'text', max: 160 },
+        { key: 'faq_change_details_a', label: 'Change details — answer', kind: 'textarea', max: 600 },
+        { key: 'faq_support_speed_q', label: 'Support speed — question', kind: 'text', max: 160 },
+        { key: 'faq_support_speed_a', label: 'Support speed — answer', kind: 'textarea', max: 600 },
+      ],
+    },
+    {
+      legend: 'Contact CTA',
+      fields: [
+        { key: 'cta_title', label: 'Title', kind: 'text', max: 80 },
+        { key: 'cta_body', label: 'Body', kind: 'textarea', max: 200 },
+        { key: 'cta_contact', label: 'Contact button', kind: 'text', max: 40 },
+        { key: 'cta_whatsapp', label: 'WhatsApp button', kind: 'text', max: 40 },
+      ],
+    },
+  ],
+  pricing: [
+    {
+      legend: 'Hero',
+      fields: [
+        { key: 'hero_title', label: 'Heading', kind: 'text', max: 80 },
+        { key: 'hero_subtitle', label: 'Subtitle', kind: 'textarea', max: 240 },
+      ],
+    },
+    {
+      legend: 'Tier badges',
+      fields: [
+        { key: 'badge_basic', label: 'Essential badge', kind: 'text', max: 30 },
+        { key: 'badge_popular', label: 'Most popular badge', kind: 'text', max: 30 },
+        { key: 'badge_premium', label: 'Premium badge', kind: 'text', max: 30 },
+        { key: 'badge_luxury', label: 'Luxury badge', kind: 'text', max: 30 },
+        { key: 'per_guest_suffix', label: 'Per-guest suffix', kind: 'text', max: 20, hint: 'e.g. "/ guest"' },
+        { key: 'choose_prefix', label: 'Choose button prefix', kind: 'text', max: 20, hint: 'Prepended to the tier name, e.g. "Choose Classic"' },
+      ],
+    },
+    {
+      legend: 'Included section',
+      fields: [
+        { key: 'included_title', label: 'Included title', kind: 'text', max: 60 },
+        { key: 'upgrades_title', label: 'Upgrades title', kind: 'text', max: 60 },
+        { key: 'upgrades_intro', label: 'Upgrades intro', kind: 'textarea', max: 160 },
+        { key: 'value_included', label: 'Included cell (aria-label)', kind: 'text', max: 30 },
+        { key: 'value_not_included', label: 'Not-included cell (aria-label)', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Ways to pay',
+      fields: [
+        { key: 'pay_title', label: 'Title', kind: 'text', max: 40 },
+        { key: 'pay_intro', label: 'Intro', kind: 'textarea', max: 240 },
+      ],
+    },
+    {
+      legend: 'Security',
+      fields: [
+        { key: 'security_encrypted', label: 'Encryption note', kind: 'textarea', max: 240 },
+        { key: 'security_receipt', label: 'Receipt note', kind: 'textarea', max: 240 },
+      ],
+    },
+    {
+      legend: 'Sidebar',
+      fields: [
+        { key: 'faq_title', label: 'FAQ title', kind: 'text', max: 60 },
+        { key: 'faq_intro', label: 'FAQ intro', kind: 'textarea', max: 200 },
+        { key: 'contact_cta', label: 'Contact button', kind: 'text', max: 40 },
+        { key: 'help_link', label: 'Help Centre link', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'FAQ',
+      fields: [
+        { key: 'faq_how_charged_q', label: 'How charged — question', kind: 'text', max: 160 },
+        { key: 'faq_how_charged_a', label: 'How charged — answer', kind: 'textarea', max: 600 },
+        { key: 'faq_large_events_q', label: 'Large events — question', kind: 'text', max: 160 },
+        { key: 'faq_large_events_a', label: 'Large events — answer', kind: 'textarea', max: 600 },
+        { key: 'faq_payment_q', label: 'Payment methods — question', kind: 'text', max: 160 },
+        { key: 'faq_payment_a', label: 'Payment methods — answer', kind: 'textarea', max: 600 },
+        { key: 'faq_paper_q', label: 'Paper printing — question', kind: 'text', max: 160 },
+        { key: 'faq_paper_a', label: 'Paper printing — answer', kind: 'textarea', max: 600 },
+      ],
+    },
+  ],
+  'how-it-works': [
+    {
+      legend: 'Header',
+      fields: [
+        { key: 'eyebrow', label: 'Eyebrow', kind: 'text', max: 40 },
+        { key: 'title', label: 'Heading', kind: 'text', max: 80 },
+        { key: 'intro', label: 'Intro paragraph', kind: 'textarea', max: 240 },
+      ],
+    },
+    {
+      legend: 'Process steps',
+      fields: [
+        { key: 'step_list_title', label: 'Step 1 — title', kind: 'text', max: 40 },
+        { key: 'step_list_body', label: 'Step 1 — body', kind: 'textarea', max: 200 },
+        { key: 'step_send_title', label: 'Step 2 — title', kind: 'text', max: 40 },
+        { key: 'step_send_body', label: 'Step 2 — body', kind: 'textarea', max: 200 },
+        { key: 'step_replies_title', label: 'Step 3 — title', kind: 'text', max: 40 },
+        { key: 'step_replies_body', label: 'Step 3 — body', kind: 'textarea', max: 200 },
+        { key: 'step_checkin_title', label: 'Step 4 — title', kind: 'text', max: 40 },
+        { key: 'step_checkin_body', label: 'Step 4 — body', kind: 'textarea', max: 200 },
+      ],
+    },
+    {
+      legend: 'Guest features',
+      fields: [
+        { key: 'guest_section_title', label: 'Section title', kind: 'text', max: 60 },
+        { key: 'guest_section_intro', label: 'Section intro', kind: 'textarea', max: 160 },
+        { key: 'guest_card_title', label: 'Card & ticket — title', kind: 'text', max: 40 },
+        { key: 'guest_card_body', label: 'Card & ticket — body', kind: 'textarea', max: 200 },
+        { key: 'guest_reminders_title', label: 'Reminders — title', kind: 'text', max: 40 },
+        { key: 'guest_reminders_body', label: 'Reminders — body', kind: 'textarea', max: 200 },
+        { key: 'guest_entry_title', label: 'Fast entry — title', kind: 'text', max: 40 },
+        { key: 'guest_entry_body', label: 'Fast entry — body', kind: 'textarea', max: 200 },
+      ],
+    },
+    {
+      legend: 'CTAs',
+      fields: [
+        { key: 'cta_primary', label: 'Primary button', kind: 'text', max: 40 },
+        { key: 'cta_secondary', label: 'Secondary button', kind: 'text', max: 40 },
       ],
     },
   ],

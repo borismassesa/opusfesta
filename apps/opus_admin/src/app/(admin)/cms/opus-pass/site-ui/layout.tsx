@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { PanelTop, PanelBottom, Save, Send, Trash2 } from 'lucide-react'
+import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, Save, Send, Trash2 } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { CmsSecondarySidebar, type CmsSection } from '@/components/cms/CmsSecondarySidebar'
@@ -25,6 +25,31 @@ const sections: CmsSection[] = [
     href: '/cms/opus-pass/site-ui/footer',
     status: 'live',
     description: 'Footer column headings, link labels, legal links and copyright — bilingual.',
+  },
+  {
+    key: 'help',
+    label: 'Help page',
+    icon: LifeBuoy,
+    href: '/cms/opus-pass/site-ui/help',
+    status: 'live',
+    description: 'Help Centre header, topic cards, FAQs and the contact CTA — bilingual.',
+  },
+  {
+    key: 'pricing',
+    label: 'Pricing page',
+    icon: Receipt,
+    href: '/cms/opus-pass/site-ui/pricing',
+    status: 'live',
+    description:
+      'Pricing hero, tier badges, included/upgrade copy, ways to pay, security notes and FAQs — bilingual. Tier prices stay in the Packages CMS.',
+  },
+  {
+    key: 'how-it-works',
+    label: 'How it works page',
+    icon: ListChecks,
+    href: '/cms/opus-pass/site-ui/how-it-works',
+    status: 'live',
+    description: 'How-it-works header, process steps, guest features and CTAs — bilingual.',
   },
 ]
 

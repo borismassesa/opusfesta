@@ -11,6 +11,12 @@ import {
   MessageCircle,
 } from 'lucide-react'
 import { FAQItem } from '@/app/invitations/FAQAccordion'
+import { getLocale } from '@/lib/cms/locale'
+import { loadUiStrings, type HelpStrings } from '@/lib/cms/ui-strings'
+
+// Per-locale CMS copy is resolved from the locale cookie, so the page must never
+// be baked into a shared cache (which would serve one visitor's language to all).
+export const dynamic = 'force-dynamic'
 
 export const metadata: Metadata = {
   title: 'Help Centre | OpusPass',
@@ -18,113 +24,42 @@ export const metadata: Metadata = {
     'Find answers about invitations, RSVPs, payments and your wedding website — or reach the OpusPass team directly. We reply within one business day.',
 }
 
-const TOPICS: {
-  Icon: typeof PlayCircle
-  title: string
-  body: string
-  href: string
-  cta: string
-}[] = [
-  {
-    Icon: PlayCircle,
-    title: 'Getting started',
-    body: 'Create your event, build a guest list and send your first invitation in minutes.',
-    href: '/how-it-works',
-    cta: 'See how it works',
-  },
-  {
-    Icon: CreditCard,
-    title: 'Pricing & payments',
-    body: 'Per-guest packages, what each one includes, and the mobile-money and card options we accept.',
-    href: '/pricing',
-    cta: 'View pricing',
-  },
-  {
-    Icon: Ticket,
-    title: 'Invitations & cards',
-    body: 'Choose a design, customise your wording, preview a proof and deliver by WhatsApp or SMS.',
-    href: '/invitations',
-    cta: 'Browse designs',
-  },
-  {
-    Icon: Users,
-    title: 'Guests & RSVPs',
-    body: 'Track confirmations live, send reminders and scan tickets at the door on the day.',
-    href: '/guests-and-rsvp',
-    cta: 'Explore guest tools',
-  },
-  {
-    Icon: Globe,
-    title: 'Wedding website',
-    body: 'Share your story, schedule, venue map and a bilingual RSVP page on a personal site.',
-    href: '/websites',
-    cta: 'See websites',
-  },
-  {
-    Icon: Mail,
-    title: 'Contact support',
-    body: 'Still stuck? Reach the team by email or WhatsApp and we’ll reply within one business day.',
-    href: '/contact',
-    cta: 'Get in touch',
-  },
-]
+export default async function HelpCentrePage() {
+  const locale = await getLocale()
+  const t = await loadUiStrings('help', locale)
 
-const FAQS: { id: string; q: string; a: string }[] = [
-  {
-    id: 'create-event',
-    q: 'How do I create my event and start inviting guests?',
-    a: 'Sign in, open your dashboard and create an event with your names, date and venue. Add guests by typing them in or pasting from a spreadsheet, then send each one a personal invitation link by WhatsApp, SMS or email — replies land in your dashboard live.',
-  },
-  {
-    id: 'cost',
-    q: 'How much does OpusPass cost?',
-    a: 'Pricing is per guest, and you choose from four packages — Essential, Classic, Elegant and Signature — so the price scales with your headcount. Every package includes the digital card, ticket, delivery and door check-in. See the Pricing page for the full breakdown and what each tier adds.',
-  },
-  {
-    id: 'payment-methods',
-    q: 'What payment methods can my guests and I use?',
-    a: 'We accept M-Pesa, Airtel Money, Mixx by Yas and Selcom Pesa, plus Visa and Mastercard. Contribution collection (where guests pledge straight into one event account) is available on the Classic, Elegant and Signature packages.',
-  },
-  {
-    id: 'guest-experience',
-    q: 'What does a guest receive?',
-    a: 'Each guest gets a digital invitation card with all your event details and a personal ticket with a unique barcode. They RSVP on a private bilingual page (English & Kiswahili), and on the day their ticket is scanned at the entrance to verify entry.',
-  },
-  {
-    id: 'rsvp-tracking',
-    q: 'Can I see who has confirmed and who has arrived?',
-    a: 'Yes. Your RSVP dashboard shows live confirmations and headcount, and on the higher packages it tracks check-ins at the door and shows analytics — so you can plan food and seating accurately.',
-  },
-  {
-    id: 'paper',
-    q: 'Do you still offer printed paper cards?',
-    a: 'Most couples go fully digital with a small print run for elders and VIPs. Paper card prints are available as an add-on on any package — just ask and we’ll arrange printing and delivery within Tanzania.',
-  },
-  {
-    id: 'change-details',
-    q: 'What if my venue or time changes after I’ve invited everyone?',
-    a: 'You can message all guests at once from your dashboard — invitations, reminders or quick updates such as a venue or time change reach everyone instantly by WhatsApp or SMS.',
-  },
-  {
-    id: 'support-speed',
-    q: 'How quickly does support reply?',
-    a: 'We reply to email and WhatsApp within one business day, and usually much faster during office hours. Reach us any time via the Contact page.',
-  },
-]
+  // Text comes from the CMS (t.*); icons + hrefs stay hardcoded scalars.
+  const topics: { Icon: typeof PlayCircle; titleKey: keyof HelpStrings; bodyKey: keyof HelpStrings; ctaKey: keyof HelpStrings; href: string }[] = [
+    { Icon: PlayCircle, titleKey: 'topic_getting_started_title', bodyKey: 'topic_getting_started_body', ctaKey: 'topic_getting_started_cta', href: '/how-it-works' },
+    { Icon: CreditCard, titleKey: 'topic_pricing_title', bodyKey: 'topic_pricing_body', ctaKey: 'topic_pricing_cta', href: '/pricing' },
+    { Icon: Ticket, titleKey: 'topic_invitations_title', bodyKey: 'topic_invitations_body', ctaKey: 'topic_invitations_cta', href: '/invitations' },
+    { Icon: Users, titleKey: 'topic_guests_title', bodyKey: 'topic_guests_body', ctaKey: 'topic_guests_cta', href: '/guests-and-rsvp' },
+    { Icon: Globe, titleKey: 'topic_website_title', bodyKey: 'topic_website_body', ctaKey: 'topic_website_cta', href: '/websites' },
+    { Icon: Mail, titleKey: 'topic_contact_title', bodyKey: 'topic_contact_body', ctaKey: 'topic_contact_cta', href: '/contact' },
+  ]
 
-export default function HelpCentrePage() {
+  const faqs: { id: string; q: string; a: string }[] = [
+    { id: 'create-event', q: t.faq_create_event_q, a: t.faq_create_event_a },
+    { id: 'cost', q: t.faq_cost_q, a: t.faq_cost_a },
+    { id: 'payment-methods', q: t.faq_payment_methods_q, a: t.faq_payment_methods_a },
+    { id: 'guest-experience', q: t.faq_guest_experience_q, a: t.faq_guest_experience_a },
+    { id: 'rsvp-tracking', q: t.faq_rsvp_tracking_q, a: t.faq_rsvp_tracking_a },
+    { id: 'paper', q: t.faq_paper_q, a: t.faq_paper_a },
+    { id: 'change-details', q: t.faq_change_details_q, a: t.faq_change_details_a },
+    { id: 'support-speed', q: t.faq_support_speed_q, a: t.faq_support_speed_a },
+  ]
+
   return (
     <>
       {/* Hero */}
       <section className="px-4 sm:px-6 pt-20 sm:pt-28 pb-10">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="text-[13px] text-gray-500 mb-3">Help Centre</p>
+          <p className="text-[13px] text-gray-500 mb-3">{t.eyebrow}</p>
           <h1 className="font-serif text-4xl sm:text-5xl tracking-tight text-[#403d39]">
-            How can we help?
+            {t.title}
           </h1>
           <p className="mt-5 text-[15px] sm:text-base text-gray-600 leading-relaxed mx-auto max-w-2xl">
-            Answers about invitations, RSVPs, payments and your wedding website — plus a direct line
-            to our team when you need a person.
+            {t.intro}
           </p>
         </div>
       </section>
@@ -132,9 +67,9 @@ export default function HelpCentrePage() {
       {/* Topic cards */}
       <section className="px-4 sm:px-6 pb-4">
         <div className="mx-auto max-w-5xl grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {TOPICS.map(({ Icon, title, body, href, cta }) => (
+          {topics.map(({ Icon, titleKey, bodyKey, ctaKey, href }) => (
             <Link
-              key={title}
+              key={titleKey}
               href={href}
               className="group flex flex-col rounded-2xl border border-gray-200 bg-white p-6 transition-colors hover:border-gray-300"
             >
@@ -142,11 +77,11 @@ export default function HelpCentrePage() {
                 <Icon className="h-[22px] w-[22px]" aria-hidden="true" />
               </span>
               <h2 className="mt-4 text-[17px] font-extrabold tracking-tight text-[#1A1A1A]">
-                {title}
+                {t[titleKey]}
               </h2>
-              <p className="mt-1.5 flex-1 text-[14px] text-gray-600 leading-relaxed">{body}</p>
+              <p className="mt-1.5 flex-1 text-[14px] text-gray-600 leading-relaxed">{t[bodyKey]}</p>
               <span className="mt-4 inline-flex items-center gap-1.5 text-[13px] font-bold text-[#1A1A1A]">
-                {cta}
+                {t[ctaKey]}
                 <ArrowRight
                   className="h-4 w-4 transition-transform group-hover:translate-x-0.5"
                   aria-hidden="true"
@@ -161,13 +96,13 @@ export default function HelpCentrePage() {
       <section className="px-4 sm:px-6 py-16 sm:py-20">
         <div className="mx-auto max-w-3xl">
           <h2 className="font-serif text-3xl sm:text-4xl tracking-tight text-[#403d39]">
-            Popular questions
+            {t.faq_title}
           </h2>
           <p className="mt-3 text-[15px] text-gray-600 leading-relaxed">
-            The things couples ask us most. Can’t find your answer? We’re one message away.
+            {t.faq_intro}
           </p>
           <div className="mt-8 rounded-2xl border border-gray-200 bg-white px-5 sm:px-7">
-            {FAQS.map((f) => (
+            {faqs.map((f) => (
               <FAQItem key={f.id} q={f.q} a={f.a} />
             ))}
           </div>
@@ -178,10 +113,10 @@ export default function HelpCentrePage() {
       <section className="px-4 sm:px-6 pb-24">
         <div className="mx-auto max-w-5xl rounded-3xl bg-[#1A1A1A] px-6 py-12 sm:px-12 sm:py-14 text-center">
           <h2 className="font-serif text-2xl sm:text-3xl tracking-tight text-white">
-            Still need a hand?
+            {t.cta_title}
           </h2>
           <p className="mt-3 text-[14px] sm:text-[15px] text-gray-300 leading-relaxed mx-auto max-w-xl">
-            Our team is based in Dar es Salaam and replies within one business day.
+            {t.cta_body}
           </p>
           <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
@@ -189,7 +124,7 @@ export default function HelpCentrePage() {
               className="inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 text-[14px] font-bold text-[#1A1A1A] transition-colors hover:bg-gray-100"
             >
               <Mail className="h-[18px] w-[18px]" aria-hidden="true" />
-              Contact us
+              {t.cta_contact}
             </Link>
             <a
               href="https://wa.me/255000000000"
@@ -198,7 +133,7 @@ export default function HelpCentrePage() {
               className="inline-flex items-center gap-2 rounded-full border border-white/30 px-7 py-3.5 text-[14px] font-bold text-white transition-colors hover:bg-white/10"
             >
               <MessageCircle className="h-[18px] w-[18px]" aria-hidden="true" />
-              Chat on WhatsApp
+              {t.cta_whatsapp}
             </a>
           </div>
         </div>

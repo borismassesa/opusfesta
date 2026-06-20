@@ -29,6 +29,9 @@ export {
   type UiArea,
   type NavbarStrings,
   type FooterStrings,
+  type HelpStrings,
+  type PricingStrings,
+  type HowItWorksStrings,
   type UiStringsByArea,
 } from './ui-strings-fallback'
 
