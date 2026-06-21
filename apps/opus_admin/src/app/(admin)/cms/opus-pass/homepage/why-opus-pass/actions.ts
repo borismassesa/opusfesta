@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateOpusPass } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { OpusPassHomepageWhyOpusPassContent } from '@/lib/cms/opus-pass-homepage-why-opus-pass'
 
 const PAGE_KEY = 'opus-pass-homepage'
@@ -11,6 +12,7 @@ const SECTION_KEY = 'why-opus-pass'
 export async function saveOpusPassHomepageWhyOpusPassDraft(
   draft: OpusPassHomepageWhyOpusPassContent,
 ): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -23,6 +25,7 @@ export async function saveOpusPassHomepageWhyOpusPassDraft(
 }
 
 export async function publishOpusPassHomepageWhyOpusPass(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -45,6 +48,7 @@ export async function publishOpusPassHomepageWhyOpusPass(): Promise<void> {
 }
 
 export async function discardOpusPassHomepageWhyOpusPassDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

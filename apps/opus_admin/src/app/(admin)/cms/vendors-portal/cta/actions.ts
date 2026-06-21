@@ -3,12 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateVendorsPortal } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { CtaContent } from '@/lib/cms/cta'
 
 const PAGE_KEY = 'vendors_home'
 const SECTION_KEY = 'cta'
 
 export async function saveCtaDraft(draft: CtaContent): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -21,6 +23,7 @@ export async function saveCtaDraft(draft: CtaContent): Promise<void> {
 }
 
 export async function publishCta(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -43,6 +46,7 @@ export async function publishCta(): Promise<void> {
 }
 
 export async function discardCtaDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

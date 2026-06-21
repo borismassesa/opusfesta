@@ -41,7 +41,7 @@ type FormDialogProps =
       departments: Department[]
       roles: WorkforceRole[]
       managerCandidates: ManagerCandidate[]
-      callerIsOwner: boolean
+      canManageAccess: boolean
       onClose: () => void
       employee?: never
     }
@@ -50,7 +50,7 @@ type FormDialogProps =
       departments: Department[]
       roles: WorkforceRole[]
       managerCandidates: ManagerCandidate[]
-      callerIsOwner: boolean
+      canManageAccess: boolean
       onClose: () => void
       employee: Employee
     }
@@ -58,7 +58,7 @@ type FormDialogProps =
 export function EmployeeFormDialog(props: FormDialogProps) {
   const isEdit = props.mode === 'edit'
   const seed = isEdit ? props.employee : null
-  const { departments, roles, managerCandidates, callerIsOwner, onClose } = props
+  const { departments, roles, managerCandidates, canManageAccess, onClose } = props
 
   // Exclude the row itself from the manager dropdown — self-reference
   // would create a cycle (caught server-side too, but no point showing it).
@@ -149,7 +149,7 @@ export function EmployeeFormDialog(props: FormDialogProps) {
           employeeId = result.id
         }
 
-        if (callerIsOwner) {
+        if (canManageAccess) {
           const wasGranted = initialGrant
           const roleChanged = accessRoleId !== initialRoleId
           if (!grantAccess && wasGranted) {
@@ -367,7 +367,7 @@ export function EmployeeFormDialog(props: FormDialogProps) {
             </Field>
           </FieldGroup>
 
-          {callerIsOwner && (
+          {canManageAccess && (
             <FieldGroup title="Dashboard access">
               <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4 space-y-3">
                 <label className="flex items-start gap-3 cursor-pointer">

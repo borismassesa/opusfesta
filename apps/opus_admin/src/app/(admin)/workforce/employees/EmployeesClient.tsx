@@ -67,13 +67,13 @@ export default function EmployeesClient({
   departments,
   openJobs,
   roles,
-  callerIsOwner,
+  canManageAccess,
 }: {
   employees: Employee[]
   departments: Department[]
   openJobs: number
   roles: WorkforceRole[]
-  callerIsOwner: boolean
+  canManageAccess: boolean
 }) {
   const router = useRouter()
   // Manager-picker options — the roster itself is the source. Sorted
@@ -319,7 +319,7 @@ export default function EmployeesClient({
           departments={departments}
           roles={roles}
           managerCandidates={managerCandidates}
-          callerIsOwner={callerIsOwner}
+          canManageAccess={canManageAccess}
           onClose={() => setShowAdd(false)}
         />
       )}
@@ -330,7 +330,7 @@ export default function EmployeesClient({
           departments={departments}
           roles={roles}
           managerCandidates={managerCandidates}
-          callerIsOwner={callerIsOwner}
+          canManageAccess={canManageAccess}
           onClose={() => setEditing(null)}
         />
       )}

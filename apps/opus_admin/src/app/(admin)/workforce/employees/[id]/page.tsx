@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getAdminAccessRole } from '@/lib/admin-auth'
+import { getCallerPermissions } from '@/lib/admin-auth'
 import {
   DEPARTMENTS,
   getEmployeeOrgContext,
@@ -35,7 +35,7 @@ export default async function EmployeeDetailPage({
   const [
     org,
     roles,
-    callerRole,
+    permissions,
     allEmployees,
     resumeEntries,
     skills,
@@ -45,7 +45,7 @@ export default async function EmployeeDetailPage({
   ] = await Promise.all([
     getEmployeeOrgContext(employee.id, managerId),
     getRoles(),
-    getAdminAccessRole(),
+    getCallerPermissions(),
     getEmployees(),
     getResumeEntries(employee.id),
     getEmployeeSkills(employee.id),
@@ -66,7 +66,7 @@ export default async function EmployeeDetailPage({
         name: e.name,
         jobTitle: e.jobTitle,
       }))}
-      callerIsOwner={callerRole === 'owner'}
+      canManageAccess={permissions.has('platform.admin')}
       resumeEntries={resumeEntries}
       skills={skills}
       certifications={certifications}

@@ -3,12 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateVendorsPortal } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { TestimonialsContent } from '@/lib/cms/testimonials'
 
 const PAGE_KEY = 'vendors_home'
 const SECTION_KEY = 'testimonials'
 
 export async function saveTestimonialsDraft(draft: TestimonialsContent): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -21,6 +23,7 @@ export async function saveTestimonialsDraft(draft: TestimonialsContent): Promise
 }
 
 export async function publishTestimonials(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -43,6 +46,7 @@ export async function publishTestimonials(): Promise<void> {
 }
 
 export async function discardTestimonialsDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

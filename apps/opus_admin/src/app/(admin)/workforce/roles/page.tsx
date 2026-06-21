@@ -1,5 +1,9 @@
 import { redirect } from 'next/navigation'
-import { getAdminAccessRole, getCallerEmail } from '@/lib/admin-auth'
+import {
+  getAdminAccessRole,
+  getCallerEmail,
+  getCallerPermissions,
+} from '@/lib/admin-auth'
 import WorkforceHeading from '../_components/PageHeading'
 import RolesClient from './RolesClient'
 import {
@@ -21,13 +25,21 @@ export default async function RolesPage() {
     redirect('/')
   }
 
-  const [roles, employees, memberMap, callerEmail, invitations] = await Promise.all([
-    getRoles(),
-    getEmployees(),
-    getAllRoleMembers(),
-    getCallerEmail(),
-    getWorkforceInvitations('pending'),
-  ])
+  const [roles, employees, memberMap, callerEmail, invitations, permissions] =
+    await Promise.all([
+      getRoles(),
+      getEmployees(),
+      getAllRoleMembers(),
+      getCallerEmail(),
+      getWorkforceInvitations('pending'),
+      getCallerPermissions(),
+    ])
+
+  // Mirrors the server-action gates: grant / change-role / revoke access and
+  // invitation resend/revoke all require `platform.admin` (owner-only). The
+  // UI hides those controls for anyone without it so non-owners never click a
+  // button that would throw "You don't have permission".
+  const canManageAccess = permissions.has('platform.admin')
 
   // Plain object so it crosses the server→client boundary cleanly.
   const memberIdsByRole: Record<string, string[]> = {}
@@ -43,7 +55,7 @@ export default async function RolesPage() {
         memberIdsByRole={memberIdsByRole}
         invitations={invitations}
         callerEmail={callerEmail}
-        callerIsOwner={role === 'owner'}
+        canManageAccess={canManageAccess}
       />
     </>
   )

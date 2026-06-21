@@ -3,12 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateWebsite } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { AttireBlogContent } from '@/lib/cms/attire-blog'
 
 const PAGE_KEY = 'attire-and-rings'
 const SECTION_KEY = 'blog'
 
 export async function saveAttireBlogDraft(draft: AttireBlogContent): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -21,6 +23,7 @@ export async function saveAttireBlogDraft(draft: AttireBlogContent): Promise<voi
 }
 
 export async function publishAttireBlog(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -43,6 +46,7 @@ export async function publishAttireBlog(): Promise<void> {
 }
 
 export async function discardAttireBlogDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

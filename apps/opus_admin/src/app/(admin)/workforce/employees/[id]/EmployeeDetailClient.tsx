@@ -116,7 +116,7 @@ export default function EmployeeDetailClient({
   departments,
   roles,
   managerCandidates,
-  callerIsOwner,
+  canManageAccess,
   resumeEntries,
   skills,
   certifications,
@@ -129,7 +129,7 @@ export default function EmployeeDetailClient({
   departments: Department[]
   roles: WorkforceRole[]
   managerCandidates: ManagerCandidate[]
-  callerIsOwner: boolean
+  canManageAccess: boolean
   resumeEntries: ResumeEntry[]
   skills: EmployeeSkill[]
   certifications: Certification[]
@@ -352,7 +352,7 @@ export default function EmployeeDetailClient({
           departments={departments}
           roles={roles}
           managerCandidates={managerCandidates}
-          callerIsOwner={callerIsOwner}
+          canManageAccess={canManageAccess}
           onClose={() => setEditOpen(false)}
         />
       )}

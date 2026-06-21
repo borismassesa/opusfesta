@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateOpusPass } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { OpusPassPackagesContent } from '@/lib/cms/opus-pass-packages'
 
 const PAGE_KEY = 'opus-pass-packages'
@@ -15,6 +16,7 @@ const EDITOR_PATH = '/cms/opus-pass/invitations/packages'
 const PUBLIC_PATHS = ['/invitations', '/invitations/catalog', '/invitations/cart']
 
 export async function saveOpusPassPackagesDraft(draft: OpusPassPackagesContent): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -27,6 +29,7 @@ export async function saveOpusPassPackagesDraft(draft: OpusPassPackagesContent):
 }
 
 export async function publishOpusPassPackages(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -49,6 +52,7 @@ export async function publishOpusPassPackages(): Promise<void> {
 }
 
 export async function discardOpusPassPackagesDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
