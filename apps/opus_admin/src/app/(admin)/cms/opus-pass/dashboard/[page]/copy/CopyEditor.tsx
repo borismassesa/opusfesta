@@ -2,12 +2,14 @@
 
 import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { BilingualField } from '@/components/cms/BilingualField'
+import DashboardPreview from '@/components/cms/opus-pass-dashboard/DashboardPreview'
 import type { LocalizedText } from '@/lib/cms/localized'
 import type {
   CopyFieldGroup,
   DashboardCopyContent,
   DashboardCopySlug,
 } from '@/lib/cms/opus-pass-dashboard-copy'
+import type { DashboardHeroContent } from '@/lib/cms/opus-pass-dashboard-hero'
 import { useEditorActions } from '../../EditorActionsContext'
 import {
   discardDashboardCopyDraft,
@@ -21,6 +23,7 @@ type Props = {
   groups: CopyFieldGroup[]
   initial: DashboardCopyContent
   hasDraft: boolean
+  hero: DashboardHeroContent
 }
 
 function FieldGroup({ legend, children }: { legend: string; children: ReactNode }) {
@@ -40,6 +43,7 @@ export default function CopyEditor({
   groups,
   initial,
   hasDraft: initialHasDraft,
+  hero,
 }: Props) {
   const [draft, setDraft] = useState<DashboardCopyContent>(initial)
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
@@ -108,35 +112,41 @@ export default function CopyEditor({
   }, [hasDraft, pending, message, error, draft])
 
   return (
-    <div className="max-w-2xl space-y-5 pb-12">
-      <h3 className="text-[15px] font-semibold text-gray-900">{label} — page copy</h3>
-      <p className="text-sm text-gray-500">
-        Editable text shown on the live page beyond the hero banner — empty states, buttons,
-        section headings and callouts. Leave a field blank to fall back to the built-in default.
-      </p>
+    <div className="grid grid-cols-1 gap-6 items-start pb-12 xl:grid-cols-2">
+      <div className="space-y-5">
+        <h3 className="text-[15px] font-semibold text-gray-900">{label} — page copy</h3>
+        <p className="text-sm text-gray-500">
+          Editable text shown on the live page beyond the hero banner — empty states, buttons,
+          section headings and callouts. Leave a field blank to fall back to the built-in default.
+        </p>
 
-      {groups.map((group) => (
-        <FieldGroup key={group.legend} legend={group.legend}>
-          {group.fields.map((field) => {
-            // 'list' fields hold one item per line (e.g. the "What you get"
-            // features), so they render as a multiline bilingual field too.
-            const multiline = field.kind === 'textarea' || field.kind === 'list'
-            return (
-              <div key={field.key} className="space-y-1">
-                <BilingualField
-                  label={field.label}
-                  value={draft[field.key]}
-                  onChange={(v) => set(field.key, v)}
-                  multiline={multiline}
-                  rows={field.kind === 'list' ? 4 : 3}
-                  max={field.max}
-                />
-                {field.hint && <p className="text-[11px] text-gray-400">{field.hint}</p>}
-              </div>
-            )
-          })}
-        </FieldGroup>
-      ))}
+        {groups.map((group) => (
+          <FieldGroup key={group.legend} legend={group.legend}>
+            {group.fields.map((field) => {
+              // 'list' fields hold one item per line (e.g. the "What you get"
+              // features), so they render as a multiline bilingual field too.
+              const multiline = field.kind === 'textarea' || field.kind === 'list'
+              return (
+                <div key={field.key} className="space-y-1">
+                  <BilingualField
+                    label={field.label}
+                    value={draft[field.key]}
+                    onChange={(v) => set(field.key, v)}
+                    multiline={multiline}
+                    rows={field.kind === 'list' ? 4 : 3}
+                    max={field.max}
+                  />
+                  {field.hint && <p className="text-[11px] text-gray-400">{field.hint}</p>}
+                </div>
+              )
+            })}
+          </FieldGroup>
+        ))}
+      </div>
+
+      <div className="xl:sticky xl:top-6">
+        <DashboardPreview slug={slug} hero={hero} copy={draft} />
+      </div>
     </div>
   )
 }
