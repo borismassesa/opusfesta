@@ -24,6 +24,7 @@ import {
   ChevronUp,
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
+import { useT } from '@/components/providers/UIStringsProvider'
 import { cn } from '@/lib/utils'
 
 // opus_website (the marketplace + couple planning dashboard) lives at a different
@@ -35,16 +36,18 @@ const MARKETPLACE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:30
 
 // Events comes first after Overview: pledges, guests, invites and RSVPs all
 // depend on at least one event existing, so it's the natural starting point.
+// `labelKey` resolves to an editable, bilingual label via useT('dashboard-chrome');
+// hrefs + icons stay hardcoded (routing/visuals are not content).
 const NAV = [
-  { href: '/my/dashboard', label: 'Overview', icon: LayoutDashboard },
-  { href: '/my/dashboard/events', label: 'Events', icon: CalendarHeart },
-  { href: '/my/dashboard/pledges', label: 'Pledges', icon: HandCoins },
-  { href: '/my/dashboard/guests', label: 'Guest list', icon: Users },
-  { href: '/my/dashboard/invitations', label: 'Send invites', icon: Send },
-  { href: '/my/dashboard/orders', label: 'Orders', icon: Receipt },
-  { href: '/my/dashboard/rsvps', label: 'RSVPs', icon: ClipboardCheck },
-  { href: '/my/dashboard/website', label: 'Wedding website', icon: Globe },
-  { href: '/my/dashboard/seating', label: 'Seat collection', icon: Armchair },
+  { href: '/my/dashboard', labelKey: 'nav_overview', icon: LayoutDashboard },
+  { href: '/my/dashboard/events', labelKey: 'nav_events', icon: CalendarHeart },
+  { href: '/my/dashboard/pledges', labelKey: 'nav_pledges', icon: HandCoins },
+  { href: '/my/dashboard/guests', labelKey: 'nav_guests', icon: Users },
+  { href: '/my/dashboard/invitations', labelKey: 'nav_invitations', icon: Send },
+  { href: '/my/dashboard/orders', labelKey: 'nav_orders', icon: Receipt },
+  { href: '/my/dashboard/rsvps', labelKey: 'nav_rsvps', icon: ClipboardCheck },
+  { href: '/my/dashboard/website', labelKey: 'nav_website', icon: Globe },
+  { href: '/my/dashboard/seating', labelKey: 'nav_seating', icon: Armchair },
 ] as const
 
 function NavLinks({
@@ -55,9 +58,11 @@ function NavLinks({
   collapsed?: boolean
 }) {
   const pathname = usePathname()
+  const t = useT('dashboard-chrome')
   return (
     <nav className="flex flex-col gap-1">
-      {NAV.map(({ href, label, icon: Icon }) => {
+      {NAV.map(({ href, labelKey, icon: Icon }) => {
+        const label = t(labelKey)
         const active = href === '/my/dashboard' ? pathname === href : pathname.startsWith(href)
         return (
           <Link
@@ -103,6 +108,7 @@ export default function DashboardShell({
 }) {
   const [open, setOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(defaultCollapsed)
+  const t = useT('dashboard-chrome')
 
   function toggleCollapsed() {
     setCollapsed((prev) => {
@@ -136,8 +142,8 @@ export default function DashboardShell({
           <button
             type="button"
             onClick={toggleCollapsed}
-            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            aria-label={collapsed ? t('collapse_expand') : t('collapse_collapse')}
+            title={collapsed ? t('collapse_expand') : t('collapse_collapse')}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-[#1A1A1A]/45 transition-colors hover:bg-black/[0.05] hover:text-[#1A1A1A]"
           >
             {collapsed ? (
@@ -163,7 +169,7 @@ export default function DashboardShell({
         <button
           type="button"
           onClick={() => setOpen(true)}
-          aria-label="Open menu"
+          aria-label={t('menu_open')}
           className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-black/[0.05]"
         >
           <Menu className="h-5 w-5" />
@@ -187,8 +193,8 @@ export default function DashboardShell({
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Close menu"
-                title="Close menu"
+                aria-label={t('menu_close')}
+                title={t('menu_close')}
                 className="flex h-9 w-9 items-center justify-center rounded-lg text-[#1A1A1A]/45 transition-colors hover:bg-black/[0.05] hover:text-[#1A1A1A]"
               >
                 <PanelLeftClose className="h-[18px] w-[18px]" />
@@ -234,6 +240,7 @@ function AccountFooter({
   const pathname = usePathname()
   const { signOut } = useClerk()
   const [open, setOpen] = useState(false)
+  const t = useT('dashboard-chrome')
   const active = pathname.startsWith('/my/dashboard/settings')
 
   const close = () => setOpen(false)
@@ -270,7 +277,7 @@ function AccountFooter({
             className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-[#1A1A1A] hover:bg-black/[0.04]"
           >
             <Settings className="h-4 w-4 shrink-0 text-[#1A1A1A]/45" />
-            Profile &amp; settings
+            {t('account_settings')}
           </Link>
           <a
             href={MARKETPLACE_URL}
@@ -283,8 +290,8 @@ function AccountFooter({
           >
             <Store className="h-4 w-4 shrink-0 text-[#1A1A1A]/45" />
             <span className="min-w-0 flex-1">
-              Vendors &amp; planning
-              <span className="block text-xs font-normal text-[#1A1A1A]/45">on OpusFesta</span>
+              {t('account_marketplace')}
+              <span className="block text-xs font-normal text-[#1A1A1A]/45">{t('account_marketplace_sub')}</span>
             </span>
             <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[#1A1A1A]/30" />
           </a>
@@ -302,7 +309,7 @@ function AccountFooter({
             className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-medium text-[#1A1A1A] hover:bg-black/[0.04]"
           >
             <LogOut className="h-4 w-4 shrink-0 text-[#1A1A1A]/45" />
-            Sign out
+            {t('account_sign_out')}
           </button>
         </div>
       ) : null}
@@ -312,8 +319,8 @@ function AccountFooter({
         onClick={() => setOpen((v) => !v)}
         aria-haspopup="menu"
         aria-expanded={open}
-        title="Account"
-        aria-label="Account menu"
+        title={t('account_title')}
+        aria-label={t('account_title')}
         className={cn(
           'flex w-full items-center gap-3 rounded-xl px-3 py-2 transition-colors',
           collapsed && 'justify-center px-0',
@@ -329,7 +336,7 @@ function AccountFooter({
         {collapsed ? null : (
           <>
             <span className="min-w-0 flex-1 text-left">
-              <span className="block text-sm font-medium text-[#1A1A1A]">Account</span>
+              <span className="block text-sm font-medium text-[#1A1A1A]">{t('account_label')}</span>
               <span className="block truncate text-xs text-[#1A1A1A]/55" title={email}>
                 {email}
               </span>

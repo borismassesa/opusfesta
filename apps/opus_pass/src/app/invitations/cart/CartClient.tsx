@@ -10,6 +10,7 @@ import { InvitationVisual, type Treatment } from '@/components/guests/Invitation
 import { ProductInfo } from '@/components/guests/productInfo'
 import type { CatalogProduct } from '@/data/invitations-products'
 import { useCart, MIN_GUESTS } from '@/components/providers/CartProvider'
+import { useT } from '@/components/providers/UIStringsProvider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
@@ -90,6 +91,7 @@ function PaymentLogo({ method }: { method: PaymentMethodLogo }) {
 
 // Lightweight confirm-on-delete popover (no extra dependency).
 function DeleteButton({ name, onConfirm }: { name: string; onConfirm: () => void }) {
+  const t = useT('cart')
   const [open, setOpen] = useState(false)
   return (
     <div className="relative shrink-0">
@@ -98,7 +100,7 @@ function DeleteButton({ name, onConfirm }: { name: string; onConfirm: () => void
         size="icon"
         className="text-gray-400 hover:text-red-600"
         onClick={() => setOpen((o) => !o)}
-        aria-label={`Remove ${name}`}
+        aria-label={t('remove_aria', { name })}
       >
         <Trash2 className="size-5" />
       </Button>
@@ -111,11 +113,11 @@ function DeleteButton({ name, onConfirm }: { name: string; onConfirm: () => void
                 <Trash2 className="size-6 text-destructive" />
               </div>
               <p className="text-center text-sm font-semibold text-gray-900 text-balance">
-                Remove this design from your cart?
+                {t('remove_confirm')}
               </p>
               <div className="grid w-full grid-cols-2 gap-2">
                 <Button variant="secondary" size="sm" onClick={() => setOpen(false)}>
-                  Cancel
+                  {t('remove_cancel')}
                 </Button>
                 <Button
                   variant="destructive"
@@ -126,7 +128,7 @@ function DeleteButton({ name, onConfirm }: { name: string; onConfirm: () => void
                     setOpen(false)
                   }}
                 >
-                  Remove
+                  {t('remove_confirm_cta')}
                 </Button>
               </div>
             </div>
@@ -139,6 +141,7 @@ function DeleteButton({ name, onConfirm }: { name: string; onConfirm: () => void
 
 // Editable guest count — clean shadcn stepper (min 50, step 10). Free typing allowed.
 function GuestStepper({ value, onChange }: { value: number; onChange: (n: number) => void }) {
+  const t = useT('cart')
   const [draft, setDraft] = useState<string | null>(null)
   const displayValue = draft ?? String(value)
   return (
@@ -147,7 +150,7 @@ function GuestStepper({ value, onChange }: { value: number; onChange: (n: number
         type="button"
         variant="ghost"
         size="icon"
-        aria-label="Fewer guests"
+        aria-label={t('guests_fewer')}
         onClick={() => {
           setDraft(null)
           onChange(value - 10)
@@ -160,7 +163,7 @@ function GuestStepper({ value, onChange }: { value: number; onChange: (n: number
       <input
         type="text"
         inputMode="numeric"
-        aria-label="Number of guests"
+        aria-label={t('guests_input_aria')}
         value={displayValue}
         onChange={(e) => setDraft(e.target.value)}
         onBlur={() => {
@@ -174,7 +177,7 @@ function GuestStepper({ value, onChange }: { value: number; onChange: (n: number
         type="button"
         variant="ghost"
         size="icon"
-        aria-label="More guests"
+        aria-label={t('guests_more')}
         onClick={() => {
           setDraft(null)
           onChange(value + 10)
@@ -216,6 +219,7 @@ function RecommendCard({ product, fromGuestPrice }: { product: CatalogProduct; f
 // "You might also like" — leads with designs in the same categories as the cart,
 // then pads with other designs; falls back to a general selection when empty.
 function ExploreMore({ products, fromGuestPrice }: { products: CatalogProduct[]; fromGuestPrice?: number }) {
+  const t = useT('cart')
   const { items } = useCart()
 
   const recommended = useMemo(() => {
@@ -238,19 +242,17 @@ function ExploreMore({ products, fromGuestPrice }: { products: CatalogProduct[];
       <div className="mb-6 flex items-end justify-between gap-4">
         <div>
           <h2 className="text-xl font-semibold text-gray-900">
-            {hasItems ? 'You might also like' : 'Explore invitation designs'}
+            {hasItems ? t('explore_title_has') : t('explore_title_empty')}
           </h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            {hasItems
-              ? 'More designs in the styles you’re shopping.'
-              : 'Popular designs to get you started.'}
+            {hasItems ? t('explore_subtitle_has') : t('explore_subtitle_empty')}
           </p>
         </div>
         <Link
           href="/invitations/catalog"
           className="hidden shrink-0 items-center gap-1 text-sm font-medium text-gray-700 hover:text-gray-900 sm:inline-flex"
         >
-          View all <ArrowRight size={14} />
+          {t('explore_view_all')} <ArrowRight size={14} />
         </Link>
       </div>
       <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-3 sm:gap-x-6 lg:grid-cols-4">
@@ -263,6 +265,7 @@ function ExploreMore({ products, fromGuestPrice }: { products: CatalogProduct[];
 }
 
 export default function CartClient({ products = [], fromGuestPrice }: { products?: CatalogProduct[]; fromGuestPrice?: number }) {
+  const t = useT('cart')
   const { items, subtotal, removeItem, setGuests } = useCart()
   // Digital product — prices are final (VAT-inclusive) and delivery is free.
   const discount = 0
@@ -270,8 +273,8 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
 
   const handleApplyCoupon = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
-    toast('No promo codes are active right now.', {
-      description: 'Check back later — discounts will apply here automatically.',
+    toast(t('coupon_none_active'), {
+      description: t('coupon_none_active_desc'),
     })
   }
 
@@ -282,7 +285,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
           href="/invitations/catalog"
           className="mb-4 inline-flex items-center text-sm font-medium text-gray-700 hover:text-gray-900"
         >
-          ← Back to designs
+          {t('back_to_designs')}
         </Link>
         <CheckoutStepper current="cart" />
 
@@ -291,9 +294,11 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
           <div className="lg:col-span-2">
             <Card className="w-full border-0 shadow-[0_2px_12px_-6px_rgba(0,0,0,0.12)]">
               <div className="mx-6 flex items-center justify-between gap-4 border-b border-gray-100 pb-5">
-                <CardTitle className="text-2xl font-semibold text-gray-900">Your Cart</CardTitle>
+                <CardTitle className="text-2xl font-semibold text-gray-900">{t('cart_title')}</CardTitle>
                 <span className="text-muted-foreground shrink-0 text-sm">
-                  {items.length} {items.length === 1 ? 'item' : 'items'} in cart
+                  {items.length === 1
+                    ? t('count_one', { n: items.length })
+                    : t('count_other', { n: items.length })}
                 </span>
               </div>
 
@@ -303,15 +308,15 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                     <div className="mb-3 inline-flex size-12 items-center justify-center rounded-full bg-gray-100 text-gray-400">
                       <ShoppingBag size={22} />
                     </div>
-                    <p className="text-sm font-semibold text-gray-700">Your cart is empty.</p>
+                    <p className="text-sm font-semibold text-gray-700">{t('empty_title')}</p>
                     <p className="text-muted-foreground mt-1 text-xs">
-                      Browse invitation designs and add one to get started.
+                      {t('empty_body')}
                     </p>
                     <Link
                       href="/invitations/catalog"
                       className="mt-4 inline-block rounded-full bg-gray-900 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-800"
                     >
-                      Browse designs
+                      {t('empty_cta')}
                     </Link>
                   </div>
                 </CardContent>
@@ -349,7 +354,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                               <span
                                 className={`w-fit rounded px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide ${pill}`}
                               >
-                                {item.tier} Package
+                                {t('item_package_suffix', { tier: item.tier })}
                               </span>
                             )}
                             {item.addOns && item.addOns.length > 0 && (
@@ -367,7 +372,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                           </div>
                           <div className="flex items-center gap-2">
                             <Clock className="size-4 text-gray-500" />
-                            <p className="text-muted-foreground text-sm">Delivered within 24 hours</p>
+                            <p className="text-muted-foreground text-sm">{t('item_delivered')}</p>
                           </div>
                         </div>
                       </div>
@@ -376,7 +381,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                         {item.guests != null && (
                           <div className="flex flex-col items-center gap-1.5">
                             <span className="text-muted-foreground text-[10px] font-medium uppercase tracking-wide">
-                              Guests
+                              {t('guests_label')}
                             </span>
                             <GuestStepper value={item.guests} onChange={(n) => setGuests(item.id, n)} />
                           </div>
@@ -399,14 +404,14 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
           <div className="space-y-6">
             <Card className="w-full border-0 shadow-[0_2px_12px_-6px_rgba(0,0,0,0.12)]">
               <CardHeader className="gap-2">
-                <CardTitle className="text-xl font-semibold">Apply Coupon</CardTitle>
-                <CardDescription className="text-base">Have a promo code?</CardDescription>
+                <CardTitle className="text-xl font-semibold">{t('coupon_title')}</CardTitle>
+                <CardDescription className="text-base">{t('coupon_subtitle')}</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleApplyCoupon} className="flex gap-2.5">
-                  <Input type="text" placeholder="Coupon code" className="w-full" />
+                  <Input type="text" placeholder={t('coupon_placeholder')} className="w-full" />
                   <Button type="submit" size="lg">
-                    Apply
+                    {t('coupon_apply')}
                   </Button>
                 </form>
               </CardContent>
@@ -414,26 +419,26 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
 
             <Card className="w-full border-0 text-base shadow-[0_2px_12px_-6px_rgba(0,0,0,0.12)]">
               <CardHeader>
-                <CardTitle className="text-xl font-semibold">Price Details</CardTitle>
+                <CardTitle className="text-xl font-semibold">{t('price_title')}</CardTitle>
               </CardHeader>
               <CardContent className="space-y-5">
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Price</span>
+                  <span className="text-muted-foreground">{t('price_label')}</span>
                   <span className="font-medium tabular-nums">{formatTzs(subtotal)}</span>
                 </div>
                 {discount > 0 && (
                   <div className="flex items-center justify-between">
-                    <span className="text-muted-foreground">Discount</span>
+                    <span className="text-muted-foreground">{t('discount_label')}</span>
                     <span className="font-medium tabular-nums">-{formatTzs(discount)}</span>
                   </div>
                 )}
                 <div className="flex items-center justify-between">
-                  <span className="text-muted-foreground">Delivery Charges</span>
-                  <span className="font-medium">Free Delivery</span>
+                  <span className="text-muted-foreground">{t('delivery_label')}</span>
+                  <span className="font-medium">{t('delivery_free')}</span>
                 </div>
                 <Separator />
                 <div className="flex items-center justify-between text-lg font-semibold">
-                  <span>Total</span>
+                  <span>{t('total_label')}</span>
                   <span className="tabular-nums">{formatTzs(total)}</span>
                 </div>
               </CardContent>
@@ -447,11 +452,11 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
                       : 'bg-(--accent) text-(--on-accent) hover:bg-(--accent-hover)'
                   }`}
                 >
-                  Continue to checkout
+                  {t('checkout_cta')}
                   {items.length > 0 && <ArrowRight size={15} className="shrink-0" />}
                 </Link>
                 <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <p className="text-muted-foreground">We accept:</p>
+                  <p className="text-muted-foreground">{t('we_accept')}</p>
                   <div className="flex flex-wrap items-center gap-1.5">
                     {PAYMENT_METHODS.map((method) => (
                       <PaymentLogo key={method.id} method={method} />
@@ -464,7 +469,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
             {items.length > 0 && (
               <p className="flex items-center justify-center gap-1.5 text-xs text-gray-600">
                 <ShieldCheck size={13} className="text-emerald-600" />
-                Secure checkout · designs delivered within 24 hours
+                {t('secure_note')}
               </p>
             )}
           </div>
@@ -480,7 +485,9 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
           <div className="mx-auto flex max-w-2xl items-center justify-between gap-4">
             <div className="leading-tight">
               <p className="text-[11px] text-muted-foreground">
-                {items.length} {items.length === 1 ? 'item' : 'items'}
+                {items.length === 1
+                  ? t('mobile_count_one', { n: items.length })
+                  : t('mobile_count_other', { n: items.length })}
               </p>
               <p className="text-lg font-semibold tabular-nums text-gray-900">{formatTzs(total)}</p>
             </div>
@@ -488,7 +495,7 @@ export default function CartClient({ products = [], fromGuestPrice }: { products
               href="/invitations/address"
               className="inline-flex flex-1 max-w-[58%] items-center justify-center gap-2 whitespace-nowrap rounded-full bg-(--accent) px-6 py-3 text-[13px] font-extrabold uppercase tracking-[0.06em] text-(--on-accent) transition hover:bg-(--accent-hover)"
             >
-              Checkout
+              {t('mobile_checkout')}
               <ArrowRight size={15} className="shrink-0" />
             </Link>
           </div>

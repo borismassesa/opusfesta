@@ -12,6 +12,7 @@ import {
   LayoutPanelTop,
   Mail,
   Megaphone,
+  PanelTop,
   Save,
   Send,
   Trash2,
@@ -87,6 +88,14 @@ const sections: CmsSection[] = [
     href: '/cms/opus-pass/invitations/faqs',
     status: 'live',
     description: 'Frequently asked questions — section heading plus add/remove Q&A pairs.',
+  },
+  {
+    key: 'navbar',
+    label: 'Navbar',
+    icon: PanelTop,
+    href: '/cms/opus-pass/invitations/navbar',
+    status: 'live',
+    description: 'Mega-menu labels & links shown in the top navigation.',
   },
 ]
 

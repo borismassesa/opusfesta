@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Send, CheckCircle2, Wallet } from 'lucide-react'
 import { submitPublicPledge } from './actions'
+import { useT } from '@/components/providers/UIStringsProvider'
 import {
   resolvePledgePage,
   COVER_TONES,
@@ -44,6 +45,7 @@ export default function PledgeForm({
   paymentMethods,
   config,
 }: Props) {
+  const t = useT('forms-pledge')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -95,11 +97,11 @@ export default function PledgeForm({
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) {
-      toast.error('Please enter your name')
+      toast.error(t('error_name'))
       return
     }
     if (!(Number(amount) > 0)) {
-      toast.error('Please enter the amount you can pledge')
+      toast.error(t('error_amount'))
       return
     }
     startTransition(async () => {
@@ -114,7 +116,7 @@ export default function PledgeForm({
         })
         setDone(true)
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Could not save your pledge')
+        toast.error(err instanceof Error ? err.message : t('error_submit'))
       }
     })
   }
@@ -188,12 +190,12 @@ export default function PledgeForm({
           {done ? (
             <div className="text-center lg:py-10">
               <CheckCircle2 className="mx-auto h-12 w-12 text-[#3f6b1f]" />
-              <h2 className="mt-4 font-serif text-3xl text-[#1A1A1A]">Asante sana! 💚</h2>
+              <h2 className="mt-4 font-serif text-3xl text-[#1A1A1A]">{t('success_heading')}</h2>
               <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-[#1A1A1A]/60">
-                {coupleName} have received your pledge. They’ll be in touch with the details.
+                {t('success_body', { coupleName })}
               </p>
               {paymentMethods.length || paymentInstructions?.trim() ? (
-                <PayCard methods={paymentMethods} instructions={paymentInstructions} />
+                <PayCard methods={paymentMethods} instructions={paymentInstructions} title={t('pay_title')} />
               ) : null}
             </div>
           ) : (
@@ -207,25 +209,25 @@ export default function PledgeForm({
               </p>
 
               {paymentMethods.length || paymentInstructions?.trim() ? (
-                <PayCard methods={paymentMethods} instructions={paymentInstructions} />
+                <PayCard methods={paymentMethods} instructions={paymentInstructions} title={t('pay_title')} />
               ) : null}
 
               <form onSubmit={submit} className="mt-8 space-y-5">
-                <Field label="Your name" required accent={cfg.accent}>
+                <Field label={t('label_name')} required accent={cfg.accent}>
                   <input
                     required
                     autoFocus
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Asha Mussa"
+                    placeholder={t('placeholder_name')}
                     className={fieldClass}
                   />
                 </Field>
 
-                <Field label="Amount you’d like to pledge" required accent={cfg.accent}>
+                <Field label={t('label_amount')} required accent={cfg.accent}>
                   <div className="relative">
                     <span className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-[#1A1A1A]/35">
-                      TZS
+                      {t('amount_currency')}
                     </span>
                     <input
                       required
@@ -234,13 +236,13 @@ export default function PledgeForm({
                       inputMode="numeric"
                       value={amount}
                       onChange={(e) => setAmount(e.target.value)}
-                      placeholder="100,000"
+                      placeholder={t('placeholder_amount')}
                       className={`${fieldClass} pl-[3.25rem]`}
                     />
                   </div>
                 </Field>
 
-                <Field label="When can you pay by?">
+                <Field label={t('label_promised_date')}>
                   <input
                     type="date"
                     value={promisedDate}
@@ -250,32 +252,32 @@ export default function PledgeForm({
                 </Field>
 
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <Field label="WhatsApp / mobile">
+                  <Field label={t('label_whatsapp')}>
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="0712 345 678"
+                      placeholder={t('placeholder_whatsapp')}
                       className={fieldClass}
                     />
                   </Field>
-                  <Field label="Email">
+                  <Field label={t('label_email')}>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      placeholder={t('placeholder_email')}
                       className={fieldClass}
                     />
                   </Field>
                 </div>
 
-                <Field label="A note for the couple">
+                <Field label={t('label_message')}>
                   <textarea
                     rows={2}
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    placeholder="Hongera! Anything you’d like to add…"
+                    placeholder={t('placeholder_message')}
                     className={fieldClass}
                   />
                 </Field>
@@ -287,7 +289,7 @@ export default function PledgeForm({
                   className="inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-bold shadow-[0_10px_24px_-12px_rgba(0,0,0,0.5)] transition hover:brightness-95 disabled:opacity-50"
                 >
                   <Send className="h-4 w-4" />
-                  {pending ? 'Sending…' : cfg.buttonLabel}
+                  {pending ? t('send_pending') : cfg.buttonLabel}
                 </button>
 
                 <p className="text-center text-[11px] leading-relaxed text-[#1A1A1A]/45">
@@ -352,9 +354,11 @@ function Field({
 function PayCard({
   methods,
   instructions,
+  title,
 }: {
   methods: PledgePaymentMethod[]
   instructions: string | null
+  title: string
 }) {
   const filled = methods.filter((m) => m.label?.trim() || m.value?.trim())
   return (
@@ -363,7 +367,7 @@ function PayCard({
         <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#9FE870]/30 text-[#3f6b1f]">
           <Wallet className="h-3.5 w-3.5" />
         </span>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#3f6b1f]">How to pay</p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#3f6b1f]">{title}</p>
       </div>
       {filled.length ? (
         <ul className="mt-3 space-y-2.5">

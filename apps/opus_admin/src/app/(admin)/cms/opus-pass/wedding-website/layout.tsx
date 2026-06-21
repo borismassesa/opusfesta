@@ -8,6 +8,7 @@ import {
   HelpCircle,
   LayoutPanelTop,
   MessageSquareQuote,
+  PanelTop,
   Save,
   Send,
   Sparkles,
@@ -69,6 +70,14 @@ const sections: CmsSection[] = [
     href: '/cms/opus-pass/wedding-website/faqs',
     status: 'live',
     description: 'Frequently asked questions — section heading plus add/remove Q&A pairs.',
+  },
+  {
+    key: 'navbar',
+    label: 'Navbar',
+    icon: PanelTop,
+    href: '/cms/opus-pass/wedding-website/navbar',
+    status: 'live',
+    description: 'Mega-menu labels & links shown in the top navigation.',
   },
 ]
 

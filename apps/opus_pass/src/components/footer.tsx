@@ -1,48 +1,53 @@
 import Link from 'next/link'
 import Reveal from '@/components/ui/Reveal'
+import type { FooterStrings } from '@/lib/cms/ui-strings-fallback'
 
-type FooterLink = { label: string; href: string }
-type FooterColumn = { title: string; links: FooterLink[] }
+// Footer labels are CMS-editable + bilingual (resolved server-side and passed
+// in as `strings`). Hrefs stay hardcoded — only the visible text is editable.
+type FooterColumn = { title: string; links: { label: string; href: string }[] }
 
-const columns: FooterColumn[] = [
-  {
-    title: 'Products',
-    links: [
-      { label: 'Invitations', href: '/invitations' },
-      { label: "Guests & RSVP's", href: '/guests-and-rsvp' },
-      { label: 'Wedding Website', href: '/websites' },
-    ],
-  },
-  {
-    title: 'Templates',
-    links: [
-      { label: 'Save the Dates', href: '/invitations/save-the-date' },
-      { label: 'Wedding Invitations', href: '/invitations/wedding' },
-      { label: 'Send-Off & Kitchen Party', href: '/invitations/send-off' },
-      { label: 'Kadi za Michango', href: '/invitations/kadi-za-michango' },
-    ],
-  },
-  {
-    title: 'Help',
-    links: [
-      { label: 'Help Centre', href: '/help' },
-      { label: 'How it works', href: '/how-it-works' },
-      { label: 'Pricing', href: '/pricing' },
-      { label: 'Contact', href: '/contact' },
-    ],
-  },
-  {
-    title: 'Company',
-    links: [
-      { label: 'About OpusPass', href: '/about' },
-      { label: 'Careers', href: '/careers' },
-      { label: 'Press', href: '/press' },
-      { label: 'Status', href: '/status' },
-    ],
-  },
-]
+function buildColumns(s: FooterStrings): FooterColumn[] {
+  return [
+    {
+      title: s.col_products,
+      links: [
+        { label: s.link_invitations, href: '/invitations' },
+        { label: s.link_guests, href: '/guests-and-rsvp' },
+        { label: s.link_website, href: '/websites' },
+      ],
+    },
+    {
+      title: s.col_templates,
+      links: [
+        { label: s.link_save_the_dates, href: '/invitations/save-the-date' },
+        { label: s.link_wedding_invitations, href: '/invitations/wedding' },
+        { label: s.link_send_off, href: '/invitations/send-off' },
+        { label: s.link_kadi_michango, href: '/invitations/kadi-za-michango' },
+      ],
+    },
+    {
+      title: s.col_help,
+      links: [
+        { label: s.link_help_centre, href: '/help' },
+        { label: s.link_how_it_works, href: '/how-it-works' },
+        { label: s.link_pricing, href: '/pricing' },
+        { label: s.link_contact, href: '/contact' },
+      ],
+    },
+    {
+      title: s.col_company,
+      links: [
+        { label: s.link_about, href: '/about' },
+        { label: s.link_careers, href: '/careers' },
+        { label: s.link_press, href: '/press' },
+        { label: s.link_status, href: '/status' },
+      ],
+    },
+  ]
+}
 
-export default function Footer() {
+export default function Footer({ strings }: { strings: FooterStrings }) {
+  const columns = buildColumns(strings)
   return (
     <footer className="bg-white pt-20 pb-12 px-6 border-t border-gray-200">
       <div className="max-w-6xl mx-auto">
@@ -54,7 +59,7 @@ export default function Footer() {
               <h4 className="font-bold mb-4 text-[#1A1A1A]">{col.title}</h4>
               <ul className="space-y-3 text-gray-500">
                 {col.links.map((link) => (
-                  <li key={link.label}>
+                  <li key={link.href}>
                     <Link href={link.href} className="hover:text-[#1A1A1A] transition-colors">
                       {link.label}
                     </Link>
@@ -91,12 +96,12 @@ export default function Footer() {
 
         <div className="flex flex-col items-center gap-4 md:flex-row md:justify-between md:gap-0 mt-8 pt-8 border-t border-gray-100 text-xs text-gray-400">
           <div className="flex flex-wrap justify-center gap-x-6 gap-y-2 md:justify-start">
-            <Link href="/terms" className="hover:text-[#1A1A1A] transition-colors">Terms of Use</Link>
-            <Link href="/privacy" className="hover:text-[#1A1A1A] transition-colors">Privacy Policy</Link>
-            <Link href="/cookies" className="hover:text-[#1A1A1A] transition-colors">Cookie Policy</Link>
-            <Link href="/copyright" className="hover:text-[#1A1A1A] transition-colors">Copyright</Link>
+            <Link href="/terms" className="hover:text-[#1A1A1A] transition-colors">{strings.legal_terms}</Link>
+            <Link href="/privacy" className="hover:text-[#1A1A1A] transition-colors">{strings.legal_privacy}</Link>
+            <Link href="/cookies" className="hover:text-[#1A1A1A] transition-colors">{strings.legal_cookies}</Link>
+            <Link href="/copyright" className="hover:text-[#1A1A1A] transition-colors">{strings.legal_copyright}</Link>
           </div>
-          <span>© 2026 OpusPass. All rights reserved.</span>
+          <span>{strings.copyright}</span>
           <div className="flex gap-4">
             {/* WhatsApp */}
             <a href="https://wa.me/255799242471" target="_blank" rel="noopener noreferrer" aria-label="WhatsApp" className="text-gray-400 hover:text-[#1A1A1A] transition-colors">

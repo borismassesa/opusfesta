@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { CalendarHeart, MapPin, Clock, Check, PartyPopper, Heart } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
+import { useT } from '@/components/providers/UIStringsProvider'
 import { submitPublicRsvp, type PublicRsvpResponse } from '@/lib/dashboard/actions'
 import { eventTypeLabel, type RsvpStatus } from '@/lib/dashboard/types'
 import type { PublicRsvpData } from '@/lib/dashboard/queries'
@@ -19,8 +20,8 @@ interface Answer {
   guest_message: string
 }
 
-function formatWhen(value: string | null): string {
-  if (!value) return 'Date to be confirmed'
+function formatWhen(value: string | null, tbc: string): string {
+  if (!value) return tbc
   return new Date(value).toLocaleString('en-GB', {
     weekday: 'long',
     day: 'numeric',
@@ -32,6 +33,7 @@ function formatWhen(value: string | null): string {
 }
 
 export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; token: string }) {
+  const t = useT('forms-rsvp')
   const [answers, setAnswers] = useState<Record<string, Answer>>(() =>
     Object.fromEntries(
       data.events.map((e) => [
@@ -68,54 +70,58 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
       }
     })
     if (responses.some((r) => r.rsvp_status === 'pending')) {
-      toast.error('Please answer for each event')
+      toast.error(t('error_answer_each'))
       return
     }
     startTransition(async () => {
       const res = await submitPublicRsvp(token, responses)
       if (res.ok) {
         setSubmitted(true)
-        toast.success('Thank you! Your RSVP is saved.')
+        toast.success(t('toast_saved'))
       } else {
-        toast.error(res.error ?? 'Could not save your reply')
+        toast.error(res.error ?? t('error_save'))
       }
     })
   }
 
   if (data.events.length === 0) {
     return (
-      <Shell coupleName={data.coupleName}>
+      <Shell coupleName={data.coupleName} poweredBy={t('powered_by', { coupleName: data.coupleName })}>
         <div className="text-center">
           <PartyPopper className="mx-auto h-10 w-10 text-[#8e57b3]" />
-          <h1 className="mt-4 text-2xl font-bold text-[#1A1A1A]">Hi {data.guest.full_name}!</h1>
-          <p className="mt-2 text-[#1A1A1A]/60">
-            Your invitation details are being finalised. Please check back soon.
-          </p>
+          <h1 className="mt-4 text-2xl font-bold text-[#1A1A1A]">
+            {t('empty_greeting', { name: data.guest.full_name })}
+          </h1>
+          <p className="mt-2 text-[#1A1A1A]/60">{t('empty_body')}</p>
         </div>
       </Shell>
     )
   }
 
   return (
-    <Shell coupleName={data.coupleName} weddingDate={data.weddingDate}>
+    <Shell
+      coupleName={data.coupleName}
+      weddingDate={data.weddingDate}
+      poweredBy={t('powered_by', { coupleName: data.coupleName })}
+    >
       <div className="text-center">
-        <p className="text-sm uppercase tracking-[0.2em] text-[#8e57b3]">You're invited</p>
+        <p className="text-sm uppercase tracking-[0.2em] text-[#8e57b3]">{t('eyebrow')}</p>
         <h1 className="mt-2 text-3xl font-bold tracking-tight text-[#1A1A1A]">{data.coupleName}</h1>
-        <p className="mt-2 text-[#1A1A1A]/60">Hi {data.guest.full_name}, we'd love to celebrate with you.</p>
+        <p className="mt-2 text-[#1A1A1A]/60">
+          {t('header_greeting', { name: data.guest.full_name })}
+        </p>
       </div>
 
       {submitted ? (
         <div className="mt-8 rounded-2xl border border-emerald-200 bg-emerald-50 p-6 text-center">
           <Check className="mx-auto h-8 w-8 text-emerald-600" />
-          <h2 className="mt-3 text-lg font-semibold text-[#1A1A1A]">Your RSVP is saved</h2>
-          <p className="mt-1 text-sm text-[#1A1A1A]/60">
-            Thank you! You can update your response below if anything changes.
-          </p>
+          <h2 className="mt-3 text-lg font-semibold text-[#1A1A1A]">{t('submitted_title')}</h2>
+          <p className="mt-1 text-sm text-[#1A1A1A]/60">{t('submitted_body')}</p>
           <button
             onClick={() => setSubmitted(false)}
             className="mt-4 text-sm font-semibold text-[#8e57b3] hover:underline"
           >
-            Change my response
+            {t('submitted_change')}
           </button>
         </div>
       ) : (
@@ -135,7 +141,7 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
                     </p>
                     <div className="mt-2 space-y-1 text-sm text-[#1A1A1A]/60">
                       <p className="flex items-center gap-2">
-                        <Clock className="h-4 w-4 text-[#1A1A1A]/35" /> {formatWhen(e.starts_at)}
+                        <Clock className="h-4 w-4 text-[#1A1A1A]/35" /> {formatWhen(e.starts_at, t('date_tbc'))}
                       </p>
                       {e.venue_name || e.city ? (
                         <p className="flex items-center gap-2">
@@ -143,7 +149,7 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
                           {[e.venue_name, e.address, e.city].filter(Boolean).join(', ')}
                         </p>
                       ) : null}
-                      {e.dress_code ? <p className="text-xs">Dress code: {e.dress_code}</p> : null}
+                      {e.dress_code ? <p className="text-xs">{t('dress_code_prefix')} {e.dress_code}</p> : null}
                       {e.description ? <p className="text-sm">{e.description}</p> : null}
                     </div>
                   </div>
@@ -153,7 +159,12 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   {(['attending', 'maybe', 'declined'] as RsvpStatus[]).map((s) => {
                     const active = a.rsvp_status === s
-                    const label = s === 'attending' ? "I'll be there" : s === 'maybe' ? 'Maybe' : "Can't make it"
+                    const label =
+                      s === 'attending'
+                        ? t('status_attending')
+                        : s === 'maybe'
+                          ? t('status_maybe')
+                          : t('status_declined')
                     return (
                       <button
                         key={s}
@@ -180,7 +191,7 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
                     {data.guest.max_party_size > 1 ? (
                       <label className="block">
                         <span className="mb-1.5 block text-sm font-medium text-[#1A1A1A]/80">
-                          How many in your party?
+                          {t('party_size_label')}
                         </span>
                         <select
                           className={inputClass}
@@ -189,7 +200,7 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
                         >
                           {Array.from({ length: data.guest.max_party_size }, (_, i) => i + 1).map((n) => (
                             <option key={n} value={n}>
-                              {n} {n === 1 ? 'guest' : 'guests'}
+                              {n === 1 ? t('party_size_one', { n }) : t('party_size_other', { n })}
                             </option>
                           ))}
                         </select>
@@ -198,13 +209,13 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
 
                     {e.collect_meal_choice && e.meal_options.length > 0 ? (
                       <label className="block">
-                        <span className="mb-1.5 block text-sm font-medium text-[#1A1A1A]/80">Meal choice</span>
+                        <span className="mb-1.5 block text-sm font-medium text-[#1A1A1A]/80">{t('meal_label')}</span>
                         <select
                           className={inputClass}
                           value={a.meal_choice}
                           onChange={(ev) => update(e.invitation.id, { meal_choice: ev.target.value })}
                         >
-                          <option value="">Select…</option>
+                          <option value="">{t('meal_placeholder')}</option>
                           {e.meal_options.map((m) => (
                             <option key={m} value={m}>
                               {m}
@@ -216,13 +227,13 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
 
                     <label className="block">
                       <span className="mb-1.5 block text-sm font-medium text-[#1A1A1A]/80">
-                        Dietary needs <span className="font-normal text-[#1A1A1A]/40">(optional)</span>
+                        {t('dietary_label')} <span className="font-normal text-[#1A1A1A]/40">{t('dietary_optional')}</span>
                       </span>
                       <input
                         className={inputClass}
                         value={a.dietary_notes}
                         onChange={(ev) => update(e.invitation.id, { dietary_notes: ev.target.value })}
-                        placeholder="Allergies, preferences…"
+                        placeholder={t('dietary_placeholder')}
                       />
                     </label>
                   </div>
@@ -230,7 +241,7 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
 
                 <label className="mt-3 block">
                   <span className="mb-1.5 block text-sm font-medium text-[#1A1A1A]/80">
-                    Message to the couple <span className="font-normal text-[#1A1A1A]/40">(optional)</span>
+                    {t('message_label')} <span className="font-normal text-[#1A1A1A]/40">{t('message_optional')}</span>
                   </span>
                   <textarea
                     className={inputClass}
@@ -248,7 +259,7 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
             disabled={pending}
             className="w-full rounded-xl bg-[#C9A0DC] px-4 py-3.5 text-sm font-semibold text-[#1A1A1A] transition-colors hover:bg-[#b97fd0] disabled:opacity-50"
           >
-            {pending ? 'Sending…' : 'Send my RSVP'}
+            {pending ? t('send_pending') : t('send_cta')}
           </button>
         </div>
       )}
@@ -258,12 +269,13 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
 
 function Shell({
   children,
-  coupleName,
   weddingDate,
+  poweredBy,
 }: {
   children: React.ReactNode
   coupleName: string
   weddingDate?: string | null
+  poweredBy: string
 }) {
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#F3E9FA] via-[#FBF7F2] to-white">
@@ -284,9 +296,7 @@ function Shell({
         <div className="rounded-3xl bg-white/70 p-6 shadow-[0_8px_40px_rgba(0,0,0,0.06)] backdrop-blur sm:p-8">
           {children}
         </div>
-        <p className="mt-6 text-center text-xs text-[#1A1A1A]/40">
-          Powered by OpusPass · {coupleName}
-        </p>
+        <p className="mt-6 text-center text-xs text-[#1A1A1A]/40">{poweredBy}</p>
       </div>
     </div>
   )

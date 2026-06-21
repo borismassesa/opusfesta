@@ -2,8 +2,11 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 import { cookies } from 'next/headers'
 import DashboardShell from '@/components/dashboard/DashboardShell'
+import { UIStringsProvider } from '@/components/providers/UIStringsProvider'
 import { requireDashboardUser } from '@/lib/dashboard/auth'
 import { getCoupleProfile, coupleDisplayName } from '@/lib/dashboard/queries'
+import { getLocale } from '@/lib/cms/locale'
+import { loadUiStrings } from '@/lib/cms/ui-strings'
 
 export const dynamic = 'force-dynamic'
 
@@ -17,15 +20,19 @@ export default async function MyLayout({ children }: { children: ReactNode }) {
   const coupleName = coupleDisplayName(profile)
   const initial = (user.name ?? user.email).charAt(0).toUpperCase()
   const collapsed = (await cookies()).get('sidebar_collapsed')?.value === '1'
+  const locale = await getLocale()
+  const dashboardChrome = await loadUiStrings('dashboard-chrome', locale)
 
   return (
-    <DashboardShell
-      coupleName={coupleName}
-      userEmail={user.email}
-      userInitial={initial}
-      defaultCollapsed={collapsed}
-    >
-      {children}
-    </DashboardShell>
+    <UIStringsProvider bundles={{ 'dashboard-chrome': dashboardChrome }}>
+      <DashboardShell
+        coupleName={coupleName}
+        userEmail={user.email}
+        userInitial={initial}
+        defaultCollapsed={collapsed}
+      >
+        {children}
+      </DashboardShell>
+    </UIStringsProvider>
   )
 }

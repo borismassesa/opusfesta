@@ -9,6 +9,7 @@ import Logo from '@/components/ui/Logo'
 import CartMenu from '@/components/CartMenu'
 import NotificationsBell from '@/components/NotificationsBell'
 import { LocaleToggle } from '@/components/LocaleToggle'
+import { useT } from '@/components/providers/UIStringsProvider'
 import { UserButton, useUser } from '@clerk/nextjs'
 import {
   Menu,
@@ -32,128 +33,136 @@ import {
 type NavLink = { label: string; href?: string; Icon?: LucideIcon; subLinks?: string[] }
 type PhotoGridItem = { label: string; image: string; href?: string }
 
-const guestsPhotoGrid: PhotoGridItem[] = [
-  { label: 'Guest List', image: '/assets/images/mauzo_crew.jpg', href: '/guests-and-rsvp' },
-  { label: 'RSVP Tracking', image: '/assets/images/churchcouples.jpg', href: '/guests-and-rsvp' },
-  { label: 'Invitations', image: '/assets/images/cutesy_couple.jpg', href: '/invitations' },
-  { label: 'Seating Plan', image: '/assets/images/couples_together.jpg', href: '/guests-and-rsvp' },
-]
-
-const websitesPhotoGrid: PhotoGridItem[] = [
-  { label: 'Templates', image: '/assets/images/coupleswithpiano.jpg' },
-  { label: 'Photo Gallery', image: '/assets/images/beautiful_bride.jpg' },
-  { label: 'RSVPs', image: '/assets/images/authentic_couple.jpg' },
-  { label: 'Travel Info', image: '/assets/images/bride_umbrella.jpg' },
-]
-
-const navItems: Array<{
-  label: string
-  card: { image: string; title: string; description: string; linkText: string; href?: string }
-  columns: Array<{ title: string; links: NavLink[] }>
-  photoGridTitle?: string
-  photoGrid?: PhotoGridItem[]
-}> = [
-  {
-    label: 'Invitations',
-    card: {
-      image: 'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=800&q=80',
-      title: 'WEDDING INVITATIONS',
-      description: 'Designer-worthy digital invitations for every wedding moment, sent by WhatsApp or SMS.',
-      linkText: 'Browse all designs',
-      href: '/invitations',
-    },
-    columns: [
-      {
-        title: 'Browse',
-        links: [
-          { Icon: Users, label: 'All Designs', href: '/invitations/catalog' },
-          { Icon: CheckCircle2, label: 'Save the Dates', href: '/invitations/save-the-date' },
-          { Icon: MessageCircle, label: 'Wedding Invitations', href: '/invitations/wedding' },
-          { Icon: MapPin, label: 'Send-Off & Kitchen Party', href: '/invitations/send-off' },
-          { Icon: Heart, label: 'Kadi za Michango', href: '/invitations/kadi-za-michango' },
-        ],
-      },
-      {
-        title: 'Resources',
-        links: [
-          { Icon: BookOpen, label: 'Invitation Wording', href: '/invitations' },
-          { Icon: PenLine, label: 'RSVP Wording Ideas', href: '/invitations' },
-        ],
-      },
-    ],
-    photoGridTitle: 'Wedding Paper',
-    photoGrid: guestsPhotoGrid.map((item) => ({ ...item, href: '/invitations' })),
-  },
-  {
-    label: "Guests & RSVP's",
-    card: {
-      image: '/assets/images/mauzo_crew.jpg',
-      title: 'GUESTS & RSVPS',
-      description: 'Send digital invites by WhatsApp or SMS and watch RSVPs roll in live.',
-      linkText: 'Manage your guests',
-      href: '/guests-and-rsvp',
-    },
-    columns: [
-      {
-        title: 'Manage',
-        links: [
-          { Icon: Users, label: 'Guest List Manager', href: '/guests-and-rsvp' },
-          { Icon: CheckCircle2, label: 'RSVP Tracking', href: '/guests-and-rsvp' },
-          { Icon: Share2, label: 'WhatsApp & SMS Send', href: '/guests-and-rsvp' },
-          { Icon: MapPin, label: 'Seating Chart', href: '/guests-and-rsvp' },
-        ],
-      },
-      {
-        title: 'Resources',
-        links: [
-          { Icon: BookOpen, label: 'RSVP Wording Ideas', href: '/guests-and-rsvp' },
-          { Icon: PenLine, label: 'Guest Etiquette Tips', href: '/guests-and-rsvp' },
-        ],
-      },
-    ],
-    photoGridTitle: 'Guest Tools',
-    photoGrid: guestsPhotoGrid,
-  },
-  {
-    label: 'Wedding Website',
-    card: {
-      image: 'https://images.unsplash.com/photo-1461301214746-1e109215d6d3?auto=format&fit=crop&w=800&q=80',
-      title: 'WEDDING WEBSITE',
-      description: 'Build a beautiful wedding website in minutes and share it with your guests.',
-      linkText: 'Create your website',
-      href: '/websites',
-    },
-    columns: [
-      {
-        title: 'Features',
-        links: [
-          { Icon: Globe, label: 'Free Wedding Website', href: '/websites' },
-          { Icon: LinkIcon, label: 'Custom Link', href: '/websites' },
-          { Icon: Heart, label: 'Beautiful Templates', href: '/websites' },
-          { Icon: CheckCircle2, label: 'RSVP Collection', href: '/websites' },
-          { Icon: MapPin, label: 'Venue & Travel Info', href: '/websites' },
-        ],
-      },
-      {
-        title: 'Resources',
-        links: [
-          { Icon: Monitor, label: 'Website Examples', href: '/websites' },
-          { Icon: ImageIcon, label: 'Photo Gallery Tips', href: '/websites' },
-          { Icon: Share2, label: 'Sharing with Guests', href: '/websites' },
-        ],
-      },
-    ],
-    photoGridTitle: 'Website Ideas',
-    photoGrid: websitesPhotoGrid.map((item) => ({ ...item, href: '/websites' })),
-  },
-]
-
 export default function Navbar() {
   const router = useRouter()
+  const t = useT('navbar')
   const [activeMenu, setActiveMenu] = useState<string | null>(null)
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mobileExpanded, setMobileExpanded] = useState<string | null>(null)
   const { isSignedIn, isLoaded } = useUser()
+
+  // Built from CMS-resolved strings (labels) + hardcoded hrefs/icons/images.
+  // Defined inside the component so labels can call t(). The `label` of each item
+  // doubles as its stable key for active-menu / mobile-expand state.
+  const navItems: Array<{
+    label: string
+    card: { image: string; title: string; description: string; linkText: string; href?: string }
+    columns: Array<{ title: string; links: NavLink[] }>
+    photoGridTitle?: string
+    photoGrid?: PhotoGridItem[]
+  }> = [
+    {
+      label: t('nav_invitations'),
+      card: {
+        image:
+          'https://images.unsplash.com/photo-1528605248644-14dd04022da1?auto=format&fit=crop&w=800&q=80',
+        title: t('mega_inv_title'),
+        description: t('mega_inv_desc'),
+        linkText: t('mega_inv_cta'),
+        href: '/invitations',
+      },
+      columns: [
+        {
+          title: t('inv_col_browse'),
+          links: [
+            { Icon: Users, label: t('inv_link_all_designs'), href: '/invitations/catalog' },
+            { Icon: CheckCircle2, label: t('inv_link_save_the_dates'), href: '/invitations/save-the-date' },
+            { Icon: MessageCircle, label: t('inv_link_wedding'), href: '/invitations/wedding' },
+            { Icon: MapPin, label: t('inv_link_send_off'), href: '/invitations/send-off' },
+            { Icon: Heart, label: t('inv_link_kadi'), href: '/invitations/kadi-za-michango' },
+          ],
+        },
+        {
+          title: t('inv_col_resources'),
+          links: [
+            { Icon: BookOpen, label: t('inv_link_wording'), href: '/invitations' },
+            { Icon: PenLine, label: t('inv_link_rsvp_wording'), href: '/invitations' },
+          ],
+        },
+      ],
+      photoGridTitle: t('inv_grid_title'),
+      photoGrid: [
+        { label: t('inv_grid_guest_list'), image: '/assets/images/mauzo_crew.jpg', href: '/invitations' },
+        { label: t('inv_grid_rsvp_tracking'), image: '/assets/images/churchcouples.jpg', href: '/invitations' },
+        { label: t('inv_grid_invitations'), image: '/assets/images/cutesy_couple.jpg', href: '/invitations' },
+        { label: t('inv_grid_seating_plan'), image: '/assets/images/couples_together.jpg', href: '/invitations' },
+      ],
+    },
+    {
+      label: t('nav_guests'),
+      card: {
+        image: '/assets/images/mauzo_crew.jpg',
+        title: t('mega_guests_title'),
+        description: t('mega_guests_desc'),
+        linkText: t('mega_guests_cta'),
+        href: '/guests-and-rsvp',
+      },
+      columns: [
+        {
+          title: t('guests_col_manage'),
+          links: [
+            { Icon: Users, label: t('guests_link_list_manager'), href: '/guests-and-rsvp' },
+            { Icon: CheckCircle2, label: t('guests_link_rsvp_tracking'), href: '/guests-and-rsvp' },
+            { Icon: Share2, label: t('guests_link_whatsapp_sms'), href: '/guests-and-rsvp' },
+            { Icon: MapPin, label: t('guests_link_seating'), href: '/guests-and-rsvp' },
+          ],
+        },
+        {
+          title: t('guests_col_resources'),
+          links: [
+            { Icon: BookOpen, label: t('guests_link_rsvp_wording'), href: '/guests-and-rsvp' },
+            { Icon: PenLine, label: t('guests_link_etiquette'), href: '/guests-and-rsvp' },
+          ],
+        },
+      ],
+      photoGridTitle: t('guests_grid_title'),
+      photoGrid: [
+        { label: t('guests_grid_guest_list'), image: '/assets/images/mauzo_crew.jpg', href: '/guests-and-rsvp' },
+        { label: t('guests_grid_rsvp_tracking'), image: '/assets/images/churchcouples.jpg', href: '/guests-and-rsvp' },
+        { label: t('guests_grid_invitations'), image: '/assets/images/cutesy_couple.jpg', href: '/invitations' },
+        { label: t('guests_grid_seating_plan'), image: '/assets/images/couples_together.jpg', href: '/guests-and-rsvp' },
+      ],
+    },
+    {
+      label: t('nav_website'),
+      card: {
+        image:
+          'https://images.unsplash.com/photo-1461301214746-1e109215d6d3?auto=format&fit=crop&w=800&q=80',
+        title: t('mega_website_title'),
+        description: t('mega_website_desc'),
+        linkText: t('mega_website_cta'),
+        href: '/websites',
+      },
+      columns: [
+        {
+          title: t('website_col_features'),
+          links: [
+            { Icon: Globe, label: t('website_link_free_site'), href: '/websites' },
+            { Icon: LinkIcon, label: t('website_link_custom_link'), href: '/websites' },
+            { Icon: Heart, label: t('website_link_templates'), href: '/websites' },
+            { Icon: CheckCircle2, label: t('website_link_rsvp_collection'), href: '/websites' },
+            { Icon: MapPin, label: t('website_link_venue_travel'), href: '/websites' },
+          ],
+        },
+        {
+          title: t('website_col_resources'),
+          links: [
+            { Icon: Monitor, label: t('website_link_examples'), href: '/websites' },
+            { Icon: ImageIcon, label: t('website_link_gallery_tips'), href: '/websites' },
+            { Icon: Share2, label: t('website_link_sharing'), href: '/websites' },
+          ],
+        },
+      ],
+      photoGridTitle: t('website_grid_title'),
+      photoGrid: [
+        { label: t('website_grid_templates'), image: '/assets/images/coupleswithpiano.jpg', href: '/websites' },
+        { label: t('website_grid_photo_gallery'), image: '/assets/images/beautiful_bride.jpg', href: '/websites' },
+        { label: t('website_grid_rsvps'), image: '/assets/images/authentic_couple.jpg', href: '/websites' },
+        { label: t('website_grid_travel_info'), image: '/assets/images/bride_umbrella.jpg', href: '/websites' },
+      ],
+    },
+  ]
+
   const activeItem = activeMenu ? navItems.find((i) => i.label === activeMenu) ?? null : null
 
   const hamburgerRef = useRef<HTMLButtonElement>(null)
@@ -238,13 +247,13 @@ export default function Navbar() {
                 href="/sign-in"
                 className="hidden shrink-0 rounded-full px-3.5 py-2 text-xs font-bold whitespace-nowrap text-gray-700 transition-colors hover:bg-gray-100 sm:inline-flex sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]"
               >
-                Log in
+                {t('auth_login')}
               </Link>
               <Link
                 href="/sign-up"
                 className="shrink-0 rounded-full bg-(--accent) px-3.5 py-2 text-xs font-bold whitespace-nowrap text-(--on-accent) transition-colors hover:bg-(--accent-hover) sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]"
               >
-                Sign up
+                {t('auth_signup')}
               </Link>
             </>
           ) : isLoaded ? (
@@ -253,7 +262,7 @@ export default function Navbar() {
                 href="/my/dashboard"
                 className="shrink-0 rounded-full bg-(--accent) px-3.5 py-2 text-xs font-bold whitespace-nowrap text-(--on-accent) transition-colors hover:bg-(--accent-hover) sm:px-5 sm:text-sm lg:px-5.5 lg:py-2.5 lg:text-[15px]"
               >
-                Dashboard
+                {t('auth_dashboard')}
               </Link>
               <NotificationsBell />
               <UserButton appearance={{ elements: { avatarBox: 'h-8 w-8' } }} />
@@ -262,7 +271,7 @@ export default function Navbar() {
           <button
             ref={hamburgerRef}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-gray-100 lg:hidden sm:h-10 sm:w-10 outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-            aria-label={mobileOpen ? 'Close menu' : 'Open menu'}
+            aria-label={mobileOpen ? t('mobile_close') : t('mobile_open')}
             onClick={() => setMobileOpen((v) => !v)}
           >
             {mobileOpen ? <X size={20} /> : <Menu size={20} />}
@@ -384,10 +393,10 @@ export default function Navbar() {
             <button
               onClick={() => setMobileExpanded(null)}
               className="flex items-center gap-2 text-sm font-semibold text-gray-700"
-              aria-label="Back to menu"
+              aria-label={t('mobile_back')}
             >
               <ChevronDown size={18} className="rotate-90" />
-              Back
+              {t('mobile_back')}
             </button>
           ) : (
             <Link href="/" aria-label="OpusPass home" onClick={closeMobile}>
@@ -398,7 +407,7 @@ export default function Navbar() {
             ref={mobileCloseRef}
             onClick={closeMobile}
             className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] focus-visible:ring-offset-2"
-            aria-label="Close menu"
+            aria-label={t('mobile_close')}
           >
             <X size={18} />
           </button>
@@ -434,14 +443,14 @@ export default function Navbar() {
                     onClick={closeMobile}
                     className="w-full text-center bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) py-3 rounded-full font-bold text-sm transition-colors"
                   >
-                    Sign up
+                    {t('auth_signup')}
                   </Link>
                   <Link
                     href="/sign-in"
                     onClick={closeMobile}
                     className="w-full text-center border border-gray-300 hover:bg-gray-50 text-gray-800 py-3 rounded-full font-bold text-sm transition-colors"
                   >
-                    Log in
+                    {t('auth_login')}
                   </Link>
                 </>
               ) : isLoaded ? (
@@ -450,7 +459,7 @@ export default function Navbar() {
                   onClick={closeMobile}
                   className="w-full text-center bg-(--accent) hover:bg-(--accent-hover) text-(--on-accent) py-3 rounded-full font-bold text-sm transition-colors"
                 >
-                  Dashboard
+                  {t('auth_dashboard')}
                 </Link>
               ) : null}
             </div>
