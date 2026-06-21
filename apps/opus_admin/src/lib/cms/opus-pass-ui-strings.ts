@@ -37,6 +37,7 @@ export type UiArea =
   | 'forms-collect'
   | 'forms-rsvp'
   | 'forms-pledge'
+  | 'dashboard-chrome'
 
 // Each field is translatable: stored as a localized { en, sw } object (or a
 // legacy plain string). The editor reads/writes this shape via <BilingualField>.
@@ -67,6 +68,7 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   'forms-collect': 'opus-pass-ui-forms-collect',
   'forms-rsvp': 'opus-pass-ui-forms-rsvp',
   'forms-pledge': 'opus-pass-ui-forms-pledge',
+  'dashboard-chrome': 'opus-pass-ui-dashboard-chrome',
 }
 
 export const UI_STRINGS_LABEL: Record<UiArea, string> = {
@@ -84,6 +86,7 @@ export const UI_STRINGS_LABEL: Record<UiArea, string> = {
   'forms-collect': 'Collect form',
   'forms-rsvp': 'RSVP form',
   'forms-pledge': 'Pledge form',
+  'dashboard-chrome': 'Dashboard chrome',
 }
 
 // Navbar + footer appear on every public page; the home page ('/') is the
@@ -105,6 +108,7 @@ export const UI_STRINGS_PUBLIC_PATH: Record<UiArea, string> = {
   'forms-collect': '/collect',
   'forms-rsvp': '/rsvp',
   'forms-pledge': '/pledge',
+  'dashboard-chrome': '/my/dashboard',
 }
 
 export const UI_STRINGS_AREAS: readonly UiArea[] = [
@@ -122,6 +126,7 @@ export const UI_STRINGS_AREAS: readonly UiArea[] = [
   'forms-collect',
   'forms-rsvp',
   'forms-pledge',
+  'dashboard-chrome',
 ] as const
 
 export function isUiArea(value: string): value is UiArea {
@@ -624,6 +629,27 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     success_heading: 'Asante sana! 💚',
     success_body: '{coupleName} have received your pledge. They’ll be in touch with the details.',
     pay_title: 'How to pay',
+  },
+  'dashboard-chrome': {
+    nav_overview: 'Overview',
+    nav_events: 'Events',
+    nav_pledges: 'Pledges',
+    nav_guests: 'Guest list',
+    nav_invitations: 'Send invites',
+    nav_orders: 'Orders',
+    nav_rsvps: 'RSVPs',
+    nav_website: 'Wedding website',
+    nav_seating: 'Seat collection',
+    collapse_expand: 'Expand sidebar',
+    collapse_collapse: 'Collapse sidebar',
+    menu_open: 'Open menu',
+    menu_close: 'Close menu',
+    account_label: 'Account',
+    account_title: 'Account menu',
+    account_settings: 'Profile & settings',
+    account_marketplace: 'Vendors & planning',
+    account_marketplace_sub: 'on OpusFesta',
+    account_sign_out: 'Sign out',
   },
 }
 
@@ -1491,6 +1517,42 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
       fields: [
         { key: 'success_heading', label: 'Heading', kind: 'text', max: 40, hint: 'Emoji is part of the text — keep or change it inline.' },
         { key: 'success_body', label: 'Body', kind: 'textarea', max: 200, hint: 'Use {coupleName} for the couple’s name.' },
+      ],
+    },
+  ],
+  'dashboard-chrome': [
+    {
+      legend: 'Sidebar nav',
+      fields: [
+        { key: 'nav_overview', label: 'Overview', kind: 'text', max: 30 },
+        { key: 'nav_events', label: 'Events', kind: 'text', max: 30 },
+        { key: 'nav_pledges', label: 'Pledges', kind: 'text', max: 30 },
+        { key: 'nav_guests', label: 'Guest list', kind: 'text', max: 30 },
+        { key: 'nav_invitations', label: 'Send invites', kind: 'text', max: 30 },
+        { key: 'nav_orders', label: 'Orders', kind: 'text', max: 30 },
+        { key: 'nav_rsvps', label: 'RSVPs', kind: 'text', max: 30 },
+        { key: 'nav_website', label: 'Wedding website', kind: 'text', max: 30 },
+        { key: 'nav_seating', label: 'Seat collection', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Sidebar controls',
+      fields: [
+        { key: 'collapse_expand', label: 'Expand sidebar (title / aria-label)', kind: 'text', max: 40 },
+        { key: 'collapse_collapse', label: 'Collapse sidebar (title / aria-label)', kind: 'text', max: 40 },
+        { key: 'menu_open', label: 'Open menu (aria-label)', kind: 'text', max: 40 },
+        { key: 'menu_close', label: 'Close menu (title / aria-label)', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Account menu',
+      fields: [
+        { key: 'account_label', label: 'Account label', kind: 'text', max: 30 },
+        { key: 'account_title', label: 'Account button (title / aria-label)', kind: 'text', max: 40 },
+        { key: 'account_settings', label: 'Profile & settings', kind: 'text', max: 40 },
+        { key: 'account_marketplace', label: 'Vendors & planning', kind: 'text', max: 40 },
+        { key: 'account_marketplace_sub', label: 'Vendors & planning — sub-label', kind: 'text', max: 40 },
+        { key: 'account_sign_out', label: 'Sign out', kind: 'text', max: 30 },
       ],
     },
   ],

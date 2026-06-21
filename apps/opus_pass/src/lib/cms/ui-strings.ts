@@ -41,6 +41,7 @@ export {
   type FormsCollectStrings,
   type FormsRsvpStrings,
   type FormsPledgeStrings,
+  type DashboardChromeStrings,
   type UiStringsByArea,
 } from './ui-strings-fallback'
 

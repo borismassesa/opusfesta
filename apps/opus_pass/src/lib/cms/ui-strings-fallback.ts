@@ -25,6 +25,7 @@ export type UiArea =
   | 'forms-collect'
   | 'forms-rsvp'
   | 'forms-pledge'
+  | 'dashboard-chrome'
 
 // One CMS page row per area; section_key is always 'copy'.
 //
@@ -49,6 +50,7 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   'forms-collect': 'opus-pass-ui-forms-collect',
   'forms-rsvp': 'opus-pass-ui-forms-rsvp',
   'forms-pledge': 'opus-pass-ui-forms-pledge',
+  'dashboard-chrome': 'opus-pass-ui-dashboard-chrome',
 }
 
 // The public navbar reads ONE merged 'navbar' namespace, but its keys are now
@@ -698,6 +700,35 @@ export interface FormsPledgeStrings {
   pay_title: string
 }
 
+// ── Dashboard chrome (persistent shell/nav/account chrome at /my/dashboard) ───
+// Only the persistent shell text — sidebar nav labels, collapse/menu controls
+// and the account menu. The dashboard PAGE copy is editable separately via the
+// dashboard-copy CMS, not here.
+export interface DashboardChromeStrings {
+  // Sidebar nav labels (the routes/icons stay hardcoded in the component)
+  nav_overview: string
+  nav_events: string
+  nav_pledges: string
+  nav_guests: string
+  nav_invitations: string
+  nav_orders: string
+  nav_rsvps: string
+  nav_website: string
+  nav_seating: string
+  // Sidebar + drawer controls (titles / aria-labels)
+  collapse_expand: string
+  collapse_collapse: string
+  menu_open: string
+  menu_close: string
+  // Account menu
+  account_label: string
+  account_title: string // button title + aria-label
+  account_settings: string
+  account_marketplace: string
+  account_marketplace_sub: string
+  account_sign_out: string
+}
+
 export type UiStringsByArea = {
   navbar: NavbarStrings
   footer: FooterStrings
@@ -713,6 +744,7 @@ export type UiStringsByArea = {
   'forms-collect': FormsCollectStrings
   'forms-rsvp': FormsRsvpStrings
   'forms-pledge': FormsPledgeStrings
+  'dashboard-chrome': DashboardChromeStrings
 }
 
 export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
@@ -1265,5 +1297,26 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     success_heading: 'Asante sana! 💚',
     success_body: '{coupleName} have received your pledge. They’ll be in touch with the details.',
     pay_title: 'How to pay',
+  },
+  'dashboard-chrome': {
+    nav_overview: 'Overview',
+    nav_events: 'Events',
+    nav_pledges: 'Pledges',
+    nav_guests: 'Guest list',
+    nav_invitations: 'Send invites',
+    nav_orders: 'Orders',
+    nav_rsvps: 'RSVPs',
+    nav_website: 'Wedding website',
+    nav_seating: 'Seat collection',
+    collapse_expand: 'Expand sidebar',
+    collapse_collapse: 'Collapse sidebar',
+    menu_open: 'Open menu',
+    menu_close: 'Close menu',
+    account_label: 'Account',
+    account_title: 'Account menu',
+    account_settings: 'Profile & settings',
+    account_marketplace: 'Vendors & planning',
+    account_marketplace_sub: 'on OpusFesta',
+    account_sign_out: 'Sign out',
   },
 }

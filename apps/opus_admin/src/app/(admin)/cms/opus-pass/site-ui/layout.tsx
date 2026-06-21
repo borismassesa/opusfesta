@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, Save, Send, Trash2 } from 'lucide-react'
+import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, LayoutDashboard, Save, Send, Trash2 } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { CmsSecondarySidebar, type CmsSection } from '@/components/cms/CmsSecondarySidebar'
@@ -131,6 +131,15 @@ const sections: CmsSection[] = [
     status: 'live',
     description:
       'Contribution pledge form — field labels, validation, payment-card heading, send-button and success copy — bilingual. Payment methods/instructions come from the couple’s config.',
+  },
+  {
+    key: 'dashboard-chrome',
+    label: 'Dashboard chrome',
+    icon: LayoutDashboard,
+    href: '/cms/opus-pass/site-ui/dashboard-chrome',
+    status: 'live',
+    description:
+      'Couple dashboard shell — sidebar nav labels, collapse/menu controls and the account menu — bilingual. Routing, icons and the couple’s name/email are not editable here.',
   },
 ]
 
