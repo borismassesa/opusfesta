@@ -19,7 +19,7 @@ type Bundles = Partial<{ [A in UiArea]: UiStringsByArea[A] }>
 
 type Vars = Record<string, string | number>
 
-type Translator = (key: string, vars?: Vars) => string
+export type Translator = (key: string, vars?: Vars) => string
 
 const UIStringsContext = createContext<Bundles | null>(null)
 

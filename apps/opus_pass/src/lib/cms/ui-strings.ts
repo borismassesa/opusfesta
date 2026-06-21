@@ -32,6 +32,9 @@ export {
   type HelpStrings,
   type PricingStrings,
   type HowItWorksStrings,
+  type CartStrings,
+  type AddressStrings,
+  type ConfirmationStrings,
   type UiStringsByArea,
 } from './ui-strings-fallback'
 

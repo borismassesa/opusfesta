@@ -10,7 +10,15 @@
 // apps/opus_admin/src/lib/cms/opus-pass-ui-strings.ts (dual-type convention —
 // the two apps duplicate CMS types/fallbacks, no shared package).
 
-export type UiArea = 'navbar' | 'footer' | 'help' | 'pricing' | 'how-it-works'
+export type UiArea =
+  | 'navbar'
+  | 'footer'
+  | 'help'
+  | 'pricing'
+  | 'how-it-works'
+  | 'cart'
+  | 'address'
+  | 'confirmation'
 
 // One CMS page row per area; section_key is always 'copy'.
 //
@@ -26,6 +34,9 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   help: 'opus-pass-ui-help',
   pricing: 'opus-pass-ui-pricing',
   'how-it-works': 'opus-pass-ui-how-it-works',
+  cart: 'opus-pass-ui-cart',
+  address: 'opus-pass-ui-address',
+  confirmation: 'opus-pass-ui-confirmation',
 }
 
 // The public navbar reads ONE merged 'navbar' namespace, but its keys are now
@@ -282,12 +293,172 @@ export interface HowItWorksStrings {
   cta_secondary: string
 }
 
+// ── Cart page ────────────────────────────────────────────────────────────────
+export interface CartStrings {
+  // Back link + heading
+  back_to_designs: string
+  cart_title: string
+  // Item count ({n})
+  count_one: string
+  count_other: string
+  // Line item
+  item_delivered: string
+  item_package_suffix: string // "{tier} Package"
+  // Delete popover
+  remove_aria: string // "Remove {name}"
+  remove_confirm: string
+  remove_cancel: string
+  remove_confirm_cta: string
+  // Guest stepper aria
+  guests_fewer: string
+  guests_more: string
+  guests_input_aria: string
+  guests_label: string
+  // Empty state
+  empty_title: string
+  empty_body: string
+  empty_cta: string
+  // Coupon card
+  coupon_title: string
+  coupon_subtitle: string
+  coupon_placeholder: string
+  coupon_apply: string
+  coupon_none_active: string
+  coupon_none_active_desc: string
+  // Price details
+  price_title: string
+  price_label: string
+  discount_label: string
+  delivery_label: string
+  delivery_free: string
+  total_label: string
+  // Checkout CTA + trust
+  checkout_cta: string
+  we_accept: string
+  secure_note: string
+  // Cross-sell
+  explore_title_has: string
+  explore_title_empty: string
+  explore_subtitle_has: string
+  explore_subtitle_empty: string
+  explore_view_all: string
+  // Mobile sticky bar
+  mobile_count_one: string
+  mobile_count_other: string
+  mobile_checkout: string
+}
+
+// ── Delivery address page ────────────────────────────────────────────────────
+export interface AddressStrings {
+  // Back link
+  back_to_cart: string
+  // Card header
+  header_title: string
+  header_desc: string
+  // Delivery mode cards
+  mode_digital_title: string
+  mode_digital_caption: string
+  mode_print_title: string
+  mode_print_caption: string
+  // Form labels + placeholders
+  label_full_name: string
+  placeholder_full_name: string
+  label_email: string
+  placeholder_email: string
+  label_phone: string
+  placeholder_phone: string
+  label_city: string
+  label_street: string
+  placeholder_street: string
+  label_notes: string
+  placeholder_notes: string
+  // Validation
+  error_full_name: string
+  error_email: string
+  error_phone: string
+  error_street: string
+  // Continue CTA
+  continue_cta: string
+  // What to expect
+  expect_title: string
+  expect_confirmation: string
+  expect_personalised: string
+  expect_revisions: string
+  expect_link: string
+  expect_rsvp: string
+  expect_ticket: string
+  expect_print: string
+}
+
+// ── Order confirmation page ──────────────────────────────────────────────────
+export interface ConfirmationStrings {
+  // Empty state
+  empty_title: string
+  empty_body: string
+  empty_cta: string
+  // Success header
+  success_heading_verifying: string
+  success_heading_confirmed: string
+  success_body_verifying: string // uses {ref} via surrounding markup — see component
+  success_body_confirmed: string
+  // Payment status card
+  status_verifying_title: string
+  status_confirmed_title: string
+  status_verifying_body: string
+  status_paid_via: string // "Paid via {provider}"
+  status_reference_label: string
+  status_verifying_eta: string
+  status_method_label: string
+  status_method_lipa_namba: string
+  status_business_number_label: string
+  status_payer_label: string
+  status_phone_label: string
+  status_payment_label: string
+  status_details_summary: string
+  // Order section
+  order_title: string
+  meta_delivery_date: string
+  meta_order_id: string
+  meta_payment_method: string
+  item_package_suffix: string // "{tier} Package"
+  item_delivered: string
+  item_guests_label: string
+  // What happens next
+  next_title: string
+  next_personalise_title: string
+  next_personalise_body: string
+  next_proof_title: string
+  next_proof_body: string
+  next_share_title: string
+  next_share_body: string
+  // Payment summary
+  summary_title: string
+  summary_price: string
+  summary_discount: string
+  summary_delivery: string
+  summary_delivery_free: string
+  summary_total: string
+  summary_total_paid: string
+  download_invoice: string
+  // Actions + trust
+  browse_more: string
+  back_to_invitations: string
+  delivered_note: string
+  // Payment badge fallback
+  badge_card: string
+  // aria
+  celebration_aria: string
+}
+
 export type UiStringsByArea = {
   navbar: NavbarStrings
   footer: FooterStrings
   help: HelpStrings
   pricing: PricingStrings
   'how-it-works': HowItWorksStrings
+  cart: CartStrings
+  address: AddressStrings
+  confirmation: ConfirmationStrings
 }
 
 export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
@@ -513,5 +684,137 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
       'At the gate their ticket is scanned to verify entry — stopping fake invitees and keeping the line moving.',
     cta_primary: 'Start your guest list',
     cta_secondary: 'See pricing',
+  },
+  cart: {
+    back_to_designs: '← Back to designs',
+    cart_title: 'Your Cart',
+    count_one: '{n} item in cart',
+    count_other: '{n} items in cart',
+    item_delivered: 'Delivered within 24 hours',
+    item_package_suffix: '{tier} Package',
+    remove_aria: 'Remove {name}',
+    remove_confirm: 'Remove this design from your cart?',
+    remove_cancel: 'Cancel',
+    remove_confirm_cta: 'Remove',
+    guests_fewer: 'Fewer guests',
+    guests_more: 'More guests',
+    guests_input_aria: 'Number of guests',
+    guests_label: 'Guests',
+    empty_title: 'Your cart is empty.',
+    empty_body: 'Browse invitation designs and add one to get started.',
+    empty_cta: 'Browse designs',
+    coupon_title: 'Apply Coupon',
+    coupon_subtitle: 'Have a promo code?',
+    coupon_placeholder: 'Coupon code',
+    coupon_apply: 'Apply',
+    coupon_none_active: 'No promo codes are active right now.',
+    coupon_none_active_desc: 'Check back later — discounts will apply here automatically.',
+    price_title: 'Price Details',
+    price_label: 'Price',
+    discount_label: 'Discount',
+    delivery_label: 'Delivery Charges',
+    delivery_free: 'Free Delivery',
+    total_label: 'Total',
+    checkout_cta: 'Continue to checkout',
+    we_accept: 'We accept:',
+    secure_note: 'Secure checkout · designs delivered within 24 hours',
+    explore_title_has: 'You might also like',
+    explore_title_empty: 'Explore invitation designs',
+    explore_subtitle_has: 'More designs in the styles you’re shopping.',
+    explore_subtitle_empty: 'Popular designs to get you started.',
+    explore_view_all: 'View all',
+    mobile_count_one: '{n} item',
+    mobile_count_other: '{n} items',
+    mobile_checkout: 'Checkout',
+  },
+  address: {
+    back_to_cart: '← Back to cart',
+    header_title: 'How should we deliver?',
+    header_desc:
+      'Every order includes your digital invitation, sent via WhatsApp and email. Add printed cards to have them mailed to you too.',
+    mode_digital_title: 'Digital delivery',
+    mode_digital_caption: 'Sent via WhatsApp, SMS, and email within 24 hours of payment.',
+    mode_print_title: 'Digital + printed cards',
+    mode_print_caption:
+      'Everything digital, plus high-quality prints mailed to your address in 7–14 days.',
+    label_full_name: 'Full name',
+    placeholder_full_name: 'Mary Mwakasege',
+    label_email: 'Email address',
+    placeholder_email: 'mary@example.com',
+    label_phone: 'WhatsApp / phone number',
+    placeholder_phone: '+255 7xx xxx xxx',
+    label_city: 'City / region',
+    label_street: 'Street address',
+    placeholder_street: 'House number, street, building name…',
+    label_notes: 'Delivery notes',
+    placeholder_notes: 'Gate code, landmarks, best time to call…',
+    error_full_name: 'Please enter your full name.',
+    error_email: 'Enter a valid email address.',
+    error_phone: 'Enter a valid phone number.',
+    error_street: 'Please enter your mailing address.',
+    continue_cta: 'Continue to payment',
+    expect_title: 'What to expect',
+    expect_confirmation: 'Instant order confirmation in your inbox',
+    expect_personalised: 'Your design personalised by our team within 24 hours',
+    expect_revisions: 'One free round of revisions to get every detail right',
+    expect_link: 'A shareable invitation link for WhatsApp, SMS & email',
+    expect_rsvp: 'Live RSVP tracking as your guests respond',
+    expect_ticket:
+      'An OpusPass ticket with QR code — save it to Apple or Google Wallet and scan at the entrance',
+    expect_print: 'High-quality printed cards mailed to you in 7–14 days',
+  },
+  confirmation: {
+    empty_title: 'No recent order found.',
+    empty_body: 'Once you complete a purchase, your confirmation will appear here.',
+    empty_cta: 'Browse designs',
+    success_heading_verifying: 'Asante — we’ve received your order',
+    success_heading_confirmed: 'Thank you — your order is confirmed',
+    success_body_verifying:
+      'The OpusFesta team is verifying your payment{refClause}. Once confirmed, we’ll email your receipt to {email} and your design goes live within 24 hours.',
+    success_body_confirmed:
+      'We’ve emailed your receipt to {email}. Your design goes live within 24 hours.',
+    status_verifying_title: 'Payment Under Review',
+    status_confirmed_title: 'Payment Confirmed',
+    status_verifying_body: 'Your payment has been received and is being verified.',
+    status_paid_via: 'Paid via {provider}',
+    status_reference_label: 'Reference:',
+    status_verifying_eta: 'Usually verified within 15 minutes.',
+    status_method_label: 'Method',
+    status_method_lipa_namba: 'M-Pesa Lipa Namba',
+    status_business_number_label: 'Business Number',
+    status_payer_label: 'Payer',
+    status_phone_label: 'Phone',
+    status_payment_label: 'Payment',
+    status_details_summary: 'Payment details',
+    order_title: 'Your order',
+    meta_delivery_date: 'Delivery date',
+    meta_order_id: 'Order ID',
+    meta_payment_method: 'Payment method',
+    item_package_suffix: '{tier} Package',
+    item_delivered: 'Delivered within 24 hours',
+    item_guests_label: 'Guests',
+    next_title: 'What happens next',
+    next_personalise_title: 'We personalise your design',
+    next_personalise_body:
+      'Our team tailors your invitation with your details, ready within 24 hours.',
+    next_proof_title: 'You review a proof',
+    next_proof_body:
+      'We send a proof for your approval — one free round of revisions is included.',
+    next_share_title: 'Share & check in',
+    next_share_body:
+      'Get a shareable link plus OpusPass tickets with QR codes for entrance scanning.',
+    summary_title: 'Payment summary',
+    summary_price: 'Price',
+    summary_discount: 'Discount',
+    summary_delivery: 'Delivery charges',
+    summary_delivery_free: 'Free delivery',
+    summary_total: 'Total',
+    summary_total_paid: 'Total paid',
+    download_invoice: 'Download invoice',
+    browse_more: 'Browse more designs',
+    back_to_invitations: 'Back to invitations',
+    delivered_note: 'Designs delivered within 24 hours',
+    badge_card: 'Card',
+    celebration_aria: 'Celebration',
   },
 }

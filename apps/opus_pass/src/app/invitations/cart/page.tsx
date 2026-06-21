@@ -1,5 +1,8 @@
 import { loadInvitationProducts } from '@/lib/cms/invitations-products'
 import { loadPackagesContent, packageFromPrice } from '@/lib/cms/packages'
+import { getLocale } from '@/lib/cms/locale'
+import { loadUiStrings } from '@/lib/cms/ui-strings'
+import { UIStringsProvider } from '@/components/providers/UIStringsProvider'
 import CartClient from './CartClient'
 
 // Products feed the "you might also like" cross-sell row. ISR safety net keeps
@@ -7,9 +10,15 @@ import CartClient from './CartClient'
 export const revalidate = 60
 
 export default async function CartPage() {
-  const [products, packages] = await Promise.all([
+  const locale = await getLocale()
+  const [products, packages, cart] = await Promise.all([
     loadInvitationProducts(),
     loadPackagesContent(),
+    loadUiStrings('cart', locale),
   ])
-  return <CartClient products={products} fromGuestPrice={packageFromPrice(packages)} />
+  return (
+    <UIStringsProvider bundles={{ cart }}>
+      <CartClient products={products} fromGuestPrice={packageFromPrice(packages)} />
+    </UIStringsProvider>
+  )
 }

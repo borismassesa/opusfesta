@@ -22,7 +22,15 @@ import type {
 
 export type { CopyField, CopyFieldGroup, CopyFieldKind }
 
-export type UiArea = 'navbar' | 'footer' | 'help' | 'pricing' | 'how-it-works'
+export type UiArea =
+  | 'navbar'
+  | 'footer'
+  | 'help'
+  | 'pricing'
+  | 'how-it-works'
+  | 'cart'
+  | 'address'
+  | 'confirmation'
 
 // Each field is translatable: stored as a localized { en, sw } object (or a
 // legacy plain string). The editor reads/writes this shape via <BilingualField>.
@@ -44,6 +52,9 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   help: 'opus-pass-ui-help',
   pricing: 'opus-pass-ui-pricing',
   'how-it-works': 'opus-pass-ui-how-it-works',
+  cart: 'opus-pass-ui-cart',
+  address: 'opus-pass-ui-address',
+  confirmation: 'opus-pass-ui-confirmation',
 }
 
 export const UI_STRINGS_LABEL: Record<UiArea, string> = {
@@ -52,6 +63,9 @@ export const UI_STRINGS_LABEL: Record<UiArea, string> = {
   help: 'Help page',
   pricing: 'Pricing page',
   'how-it-works': 'How it works page',
+  cart: 'Cart',
+  address: 'Delivery address',
+  confirmation: 'Order confirmation',
 }
 
 // Navbar + footer appear on every public page; the home page ('/') is the
@@ -62,6 +76,9 @@ export const UI_STRINGS_PUBLIC_PATH: Record<UiArea, string> = {
   help: '/help',
   pricing: '/pricing',
   'how-it-works': '/how-it-works',
+  cart: '/invitations/cart',
+  address: '/invitations/address',
+  confirmation: '/invitations/confirmation',
 }
 
 export const UI_STRINGS_AREAS: readonly UiArea[] = [
@@ -70,6 +87,9 @@ export const UI_STRINGS_AREAS: readonly UiArea[] = [
   'help',
   'pricing',
   'how-it-works',
+  'cart',
+  'address',
+  'confirmation',
 ] as const
 
 export function isUiArea(value: string): value is UiArea {
@@ -246,6 +266,138 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
       'At the gate their ticket is scanned to verify entry — stopping fake invitees and keeping the line moving.',
     cta_primary: 'Start your guest list',
     cta_secondary: 'See pricing',
+  },
+  cart: {
+    back_to_designs: '← Back to designs',
+    cart_title: 'Your Cart',
+    count_one: '{n} item in cart',
+    count_other: '{n} items in cart',
+    item_delivered: 'Delivered within 24 hours',
+    item_package_suffix: '{tier} Package',
+    remove_aria: 'Remove {name}',
+    remove_confirm: 'Remove this design from your cart?',
+    remove_cancel: 'Cancel',
+    remove_confirm_cta: 'Remove',
+    guests_fewer: 'Fewer guests',
+    guests_more: 'More guests',
+    guests_input_aria: 'Number of guests',
+    guests_label: 'Guests',
+    empty_title: 'Your cart is empty.',
+    empty_body: 'Browse invitation designs and add one to get started.',
+    empty_cta: 'Browse designs',
+    coupon_title: 'Apply Coupon',
+    coupon_subtitle: 'Have a promo code?',
+    coupon_placeholder: 'Coupon code',
+    coupon_apply: 'Apply',
+    coupon_none_active: 'No promo codes are active right now.',
+    coupon_none_active_desc: 'Check back later — discounts will apply here automatically.',
+    price_title: 'Price Details',
+    price_label: 'Price',
+    discount_label: 'Discount',
+    delivery_label: 'Delivery Charges',
+    delivery_free: 'Free Delivery',
+    total_label: 'Total',
+    checkout_cta: 'Continue to checkout',
+    we_accept: 'We accept:',
+    secure_note: 'Secure checkout · designs delivered within 24 hours',
+    explore_title_has: 'You might also like',
+    explore_title_empty: 'Explore invitation designs',
+    explore_subtitle_has: 'More designs in the styles you’re shopping.',
+    explore_subtitle_empty: 'Popular designs to get you started.',
+    explore_view_all: 'View all',
+    mobile_count_one: '{n} item',
+    mobile_count_other: '{n} items',
+    mobile_checkout: 'Checkout',
+  },
+  address: {
+    back_to_cart: '← Back to cart',
+    header_title: 'How should we deliver?',
+    header_desc:
+      'Every order includes your digital invitation, sent via WhatsApp and email. Add printed cards to have them mailed to you too.',
+    mode_digital_title: 'Digital delivery',
+    mode_digital_caption: 'Sent via WhatsApp, SMS, and email within 24 hours of payment.',
+    mode_print_title: 'Digital + printed cards',
+    mode_print_caption:
+      'Everything digital, plus high-quality prints mailed to your address in 7–14 days.',
+    label_full_name: 'Full name',
+    placeholder_full_name: 'Mary Mwakasege',
+    label_email: 'Email address',
+    placeholder_email: 'mary@example.com',
+    label_phone: 'WhatsApp / phone number',
+    placeholder_phone: '+255 7xx xxx xxx',
+    label_city: 'City / region',
+    label_street: 'Street address',
+    placeholder_street: 'House number, street, building name…',
+    label_notes: 'Delivery notes',
+    placeholder_notes: 'Gate code, landmarks, best time to call…',
+    error_full_name: 'Please enter your full name.',
+    error_email: 'Enter a valid email address.',
+    error_phone: 'Enter a valid phone number.',
+    error_street: 'Please enter your mailing address.',
+    continue_cta: 'Continue to payment',
+    expect_title: 'What to expect',
+    expect_confirmation: 'Instant order confirmation in your inbox',
+    expect_personalised: 'Your design personalised by our team within 24 hours',
+    expect_revisions: 'One free round of revisions to get every detail right',
+    expect_link: 'A shareable invitation link for WhatsApp, SMS & email',
+    expect_rsvp: 'Live RSVP tracking as your guests respond',
+    expect_ticket:
+      'An OpusPass ticket with QR code — save it to Apple or Google Wallet and scan at the entrance',
+    expect_print: 'High-quality printed cards mailed to you in 7–14 days',
+  },
+  confirmation: {
+    empty_title: 'No recent order found.',
+    empty_body: 'Once you complete a purchase, your confirmation will appear here.',
+    empty_cta: 'Browse designs',
+    success_heading_verifying: 'Asante — we’ve received your order',
+    success_heading_confirmed: 'Thank you — your order is confirmed',
+    success_body_verifying:
+      'The OpusFesta team is verifying your payment{refClause}. Once confirmed, we’ll email your receipt to {email} and your design goes live within 24 hours.',
+    success_body_confirmed:
+      'We’ve emailed your receipt to {email}. Your design goes live within 24 hours.',
+    status_verifying_title: 'Payment Under Review',
+    status_confirmed_title: 'Payment Confirmed',
+    status_verifying_body: 'Your payment has been received and is being verified.',
+    status_paid_via: 'Paid via {provider}',
+    status_reference_label: 'Reference:',
+    status_verifying_eta: 'Usually verified within 15 minutes.',
+    status_method_label: 'Method',
+    status_method_lipa_namba: 'M-Pesa Lipa Namba',
+    status_business_number_label: 'Business Number',
+    status_payer_label: 'Payer',
+    status_phone_label: 'Phone',
+    status_payment_label: 'Payment',
+    status_details_summary: 'Payment details',
+    order_title: 'Your order',
+    meta_delivery_date: 'Delivery date',
+    meta_order_id: 'Order ID',
+    meta_payment_method: 'Payment method',
+    item_package_suffix: '{tier} Package',
+    item_delivered: 'Delivered within 24 hours',
+    item_guests_label: 'Guests',
+    next_title: 'What happens next',
+    next_personalise_title: 'We personalise your design',
+    next_personalise_body:
+      'Our team tailors your invitation with your details, ready within 24 hours.',
+    next_proof_title: 'You review a proof',
+    next_proof_body:
+      'We send a proof for your approval — one free round of revisions is included.',
+    next_share_title: 'Share & check in',
+    next_share_body:
+      'Get a shareable link plus OpusPass tickets with QR codes for entrance scanning.',
+    summary_title: 'Payment summary',
+    summary_price: 'Price',
+    summary_discount: 'Discount',
+    summary_delivery: 'Delivery charges',
+    summary_delivery_free: 'Free delivery',
+    summary_total: 'Total',
+    summary_total_paid: 'Total paid',
+    download_invoice: 'Download invoice',
+    browse_more: 'Browse more designs',
+    back_to_invitations: 'Back to invitations',
+    delivered_note: 'Designs delivered within 24 hours',
+    badge_card: 'Card',
+    celebration_aria: 'Celebration',
   },
 }
 
@@ -508,6 +660,245 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
       fields: [
         { key: 'cta_primary', label: 'Primary button', kind: 'text', max: 40 },
         { key: 'cta_secondary', label: 'Secondary button', kind: 'text', max: 40 },
+      ],
+    },
+  ],
+  cart: [
+    {
+      legend: 'Header',
+      fields: [
+        { key: 'back_to_designs', label: 'Back link', kind: 'text', max: 40 },
+        { key: 'cart_title', label: 'Cart heading', kind: 'text', max: 40 },
+        { key: 'count_one', label: 'Item count (singular)', kind: 'text', max: 40, hint: 'Use {n} for the count, e.g. "{n} item in cart"' },
+        { key: 'count_other', label: 'Item count (plural)', kind: 'text', max: 40, hint: 'Use {n} for the count, e.g. "{n} items in cart"' },
+      ],
+    },
+    {
+      legend: 'Line item',
+      fields: [
+        { key: 'item_delivered', label: 'Delivery note', kind: 'text', max: 60 },
+        { key: 'item_package_suffix', label: 'Package pill', kind: 'text', max: 40, hint: 'Use {tier} for the package name, e.g. "{tier} Package"' },
+        { key: 'guests_label', label: 'Guests label', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Remove design popover',
+      fields: [
+        { key: 'remove_aria', label: 'Remove button (aria-label)', kind: 'text', max: 60, hint: 'Use {name} for the design name, e.g. "Remove {name}"' },
+        { key: 'remove_confirm', label: 'Confirm prompt', kind: 'text', max: 80 },
+        { key: 'remove_cancel', label: 'Cancel button', kind: 'text', max: 30 },
+        { key: 'remove_confirm_cta', label: 'Remove button', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Guest stepper (aria-labels)',
+      fields: [
+        { key: 'guests_fewer', label: 'Fewer guests', kind: 'text', max: 30 },
+        { key: 'guests_more', label: 'More guests', kind: 'text', max: 30 },
+        { key: 'guests_input_aria', label: 'Guest count input', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Empty state',
+      fields: [
+        { key: 'empty_title', label: 'Title', kind: 'text', max: 60 },
+        { key: 'empty_body', label: 'Body', kind: 'textarea', max: 160 },
+        { key: 'empty_cta', label: 'Button', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Coupon',
+      fields: [
+        { key: 'coupon_title', label: 'Title', kind: 'text', max: 40 },
+        { key: 'coupon_subtitle', label: 'Subtitle', kind: 'text', max: 60 },
+        { key: 'coupon_placeholder', label: 'Input placeholder', kind: 'text', max: 40 },
+        { key: 'coupon_apply', label: 'Apply button', kind: 'text', max: 30 },
+        { key: 'coupon_none_active', label: 'No-codes toast title', kind: 'text', max: 80 },
+        { key: 'coupon_none_active_desc', label: 'No-codes toast body', kind: 'textarea', max: 160 },
+      ],
+    },
+    {
+      legend: 'Price details',
+      fields: [
+        { key: 'price_title', label: 'Section title', kind: 'text', max: 40 },
+        { key: 'price_label', label: 'Price row', kind: 'text', max: 40 },
+        { key: 'discount_label', label: 'Discount row', kind: 'text', max: 40 },
+        { key: 'delivery_label', label: 'Delivery row', kind: 'text', max: 40 },
+        { key: 'delivery_free', label: 'Free delivery value', kind: 'text', max: 40 },
+        { key: 'total_label', label: 'Total row', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Checkout & trust',
+      fields: [
+        { key: 'checkout_cta', label: 'Checkout button', kind: 'text', max: 40 },
+        { key: 'we_accept', label: 'Payment methods label', kind: 'text', max: 40 },
+        { key: 'secure_note', label: 'Secure checkout note', kind: 'text', max: 80 },
+      ],
+    },
+    {
+      legend: 'Cross-sell',
+      fields: [
+        { key: 'explore_title_has', label: 'Title (cart has items)', kind: 'text', max: 60 },
+        { key: 'explore_title_empty', label: 'Title (cart empty)', kind: 'text', max: 60 },
+        { key: 'explore_subtitle_has', label: 'Subtitle (cart has items)', kind: 'text', max: 120 },
+        { key: 'explore_subtitle_empty', label: 'Subtitle (cart empty)', kind: 'text', max: 120 },
+        { key: 'explore_view_all', label: 'View-all link', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Mobile sticky bar',
+      fields: [
+        { key: 'mobile_count_one', label: 'Item count (singular)', kind: 'text', max: 30, hint: 'Use {n} for the count, e.g. "{n} item"' },
+        { key: 'mobile_count_other', label: 'Item count (plural)', kind: 'text', max: 30, hint: 'Use {n} for the count, e.g. "{n} items"' },
+        { key: 'mobile_checkout', label: 'Checkout button', kind: 'text', max: 30 },
+      ],
+    },
+  ],
+  address: [
+    {
+      legend: 'Header',
+      fields: [
+        { key: 'back_to_cart', label: 'Back link', kind: 'text', max: 40 },
+        { key: 'header_title', label: 'Heading', kind: 'text', max: 60 },
+        { key: 'header_desc', label: 'Description', kind: 'textarea', max: 240 },
+      ],
+    },
+    {
+      legend: 'Delivery mode cards',
+      fields: [
+        { key: 'mode_digital_title', label: 'Digital — title', kind: 'text', max: 40 },
+        { key: 'mode_digital_caption', label: 'Digital — caption', kind: 'textarea', max: 160 },
+        { key: 'mode_print_title', label: 'Print — title', kind: 'text', max: 40 },
+        { key: 'mode_print_caption', label: 'Print — caption', kind: 'textarea', max: 160 },
+      ],
+    },
+    {
+      legend: 'Form fields',
+      fields: [
+        { key: 'label_full_name', label: 'Full name — label', kind: 'text', max: 40 },
+        { key: 'placeholder_full_name', label: 'Full name — placeholder', kind: 'text', max: 40 },
+        { key: 'label_email', label: 'Email — label', kind: 'text', max: 40 },
+        { key: 'placeholder_email', label: 'Email — placeholder', kind: 'text', max: 40 },
+        { key: 'label_phone', label: 'Phone — label', kind: 'text', max: 40 },
+        { key: 'placeholder_phone', label: 'Phone — placeholder', kind: 'text', max: 40 },
+        { key: 'label_city', label: 'City — label', kind: 'text', max: 40 },
+        { key: 'label_street', label: 'Street — label', kind: 'text', max: 40 },
+        { key: 'placeholder_street', label: 'Street — placeholder', kind: 'text', max: 60 },
+        { key: 'label_notes', label: 'Notes — label', kind: 'text', max: 40 },
+        { key: 'placeholder_notes', label: 'Notes — placeholder', kind: 'text', max: 60 },
+      ],
+    },
+    {
+      legend: 'Validation messages',
+      fields: [
+        { key: 'error_full_name', label: 'Full name required', kind: 'text', max: 80 },
+        { key: 'error_email', label: 'Invalid email', kind: 'text', max: 80 },
+        { key: 'error_phone', label: 'Invalid phone', kind: 'text', max: 80 },
+        { key: 'error_street', label: 'Address required', kind: 'text', max: 80 },
+      ],
+    },
+    {
+      legend: 'Continue',
+      fields: [
+        { key: 'continue_cta', label: 'Continue button', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'What to expect',
+      fields: [
+        { key: 'expect_title', label: 'Title', kind: 'text', max: 40 },
+        { key: 'expect_confirmation', label: 'Order confirmation', kind: 'textarea', max: 120 },
+        { key: 'expect_personalised', label: 'Personalised design', kind: 'textarea', max: 120 },
+        { key: 'expect_revisions', label: 'Free revisions', kind: 'textarea', max: 120 },
+        { key: 'expect_link', label: 'Shareable link', kind: 'textarea', max: 120 },
+        { key: 'expect_rsvp', label: 'Live RSVP tracking', kind: 'textarea', max: 120 },
+        { key: 'expect_ticket', label: 'OpusPass ticket', kind: 'textarea', max: 200 },
+        { key: 'expect_print', label: 'Printed cards (print mode only)', kind: 'textarea', max: 120 },
+      ],
+    },
+  ],
+  confirmation: [
+    {
+      legend: 'Empty state',
+      fields: [
+        { key: 'empty_title', label: 'Title', kind: 'text', max: 60 },
+        { key: 'empty_body', label: 'Body', kind: 'textarea', max: 160 },
+        { key: 'empty_cta', label: 'Button', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Success header',
+      fields: [
+        { key: 'success_heading_verifying', label: 'Heading (verifying)', kind: 'text', max: 80 },
+        { key: 'success_heading_confirmed', label: 'Heading (confirmed)', kind: 'text', max: 80 },
+        { key: 'success_body_verifying', label: 'Body (verifying)', kind: 'textarea', max: 320, hint: 'Use {email} for the receipt email and {refClause} for the optional "(ref …)" fragment.' },
+        { key: 'success_body_confirmed', label: 'Body (confirmed)', kind: 'textarea', max: 240, hint: 'Use {email} for the receipt email.' },
+      ],
+    },
+    {
+      legend: 'Payment status card',
+      fields: [
+        { key: 'status_verifying_title', label: 'Verifying — title', kind: 'text', max: 40 },
+        { key: 'status_confirmed_title', label: 'Confirmed — title', kind: 'text', max: 40 },
+        { key: 'status_verifying_body', label: 'Verifying — body', kind: 'textarea', max: 160 },
+        { key: 'status_paid_via', label: 'Paid via', kind: 'text', max: 40, hint: 'Use {provider} for the payment provider, e.g. "Paid via {provider}"' },
+        { key: 'status_verifying_eta', label: 'Verifying — ETA note', kind: 'text', max: 60 },
+        { key: 'status_reference_label', label: 'Reference label', kind: 'text', max: 30 },
+        { key: 'status_method_label', label: 'Method label', kind: 'text', max: 30 },
+        { key: 'status_method_lipa_namba', label: 'M-Pesa Lipa Namba value', kind: 'text', max: 40 },
+        { key: 'status_business_number_label', label: 'Business number label', kind: 'text', max: 40 },
+        { key: 'status_payer_label', label: 'Payer label', kind: 'text', max: 30 },
+        { key: 'status_phone_label', label: 'Phone label', kind: 'text', max: 30 },
+        { key: 'status_payment_label', label: 'Payment label', kind: 'text', max: 30 },
+        { key: 'status_details_summary', label: 'Details toggle', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Order section',
+      fields: [
+        { key: 'order_title', label: 'Section title', kind: 'text', max: 40 },
+        { key: 'meta_delivery_date', label: 'Delivery date label', kind: 'text', max: 40 },
+        { key: 'meta_order_id', label: 'Order ID label', kind: 'text', max: 40 },
+        { key: 'meta_payment_method', label: 'Payment method label', kind: 'text', max: 40 },
+        { key: 'item_package_suffix', label: 'Package pill', kind: 'text', max: 40, hint: 'Use {tier} for the package name, e.g. "{tier} Package"' },
+        { key: 'item_delivered', label: 'Item delivery note', kind: 'text', max: 60 },
+        { key: 'item_guests_label', label: 'Guests label', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'What happens next',
+      fields: [
+        { key: 'next_title', label: 'Section title', kind: 'text', max: 40 },
+        { key: 'next_personalise_title', label: 'Step 1 — title', kind: 'text', max: 60 },
+        { key: 'next_personalise_body', label: 'Step 1 — body', kind: 'textarea', max: 200 },
+        { key: 'next_proof_title', label: 'Step 2 — title', kind: 'text', max: 60 },
+        { key: 'next_proof_body', label: 'Step 2 — body', kind: 'textarea', max: 200 },
+        { key: 'next_share_title', label: 'Step 3 — title', kind: 'text', max: 60 },
+        { key: 'next_share_body', label: 'Step 3 — body', kind: 'textarea', max: 200 },
+      ],
+    },
+    {
+      legend: 'Payment summary',
+      fields: [
+        { key: 'summary_title', label: 'Section title', kind: 'text', max: 40 },
+        { key: 'summary_price', label: 'Price row', kind: 'text', max: 40 },
+        { key: 'summary_discount', label: 'Discount row', kind: 'text', max: 40 },
+        { key: 'summary_delivery', label: 'Delivery row', kind: 'text', max: 40 },
+        { key: 'summary_delivery_free', label: 'Free delivery value', kind: 'text', max: 40 },
+        { key: 'summary_total', label: 'Total (verifying)', kind: 'text', max: 40 },
+        { key: 'summary_total_paid', label: 'Total paid (confirmed)', kind: 'text', max: 40 },
+        { key: 'download_invoice', label: 'Download invoice button', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Actions & trust',
+      fields: [
+        { key: 'browse_more', label: 'Browse more button', kind: 'text', max: 40 },
+        { key: 'back_to_invitations', label: 'Back to invitations button', kind: 'text', max: 40 },
+        { key: 'delivered_note', label: 'Delivery footnote', kind: 'text', max: 60 },
+        { key: 'badge_card', label: 'Card payment badge', kind: 'text', max: 30 },
+        { key: 'celebration_aria', label: 'Celebration emoji (aria-label)', kind: 'text', max: 30 },
       ],
     },
   ],

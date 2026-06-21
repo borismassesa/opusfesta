@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, Save, Send, Trash2 } from 'lucide-react'
+import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, Save, Send, Trash2 } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { CmsSecondarySidebar, type CmsSection } from '@/components/cms/CmsSecondarySidebar'
@@ -50,6 +50,33 @@ const sections: CmsSection[] = [
     href: '/cms/opus-pass/site-ui/how-it-works',
     status: 'live',
     description: 'How-it-works header, process steps, guest features and CTAs — bilingual.',
+  },
+  {
+    key: 'cart',
+    label: 'Cart',
+    icon: ShoppingCart,
+    href: '/cms/opus-pass/site-ui/cart',
+    status: 'live',
+    description:
+      'Cart heading, line-item labels, coupon box, price details, checkout CTA and cross-sell copy — bilingual. Prices and math are not editable here.',
+  },
+  {
+    key: 'address',
+    label: 'Delivery address',
+    icon: MapPin,
+    href: '/cms/opus-pass/site-ui/address',
+    status: 'live',
+    description:
+      'Delivery address form — mode cards, field labels, validation messages and the "what to expect" checklist — bilingual.',
+  },
+  {
+    key: 'confirmation',
+    label: 'Order confirmation',
+    icon: CheckCircle2,
+    href: '/cms/opus-pass/site-ui/confirmation',
+    status: 'live',
+    description:
+      'Order confirmation — success header, payment status card, order summary, "what happens next" and actions — bilingual.',
   },
 ]
 
