@@ -434,8 +434,14 @@ export default function Navbar() {
               ))}
             </div>
 
-            {/* Footer CTA — auth */}
+            {/* Footer CTA — language + auth */}
             <div className="shrink-0 px-4 py-5 border-t border-gray-100 flex flex-col gap-2.5">
+              {/* Language toggle — the top-bar one is hidden below sm, so it
+                  lives here for mobile/tablet visitors. */}
+              <div className="flex items-center justify-between pb-1">
+                <span className="text-xs font-semibold text-gray-500">Language · Lugha</span>
+                <LocaleToggle />
+              </div>
               {isLoaded && !isSignedIn ? (
                 <>
                   <Link
