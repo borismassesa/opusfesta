@@ -35,6 +35,9 @@ export {
   type CartStrings,
   type AddressStrings,
   type ConfirmationStrings,
+  type CheckoutFormStrings,
+  type CheckoutPaymentStrings,
+  type CheckoutSummaryStrings,
   type UiStringsByArea,
 } from './ui-strings-fallback'
 

@@ -31,6 +31,9 @@ export type UiArea =
   | 'cart'
   | 'address'
   | 'confirmation'
+  | 'checkout-form'
+  | 'checkout-payment'
+  | 'checkout-summary'
 
 // Each field is translatable: stored as a localized { en, sw } object (or a
 // legacy plain string). The editor reads/writes this shape via <BilingualField>.
@@ -55,6 +58,9 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   cart: 'opus-pass-ui-cart',
   address: 'opus-pass-ui-address',
   confirmation: 'opus-pass-ui-confirmation',
+  'checkout-form': 'opus-pass-ui-checkout-form',
+  'checkout-payment': 'opus-pass-ui-checkout-payment',
+  'checkout-summary': 'opus-pass-ui-checkout-summary',
 }
 
 export const UI_STRINGS_LABEL: Record<UiArea, string> = {
@@ -66,6 +72,9 @@ export const UI_STRINGS_LABEL: Record<UiArea, string> = {
   cart: 'Cart',
   address: 'Delivery address',
   confirmation: 'Order confirmation',
+  'checkout-form': 'Checkout — form',
+  'checkout-payment': 'Checkout — payment',
+  'checkout-summary': 'Checkout — summary',
 }
 
 // Navbar + footer appear on every public page; the home page ('/') is the
@@ -79,6 +88,9 @@ export const UI_STRINGS_PUBLIC_PATH: Record<UiArea, string> = {
   cart: '/invitations/cart',
   address: '/invitations/address',
   confirmation: '/invitations/confirmation',
+  'checkout-form': '/invitations/checkout',
+  'checkout-payment': '/invitations/checkout',
+  'checkout-summary': '/invitations/checkout',
 }
 
 export const UI_STRINGS_AREAS: readonly UiArea[] = [
@@ -90,6 +102,9 @@ export const UI_STRINGS_AREAS: readonly UiArea[] = [
   'cart',
   'address',
   'confirmation',
+  'checkout-form',
+  'checkout-payment',
+  'checkout-summary',
 ] as const
 
 export function isUiArea(value: string): value is UiArea {
@@ -398,6 +413,135 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     delivered_note: 'Designs delivered within 24 hours',
     badge_card: 'Card',
     celebration_aria: 'Celebration',
+  },
+  'checkout-form': {
+    back_to_contact: '← Back to contact details',
+    page_title: 'Payment',
+    block_title: "We can't process this yet",
+    block_add_contact_cta: 'Add one →',
+    recap_delivering_to: 'Delivering to',
+    recap_edit: 'Edit',
+    payer_name_label: 'Name on the account that paid',
+    payer_name_placeholder: 'e.g. Mary Mwakasege',
+    payer_name_hint:
+      'The account holder name the payment came from — as registered with the mobile network or bank.',
+    phone_label_lipa: 'Your phone number to confirm your payment',
+    phone_label_push: '{provider} phone number',
+    phone_placeholder: '+255 7xx xxx xxx',
+    phone_hint_push: "You'll get a prompt on your phone to approve the payment.",
+    payref_label: 'Transaction reference number',
+    payref_placeholder: 'e.g. 9XJ45KQ2RT',
+    payref_hint:
+      'The confirmation code in the SMS you received after paying. The OpusFesta team uses it to verify your payment.',
+    error_cart_empty: 'Your cart is empty — add a design before paying.',
+    error_contact_missing: 'Please add your contact details before paying.',
+    error_phone: 'Enter a valid phone number.',
+    error_payer_name: 'Enter the name on the account the payment came from.',
+    error_payref:
+      'Enter the confirmation code from your payment SMS (6–25 letters or numbers).',
+  },
+  'checkout-payment': {
+    choose_title: 'Choose how to pay',
+    method_aria: 'Payment method',
+    method_mpesa_desc: 'Lipa Namba or QR — pay from any network or bank',
+    method_card_desc: 'Visa or Mastercard',
+    toggle_push: 'Phone prompt',
+    toggle_lipa: 'Lipa Namba',
+    push_instructions:
+      'Enter your M-Pesa number below and tap {pay}. A prompt pops up on your phone — enter your PIN to approve. We confirm automatically, no codes to copy.',
+    push_pay_word: 'Pay',
+    lipa_amount_label: 'Amount to send',
+    lipa_how_title: 'How to pay',
+    lipa_how_subtitle: 'How to pay — choose your network and follow the steps.',
+    lipa_network_aria: 'Payment network',
+    lipa_dial_prefix_other: 'Open',
+    lipa_dial_prefix_dial: 'Dial',
+    lipa_qr_note:
+      'Or scan the QR code: open the M-Pesa App, tap the QR button, scan the QR image above, then enter the amount and your PIN to complete the payment.',
+    step_vodacom_1_do: 'Choose 4',
+    step_vodacom_1_detail: 'Pay with M-Pesa',
+    step_vodacom_2_do: 'Choose 1',
+    step_vodacom_2_detail: 'Pay by phone',
+    step_vodacom_3_do: 'Enter Lipa Namba',
+    step_vodacom_3_detail: '350298654',
+    step_vodacom_4_do: 'Enter amount',
+    step_vodacom_4_detail: 'to pay',
+    step_vodacom_5_do: 'Enter your PIN',
+    step_vodacom_5_detail: 'to confirm the payment',
+    step_tigo_1_do: 'Choose 5',
+    step_tigo_1_detail: 'PAY BY PHONE',
+    step_tigo_2_do: 'Choose 3',
+    step_tigo_2_detail: 'Go to other networks',
+    step_tigo_3_do: 'Choose 1',
+    step_tigo_3_detail: 'M-Pesa',
+    step_tigo_4_do: 'Enter M-Pesa Lipa Namba',
+    step_tigo_4_detail: '350298654',
+    step_tigo_5_do: 'Enter amount',
+    step_tigo_5_detail: 'you are paying',
+    step_tigo_6_do: 'Enter your PIN',
+    step_tigo_6_detail: 'to confirm',
+    step_airtel_1_do: 'Choose 5',
+    step_airtel_1_detail: 'Pay Bills',
+    step_airtel_2_do: 'Choose 1',
+    step_airtel_2_detail: 'Pay by phone (All networks)',
+    step_airtel_3_do: 'Choose 2',
+    step_airtel_3_detail: 'Pay by Voda Lipa',
+    step_airtel_4_do: 'Enter amount',
+    step_airtel_4_detail: 'of money',
+    step_airtel_5_do: 'Enter the reference number',
+    step_airtel_5_detail: '350298654',
+    step_airtel_6_do: 'Enter your PIN',
+    step_airtel_6_detail: 'to confirm',
+    step_other_1_do: 'Choose',
+    step_other_1_detail: 'PAY BY PHONE',
+    step_other_2_do: 'Choose',
+    step_other_2_detail: 'Go to other networks',
+    step_other_3_do: 'Choose',
+    step_other_3_detail: 'M-Pesa',
+    step_other_4_do: 'Enter the merchant number',
+    step_other_4_detail: '350298654',
+    step_other_5_do: 'Enter amount',
+    step_other_5_detail: 'to pay',
+    step_other_6_do: 'Enter your PIN',
+    step_other_6_detail: 'to confirm',
+    network_other_name: 'Other networks & banks',
+    network_other_dial: "Your network's financial services menu",
+    card_title: 'Secure card payment',
+    card_body:
+      "When you continue, we'll take you to our payment partner's secure page to enter your Visa or Mastercard details and complete 3-D Secure verification. OpusFesta never sees or stores your card number.",
+    pay_redirecting: 'Redirecting…',
+    pay_awaiting: 'Waiting for approval…',
+    pay_processing: 'Processing…',
+    pay_card_cta: 'Continue to secure card payment',
+    pay_lipa_cta: "I've paid {amount} — submit order",
+    pay_push_cta: 'Pay {amount}',
+    reassure_lipa:
+      'Your order is confirmed once the OpusFesta team verifies the transaction. Your design goes live within 24 hours of confirmation.',
+    reassure_card:
+      'Card payments are processed securely by our payment partner (3-D Secure). Your design goes live within 24 hours of confirmation.',
+    reassure_push:
+      'Approve the prompt on your phone to pay. Your design goes live within 24 hours of confirmation.',
+    overlay_aria: 'Awaiting payment approval',
+    overlay_title: 'Check your phone',
+    overlay_body:
+      'We sent a payment prompt to {phone}. Enter your M-Pesa PIN to approve {amount}.',
+    overlay_waiting: 'Waiting for confirmation…',
+    overlay_keep_open: 'Keep this page open — it updates automatically once you approve.',
+  },
+  'checkout-summary': {
+    summary_title: 'Order summary',
+    price_label: 'Price',
+    discount_label: 'Discount',
+    delivery_label: 'Delivery charges',
+    delivery_free: 'Free delivery',
+    total_label: 'Total',
+    ready_title: 'Ready in 24 hours',
+    ready_body:
+      'Your personalised design and OpusPass tickets are delivered within a day of payment.',
+    revision_title: 'One free revision',
+    revision_body:
+      "We'll fine-tune the details until your invitation looks just right.",
+    secure_note: 'Your payment details are encrypted and processed securely.',
   },
 }
 
@@ -899,6 +1043,218 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
         { key: 'delivered_note', label: 'Delivery footnote', kind: 'text', max: 60 },
         { key: 'badge_card', label: 'Card payment badge', kind: 'text', max: 30 },
         { key: 'celebration_aria', label: 'Celebration emoji (aria-label)', kind: 'text', max: 30 },
+      ],
+    },
+  ],
+  'checkout-form': [
+    {
+      legend: 'Header',
+      fields: [
+        { key: 'back_to_contact', label: 'Back link', kind: 'text', max: 40 },
+        { key: 'page_title', label: 'Page heading', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Blocking error banner',
+      fields: [
+        { key: 'block_title', label: 'Banner title (cart empty / no contact)', kind: 'text', max: 60 },
+        { key: 'block_add_contact_cta', label: 'Add contact link', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Contact recap',
+      fields: [
+        { key: 'recap_delivering_to', label: 'Delivering-to label', kind: 'text', max: 40 },
+        { key: 'recap_edit', label: 'Edit button', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Manual payment form — fields',
+      fields: [
+        { key: 'payer_name_label', label: 'Payer name — label', kind: 'text', max: 60 },
+        { key: 'payer_name_placeholder', label: 'Payer name — placeholder', kind: 'text', max: 40 },
+        { key: 'payer_name_hint', label: 'Payer name — hint', kind: 'textarea', max: 200 },
+        { key: 'phone_label_lipa', label: 'Phone label (Lipa Namba flow)', kind: 'text', max: 60 },
+        { key: 'phone_label_push', label: 'Phone label (phone-prompt flow)', kind: 'text', max: 40, hint: 'Use {provider} for the payment provider name, e.g. "{provider} phone number"' },
+        { key: 'phone_placeholder', label: 'Phone — placeholder', kind: 'text', max: 40 },
+        { key: 'phone_hint_push', label: 'Phone hint (phone-prompt flow)', kind: 'textarea', max: 160 },
+        { key: 'payref_label', label: 'Transaction reference — label', kind: 'text', max: 60 },
+        { key: 'payref_placeholder', label: 'Transaction reference — placeholder', kind: 'text', max: 40 },
+        { key: 'payref_hint', label: 'Transaction reference — hint', kind: 'textarea', max: 200 },
+      ],
+    },
+    {
+      legend: 'Validation messages',
+      fields: [
+        { key: 'error_cart_empty', label: 'Cart empty', kind: 'text', max: 100 },
+        { key: 'error_contact_missing', label: 'Contact details missing', kind: 'text', max: 100 },
+        { key: 'error_phone', label: 'Invalid phone', kind: 'text', max: 80 },
+        { key: 'error_payer_name', label: 'Payer name required', kind: 'text', max: 100 },
+        { key: 'error_payref', label: 'Invalid transaction reference', kind: 'text', max: 120 },
+      ],
+    },
+  ],
+  'checkout-payment': [
+    {
+      legend: 'Method picker',
+      fields: [
+        { key: 'choose_title', label: 'Section title', kind: 'text', max: 40 },
+        { key: 'method_aria', label: 'Radiogroup (aria-label)', kind: 'text', max: 40 },
+        { key: 'method_mpesa_desc', label: 'M-Pesa option — description', kind: 'text', max: 80 },
+        { key: 'method_card_desc', label: 'Card option — description', kind: 'text', max: 80 },
+      ],
+    },
+    {
+      legend: 'M-Pesa flow toggle',
+      fields: [
+        { key: 'toggle_push', label: 'Phone-prompt toggle', kind: 'text', max: 30 },
+        { key: 'toggle_lipa', label: 'Lipa Namba toggle', kind: 'text', max: 30 },
+        { key: 'push_instructions', label: 'Phone-prompt instructions', kind: 'textarea', max: 240, hint: 'Use {pay} for the bolded "Pay" word (see "Pay word" field below).' },
+        { key: 'push_pay_word', label: 'Pay word (interpolated into instructions)', kind: 'text', max: 20 },
+      ],
+    },
+    {
+      legend: 'Lipa Namba panel',
+      fields: [
+        { key: 'lipa_amount_label', label: 'Amount-to-send label', kind: 'text', max: 40 },
+        { key: 'lipa_how_title', label: 'How-to-pay heading', kind: 'text', max: 60, hint: 'Swahili default: "Jinsi ya kufanya malipo"' },
+        { key: 'lipa_how_subtitle', label: 'How-to-pay subtitle', kind: 'textarea', max: 120 },
+        { key: 'lipa_network_aria', label: 'Network tablist (aria-label)', kind: 'text', max: 40 },
+        { key: 'lipa_dial_prefix_dial', label: 'Dial prefix (Vodacom/Tigo/Airtel)', kind: 'text', max: 30, hint: 'Swahili default: "Piga"' },
+        { key: 'lipa_dial_prefix_other', label: 'Dial prefix (other networks)', kind: 'text', max: 30, hint: 'Swahili default: "Ingia kwenye"' },
+        { key: 'lipa_qr_note', label: 'Vodacom QR helper note', kind: 'textarea', max: 240, hint: 'Swahili on the live site — set the SW value to the on-poster instructions.' },
+      ],
+    },
+    {
+      legend: 'Vodacom M-Pesa steps',
+      fields: [
+        { key: 'step_vodacom_1_do', label: 'Step 1 — action', kind: 'text', max: 40 },
+        { key: 'step_vodacom_1_detail', label: 'Step 1 — detail', kind: 'text', max: 60 },
+        { key: 'step_vodacom_2_do', label: 'Step 2 — action', kind: 'text', max: 40 },
+        { key: 'step_vodacom_2_detail', label: 'Step 2 — detail', kind: 'text', max: 60 },
+        { key: 'step_vodacom_3_do', label: 'Step 3 — action', kind: 'text', max: 40 },
+        { key: 'step_vodacom_3_detail', label: 'Step 3 — detail', kind: 'text', max: 60, hint: 'Defaults to the Lipa Namba (350298654) — leave unless it changes.' },
+        { key: 'step_vodacom_4_do', label: 'Step 4 — action', kind: 'text', max: 40 },
+        { key: 'step_vodacom_4_detail', label: 'Step 4 — detail', kind: 'text', max: 60 },
+        { key: 'step_vodacom_5_do', label: 'Step 5 — action', kind: 'text', max: 40 },
+        { key: 'step_vodacom_5_detail', label: 'Step 5 — detail', kind: 'text', max: 60 },
+      ],
+    },
+    {
+      legend: 'Tigo Pesa (Mixx by Yas) steps',
+      fields: [
+        { key: 'step_tigo_1_do', label: 'Step 1 — action', kind: 'text', max: 40 },
+        { key: 'step_tigo_1_detail', label: 'Step 1 — detail', kind: 'text', max: 60 },
+        { key: 'step_tigo_2_do', label: 'Step 2 — action', kind: 'text', max: 40 },
+        { key: 'step_tigo_2_detail', label: 'Step 2 — detail', kind: 'text', max: 60 },
+        { key: 'step_tigo_3_do', label: 'Step 3 — action', kind: 'text', max: 40 },
+        { key: 'step_tigo_3_detail', label: 'Step 3 — detail', kind: 'text', max: 60 },
+        { key: 'step_tigo_4_do', label: 'Step 4 — action', kind: 'text', max: 40 },
+        { key: 'step_tigo_4_detail', label: 'Step 4 — detail', kind: 'text', max: 60, hint: 'Defaults to the Lipa Namba (350298654) — leave unless it changes.' },
+        { key: 'step_tigo_5_do', label: 'Step 5 — action', kind: 'text', max: 40 },
+        { key: 'step_tigo_5_detail', label: 'Step 5 — detail', kind: 'text', max: 60 },
+        { key: 'step_tigo_6_do', label: 'Step 6 — action', kind: 'text', max: 40 },
+        { key: 'step_tigo_6_detail', label: 'Step 6 — detail', kind: 'text', max: 60 },
+      ],
+    },
+    {
+      legend: 'Airtel Money steps',
+      fields: [
+        { key: 'step_airtel_1_do', label: 'Step 1 — action', kind: 'text', max: 40 },
+        { key: 'step_airtel_1_detail', label: 'Step 1 — detail', kind: 'text', max: 60 },
+        { key: 'step_airtel_2_do', label: 'Step 2 — action', kind: 'text', max: 40 },
+        { key: 'step_airtel_2_detail', label: 'Step 2 — detail', kind: 'text', max: 60 },
+        { key: 'step_airtel_3_do', label: 'Step 3 — action', kind: 'text', max: 40 },
+        { key: 'step_airtel_3_detail', label: 'Step 3 — detail', kind: 'text', max: 60 },
+        { key: 'step_airtel_4_do', label: 'Step 4 — action', kind: 'text', max: 40 },
+        { key: 'step_airtel_4_detail', label: 'Step 4 — detail', kind: 'text', max: 60 },
+        { key: 'step_airtel_5_do', label: 'Step 5 — action', kind: 'text', max: 40 },
+        { key: 'step_airtel_5_detail', label: 'Step 5 — detail', kind: 'text', max: 60, hint: 'Defaults to the Lipa Namba (350298654) — leave unless it changes.' },
+        { key: 'step_airtel_6_do', label: 'Step 6 — action', kind: 'text', max: 40 },
+        { key: 'step_airtel_6_detail', label: 'Step 6 — detail', kind: 'text', max: 60 },
+      ],
+    },
+    {
+      legend: 'Other networks & banks steps',
+      fields: [
+        { key: 'network_other_name', label: 'Network tab name', kind: 'text', max: 60 },
+        { key: 'network_other_dial', label: 'Dial instruction', kind: 'text', max: 80 },
+        { key: 'step_other_1_do', label: 'Step 1 — action', kind: 'text', max: 40 },
+        { key: 'step_other_1_detail', label: 'Step 1 — detail', kind: 'text', max: 60 },
+        { key: 'step_other_2_do', label: 'Step 2 — action', kind: 'text', max: 40 },
+        { key: 'step_other_2_detail', label: 'Step 2 — detail', kind: 'text', max: 60 },
+        { key: 'step_other_3_do', label: 'Step 3 — action', kind: 'text', max: 40 },
+        { key: 'step_other_3_detail', label: 'Step 3 — detail', kind: 'text', max: 60 },
+        { key: 'step_other_4_do', label: 'Step 4 — action', kind: 'text', max: 40 },
+        { key: 'step_other_4_detail', label: 'Step 4 — detail', kind: 'text', max: 60, hint: 'Defaults to the Lipa Namba (350298654) — leave unless it changes.' },
+        { key: 'step_other_5_do', label: 'Step 5 — action', kind: 'text', max: 40 },
+        { key: 'step_other_5_detail', label: 'Step 5 — detail', kind: 'text', max: 60 },
+        { key: 'step_other_6_do', label: 'Step 6 — action', kind: 'text', max: 40 },
+        { key: 'step_other_6_detail', label: 'Step 6 — detail', kind: 'text', max: 60 },
+      ],
+    },
+    {
+      legend: 'Card payment',
+      fields: [
+        { key: 'card_title', label: 'Secure card title', kind: 'text', max: 40 },
+        { key: 'card_body', label: 'Secure card body', kind: 'textarea', max: 320 },
+      ],
+    },
+    {
+      legend: 'Pay button',
+      fields: [
+        { key: 'pay_push_cta', label: 'Pay (phone prompt)', kind: 'text', max: 40, hint: 'Use {amount} for the total, e.g. "Pay {amount}"' },
+        { key: 'pay_lipa_cta', label: 'Submit order (Lipa Namba)', kind: 'text', max: 60, hint: 'Use {amount} for the total, e.g. "I\'ve paid {amount} — submit order"' },
+        { key: 'pay_card_cta', label: 'Continue to card', kind: 'text', max: 60 },
+        { key: 'pay_awaiting', label: 'Waiting for approval', kind: 'text', max: 40 },
+        { key: 'pay_redirecting', label: 'Redirecting', kind: 'text', max: 40 },
+        { key: 'pay_processing', label: 'Processing', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Security reassurance',
+      fields: [
+        { key: 'reassure_lipa', label: 'Reassurance (Lipa Namba)', kind: 'textarea', max: 240 },
+        { key: 'reassure_card', label: 'Reassurance (card)', kind: 'textarea', max: 240 },
+        { key: 'reassure_push', label: 'Reassurance (phone prompt)', kind: 'textarea', max: 240 },
+      ],
+    },
+    {
+      legend: 'Waiting overlay',
+      fields: [
+        { key: 'overlay_aria', label: 'Overlay (aria-label)', kind: 'text', max: 60 },
+        { key: 'overlay_title', label: 'Overlay title', kind: 'text', max: 40 },
+        { key: 'overlay_body', label: 'Overlay body', kind: 'textarea', max: 200, hint: 'Use {phone} for the customer phone and {amount} for the total.' },
+        { key: 'overlay_waiting', label: 'Waiting line', kind: 'text', max: 60 },
+        { key: 'overlay_keep_open', label: 'Keep-page-open note', kind: 'textarea', max: 120 },
+      ],
+    },
+  ],
+  'checkout-summary': [
+    {
+      legend: 'Order summary',
+      fields: [
+        { key: 'summary_title', label: 'Section title', kind: 'text', max: 40 },
+        { key: 'price_label', label: 'Price row', kind: 'text', max: 40 },
+        { key: 'discount_label', label: 'Discount row', kind: 'text', max: 40 },
+        { key: 'delivery_label', label: 'Delivery row', kind: 'text', max: 40 },
+        { key: 'delivery_free', label: 'Free delivery value', kind: 'text', max: 40 },
+        { key: 'total_label', label: 'Total row', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Info tiles',
+      fields: [
+        { key: 'ready_title', label: 'Ready-in-24h — title', kind: 'text', max: 40 },
+        { key: 'ready_body', label: 'Ready-in-24h — body', kind: 'textarea', max: 200 },
+        { key: 'revision_title', label: 'Free revision — title', kind: 'text', max: 40 },
+        { key: 'revision_body', label: 'Free revision — body', kind: 'textarea', max: 200 },
+      ],
+    },
+    {
+      legend: 'Trust',
+      fields: [
+        { key: 'secure_note', label: 'Secure payment note', kind: 'text', max: 80 },
       ],
     },
   ],

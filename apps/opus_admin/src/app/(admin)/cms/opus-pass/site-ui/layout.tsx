@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, Save, Send, Trash2 } from 'lucide-react'
+import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, Save, Send, Trash2 } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { CmsSecondarySidebar, type CmsSection } from '@/components/cms/CmsSecondarySidebar'
@@ -77,6 +77,33 @@ const sections: CmsSection[] = [
     status: 'live',
     description:
       'Order confirmation — success header, payment status card, order summary, "what happens next" and actions — bilingual.',
+  },
+  {
+    key: 'checkout-form',
+    label: 'Checkout — form',
+    icon: CreditCard,
+    href: '/cms/opus-pass/site-ui/checkout-form',
+    status: 'live',
+    description:
+      'Checkout page heading, contact recap, manual-payment form fields and validation messages — bilingual. Payment logic, amounts and provider IDs are not editable here.',
+  },
+  {
+    key: 'checkout-payment',
+    label: 'Checkout — payment',
+    icon: Smartphone,
+    href: '/cms/opus-pass/site-ui/checkout-payment',
+    status: 'live',
+    description:
+      'Payment method copy, M-Pesa Lipa Namba USSD steps (bilingual), card panel, pay-button states and security lines — bilingual. Network IDs, dial codes and amounts are fixed.',
+  },
+  {
+    key: 'checkout-summary',
+    label: 'Checkout — summary',
+    icon: ReceiptText,
+    href: '/cms/opus-pass/site-ui/checkout-summary',
+    status: 'live',
+    description:
+      'Checkout order summary card, "ready in 24 hours" and "one free revision" tiles and the secure-payment note — bilingual. Prices and math are not editable here.',
   },
 ]
 

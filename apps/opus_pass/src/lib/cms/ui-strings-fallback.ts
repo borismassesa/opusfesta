@@ -19,6 +19,9 @@ export type UiArea =
   | 'cart'
   | 'address'
   | 'confirmation'
+  | 'checkout-form'
+  | 'checkout-payment'
+  | 'checkout-summary'
 
 // One CMS page row per area; section_key is always 'copy'.
 //
@@ -37,6 +40,9 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   cart: 'opus-pass-ui-cart',
   address: 'opus-pass-ui-address',
   confirmation: 'opus-pass-ui-confirmation',
+  'checkout-form': 'opus-pass-ui-checkout-form',
+  'checkout-payment': 'opus-pass-ui-checkout-payment',
+  'checkout-summary': 'opus-pass-ui-checkout-summary',
 }
 
 // The public navbar reads ONE merged 'navbar' namespace, but its keys are now
@@ -450,6 +456,151 @@ export interface ConfirmationStrings {
   celebration_aria: string
 }
 
+// ── Checkout — form (heading, contact recap, manual-payment fields, validation) ─
+export interface CheckoutFormStrings {
+  // Back link + page heading
+  back_to_contact: string
+  page_title: string
+  // Blocking-error banner (cart empty / no contact)
+  block_title: string
+  block_add_contact_cta: string
+  // Contact recap
+  recap_delivering_to: string
+  recap_edit: string
+  // Manual Lipa Namba form — payer name
+  payer_name_label: string
+  payer_name_placeholder: string
+  payer_name_hint: string
+  // Phone field (label differs for Lipa vs push)
+  phone_label_lipa: string
+  phone_label_push: string // uses {provider}
+  phone_placeholder: string
+  phone_hint_push: string
+  // Transaction reference field
+  payref_label: string
+  payref_placeholder: string
+  payref_hint: string
+  // Required-field marker (the asterisk's screen-reader/visual companion lives in markup)
+  // Validation messages
+  error_cart_empty: string
+  error_contact_missing: string
+  error_phone: string
+  error_payer_name: string
+  error_payref: string
+}
+
+// ── Checkout — payment (method picker, M-Pesa flows, USSD steps, pay button) ────
+export interface CheckoutPaymentStrings {
+  // Method picker
+  choose_title: string
+  method_aria: string
+  method_mpesa_desc: string
+  method_card_desc: string
+  // M-Pesa path toggle
+  toggle_push: string
+  toggle_lipa: string
+  // Push instructions
+  push_instructions: string // uses {pay} for the bolded "Pay" word
+  push_pay_word: string
+  // Lipa Namba panel
+  lipa_amount_label: string
+  lipa_how_title: string // Swahili "Jinsi ya kufanya malipo"
+  lipa_how_subtitle: string
+  lipa_network_aria: string
+  lipa_dial_prefix_other: string // "Ingia kwenye"
+  lipa_dial_prefix_dial: string // "Piga"
+  lipa_qr_note: string // Vodacom QR helper (Swahili)
+  // Per-network USSD steps. Each step is "{do} — {detail}"; we store do/detail
+  // as separate keys keyed by network id + index, so the bolded prefix and the
+  // detail can each be translated. The network ids + dial codes + count stay
+  // hardcoded in the component.
+  step_vodacom_1_do: string
+  step_vodacom_1_detail: string
+  step_vodacom_2_do: string
+  step_vodacom_2_detail: string
+  step_vodacom_3_do: string
+  step_vodacom_3_detail: string
+  step_vodacom_4_do: string
+  step_vodacom_4_detail: string
+  step_vodacom_5_do: string
+  step_vodacom_5_detail: string
+  step_tigo_1_do: string
+  step_tigo_1_detail: string
+  step_tigo_2_do: string
+  step_tigo_2_detail: string
+  step_tigo_3_do: string
+  step_tigo_3_detail: string
+  step_tigo_4_do: string
+  step_tigo_4_detail: string
+  step_tigo_5_do: string
+  step_tigo_5_detail: string
+  step_tigo_6_do: string
+  step_tigo_6_detail: string
+  step_airtel_1_do: string
+  step_airtel_1_detail: string
+  step_airtel_2_do: string
+  step_airtel_2_detail: string
+  step_airtel_3_do: string
+  step_airtel_3_detail: string
+  step_airtel_4_do: string
+  step_airtel_4_detail: string
+  step_airtel_5_do: string
+  step_airtel_5_detail: string
+  step_airtel_6_do: string
+  step_airtel_6_detail: string
+  step_other_1_do: string
+  step_other_1_detail: string
+  step_other_2_do: string
+  step_other_2_detail: string
+  step_other_3_do: string
+  step_other_3_detail: string
+  step_other_4_do: string
+  step_other_4_detail: string
+  step_other_5_do: string
+  step_other_5_detail: string
+  step_other_6_do: string
+  step_other_6_detail: string
+  // Network display names (kept as proper nouns in the component, but the
+  // "Mitandao mingine & benki" catch-all is editable copy)
+  network_other_name: string
+  network_other_dial: string
+  // Card secure-payment panel
+  card_title: string
+  card_body: string
+  // Pay button — states
+  pay_redirecting: string
+  pay_awaiting: string
+  pay_processing: string
+  pay_card_cta: string
+  pay_lipa_cta: string // uses {amount}
+  pay_push_cta: string // uses {amount}
+  // Security reassurance lines
+  reassure_lipa: string
+  reassure_card: string
+  reassure_push: string
+  // Waiting overlay (M-Pesa PIN prompt)
+  overlay_aria: string
+  overlay_title: string
+  overlay_body: string // uses {phone} and {amount}
+  overlay_waiting: string
+  overlay_keep_open: string
+}
+
+// ── Checkout — summary (order summary card + ready/revision tiles) ──────────────
+export interface CheckoutSummaryStrings {
+  summary_title: string
+  price_label: string
+  discount_label: string
+  delivery_label: string
+  delivery_free: string
+  total_label: string
+  ready_title: string
+  ready_body: string
+  revision_title: string
+  revision_body: string
+  secure_note: string
+}
+
 export type UiStringsByArea = {
   navbar: NavbarStrings
   footer: FooterStrings
@@ -459,6 +610,9 @@ export type UiStringsByArea = {
   cart: CartStrings
   address: AddressStrings
   confirmation: ConfirmationStrings
+  'checkout-form': CheckoutFormStrings
+  'checkout-payment': CheckoutPaymentStrings
+  'checkout-summary': CheckoutSummaryStrings
 }
 
 export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
@@ -816,5 +970,135 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     delivered_note: 'Designs delivered within 24 hours',
     badge_card: 'Card',
     celebration_aria: 'Celebration',
+  },
+  'checkout-form': {
+    back_to_contact: '← Back to contact details',
+    page_title: 'Payment',
+    block_title: "We can't process this yet",
+    block_add_contact_cta: 'Add one →',
+    recap_delivering_to: 'Delivering to',
+    recap_edit: 'Edit',
+    payer_name_label: 'Name on the account that paid',
+    payer_name_placeholder: 'e.g. Mary Mwakasege',
+    payer_name_hint:
+      'The account holder name the payment came from — as registered with the mobile network or bank.',
+    phone_label_lipa: 'Your phone number to confirm your payment',
+    phone_label_push: '{provider} phone number',
+    phone_placeholder: '+255 7xx xxx xxx',
+    phone_hint_push: "You'll get a prompt on your phone to approve the payment.",
+    payref_label: 'Transaction reference number',
+    payref_placeholder: 'e.g. 9XJ45KQ2RT',
+    payref_hint:
+      'The confirmation code in the SMS you received after paying. The OpusFesta team uses it to verify your payment.',
+    error_cart_empty: 'Your cart is empty — add a design before paying.',
+    error_contact_missing: 'Please add your contact details before paying.',
+    error_phone: 'Enter a valid phone number.',
+    error_payer_name: 'Enter the name on the account the payment came from.',
+    error_payref:
+      'Enter the confirmation code from your payment SMS (6–25 letters or numbers).',
+  },
+  'checkout-payment': {
+    choose_title: 'Choose how to pay',
+    method_aria: 'Payment method',
+    method_mpesa_desc: 'Lipa Namba or QR — pay from any network or bank',
+    method_card_desc: 'Visa or Mastercard',
+    toggle_push: 'Phone prompt',
+    toggle_lipa: 'Lipa Namba',
+    push_instructions:
+      'Enter your M-Pesa number below and tap {pay}. A prompt pops up on your phone — enter your PIN to approve. We confirm automatically, no codes to copy.',
+    push_pay_word: 'Pay',
+    lipa_amount_label: 'Amount to send',
+    lipa_how_title: 'How to pay',
+    lipa_how_subtitle: 'How to pay — choose your network and follow the steps.',
+    lipa_network_aria: 'Payment network',
+    lipa_dial_prefix_other: 'Open',
+    lipa_dial_prefix_dial: 'Dial',
+    lipa_qr_note:
+      'Or scan the QR code: open the M-Pesa App, tap the QR button, scan the QR image above, then enter the amount and your PIN to complete the payment.',
+    // English equivalents of the on-screen (Swahili) Vodacom steps.
+    step_vodacom_1_do: 'Choose 4',
+    step_vodacom_1_detail: 'Pay with M-Pesa',
+    step_vodacom_2_do: 'Choose 1',
+    step_vodacom_2_detail: 'Pay by phone',
+    step_vodacom_3_do: 'Enter Lipa Namba',
+    step_vodacom_3_detail: '350298654',
+    step_vodacom_4_do: 'Enter amount',
+    step_vodacom_4_detail: 'to pay',
+    step_vodacom_5_do: 'Enter your PIN',
+    step_vodacom_5_detail: 'to confirm the payment',
+    step_tigo_1_do: 'Choose 5',
+    step_tigo_1_detail: 'PAY BY PHONE',
+    step_tigo_2_do: 'Choose 3',
+    step_tigo_2_detail: 'Go to other networks',
+    step_tigo_3_do: 'Choose 1',
+    step_tigo_3_detail: 'M-Pesa',
+    step_tigo_4_do: 'Enter M-Pesa Lipa Namba',
+    step_tigo_4_detail: '350298654',
+    step_tigo_5_do: 'Enter amount',
+    step_tigo_5_detail: 'you are paying',
+    step_tigo_6_do: 'Enter your PIN',
+    step_tigo_6_detail: 'to confirm',
+    step_airtel_1_do: 'Choose 5',
+    step_airtel_1_detail: 'Pay Bills',
+    step_airtel_2_do: 'Choose 1',
+    step_airtel_2_detail: 'Pay by phone (All networks)',
+    step_airtel_3_do: 'Choose 2',
+    step_airtel_3_detail: 'Pay by Voda Lipa',
+    step_airtel_4_do: 'Enter amount',
+    step_airtel_4_detail: 'of money',
+    step_airtel_5_do: 'Enter the reference number',
+    step_airtel_5_detail: '350298654',
+    step_airtel_6_do: 'Enter your PIN',
+    step_airtel_6_detail: 'to confirm',
+    step_other_1_do: 'Choose',
+    step_other_1_detail: 'PAY BY PHONE',
+    step_other_2_do: 'Choose',
+    step_other_2_detail: 'Go to other networks',
+    step_other_3_do: 'Choose',
+    step_other_3_detail: 'M-Pesa',
+    step_other_4_do: 'Enter the merchant number',
+    step_other_4_detail: '350298654',
+    step_other_5_do: 'Enter amount',
+    step_other_5_detail: 'to pay',
+    step_other_6_do: 'Enter your PIN',
+    step_other_6_detail: 'to confirm',
+    network_other_name: 'Other networks & banks',
+    network_other_dial: "Your network's financial services menu",
+    card_title: 'Secure card payment',
+    card_body:
+      "When you continue, we'll take you to our payment partner's secure page to enter your Visa or Mastercard details and complete 3-D Secure verification. OpusFesta never sees or stores your card number.",
+    pay_redirecting: 'Redirecting…',
+    pay_awaiting: 'Waiting for approval…',
+    pay_processing: 'Processing…',
+    pay_card_cta: 'Continue to secure card payment',
+    pay_lipa_cta: "I've paid {amount} — submit order",
+    pay_push_cta: 'Pay {amount}',
+    reassure_lipa:
+      'Your order is confirmed once the OpusFesta team verifies the transaction. Your design goes live within 24 hours of confirmation.',
+    reassure_card:
+      'Card payments are processed securely by our payment partner (3-D Secure). Your design goes live within 24 hours of confirmation.',
+    reassure_push:
+      'Approve the prompt on your phone to pay. Your design goes live within 24 hours of confirmation.',
+    overlay_aria: 'Awaiting payment approval',
+    overlay_title: 'Check your phone',
+    overlay_body:
+      'We sent a payment prompt to {phone}. Enter your M-Pesa PIN to approve {amount}.',
+    overlay_waiting: 'Waiting for confirmation…',
+    overlay_keep_open: 'Keep this page open — it updates automatically once you approve.',
+  },
+  'checkout-summary': {
+    summary_title: 'Order summary',
+    price_label: 'Price',
+    discount_label: 'Discount',
+    delivery_label: 'Delivery charges',
+    delivery_free: 'Free delivery',
+    total_label: 'Total',
+    ready_title: 'Ready in 24 hours',
+    ready_body:
+      'Your personalised design and OpusPass tickets are delivered within a day of payment.',
+    revision_title: 'One free revision',
+    revision_body:
+      "We'll fine-tune the details until your invitation looks just right.",
+    secure_note: 'Your payment details are encrypted and processed securely.',
   },
 }
