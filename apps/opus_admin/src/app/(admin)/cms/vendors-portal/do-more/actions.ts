@@ -3,12 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateVendorsPortal } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { DoMoreContent } from '@/lib/cms/do-more'
 
 const PAGE_KEY = 'vendors_home'
 const SECTION_KEY = 'do-more'
 
 export async function saveDoMoreDraft(draft: DoMoreContent): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -21,6 +23,7 @@ export async function saveDoMoreDraft(draft: DoMoreContent): Promise<void> {
 }
 
 export async function publishDoMore(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -43,6 +46,7 @@ export async function publishDoMore(): Promise<void> {
 }
 
 export async function discardDoMoreDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

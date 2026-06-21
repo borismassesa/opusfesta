@@ -3,12 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateWebsite } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { CategoryMarqueeContent } from '@/lib/cms/category-marquee'
 
 const PAGE_KEY = 'home'
 const SECTION_KEY = 'category-marquee'
 
 export async function saveCategoryMarqueeDraft(draft: CategoryMarqueeContent): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -25,6 +27,7 @@ export async function saveCategoryMarqueeDraft(draft: CategoryMarqueeContent): P
 }
 
 export async function publishCategoryMarquee(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -47,6 +50,7 @@ export async function publishCategoryMarquee(): Promise<void> {
 }
 
 export async function discardCategoryMarqueeDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

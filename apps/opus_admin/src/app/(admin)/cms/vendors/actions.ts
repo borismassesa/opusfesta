@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateWebsite as revalidateWebsitePaths } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { VendorRecord } from '@/lib/cms/vendors'
 
 async function revalidateWebsite(): Promise<void> {
@@ -10,6 +11,7 @@ async function revalidateWebsite(): Promise<void> {
 }
 
 export async function upsertVendor(vendor: VendorRecord): Promise<{ id: string }> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   // Strip timestamps — DB manages them
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -32,6 +34,7 @@ export async function patchVendor(
   id: string,
   patch: Partial<Pick<VendorRecord, 'published' | 'featured' | 'badge'>>
 ): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_vendors')
@@ -45,6 +48,7 @@ export async function patchVendor(
 }
 
 export async function deleteVendor(id: string): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase.from('website_vendors').delete().eq('id', id)
   if (error) throw error

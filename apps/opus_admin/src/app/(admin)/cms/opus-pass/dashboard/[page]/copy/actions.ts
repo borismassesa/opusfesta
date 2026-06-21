@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateOpusPass } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import {
   DASHBOARD_COPY_PAGE_KEY,
   DASHBOARD_COPY_PUBLIC_PATH,
@@ -28,6 +29,7 @@ export async function saveDashboardCopyDraft(
   slug: string,
   draft: DashboardCopyContent,
 ): Promise<void> {
+  await requirePermission('cms.write')
   const s = assertSlug(slug)
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
@@ -41,6 +43,7 @@ export async function saveDashboardCopyDraft(
 }
 
 export async function publishDashboardCopy(slug: string): Promise<void> {
+  await requirePermission('cms.publish')
   const s = assertSlug(slug)
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
@@ -66,6 +69,7 @@ export async function publishDashboardCopy(slug: string): Promise<void> {
 }
 
 export async function discardDashboardCopyDraft(slug: string): Promise<void> {
+  await requirePermission('cms.write')
   const s = assertSlug(slug)
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase

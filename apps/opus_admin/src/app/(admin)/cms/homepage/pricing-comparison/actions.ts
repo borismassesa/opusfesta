@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateWebsite } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { PricingComparisonContent } from '@/lib/cms/pricing-comparison'
 
 const PAGE_KEY = 'home'
@@ -11,6 +12,7 @@ const SECTION_KEY = 'pricing-comparison'
 export async function savePricingComparisonDraft(
   draft: PricingComparisonContent
 ): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -27,6 +29,7 @@ export async function savePricingComparisonDraft(
 }
 
 export async function publishPricingComparison(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -49,6 +52,7 @@ export async function publishPricingComparison(): Promise<void> {
 }
 
 export async function discardPricingComparisonDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

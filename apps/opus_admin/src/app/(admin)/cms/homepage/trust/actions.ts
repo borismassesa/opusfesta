@@ -3,12 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateWebsite } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { TrustContent } from '@/lib/cms/trust'
 
 const PAGE_KEY = 'home'
 const SECTION_KEY = 'trust'
 
 export async function saveTrustDraft(draft: TrustContent): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -25,6 +27,7 @@ export async function saveTrustDraft(draft: TrustContent): Promise<void> {
 }
 
 export async function publishTrust(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -47,6 +50,7 @@ export async function publishTrust(): Promise<void> {
 }
 
 export async function discardTrustDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

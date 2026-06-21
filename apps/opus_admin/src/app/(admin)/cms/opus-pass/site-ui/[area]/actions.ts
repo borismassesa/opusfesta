@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateOpusPass } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import {
   UI_STRINGS_PAGE_KEY,
   UI_STRINGS_PUBLIC_PATH,
@@ -25,6 +26,7 @@ function adminPath(area: UiArea): string {
 }
 
 export async function saveUiStringsDraft(area: string, draft: UiStringsContent): Promise<void> {
+  await requirePermission('cms.write')
   const a = assertArea(area)
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
@@ -38,6 +40,7 @@ export async function saveUiStringsDraft(area: string, draft: UiStringsContent):
 }
 
 export async function publishUiStrings(area: string): Promise<void> {
+  await requirePermission('cms.publish')
   const a = assertArea(area)
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
@@ -66,6 +69,7 @@ export async function publishUiStrings(area: string): Promise<void> {
 }
 
 export async function discardUiStringsDraft(area: string): Promise<void> {
+  await requirePermission('cms.write')
   const a = assertArea(area)
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase

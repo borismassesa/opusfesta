@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateOpusPass } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { OpusPassWebsitesHeroContent } from '@/lib/cms/opus-pass-websites-hero'
 
 const PAGE_KEY = 'opus-pass-websites'
@@ -11,6 +12,7 @@ const SECTION_KEY = 'hero'
 export async function saveOpusPassWebsitesHeroDraft(
   draft: OpusPassWebsitesHeroContent,
 ): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -23,6 +25,7 @@ export async function saveOpusPassWebsitesHeroDraft(
 }
 
 export async function publishOpusPassWebsitesHero(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -45,6 +48,7 @@ export async function publishOpusPassWebsitesHero(): Promise<void> {
 }
 
 export async function discardOpusPassWebsitesHeroDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

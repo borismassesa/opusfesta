@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateOpusPass } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { OpusPassInvitationsFeaturedSuiteContent } from '@/lib/cms/opus-pass-invitations-featured-suite'
 
 const PAGE_KEY = 'opus-pass-invitations'
@@ -11,6 +12,7 @@ const SECTION_KEY = 'featured-suite'
 export async function saveOpusPassInvitationsFeaturedSuiteDraft(
   draft: OpusPassInvitationsFeaturedSuiteContent,
 ): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -23,6 +25,7 @@ export async function saveOpusPassInvitationsFeaturedSuiteDraft(
 }
 
 export async function publishOpusPassInvitationsFeaturedSuite(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -45,6 +48,7 @@ export async function publishOpusPassInvitationsFeaturedSuite(): Promise<void> {
 }
 
 export async function discardOpusPassInvitationsFeaturedSuiteDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

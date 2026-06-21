@@ -34,10 +34,10 @@ function isExpiringSoon(iso: string): boolean {
 
 export default function PendingInvitationsSection({
   invitations,
-  callerIsOwner,
+  canManageAccess,
 }: {
   invitations: WorkforceInvitationListRow[]
-  callerIsOwner: boolean
+  canManageAccess: boolean
 }) {
   // We only show pending invitations (the most actionable subset). Past
   // invites are queryable from the audit log; surfacing them here would
@@ -57,7 +57,7 @@ export default function PendingInvitationsSection({
               {pending.length === 0
                 ? 'No invitations waiting on a response. Add a new employee to invite the next teammate.'
                 : `${pending.length} ${pending.length === 1 ? 'person hasn’t' : 'people haven’t'} accepted their invite yet.`}
-              {!callerIsOwner && ' · only owners can manage invitations'}
+              {!canManageAccess && ' · only owners can manage invitations'}
             </p>
           </div>
         </div>
@@ -90,7 +90,7 @@ export default function PendingInvitationsSection({
           <EmptyRow />
         ) : (
           pending.map((row) => (
-            <InvitationRow key={row.id} row={row} callerIsOwner={callerIsOwner} />
+            <InvitationRow key={row.id} row={row} canManageAccess={canManageAccess} />
           ))
         )}
       </div>
@@ -100,10 +100,10 @@ export default function PendingInvitationsSection({
 
 function InvitationRow({
   row,
-  callerIsOwner,
+  canManageAccess,
 }: {
   row: WorkforceInvitationListRow
-  callerIsOwner: boolean
+  canManageAccess: boolean
 }) {
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
@@ -194,7 +194,7 @@ function InvitationRow({
       </div>
 
       <div className="flex items-center justify-end gap-1">
-        {callerIsOwner ? (
+        {canManageAccess ? (
           <>
             <button
               type="button"

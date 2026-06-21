@@ -52,12 +52,12 @@ export default function AdminTeamSection({
   employees,
   roles,
   callerEmail,
-  callerIsOwner,
+  canManageAccess,
 }: {
   employees: Employee[]
   roles: WorkforceRole[]
   callerEmail: string | null
-  callerIsOwner: boolean
+  canManageAccess: boolean
 }) {
   const [search, setSearch] = useState('')
   const [granting, setGranting] = useState(false)
@@ -126,11 +126,11 @@ export default function AdminTeamSection({
               {members.length}{' '}
               {members.length === 1 ? 'person signs in' : 'people sign in'} to this
               admin app · {ownerCount} {ownerCount === 1 ? 'owner' : 'owners'}
-              {!callerIsOwner && ' · only owners can change this list'}
+              {!canManageAccess && ' · only owners can change this list'}
             </p>
           </div>
         </div>
-        {callerIsOwner && (
+        {canManageAccess && (
           <button
             type="button"
             onClick={() => setGranting(true)}
@@ -184,7 +184,7 @@ export default function AdminTeamSection({
               row={m}
               roles={roles}
               callerEmail={callerEmail}
-              callerIsOwner={callerIsOwner}
+              canManageAccess={canManageAccess}
               ownerCount={ownerCount}
               onRequestRoleChange={(nextRole) =>
                 setPendingRoleChange({ row: m, nextRole })
@@ -195,7 +195,7 @@ export default function AdminTeamSection({
         )}
       </div>
 
-      {granting && callerIsOwner && (
+      {granting && canManageAccess && (
         <GrantAccessDialog
           employees={employees}
           roles={roles}
@@ -225,7 +225,7 @@ function MemberRowView({
   row,
   roles,
   callerEmail,
-  callerIsOwner,
+  canManageAccess,
   ownerCount,
   onRequestRoleChange,
   onRequestRevoke,
@@ -233,7 +233,7 @@ function MemberRowView({
   row: MemberRow
   roles: WorkforceRole[]
   callerEmail: string | null
-  callerIsOwner: boolean
+  canManageAccess: boolean
   ownerCount: number
   onRequestRoleChange: (nextRole: WorkforceRole) => void
   onRequestRevoke: () => void
@@ -241,12 +241,12 @@ function MemberRowView({
   const isSelf = callerEmail?.toLowerCase() === row.employee.email.toLowerCase()
   const isLastOwner = row.roleSlug === 'owner' && ownerCount <= 1
 
-  // Owners manage everyone. Server enforces last-owner / self-revoke
-  // invariants; UI mirrors them so disabled controls explain why via the
-  // title attribute (still keyboard-accessible).
-  const canChangeRole = callerIsOwner && !isLastOwner
-  const canRevoke = callerIsOwner && !isSelf && !isLastOwner
-  const revokeDisabledReason = !callerIsOwner
+  // Only platform.admin holders manage access. Server enforces last-owner /
+  // self-revoke invariants; UI mirrors them so disabled controls explain why
+  // via the title attribute (still keyboard-accessible).
+  const canChangeRole = canManageAccess && !isLastOwner
+  const canRevoke = canManageAccess && !isSelf && !isLastOwner
+  const revokeDisabledReason = !canManageAccess
     ? 'Only owners can revoke dashboard access'
     : isSelf
       ? 'You can’t revoke your own access — ask another owner'
@@ -584,7 +584,7 @@ function GrantAccessDialog({
             Grant dashboard access
           </h2>
           <p className="mt-1 text-sm text-gray-500">
-            Pick an employee and the role they should hold. We'll send them an
+            Pick an employee and the role they should hold. We’ll send them an
             invitation email; access only turns on after they accept.
           </p>
         </div>
@@ -674,7 +674,7 @@ function GrantAccessDialog({
                 ))}
             </select>
             <span className="mt-1 block text-[11px] text-gray-400">
-              Author is excluded — Authors live under /contribute and don't need
+              Author is excluded — Authors live under /contribute and don’t need
               dashboard access.
             </span>
           </label>

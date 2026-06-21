@@ -81,7 +81,7 @@ export default function RolesClient({
   memberIdsByRole,
   invitations,
   callerEmail,
-  callerIsOwner,
+  canManageAccess,
 }: {
   roles: WorkforceRole[]
   permissions: Permission[]
@@ -89,7 +89,7 @@ export default function RolesClient({
   memberIdsByRole: Record<string, string[]>
   invitations: WorkforceInvitationListRow[]
   callerEmail: string | null
-  callerIsOwner: boolean
+  canManageAccess: boolean
 }) {
   const [tab, setTab] = useState<Tab>('people')
   const [selectedId, setSelectedId] = useState<string>(roles[0]?.id ?? '')
@@ -211,11 +211,11 @@ export default function RolesClient({
             employees={employees}
             roles={roles}
             callerEmail={callerEmail}
-            callerIsOwner={callerIsOwner}
+            canManageAccess={canManageAccess}
           />
           <PendingInvitationsSection
             invitations={invitations}
-            callerIsOwner={callerIsOwner}
+            canManageAccess={canManageAccess}
           />
         </div>
       )}

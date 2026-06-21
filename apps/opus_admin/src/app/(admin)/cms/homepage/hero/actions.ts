@@ -3,12 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateWebsite } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { HeroContent } from '@/lib/cms/hero'
 
 const PAGE_KEY = 'home'
 const SECTION_KEY = 'hero'
 
 export async function saveHeroDraft(draft: HeroContent): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -20,6 +22,7 @@ export async function saveHeroDraft(draft: HeroContent): Promise<void> {
 }
 
 export async function publishHero(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -42,6 +45,7 @@ export async function publishHero(): Promise<void> {
 }
 
 export async function discardHeroDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

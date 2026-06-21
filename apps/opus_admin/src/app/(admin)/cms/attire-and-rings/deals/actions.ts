@@ -3,12 +3,14 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateWebsite } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { AttireDealsContent } from '@/lib/cms/attire-deals'
 
 const PAGE_KEY = 'attire-and-rings'
 const SECTION_KEY = 'deals'
 
 export async function saveAttireDealsDraft(draft: AttireDealsContent): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -21,6 +23,7 @@ export async function saveAttireDealsDraft(draft: AttireDealsContent): Promise<v
 }
 
 export async function publishAttireDeals(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -43,6 +46,7 @@ export async function publishAttireDeals(): Promise<void> {
 }
 
 export async function discardAttireDealsDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')

@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { revalidateOpusPass } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { requirePermission } from '@/lib/admin-auth'
 import type { MaybeLocalized } from '@/lib/cms/localized'
 import {
   INVITATIONS_NAVBAR_PAGE_KEY,
@@ -14,6 +15,7 @@ type NavbarDraft = Record<string, MaybeLocalized>
 const ADMIN_PATH = '/cms/opus-pass/invitations/navbar'
 
 export async function saveNavbarDraft(draft: NavbarDraft): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
@@ -30,6 +32,7 @@ export async function saveNavbarDraft(draft: NavbarDraft): Promise<void> {
 }
 
 export async function publishNavbar(): Promise<void> {
+  await requirePermission('cms.publish')
   const supabase = createSupabaseAdminClient()
   const { data: row, error: loadErr } = await supabase
     .from('website_page_sections')
@@ -55,6 +58,7 @@ export async function publishNavbar(): Promise<void> {
 }
 
 export async function discardNavbarDraft(): Promise<void> {
+  await requirePermission('cms.write')
   const supabase = createSupabaseAdminClient()
   const { error } = await supabase
     .from('website_page_sections')
