@@ -4,13 +4,13 @@ import { useEffect, useState, useTransition, type ReactNode } from 'react'
 import { cn } from '@/lib/utils'
 import { MediaUploadField } from '@/components/cms/MediaUploadField'
 import { BilingualField } from '@/components/cms/BilingualField'
-import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
-import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
+import DashboardPreview from '@/components/cms/opus-pass-dashboard/DashboardPreview'
 import type {
   DashboardHeroContent,
   DashboardHeroMediaType,
   DashboardHeroSlug,
 } from '@/lib/cms/opus-pass-dashboard-hero'
+import type { DashboardCopyContent } from '@/lib/cms/opus-pass-dashboard-copy'
 import { useEditorActions } from '../../EditorActionsContext'
 import {
   discardDashboardHeroDraft,
@@ -23,6 +23,7 @@ type Props = {
   label: string
   initial: DashboardHeroContent
   hasDraft: boolean
+  copy: DashboardCopyContent
 }
 
 function Field({
@@ -56,13 +57,18 @@ function FieldGroup({ label, children }: { label: string; children: ReactNode })
   )
 }
 
-export default function HeroEditor({ slug, label, initial, hasDraft: initialHasDraft }: Props) {
+export default function HeroEditor({
+  slug,
+  label,
+  initial,
+  hasDraft: initialHasDraft,
+  copy,
+}: Props) {
   const [draft, setDraft] = useState<DashboardHeroContent>(initial)
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   // When switching between dashboard slugs (the layout stays mounted), re-seed.
@@ -125,13 +131,6 @@ export default function HeroEditor({ slug, label, initial, hasDraft: initialHasD
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasDraft, pending, message, error, draft])
 
-  const hasMedia = draft.media_type !== 'none' && !!draft.media_url
-  const previewMediaUrl = hasMedia ? resolveOpusPassAssetUrl(draft.media_url) : ''
-  const previewEyebrow = resolveLocalized(draft.eyebrow, previewLocale)
-  const previewTitle = resolveLocalized(draft.title, previewLocale)
-  const previewSubtitle = resolveLocalized(draft.subtitle, previewLocale)
-  const previewAlt = resolveLocalized(draft.media_alt, previewLocale)
-
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start pb-12">
       <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] space-y-5">
@@ -145,6 +144,10 @@ export default function HeroEditor({ slug, label, initial, hasDraft: initialHasD
             placeholder="Dashboard"
             max={40}
           />
+          <p className="-mt-1 text-[11px] text-gray-400">
+            The live dashboard currently shows a plain text header — only the title and subtitle
+            appear (see preview). Eyebrow and cover media are stored for a future layout.
+          </p>
           <BilingualField
             label="Title"
             value={draft.title}
@@ -220,93 +223,8 @@ export default function HeroEditor({ slug, label, initial, hasDraft: initialHasD
         </FieldGroup>
       </div>
 
-      <div className="space-y-3 xl:sticky xl:top-6">
-        <div className="flex items-center justify-between px-1">
-          <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
-            Live preview
-          </p>
-          <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
-            {LOCALES.map((l) => (
-              <button
-                key={l}
-                type="button"
-                onClick={() => setPreviewLocale(l)}
-                aria-pressed={previewLocale === l}
-                className={cn(
-                  'rounded-full px-2.5 py-0.5 transition-colors',
-                  previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900',
-                )}
-              >
-                {LOCALE_LABELS[l]}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="relative isolate overflow-hidden rounded-3xl border border-gray-200 shadow-[0_2px_10px_rgba(26,26,26,0.06)] bg-white">
-          <div className="absolute inset-0 -z-10">
-            {hasMedia ? (
-              draft.media_type === 'video' ? (
-                <video
-                  key={previewMediaUrl}
-                  src={previewMediaUrl}
-                  autoPlay
-                  muted
-                  loop
-                  playsInline
-                  className="h-full w-full object-cover"
-                />
-              ) : (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  key={previewMediaUrl}
-                  src={previewMediaUrl}
-                  alt={previewAlt}
-                  className="h-full w-full object-cover"
-                />
-              )
-            ) : (
-              <div className="h-full w-full bg-gradient-to-br from-[#F3E9FA] via-[#E9DCF7] to-[#FFE2CC]" />
-            )}
-            <div
-              className={cn(
-                'absolute inset-0',
-                hasMedia
-                  ? 'bg-gradient-to-t from-black/65 via-black/30 to-black/10'
-                  : 'bg-gradient-to-t from-white/40 via-transparent to-transparent',
-              )}
-            />
-          </div>
-          <div className="relative flex min-h-[260px] flex-col justify-end p-6 sm:p-8">
-            {previewEyebrow && (
-              <p
-                className={cn(
-                  'text-xs font-semibold uppercase tracking-[0.18em]',
-                  hasMedia ? 'text-white/85' : 'text-[#1A1A1A]/55',
-                )}
-              >
-                {previewEyebrow}
-              </p>
-            )}
-            <h1
-              className={cn(
-                'mt-1 text-2xl font-bold tracking-tight sm:text-3xl',
-                hasMedia ? 'text-white drop-shadow-sm' : 'text-[#1A1A1A]',
-              )}
-            >
-              {previewTitle || 'Untitled'}
-            </h1>
-            {previewSubtitle && (
-              <p
-                className={cn(
-                  'mt-2 text-sm sm:text-base max-w-2xl',
-                  hasMedia ? 'text-white/90' : 'text-[#1A1A1A]/70',
-                )}
-              >
-                {previewSubtitle}
-              </p>
-            )}
-          </div>
-        </div>
+      <div className="xl:sticky xl:top-6">
+        <DashboardPreview slug={slug} hero={draft} copy={copy} />
       </div>
     </div>
   )
