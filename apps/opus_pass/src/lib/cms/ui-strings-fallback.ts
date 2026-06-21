@@ -22,6 +22,9 @@ export type UiArea =
   | 'checkout-form'
   | 'checkout-payment'
   | 'checkout-summary'
+  | 'forms-collect'
+  | 'forms-rsvp'
+  | 'forms-pledge'
 
 // One CMS page row per area; section_key is always 'copy'.
 //
@@ -43,6 +46,9 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   'checkout-form': 'opus-pass-ui-checkout-form',
   'checkout-payment': 'opus-pass-ui-checkout-payment',
   'checkout-summary': 'opus-pass-ui-checkout-summary',
+  'forms-collect': 'opus-pass-ui-forms-collect',
+  'forms-rsvp': 'opus-pass-ui-forms-rsvp',
+  'forms-pledge': 'opus-pass-ui-forms-pledge',
 }
 
 // The public navbar reads ONE merged 'navbar' namespace, but its keys are now
@@ -601,6 +607,97 @@ export interface CheckoutSummaryStrings {
   secure_note: string
 }
 
+// ── Collect form (guest contact collector at /collect/[token]) ────────────────
+export interface FormsCollectStrings {
+  // Field labels + placeholders
+  label_name: string
+  placeholder_name: string
+  label_whatsapp: string
+  placeholder_whatsapp: string
+  label_email: string
+  placeholder_email: string
+  // Validation (client-side)
+  error_name: string
+  // Submit error toast (caught from server action)
+  error_submit: string
+  // Send button — pending state (idle label is cfg.buttonLabel)
+  send_pending: string
+  // Success state (emoji stored in the string)
+  success_heading: string
+  success_body: string // uses {coupleName}
+}
+
+// ── RSVP form (public self-RSVP at /rsvp/[token]) ─────────────────────────────
+export interface FormsRsvpStrings {
+  // Date fallback
+  date_tbc: string
+  // Validation + toasts
+  error_answer_each: string
+  toast_saved: string
+  error_save: string
+  // Empty state (no events)
+  empty_greeting: string // uses {name}
+  empty_body: string
+  // Header
+  eyebrow: string
+  header_greeting: string // uses {name}
+  // Submitted state
+  submitted_title: string
+  submitted_body: string
+  submitted_change: string
+  // Event card
+  dress_code_prefix: string // "Dress code:" — value appended in markup
+  // RSVP status options
+  status_attending: string
+  status_maybe: string
+  status_declined: string
+  // Attending extras
+  party_size_label: string
+  party_size_one: string // uses {n}
+  party_size_other: string // uses {n}
+  meal_label: string
+  meal_placeholder: string
+  dietary_label: string
+  dietary_optional: string
+  dietary_placeholder: string
+  message_label: string
+  message_optional: string
+  // Send button
+  send_pending: string
+  send_cta: string
+  // Footer
+  powered_by: string // uses {coupleName}
+}
+
+// ── Pledge form (public contribution pledge at /pledge/[token]) ───────────────
+export interface FormsPledgeStrings {
+  // Field labels + placeholders
+  label_name: string
+  placeholder_name: string
+  label_amount: string
+  amount_currency: string
+  placeholder_amount: string
+  label_promised_date: string
+  label_whatsapp: string
+  placeholder_whatsapp: string
+  label_email: string
+  placeholder_email: string
+  label_message: string
+  placeholder_message: string
+  // Validation (client-side)
+  error_name: string
+  error_amount: string
+  // Submit error toast (caught from server action)
+  error_submit: string
+  // Send button — pending state (idle label is cfg.buttonLabel)
+  send_pending: string
+  // Success state (emoji stored in the string)
+  success_heading: string
+  success_body: string // uses {coupleName}
+  // Payment card
+  pay_title: string
+}
+
 export type UiStringsByArea = {
   navbar: NavbarStrings
   footer: FooterStrings
@@ -613,6 +710,9 @@ export type UiStringsByArea = {
   'checkout-form': CheckoutFormStrings
   'checkout-payment': CheckoutPaymentStrings
   'checkout-summary': CheckoutSummaryStrings
+  'forms-collect': FormsCollectStrings
+  'forms-rsvp': FormsRsvpStrings
+  'forms-pledge': FormsPledgeStrings
 }
 
 export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
@@ -1100,5 +1200,70 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     revision_body:
       "We'll fine-tune the details until your invitation looks just right.",
     secure_note: 'Your payment details are encrypted and processed securely.',
+  },
+  'forms-collect': {
+    label_name: 'Your name',
+    placeholder_name: 'Asha Mussa',
+    label_whatsapp: 'WhatsApp / mobile',
+    placeholder_whatsapp: '0712 345 678',
+    label_email: 'Email',
+    placeholder_email: 'you@example.com',
+    error_name: 'Please enter your name',
+    error_submit: 'Could not save your info',
+    send_pending: 'Sending…',
+    success_heading: 'Thank you! 💚',
+    success_body:
+      '{coupleName} have your details. You’ll receive your invitation and RSVP link by WhatsApp soon.',
+  },
+  'forms-rsvp': {
+    date_tbc: 'Date to be confirmed',
+    error_answer_each: 'Please answer for each event',
+    toast_saved: 'Thank you! Your RSVP is saved.',
+    error_save: 'Could not save your reply',
+    empty_greeting: 'Hi {name}!',
+    empty_body: 'Your invitation details are being finalised. Please check back soon.',
+    eyebrow: "You're invited",
+    header_greeting: "Hi {name}, we'd love to celebrate with you.",
+    submitted_title: 'Your RSVP is saved',
+    submitted_body: 'Thank you! You can update your response below if anything changes.',
+    submitted_change: 'Change my response',
+    dress_code_prefix: 'Dress code:',
+    status_attending: "I'll be there",
+    status_maybe: 'Maybe',
+    status_declined: "Can't make it",
+    party_size_label: 'How many in your party?',
+    party_size_one: '{n} guest',
+    party_size_other: '{n} guests',
+    meal_label: 'Meal choice',
+    meal_placeholder: 'Select…',
+    dietary_label: 'Dietary needs',
+    dietary_optional: '(optional)',
+    dietary_placeholder: 'Allergies, preferences…',
+    message_label: 'Message to the couple',
+    message_optional: '(optional)',
+    send_pending: 'Sending…',
+    send_cta: 'Send my RSVP',
+    powered_by: 'Powered by OpusPass · {coupleName}',
+  },
+  'forms-pledge': {
+    label_name: 'Your name',
+    placeholder_name: 'Asha Mussa',
+    label_amount: 'Amount you’d like to pledge',
+    amount_currency: 'TZS',
+    placeholder_amount: '100,000',
+    label_promised_date: 'When can you pay by?',
+    label_whatsapp: 'WhatsApp / mobile',
+    placeholder_whatsapp: '0712 345 678',
+    label_email: 'Email',
+    placeholder_email: 'you@example.com',
+    label_message: 'A note for the couple',
+    placeholder_message: 'Hongera! Anything you’d like to add…',
+    error_name: 'Please enter your name',
+    error_amount: 'Please enter the amount you can pledge',
+    error_submit: 'Could not save your pledge',
+    send_pending: 'Sending…',
+    success_heading: 'Asante sana! 💚',
+    success_body: '{coupleName} have received your pledge. They’ll be in touch with the details.',
+    pay_title: 'How to pay',
   },
 }

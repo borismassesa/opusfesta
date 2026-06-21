@@ -38,6 +38,9 @@ export {
   type CheckoutFormStrings,
   type CheckoutPaymentStrings,
   type CheckoutSummaryStrings,
+  type FormsCollectStrings,
+  type FormsRsvpStrings,
+  type FormsPledgeStrings,
   type UiStringsByArea,
 } from './ui-strings-fallback'
 

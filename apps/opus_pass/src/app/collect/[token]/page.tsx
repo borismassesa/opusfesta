@@ -2,6 +2,9 @@ import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { createDashboardClient } from '@/lib/dashboard/supabase'
 import type { PledgePageConfig } from '@/lib/dashboard/pledge-page'
+import { getLocale } from '@/lib/cms/locale'
+import { loadUiStrings } from '@/lib/cms/ui-strings'
+import { UIStringsProvider } from '@/components/providers/UIStringsProvider'
 import CollectorForm from './CollectorForm'
 
 export const dynamic = 'force-dynamic'
@@ -65,13 +68,17 @@ export default async function CollectorPage({ params }: PageProps) {
   const { token } = await params
   const couple = await loadCouple(token)
   if (!couple) notFound()
+  const locale = await getLocale()
+  const formsCollect = await loadUiStrings('forms-collect', locale)
   return (
-    <CollectorForm
-      token={token}
-      coupleName={couple.coupleName}
-      weddingDate={couple.weddingDate}
-      city={couple.city}
-      config={couple.config}
-    />
+    <UIStringsProvider bundles={{ 'forms-collect': formsCollect }}>
+      <CollectorForm
+        token={token}
+        coupleName={couple.coupleName}
+        weddingDate={couple.weddingDate}
+        city={couple.city}
+        config={couple.config}
+      />
+    </UIStringsProvider>
   )
 }

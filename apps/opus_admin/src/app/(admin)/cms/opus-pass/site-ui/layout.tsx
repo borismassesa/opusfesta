@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, Save, Send, Trash2 } from 'lucide-react'
+import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, Save, Send, Trash2 } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { CmsSecondarySidebar, type CmsSection } from '@/components/cms/CmsSecondarySidebar'
@@ -104,6 +104,33 @@ const sections: CmsSection[] = [
     status: 'live',
     description:
       'Checkout order summary card, "ready in 24 hours" and "one free revision" tiles and the secure-payment note — bilingual. Prices and math are not editable here.',
+  },
+  {
+    key: 'forms-collect',
+    label: 'Collect form',
+    icon: UserPlus,
+    href: '/cms/opus-pass/site-ui/forms-collect',
+    status: 'live',
+    description:
+      'Guest contact collector — field labels, validation, send-button and success copy — bilingual. The headings, intro and button label come from the couple’s page config.',
+  },
+  {
+    key: 'forms-rsvp',
+    label: 'RSVP form',
+    icon: MailCheck,
+    href: '/cms/opus-pass/site-ui/forms-rsvp',
+    status: 'live',
+    description:
+      'Public RSVP form — header, RSVP status options, attending extras, submitted/empty states and the send button — bilingual.',
+  },
+  {
+    key: 'forms-pledge',
+    label: 'Pledge form',
+    icon: HandCoins,
+    href: '/cms/opus-pass/site-ui/forms-pledge',
+    status: 'live',
+    description:
+      'Contribution pledge form — field labels, validation, payment-card heading, send-button and success copy — bilingual. Payment methods/instructions come from the couple’s config.',
   },
 ]
 

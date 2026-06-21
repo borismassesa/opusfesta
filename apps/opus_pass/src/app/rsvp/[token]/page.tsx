@@ -1,6 +1,9 @@
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { getPublicRsvpData } from '@/lib/dashboard/queries'
+import { getLocale } from '@/lib/cms/locale'
+import { loadUiStrings } from '@/lib/cms/ui-strings'
+import { UIStringsProvider } from '@/components/providers/UIStringsProvider'
 import PublicRsvpForm from './PublicRsvpForm'
 
 export const dynamic = 'force-dynamic'
@@ -14,5 +17,11 @@ export default async function RsvpPage({ params }: { params: Promise<{ token: st
   const { token } = await params
   const data = await getPublicRsvpData(token)
   if (!data) notFound()
-  return <PublicRsvpForm data={data} token={token} />
+  const locale = await getLocale()
+  const formsRsvp = await loadUiStrings('forms-rsvp', locale)
+  return (
+    <UIStringsProvider bundles={{ 'forms-rsvp': formsRsvp }}>
+      <PublicRsvpForm data={data} token={token} />
+    </UIStringsProvider>
+  )
 }

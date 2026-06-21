@@ -34,6 +34,9 @@ export type UiArea =
   | 'checkout-form'
   | 'checkout-payment'
   | 'checkout-summary'
+  | 'forms-collect'
+  | 'forms-rsvp'
+  | 'forms-pledge'
 
 // Each field is translatable: stored as a localized { en, sw } object (or a
 // legacy plain string). The editor reads/writes this shape via <BilingualField>.
@@ -61,6 +64,9 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   'checkout-form': 'opus-pass-ui-checkout-form',
   'checkout-payment': 'opus-pass-ui-checkout-payment',
   'checkout-summary': 'opus-pass-ui-checkout-summary',
+  'forms-collect': 'opus-pass-ui-forms-collect',
+  'forms-rsvp': 'opus-pass-ui-forms-rsvp',
+  'forms-pledge': 'opus-pass-ui-forms-pledge',
 }
 
 export const UI_STRINGS_LABEL: Record<UiArea, string> = {
@@ -75,6 +81,9 @@ export const UI_STRINGS_LABEL: Record<UiArea, string> = {
   'checkout-form': 'Checkout — form',
   'checkout-payment': 'Checkout — payment',
   'checkout-summary': 'Checkout — summary',
+  'forms-collect': 'Collect form',
+  'forms-rsvp': 'RSVP form',
+  'forms-pledge': 'Pledge form',
 }
 
 // Navbar + footer appear on every public page; the home page ('/') is the
@@ -91,6 +100,11 @@ export const UI_STRINGS_PUBLIC_PATH: Record<UiArea, string> = {
   'checkout-form': '/invitations/checkout',
   'checkout-payment': '/invitations/checkout',
   'checkout-summary': '/invitations/checkout',
+  // Token routes — no fixed public path; use the route base for the
+  // best-effort revalidate hint (pages render dynamically anyway).
+  'forms-collect': '/collect',
+  'forms-rsvp': '/rsvp',
+  'forms-pledge': '/pledge',
 }
 
 export const UI_STRINGS_AREAS: readonly UiArea[] = [
@@ -105,6 +119,9 @@ export const UI_STRINGS_AREAS: readonly UiArea[] = [
   'checkout-form',
   'checkout-payment',
   'checkout-summary',
+  'forms-collect',
+  'forms-rsvp',
+  'forms-pledge',
 ] as const
 
 export function isUiArea(value: string): value is UiArea {
@@ -542,6 +559,71 @@ export const UI_STRINGS_FALLBACK: Record<UiArea, UiStringsContent> = {
     revision_body:
       "We'll fine-tune the details until your invitation looks just right.",
     secure_note: 'Your payment details are encrypted and processed securely.',
+  },
+  'forms-collect': {
+    label_name: 'Your name',
+    placeholder_name: 'Asha Mussa',
+    label_whatsapp: 'WhatsApp / mobile',
+    placeholder_whatsapp: '0712 345 678',
+    label_email: 'Email',
+    placeholder_email: 'you@example.com',
+    error_name: 'Please enter your name',
+    error_submit: 'Could not save your info',
+    send_pending: 'Sending…',
+    success_heading: 'Thank you! 💚',
+    success_body:
+      '{coupleName} have your details. You’ll receive your invitation and RSVP link by WhatsApp soon.',
+  },
+  'forms-rsvp': {
+    date_tbc: 'Date to be confirmed',
+    error_answer_each: 'Please answer for each event',
+    toast_saved: 'Thank you! Your RSVP is saved.',
+    error_save: 'Could not save your reply',
+    empty_greeting: 'Hi {name}!',
+    empty_body: 'Your invitation details are being finalised. Please check back soon.',
+    eyebrow: "You're invited",
+    header_greeting: "Hi {name}, we'd love to celebrate with you.",
+    submitted_title: 'Your RSVP is saved',
+    submitted_body: 'Thank you! You can update your response below if anything changes.',
+    submitted_change: 'Change my response',
+    dress_code_prefix: 'Dress code:',
+    status_attending: "I'll be there",
+    status_maybe: 'Maybe',
+    status_declined: "Can't make it",
+    party_size_label: 'How many in your party?',
+    party_size_one: '{n} guest',
+    party_size_other: '{n} guests',
+    meal_label: 'Meal choice',
+    meal_placeholder: 'Select…',
+    dietary_label: 'Dietary needs',
+    dietary_optional: '(optional)',
+    dietary_placeholder: 'Allergies, preferences…',
+    message_label: 'Message to the couple',
+    message_optional: '(optional)',
+    send_pending: 'Sending…',
+    send_cta: 'Send my RSVP',
+    powered_by: 'Powered by OpusPass · {coupleName}',
+  },
+  'forms-pledge': {
+    label_name: 'Your name',
+    placeholder_name: 'Asha Mussa',
+    label_amount: 'Amount you’d like to pledge',
+    amount_currency: 'TZS',
+    placeholder_amount: '100,000',
+    label_promised_date: 'When can you pay by?',
+    label_whatsapp: 'WhatsApp / mobile',
+    placeholder_whatsapp: '0712 345 678',
+    label_email: 'Email',
+    placeholder_email: 'you@example.com',
+    label_message: 'A note for the couple',
+    placeholder_message: 'Hongera! Anything you’d like to add…',
+    error_name: 'Please enter your name',
+    error_amount: 'Please enter the amount you can pledge',
+    error_submit: 'Could not save your pledge',
+    send_pending: 'Sending…',
+    success_heading: 'Asante sana! 💚',
+    success_body: '{coupleName} have received your pledge. They’ll be in touch with the details.',
+    pay_title: 'How to pay',
   },
 }
 
@@ -1255,6 +1337,160 @@ export const UI_STRINGS_SCHEMA: Record<UiArea, CopyFieldGroup[]> = {
       legend: 'Trust',
       fields: [
         { key: 'secure_note', label: 'Secure payment note', kind: 'text', max: 80 },
+      ],
+    },
+  ],
+  'forms-collect': [
+    {
+      legend: 'Field labels',
+      fields: [
+        { key: 'label_name', label: 'Name — label', kind: 'text', max: 40 },
+        { key: 'placeholder_name', label: 'Name — placeholder', kind: 'text', max: 40 },
+        { key: 'label_whatsapp', label: 'WhatsApp / mobile — label', kind: 'text', max: 40 },
+        { key: 'placeholder_whatsapp', label: 'WhatsApp / mobile — placeholder', kind: 'text', max: 40 },
+        { key: 'label_email', label: 'Email — label', kind: 'text', max: 40 },
+        { key: 'placeholder_email', label: 'Email — placeholder', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Validation',
+      fields: [
+        { key: 'error_name', label: 'Name required', kind: 'text', max: 80 },
+        { key: 'error_submit', label: 'Could not save (fallback)', kind: 'text', max: 80, hint: 'Shown only when the server returns no specific message.' },
+      ],
+    },
+    {
+      legend: 'Send button',
+      fields: [
+        { key: 'send_pending', label: 'Sending state', kind: 'text', max: 30, hint: 'Idle label comes from the couple’s page config (not editable here).' },
+      ],
+    },
+    {
+      legend: 'Success',
+      fields: [
+        { key: 'success_heading', label: 'Heading', kind: 'text', max: 40, hint: 'Emoji is part of the text — keep or change it inline.' },
+        { key: 'success_body', label: 'Body', kind: 'textarea', max: 200, hint: 'Use {coupleName} for the couple’s name.' },
+      ],
+    },
+  ],
+  'forms-rsvp': [
+    {
+      legend: 'Header',
+      fields: [
+        { key: 'eyebrow', label: 'Eyebrow', kind: 'text', max: 40 },
+        { key: 'header_greeting', label: 'Greeting', kind: 'text', max: 120, hint: 'Use {name} for the guest’s name.' },
+      ],
+    },
+    {
+      legend: 'Event card',
+      fields: [
+        { key: 'date_tbc', label: 'Date to be confirmed', kind: 'text', max: 60 },
+        { key: 'dress_code_prefix', label: 'Dress code label', kind: 'text', max: 30, hint: 'The dress code value is appended after this label.' },
+      ],
+    },
+    {
+      legend: 'RSVP status options',
+      fields: [
+        { key: 'status_attending', label: 'Attending', kind: 'text', max: 30 },
+        { key: 'status_maybe', label: 'Maybe', kind: 'text', max: 30 },
+        { key: 'status_declined', label: 'Declined', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Attending extras',
+      fields: [
+        { key: 'party_size_label', label: 'Party size — label', kind: 'text', max: 60 },
+        { key: 'party_size_one', label: 'Party size (singular)', kind: 'text', max: 30, hint: 'Use {n} for the count, e.g. "{n} guest"' },
+        { key: 'party_size_other', label: 'Party size (plural)', kind: 'text', max: 30, hint: 'Use {n} for the count, e.g. "{n} guests"' },
+        { key: 'meal_label', label: 'Meal choice — label', kind: 'text', max: 40 },
+        { key: 'meal_placeholder', label: 'Meal choice — placeholder', kind: 'text', max: 40 },
+        { key: 'dietary_label', label: 'Dietary needs — label', kind: 'text', max: 40 },
+        { key: 'dietary_optional', label: 'Dietary needs — optional marker', kind: 'text', max: 30 },
+        { key: 'dietary_placeholder', label: 'Dietary needs — placeholder', kind: 'text', max: 60 },
+        { key: 'message_label', label: 'Message — label', kind: 'text', max: 60 },
+        { key: 'message_optional', label: 'Message — optional marker', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Send button',
+      fields: [
+        { key: 'send_cta', label: 'Send button', kind: 'text', max: 40 },
+        { key: 'send_pending', label: 'Sending state', kind: 'text', max: 30 },
+      ],
+    },
+    {
+      legend: 'Validation & toasts',
+      fields: [
+        { key: 'error_answer_each', label: 'Answer each event', kind: 'text', max: 80 },
+        { key: 'toast_saved', label: 'Saved toast', kind: 'text', max: 80 },
+        { key: 'error_save', label: 'Could not save (fallback)', kind: 'text', max: 80, hint: 'Shown only when the server returns no specific message.' },
+      ],
+    },
+    {
+      legend: 'Submitted state',
+      fields: [
+        { key: 'submitted_title', label: 'Title', kind: 'text', max: 60 },
+        { key: 'submitted_body', label: 'Body', kind: 'textarea', max: 160 },
+        { key: 'submitted_change', label: 'Change-response link', kind: 'text', max: 40 },
+      ],
+    },
+    {
+      legend: 'Empty state',
+      fields: [
+        { key: 'empty_greeting', label: 'Greeting', kind: 'text', max: 60, hint: 'Use {name} for the guest’s name.' },
+        { key: 'empty_body', label: 'Body', kind: 'textarea', max: 160 },
+      ],
+    },
+    {
+      legend: 'Footer',
+      fields: [
+        { key: 'powered_by', label: 'Powered-by line', kind: 'text', max: 60, hint: 'Use {coupleName} for the couple’s name.' },
+      ],
+    },
+  ],
+  'forms-pledge': [
+    {
+      legend: 'Field labels',
+      fields: [
+        { key: 'label_name', label: 'Name — label', kind: 'text', max: 40 },
+        { key: 'placeholder_name', label: 'Name — placeholder', kind: 'text', max: 40 },
+        { key: 'label_amount', label: 'Amount — label', kind: 'text', max: 60 },
+        { key: 'amount_currency', label: 'Amount — currency prefix', kind: 'text', max: 10 },
+        { key: 'placeholder_amount', label: 'Amount — placeholder', kind: 'text', max: 40 },
+        { key: 'label_promised_date', label: 'Pay-by date — label', kind: 'text', max: 60 },
+        { key: 'label_whatsapp', label: 'WhatsApp / mobile — label', kind: 'text', max: 40 },
+        { key: 'placeholder_whatsapp', label: 'WhatsApp / mobile — placeholder', kind: 'text', max: 40 },
+        { key: 'label_email', label: 'Email — label', kind: 'text', max: 40 },
+        { key: 'placeholder_email', label: 'Email — placeholder', kind: 'text', max: 40 },
+        { key: 'label_message', label: 'Note — label', kind: 'text', max: 60 },
+        { key: 'placeholder_message', label: 'Note — placeholder', kind: 'text', max: 60 },
+      ],
+    },
+    {
+      legend: 'Validation',
+      fields: [
+        { key: 'error_name', label: 'Name required', kind: 'text', max: 80 },
+        { key: 'error_amount', label: 'Amount required', kind: 'text', max: 80 },
+        { key: 'error_submit', label: 'Could not save (fallback)', kind: 'text', max: 80, hint: 'Shown only when the server returns no specific message.' },
+      ],
+    },
+    {
+      legend: 'Payment card',
+      fields: [
+        { key: 'pay_title', label: 'How-to-pay heading', kind: 'text', max: 40, hint: 'The payment methods/instructions below come from the couple’s config (not editable here).' },
+      ],
+    },
+    {
+      legend: 'Send button',
+      fields: [
+        { key: 'send_pending', label: 'Sending state', kind: 'text', max: 30, hint: 'Idle label comes from the couple’s page config (not editable here).' },
+      ],
+    },
+    {
+      legend: 'Success',
+      fields: [
+        { key: 'success_heading', label: 'Heading', kind: 'text', max: 40, hint: 'Emoji is part of the text — keep or change it inline.' },
+        { key: 'success_body', label: 'Body', kind: 'textarea', max: 200, hint: 'Use {coupleName} for the couple’s name.' },
       ],
     },
   ],

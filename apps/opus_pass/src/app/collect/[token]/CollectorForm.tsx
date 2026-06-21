@@ -4,6 +4,7 @@ import { useEffect, useState, useTransition } from 'react'
 import { toast } from 'sonner'
 import { Send, CheckCircle2 } from 'lucide-react'
 import { submitCollectorEntry } from './actions'
+import { useT } from '@/components/providers/UIStringsProvider'
 import {
   resolveCollectorPage,
   COVER_TONES,
@@ -33,6 +34,7 @@ const fieldClass =
   'block w-full rounded-xl border border-black/[0.12] bg-white px-4 py-3 text-[15px] text-[#1A1A1A] placeholder:text-[#1A1A1A]/30 transition focus:border-[#C9A0DC] focus:outline-none focus:ring-2 focus:ring-[#C9A0DC]/25'
 
 export default function CollectorForm({ token, coupleName, weddingDate, city, config }: Props) {
+  const t = useT('forms-collect')
   const [name, setName] = useState('')
   const [phone, setPhone] = useState('')
   const [email, setEmail] = useState('')
@@ -79,7 +81,7 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
   function submit(e: React.FormEvent) {
     e.preventDefault()
     if (!name.trim()) {
-      toast.error('Please enter your name')
+      toast.error(t('error_name'))
       return
     }
     startTransition(async () => {
@@ -91,7 +93,7 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
         })
         setDone(true)
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Could not save your info')
+        toast.error(err instanceof Error ? err.message : t('error_submit'))
       }
     })
   }
@@ -165,10 +167,9 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
           {done ? (
             <div className="text-center lg:py-10">
               <CheckCircle2 className="mx-auto h-12 w-12 text-[#3f6b1f]" />
-              <h2 className="mt-4 font-serif text-3xl text-[#1A1A1A]">Thank you! 💚</h2>
+              <h2 className="mt-4 font-serif text-3xl text-[#1A1A1A]">{t('success_heading')}</h2>
               <p className="mx-auto mt-3 max-w-sm text-[15px] leading-relaxed text-[#1A1A1A]/60">
-                {coupleName} have your details. You’ll receive your invitation and RSVP link by WhatsApp
-                soon.
+                {t('success_body', { coupleName })}
               </p>
             </div>
           ) : (
@@ -182,33 +183,33 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
               </p>
 
               <form onSubmit={submit} className="mt-8 space-y-5">
-                <Field label="Your name" required accent={cfg.accent}>
+                <Field label={t('label_name')} required accent={cfg.accent}>
                   <input
                     required
                     autoFocus
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Asha Mussa"
+                    placeholder={t('placeholder_name')}
                     className={fieldClass}
                   />
                 </Field>
 
                 <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-                  <Field label="WhatsApp / mobile">
+                  <Field label={t('label_whatsapp')}>
                     <input
                       type="tel"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
-                      placeholder="0712 345 678"
+                      placeholder={t('placeholder_whatsapp')}
                       className={fieldClass}
                     />
                   </Field>
-                  <Field label="Email">
+                  <Field label={t('label_email')}>
                     <input
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder="you@example.com"
+                      placeholder={t('placeholder_email')}
                       className={fieldClass}
                     />
                   </Field>
@@ -221,7 +222,7 @@ export default function CollectorForm({ token, coupleName, weddingDate, city, co
                   className="inline-flex w-full items-center justify-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-bold shadow-[0_10px_24px_-12px_rgba(0,0,0,0.5)] transition hover:brightness-95 disabled:opacity-50"
                 >
                   <Send className="h-4 w-4" />
-                  {pending ? 'Sending…' : cfg.buttonLabel}
+                  {pending ? t('send_pending') : cfg.buttonLabel}
                 </button>
 
                 <p className="text-center text-[11px] leading-relaxed text-[#1A1A1A]/45">
