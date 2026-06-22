@@ -13,12 +13,39 @@ import type {
   LastSend,
   PledgeStats,
   PledgeWithContact,
+  RsvpAnswer,
+  RsvpQuestion,
   SeatableGuest,
   SeatingData,
   SeatingTable,
   SendChannel,
   WeddingEvent,
 } from './types'
+
+/** Normalize a raw rsvp_questions row (JSONB options) into a typed question. */
+function toRsvpQuestion(row: Record<string, unknown>): RsvpQuestion {
+  const rawOptions = Array.isArray(row.options) ? row.options : []
+  return {
+    id: row.id as string,
+    event_id: (row.event_id as string | null) ?? null,
+    prompt: (row.prompt as string) ?? '',
+    description: (row.description as string | null) ?? null,
+    kind: (row.kind as RsvpQuestion['kind']) ?? 'short_answer',
+    required: Boolean(row.required),
+    attending_only: Boolean(row.attending_only),
+    options: rawOptions.map((o) => {
+      const opt = (o ?? {}) as Record<string, unknown>
+      return {
+        id: (opt.id as string) ?? '',
+        label: (opt.label as string) ?? '',
+        description: (opt.description as string | null) ?? null,
+      }
+    }),
+    sort_order: Number(row.sort_order ?? 0),
+    created_at: row.created_at as string,
+    updated_at: row.updated_at as string,
+  }
+}
 
 export async function getEvents(): Promise<WeddingEvent[]> {
   const user = await requireDashboardUser()
@@ -31,6 +58,104 @@ export async function getEvents(): Promise<WeddingEvent[]> {
     .order('starts_at', { ascending: true, nullsFirst: false })
   if (error) throw new Error(error.message)
   return (data ?? []) as WeddingEvent[]
+}
+
+/** All RSVP questions the couple has configured (per-event + general). */
+export async function getRsvpQuestions(): Promise<RsvpQuestion[]> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data, error } = await supabase
+    .from('rsvp_questions')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(error.message)
+  return (data ?? []).map((r) => toRsvpQuestion(r as Record<string, unknown>))
+}
+
+/** A tally of guest answers to one question, for the management dashboard. */
+export interface RsvpAnswerSummary {
+  total: number
+  /** For multiple_choice: response count per option label. */
+  byOption: { label: string; count: number }[]
+}
+
+/** Answer tallies keyed by question_id, across all of the couple's questions. */
+export async function getRsvpAnswerSummaries(): Promise<Record<string, RsvpAnswerSummary>> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { data, error } = await supabase
+    .from('rsvp_answers')
+    .select('question_id, answer_text, option_id')
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+
+  const byQuestion: Record<string, { total: number; options: Map<string, number> }> = {}
+  for (const a of (data ?? []) as { question_id: string; answer_text: string | null; option_id: string | null }[]) {
+    const entry = (byQuestion[a.question_id] ??= { total: 0, options: new Map() })
+    entry.total += 1
+    if (a.option_id) {
+      const label = a.answer_text || 'Selected'
+      entry.options.set(label, (entry.options.get(label) ?? 0) + 1)
+    }
+  }
+
+  const out: Record<string, RsvpAnswerSummary> = {}
+  for (const [qid, e] of Object.entries(byQuestion)) {
+    out[qid] = {
+      total: e.total,
+      byOption: [...e.options.entries()].map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count),
+    }
+  }
+  return out
+}
+
+/** Per-event RSVP tallies for the management dashboard donut. */
+export interface RsvpEventSummary {
+  event: WeddingEvent
+  invited: number
+  accepted: number
+  declined: number
+  maybe: number
+  noResponse: number
+}
+
+export async function getRsvpEventSummaries(): Promise<RsvpEventSummary[]> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const [{ data: events, error: eErr }, { data: invitations, error: iErr }] = await Promise.all([
+    supabase
+      .from('wedding_events')
+      .select('*')
+      .eq('user_id', user.id)
+      .order('sort_order', { ascending: true }),
+    supabase.from('guest_invitations').select('event_id, rsvp_status').eq('user_id', user.id),
+  ])
+  if (eErr) throw new Error(eErr.message)
+  if (iErr) throw new Error(iErr.message)
+
+  const byEvent = new Map<string, { invited: number; accepted: number; declined: number; maybe: number }>()
+  for (const inv of (invitations ?? []) as { event_id: string; rsvp_status: string }[]) {
+    const t = byEvent.get(inv.event_id) ?? { invited: 0, accepted: 0, declined: 0, maybe: 0 }
+    t.invited += 1
+    if (inv.rsvp_status === 'attending') t.accepted += 1
+    else if (inv.rsvp_status === 'declined') t.declined += 1
+    else if (inv.rsvp_status === 'maybe') t.maybe += 1
+    byEvent.set(inv.event_id, t)
+  }
+
+  return ((events ?? []) as WeddingEvent[]).map((event) => {
+    const t = byEvent.get(event.id) ?? { invited: 0, accepted: 0, declined: 0, maybe: 0 }
+    return {
+      event,
+      invited: t.invited,
+      accepted: t.accepted,
+      declined: t.declined,
+      maybe: t.maybe,
+      noResponse: Math.max(0, t.invited - t.accepted - t.declined - t.maybe),
+    }
+  })
 }
 
 export async function getGuestsWithInvitations(): Promise<GuestWithInvitations[]> {
@@ -463,6 +588,12 @@ export interface PublicRsvpData {
   coupleName: string
   weddingDate: string | null
   events: (WeddingEvent & { invitation: GuestInvitation })[]
+  /** Per-event follow-up questions, keyed by event_id. */
+  questionsByEvent: Record<string, RsvpQuestion[]>
+  /** General questions asked to everyone who RSVPs (event_id NULL). */
+  generalQuestions: RsvpQuestion[]
+  /** Prior answers keyed by guest_invitation_id -> question_id -> answer. */
+  answers: Record<string, Record<string, RsvpAnswer>>
 }
 
 export async function getPublicRsvpData(token: string): Promise<PublicRsvpData | null> {
@@ -498,11 +629,15 @@ export async function getPublicRsvpData(token: string): Promise<PublicRsvpData |
       coupleName: 'The Couple',
       weddingDate: null,
       events: [],
+      questionsByEvent: {},
+      generalQuestions: [],
+      answers: {},
     }
   }
 
   const eventIds = invs.map((i) => i.event_id)
-  const [{ data: events }, { data: profile }] = await Promise.all([
+  const invitationIds = invs.map((i) => i.id)
+  const [{ data: events }, { data: profile }, { data: questionRows }, { data: answerRows }] = await Promise.all([
     // Scope to the guest's owner so a public page can only ever show this couple's events.
     supabase.from('wedding_events').select('*').eq('user_id', guest.user_id).in('id', eventIds),
     supabase
@@ -510,7 +645,32 @@ export async function getPublicRsvpData(token: string): Promise<PublicRsvpData |
       .select('partner1_name, partner2_name, wedding_date')
       .eq('user_id', guest.user_id)
       .maybeSingle<{ partner1_name: string | null; partner2_name: string | null; wedding_date: string | null }>(),
+    // General questions (event_id NULL) + follow-ups for the guest's events.
+    supabase
+      .from('rsvp_questions')
+      .select('*')
+      .eq('user_id', guest.user_id)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true }),
+    supabase.from('rsvp_answers').select('*').in('guest_invitation_id', invitationIds),
   ])
+
+  const allQuestions = (questionRows ?? []).map((r) => toRsvpQuestion(r as Record<string, unknown>))
+  const eventIdSet = new Set(eventIds)
+  const questionsByEvent: Record<string, RsvpQuestion[]> = {}
+  const generalQuestions: RsvpQuestion[] = []
+  for (const q of allQuestions) {
+    if (q.event_id === null) {
+      generalQuestions.push(q)
+    } else if (eventIdSet.has(q.event_id)) {
+      ;(questionsByEvent[q.event_id] ??= []).push(q)
+    }
+  }
+
+  const answers: Record<string, Record<string, RsvpAnswer>> = {}
+  for (const a of (answerRows ?? []) as RsvpAnswer[]) {
+    ;(answers[a.guest_invitation_id] ??= {})[a.question_id] = a
+  }
 
   const eventById = new Map((events ?? []).map((e) => [e.id, e as WeddingEvent]))
   const merged = invs
@@ -532,6 +692,9 @@ export async function getPublicRsvpData(token: string): Promise<PublicRsvpData |
     coupleName: names.length ? names.join(' & ') : 'The Couple',
     weddingDate: profile?.wedding_date ?? null,
     events: merged,
+    questionsByEvent,
+    generalQuestions,
+    answers,
   }
 }
 
@@ -563,6 +726,8 @@ export interface PublicInviteData {
   /** Any public event accepts RSVPs AND the wedding hasn't passed. */
   allowRsvp: boolean
   events: PublicInviteEvent[]
+  /** General questions (asked to everyone who RSVPs) for the combined hub RSVP. */
+  generalQuestions: RsvpQuestion[]
 }
 
 /**
@@ -620,6 +785,15 @@ export async function getPublicInvite(slug: string): Promise<PublicInviteData | 
     allow_rsvp: Boolean(e.allow_rsvp),
   }))
 
+  const { data: generalRows } = await supabase
+    .from('rsvp_questions')
+    .select('*')
+    .eq('user_id', profile.user_id)
+    .is('event_id', null)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true })
+  const generalQuestions = (generalRows ?? []).map((r) => toRsvpQuestion(r as Record<string, unknown>))
+
   const names = [profile.partner1_name, profile.partner2_name].filter(Boolean)
   const hasPassed = profile.wedding_date ? profile.wedding_date < todayISODate() : false
 
@@ -632,6 +806,7 @@ export async function getPublicInvite(slug: string): Promise<PublicInviteData | 
     hasPassed,
     allowRsvp: !hasPassed && publicEvents.some((e) => e.allow_rsvp),
     events: publicEvents,
+    generalQuestions,
   }
 }
 

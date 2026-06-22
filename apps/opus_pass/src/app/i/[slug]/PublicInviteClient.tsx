@@ -3,6 +3,7 @@
 import { useState, useTransition, type FormEvent } from 'react'
 import { submitPublicInviteRsvp } from '@/lib/dashboard/actions'
 import type { PublicInviteData, PublicInviteEvent } from '@/lib/dashboard/queries'
+import type { RsvpQuestion } from '@/lib/dashboard/types'
 import { formatLongDate } from '@/lib/dashboard/share'
 import { eventTypeLabel } from '@/lib/dashboard/types'
 import type { RsvpStatus } from '@/lib/dashboard/types'
@@ -64,15 +65,27 @@ const STATUS_OPTIONS: { value: RsvpStatus; label: string; sub: string }[] = [
   { value: 'declined', label: 'Siwezi • Can’t make it', sub: '' },
 ]
 
-function RsvpForm({ slug }: { slug: string }) {
+function RsvpForm({ slug, questions }: { slug: string; questions: RsvpQuestion[] }) {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
   const [status, setStatus] = useState<RsvpStatus>('attending')
   const [partySize, setPartySize] = useState(1)
   const [message, setMessage] = useState('')
+  const [qa, setQa] = useState<Record<string, { text: string; optionId: string }>>({})
   const [error, setError] = useState<string | null>(null)
   const [done, setDone] = useState(false)
   const [pending, startTransition] = useTransition()
+
+  function setAnswer(questionId: string, patch: { text?: string; optionId?: string }) {
+    setQa((prev) => ({
+      ...prev,
+      [questionId]: {
+        text: prev[questionId]?.text ?? '',
+        optionId: prev[questionId]?.optionId ?? '',
+        ...patch,
+      },
+    }))
+  }
 
   if (done) {
     return (
@@ -91,6 +104,25 @@ function RsvpForm({ slug }: { slug: string }) {
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+
+    // Validate + collect answers to the couple's general questions.
+    const answers: { questionId: string; answer_text?: string | null; option_id?: string | null }[] = []
+    for (const q of questions) {
+      const a = qa[q.id]
+      const answered = q.kind === 'multiple_choice' ? Boolean(a?.optionId) : Boolean(a?.text.trim())
+      if (q.required && !answered) {
+        setError(`Please answer: ${q.prompt}`)
+        return
+      }
+      if (answered) {
+        answers.push({
+          questionId: q.id,
+          answer_text: q.kind === 'multiple_choice' ? q.options.find((o) => o.id === a!.optionId)?.label ?? null : a!.text,
+          option_id: q.kind === 'multiple_choice' ? a!.optionId : null,
+        })
+      }
+    }
+
     startTransition(async () => {
       const res = await submitPublicInviteRsvp(slug, {
         fullName,
@@ -98,6 +130,7 @@ function RsvpForm({ slug }: { slug: string }) {
         status,
         partySize,
         message,
+        answers,
       })
       if (res.ok) setDone(true)
       else setError(res.error ?? 'Something went wrong — please try again.')
@@ -191,6 +224,52 @@ function RsvpForm({ slug }: { slug: string }) {
         />
       </div>
 
+      {questions.map((q) => {
+        const a = qa[q.id] ?? { text: '', optionId: '' }
+        return (
+          <div key={q.id}>
+            <label className="text-sm font-medium" style={{ color: INK }}>
+              {q.prompt}
+              {q.required ? <span className="ml-0.5 text-red-500">*</span> : null}
+            </label>
+            {q.description ? <p className="mt-0.5 text-xs text-[#1A1A1A]/55">{q.description}</p> : null}
+            {q.kind === 'multiple_choice' ? (
+              <div className="mt-2 grid gap-2">
+                {q.options.map((opt) => {
+                  const active = a.optionId === opt.id
+                  return (
+                    <button
+                      type="button"
+                      key={opt.id}
+                      onClick={() => setAnswer(q.id, { optionId: opt.id })}
+                      className={`rounded-xl border px-4 py-3 text-left text-[15px] transition ${
+                        active
+                          ? 'border-[#14342B] bg-[#14342B] text-white'
+                          : 'border-[#1A1A1A]/15 bg-white text-[#1A1A1A] hover:border-[#14342B]/40'
+                      }`}
+                    >
+                      {opt.label}
+                      {opt.description ? (
+                        <span className={`block text-xs ${active ? 'text-white/70' : 'text-[#1A1A1A]/50'}`}>
+                          {opt.description}
+                        </span>
+                      ) : null}
+                    </button>
+                  )
+                })}
+              </div>
+            ) : (
+              <textarea
+                className={field}
+                rows={2}
+                value={a.text}
+                onChange={(e) => setAnswer(q.id, { text: e.target.value })}
+              />
+            )}
+          </div>
+        )
+      })}
+
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
 
       <button
@@ -267,7 +346,7 @@ export default function PublicInviteClient({ data }: { data: PublicInviteData })
               <p className="mb-5 text-sm text-[#1A1A1A]/60">
                 Tafadhali tujibu hapa chini. We’d love to know if you can make it.
               </p>
-              <RsvpForm slug={data.slug} />
+              <RsvpForm slug={data.slug} questions={data.generalQuestions} />
             </>
           ) : (
             <div className="text-center">

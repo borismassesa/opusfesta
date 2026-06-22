@@ -5,10 +5,8 @@ import { toast } from 'sonner'
 import { Download, ClipboardCheck, Utensils, Search, Flag, Check, X } from 'lucide-react'
 import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
 import { inputClass } from '@/components/dashboard/controls'
-import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { cn } from '@/lib/utils'
 import { updateRsvp, approveReviewGuest, dismissReviewGuest } from '@/lib/dashboard/actions'
-import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { RsvpsDashboardCopy } from '@/lib/cms/dashboard-copy'
 import {
   RSVP_STATUS_LABELS,
@@ -77,13 +75,11 @@ export default function RsvpTracker({
   guests,
   events,
   lastSend,
-  hero,
   copy,
 }: {
   guests: GuestWithInvitations[]
   events: WeddingEvent[]
   lastSend: Record<string, LastSend>
-  hero: DashboardHeroContent
   copy: RsvpsDashboardCopy
 }) {
   const [eventFilter, setEventFilter] = useState('all')
@@ -305,19 +301,16 @@ export default function RsvpTracker({
 
   return (
     <div className="space-y-6">
-      <DashboardHero
-        content={hero}
-        actions={
-          hasRows ? (
-            <button
-              onClick={exportCsv}
-              className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
-            >
-              <Download className="h-3.5 w-3.5" /> {copy.export_cta}
-            </button>
-          ) : null
-        }
-      />
+      {hasRows ? (
+        <div className="flex justify-end">
+          <button
+            onClick={exportCsv}
+            className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
+          >
+            <Download className="h-3.5 w-3.5" /> {copy.export_cta}
+          </button>
+        </div>
+      ) : null}
 
       {!hasRows ? (
         <EmptyState

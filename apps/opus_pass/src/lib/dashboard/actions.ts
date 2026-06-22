@@ -17,6 +17,8 @@ import type {
   PaymentMethod,
   PledgeStatus,
   ReminderCadence,
+  RsvpQuestionKind,
+  RsvpQuestionOption,
   RsvpStatus,
   SendChannel,
 } from './types'
@@ -110,6 +112,122 @@ export async function deleteEvent(id: string): Promise<void> {
   const { error } = await supabase.from('wedding_events').delete().eq('id', id).eq('user_id', user.id)
   if (error) throw new Error(error.message)
   revalidateDashboard()
+}
+
+/** Toggle "Collect RSVPs" for one event (the management-dashboard switch). */
+export async function setEventAllowRsvp(eventId: string, allow: boolean): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase
+    .from('wedding_events')
+    .update({ allow_rsvp: allow, updated_at: new Date().toISOString() })
+    .eq('id', eventId)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidateDashboard()
+}
+
+// ---------------------------------------------------------------- RSVP questions
+
+export interface RsvpQuestionInput {
+  /** NULL = a general question asked to everyone; set = a per-event follow-up. */
+  event_id?: string | null
+  prompt: string
+  description?: string | null
+  kind: RsvpQuestionKind
+  required?: boolean
+  attending_only?: boolean
+  /** For multiple_choice. Ids are generated server-side when missing. */
+  options?: { id?: string; label: string; description?: string | null }[]
+  sort_order?: number
+}
+
+/** Build a clean, validated options array for a multiple-choice question. */
+function normalizeOptions(input: RsvpQuestionInput): RsvpQuestionOption[] {
+  if (input.kind !== 'multiple_choice') return []
+  return (input.options ?? [])
+    .map((o) => ({
+      id: o.id?.trim() || `opt_${crypto.randomUUID().slice(0, 8)}`,
+      label: o.label.trim(),
+      description: o.description?.trim() || null,
+    }))
+    .filter((o) => o.label.length > 0)
+}
+
+export async function createRsvpQuestion(input: RsvpQuestionInput): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const prompt = input.prompt.trim()
+  if (!prompt) throw new Error('Please enter a question.')
+  const options = normalizeOptions(input)
+  if (input.kind === 'multiple_choice' && options.length < 2) {
+    throw new Error('Multiple-choice questions need at least two options.')
+  }
+  const { error } = await supabase.from('rsvp_questions').insert({
+    user_id: user.id,
+    event_id: input.event_id ?? null,
+    prompt,
+    description: input.description?.trim() || null,
+    kind: input.kind,
+    // Multiple-choice answers are required by default; short answers are skippable.
+    required: input.required ?? input.kind === 'multiple_choice',
+    attending_only: input.attending_only ?? false,
+    options,
+    sort_order: input.sort_order ?? 0,
+  })
+  if (error) throw new Error(error.message)
+  revalidatePath('/my/dashboard/rsvps')
+}
+
+export async function updateRsvpQuestion(id: string, input: RsvpQuestionInput): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const prompt = input.prompt.trim()
+  if (!prompt) throw new Error('Please enter a question.')
+  const options = normalizeOptions(input)
+  if (input.kind === 'multiple_choice' && options.length < 2) {
+    throw new Error('Multiple-choice questions need at least two options.')
+  }
+  const { error } = await supabase
+    .from('rsvp_questions')
+    .update({
+      event_id: input.event_id ?? null,
+      prompt,
+      description: input.description?.trim() || null,
+      kind: input.kind,
+      required: input.required ?? input.kind === 'multiple_choice',
+      attending_only: input.attending_only ?? false,
+      options,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+    .eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidatePath('/my/dashboard/rsvps')
+}
+
+export async function deleteRsvpQuestion(id: string): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  const { error } = await supabase.from('rsvp_questions').delete().eq('id', id).eq('user_id', user.id)
+  if (error) throw new Error(error.message)
+  revalidatePath('/my/dashboard/rsvps')
+}
+
+/** Persist a new ordering for a set of questions (drag-to-reorder). */
+export async function reorderRsvpQuestions(orderedIds: string[]): Promise<void> {
+  const user = await requireDashboardUser()
+  const supabase = createDashboardClient()
+  await Promise.all(
+    orderedIds.map((id, i) =>
+      supabase
+        .from('rsvp_questions')
+        .update({ sort_order: i, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('user_id', user.id),
+    ),
+  )
+  revalidatePath('/my/dashboard/rsvps')
 }
 
 // ---------------------------------------------------------------- Guests
@@ -723,9 +841,59 @@ export interface PublicRsvpResponse {
   guest_message?: string | null
 }
 
+/** A guest's answer to one custom RSVP question, tied to one invitation. */
+export interface PublicRsvpAnswerInput {
+  invitationId: string
+  questionId: string
+  answer_text?: string | null
+  option_id?: string | null
+}
+
+/**
+ * Upsert a batch of question answers for one guest. Only answers whose
+ * invitation belongs to `guestId` and whose question belongs to `ownerUserId`
+ * are written; empty answers are skipped (short answers are skippable).
+ */
+async function persistRsvpAnswers(
+  supabase: ReturnType<typeof createDashboardClient>,
+  ownerUserId: string,
+  ownedInvitationIds: Set<string>,
+  answers: PublicRsvpAnswerInput[],
+): Promise<void> {
+  if (!answers.length) return
+
+  const questionIds = [...new Set(answers.map((a) => a.questionId))]
+  const { data: questions } = await supabase
+    .from('rsvp_questions')
+    .select('id')
+    .eq('user_id', ownerUserId)
+    .in('id', questionIds)
+  const ownedQuestionIds = new Set((questions ?? []).map((q) => q.id as string))
+
+  const now = new Date().toISOString()
+  const rows = answers
+    .filter((a) => ownedInvitationIds.has(a.invitationId) && ownedQuestionIds.has(a.questionId))
+    .map((a) => ({
+      user_id: ownerUserId,
+      guest_invitation_id: a.invitationId,
+      question_id: a.questionId,
+      answer_text: a.answer_text?.trim() || null,
+      option_id: a.option_id || null,
+      updated_at: now,
+    }))
+    .filter((r) => r.answer_text !== null || r.option_id !== null)
+
+  if (!rows.length) return
+  const { error } = await supabase
+    .from('rsvp_answers')
+    .upsert(rows, { onConflict: 'guest_invitation_id,question_id' })
+  if (error) console.error('[rsvp-answers] upsert failed', error)
+}
+
 export async function submitPublicRsvp(
   token: string,
-  responses: PublicRsvpResponse[]
+  responses: PublicRsvpResponse[],
+  answers: PublicRsvpAnswerInput[] = [],
 ): Promise<{ ok: boolean; error?: string }> {
   const supabase = createDashboardClient()
 
@@ -780,6 +948,9 @@ export async function submitPublicRsvp(
     }
     if (summaryStatus !== 'attending') summaryStatus = r.rsvp_status
   }
+
+  // Persist answers to any custom RSVP questions.
+  await persistRsvpAnswers(supabase, guest.user_id, ownedIds, answers)
 
   if (applied > 0 && summaryStatus) {
     const label =
@@ -921,6 +1092,8 @@ export interface PublicInviteRsvpInput {
   status: RsvpStatus
   partySize: number
   message?: string | null
+  /** Answers to the couple's general RSVP questions, keyed by question id. */
+  answers?: { questionId: string; answer_text?: string | null; option_id?: string | null }[]
 }
 
 /**
@@ -1026,12 +1199,29 @@ export async function submitPublicInviteRsvp(
     guest_message: input.message?.trim() || null,
     responded_at: now,
   }))
-  const { error: invErr } = await supabase
+  const { data: upserted, error: invErr } = await supabase
     .from('guest_invitations')
     .upsert(rows, { onConflict: 'guest_contact_id,event_id' })
+    .select('id')
   if (invErr) {
     console.error('[public-invite-rsvp] invitation upsert failed', invErr)
     return { ok: false, error: 'Something went wrong — please try again in a moment.' }
+  }
+
+  // Persist answers to general questions against each of this guest's invitations
+  // so they surface no matter which event the host opens in the tracker.
+  if (input.answers?.length) {
+    const invitationIds = (upserted ?? []).map((r) => r.id as string)
+    const ownedIds = new Set(invitationIds)
+    const flattened = invitationIds.flatMap((invitationId) =>
+      (input.answers ?? []).map((a) => ({
+        invitationId,
+        questionId: a.questionId,
+        answer_text: a.answer_text,
+        option_id: a.option_id,
+      })),
+    )
+    await persistRsvpAnswers(supabase, profile.user_id, ownedIds, flattened)
   }
 
   const statusLabel =

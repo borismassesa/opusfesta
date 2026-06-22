@@ -5,8 +5,8 @@ import { toast } from 'sonner'
 import { CalendarHeart, MapPin, Clock, Check, PartyPopper, Heart } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
 import { useT } from '@/components/providers/UIStringsProvider'
-import { submitPublicRsvp, type PublicRsvpResponse } from '@/lib/dashboard/actions'
-import { eventTypeLabel, type RsvpStatus } from '@/lib/dashboard/types'
+import { submitPublicRsvp, type PublicRsvpResponse, type PublicRsvpAnswerInput } from '@/lib/dashboard/actions'
+import { eventTypeLabel, type RsvpStatus, type RsvpQuestion } from '@/lib/dashboard/types'
 import type { PublicRsvpData } from '@/lib/dashboard/queries'
 
 const inputClass =
@@ -18,6 +18,27 @@ interface Answer {
   meal_choice: string
   dietary_notes: string
   guest_message: string
+}
+
+/** A guest's answer to one custom question while filling the form. */
+interface QAnswer {
+  text: string
+  optionId: string
+}
+
+const EMPTY_QA: QAnswer = { text: '', optionId: '' }
+
+/** Whether a per-event question should be shown given the chosen status. */
+function eventQuestionVisible(q: RsvpQuestion, status: RsvpStatus): boolean {
+  if (status === 'pending') return false
+  if (q.attending_only) return status === 'attending'
+  return true
+}
+
+/** Did the guest answer a question that requires an answer? */
+function isAnswered(q: RsvpQuestion, a: QAnswer | undefined): boolean {
+  if (!a) return false
+  return q.kind === 'multiple_choice' ? a.optionId.length > 0 : a.text.trim().length > 0
 }
 
 function formatWhen(value: string | null, tbc: string): string {
@@ -53,8 +74,45 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
   )
   const [pending, startTransition] = useTransition()
 
+  // Custom-question answers. Per-event keyed by invitationId -> questionId;
+  // general questions keyed by questionId (attached to the first invitation).
+  const firstInvitationId = data.events[0]?.invitation.id ?? null
+  const [eventQa, setEventQa] = useState<Record<string, Record<string, QAnswer>>>(() => {
+    const init: Record<string, Record<string, QAnswer>> = {}
+    for (const e of data.events) {
+      const prior = data.answers[e.invitation.id] ?? {}
+      const forEvent: Record<string, QAnswer> = {}
+      for (const q of data.questionsByEvent[e.id] ?? []) {
+        const a = prior[q.id]
+        forEvent[q.id] = { text: a?.answer_text ?? '', optionId: a?.option_id ?? '' }
+      }
+      if (Object.keys(forEvent).length) init[e.invitation.id] = forEvent
+    }
+    return init
+  })
+  const [generalQa, setGeneralQa] = useState<Record<string, QAnswer>>(() => {
+    const prior = firstInvitationId ? (data.answers[firstInvitationId] ?? {}) : {}
+    return Object.fromEntries(
+      data.generalQuestions.map((q) => {
+        const a = prior[q.id]
+        return [q.id, { text: a?.answer_text ?? '', optionId: a?.option_id ?? '' }]
+      })
+    )
+  })
+
   function update(id: string, patch: Partial<Answer>) {
     setAnswers((a) => ({ ...a, [id]: { ...a[id], ...patch } }))
+  }
+
+  function updateEventQa(invitationId: string, questionId: string, patch: Partial<QAnswer>) {
+    setEventQa((prev) => ({
+      ...prev,
+      [invitationId]: { ...(prev[invitationId] ?? {}), [questionId]: { ...EMPTY_QA, ...prev[invitationId]?.[questionId], ...patch } },
+    }))
+  }
+
+  function updateGeneralQa(questionId: string, patch: Partial<QAnswer>) {
+    setGeneralQa((prev) => ({ ...prev, [questionId]: { ...EMPTY_QA, ...prev[questionId], ...patch } }))
   }
 
   function submit() {
@@ -73,8 +131,48 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
       toast.error(t('error_answer_each'))
       return
     }
+
+    // Gather custom-question answers + enforce required ones that are visible.
+    const collected: PublicRsvpAnswerInput[] = []
+    for (const e of data.events) {
+      const status = answers[e.invitation.id].rsvp_status
+      for (const q of data.questionsByEvent[e.id] ?? []) {
+        if (!eventQuestionVisible(q, status)) continue
+        const a = eventQa[e.invitation.id]?.[q.id]
+        if (q.required && !isAnswered(q, a)) {
+          toast.error(`Please answer: ${q.prompt}`)
+          return
+        }
+        if (isAnswered(q, a)) {
+          collected.push({
+            invitationId: e.invitation.id,
+            questionId: q.id,
+            answer_text: q.kind === 'multiple_choice' ? optionLabel(q, a!.optionId) : a!.text,
+            option_id: q.kind === 'multiple_choice' ? a!.optionId : null,
+          })
+        }
+      }
+    }
+    if (firstInvitationId) {
+      for (const q of data.generalQuestions) {
+        const a = generalQa[q.id]
+        if (q.required && !isAnswered(q, a)) {
+          toast.error(`Please answer: ${q.prompt}`)
+          return
+        }
+        if (isAnswered(q, a)) {
+          collected.push({
+            invitationId: firstInvitationId,
+            questionId: q.id,
+            answer_text: q.kind === 'multiple_choice' ? optionLabel(q, a!.optionId) : a!.text,
+            option_id: q.kind === 'multiple_choice' ? a!.optionId : null,
+          })
+        }
+      }
+    }
+
     startTransition(async () => {
-      const res = await submitPublicRsvp(token, responses)
+      const res = await submitPublicRsvp(token, responses, collected)
       if (res.ok) {
         setSubmitted(true)
         toast.success(t('toast_saved'))
@@ -250,9 +348,38 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
                     onChange={(ev) => update(e.invitation.id, { guest_message: ev.target.value })}
                   />
                 </label>
+
+                {/* Couple's follow-up questions for this event */}
+                {(data.questionsByEvent[e.id] ?? [])
+                  .filter((q) => eventQuestionVisible(q, a.rsvp_status))
+                  .map((q) => (
+                    <QuestionField
+                      key={q.id}
+                      question={q}
+                      value={eventQa[e.invitation.id]?.[q.id] ?? EMPTY_QA}
+                      onChange={(patch) => updateEventQa(e.invitation.id, q.id, patch)}
+                    />
+                  ))}
               </div>
             )
           })}
+
+          {/* General questions for everyone who RSVPs */}
+          {data.generalQuestions.length > 0 ? (
+            <div className="rounded-2xl border border-black/[0.08] bg-white p-5">
+              <h3 className="text-base font-semibold text-[#1A1A1A]">A few more questions</h3>
+              <div className="mt-1">
+                {data.generalQuestions.map((q) => (
+                  <QuestionField
+                    key={q.id}
+                    question={q}
+                    value={generalQa[q.id] ?? EMPTY_QA}
+                    onChange={(patch) => updateGeneralQa(q.id, patch)}
+                  />
+                ))}
+              </div>
+            </div>
+          ) : null}
 
           <button
             onClick={submit}
@@ -264,6 +391,70 @@ export default function PublicRsvpForm({ data, token }: { data: PublicRsvpData; 
         </div>
       )}
     </Shell>
+  )
+}
+
+function optionLabel(q: RsvpQuestion, optionId: string): string {
+  return q.options.find((o) => o.id === optionId)?.label ?? ''
+}
+
+/** Renders one couple-authored question: short answer or multiple choice. */
+function QuestionField({
+  question,
+  value,
+  onChange,
+}: {
+  question: RsvpQuestion
+  value: QAnswer
+  onChange: (patch: Partial<QAnswer>) => void
+}) {
+  return (
+    <div className="mt-3">
+      <span className="mb-1.5 block text-sm font-medium text-[#1A1A1A]/80">
+        {question.prompt}
+        {question.required ? (
+          <span className="ml-0.5 text-rose-500">*</span>
+        ) : (
+          <span className="ml-1 font-normal text-[#1A1A1A]/40">(optional)</span>
+        )}
+      </span>
+      {question.description ? (
+        <p className="mb-2 text-xs text-[#1A1A1A]/50">{question.description}</p>
+      ) : null}
+
+      {question.kind === 'multiple_choice' ? (
+        <div className="space-y-2">
+          {question.options.map((opt) => {
+            const active = value.optionId === opt.id
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => onChange({ optionId: opt.id })}
+                className={`flex w-full items-start gap-2.5 rounded-xl border px-3.5 py-2.5 text-left text-sm transition-colors ${
+                  active ? 'border-[#C9A0DC] bg-[#F0DFF6]/50 text-[#1A1A1A]' : 'border-black/[0.12] text-[#1A1A1A]/70 hover:bg-black/[0.03]'
+                }`}
+              >
+                <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 ${active ? 'border-[#7E5896]' : 'border-black/25'}`}>
+                  {active ? <span className="h-2 w-2 rounded-full bg-[#7E5896]" /> : null}
+                </span>
+                <span>
+                  <span className="font-medium">{opt.label}</span>
+                  {opt.description ? <span className="block text-xs text-[#1A1A1A]/50">{opt.description}</span> : null}
+                </span>
+              </button>
+            )
+          })}
+        </div>
+      ) : (
+        <textarea
+          className={inputClass}
+          rows={2}
+          value={value.text}
+          onChange={(ev) => onChange({ text: ev.target.value })}
+        />
+      )}
+    </div>
   )
 }
 
