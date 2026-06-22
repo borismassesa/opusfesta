@@ -162,21 +162,23 @@ export default function RsvpSetupWizard({
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 pb-12">
-      {/* Header + progress */}
+    <div className="mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-4xl flex-col">
+      {/* Header + progress (pinned to top) */}
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold text-[#1A1A1A]">Set up RSVPs</h1>
         <Link href="/my/dashboard/rsvps" className="text-sm font-medium text-[#1A1A1A]/55 hover:text-[#1A1A1A]">
           Close
         </Link>
       </div>
-      <div className="flex h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
+      <div className="mt-4 flex h-1.5 overflow-hidden rounded-full bg-black/[0.06]">
         <span
           className="bg-[#C9A0DC] transition-all"
           style={{ width: `${((stepIndex + 1) / STEPS.length) * 100}%` }}
         />
       </div>
 
+      {/* Step body — centered in the remaining vertical space */}
+      <div className="flex flex-1 flex-col justify-center py-10">
       {step === 'intro' ? (
         <div className="space-y-6">
           <h2 className="text-2xl font-bold tracking-tight text-[#1A1A1A]">Great! Here’s how it works</h2>
@@ -323,6 +325,7 @@ export default function RsvpSetupWizard({
           </div>
         </div>
       ) : null}
+      </div>
 
       <QuestionEditorSlideover
         key={editor.open ? `${editor.scope}:${editor.eventId ?? 'g'}:${editor.initial?.id ?? 'new'}` : 'closed'}

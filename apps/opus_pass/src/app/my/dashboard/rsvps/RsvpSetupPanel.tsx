@@ -3,7 +3,7 @@
 import { useMemo, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { toast } from 'sonner'
-import { Plus, Pencil, Trash2, AlertCircle, Sparkles, ChevronRight } from 'lucide-react'
+import { Plus, Pencil, Trash2 } from 'lucide-react'
 import { Card, SectionTitle, EmptyState } from '@/components/dashboard/primitives'
 import { Button, ConfirmDialog, Toggle } from '@/components/dashboard/controls'
 import { QuestionEditorSlideover } from '@/components/dashboard/QuestionEditorSlideover'
@@ -128,7 +128,6 @@ export default function RsvpSetupPanel({
   if (events.length === 0) {
     return (
       <EmptyState
-        icon={<Sparkles className="h-7 w-7" />}
         title="Add an event first"
         description="Create at least one event, then set up the RSVP questions your guests will answer."
         action={
@@ -142,37 +141,20 @@ export default function RsvpSetupPanel({
 
   return (
     <div className="space-y-6">
-      {/* Publish heads-up + guided setup */}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch">
-        {!published ? (
-          <div className="flex flex-1 flex-wrap items-center gap-3 rounded-2xl border border-[#F2D9A0] bg-[#FBF3DD] px-4 py-3.5">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#b9881f]">
-              <AlertCircle className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[#1A1A1A]">Heads up!</p>
-              <p className="text-xs text-[#1A1A1A]/60">
-                No one can RSVP until you’ve shared your invitation link.
-              </p>
-            </div>
-            <Link href="/my/dashboard/invitations">
-              <Button className="shrink-0">Share invite</Button>
-            </Link>
+      {/* Publish heads-up — shown until the couple has shared their invite link */}
+      {!published ? (
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#F2D9A0] bg-[#FBF3DD] px-4 py-3.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-[#1A1A1A]">Heads up!</p>
+            <p className="text-xs text-[#1A1A1A]/60">
+              No one can RSVP until you’ve shared your invitation link.
+            </p>
           </div>
-        ) : null}
-        <Link href="/my/dashboard/rsvps/setup" className="sm:self-stretch">
-          <div className="flex h-full items-center gap-3 rounded-2xl border border-[#C9A0DC]/50 bg-gradient-to-br from-[#F0DFF6]/70 to-white px-4 py-3.5 transition-colors hover:border-[#C9A0DC]">
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white text-[#7E5896]">
-              <Sparkles className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-[#1A1A1A]">Guided setup</p>
-              <p className="text-xs text-[#1A1A1A]/60">Walk through RSVPs step by step</p>
-            </div>
-            <ChevronRight className="h-4 w-4 shrink-0 text-[#7E5896]" />
-          </div>
-        </Link>
-      </div>
+          <Link href="/my/dashboard/invitations">
+            <Button className="shrink-0">Share invite</Button>
+          </Link>
+        </div>
+      ) : null}
 
       {/* Per-event follow-up questions */}
       {events.map((event) => {

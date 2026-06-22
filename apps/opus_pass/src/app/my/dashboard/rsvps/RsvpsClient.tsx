@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Sparkles } from 'lucide-react'
 import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { Tabs } from '@/components/dashboard/controls'
 import RsvpSetupPanel from './RsvpSetupPanel'
@@ -49,9 +48,9 @@ export default function RsvpsClient({
         actions={
           <Link
             href="/my/dashboard/rsvps/setup"
-            className="inline-flex items-center gap-2 rounded-full bg-[#C9A0DC] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
+            className="inline-flex items-center rounded-full bg-[#C9A0DC] px-4 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-[#b97fd0]"
           >
-            <Sparkles className="h-3.5 w-3.5" /> Guided setup
+            Guided setup
           </Link>
         }
       />
