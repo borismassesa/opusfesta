@@ -145,11 +145,57 @@ export type Section = {
   blocks: Block[]
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Builder meta — the structured, "Zola-style" knobs that live alongside the
+//  free-form sections: the couple's names, the URL slug, page visibility,
+//  animation choices and publish/privacy settings. The live preview is composed
+//  from `meta` (hero) + `sections` (everything below the fold).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type PageKey =
+  | 'home'
+  | 'schedule'
+  | 'travel'
+  | 'registry'
+  | 'party'
+  | 'gallery'
+  | 'things'
+  | 'faqs'
+  | 'rsvp'
+
+export type BuilderPage = { key: PageKey; label: string; visible: boolean }
+
+export type Visibility = 'published' | 'private'
+
+export type BuilderMeta = {
+  /** Couple */
+  partnerA: string
+  partnerB: string
+  date: string // ISO date
+  location: string
+  welcome: string
+  /** Design / layout / animation selections (ids into the catalogs) */
+  presetId: string
+  layoutId: string
+  animationStyle: string
+  transition: string
+  fontEffect: string
+  /** Navigation pages */
+  pages: BuilderPage[]
+  /** Settings */
+  slug: string
+  visibility: Visibility
+  announcement: boolean
+  password: boolean
+  searchVisible: boolean
+}
+
 export type SiteDoc = {
   title: string
   nav: string[]
   theme: Theme
   sections: Section[]
+  meta: BuilderMeta
 }
 
 export type Selection =
