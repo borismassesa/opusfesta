@@ -3,7 +3,7 @@ import {
   DO_MORE_FALLBACK,
   type DoMoreContent,
   type DoMoreRow,
-} from '@/lib/cms/do-more'
+} from '@/lib/cms/vendors-portal-do-more'
 import DoMoreEditor from './DoMoreEditor'
 
 export const dynamic = 'force-dynamic'

@@ -1,5 +1,8 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
+// PUBLIC types: every translatable field already resolved to a flat string in
+// the active locale. The render components only ever see these.
 export type UpcomingBooking = {
   id: string
   name: string
@@ -46,6 +49,64 @@ export type BusinessContent = {
   reviews_suffix: string
   response_suffix: string
   vendors: VendorShowcase[]
+}
+
+// STORED types: what's in the DB. Translatable fields may be `{ en, sw }`
+// objects (or legacy plain strings). Resolved down to the public types at load
+// time. Scalars (hrefs, image urls, ids, ratings, stat values) stay as-is.
+type StoredUpcomingBooking = Omit<UpcomingBooking, 'name' | 'date'> & {
+  name: MaybeLocalized
+  date: MaybeLocalized
+}
+
+type StoredVendorShowcase = Omit<VendorShowcase, 'name' | 'category' | 'location' | 'upcoming'> & {
+  name: MaybeLocalized
+  category: MaybeLocalized
+  location: MaybeLocalized
+  upcoming: StoredUpcomingBooking[]
+}
+
+type StoredFeaturePill = { id: string; label: MaybeLocalized }
+
+type StoredBusinessContent = Omit<
+  BusinessContent,
+  | 'eyebrow'
+  | 'headline_line_1'
+  | 'headline_line_2'
+  | 'headline_line_3'
+  | 'subheadline'
+  | 'feature_pills'
+  | 'primary_cta_label'
+  | 'secondary_cta_label'
+  | 'verified_badge'
+  | 'booked_badge'
+  | 'upcoming_label'
+  | 'bookings_suffix'
+  | 'bookings_stat_label'
+  | 'enquiries_stat_label'
+  | 'views_stat_label'
+  | 'reviews_suffix'
+  | 'response_suffix'
+  | 'vendors'
+> & {
+  eyebrow: MaybeLocalized
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  headline_line_3: MaybeLocalized
+  subheadline: MaybeLocalized
+  feature_pills: StoredFeaturePill[]
+  primary_cta_label: MaybeLocalized
+  secondary_cta_label: MaybeLocalized
+  verified_badge: MaybeLocalized
+  booked_badge: MaybeLocalized
+  upcoming_label: MaybeLocalized
+  bookings_suffix: MaybeLocalized
+  bookings_stat_label: MaybeLocalized
+  enquiries_stat_label: MaybeLocalized
+  views_stat_label: MaybeLocalized
+  reviews_suffix: MaybeLocalized
+  response_suffix: MaybeLocalized
+  vendors: StoredVendorShowcase[]
 }
 
 export const BUSINESS_FALLBACK: BusinessContent = {
@@ -149,7 +210,9 @@ export const BUSINESS_FALLBACK: BusinessContent = {
   ],
 }
 
-export async function loadBusinessContent(): Promise<BusinessContent> {
+export async function loadBusinessContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<BusinessContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return BUSINESS_FALLBACK
   }
@@ -161,18 +224,60 @@ export async function loadBusinessContent(): Promise<BusinessContent> {
       .eq('page_key', 'vendors_home')
       .eq('section_key', 'business')
       .maybeSingle()
-    const stored = data?.content as Partial<BusinessContent> | undefined
+    const stored = data?.content as Partial<StoredBusinessContent> | undefined
     if (stored) {
+      // Scalars fall back to the (flat-string) defaults; translatable fields are
+      // resolved to the active locale (legacy plain strings render as-is).
       return {
-        ...BUSINESS_FALLBACK,
-        ...stored,
+        eyebrow: resolveLocalized(stored.eyebrow, locale) || BUSINESS_FALLBACK.eyebrow,
+        headline_line_1: resolveLocalized(stored.headline_line_1, locale) || BUSINESS_FALLBACK.headline_line_1,
+        headline_line_2: resolveLocalized(stored.headline_line_2, locale) || BUSINESS_FALLBACK.headline_line_2,
+        headline_line_3: resolveLocalized(stored.headline_line_3, locale) || BUSINESS_FALLBACK.headline_line_3,
+        subheadline: resolveLocalized(stored.subheadline, locale) || BUSINESS_FALLBACK.subheadline,
         feature_pills:
           Array.isArray(stored.feature_pills) && stored.feature_pills.length > 0
-            ? (stored.feature_pills as FeaturePill[])
+            ? stored.feature_pills.map((p) => ({
+                id: p.id,
+                label: resolveLocalized(p.label, locale),
+              }))
             : BUSINESS_FALLBACK.feature_pills,
+        primary_cta_label: resolveLocalized(stored.primary_cta_label, locale) || BUSINESS_FALLBACK.primary_cta_label,
+        primary_cta_href: stored.primary_cta_href ?? BUSINESS_FALLBACK.primary_cta_href,
+        secondary_cta_label: resolveLocalized(stored.secondary_cta_label, locale) || BUSINESS_FALLBACK.secondary_cta_label,
+        secondary_cta_href: stored.secondary_cta_href ?? BUSINESS_FALLBACK.secondary_cta_href,
+        verified_badge: resolveLocalized(stored.verified_badge, locale) || BUSINESS_FALLBACK.verified_badge,
+        booked_badge: resolveLocalized(stored.booked_badge, locale) || BUSINESS_FALLBACK.booked_badge,
+        upcoming_label: resolveLocalized(stored.upcoming_label, locale) || BUSINESS_FALLBACK.upcoming_label,
+        bookings_suffix: resolveLocalized(stored.bookings_suffix, locale) || BUSINESS_FALLBACK.bookings_suffix,
+        bookings_stat_label: resolveLocalized(stored.bookings_stat_label, locale) || BUSINESS_FALLBACK.bookings_stat_label,
+        enquiries_stat_label: resolveLocalized(stored.enquiries_stat_label, locale) || BUSINESS_FALLBACK.enquiries_stat_label,
+        views_stat_label: resolveLocalized(stored.views_stat_label, locale) || BUSINESS_FALLBACK.views_stat_label,
+        reviews_suffix: resolveLocalized(stored.reviews_suffix, locale) || BUSINESS_FALLBACK.reviews_suffix,
+        response_suffix: resolveLocalized(stored.response_suffix, locale) || BUSINESS_FALLBACK.response_suffix,
         vendors:
           Array.isArray(stored.vendors) && stored.vendors.length > 0
-            ? (stored.vendors as VendorShowcase[])
+            ? stored.vendors.map((v) => ({
+                id: v.id,
+                name: resolveLocalized(v.name, locale),
+                category: resolveLocalized(v.category, locale),
+                location: resolveLocalized(v.location, locale),
+                avatar_url: v.avatar_url,
+                cover_url: v.cover_url,
+                stars: v.stars,
+                reviews: v.reviews,
+                response: v.response,
+                bookings: v.bookings,
+                enquiries: v.enquiries,
+                views: v.views,
+                upcoming: Array.isArray(v.upcoming)
+                  ? v.upcoming.map((b) => ({
+                      id: b.id,
+                      name: resolveLocalized(b.name, locale),
+                      date: resolveLocalized(b.date, locale),
+                      image_url: b.image_url,
+                    }))
+                  : [],
+              }))
             : BUSINESS_FALLBACK.vendors,
       }
     }

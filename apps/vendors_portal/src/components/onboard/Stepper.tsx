@@ -4,11 +4,13 @@ import Link from 'next/link'
 import { Fragment } from 'react'
 import { Check } from 'lucide-react'
 import Logo from '../ui/Logo'
+import { LocaleToggle } from '../LocaleToggle'
 import {
   hasCompletePayout,
   useOnboardingDraft,
   type OnboardingDraft,
 } from '@/lib/onboarding/draft'
+import { useOnboardT } from '@/lib/onboarding/strings'
 import { cn } from '@/lib/utils'
 
 export type StepKey = 'profile' | 'details' | 'pricing' | 'review'
@@ -59,17 +61,18 @@ export function Stepper({
   profileLabel: string
 }) {
   const { draft, hydrated } = useOnboardingDraft()
+  const { t } = useOnboardT()
 
   const steps: Step[] = [
     {
       key: 'profile',
-      label: `${profileLabel} profile`,
+      label: t('stepper.profile', { label: profileLabel }),
       href: '/onboard/profile/name',
       isComplete: profileComplete,
     },
-    { key: 'details', label: 'Details', href: '/onboard/details/about', isComplete: detailsComplete },
-    { key: 'pricing', label: 'Pricing', href: '/onboard/pricing', isComplete: pricingComplete },
-    { key: 'review', label: 'Review', href: '/onboard/review', isComplete: reviewComplete },
+    { key: 'details', label: t('stepper.details'), href: '/onboard/details/about', isComplete: detailsComplete },
+    { key: 'pricing', label: t('stepper.pricing'), href: '/onboard/pricing', isComplete: pricingComplete },
+    { key: 'review', label: t('stepper.review'), href: '/onboard/review', isComplete: reviewComplete },
   ]
 
   const completed = steps.map((s) => (hydrated ? s.isComplete(draft) : false))
@@ -85,15 +88,17 @@ export function Stepper({
       <div className="relative px-6 lg:px-12 py-4 flex items-center justify-center overflow-x-auto">
         <Link
           href="/"
-          aria-label="OpusFesta home"
+          aria-label={t('stepper.aria.home')}
           className="absolute left-6 lg:left-12 top-1/2 -translate-y-1/2 shrink-0"
         >
           <Logo className="h-7 w-auto text-gray-900" />
         </Link>
 
+        <LocaleToggle className="absolute right-6 lg:right-12 top-1/2 -translate-y-1/2" />
+
         <ol
           className="flex items-center gap-1 lg:gap-2 text-sm"
-          aria-label="Onboarding progress"
+          aria-label={t('stepper.aria.progress')}
         >
           {steps.map((step, i) => {
             const isActive = step.key === current

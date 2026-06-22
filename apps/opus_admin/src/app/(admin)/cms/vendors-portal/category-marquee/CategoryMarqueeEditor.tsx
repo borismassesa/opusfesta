@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, Trash2 } from 'lucide-react'
-import type { CategoryItem, CategoryMarqueeContent } from '@/lib/cms/category-marquee'
+import type { CategoryItem, CategoryMarqueeContent } from '@/lib/cms/vendors-portal-category-marquee'
 import { cn } from '@/lib/utils'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardCategoryMarqueeDraft,
@@ -29,6 +31,7 @@ export default function CategoryMarqueeEditor({ initial, hasDraft: initialHasDra
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const updateItem = (id: string, patch: Partial<CategoryItem>) =>
@@ -57,7 +60,7 @@ export default function CategoryMarqueeEditor({ initial, hasDraft: initialHasDra
         ...d.items,
         {
           id: `cat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          name: 'New Category',
+          name: { en: 'New Category', sw: '' },
           bg: '#1A1A1A',
           text: '#ffffff',
         },
@@ -113,11 +116,6 @@ export default function CategoryMarqueeEditor({ initial, hasDraft: initialHasDra
             </span>
           </div>
 
-          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] font-bold uppercase tracking-wider text-gray-400 px-1">
-            <div className="w-[88px]">Colors</div>
-            <div>Name</div>
-          </div>
-
           <div className="space-y-2">
             {draft.items.map((item, i) => (
               <CategoryRow
@@ -125,6 +123,7 @@ export default function CategoryMarqueeEditor({ initial, hasDraft: initialHasDra
                 item={item}
                 index={i}
                 total={draft.items.length}
+                previewLocale={previewLocale}
                 onChange={(patch) => updateItem(item.id, patch)}
                 onRemove={() => removeItem(item.id)}
                 onMoveUp={() => moveItem(item.id, -1)}
@@ -146,9 +145,24 @@ export default function CategoryMarqueeEditor({ initial, hasDraft: initialHasDra
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-            <span className="text-xs text-gray-400">Approximate</span>
+            <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+              {LOCALES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreviewLocale(l)}
+                  aria-pressed={previewLocale === l}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 transition-colors',
+                    previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                  )}
+                >
+                  {LOCALE_LABELS[l]}
+                </button>
+              ))}
+            </div>
           </div>
-          <CategoryMarqueePreview content={draft} />
+          <CategoryMarqueePreview content={draft} locale={previewLocale} />
         </div>
       </div>
     </div>
@@ -159,6 +173,7 @@ function CategoryRow({
   item,
   index,
   total,
+  previewLocale,
   onChange,
   onRemove,
   onMoveUp,
@@ -167,85 +182,89 @@ function CategoryRow({
   item: CategoryItem
   index: number
   total: number
+  previewLocale: Locale
   onChange: (patch: Partial<CategoryItem>) => void
   onRemove: () => void
   onMoveUp: () => void
   onMoveDown: () => void
 }) {
   const visible = item.visible !== false
+  const resolvedName = resolveLocalized(item.name, previewLocale)
   return (
     <div
       className={cn(
-        'flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group transition-opacity',
+        'flex flex-col gap-2 px-2 py-2 rounded-lg hover:bg-gray-50 group transition-opacity',
         !visible && 'opacity-50'
       )}
     >
-      <button
-        type="button"
-        onClick={() => onChange({ visible: !visible })}
-        aria-label={visible ? 'Hide on website' : 'Show on website'}
-        title={visible ? 'Visible on website — click to hide' : 'Hidden on website — click to show'}
-        className={cn(
-          'p-1 rounded transition-colors shrink-0',
-          visible
-            ? 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
-            : 'text-gray-300 hover:text-gray-700 hover:bg-gray-100'
-        )}
-      >
-        {visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
-      </button>
-      <div className="flex items-center gap-1 shrink-0">
-        <ColorSwatch
-          color={item.bg}
-          onChange={(bg) => onChange({ bg })}
-          aria-label="Background color"
-        />
-        <ColorSwatch
-          color={item.text}
-          onChange={(text) => onChange({ text })}
-          aria-label="Text color"
-        />
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onChange({ visible: !visible })}
+          aria-label={visible ? 'Hide on website' : 'Show on website'}
+          title={visible ? 'Visible on website — click to hide' : 'Hidden on website — click to show'}
+          className={cn(
+            'p-1 rounded transition-colors shrink-0',
+            visible
+              ? 'text-gray-400 hover:text-gray-700 hover:bg-gray-100'
+              : 'text-gray-300 hover:text-gray-700 hover:bg-gray-100'
+          )}
+        >
+          {visible ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />}
+        </button>
+        <div className="flex items-center gap-1 shrink-0">
+          <ColorSwatch
+            color={item.bg}
+            onChange={(bg) => onChange({ bg })}
+            aria-label="Background color"
+          />
+          <ColorSwatch
+            color={item.text}
+            onChange={(text) => onChange({ text })}
+            aria-label="Text color"
+          />
+        </div>
+        <div
+          className="inline-flex items-center px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap shrink-0"
+          style={{ background: item.bg, color: item.text }}
+        >
+          {resolvedName || 'Preview'}
+        </div>
+        <div className="flex-1" />
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <button
+            type="button"
+            onClick={onMoveUp}
+            disabled={index === 0}
+            aria-label="Move up"
+            className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onMoveDown}
+            disabled={index === total - 1}
+            aria-label="Move down"
+            className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          >
+            <ArrowDown className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label="Remove"
+            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
-      <input
-        type="text"
+      <BilingualField
+        label="Name"
         value={item.name}
-        onChange={(e) => onChange({ name: e.target.value })}
-        className="flex-1 min-w-0 px-2 py-1.5 bg-transparent border-0 text-sm text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#C9A0DC] rounded"
+        onChange={(name) => onChange({ name })}
       />
-      <div
-        className="hidden sm:inline-flex items-center px-3 py-1 rounded-full text-xs font-bold whitespace-nowrap shrink-0"
-        style={{ background: item.bg, color: item.text }}
-      >
-        {item.name || 'Preview'}
-      </div>
-      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-        <button
-          type="button"
-          onClick={onMoveUp}
-          disabled={index === 0}
-          aria-label="Move up"
-          className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-        >
-          <ArrowUp className="w-3.5 h-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onMoveDown}
-          disabled={index === total - 1}
-          aria-label="Move down"
-          className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-        >
-          <ArrowDown className="w-3.5 h-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label="Remove"
-          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-      </div>
     </div>
   )
 }
@@ -275,7 +294,13 @@ function ColorSwatch({
   )
 }
 
-function CategoryMarqueePreview({ content }: { content: CategoryMarqueeContent }) {
+function CategoryMarqueePreview({
+  content,
+  locale,
+}: {
+  content: CategoryMarqueeContent
+  locale: Locale
+}) {
   const visible = content.items.filter((i) => i.visible !== false)
   return (
     <div className="space-y-3">
@@ -286,7 +311,7 @@ function CategoryMarqueePreview({ content }: { content: CategoryMarqueeContent }
             className="inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold whitespace-nowrap"
             style={{ background: item.bg, color: item.text }}
           >
-            {item.name || 'Untitled'}
+            {resolveLocalized(item.name, locale) || 'Untitled'}
           </span>
         ))}
         {visible.length === 0 && (

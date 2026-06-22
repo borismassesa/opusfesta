@@ -9,12 +9,14 @@ import { WhyWeAsk } from '@/components/onboard/WhyWeAsk'
 import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e.trim())
 
 export default function ContactPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
+  const { t } = useOnboardT()
   const category = findCategory(draft.categoryId)
 
   useEffect(() => {
@@ -44,31 +46,31 @@ export default function ContactPage() {
       backHref="/onboard/profile/location"
     >
       <OnboardHeading
-        title="How should couples reach you?"
-        description="We send inquiry alerts to your email and your WhatsApp. Most Tanzanian couples message vendors on WhatsApp first."
+        title={t('profile.contact.title')}
+        description={t('profile.contact.subtitle')}
       />
 
       <div className="space-y-6 max-w-xl">
         <div>
-          <FieldLabel required>Business email</FieldLabel>
+          <FieldLabel required>{t('profile.contact.email.label')}</FieldLabel>
           <TextInput
             type="email"
             inputMode="email"
-            placeholder="hello@yourstudio.co.tz"
+            placeholder={t('profile.contact.email.placeholder')}
             value={draft.email}
             onChange={(e) => update({ email: e.target.value })}
             autoComplete="email"
           />
           <p className="mt-2 text-xs text-gray-500">
-            We use this for inquiry alerts, payouts, and account recovery. Never shown publicly.
+            {t('profile.contact.email.hint')}
           </p>
         </div>
 
         <div>
-          <FieldLabel required>WhatsApp number</FieldLabel>
+          <FieldLabel required>{t('profile.contact.whatsapp.label')}</FieldLabel>
           <TextInput
             prefix="+255"
-            placeholder="754 123 456"
+            placeholder={t('profile.contact.whatsapp.placeholder')}
             value={draft.whatsapp}
             onChange={(e) => update({ whatsapp: e.target.value.replace(/[^\d\s]/g, '') })}
             inputMode="tel"
@@ -81,25 +83,18 @@ export default function ContactPage() {
               onChange={(e) => setUseBusinessPhone(e.target.checked)}
               className="w-4 h-4 accent-gray-900"
             />
-            Same as my business phone (+255 {draft.phone || '...'})
+            {t('profile.contact.same_as_phone')}
           </label>
         </div>
       </div>
 
       <div className="mt-10 flex items-center gap-6 flex-wrap">
         <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          Next step
+          {t('common.next_step')}
         </PrimaryButton>
-        <WhyWeAsk title="Why we ask for email and WhatsApp">
-          <p>
-            Inquiries arrive at <strong>both</strong> your email and your WhatsApp so you never miss
-            a couple, and so couples get a fast first response, which is the single biggest driver
-            of bookings on OpusFesta.
-          </p>
-          <p>
-            Your WhatsApp number is only shared with couples after they send you an inquiry. Email
-            is never shown publicly.
-          </p>
+        <WhyWeAsk title={t('profile.contact.why.title')}>
+          <p>{t('profile.contact.why.body1')}</p>
+          <p>{t('profile.contact.why.body2')}</p>
         </WhyWeAsk>
       </div>
     </OnboardShell>

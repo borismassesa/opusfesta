@@ -1,9 +1,11 @@
 import { CheckCircle2, Circle } from 'lucide-react'
 import { loadPricingComparisonContent } from '@/lib/cms/pricing-comparison'
 import { getFeatureIcon } from '@/lib/cms/pricing-comparison-icons'
+import { getLocale } from '@/lib/cms/locale'
 
 export default async function PricingComparison() {
-  const content = await loadPricingComparisonContent()
+  const locale = await getLocale()
+  const content = await loadPricingComparisonContent(locale)
   const checklist = content.checklist.slice(0, 4)
 
   return (

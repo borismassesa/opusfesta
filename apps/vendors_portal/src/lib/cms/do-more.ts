@@ -1,8 +1,11 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type StorefrontTheme = 'light' | 'dark' | 'forest'
 export type LeadStatus = 'Hot' | 'Warm' | 'Cold'
 
+// What the render components receive: every translatable field already resolved
+// to a flat string in the active locale.
 export type StorefrontDemo = {
   id: string
   url: string
@@ -51,6 +54,58 @@ export type DoMoreContent = {
   leads_label_warm: string
   leads_label_cold: string
   leads: LeadDemo[]
+}
+
+// What's stored in the DB: translatable fields may be `{ en, sw }` objects (or
+// legacy plain strings). Resolved down to the flat types above at load time.
+type StoredStorefrontDemo = Omit<StorefrontDemo, 'business_name' | 'category' | 'location'> & {
+  business_name: MaybeLocalized
+  category: MaybeLocalized
+  location: MaybeLocalized
+}
+
+type StoredLeadDemo = Omit<LeadDemo, 'name' | 'event_label'> & {
+  name: MaybeLocalized
+  event_label: MaybeLocalized
+}
+
+type StoredDoMoreContent = Omit<
+  DoMoreContent,
+  | 'headline_line_1'
+  | 'headline_line_2'
+  | 'headline_line_3'
+  | 'side_description'
+  | 'cta_label'
+  | 'storefront_title'
+  | 'storefront_description'
+  | 'storefront_cta'
+  | 'storefronts'
+  | 'leads_title'
+  | 'leads_description'
+  | 'leads_cta'
+  | 'leads_label_all'
+  | 'leads_label_hot'
+  | 'leads_label_warm'
+  | 'leads_label_cold'
+  | 'leads'
+> & {
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  headline_line_3: MaybeLocalized
+  side_description: MaybeLocalized
+  cta_label: MaybeLocalized
+  storefront_title: MaybeLocalized
+  storefront_description: MaybeLocalized
+  storefront_cta: MaybeLocalized
+  storefronts: StoredStorefrontDemo[]
+  leads_title: MaybeLocalized
+  leads_description: MaybeLocalized
+  leads_cta: MaybeLocalized
+  leads_label_all: MaybeLocalized
+  leads_label_hot: MaybeLocalized
+  leads_label_warm: MaybeLocalized
+  leads_label_cold: MaybeLocalized
+  leads: StoredLeadDemo[]
 }
 
 export const DO_MORE_FALLBACK: DoMoreContent = {
@@ -132,7 +187,7 @@ export const DO_MORE_FALLBACK: DoMoreContent = {
   ],
 }
 
-export async function loadDoMoreContent(): Promise<DoMoreContent> {
+export async function loadDoMoreContent(locale: Locale = DEFAULT_LOCALE): Promise<DoMoreContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return DO_MORE_FALLBACK
   }
@@ -144,19 +199,65 @@ export async function loadDoMoreContent(): Promise<DoMoreContent> {
       .eq('page_key', 'vendors_home')
       .eq('section_key', 'do-more')
       .maybeSingle()
-    const stored = data?.content as Partial<DoMoreContent> | undefined
+    const stored = data?.content as Partial<StoredDoMoreContent> | undefined
     if (stored) {
+      // Translatable fields are resolved to the active locale (legacy plain
+      // strings render as-is); scalars (hrefs, numbers, ids, enums, urls) pass
+      // through untouched. TRULY-missing fields fall back to DO_MORE_FALLBACK.
+      const storedStorefronts =
+        Array.isArray(stored.storefronts) && stored.storefronts.length > 0
+          ? stored.storefronts
+          : null
+      const storedLeads =
+        Array.isArray(stored.leads) && stored.leads.length > 0 ? stored.leads : null
       return {
-        ...DO_MORE_FALLBACK,
-        ...stored,
-        storefronts:
-          Array.isArray(stored.storefronts) && stored.storefronts.length > 0
-            ? (stored.storefronts as StorefrontDemo[])
-            : DO_MORE_FALLBACK.storefronts,
-        leads:
-          Array.isArray(stored.leads) && stored.leads.length > 0
-            ? (stored.leads as LeadDemo[])
-            : DO_MORE_FALLBACK.leads,
+        headline_line_1: resolveLocalized(stored.headline_line_1, locale) || DO_MORE_FALLBACK.headline_line_1,
+        headline_line_2: resolveLocalized(stored.headline_line_2, locale) || DO_MORE_FALLBACK.headline_line_2,
+        headline_line_3: resolveLocalized(stored.headline_line_3, locale) || DO_MORE_FALLBACK.headline_line_3,
+        side_description: resolveLocalized(stored.side_description, locale) || DO_MORE_FALLBACK.side_description,
+        cta_label: resolveLocalized(stored.cta_label, locale) || DO_MORE_FALLBACK.cta_label,
+        cta_href: stored.cta_href ?? DO_MORE_FALLBACK.cta_href,
+        storefront_title: resolveLocalized(stored.storefront_title, locale) || DO_MORE_FALLBACK.storefront_title,
+        storefront_description: resolveLocalized(stored.storefront_description, locale) || DO_MORE_FALLBACK.storefront_description,
+        storefront_cta: resolveLocalized(stored.storefront_cta, locale) || DO_MORE_FALLBACK.storefront_cta,
+        storefront_cta_href: stored.storefront_cta_href ?? DO_MORE_FALLBACK.storefront_cta_href,
+        storefronts: storedStorefronts
+          ? storedStorefronts.map((s) => ({
+              id: s.id,
+              url: s.url,
+              business_name: resolveLocalized(s.business_name, locale),
+              category: resolveLocalized(s.category, locale),
+              location: resolveLocalized(s.location, locale),
+              cover_url: s.cover_url,
+              avatar_url: s.avatar_url,
+              rating: s.rating,
+              reviews: s.reviews,
+              response: s.response,
+              bookings: s.bookings,
+              theme: s.theme,
+            }))
+          : DO_MORE_FALLBACK.storefronts,
+        leads_title: resolveLocalized(stored.leads_title, locale) || DO_MORE_FALLBACK.leads_title,
+        leads_description: resolveLocalized(stored.leads_description, locale) || DO_MORE_FALLBACK.leads_description,
+        leads_cta: resolveLocalized(stored.leads_cta, locale) || DO_MORE_FALLBACK.leads_cta,
+        leads_cta_href: stored.leads_cta_href ?? DO_MORE_FALLBACK.leads_cta_href,
+        leads_total: stored.leads_total ?? DO_MORE_FALLBACK.leads_total,
+        leads_hot: stored.leads_hot ?? DO_MORE_FALLBACK.leads_hot,
+        leads_warm: stored.leads_warm ?? DO_MORE_FALLBACK.leads_warm,
+        leads_cold: stored.leads_cold ?? DO_MORE_FALLBACK.leads_cold,
+        leads_label_all: resolveLocalized(stored.leads_label_all, locale) || DO_MORE_FALLBACK.leads_label_all,
+        leads_label_hot: resolveLocalized(stored.leads_label_hot, locale) || DO_MORE_FALLBACK.leads_label_hot,
+        leads_label_warm: resolveLocalized(stored.leads_label_warm, locale) || DO_MORE_FALLBACK.leads_label_warm,
+        leads_label_cold: resolveLocalized(stored.leads_label_cold, locale) || DO_MORE_FALLBACK.leads_label_cold,
+        leads: storedLeads
+          ? storedLeads.map((l) => ({
+              id: l.id,
+              name: resolveLocalized(l.name, locale),
+              event_label: resolveLocalized(l.event_label, locale),
+              image_url: l.image_url,
+              status: l.status,
+            }))
+          : DO_MORE_FALLBACK.leads,
       }
     }
     return DO_MORE_FALLBACK

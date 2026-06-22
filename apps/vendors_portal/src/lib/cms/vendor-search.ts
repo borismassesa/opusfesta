@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type VendorIconKey =
   | 'users'
@@ -43,6 +44,41 @@ export type VendorSearchContent = {
   verified_label: string
   verified_badge: string
   items: VendorSearchItem[]
+}
+
+// What's stored in the DB: translatable fields may be `{ en, sw }` objects (or
+// legacy plain strings). Resolved down to the flat types above at load time.
+type StoredVendorSearchItem = Omit<
+  VendorSearchItem,
+  'type' | 'city' | 'city_short' | 'detail1_label' | 'detail1_meta' | 'detail2_label' | 'detail2_meta' | 'perk' | 'budget' | 'count' | 'cta'
+> & {
+  type: MaybeLocalized
+  city: MaybeLocalized
+  city_short?: MaybeLocalized
+  detail1_label: MaybeLocalized
+  detail1_meta: MaybeLocalized
+  detail2_label: MaybeLocalized
+  detail2_meta: MaybeLocalized
+  perk: MaybeLocalized
+  budget: MaybeLocalized
+  count: MaybeLocalized
+  cta: MaybeLocalized
+}
+
+type StoredVendorSearchContent = Omit<
+  VendorSearchContent,
+  'headline_line_1' | 'headline_line_2' | 'subheadline' | 'looking_label' | 'count_suffix' | 'budget_label' | 'perk_badge' | 'verified_label' | 'verified_badge' | 'items'
+> & {
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  subheadline: MaybeLocalized
+  looking_label: MaybeLocalized
+  count_suffix: MaybeLocalized
+  budget_label: MaybeLocalized
+  perk_badge: MaybeLocalized
+  verified_label: MaybeLocalized
+  verified_badge: MaybeLocalized
+  items: StoredVendorSearchItem[]
 }
 
 export const VENDOR_SEARCH_FALLBACK: VendorSearchContent = {
@@ -152,7 +188,9 @@ export const VENDOR_SEARCH_FALLBACK: VendorSearchContent = {
   ],
 }
 
-export async function loadVendorSearchContent(): Promise<VendorSearchContent> {
+export async function loadVendorSearchContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<VendorSearchContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return VENDOR_SEARCH_FALLBACK
   }
@@ -164,12 +202,40 @@ export async function loadVendorSearchContent(): Promise<VendorSearchContent> {
       .eq('page_key', 'vendors_home')
       .eq('section_key', 'vendor-search')
       .maybeSingle()
-    const stored = data?.content as Partial<VendorSearchContent> | undefined
+    const stored = data?.content as Partial<StoredVendorSearchContent> | undefined
+    // Translatable fields are resolved to the active locale (legacy plain
+    // strings render as-is); hrefs/ids/icon keys stay scalar. Top-level fields
+    // keep the old `{ ...FALLBACK, ...stored }` semantics — a field missing from
+    // the stored row falls back to the default (resolveLocalized yields '' for a
+    // missing field, so `|| FALLBACK` restores it) rather than rendering blank.
     if (stored && Array.isArray(stored.items) && stored.items.length > 0) {
       return {
-        ...VENDOR_SEARCH_FALLBACK,
-        ...stored,
-        items: stored.items as VendorSearchItem[],
+        headline_line_1: resolveLocalized(stored.headline_line_1, locale) || VENDOR_SEARCH_FALLBACK.headline_line_1,
+        headline_line_2: resolveLocalized(stored.headline_line_2, locale) || VENDOR_SEARCH_FALLBACK.headline_line_2,
+        subheadline: resolveLocalized(stored.subheadline, locale) || VENDOR_SEARCH_FALLBACK.subheadline,
+        looking_label: resolveLocalized(stored.looking_label, locale) || VENDOR_SEARCH_FALLBACK.looking_label,
+        count_suffix: resolveLocalized(stored.count_suffix, locale) || VENDOR_SEARCH_FALLBACK.count_suffix,
+        budget_label: resolveLocalized(stored.budget_label, locale) || VENDOR_SEARCH_FALLBACK.budget_label,
+        budget_currency: stored.budget_currency ?? VENDOR_SEARCH_FALLBACK.budget_currency,
+        perk_badge: resolveLocalized(stored.perk_badge, locale) || VENDOR_SEARCH_FALLBACK.perk_badge,
+        verified_label: resolveLocalized(stored.verified_label, locale) || VENDOR_SEARCH_FALLBACK.verified_label,
+        verified_badge: resolveLocalized(stored.verified_badge, locale) || VENDOR_SEARCH_FALLBACK.verified_badge,
+        items: stored.items.map((it) => ({
+          id: it.id,
+          type: resolveLocalized(it.type, locale),
+          city: resolveLocalized(it.city, locale),
+          city_short: it.city_short != null ? resolveLocalized(it.city_short, locale) : undefined,
+          detail1_icon: it.detail1_icon,
+          detail1_label: resolveLocalized(it.detail1_label, locale),
+          detail1_meta: resolveLocalized(it.detail1_meta, locale),
+          detail2_icon: it.detail2_icon,
+          detail2_label: resolveLocalized(it.detail2_label, locale),
+          detail2_meta: resolveLocalized(it.detail2_meta, locale),
+          perk: resolveLocalized(it.perk, locale),
+          budget: resolveLocalized(it.budget, locale),
+          count: resolveLocalized(it.count, locale),
+          cta: resolveLocalized(it.cta, locale),
+        })),
       }
     }
     return VENDOR_SEARCH_FALLBACK

@@ -2,9 +2,11 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react'
 import { Upload } from 'lucide-react'
-import type { CtaContent } from '@/lib/cms/cta'
+import type { CtaContent } from '@/lib/cms/vendors-portal-cta'
 import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardCtaDraft,
@@ -33,6 +35,7 @@ export default function CtaEditor({ initial, hasDraft: initialHasDraft }: Props)
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const setField = <K extends keyof CtaContent>(key: K, value: CtaContent[K]) =>
@@ -97,85 +100,89 @@ export default function CtaEditor({ initial, hasDraft: initialHasDraft }: Props)
 
           {/* Copy */}
           <Card title="Copy">
-            <Field label="Eyebrow">
-              <input
-                type="text"
-                value={draft.eyebrow}
-                onChange={(e) => setField('eyebrow', e.target.value)}
-                className={inputCls}
-              />
-            </Field>
+            <BilingualField
+              label="Eyebrow"
+              value={draft.eyebrow}
+              onChange={(v) => setField('eyebrow', v)}
+            />
             <FieldGroup label="Headline (3 lines — line 3 takes accent color)">
-              {(['headline_line_1', 'headline_line_2', 'headline_line_3'] as const).map((k, i) => (
-                <Field
-                  key={k}
-                  label={`Line ${i + 1}`}
-                  hint={<CharCount value={draft[k]} max={HEADLINE_MAX} />}
-                >
-                  <input
-                    type="text"
-                    value={draft[k]}
-                    onChange={(e) => setField(k, e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-              ))}
-            </FieldGroup>
-            <Field
-              label="Subheadline"
-              hint={<CharCount value={draft.subheadline} max={SUBHEAD_MAX} />}
-            >
-              <textarea
-                value={draft.subheadline}
-                onChange={(e) => setField('subheadline', e.target.value)}
-                rows={2}
-                className={inputCls}
+              <BilingualField
+                label="Line 1"
+                value={draft.headline_line_1}
+                onChange={(v) => setField('headline_line_1', v)}
+                max={HEADLINE_MAX}
               />
-            </Field>
+              <BilingualField
+                label="Line 2"
+                value={draft.headline_line_2}
+                onChange={(v) => setField('headline_line_2', v)}
+                max={HEADLINE_MAX}
+              />
+              <BilingualField
+                label="Line 3"
+                value={draft.headline_line_3}
+                onChange={(v) => setField('headline_line_3', v)}
+                max={HEADLINE_MAX}
+              />
+            </FieldGroup>
+            <BilingualField
+              label="Subheadline"
+              value={draft.subheadline}
+              onChange={(v) => setField('subheadline', v)}
+              multiline
+              rows={2}
+              max={SUBHEAD_MAX}
+            />
           </Card>
 
           {/* Button */}
           <Card title="Call to action">
             <FieldGroup label="Button">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Label">
-                  <input
-                    type="text"
-                    value={draft.cta_label}
-                    onChange={(e) => setField('cta_label', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Link">
-                  <input
-                    type="text"
-                    value={draft.cta_href}
-                    onChange={(e) => setField('cta_href', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-              </div>
-            </FieldGroup>
-            <Field
-              label="Footnote (under button)"
-              hint={<CharCount value={draft.footnote} max={FOOTNOTE_MAX} />}
-            >
-              <input
-                type="text"
-                value={draft.footnote}
-                onChange={(e) => setField('footnote', e.target.value)}
-                className={inputCls}
+              <BilingualField
+                label="Label"
+                value={draft.cta_label}
+                onChange={(v) => setField('cta_label', v)}
               />
-            </Field>
+              <Field label="Link">
+                <input
+                  type="text"
+                  value={draft.cta_href}
+                  onChange={(e) => setField('cta_href', e.target.value)}
+                  className={inputCls}
+                  placeholder="/path or https://…"
+                />
+              </Field>
+            </FieldGroup>
+            <BilingualField
+              label="Footnote (under button)"
+              value={draft.footnote}
+              onChange={(v) => setField('footnote', v)}
+              max={FOOTNOTE_MAX}
+            />
           </Card>
         </div>
 
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-            <span className="text-xs text-gray-400">Approximate</span>
+            <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+              {LOCALES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreviewLocale(l)}
+                  aria-pressed={previewLocale === l}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 transition-colors',
+                    previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                  )}
+                >
+                  {LOCALE_LABELS[l]}
+                </button>
+              ))}
+            </div>
           </div>
-          <CtaPreview content={draft} />
+          <CtaPreview content={draft} locale={previewLocale} />
         </div>
       </div>
     </div>
@@ -283,22 +290,18 @@ function Field({ label, children, hint }: { label: string; children: React.React
   )
 }
 
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span className={cn('tabular-nums font-medium', over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400')}>
-      {len}/{max}
-    </span>
-  )
-}
-
 const inputCls =
   'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
 
-function CtaPreview({ content }: { content: CtaContent }) {
+function CtaPreview({ content, locale }: { content: CtaContent; locale: Locale }) {
   const bg = resolveMediaUrl(content.background_image_url)
+  const eyebrow = resolveLocalized(content.eyebrow, locale)
+  const line1 = resolveLocalized(content.headline_line_1, locale)
+  const line2 = resolveLocalized(content.headline_line_2, locale)
+  const line3 = resolveLocalized(content.headline_line_3, locale)
+  const subheadline = resolveLocalized(content.subheadline, locale)
+  const ctaLabel = resolveLocalized(content.cta_label, locale)
+  const footnote = resolveLocalized(content.footnote, locale)
   return (
     <div className="rounded-2xl overflow-hidden relative aspect-[4/3] flex flex-col items-center justify-center text-center p-6">
       {bg && (
@@ -308,18 +311,18 @@ function CtaPreview({ content }: { content: CtaContent }) {
       <div className="absolute inset-0 bg-black/40" />
       <div className="relative z-10 flex flex-col items-center max-w-xs">
         <span className="text-[#C9A0DC] text-[9px] font-bold uppercase tracking-widest mb-3">
-          {content.eyebrow}
+          {eyebrow}
         </span>
         <h2 className="text-2xl font-black uppercase tracking-tighter leading-[0.9] text-white mb-3">
-          {content.headline_line_1}<br />
-          {content.headline_line_2}<br />
-          <span className="text-[#C9A0DC]">{content.headline_line_3}</span>
+          {line1}<br />
+          {line2}<br />
+          <span className="text-[#C9A0DC]">{line3}</span>
         </h2>
-        <p className="text-white/90 text-[10px] leading-relaxed mb-3">{content.subheadline}</p>
+        <p className="text-white/90 text-[10px] leading-relaxed mb-3">{subheadline}</p>
         <span className="bg-[#C9A0DC] text-[#1A1A1A] px-4 py-2 rounded-full font-bold text-xs">
-          {content.cta_label}
+          {ctaLabel}
         </span>
-        <p className="text-white/70 text-[9px] font-medium mt-2">{content.footnote}</p>
+        <p className="text-white/70 text-[9px] font-medium mt-2">{footnote}</p>
       </div>
     </div>
   )

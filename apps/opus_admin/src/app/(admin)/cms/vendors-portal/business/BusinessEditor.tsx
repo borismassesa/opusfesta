@@ -19,9 +19,11 @@ import type {
   FeaturePill,
   UpcomingBooking,
   VendorShowcase,
-} from '@/lib/cms/business'
+} from '@/lib/cms/vendors-portal-business'
 import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardBusinessDraft,
@@ -40,13 +42,14 @@ export default function BusinessEditor({ initial, hasDraft: initialHasDraft }: P
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [openVendorId, setOpenVendorId] = useState<string | null>(initial.vendors[0]?.id ?? null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const setField = <K extends keyof BusinessContent>(key: K, value: BusinessContent[K]) =>
     setDraft((d) => ({ ...d, [key]: value }))
 
   // Pills
-  const updatePill = (id: string, label: string) =>
+  const updatePill = (id: string, label: FeaturePill['label']) =>
     setDraft((d) => ({
       ...d,
       feature_pills: d.feature_pills.map((p) => (p.id === id ? { ...p, label } : p)),
@@ -216,78 +219,67 @@ export default function BusinessEditor({ initial, hasDraft: initialHasDraft }: P
         <div className="space-y-4">
           {/* Section copy */}
           <Card title="Section copy">
-            <Field label="Eyebrow">
-              <input
-                type="text"
-                value={draft.eyebrow}
-                onChange={(e) => setField('eyebrow', e.target.value)}
-                className={inputCls}
-              />
-            </Field>
+            <BilingualField
+              label="Eyebrow"
+              value={draft.eyebrow}
+              onChange={(v) => setField('eyebrow', v)}
+            />
             <FieldGroup label="Headline (3 lines — line 3 takes accent color)">
               {(['headline_line_1', 'headline_line_2', 'headline_line_3'] as const).map((k, i) => (
-                <Field
+                <BilingualField
                   key={k}
                   label={`Line ${i + 1}`}
-                  hint={<CharCount value={draft[k]} max={HEADLINE_MAX} />}
-                >
-                  <input
-                    type="text"
-                    value={draft[k]}
-                    onChange={(e) => setField(k, e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
+                  value={draft[k]}
+                  onChange={(v) => setField(k, v)}
+                  max={HEADLINE_MAX}
+                />
               ))}
             </FieldGroup>
-            <Field
+            <BilingualField
               label="Subheadline"
-              hint={<CharCount value={draft.subheadline} max={SUBHEAD_MAX} />}
-            >
-              <textarea
-                value={draft.subheadline}
-                onChange={(e) => setField('subheadline', e.target.value)}
-                rows={3}
-                className={inputCls}
-              />
-            </Field>
+              value={draft.subheadline}
+              onChange={(v) => setField('subheadline', v)}
+              multiline
+              max={SUBHEAD_MAX}
+            />
             <FieldGroup label="CTAs">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Primary label">
-                  <input type="text" value={draft.primary_cta_label} onChange={(e) => setField('primary_cta_label', e.target.value)} className={inputCls} />
-                </Field>
-                <Field label="Primary link">
-                  <input type="text" value={draft.primary_cta_href} onChange={(e) => setField('primary_cta_href', e.target.value)} className={inputCls} />
-                </Field>
-                <Field label="Secondary label">
-                  <input type="text" value={draft.secondary_cta_label} onChange={(e) => setField('secondary_cta_label', e.target.value)} className={inputCls} />
-                </Field>
-                <Field label="Secondary link">
-                  <input type="text" value={draft.secondary_cta_href} onChange={(e) => setField('secondary_cta_href', e.target.value)} className={inputCls} />
-                </Field>
-              </div>
+              <BilingualField
+                label="Primary label"
+                value={draft.primary_cta_label}
+                onChange={(v) => setField('primary_cta_label', v)}
+              />
+              <Field label="Primary link">
+                <input type="text" value={draft.primary_cta_href} onChange={(e) => setField('primary_cta_href', e.target.value)} className={inputCls} />
+              </Field>
+              <BilingualField
+                label="Secondary label"
+                value={draft.secondary_cta_label}
+                onChange={(v) => setField('secondary_cta_label', v)}
+              />
+              <Field label="Secondary link">
+                <input type="text" value={draft.secondary_cta_href} onChange={(e) => setField('secondary_cta_href', e.target.value)} className={inputCls} />
+              </Field>
             </FieldGroup>
           </Card>
 
           {/* Feature pills */}
           <Card title="Feature pills" count={draft.feature_pills.length}>
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               {draft.feature_pills.map((pill, i) => (
-                <div key={pill.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group border border-transparent hover:border-gray-100">
-                  <input
-                    type="text"
-                    value={pill.label}
-                    onChange={(e) => updatePill(pill.id, e.target.value)}
-                    className="flex-1 min-w-0 px-2 py-1 bg-transparent border-0 text-sm text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#C9A0DC] rounded"
-                  />
-                  <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-gray-900/8 text-gray-700 border border-gray-200 shrink-0">
-                    {pill.label || 'Preview'}
-                  </span>
-                  <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-                    <IconBtn onClick={() => movePill(pill.id, -1)} disabled={i === 0} aria-label="Move up"><ArrowUp className="w-3.5 h-3.5" /></IconBtn>
-                    <IconBtn onClick={() => movePill(pill.id, 1)} disabled={i === draft.feature_pills.length - 1} aria-label="Move down"><ArrowDown className="w-3.5 h-3.5" /></IconBtn>
-                    <IconBtn onClick={() => removePill(pill.id)} aria-label="Remove" danger><Trash2 className="w-3.5 h-3.5" /></IconBtn>
+                <div key={pill.id} className="px-2 py-1.5 rounded-lg hover:bg-gray-50 group border border-transparent hover:border-gray-100">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Pill {i + 1}</span>
+                    <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                      <IconBtn onClick={() => movePill(pill.id, -1)} disabled={i === 0} aria-label="Move up"><ArrowUp className="w-3.5 h-3.5" /></IconBtn>
+                      <IconBtn onClick={() => movePill(pill.id, 1)} disabled={i === draft.feature_pills.length - 1} aria-label="Move down"><ArrowDown className="w-3.5 h-3.5" /></IconBtn>
+                      <IconBtn onClick={() => removePill(pill.id)} aria-label="Remove" danger><Trash2 className="w-3.5 h-3.5" /></IconBtn>
+                    </div>
                   </div>
+                  <BilingualField
+                    label=""
+                    value={pill.label}
+                    onChange={(v) => updatePill(pill.id, v)}
+                  />
                 </div>
               ))}
             </div>
@@ -317,14 +309,12 @@ export default function BusinessEditor({ initial, hasDraft: initialHasDraft }: P
                   ['response_suffix', '"response" suffix'],
                 ] as const
               ).map(([k, label]) => (
-                <Field key={k} label={label}>
-                  <input
-                    type="text"
-                    value={draft[k]}
-                    onChange={(e) => setField(k, e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
+                <BilingualField
+                  key={k}
+                  label={label}
+                  value={draft[k]}
+                  onChange={(v) => setField(k, v)}
+                />
               ))}
             </div>
           </Card>
@@ -367,9 +357,24 @@ export default function BusinessEditor({ initial, hasDraft: initialHasDraft }: P
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-            <span className="text-xs text-gray-400">Approximate</span>
+            <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+              {LOCALES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreviewLocale(l)}
+                  aria-pressed={previewLocale === l}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 transition-colors',
+                    previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                  )}
+                >
+                  {LOCALE_LABELS[l]}
+                </button>
+              ))}
+            </div>
           </div>
-          <BusinessPreview content={draft} />
+          <BusinessPreview content={draft} locale={previewLocale} />
         </div>
       </div>
     </div>
@@ -402,8 +407,8 @@ function VendorAccordion({
       <div className="flex items-center gap-2 px-3 py-2 bg-gray-50/50">
         <button type="button" onClick={onToggle} className="flex items-center gap-2 flex-1 min-w-0 text-left">
           {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
-          <span className="text-sm font-semibold text-gray-900 truncate">{vendor.name}</span>
-          <span className="text-xs text-gray-400 truncate">· {vendor.category}</span>
+          <span className="text-sm font-semibold text-gray-900 truncate">{resolveLocalized(vendor.name, 'en')}</span>
+          <span className="text-xs text-gray-400 truncate">· {resolveLocalized(vendor.category, 'en')}</span>
         </button>
         <div className="flex items-center gap-0.5 shrink-0">
           <IconBtn onClick={onMoveUp} disabled={index === 0} aria-label="Move up"><ArrowUp className="w-3.5 h-3.5" /></IconBtn>
@@ -415,9 +420,9 @@ function VendorAccordion({
       {isOpen && (
         <div className="p-4 space-y-4 border-t border-gray-100">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Vendor name"><input type="text" value={vendor.name} onChange={(e) => onChange({ name: e.target.value })} className={inputCls} /></Field>
-            <Field label="Category"><input type="text" value={vendor.category} onChange={(e) => onChange({ category: e.target.value })} className={inputCls} /></Field>
-            <Field label="Location"><input type="text" value={vendor.location} onChange={(e) => onChange({ location: e.target.value })} className={inputCls} /></Field>
+            <BilingualField label="Vendor name" value={vendor.name} onChange={(v) => onChange({ name: v })} />
+            <BilingualField label="Category" value={vendor.category} onChange={(v) => onChange({ category: v })} />
+            <BilingualField label="Location" value={vendor.location} onChange={(v) => onChange({ location: v })} />
           </div>
 
           <FieldGroup label="Cover & avatar">
@@ -521,43 +526,37 @@ function BookingRow({
   }, [booking.image_url])
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-50 group">
-      <button
-        type="button"
-        onClick={() => fileRef.current?.click()}
-        className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 border border-gray-200 shrink-0 relative group/avatar"
-        title="Click to upload"
-      >
-        {booking.image_url && !errored ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={booking.image_url} src={booking.image_url} alt="" onError={() => setErrored(true)} className="w-full h-full object-cover" />
-        ) : (
-          <span className="absolute inset-0 flex items-center justify-center text-[8px] text-gray-400">No img</span>
-        )}
-        <span className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
-          <Upload className="w-3 h-3 text-white" />
-        </span>
-      </button>
-      <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => {
-        const f = e.target.files?.[0]; if (f) { onUpload(f); setErrored(false) }
-      }} />
-      <input
-        type="text"
-        value={booking.name}
-        onChange={(e) => onChange({ name: e.target.value })}
-        className="flex-1 min-w-0 px-2 py-1 bg-transparent border-0 text-xs text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#C9A0DC] rounded"
-      />
-      <input
-        type="text"
-        value={booking.date}
-        onChange={(e) => onChange({ date: e.target.value })}
-        placeholder="Date"
-        className="w-28 px-2 py-1 bg-transparent border-0 text-xs text-gray-500 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#C9A0DC] rounded text-right shrink-0"
-      />
-      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-        <IconBtn onClick={onMoveUp} disabled={index === 0} aria-label="Move up"><ArrowUp className="w-3 h-3" /></IconBtn>
-        <IconBtn onClick={onMoveDown} disabled={index === total - 1} aria-label="Move down"><ArrowDown className="w-3 h-3" /></IconBtn>
-        <IconBtn onClick={onRemove} aria-label="Remove" danger><Trash2 className="w-3 h-3" /></IconBtn>
+    <div className="px-2 py-2 rounded-lg border border-gray-100 hover:bg-gray-50 group space-y-2">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="w-8 h-8 rounded-full overflow-hidden bg-gray-100 border border-gray-200 shrink-0 relative group/avatar"
+          title="Click to upload"
+        >
+          {booking.image_url && !errored ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={booking.image_url} src={booking.image_url} alt="" onError={() => setErrored(true)} className="w-full h-full object-cover" />
+          ) : (
+            <span className="absolute inset-0 flex items-center justify-center text-[8px] text-gray-400">No img</span>
+          )}
+          <span className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
+            <Upload className="w-3 h-3 text-white" />
+          </span>
+        </button>
+        <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => {
+          const f = e.target.files?.[0]; if (f) { onUpload(f); setErrored(false) }
+        }} />
+        <span className="flex-1 min-w-0 text-[11px] font-bold uppercase tracking-wider text-gray-400">Booking {index + 1}</span>
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <IconBtn onClick={onMoveUp} disabled={index === 0} aria-label="Move up"><ArrowUp className="w-3 h-3" /></IconBtn>
+          <IconBtn onClick={onMoveDown} disabled={index === total - 1} aria-label="Move down"><ArrowDown className="w-3 h-3" /></IconBtn>
+          <IconBtn onClick={onRemove} aria-label="Remove" danger><Trash2 className="w-3 h-3" /></IconBtn>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <BilingualField label="Couple name" value={booking.name} onChange={(v) => onChange({ name: v })} />
+        <BilingualField label="Date" value={booking.date} onChange={(v) => onChange({ date: v })} />
       </div>
     </div>
   )
@@ -681,21 +680,10 @@ function Field({ label, children, hint }: { label: string; children: React.React
   )
 }
 
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span className={cn('tabular-nums font-medium', over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400')}>
-      {len}/{max}
-    </span>
-  )
-}
-
 const inputCls =
   'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
 
-function BusinessPreview({ content }: { content: BusinessContent }) {
+function BusinessPreview({ content, locale }: { content: BusinessContent; locale: Locale }) {
   const [activeIdx, setActiveIdx] = useState(0)
   useEffect(() => {
     if (content.vendors.length === 0) return
@@ -708,23 +696,23 @@ function BusinessPreview({ content }: { content: BusinessContent }) {
   return (
     <div className="bg-[#1A1A1A] rounded-xl p-4 space-y-4">
       <div>
-        <span className="text-[#C9A0DC] text-[9px] font-bold uppercase tracking-widest">{content.eyebrow}</span>
+        <span className="text-[#C9A0DC] text-[9px] font-bold uppercase tracking-widest">{resolveLocalized(content.eyebrow, locale)}</span>
         <h2 className="text-xl font-black uppercase tracking-tighter leading-[0.9] mt-1 text-white">
-          {content.headline_line_1}<br />
-          {content.headline_line_2}<br />
-          <span className="text-[#C9A0DC]">{content.headline_line_3}</span>
+          {resolveLocalized(content.headline_line_1, locale)}<br />
+          {resolveLocalized(content.headline_line_2, locale)}<br />
+          <span className="text-[#C9A0DC]">{resolveLocalized(content.headline_line_3, locale)}</span>
         </h2>
-        <p className="text-[10px] text-gray-400 mt-2 leading-relaxed">{content.subheadline}</p>
+        <p className="text-[10px] text-gray-400 mt-2 leading-relaxed">{resolveLocalized(content.subheadline, locale)}</p>
         <div className="flex flex-wrap gap-1 mt-2">
           {content.feature_pills.map((p) => (
             <span key={p.id} className="bg-white/8 text-white/70 text-[8px] font-semibold px-2 py-0.5 rounded-full border border-white/10">
-              {p.label}
+              {resolveLocalized(p.label, locale)}
             </span>
           ))}
         </div>
         <div className="flex gap-2 mt-3">
-          <span className="bg-[#C9A0DC] text-[#1A1A1A] text-[9px] font-bold px-3 py-1 rounded-full">{content.primary_cta_label}</span>
-          <span className="text-white border border-white/20 text-[9px] font-bold px-3 py-1 rounded-full">{content.secondary_cta_label}</span>
+          <span className="bg-[#C9A0DC] text-[#1A1A1A] text-[9px] font-bold px-3 py-1 rounded-full">{resolveLocalized(content.primary_cta_label, locale)}</span>
+          <span className="text-white border border-white/20 text-[9px] font-bold px-3 py-1 rounded-full">{resolveLocalized(content.secondary_cta_label, locale)}</span>
         </div>
       </div>
 
@@ -739,7 +727,7 @@ function BusinessPreview({ content }: { content: BusinessContent }) {
                 <div className="w-full h-full bg-gray-700" />
               )}
               <div className="absolute top-1 right-1">
-                <span className="bg-[#C9A0DC] text-[#1A1A1A] text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">{content.verified_badge}</span>
+                <span className="bg-[#C9A0DC] text-[#1A1A1A] text-[7px] font-black px-1.5 py-0.5 rounded-full uppercase">{resolveLocalized(content.verified_badge, locale)}</span>
               </div>
             </div>
             <div className="px-3 py-2 flex items-center gap-2">
@@ -750,27 +738,27 @@ function BusinessPreview({ content }: { content: BusinessContent }) {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-[11px] font-black text-white truncate">{v.name}</p>
-                <p className="text-[8px] text-white/40">{v.location}</p>
+                <p className="text-[11px] font-black text-white truncate">{resolveLocalized(v.name, locale)}</p>
+                <p className="text-[8px] text-white/40">{resolveLocalized(v.location, locale)}</p>
               </div>
-              <span className="text-[7px] font-bold text-white/40 bg-white/8 border border-white/10 px-1.5 py-0.5 rounded-full shrink-0">{v.category}</span>
+              <span className="text-[7px] font-bold text-white/40 bg-white/8 border border-white/10 px-1.5 py-0.5 rounded-full shrink-0">{resolveLocalized(v.category, locale)}</span>
             </div>
             <div className="px-3 pb-2 flex items-center justify-between">
               <div className="flex items-center gap-1">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star key={i} size={8} fill="#F5A623" className="text-[#F5A623]" />
                 ))}
-                <span className="text-[8px] text-white/40 ml-1">{v.stars} · {v.reviews} {content.reviews_suffix}</span>
+                <span className="text-[8px] text-white/40 ml-1">{v.stars} · {v.reviews} {resolveLocalized(content.reviews_suffix, locale)}</span>
               </div>
-              <span className="text-[7px] text-white/40">{v.response} {content.response_suffix}</span>
+              <span className="text-[7px] text-white/40">{v.response} {resolveLocalized(content.response_suffix, locale)}</span>
             </div>
           </div>
 
           <div className="grid grid-cols-3 gap-1.5">
             {[
-              { icon: <TrendingUp size={10} />, value: v.bookings, label: content.bookings_stat_label },
-              { icon: <MessageCircle size={10} />, value: v.enquiries, label: content.enquiries_stat_label },
-              { icon: <Eye size={10} />, value: v.views, label: content.views_stat_label },
+              { icon: <TrendingUp size={10} />, value: v.bookings, label: resolveLocalized(content.bookings_stat_label, locale) },
+              { icon: <MessageCircle size={10} />, value: v.enquiries, label: resolveLocalized(content.enquiries_stat_label, locale) },
+              { icon: <Eye size={10} />, value: v.views, label: resolveLocalized(content.views_stat_label, locale) },
             ].map((s) => (
               <div key={s.label} className="bg-[#1E1E1E] rounded-lg px-2 py-1.5 text-center border border-white/8">
                 <div className="text-white/60 flex justify-center">{s.icon}</div>
@@ -783,8 +771,8 @@ function BusinessPreview({ content }: { content: BusinessContent }) {
           {v.upcoming.length > 0 && (
             <div className="bg-[#1E1E1E] rounded-lg overflow-hidden border border-white/8">
               <div className="px-2 py-1.5 border-b border-white/5 flex items-center justify-between">
-                <p className="text-[8px] font-black text-white uppercase tracking-widest">{content.upcoming_label}</p>
-                <span className="text-[7px] text-white font-bold">{v.bookings} {content.bookings_suffix}</span>
+                <p className="text-[8px] font-black text-white uppercase tracking-widest">{resolveLocalized(content.upcoming_label, locale)}</p>
+                <span className="text-[7px] text-white font-bold">{v.bookings} {resolveLocalized(content.bookings_suffix, locale)}</span>
               </div>
               {v.upcoming.slice(0, 2).map((b) => (
                 <div key={b.id} className="px-2 py-1 flex items-center gap-2 border-b border-white/5 last:border-0">
@@ -795,10 +783,10 @@ function BusinessPreview({ content }: { content: BusinessContent }) {
                     <div className="w-5 h-5 rounded-full bg-gray-700 shrink-0" />
                   )}
                   <div className="flex-1 min-w-0">
-                    <p className="text-[8px] font-bold text-white truncate">{b.name}</p>
-                    <p className="text-[7px] text-white/30">{b.date}</p>
+                    <p className="text-[8px] font-bold text-white truncate">{resolveLocalized(b.name, locale)}</p>
+                    <p className="text-[7px] text-white/30">{resolveLocalized(b.date, locale)}</p>
                   </div>
-                  <span className="text-[7px] font-bold bg-[#C9A0DC] text-[#1A1A1A] px-1.5 py-0.5 rounded-full shrink-0">{content.booked_badge}</span>
+                  <span className="text-[7px] font-bold bg-[#C9A0DC] text-[#1A1A1A] px-1.5 py-0.5 rounded-full shrink-0">{resolveLocalized(content.booked_badge, locale)}</span>
                 </div>
               ))}
             </div>

@@ -1,8 +1,10 @@
 import { ArrowRight } from 'lucide-react'
 import { loadCategoryMarqueeContent } from '@/lib/cms/category-marquee'
+import { getLocale } from '@/lib/cms/locale'
 
 export default async function CategoryMarquee() {
-  const { items } = await loadCategoryMarqueeContent()
+  const locale = await getLocale()
+  const { items } = await loadCategoryMarqueeContent(locale)
   // Treat missing `visible` as true so older rows render unchanged.
   const categories = items.filter((c) => c.visible !== false)
   if (categories.length === 0) return null

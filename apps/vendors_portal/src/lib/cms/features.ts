@@ -1,10 +1,13 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type FeatureMediaItem = {
   type: 'image' | 'video'
   url: string
 }
 
+// What the render component receives: every translatable field already resolved
+// to a flat string in the active locale.
 export type FeaturePill = { id: string; label: string }
 
 export type FeatureBlock = {
@@ -32,6 +35,44 @@ export type FeaturesContent = {
   headline_line_2: string
   subheadline: string
   blocks: FeatureBlock[]
+}
+
+// What's stored in the DB: translatable fields may be `{ en, sw }` objects (or
+// legacy plain strings). Resolved down to the flat types above at load time.
+type StoredFeaturePill = { id: string; label: MaybeLocalized }
+
+type StoredFeatureBlock = Omit<
+  FeatureBlock,
+  | 'headline_line_1'
+  | 'headline_line_2'
+  | 'body'
+  | 'pills'
+  | 'primary_cta_label'
+  | 'secondary_cta_label'
+  | 'overlay_eyebrow'
+  | 'overlay_caption_line_1'
+  | 'overlay_caption_line_2'
+> & {
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  body: MaybeLocalized
+  pills: StoredFeaturePill[]
+  primary_cta_label: MaybeLocalized
+  secondary_cta_label: MaybeLocalized
+  overlay_eyebrow: MaybeLocalized
+  overlay_caption_line_1: MaybeLocalized
+  overlay_caption_line_2: MaybeLocalized
+}
+
+type StoredFeaturesContent = Omit<
+  FeaturesContent,
+  'eyebrow' | 'headline_line_1' | 'headline_line_2' | 'subheadline' | 'blocks'
+> & {
+  eyebrow: MaybeLocalized
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  subheadline: MaybeLocalized
+  blocks: StoredFeatureBlock[]
 }
 
 export const FEATURES_FALLBACK: FeaturesContent = {
@@ -112,7 +153,33 @@ export const FEATURES_FALLBACK: FeaturesContent = {
   ],
 }
 
-export async function loadFeaturesContent(): Promise<FeaturesContent> {
+// Resolve a stored block (translatable fields may be `{ en, sw }` or legacy
+// plain strings) into a flat FeatureBlock in the active locale. Scalars
+// (reverse, hrefs, media) pass through untouched.
+function resolveBlock(block: StoredFeatureBlock, locale: Locale): FeatureBlock {
+  return {
+    id: block.id,
+    reverse: block.reverse,
+    headline_line_1: resolveLocalized(block.headline_line_1, locale),
+    headline_line_2: resolveLocalized(block.headline_line_2, locale),
+    body: resolveLocalized(block.body, locale),
+    pills: Array.isArray(block.pills)
+      ? block.pills.map((p) => ({ id: p.id, label: resolveLocalized(p.label, locale) }))
+      : [],
+    primary_cta_label: resolveLocalized(block.primary_cta_label, locale),
+    primary_cta_href: block.primary_cta_href,
+    secondary_cta_label: resolveLocalized(block.secondary_cta_label, locale),
+    secondary_cta_href: block.secondary_cta_href,
+    media_main: block.media_main,
+    media_secondary: block.media_secondary,
+    media_overlay: block.media_overlay,
+    overlay_eyebrow: resolveLocalized(block.overlay_eyebrow, locale),
+    overlay_caption_line_1: resolveLocalized(block.overlay_caption_line_1, locale),
+    overlay_caption_line_2: resolveLocalized(block.overlay_caption_line_2, locale),
+  }
+}
+
+export async function loadFeaturesContent(locale: Locale = DEFAULT_LOCALE): Promise<FeaturesContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return FEATURES_FALLBACK
   }
@@ -124,15 +191,29 @@ export async function loadFeaturesContent(): Promise<FeaturesContent> {
       .eq('page_key', 'vendors_home')
       .eq('section_key', 'features')
       .maybeSingle()
-    const stored = data?.content as Partial<FeaturesContent> | undefined
+    const stored = data?.content as Partial<StoredFeaturesContent> | undefined
     if (stored) {
+      const hasBlocks = Array.isArray(stored.blocks) && stored.blocks.length > 0
       return {
-        ...FEATURES_FALLBACK,
-        ...stored,
-        blocks:
-          Array.isArray(stored.blocks) && stored.blocks.length > 0
-            ? (stored.blocks as FeatureBlock[])
-            : FEATURES_FALLBACK.blocks,
+        eyebrow:
+          stored.eyebrow !== undefined
+            ? resolveLocalized(stored.eyebrow, locale)
+            : FEATURES_FALLBACK.eyebrow,
+        headline_line_1:
+          stored.headline_line_1 !== undefined
+            ? resolveLocalized(stored.headline_line_1, locale)
+            : FEATURES_FALLBACK.headline_line_1,
+        headline_line_2:
+          stored.headline_line_2 !== undefined
+            ? resolveLocalized(stored.headline_line_2, locale)
+            : FEATURES_FALLBACK.headline_line_2,
+        subheadline:
+          stored.subheadline !== undefined
+            ? resolveLocalized(stored.subheadline, locale)
+            : FEATURES_FALLBACK.subheadline,
+        blocks: hasBlocks
+          ? stored.blocks!.map((b) => resolveBlock(b, locale))
+          : FEATURES_FALLBACK.blocks,
       }
     }
     return FEATURES_FALLBACK

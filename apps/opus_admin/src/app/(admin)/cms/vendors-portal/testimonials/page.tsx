@@ -3,7 +3,7 @@ import {
   TESTIMONIALS_FALLBACK,
   type TestimonialsContent,
   type TestimonialsRow,
-} from '@/lib/cms/testimonials'
+} from '@/lib/cms/vendors-portal-testimonials'
 import TestimonialsEditor from './TestimonialsEditor'
 
 export const dynamic = 'force-dynamic'

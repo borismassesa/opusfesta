@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { FAQ_FALLBACK, type FaqContent, type FaqRow } from '@/lib/cms/faq'
+import { FAQ_FALLBACK, type FaqContent, type FaqRow } from '@/lib/cms/vendors-portal-faq'
 import FaqEditor from './FaqEditor'
 
 export const dynamic = 'force-dynamic'

@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { LayoutDashboard, Menu, X } from 'lucide-react'
 import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs'
 import Logo from '@/components/ui/Logo'
+import { LocaleToggle } from '@/components/LocaleToggle'
 
 const navLinks: Array<{ label: string; href: string }> = [
   { label: 'How it works', href: '#how-it-works' },
@@ -45,6 +46,7 @@ export default function Navbar() {
         </div>
 
         <div className="flex shrink-0 items-center gap-2 font-semibold text-sm sm:gap-3 lg:text-[15px]">
+          <LocaleToggle className="hidden sm:inline-flex" />
           <SignedOut>
             <Link
               href="/sign-in"
@@ -117,6 +119,10 @@ export default function Navbar() {
         </div>
 
         <div className="shrink-0 px-4 py-5 border-t border-gray-100 flex flex-col gap-2.5">
+          <div className="flex items-center justify-between pb-1">
+            <span className="text-sm font-semibold text-gray-500">Language</span>
+            <LocaleToggle />
+          </div>
           <SignedOut>
             <Link
               href="/sign-in"

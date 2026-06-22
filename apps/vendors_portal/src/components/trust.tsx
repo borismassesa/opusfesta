@@ -1,8 +1,10 @@
 import { loadTrustContent } from '@/lib/cms/trust'
 import { getTrustIcon } from '@/lib/cms/trust-icons'
+import { getLocale } from '@/lib/cms/locale'
 
 export default async function Trust() {
-  const { items } = await loadTrustContent()
+  const locale = await getLocale()
+  const { items } = await loadTrustContent(locale)
   if (items.length === 0) return null
 
   return (

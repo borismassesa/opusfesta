@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { Info, X } from 'lucide-react'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 type Props = {
   title?: string
@@ -9,7 +10,10 @@ type Props = {
   label?: string
 }
 
-export function WhyWeAsk({ title = 'Why we ask', children, label = 'Why we ask' }: Props) {
+export function WhyWeAsk({ title, children, label }: Props) {
+  const { t } = useOnboardT()
+  const resolvedTitle = title ?? t('common.why_we_ask')
+  const resolvedLabel = label ?? t('common.why_we_ask')
   const [open, setOpen] = useState(false)
   const closeBtnRef = useRef<HTMLButtonElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
@@ -44,30 +48,30 @@ export function WhyWeAsk({ title = 'Why we ask', children, label = 'Why we ask' 
         aria-expanded={open}
       >
         <Info className="w-4 h-4" />
-        <span className="underline underline-offset-4">{label}</span>
+        <span className="underline underline-offset-4">{resolvedLabel}</span>
       </button>
 
       {open ? (
         <div
           role="dialog"
           aria-modal="true"
-          aria-label={title}
+          aria-label={resolvedTitle}
           className="fixed inset-0 z-50 flex items-center justify-center p-4"
         >
           <button
             type="button"
-            aria-label="Close"
+            aria-label={t('common.close')}
             onClick={() => setOpen(false)}
             className="absolute inset-0 bg-black/40"
           />
           <div className="relative bg-white rounded-2xl shadow-xl border border-gray-200 max-w-md w-full p-6 lg:p-7">
             <div className="flex items-start justify-between gap-4">
-              <h2 className="text-lg font-semibold text-gray-900 tracking-tight">{title}</h2>
+              <h2 className="text-lg font-semibold text-gray-900 tracking-tight">{resolvedTitle}</h2>
               <button
                 ref={closeBtnRef}
                 type="button"
                 onClick={() => setOpen(false)}
-                aria-label="Close"
+                aria-label={t('common.close')}
                 className="-mr-2 -mt-2 p-2 text-gray-500 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
               >
                 <X className="w-4 h-4" />
@@ -80,7 +84,7 @@ export function WhyWeAsk({ title = 'Why we ask', children, label = 'Why we ask' 
                 onClick={() => setOpen(false)}
                 className="bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
               >
-                Got it
+                {t('common.got_it')}
               </button>
             </div>
           </div>

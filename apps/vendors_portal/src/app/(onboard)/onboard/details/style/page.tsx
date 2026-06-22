@@ -9,10 +9,12 @@ import { PrimaryButton } from '@/components/onboard/PrimaryButton'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { getStylesForCategory } from '@/lib/onboarding/styles'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 export default function StylePage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
+  const { t } = useOnboardT()
   const category = findCategory(draft.categoryId)
   const styles = useMemo(() => getStylesForCategory(draft.categoryId), [draft.categoryId])
 
@@ -34,8 +36,8 @@ export default function StylePage() {
       backHref="/onboard/details/services"
     >
       <OnboardHeading
-        title="Let’s talk style. Which style do you enjoy capturing most?"
-        description="We know you can probably do multiple styles. We want to connect you with couples who value what you love to do."
+        title={t('details.style.title')}
+        description={t('details.style.subtitle')}
       />
 
       <div className="grid sm:grid-cols-2 gap-3 lg:gap-4">
@@ -53,7 +55,7 @@ export default function StylePage() {
 
       <div className="mt-10">
         <PrimaryButton onClick={onNext} disabled={!draft.style}>
-          Next step
+          {t('common.next_step')}
         </PrimaryButton>
       </div>
     </OnboardShell>

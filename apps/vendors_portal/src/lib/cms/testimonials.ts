@@ -1,8 +1,11 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type TestimonialBg = 'dark' | 'accent'
 export type TestimonialRole = 'Couple' | 'Vendor'
 
+// What the render component receives: every translatable field already resolved
+// to a flat string in the active locale.
 export type TestimonialItem = {
   id: string
   name: string
@@ -21,6 +24,21 @@ export type TestimonialsContent = {
   items: TestimonialItem[]
 }
 
+// What's stored in the DB: translatable fields may be `{ en, sw }` objects (or
+// legacy plain strings). Resolved down to the flat types above at load time.
+type StoredTestimonialItem = Omit<TestimonialItem, 'quote'> & {
+  quote: MaybeLocalized
+}
+
+type StoredTestimonialsContent = Omit<
+  TestimonialsContent,
+  'headline_line_1' | 'headline_line_2' | 'items'
+> & {
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  items: StoredTestimonialItem[]
+}
+
 export const TESTIMONIALS_FALLBACK: TestimonialsContent = {
   headline_line_1: 'Trusted by',
   headline_line_2: 'wedding pros',
@@ -34,7 +52,9 @@ export const TESTIMONIALS_FALLBACK: TestimonialsContent = {
   ],
 }
 
-export async function loadTestimonialsContent(): Promise<TestimonialsContent> {
+export async function loadTestimonialsContent(
+  locale: Locale = DEFAULT_LOCALE,
+): Promise<TestimonialsContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return TESTIMONIALS_FALLBACK
   }
@@ -46,15 +66,33 @@ export async function loadTestimonialsContent(): Promise<TestimonialsContent> {
       .eq('page_key', 'vendors_home')
       .eq('section_key', 'testimonials')
       .maybeSingle()
-    const stored = data?.content as Partial<TestimonialsContent> | undefined
+    const stored = data?.content as Partial<StoredTestimonialsContent> | undefined
+    // Translatable fields are resolved to the active locale (legacy plain
+    // strings render as-is). Names, company, city, role, avatars, stars and ids
+    // stay scalar. Empty/missing items fall back to the default set.
     if (stored) {
+      const items =
+        Array.isArray(stored.items) && stored.items.length > 0
+          ? stored.items.map((it) => ({
+              id: it.id,
+              name: it.name,
+              role: it.role,
+              company: it.company,
+              city: it.city,
+              stars: it.stars,
+              quote: resolveLocalized(it.quote, locale),
+              image_url: it.image_url,
+              bg: it.bg,
+            }))
+          : TESTIMONIALS_FALLBACK.items
       return {
-        ...TESTIMONIALS_FALLBACK,
-        ...stored,
-        items:
-          Array.isArray(stored.items) && stored.items.length > 0
-            ? (stored.items as TestimonialItem[])
-            : TESTIMONIALS_FALLBACK.items,
+        headline_line_1:
+          resolveLocalized(stored.headline_line_1, locale) ||
+          TESTIMONIALS_FALLBACK.headline_line_1,
+        headline_line_2:
+          resolveLocalized(stored.headline_line_2, locale) ||
+          TESTIMONIALS_FALLBACK.headline_line_2,
+        items,
       }
     }
     return TESTIMONIALS_FALLBACK

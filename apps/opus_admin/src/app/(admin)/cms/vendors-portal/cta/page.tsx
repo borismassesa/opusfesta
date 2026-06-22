@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { CTA_FALLBACK, type CtaContent, type CtaRow } from '@/lib/cms/cta'
+import { CTA_FALLBACK, type CtaContent, type CtaRow } from '@/lib/cms/vendors-portal-cta'
 import CtaEditor from './CtaEditor'
 
 export const dynamic = 'force-dynamic'

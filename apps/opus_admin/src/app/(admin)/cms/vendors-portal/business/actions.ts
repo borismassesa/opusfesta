@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { revalidateVendorsPortal } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { requirePermission } from '@/lib/admin-auth'
-import type { BusinessContent } from '@/lib/cms/business'
+import type { BusinessContent } from '@/lib/cms/vendors-portal-business'
 
 const PAGE_KEY = 'vendors_home'
 const SECTION_KEY = 'business'

@@ -3,7 +3,7 @@ import {
   FEATURES_FALLBACK,
   type FeaturesContent,
   type FeaturesRow,
-} from '@/lib/cms/features'
+} from '@/lib/cms/vendors-portal-features'
 import FeaturesEditor from './FeaturesEditor'
 
 export const dynamic = 'force-dynamic'

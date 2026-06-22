@@ -10,10 +10,12 @@ import { WhyWeAsk } from '@/components/onboard/WhyWeAsk'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { SERVICE_MARKETS, TZ_REGIONS, homeMarketForRegion } from '@/lib/onboarding/regions'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 export default function MarketsPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
+  const { t } = useOnboardT()
   const category = findCategory(draft.categoryId)
 
   const homeMarketId = useMemo(() => homeMarketForRegion(draft.region), [draft.region])
@@ -67,14 +69,10 @@ export default function MarketsPage() {
       backHref="/onboard/profile/socials"
     >
       <OnboardHeading
-        title={
-          <>
-            Based on your address,{' '}
-            <span className="italic">{homeMarket?.name ?? regionLabel ?? 'this region'}</span> is
-            your home market.
-          </>
-        }
-        description="Expand your service area by selecting the markets where you’ll travel for your standard fees. You can add more markets later."
+        title={t('profile.markets.title', {
+          market: homeMarket?.name ?? regionLabel ?? 'this region',
+        })}
+        description={t('profile.markets.subtitle')}
       />
 
       <div className="grid sm:grid-cols-2 gap-3 lg:gap-4">
@@ -87,7 +85,7 @@ export default function MarketsPage() {
               variant="checkbox"
               selected={selected}
               onToggle={() => toggleMarket(m.id)}
-              label={isHome ? `${m.name} (home)` : m.name}
+              label={isHome ? `${m.name} ${t('profile.markets.home_suffix')}` : m.name}
               description={m.hint}
               disabled={isHome}
             />
@@ -96,16 +94,10 @@ export default function MarketsPage() {
       </div>
 
       <div className="mt-10 flex items-center gap-6 flex-wrap">
-        <PrimaryButton onClick={onNext}>Next step</PrimaryButton>
-        <WhyWeAsk title="Why we ask about service area">
-          <p>
-            Your service area decides where OpusFesta shows your storefront. Couples planning a wedding
-            in Zanzibar, Arusha, or anywhere you’ve selected will see you in their search results.
-          </p>
-          <p>
-            Pick only the markets where you’ll travel for your <strong>standard fee</strong>. You
-            can add per-trip travel charges later. You can update this anytime from your dashboard.
-          </p>
+        <PrimaryButton onClick={onNext}>{t('common.next_step')}</PrimaryButton>
+        <WhyWeAsk title={t('profile.markets.why.title')}>
+          <p>{t('profile.markets.why.body1')}</p>
+          <p>{t('profile.markets.why.body2')}</p>
         </WhyWeAsk>
       </div>
     </OnboardShell>

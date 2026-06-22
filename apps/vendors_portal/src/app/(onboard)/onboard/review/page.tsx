@@ -24,6 +24,7 @@ import { LANGUAGES } from '@/lib/onboarding/languages'
 import { CANCELLATION_OPTIONS, RESCHEDULE_OPTIONS } from '@/lib/onboarding/policies'
 import { LIPA_NAMBA_NETWORKS, PAYOUT_OPTIONS } from '@/lib/onboarding/payouts'
 import { submitApplication } from '@/lib/onboarding/submit'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 function formatTZS(raw: string) {
   if (!raw) return ''
@@ -34,11 +35,12 @@ function formatTZS(raw: string) {
 
 export default function ReviewPage() {
   const router = useRouter()
+  const { t } = useOnboardT()
   const { draft, update, hydrated } = useOnboardingDraft()
   const category = findCategory(draft.categoryId)
   const categoryLabel = draft.categoryId === 'other'
-    ? (draft.customCategoryLabel || 'Other')
-    : (category?.profileLabel ?? 'Not set')
+    ? (draft.customCategoryLabel || t('common.other'))
+    : (category?.profileLabel ?? t('common.not_set'))
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -106,9 +108,7 @@ export default function ReviewPage() {
       // network drop) must NOT leave the button stuck on "Submitting…". Surface
       // it and reset so the vendor can retry.
       console.error('[onboard/review] submit failed', err)
-      setSubmitError(
-        'Something went wrong submitting your application. Please check your connection and try again.',
-      )
+      setSubmitError(t('review.error'))
     } finally {
       // Always runs — guarantees the spinner never sticks.
       setSubmitting(false)
@@ -143,7 +143,7 @@ export default function ReviewPage() {
       <div className="min-h-screen bg-white flex flex-col">
         <Confetti active={submitted} />
         <header className="px-6 sm:px-10 py-5 border-b border-gray-100/80 bg-white/70 backdrop-blur">
-          <Link href="/" aria-label="OpusFesta home" className="inline-block">
+          <Link href="/" aria-label={t('stepper.aria.home')} className="inline-block">
             <Logo className="h-7 w-auto" />
           </Link>
         </header>
@@ -152,31 +152,31 @@ export default function ReviewPage() {
           <div className="max-w-xl w-full text-center">
             <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-200">
               <Check className="w-3 h-3" strokeWidth={3} />
-              Application complete
+              {t('review.done.badge')}
             </span>
             <h1 className="mt-5 text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]">
-              You&rsquo;re in. Let&rsquo;s verify your business.
+              {t('review.done.title')}
             </h1>
             <p className="mt-4 text-base text-gray-600 leading-relaxed max-w-md mx-auto">
-              Your application is submitted. A couple more documents and our
-              team can approve your storefront. Usually 2–3 business days.
+              {t('review.done.body')}
             </p>
             <button
               type="button"
               onClick={onContinueToVerify}
               className="group mt-8 inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px"
             >
-              Continue to verification
+              {t('review.done.cta')}
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
             </button>
             <p className="mt-3 text-xs text-gray-500">
-              Or{' '}
+              {t('review.done.later_prefix')}
               <Link
                 href="/pending"
                 className="font-semibold text-gray-700 hover:text-gray-900 underline underline-offset-2"
               >
-                save and continue later
-              </Link>. We&rsquo;ll email you a reminder.
+                {t('review.done.later_link')}
+              </Link>
+              {t('review.done.later_suffix')}
             </p>
           </div>
         </main>
@@ -193,76 +193,74 @@ export default function ReviewPage() {
       {/* Page heading */}
       <header className="mb-12">
         <h1 className="text-3xl lg:text-4xl font-semibold tracking-tight text-gray-900">
-          Review your storefront
+          {t('review.title')}
         </h1>
         <p className="mt-2 text-base text-gray-600 max-w-2xl">
-          {isEdit
-            ? 'Here’s everything couples will see. Update any details and save — your application status won’t change.'
-            : 'Here’s everything couples will see. Make any final edits, then submit for review.'}
+          {isEdit ? t('review.subtitle_edit') : t('review.subtitle_new')}
         </p>
       </header>
 
       {/* Sections */}
       <div className="border-t border-gray-200">
-        <Section title="Profile" editHref="/onboard/profile/name">
-          <Row label="Business name">{draft.businessName || 'Not set'}</Row>
-          <Row label="Category">{categoryLabel}</Row>
-          <Row label="Owner">{fullName || 'Not set'}</Row>
-          <Row label="Location">
-            {[draft.city, regionLabel].filter(Boolean).join(', ') || 'Not set'}
+        <Section title={t('review.section.profile')} editHref="/onboard/profile/name">
+          <Row label={t('review.row.business_name')}>{draft.businessName || t('common.not_set')}</Row>
+          <Row label={t('review.row.category')}>{categoryLabel}</Row>
+          <Row label={t('review.row.owner')}>{fullName || t('common.not_set')}</Row>
+          <Row label={t('review.row.location')}>
+            {[draft.city, regionLabel].filter(Boolean).join(', ') || t('common.not_set')}
           </Row>
-          <Row label="Service area">
-            {allMarkets.length > 0 ? allMarkets.join(', ') : 'Not set'}
+          <Row label={t('review.row.service_area')}>
+            {allMarkets.length > 0 ? allMarkets.join(', ') : t('common.not_set')}
           </Row>
-          <Row label="Phone">{draft.phone ? `+255 ${draft.phone}` : 'Not set'}</Row>
-          <Row label="WhatsApp">{draft.whatsapp ? `+255 ${draft.whatsapp}` : 'Not set'}</Row>
-          <Row label="Email">{draft.email || 'Not set'}</Row>
+          <Row label={t('review.row.phone')}>{draft.phone ? `+255 ${draft.phone}` : t('common.not_set')}</Row>
+          <Row label={t('review.row.whatsapp')}>{draft.whatsapp ? `+255 ${draft.whatsapp}` : t('common.not_set')}</Row>
+          <Row label={t('review.row.email')}>{draft.email || t('common.not_set')}</Row>
         </Section>
 
-        <Section title="Online presence" editHref="/onboard/profile/socials">
-          <Row label="Instagram">
-            {draft.socials.instagram ? `@${draft.socials.instagram}` : 'Not set'}
+        <Section title={t('review.section.online')} editHref="/onboard/profile/socials">
+          <Row label={t('review.row.instagram')}>
+            {draft.socials.instagram ? `@${draft.socials.instagram}` : t('common.not_set')}
           </Row>
-          <Row label="TikTok">
-            {draft.socials.tiktok ? `@${draft.socials.tiktok}` : 'Not set'}
+          <Row label={t('review.row.tiktok')}>
+            {draft.socials.tiktok ? `@${draft.socials.tiktok}` : t('common.not_set')}
           </Row>
-          <Row label="Facebook">{draft.socials.facebook || 'Not set'}</Row>
-          <Row label="Website">{draft.socials.website || 'Not set'}</Row>
+          <Row label={t('review.row.facebook')}>{draft.socials.facebook || t('common.not_set')}</Row>
+          <Row label={t('review.row.website')}>{draft.socials.website || t('common.not_set')}</Row>
         </Section>
 
-        <Section title="About" editHref="/onboard/details/about">
-          <Row label="Description" valign="top">
+        <Section title={t('review.section.about')} editHref="/onboard/details/about">
+          <Row label={t('review.row.description')} valign="top">
             {draft.bio.trim() ? (
               <span className="block whitespace-pre-line">{draft.bio}</span>
             ) : (
-              'Not set'
+              t('common.not_set')
             )}
           </Row>
-          <Row label="Years in business">{draft.yearsInBusiness || 'Not set'}</Row>
-          <Row label="Languages">
-            {languageLabels.length > 0 ? languageLabels.join(', ') : 'Not set'}
+          <Row label={t('review.row.years')}>{draft.yearsInBusiness || t('common.not_set')}</Row>
+          <Row label={t('review.row.languages')}>
+            {languageLabels.length > 0 ? languageLabels.join(', ') : t('common.not_set')}
           </Row>
-          <Row label="Awards & recognition" valign="top">
+          <Row label={t('review.row.awards')} valign="top">
             {draft.awards.trim() ? (
               <span className="block whitespace-pre-line">{draft.awards}</span>
             ) : (
-              'Not set'
+              t('common.not_set')
             )}
           </Row>
-          <Row label="Response time">
+          <Row label={t('review.row.response_time')}>
             {draft.responseTimeHours
-              ? `Replies within ${draft.responseTimeHours}`
-              : 'Not set'}
+              ? t('review.row.replies_within', { time: draft.responseTimeHours })
+              : t('common.not_set')}
           </Row>
-          <Row label="Locally owned">{draft.locallyOwned ? 'Yes' : 'No'}</Row>
+          <Row label={t('review.row.locally_owned')}>{draft.locallyOwned ? t('common.yes') : t('common.no')}</Row>
         </Section>
 
-        <Section title="Style & personality" editHref="/onboard/details/style">
-          <Row label="Style">{styleLabel ?? 'Not set'}</Row>
-          <Row label="Personality">{personalityLabel ?? 'Not set'}</Row>
+        <Section title={t('review.section.style')} editHref="/onboard/details/style">
+          <Row label={t('review.row.style')}>{styleLabel ?? t('common.not_set')}</Row>
+          <Row label={t('review.row.personality')}>{personalityLabel ?? t('common.not_set')}</Row>
         </Section>
 
-        <Section title="Special services" editHref="/onboard/details/services">
+        <Section title={t('review.section.services')} editHref="/onboard/details/services">
           <div className="py-4">
             {selectedServices.length > 0 ? (
               <div className="flex flex-wrap gap-2">
@@ -277,82 +275,81 @@ export default function ReviewPage() {
                 ))}
               </div>
             ) : (
-              <p className="text-sm text-gray-500">None selected</p>
+              <p className="text-sm text-gray-500">{t('common.none_selected')}</p>
             )}
           </div>
         </Section>
 
         <Section
-          title="Packages"
+          title={t('review.section.packages')}
           editHref="/onboard/pricing"
           right={
             startingPrice ? (
               <span className="text-sm text-gray-600">
-                Starting from{' '}
-                <span className="text-gray-900 font-semibold tabular-nums">
-                  TSh {startingPrice}
-                </span>
+                {t('review.packages.starting_from', { price: startingPrice })}
               </span>
             ) : null
           }
         >
           <div className="py-4 space-y-3">
             {draft.packages.length === 0 ? (
-              <p className="text-sm text-gray-500">No packages added.</p>
+              <p className="text-sm text-gray-500">{t('review.packages.empty')}</p>
             ) : (
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {draft.packages.map((pkg, i) => (
                   <PackageRow
                     key={pkg.id}
-                    name={pkg.name || 'Untitled package'}
+                    name={pkg.name || t('review.packages.untitled')}
                     price={pkg.price}
                     description={pkg.description}
                     includes={pkg.includes.filter(Boolean)}
                     popular={i === popularIndex}
+                    notSetLabel={t('common.not_set')}
+                    popularLabel={t('review.packages.popular')}
                   />
                 ))}
               </div>
             )}
             {draft.customQuotes ? (
               <p className="text-xs text-gray-500 italic pt-1">
-                Custom quotes available on request.
+                {t('review.packages.custom_quotes')}
               </p>
             ) : null}
           </div>
         </Section>
 
-        <Section title="Booking policies" editHref="/onboard/pricing/policies">
-          <Row label="Deposit">
-            {draft.depositPercent ? `${draft.depositPercent}% to confirm` : 'Not set'}
+        <Section title={t('review.section.policies')} editHref="/onboard/pricing/policies">
+          <Row label={t('review.row.deposit')}>
+            {draft.depositPercent ? t('review.row.deposit_pct', { pct: draft.depositPercent }) : t('common.not_set')}
           </Row>
-          <Row label="Cancellation">
-            {cancellationLabel ?? 'Not set'}
+          <Row label={t('review.row.cancellation')}>
+            {cancellationLabel ?? t('common.not_set')}
           </Row>
-          <Row label="Reschedule">{rescheduleLabel ?? 'Not set'}</Row>
+          <Row label={t('review.row.reschedule')}>{rescheduleLabel ?? t('common.not_set')}</Row>
         </Section>
 
-        <Section title="Payout" editHref="/onboard/pricing/payout">
+        <Section title={t('review.section.payout')} editHref="/onboard/pricing/payout">
           {draft.payoutMethods.length === 0 ? (
-            <Row label="Method">Not set</Row>
+            <Row label={t('review.row.method')}>{t('common.not_set')}</Row>
           ) : (
             draft.payoutMethods.map((p, i) => {
               const methodLabel =
-                PAYOUT_OPTIONS.find((o) => o.id === p.method)?.label ?? 'Not set'
+                PAYOUT_OPTIONS.find((o) => o.id === p.method)?.label ?? t('common.not_set')
               const isBank = p.method === 'bank'
               const isLipa = p.method === 'lipa-namba'
               const networkLabel = LIPA_NAMBA_NETWORKS.find(
                 (n) => n.id === p.network,
               )?.label
               const numberLabel = isBank
-                ? 'Account number'
+                ? t('review.row.account_number')
                 : isLipa
-                  ? 'Lipa Namba'
-                  : 'Number'
+                  ? t('review.row.lipa_namba')
+                  : t('review.row.number')
               const numberValue = p.number
                 ? isBank || isLipa
                   ? p.number
                   : `+255 ${p.number}`
-                : 'Not set'
+                : t('common.not_set')
               return (
                 <div
                   key={p.id}
@@ -360,22 +357,22 @@ export default function ReviewPage() {
                     i > 0 ? 'mt-4 pt-4 border-t border-gray-100' : undefined
                   }
                 >
-                  <Row label="Method">
+                  <Row label={t('review.row.method')}>
                     {methodLabel}
                     {p.primary ? (
                       <span className="ml-2 inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-[#F0DFF6] text-[#7E5896]">
-                        Primary
+                        {t('payout.primary')}
                       </span>
                     ) : null}
                   </Row>
                   {isBank ? (
-                    <Row label="Bank">{p.bankName || 'Not set'}</Row>
+                    <Row label={t('review.row.bank')}>{p.bankName || t('common.not_set')}</Row>
                   ) : null}
                   {isLipa ? (
-                    <Row label="Network">{networkLabel ?? 'Not set'}</Row>
+                    <Row label={t('review.row.network')}>{networkLabel ?? t('common.not_set')}</Row>
                   ) : null}
                   <Row label={numberLabel}>{numberValue}</Row>
-                  <Row label="Account holder">{p.accountName || 'Not set'}</Row>
+                  <Row label={t('review.row.account_holder')}>{p.accountName || t('common.not_set')}</Row>
                 </div>
               )
             })
@@ -397,12 +394,12 @@ export default function ReviewPage() {
           <div className="flex items-center gap-6">
             <p className="flex-1 min-w-0 text-sm text-gray-600 leading-relaxed">
               <span className="text-gray-900 font-semibold">
-                {isEdit ? 'Save your changes.' : 'Ready when you are.'}
+                {isEdit ? t('review.footer.save.primary') : t('review.footer.submit.primary')}
               </span>{' '}
               <span className="hidden sm:inline">
                 {isEdit
-                  ? 'We’ll update your storefront — you’ll stay exactly where you are in the process.'
-                  : 'Once you submit, we’ll ask for a couple of documents to verify your business.'}
+                  ? t('review.footer.save.secondary')
+                  : t('review.footer.submit.secondary')}
               </span>
             </p>
             <button
@@ -416,11 +413,11 @@ export default function ReviewPage() {
               {submitting ? (
                 <>
                   <Clock className="w-4 h-4 animate-pulse" />
-                  {isEdit ? 'Saving…' : 'Submitting…'}
+                  {isEdit ? t('review.footer.saving') : t('review.footer.submitting')}
                 </>
               ) : (
                 <>
-                  {isEdit ? 'Save changes' : 'Submit application'}
+                  {isEdit ? t('review.footer.save_changes') : t('review.footer.submit_application')}
                   <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
                 </>
               )}
@@ -443,6 +440,7 @@ function Section({
   right?: React.ReactNode
   children: React.ReactNode
 }) {
+  const { t } = useOnboardT()
   return (
     <section className="border-b border-gray-200 py-7">
       <div className="flex items-center justify-between gap-4 mb-2">
@@ -454,7 +452,7 @@ function Section({
             className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-600 hover:text-gray-900 transition-colors"
           >
             <Pencil className="w-3.5 h-3.5" />
-            Edit
+            {t('common.edit')}
           </Link>
         </div>
       </div>
@@ -488,12 +486,16 @@ function PackageRow({
   description,
   includes,
   popular,
+  notSetLabel,
+  popularLabel,
 }: {
   name: string
   price: string
   description: string
   includes: string[]
   popular: boolean
+  notSetLabel: string
+  popularLabel: string
 }) {
   return (
     <div
@@ -506,14 +508,14 @@ function PackageRow({
       {popular ? (
         <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 bg-gray-900 text-white text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap">
           <Star className="w-2.5 h-2.5 fill-current" />
-          Popular
+          {popularLabel}
         </span>
       ) : null}
       <div className="flex items-baseline justify-between gap-2 mb-1">
         <h3 className="text-sm font-semibold text-gray-900">{name}</h3>
       </div>
       <p className="text-lg font-semibold text-gray-900 tabular-nums tracking-tight">
-        {price ? `TSh ${price}` : 'Not set'}
+        {price ? `TSh ${price}` : notSetLabel}
       </p>
       {description ? (
         <p className="text-xs text-gray-500 mt-1">{description}</p>

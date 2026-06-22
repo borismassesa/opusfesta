@@ -6,9 +6,11 @@ import type {
   VendorIconKey,
   VendorSearchContent,
   VendorSearchItem,
-} from '@/lib/cms/vendor-search'
+} from '@/lib/cms/vendors-portal-vendor-search'
 import { VENDOR_ICON_OPTIONS, getVendorIcon } from '@/lib/cms/vendor-search-icons'
 import { cn } from '@/lib/utils'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardVendorSearchDraft,
@@ -30,6 +32,7 @@ export default function VendorSearchEditor({ initial, hasDraft: initialHasDraft 
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [openItemId, setOpenItemId] = useState<string | null>(initial.items[0]?.id ?? null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const setField = <K extends keyof VendorSearchContent>(key: K, value: VendorSearchContent[K]) =>
@@ -126,101 +129,67 @@ export default function VendorSearchEditor({ initial, hasDraft: initialHasDraft 
             <h3 className="text-[15px] font-semibold text-gray-900">Section copy</h3>
 
             <FieldGroup label="Headline">
-              <Field
+              <BilingualField
                 label="Line 1"
-                hint={<CharCount value={draft.headline_line_1} max={HEADLINE_MAX} />}
-              >
-                <input
-                  type="text"
-                  value={draft.headline_line_1}
-                  onChange={(e) => setField('headline_line_1', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field
+                value={draft.headline_line_1}
+                onChange={(v) => setField('headline_line_1', v)}
+                max={HEADLINE_MAX}
+              />
+              <BilingualField
                 label="Line 2"
-                hint={<CharCount value={draft.headline_line_2} max={HEADLINE_MAX} />}
-              >
-                <input
-                  type="text"
-                  value={draft.headline_line_2}
-                  onChange={(e) => setField('headline_line_2', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
+                value={draft.headline_line_2}
+                onChange={(v) => setField('headline_line_2', v)}
+                max={HEADLINE_MAX}
+              />
             </FieldGroup>
 
-            <Field
+            <BilingualField
               label="Subheadline"
-              hint={<CharCount value={draft.subheadline} max={SUBHEAD_MAX} />}
-            >
-              <textarea
-                value={draft.subheadline}
-                onChange={(e) => setField('subheadline', e.target.value)}
-                rows={3}
-                className={inputCls}
-              />
-            </Field>
+              value={draft.subheadline}
+              onChange={(v) => setField('subheadline', v)}
+              multiline
+              max={SUBHEAD_MAX}
+            />
 
             <FieldGroup label="Card chrome">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label='"Looking for…" label'>
-                  <input
-                    type="text"
-                    value={draft.looking_label}
-                    onChange={(e) => setField('looking_label', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Count suffix">
-                  <input
-                    type="text"
-                    value={draft.count_suffix}
-                    onChange={(e) => setField('count_suffix', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Budget label">
-                  <input
-                    type="text"
-                    value={draft.budget_label}
-                    onChange={(e) => setField('budget_label', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Currency code">
-                  <input
-                    type="text"
-                    value={draft.budget_currency}
-                    onChange={(e) => setField('budget_currency', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Perk badge text">
-                  <input
-                    type="text"
-                    value={draft.perk_badge}
-                    onChange={(e) => setField('perk_badge', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Verified badge">
-                  <input
-                    type="text"
-                    value={draft.verified_badge}
-                    onChange={(e) => setField('verified_badge', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Verified row label">
-                  <input
-                    type="text"
-                    value={draft.verified_label}
-                    onChange={(e) => setField('verified_label', e.target.value)}
-                    className={cn(inputCls, 'col-span-2')}
-                  />
-                </Field>
-              </div>
+              <BilingualField
+                label='"Looking for…" label'
+                value={draft.looking_label}
+                onChange={(v) => setField('looking_label', v)}
+              />
+              <BilingualField
+                label="Count suffix"
+                value={draft.count_suffix}
+                onChange={(v) => setField('count_suffix', v)}
+              />
+              <BilingualField
+                label="Budget label"
+                value={draft.budget_label}
+                onChange={(v) => setField('budget_label', v)}
+              />
+              <Field label="Currency code">
+                <input
+                  type="text"
+                  value={draft.budget_currency}
+                  onChange={(e) => setField('budget_currency', e.target.value)}
+                  className={inputCls}
+                />
+              </Field>
+              <BilingualField
+                label="Perk badge text"
+                value={draft.perk_badge}
+                onChange={(v) => setField('perk_badge', v)}
+              />
+              <BilingualField
+                label="Verified badge"
+                value={draft.verified_badge}
+                onChange={(v) => setField('verified_badge', v)}
+              />
+              <BilingualField
+                label="Verified row label"
+                value={draft.verified_label}
+                onChange={(v) => setField('verified_label', v)}
+              />
             </FieldGroup>
           </div>
 
@@ -238,6 +207,7 @@ export default function VendorSearchEditor({ initial, hasDraft: initialHasDraft 
                   item={item}
                   index={i}
                   total={draft.items.length}
+                  previewLocale={previewLocale}
                   isOpen={openItemId === item.id}
                   onToggle={() =>
                     setOpenItemId((cur) => (cur === item.id ? null : item.id))
@@ -264,9 +234,24 @@ export default function VendorSearchEditor({ initial, hasDraft: initialHasDraft 
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-            <span className="text-xs text-gray-400">Approximate</span>
+            <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+              {LOCALES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreviewLocale(l)}
+                  aria-pressed={previewLocale === l}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 transition-colors',
+                    previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                  )}
+                >
+                  {LOCALE_LABELS[l]}
+                </button>
+              ))}
+            </div>
           </div>
-          <VendorSearchPreview content={draft} />
+          <VendorSearchPreview content={draft} locale={previewLocale} />
         </div>
       </div>
     </div>
@@ -277,6 +262,7 @@ function ItemAccordion({
   item,
   index,
   total,
+  previewLocale,
   isOpen,
   onToggle,
   onChange,
@@ -287,6 +273,7 @@ function ItemAccordion({
   item: VendorSearchItem
   index: number
   total: number
+  previewLocale: Locale
   isOpen: boolean
   onToggle: () => void
   onChange: (patch: Partial<VendorSearchItem>) => void
@@ -307,8 +294,12 @@ function ItemAccordion({
           ) : (
             <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />
           )}
-          <span className="text-sm font-semibold text-gray-900 truncate">{item.type}</span>
-          <span className="text-xs text-gray-400 truncate">· {item.city}</span>
+          <span className="text-sm font-semibold text-gray-900 truncate">
+            {resolveLocalized(item.type, previewLocale)}
+          </span>
+          <span className="text-xs text-gray-400 truncate">
+            · {resolveLocalized(item.city, previewLocale)}
+          </span>
         </button>
         <div className="flex items-center gap-0.5 shrink-0">
           <button
@@ -342,41 +333,27 @@ function ItemAccordion({
 
       {isOpen && (
         <div className="p-4 space-y-3 border-t border-gray-100">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Vendor type">
-              <input
-                type="text"
-                value={item.type}
-                onChange={(e) => onChange({ type: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="City">
-              <input
-                type="text"
-                value={item.city}
-                onChange={(e) => onChange({ city: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="City — short (mobile)">
-              <input
-                type="text"
-                value={item.city_short ?? ''}
-                onChange={(e) => onChange({ city_short: e.target.value })}
-                className={inputCls}
-                placeholder="optional"
-              />
-            </Field>
-            <Field label="CTA button text">
-              <input
-                type="text"
-                value={item.cta}
-                onChange={(e) => onChange({ cta: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-          </div>
+          <BilingualField
+            label="Vendor type"
+            value={item.type}
+            onChange={(v) => onChange({ type: v })}
+          />
+          <BilingualField
+            label="City"
+            value={item.city}
+            onChange={(v) => onChange({ city: v })}
+          />
+          <BilingualField
+            label="City — short (mobile)"
+            value={item.city_short}
+            onChange={(v) => onChange({ city_short: v })}
+            placeholder="optional"
+          />
+          <BilingualField
+            label="CTA button text"
+            value={item.cta}
+            onChange={(v) => onChange({ cta: v })}
+          />
 
           <FieldGroup label="Detail row 1">
             <Field label="Icon">
@@ -385,24 +362,16 @@ function ItemAccordion({
                 onChange={(detail1_icon) => onChange({ detail1_icon })}
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Label">
-                <input
-                  type="text"
-                  value={item.detail1_label}
-                  onChange={(e) => onChange({ detail1_label: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Meta (badge)">
-                <input
-                  type="text"
-                  value={item.detail1_meta}
-                  onChange={(e) => onChange({ detail1_meta: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-            </div>
+            <BilingualField
+              label="Label"
+              value={item.detail1_label}
+              onChange={(v) => onChange({ detail1_label: v })}
+            />
+            <BilingualField
+              label="Meta (badge)"
+              value={item.detail1_meta}
+              onChange={(v) => onChange({ detail1_meta: v })}
+            />
           </FieldGroup>
 
           <FieldGroup label="Detail row 2">
@@ -412,53 +381,34 @@ function ItemAccordion({
                 onChange={(detail2_icon) => onChange({ detail2_icon })}
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Label">
-                <input
-                  type="text"
-                  value={item.detail2_label}
-                  onChange={(e) => onChange({ detail2_label: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Meta (badge)">
-                <input
-                  type="text"
-                  value={item.detail2_meta}
-                  onChange={(e) => onChange({ detail2_meta: e.target.value })}
-                  className={inputCls}
-                />
-              </Field>
-            </div>
+            <BilingualField
+              label="Label"
+              value={item.detail2_label}
+              onChange={(v) => onChange({ detail2_label: v })}
+            />
+            <BilingualField
+              label="Meta (badge)"
+              value={item.detail2_meta}
+              onChange={(v) => onChange({ detail2_meta: v })}
+            />
           </FieldGroup>
 
-          <Field label="Perk">
-            <input
-              type="text"
-              value={item.perk}
-              onChange={(e) => onChange({ perk: e.target.value })}
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Perk"
+            value={item.perk}
+            onChange={(v) => onChange({ perk: v })}
+          />
 
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Budget">
-              <input
-                type="text"
-                value={item.budget}
-                onChange={(e) => onChange({ budget: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Result count">
-              <input
-                type="text"
-                value={item.count}
-                onChange={(e) => onChange({ count: e.target.value })}
-                className={inputCls}
-              />
-            </Field>
-          </div>
+          <BilingualField
+            label="Budget"
+            value={item.budget}
+            onChange={(v) => onChange({ budget: v })}
+          />
+          <BilingualField
+            label="Result count"
+            value={item.count}
+            onChange={(v) => onChange({ count: v })}
+          />
         </div>
       )}
     </div>
@@ -530,26 +480,16 @@ function Field({
   )
 }
 
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span
-      className={cn(
-        'tabular-nums font-medium',
-        over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400'
-      )}
-    >
-      {len}/{max}
-    </span>
-  )
-}
-
 const inputCls =
   'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
 
-function VendorSearchPreview({ content }: { content: VendorSearchContent }) {
+function VendorSearchPreview({
+  content,
+  locale,
+}: {
+  content: VendorSearchContent
+  locale: Locale
+}) {
   const [activeIdx, setActiveIdx] = useState(0)
   useEffect(() => {
     if (content.items.length === 0) return
@@ -573,38 +513,51 @@ function VendorSearchPreview({ content }: { content: VendorSearchContent }) {
     <div className="space-y-4">
       <div>
         <h2 className="text-xl sm:text-2xl font-black uppercase tracking-tighter leading-[0.95] text-[#1A1A1A]">
-          <span className="block">{content.headline_line_1}</span>
-          <span className="block">{content.headline_line_2}</span>
+          <span className="block">{resolveLocalized(content.headline_line_1, locale)}</span>
+          <span className="block">{resolveLocalized(content.headline_line_2, locale)}</span>
         </h2>
-        <p className="text-xs text-gray-600 mt-2 leading-relaxed">{content.subheadline}</p>
+        <p className="text-xs text-gray-600 mt-2 leading-relaxed">
+          {resolveLocalized(content.subheadline, locale)}
+        </p>
       </div>
 
       <div className="rounded-2xl border border-gray-100 p-4 space-y-3 bg-white shadow-sm">
         <div className="border border-gray-200 rounded-xl px-3 py-2 flex justify-between items-center gap-2">
           <div className="min-w-0">
             <p className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide whitespace-nowrap">
-              {content.looking_label}
+              {resolveLocalized(content.looking_label, locale)}
             </p>
-            <p className="text-base font-black text-[#1A1A1A]">{v.type}</p>
+            <p className="text-base font-black text-[#1A1A1A]">{resolveLocalized(v.type, locale)}</p>
           </div>
           <span className="text-[10px] font-bold bg-[#C9A0DC] text-[#1A1A1A] rounded-full px-2 py-1 shrink-0">
-            {v.city}
+            {resolveLocalized(v.city, locale)}
           </span>
         </div>
 
         <div className="border border-gray-200 rounded-xl divide-y divide-gray-100 text-xs">
-          <Row icon={D1} label={v.detail1_label} meta={v.detail1_meta} />
-          <Row icon={D2} label={v.detail2_label} meta={v.detail2_meta} />
-          <Row label={v.perk} meta={content.perk_badge} />
-          <Row label={content.verified_label} meta={content.verified_badge} />
+          <Row
+            icon={D1}
+            label={resolveLocalized(v.detail1_label, locale)}
+            meta={resolveLocalized(v.detail1_meta, locale)}
+          />
+          <Row
+            icon={D2}
+            label={resolveLocalized(v.detail2_label, locale)}
+            meta={resolveLocalized(v.detail2_meta, locale)}
+          />
+          <Row label={resolveLocalized(v.perk, locale)} meta={resolveLocalized(content.perk_badge, locale)} />
+          <Row
+            label={resolveLocalized(content.verified_label, locale)}
+            meta={resolveLocalized(content.verified_badge, locale)}
+          />
         </div>
 
         <div className="border border-gray-200 rounded-xl px-3 py-2 flex justify-between items-center">
           <div>
             <p className="text-[9px] text-gray-400 font-semibold uppercase tracking-wide">
-              {content.budget_label}
+              {resolveLocalized(content.budget_label, locale)}
             </p>
-            <p className="text-sm font-black text-[#1A1A1A]">{v.budget}</p>
+            <p className="text-sm font-black text-[#1A1A1A]">{resolveLocalized(v.budget, locale)}</p>
           </div>
           <span className="text-[10px] font-bold bg-[#C9A0DC] text-[#1A1A1A] rounded-full px-2 py-1">
             {content.budget_currency}
@@ -612,11 +565,11 @@ function VendorSearchPreview({ content }: { content: VendorSearchContent }) {
         </div>
 
         <p className="text-[11px] text-gray-400 px-1">
-          {v.count} {content.count_suffix}
+          {resolveLocalized(v.count, locale)} {resolveLocalized(content.count_suffix, locale)}
         </p>
 
         <button className="w-full bg-[#1A1A1A] text-white text-xs font-bold py-2.5 rounded-full">
-          {v.cta}
+          {resolveLocalized(v.cta, locale)}
         </button>
 
         <div className="flex justify-center gap-1.5 pt-1">

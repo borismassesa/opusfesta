@@ -1,5 +1,8 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
+// What the render component receives: `name` already resolved to a flat string
+// in the active locale.
 export type CategoryItem = {
   id: string
   name: string
@@ -10,6 +13,16 @@ export type CategoryItem = {
 
 export type CategoryMarqueeContent = {
   items: CategoryItem[]
+}
+
+// What's stored in the DB: `name` may be a `{ en, sw }` object (or legacy plain
+// string). Resolved down to CategoryItem at load time. Colors/ids stay scalar.
+type StoredCategoryItem = Omit<CategoryItem, 'name'> & {
+  name: MaybeLocalized
+}
+
+type StoredCategoryMarqueeContent = {
+  items: StoredCategoryItem[]
 }
 
 export const CATEGORY_MARQUEE_FALLBACK: CategoryMarqueeContent = {
@@ -43,7 +56,9 @@ export const CATEGORY_MARQUEE_FALLBACK: CategoryMarqueeContent = {
   ],
 }
 
-export async function loadCategoryMarqueeContent(): Promise<CategoryMarqueeContent> {
+export async function loadCategoryMarqueeContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<CategoryMarqueeContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return CATEGORY_MARQUEE_FALLBACK
   }
@@ -55,9 +70,19 @@ export async function loadCategoryMarqueeContent(): Promise<CategoryMarqueeConte
       .eq('page_key', 'vendors_home')
       .eq('section_key', 'category-marquee')
       .maybeSingle()
-    const stored = data?.content as Partial<CategoryMarqueeContent> | undefined
+    const stored = data?.content as Partial<StoredCategoryMarqueeContent> | undefined
+    // `name` is resolved to the active locale (legacy plain strings render
+    // as-is). Colors/ids/visibility stay scalar.
     if (stored && Array.isArray(stored.items) && stored.items.length > 0) {
-      return { items: stored.items as CategoryItem[] }
+      return {
+        items: stored.items.map((item) => ({
+          id: item.id,
+          name: resolveLocalized(item.name, locale),
+          bg: item.bg,
+          text: item.text,
+          visible: item.visible,
+        })),
+      }
     }
     return CATEGORY_MARQUEE_FALLBACK
   } catch {

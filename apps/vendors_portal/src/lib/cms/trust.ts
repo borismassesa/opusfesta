@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type TrustIconKey =
   | 'users'
@@ -14,6 +15,8 @@ export type TrustIconKey =
   | 'lock'
   | 'globe'
 
+// What the render component receives: every translatable field already resolved
+// to a flat string in the active locale.
 export type TrustItem = {
   id: string
   icon: TrustIconKey
@@ -23,6 +26,13 @@ export type TrustItem = {
 
 export type TrustContent = {
   items: TrustItem[]
+}
+
+// What's stored in the DB: translatable fields may be `{ en, sw }` objects (or
+// legacy plain strings). Resolved down to TrustItem at load time.
+type StoredTrustItem = Omit<TrustItem, 'title' | 'description'> & {
+  title: MaybeLocalized
+  description: MaybeLocalized
 }
 
 export const TRUST_FALLBACK: TrustContent = {
@@ -51,7 +61,7 @@ export const TRUST_FALLBACK: TrustContent = {
   ],
 }
 
-export async function loadTrustContent(): Promise<TrustContent> {
+export async function loadTrustContent(locale: Locale = DEFAULT_LOCALE): Promise<TrustContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return TRUST_FALLBACK
   }
@@ -63,9 +73,18 @@ export async function loadTrustContent(): Promise<TrustContent> {
       .eq('page_key', 'vendors_home')
       .eq('section_key', 'trust')
       .maybeSingle()
-    const stored = data?.content as Partial<TrustContent> | undefined
+    const stored = data?.content as { items?: StoredTrustItem[] } | undefined
     if (stored && Array.isArray(stored.items) && stored.items.length > 0) {
-      return { items: stored.items as TrustItem[] }
+      // Translatable fields are resolved to the active locale (legacy plain
+      // strings render as-is); scalar fields (id, icon) pass through.
+      return {
+        items: stored.items.map((item) => ({
+          id: item.id,
+          icon: item.icon,
+          title: resolveLocalized(item.title, locale),
+          description: resolveLocalized(item.description, locale),
+        })),
+      }
     }
     return TRUST_FALLBACK
   } catch {

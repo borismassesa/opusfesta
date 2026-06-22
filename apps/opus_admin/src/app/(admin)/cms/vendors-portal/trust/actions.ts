@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { revalidateVendorsPortal } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { requirePermission } from '@/lib/admin-auth'
-import type { TrustContent } from '@/lib/cms/trust'
+import type { TrustContent } from '@/lib/cms/vendors-portal-trust'
 
 const PAGE_KEY = 'vendors_home'
 const SECTION_KEY = 'trust'

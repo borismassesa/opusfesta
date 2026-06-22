@@ -3,7 +3,7 @@ import {
   VENDOR_SEARCH_FALLBACK,
   type VendorSearchContent,
   type VendorSearchRow,
-} from '@/lib/cms/vendor-search'
+} from '@/lib/cms/vendors-portal-vendor-search'
 import VendorSearchEditor from './VendorSearchEditor'
 
 export const dynamic = 'force-dynamic'

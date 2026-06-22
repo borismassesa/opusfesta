@@ -3,9 +3,12 @@
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowLeft } from 'lucide-react'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
-export function BackLink({ href, label = 'Back' }: { href?: string; label?: string }) {
+export function BackLink({ href, label }: { href?: string; label?: string }) {
   const router = useRouter()
+  const { t } = useOnboardT()
+  label = label ?? t('common.back')
 
   if (href) {
     return (

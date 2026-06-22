@@ -9,10 +9,12 @@ import { PrimaryButton } from '@/components/onboard/PrimaryButton'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { PERSONALITY_OPTIONS } from '@/lib/onboarding/personality'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 export default function PersonalityPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
+  const { t } = useOnboardT()
   const category = findCategory(draft.categoryId)
 
   useEffect(() => {
@@ -33,8 +35,8 @@ export default function PersonalityPage() {
       backHref="/onboard/details/style"
     >
       <OnboardHeading
-        title="What’s one word clients would use to describe your personality?"
-        description="We’re sure you can adapt to any group, but we want to know the trait you’re most proud of."
+        title={t('details.personality.title')}
+        description={t('details.personality.subtitle')}
       />
 
       <div className="grid sm:grid-cols-2 gap-3 lg:gap-4">
@@ -52,7 +54,7 @@ export default function PersonalityPage() {
 
       <div className="mt-10">
         <PrimaryButton onClick={onNext} disabled={!draft.personality}>
-          Next step
+          {t('common.next_step')}
         </PrimaryButton>
       </div>
     </OnboardShell>

@@ -10,12 +10,14 @@ import { WhyWeAsk } from '@/components/onboard/WhyWeAsk'
 import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import { useOnboardingDraft, type SocialLinks } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 const stripAt = (v: string) => v.replace(/^@+/, '').trim()
 
 export default function SocialsPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
+  const { t } = useOnboardT()
   const category = findCategory(draft.categoryId)
 
   useEffect(() => {
@@ -43,64 +45,57 @@ export default function SocialsPage() {
       backHref="/onboard/profile/contact"
     >
       <OnboardHeading
-        title="Where can couples see your work online?"
-        description="Couples almost always check Instagram and TikTok before reaching out. Add at least one. You can leave the rest blank."
+        title={t('profile.socials.title')}
+        description={t('profile.socials.subtitle')}
       />
 
       <div className="space-y-4 max-w-2xl">
         <SocialField
           icon={<Instagram className="w-4 h-4" />}
-          label="Instagram"
-          placeholder="yourstudio_tz"
+          label={t('profile.socials.instagram.label')}
+          placeholder={t('profile.socials.instagram.placeholder')}
           prefix="@"
           value={draft.socials.instagram}
           onChange={(v) => setSocial('instagram', stripAt(v))}
         />
         <SocialField
           icon={<Music className="w-4 h-4" />}
-          label="TikTok"
-          placeholder="yourstudio"
+          label={t('profile.socials.tiktok.label')}
+          placeholder={t('profile.socials.tiktok.placeholder')}
           prefix="@"
           value={draft.socials.tiktok}
           onChange={(v) => setSocial('tiktok', stripAt(v))}
         />
         <SocialField
           icon={<Facebook className="w-4 h-4" />}
-          label="Facebook page"
-          placeholder="facebook.com/yourstudio  or  YourStudio"
+          label={t('profile.socials.facebook.label')}
+          placeholder={t('profile.socials.facebook.placeholder')}
           value={draft.socials.facebook}
           onChange={(v) => setSocial('facebook', v)}
         />
         <SocialField
           icon={<Globe className="w-4 h-4" />}
-          label="Website"
-          placeholder="https://yourstudio.co.tz"
+          label={t('profile.socials.website.label')}
+          placeholder={t('profile.socials.website.placeholder')}
           value={draft.socials.website}
           onChange={(v) => setSocial('website', v)}
         />
       </div>
 
       <div className="mt-10 flex items-center gap-6 flex-wrap">
-        <PrimaryButton onClick={onNext}>Next step</PrimaryButton>
+        <PrimaryButton onClick={onNext}>{t('common.next_step')}</PrimaryButton>
         {filledCount === 0 ? (
           <button
             type="button"
             onClick={onSkip}
             className="text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors"
           >
-            Skip for now
+            {t('common.skip_for_now')}
           </button>
         ) : null}
-        <WhyWeAsk title="Why we ask for socials">
-          <p>
-            Vendors with at least one linked social account get <strong>3-4× more inquiries</strong>{' '}
-            than those without. Couples want to scroll your real work, not just your packages.
-          </p>
-          <p>
-            Instagram and TikTok matter most for visual categories (photo, video, decor, beauty).
-            Facebook is still where many TZ couples find venues. You can always add or remove these
-            later from your dashboard.
-          </p>
+        <WhyWeAsk title={t('profile.socials.why.title')}>
+          <p>{t('profile.socials.why.body1')}</p>
+          <p>{t('profile.socials.why.body2')}</p>
         </WhyWeAsk>
       </div>
     </OnboardShell>

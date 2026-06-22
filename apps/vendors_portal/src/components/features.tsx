@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Reveal from '@/components/ui/Reveal'
 import { loadFeaturesContent, type FeatureBlock, type FeatureMediaItem } from '@/lib/cms/features'
+import { getLocale } from '@/lib/cms/locale'
 
 function Media({ item, className }: { item: FeatureMediaItem; className?: string }) {
   if (!item.url) return <div className={className} />
@@ -90,7 +91,8 @@ function FeatureBlockSection({ block }: { block: FeatureBlock }) {
 }
 
 export default async function Features() {
-  const content = await loadFeaturesContent()
+  const locale = await getLocale()
+  const content = await loadFeaturesContent(locale)
 
   return (
     <section className="py-16 sm:py-24 md:py-32 px-4 sm:px-6 max-w-6xl mx-auto">

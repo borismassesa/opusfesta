@@ -10,10 +10,12 @@ import { FieldLabel, SelectInput, TextInput } from '@/components/onboard/FormFie
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { TZ_REGIONS } from '@/lib/onboarding/regions'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 export default function LocationPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
+  const { t } = useOnboardT()
   const category = findCategory(draft.categoryId)
 
   useEffect(() => {
@@ -36,20 +38,20 @@ export default function LocationPage() {
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/profile/name"
     >
-      <OnboardHeading title="Where is your business located?" />
+      <OnboardHeading title={t('profile.location.title')} />
 
       <div className="space-y-6 max-w-2xl">
         <div>
-          <FieldLabel required>Street address</FieldLabel>
+          <FieldLabel required>{t('profile.location.street.label')}</FieldLabel>
           <div className="space-y-3">
             <TextInput
-              placeholder="Address"
+              placeholder={t('profile.location.street.placeholder')}
               value={draft.street}
               onChange={(e) => update({ street: e.target.value })}
               autoComplete="address-line1"
             />
             <TextInput
-              placeholder="Apartment, suite, plot (optional)"
+              placeholder={t('profile.location.street2.placeholder')}
               value={draft.street2}
               onChange={(e) => update({ street2: e.target.value })}
               autoComplete="address-line2"
@@ -58,9 +60,9 @@ export default function LocationPage() {
         </div>
 
         <div>
-          <FieldLabel required>City / Town</FieldLabel>
+          <FieldLabel required>{t('profile.location.city.label')}</FieldLabel>
           <TextInput
-            placeholder="e.g. Dar es Salaam"
+            placeholder={t('profile.location.city.placeholder')}
             value={draft.city}
             onChange={(e) => update({ city: e.target.value })}
             autoComplete="address-level2"
@@ -69,9 +71,9 @@ export default function LocationPage() {
 
         <div className="grid sm:grid-cols-2 gap-4">
           <div>
-            <FieldLabel required>Region</FieldLabel>
+            <FieldLabel required>{t('profile.location.region.label')}</FieldLabel>
             <SelectInput
-              placeholder="Region"
+              placeholder={t('profile.location.region.placeholder')}
               value={draft.region}
               onChange={(e) => update({ region: e.target.value })}
             >
@@ -83,9 +85,9 @@ export default function LocationPage() {
             </SelectInput>
           </div>
           <div>
-            <FieldLabel>Postal code</FieldLabel>
+            <FieldLabel>{t('profile.location.postal.label')}</FieldLabel>
             <TextInput
-              placeholder="e.g. 11101"
+              placeholder={t('profile.location.postal.placeholder')}
               value={draft.postalCode}
               onChange={(e) => update({ postalCode: e.target.value })}
               autoComplete="postal-code"
@@ -94,10 +96,10 @@ export default function LocationPage() {
         </div>
 
         <div>
-          <FieldLabel required>Business phone (Tanzania)</FieldLabel>
+          <FieldLabel required>{t('profile.location.phone.label')}</FieldLabel>
           <TextInput
             prefix="+255"
-            placeholder="754 123 456"
+            placeholder={t('profile.location.phone.placeholder')}
             value={draft.phone}
             onChange={(e) => update({ phone: e.target.value.replace(/[^\d\s]/g, '') })}
             inputMode="tel"
@@ -108,18 +110,11 @@ export default function LocationPage() {
 
       <div className="mt-10 flex items-center gap-6 flex-wrap">
         <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          Next step
+          {t('common.next_step')}
         </PrimaryButton>
-        <WhyWeAsk title="Why we ask for your address">
-          <p>
-            We use your address to set your <strong>home market</strong> and to surface your
-            storefront to couples planning weddings nearby.
-          </p>
-          <p>
-            Your full street address stays private. Only your <strong>city and region</strong>{' '}
-            appear on your public storefront. Your phone number is shared only after a couple sends
-            you an inquiry.
-          </p>
+        <WhyWeAsk title={t('profile.location.why.title')}>
+          <p>{t('profile.location.why.body1')}</p>
+          <p>{t('profile.location.why.body2')}</p>
         </WhyWeAsk>
       </div>
     </OnboardShell>

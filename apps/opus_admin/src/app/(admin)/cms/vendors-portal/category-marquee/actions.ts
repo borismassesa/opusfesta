@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { revalidateVendorsPortal } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { requirePermission } from '@/lib/admin-auth'
-import type { CategoryMarqueeContent } from '@/lib/cms/category-marquee'
+import type { CategoryMarqueeContent } from '@/lib/cms/vendors-portal-category-marquee'
 
 const PAGE_KEY = 'vendors_home'
 const SECTION_KEY = 'category-marquee'

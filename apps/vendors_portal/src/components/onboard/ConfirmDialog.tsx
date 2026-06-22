@@ -3,6 +3,7 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 type Tone = 'danger' | 'primary'
 
@@ -22,11 +23,13 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
-  cancelLabel = 'Cancel',
+  cancelLabel,
   tone = 'primary',
   onConfirm,
   onCancel,
 }: Props) {
+  const { t } = useOnboardT()
+  const resolvedCancelLabel = cancelLabel ?? t('common.cancel')
   const cancelBtnRef = useRef<HTMLButtonElement>(null)
   const lastFocusedRef = useRef<Element | null>(null)
 
@@ -65,7 +68,7 @@ export function ConfirmDialog({
       {/* Backdrop */}
       <button
         type="button"
-        aria-label="Cancel"
+        aria-label={resolvedCancelLabel}
         onClick={onCancel}
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
       />
@@ -111,7 +114,7 @@ export function ConfirmDialog({
             <button
               type="button"
               onClick={onCancel}
-              aria-label="Close"
+              aria-label={t('common.close')}
               className="-mr-2 -mt-1 p-2 text-gray-400 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
             >
               <X className="w-4 h-4" />
@@ -125,7 +128,7 @@ export function ConfirmDialog({
               onClick={onCancel}
               className="px-5 py-2.5 rounded-full text-sm font-semibold text-gray-900 hover:bg-gray-100 transition-colors"
             >
-              {cancelLabel}
+              {resolvedCancelLabel}
             </button>
             <button
               type="button"

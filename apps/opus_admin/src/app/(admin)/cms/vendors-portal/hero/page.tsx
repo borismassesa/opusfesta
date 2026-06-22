@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { HERO_FALLBACK, type HeroContent, type HeroRow } from '@/lib/cms/hero'
+import { HERO_FALLBACK, type HeroContent, type HeroRow } from '@/lib/cms/vendors-portal-hero'
 import HeroEditor from './HeroEditor'
 
 export const dynamic = 'force-dynamic'

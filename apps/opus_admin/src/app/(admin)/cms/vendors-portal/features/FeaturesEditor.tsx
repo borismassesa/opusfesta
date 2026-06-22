@@ -16,9 +16,11 @@ import type {
   FeatureMediaItem,
   FeaturePill,
   FeaturesContent,
-} from '@/lib/cms/features'
+} from '@/lib/cms/vendors-portal-features'
 import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardFeaturesDraft,
@@ -47,6 +49,7 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [openBlockId, setOpenBlockId] = useState<string | null>(initial.blocks[0]?.id ?? null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const setField = <K extends keyof FeaturesContent>(key: K, value: FeaturesContent[K]) =>
@@ -102,7 +105,7 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
   }
 
   // Pills (per block)
-  const updatePill = (blockId: string, pillId: string, label: string) =>
+  const updatePill = (blockId: string, pillId: string, label: FeaturePill['label']) =>
     setDraft((d) => ({
       ...d,
       blocks: d.blocks.map((b) =>
@@ -201,40 +204,32 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
         <div className="space-y-4">
           {/* Section header */}
           <Card title="Section header">
-            <Field label="Eyebrow">
-              <input
-                type="text"
-                value={draft.eyebrow}
-                onChange={(e) => setField('eyebrow', e.target.value)}
-                className={inputCls}
-              />
-            </Field>
+            <BilingualField
+              label="Eyebrow"
+              value={draft.eyebrow}
+              onChange={(v) => setField('eyebrow', v)}
+            />
             <FieldGroup label="Headline (2 lines)">
-              <Field label="Line 1" hint={<CharCount value={draft.headline_line_1} max={HEADLINE_MAX} />}>
-                <input
-                  type="text"
-                  value={draft.headline_line_1}
-                  onChange={(e) => setField('headline_line_1', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Line 2" hint={<CharCount value={draft.headline_line_2} max={HEADLINE_MAX} />}>
-                <input
-                  type="text"
-                  value={draft.headline_line_2}
-                  onChange={(e) => setField('headline_line_2', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-            </FieldGroup>
-            <Field label="Subheadline">
-              <textarea
-                value={draft.subheadline}
-                onChange={(e) => setField('subheadline', e.target.value)}
-                rows={2}
-                className={inputCls}
+              <BilingualField
+                label="Line 1"
+                value={draft.headline_line_1}
+                onChange={(v) => setField('headline_line_1', v)}
+                max={HEADLINE_MAX}
               />
-            </Field>
+              <BilingualField
+                label="Line 2"
+                value={draft.headline_line_2}
+                onChange={(v) => setField('headline_line_2', v)}
+                max={HEADLINE_MAX}
+              />
+            </FieldGroup>
+            <BilingualField
+              label="Subheadline"
+              value={draft.subheadline}
+              onChange={(v) => setField('subheadline', v)}
+              multiline
+              rows={2}
+            />
           </Card>
 
           {/* Feature blocks */}
@@ -246,6 +241,7 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
                   block={block}
                   index={i}
                   total={draft.blocks.length}
+                  previewLocale={previewLocale}
                   isOpen={openBlockId === block.id}
                   onToggle={() => setOpenBlockId((cur) => (cur === block.id ? null : block.id))}
                   onChange={(patch) => updateBlock(block.id, patch)}
@@ -275,9 +271,24 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-            <span className="text-xs text-gray-400">Approximate</span>
+            <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+              {LOCALES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreviewLocale(l)}
+                  aria-pressed={previewLocale === l}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 transition-colors',
+                    previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                  )}
+                >
+                  {LOCALE_LABELS[l]}
+                </button>
+              ))}
+            </div>
           </div>
-          <FeaturesPreview content={draft} />
+          <FeaturesPreview content={draft} locale={previewLocale} />
         </div>
       </div>
     </div>
@@ -285,13 +296,14 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
 }
 
 function BlockAccordion({
-  block, index, total, isOpen, onToggle, onChange, onRemove, onMoveUp, onMoveDown,
+  block, index, total, previewLocale, isOpen, onToggle, onChange, onRemove, onMoveUp, onMoveDown,
   pending, uploadFor,
   onAddPill, onUpdatePill, onRemovePill, onMovePill,
 }: {
   block: FeatureBlock
   index: number
   total: number
+  previewLocale: Locale
   isOpen: boolean
   onToggle: () => void
   onChange: (patch: Partial<FeatureBlock>) => void
@@ -301,7 +313,7 @@ function BlockAccordion({
   pending: boolean
   uploadFor: (cb: (item: FeatureMediaItem) => void) => (file: File) => void
   onAddPill: () => void
-  onUpdatePill: (pillId: string, label: string) => void
+  onUpdatePill: (pillId: string, label: FeaturePill['label']) => void
   onRemovePill: (pillId: string) => void
   onMovePill: (pillId: string, dir: -1 | 1) => void
 }) {
@@ -311,7 +323,7 @@ function BlockAccordion({
         <button type="button" onClick={onToggle} className="flex items-center gap-2 flex-1 min-w-0 text-left">
           {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
           <span className="text-sm font-semibold text-gray-900 truncate">
-            {block.headline_line_1} {block.headline_line_2}
+            {resolveLocalized(block.headline_line_1, previewLocale)} {resolveLocalized(block.headline_line_2, previewLocale)}
           </span>
           <span className="text-xs text-gray-400 truncate flex items-center gap-1 shrink-0">
             <FlipHorizontal className={cn('w-3 h-3', block.reverse && 'text-[#7E5896]')} />
@@ -338,32 +350,40 @@ function BlockAccordion({
           </label>
 
           <FieldGroup label="Headline">
-            <Field label="Line 1" hint={<CharCount value={block.headline_line_1} max={HEADLINE_MAX} />}>
-              <input type="text" value={block.headline_line_1} onChange={(e) => onChange({ headline_line_1: e.target.value })} className={inputCls} />
-            </Field>
-            <Field label="Line 2" hint={<CharCount value={block.headline_line_2} max={HEADLINE_MAX} />}>
-              <input type="text" value={block.headline_line_2} onChange={(e) => onChange({ headline_line_2: e.target.value })} className={inputCls} />
-            </Field>
+            <BilingualField
+              label="Line 1"
+              value={block.headline_line_1}
+              onChange={(v) => onChange({ headline_line_1: v })}
+              max={HEADLINE_MAX}
+            />
+            <BilingualField
+              label="Line 2"
+              value={block.headline_line_2}
+              onChange={(v) => onChange({ headline_line_2: v })}
+              max={HEADLINE_MAX}
+            />
           </FieldGroup>
 
-          <Field label="Body" hint={<CharCount value={block.body} max={BODY_MAX} />}>
-            <textarea value={block.body} onChange={(e) => onChange({ body: e.target.value })} rows={3} className={inputCls} />
-          </Field>
+          <BilingualField
+            label="Body"
+            value={block.body}
+            onChange={(v) => onChange({ body: v })}
+            multiline
+            max={BODY_MAX}
+          />
 
           <FieldGroup label={`Pills (${block.pills.length})`}>
             <div className="space-y-1.5">
               {block.pills.map((pill, pi) => (
-                <div key={pill.id} className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group border border-transparent hover:border-gray-100">
-                  <input
-                    type="text"
-                    value={pill.label}
-                    onChange={(e) => onUpdatePill(pill.id, e.target.value)}
-                    className="flex-1 min-w-0 px-2 py-1 bg-transparent border-0 text-sm text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#C9A0DC] rounded"
-                  />
-                  <span className="hidden sm:inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-gray-100 text-gray-600 shrink-0">
-                    {pill.label || 'Preview'}
-                  </span>
-                  <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                <div key={pill.id} className="flex items-start gap-2 px-2 py-2 rounded-lg hover:bg-gray-50 group border border-transparent hover:border-gray-100">
+                  <div className="flex-1 min-w-0">
+                    <BilingualField
+                      label={`Pill ${pi + 1}`}
+                      value={pill.label}
+                      onChange={(v) => onUpdatePill(pill.id, v)}
+                    />
+                  </div>
+                  <div className="flex items-center gap-0.5 shrink-0 pt-5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                     <IconBtn onClick={() => onMovePill(pill.id, -1)} disabled={pi === 0} aria-label="Move up"><ArrowUp className="w-3 h-3" /></IconBtn>
                     <IconBtn onClick={() => onMovePill(pill.id, 1)} disabled={pi === block.pills.length - 1} aria-label="Move down"><ArrowDown className="w-3 h-3" /></IconBtn>
                     <IconBtn onClick={() => onRemovePill(pill.id)} aria-label="Remove" danger><Trash2 className="w-3 h-3" /></IconBtn>
@@ -382,20 +402,22 @@ function BlockAccordion({
           </FieldGroup>
 
           <FieldGroup label="CTAs">
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Primary label">
-                <input type="text" value={block.primary_cta_label} onChange={(e) => onChange({ primary_cta_label: e.target.value })} className={inputCls} />
-              </Field>
-              <Field label="Primary link">
-                <input type="text" value={block.primary_cta_href} onChange={(e) => onChange({ primary_cta_href: e.target.value })} className={inputCls} />
-              </Field>
-              <Field label="Secondary label">
-                <input type="text" value={block.secondary_cta_label} onChange={(e) => onChange({ secondary_cta_label: e.target.value })} className={inputCls} />
-              </Field>
-              <Field label="Secondary link">
-                <input type="text" value={block.secondary_cta_href} onChange={(e) => onChange({ secondary_cta_href: e.target.value })} className={inputCls} />
-              </Field>
-            </div>
+            <BilingualField
+              label="Primary label"
+              value={block.primary_cta_label}
+              onChange={(v) => onChange({ primary_cta_label: v })}
+            />
+            <Field label="Primary link">
+              <input type="text" value={block.primary_cta_href} onChange={(e) => onChange({ primary_cta_href: e.target.value })} className={inputCls} />
+            </Field>
+            <BilingualField
+              label="Secondary label"
+              value={block.secondary_cta_label}
+              onChange={(v) => onChange({ secondary_cta_label: v })}
+            />
+            <Field label="Secondary link">
+              <input type="text" value={block.secondary_cta_href} onChange={(e) => onChange({ secondary_cta_href: e.target.value })} className={inputCls} />
+            </Field>
           </FieldGroup>
 
           <FieldGroup label="Bento media (3 slots)">
@@ -420,17 +442,21 @@ function BlockAccordion({
               onUpload={uploadFor((item) => onChange({ media_overlay: item }))}
               pending={pending}
             />
-            <Field label="Overlay eyebrow">
-              <input type="text" value={block.overlay_eyebrow} onChange={(e) => onChange({ overlay_eyebrow: e.target.value })} className={inputCls} />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Overlay caption — line 1">
-                <input type="text" value={block.overlay_caption_line_1} onChange={(e) => onChange({ overlay_caption_line_1: e.target.value })} className={inputCls} />
-              </Field>
-              <Field label="Overlay caption — line 2">
-                <input type="text" value={block.overlay_caption_line_2} onChange={(e) => onChange({ overlay_caption_line_2: e.target.value })} className={inputCls} />
-              </Field>
-            </div>
+            <BilingualField
+              label="Overlay eyebrow"
+              value={block.overlay_eyebrow}
+              onChange={(v) => onChange({ overlay_eyebrow: v })}
+            />
+            <BilingualField
+              label="Overlay caption — line 1"
+              value={block.overlay_caption_line_1}
+              onChange={(v) => onChange({ overlay_caption_line_1: v })}
+            />
+            <BilingualField
+              label="Overlay caption — line 2"
+              value={block.overlay_caption_line_2}
+              onChange={(v) => onChange({ overlay_caption_line_2: v })}
+            />
           </FieldGroup>
         </div>
       )}
@@ -598,46 +624,35 @@ function Field({ label, children, hint }: { label: string; children: React.React
   )
 }
 
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span className={cn('tabular-nums font-medium', over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400')}>
-      {len}/{max}
-    </span>
-  )
-}
-
 const inputCls =
   'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
 
-function FeaturesPreview({ content }: { content: FeaturesContent }) {
+function FeaturesPreview({ content, locale }: { content: FeaturesContent; locale: Locale }) {
   return (
     <div className="space-y-5">
       <div className="text-center">
-        <span className="text-[#C9A0DC] text-[9px] font-bold uppercase tracking-widest">{content.eyebrow}</span>
+        <span className="text-[#C9A0DC] text-[9px] font-bold uppercase tracking-widest">{resolveLocalized(content.eyebrow, locale)}</span>
         <h2 className="text-2xl font-black uppercase tracking-tighter leading-[0.9] mt-1 text-[#1A1A1A]">
-          {content.headline_line_1}<br />{content.headline_line_2}
+          {resolveLocalized(content.headline_line_1, locale)}<br />{resolveLocalized(content.headline_line_2, locale)}
         </h2>
-        <p className="text-[10px] text-gray-500 mt-1">{content.subheadline}</p>
+        <p className="text-[10px] text-gray-500 mt-1">{resolveLocalized(content.subheadline, locale)}</p>
       </div>
 
       {content.blocks.map((b) => (
         <div key={b.id} className={cn('flex gap-3 items-center', b.reverse && 'flex-row-reverse')}>
           <div className="flex-1">
             <h3 className="text-sm font-black uppercase tracking-tighter leading-tight text-[#1A1A1A]">
-              {b.headline_line_1}<br />{b.headline_line_2}
+              {resolveLocalized(b.headline_line_1, locale)}<br />{resolveLocalized(b.headline_line_2, locale)}
             </h3>
-            <p className="text-[9px] text-gray-600 mt-1 leading-relaxed line-clamp-3">{b.body}</p>
+            <p className="text-[9px] text-gray-600 mt-1 leading-relaxed line-clamp-3">{resolveLocalized(b.body, locale)}</p>
             <div className="flex flex-wrap gap-1 mt-2">
               {b.pills.slice(0, 4).map((p) => (
-                <span key={p.id} className="bg-gray-100 text-gray-600 text-[8px] font-bold px-2 py-0.5 rounded-full">{p.label}</span>
+                <span key={p.id} className="bg-gray-100 text-gray-600 text-[8px] font-bold px-2 py-0.5 rounded-full">{resolveLocalized(p.label, locale)}</span>
               ))}
             </div>
             <div className="flex gap-1.5 mt-2">
-              <span className="bg-[#1A1A1A] text-white text-[9px] font-bold px-2.5 py-1 rounded-full">{b.primary_cta_label}</span>
-              <span className="text-[#1A1A1A] text-[9px] font-bold underline px-1">{b.secondary_cta_label}</span>
+              <span className="bg-[#1A1A1A] text-white text-[9px] font-bold px-2.5 py-1 rounded-full">{resolveLocalized(b.primary_cta_label, locale)}</span>
+              <span className="text-[#1A1A1A] text-[9px] font-bold underline px-1">{resolveLocalized(b.secondary_cta_label, locale)}</span>
             </div>
           </div>
           <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-1 h-24">
@@ -654,9 +669,9 @@ function FeaturesPreview({ content }: { content: FeaturesContent }) {
               ) : null}
               <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-1">
-                <p className="text-white/50 text-[6px] font-black uppercase tracking-widest truncate">{b.overlay_eyebrow}</p>
+                <p className="text-white/50 text-[6px] font-black uppercase tracking-widest truncate">{resolveLocalized(b.overlay_eyebrow, locale)}</p>
                 <p className="text-white text-[7px] font-black leading-tight truncate">
-                  {b.overlay_caption_line_1}<br />{b.overlay_caption_line_2}
+                  {resolveLocalized(b.overlay_caption_line_1, locale)}<br />{resolveLocalized(b.overlay_caption_line_2, locale)}
                 </p>
               </div>
             </div>
