@@ -204,19 +204,22 @@ export async function loadVendorSearchContent(
       .maybeSingle()
     const stored = data?.content as Partial<StoredVendorSearchContent> | undefined
     // Translatable fields are resolved to the active locale (legacy plain
-    // strings render as-is); hrefs/ids/icon keys stay scalar.
+    // strings render as-is); hrefs/ids/icon keys stay scalar. Top-level fields
+    // keep the old `{ ...FALLBACK, ...stored }` semantics — a field missing from
+    // the stored row falls back to the default (resolveLocalized yields '' for a
+    // missing field, so `|| FALLBACK` restores it) rather than rendering blank.
     if (stored && Array.isArray(stored.items) && stored.items.length > 0) {
       return {
-        headline_line_1: resolveLocalized(stored.headline_line_1, locale),
-        headline_line_2: resolveLocalized(stored.headline_line_2, locale),
-        subheadline: resolveLocalized(stored.subheadline, locale),
-        looking_label: resolveLocalized(stored.looking_label, locale),
-        count_suffix: resolveLocalized(stored.count_suffix, locale),
-        budget_label: resolveLocalized(stored.budget_label, locale),
+        headline_line_1: resolveLocalized(stored.headline_line_1, locale) || VENDOR_SEARCH_FALLBACK.headline_line_1,
+        headline_line_2: resolveLocalized(stored.headline_line_2, locale) || VENDOR_SEARCH_FALLBACK.headline_line_2,
+        subheadline: resolveLocalized(stored.subheadline, locale) || VENDOR_SEARCH_FALLBACK.subheadline,
+        looking_label: resolveLocalized(stored.looking_label, locale) || VENDOR_SEARCH_FALLBACK.looking_label,
+        count_suffix: resolveLocalized(stored.count_suffix, locale) || VENDOR_SEARCH_FALLBACK.count_suffix,
+        budget_label: resolveLocalized(stored.budget_label, locale) || VENDOR_SEARCH_FALLBACK.budget_label,
         budget_currency: stored.budget_currency ?? VENDOR_SEARCH_FALLBACK.budget_currency,
-        perk_badge: resolveLocalized(stored.perk_badge, locale),
-        verified_label: resolveLocalized(stored.verified_label, locale),
-        verified_badge: resolveLocalized(stored.verified_badge, locale),
+        perk_badge: resolveLocalized(stored.perk_badge, locale) || VENDOR_SEARCH_FALLBACK.perk_badge,
+        verified_label: resolveLocalized(stored.verified_label, locale) || VENDOR_SEARCH_FALLBACK.verified_label,
+        verified_badge: resolveLocalized(stored.verified_badge, locale) || VENDOR_SEARCH_FALLBACK.verified_badge,
         items: stored.items.map((it) => ({
           id: it.id,
           type: resolveLocalized(it.type, locale),
