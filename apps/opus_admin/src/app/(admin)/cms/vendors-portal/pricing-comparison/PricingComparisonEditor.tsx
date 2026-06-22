@@ -7,10 +7,17 @@ import type {
   FeatureCard,
   FeatureIconKey,
   PricingComparisonContent,
-} from '@/lib/cms/pricing-comparison'
+} from '@/lib/cms/vendors-portal-pricing-comparison'
 import { FEATURE_ICON_OPTIONS, getFeatureIcon } from '@/lib/cms/pricing-comparison-icons'
 import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
+import { BilingualField } from '@/components/cms/BilingualField'
+import {
+  LOCALES,
+  LOCALE_LABELS,
+  resolveLocalized,
+  type Locale,
+} from '@/lib/cms/localized'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardPricingComparisonDraft,
@@ -46,6 +53,7 @@ export default function PricingComparisonEditor({
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const setField = <K extends keyof PricingComparisonContent>(
@@ -77,8 +85,8 @@ export default function PricingComparisonEditor({
         ...d.checklist,
         {
           id: `item-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-          label: 'New checklist item',
-          weeks: '4 wks left',
+          label: { en: 'New checklist item', sw: '' },
+          weeks: { en: '4 wks left', sw: '' },
           done: false,
         },
       ],
@@ -109,8 +117,8 @@ export default function PricingComparisonEditor({
         {
           id: `feat-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
           icon: 'sparkles' as FeatureIconKey,
-          title: 'New feature',
-          body: 'Describe what this feature does for couples.',
+          title: { en: 'New feature', sw: '' },
+          body: { en: 'Describe what this feature does for couples.', sw: '' },
         },
       ],
     }))
@@ -169,62 +177,43 @@ export default function PricingComparisonEditor({
           {/* Section copy */}
           <Card title="Section copy">
             <FieldGroup label="Headline">
-              <Field
+              <BilingualField
                 label="Line 1"
-                hint={<CharCount value={draft.headline_line_1} max={HEADLINE_MAX} />}
-              >
-                <input
-                  type="text"
-                  value={draft.headline_line_1}
-                  onChange={(e) => setField('headline_line_1', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field
+                value={draft.headline_line_1}
+                onChange={(v) => setField('headline_line_1', v)}
+                max={HEADLINE_MAX}
+              />
+              <BilingualField
                 label="Line 2"
-                hint={<CharCount value={draft.headline_line_2} max={HEADLINE_MAX} />}
-              >
-                <input
-                  type="text"
-                  value={draft.headline_line_2}
-                  onChange={(e) => setField('headline_line_2', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
+                value={draft.headline_line_2}
+                onChange={(v) => setField('headline_line_2', v)}
+                max={HEADLINE_MAX}
+              />
             </FieldGroup>
 
-            <Field
+            <BilingualField
               label="Subheadline"
-              hint={<CharCount value={draft.subheadline} max={SUBHEAD_MAX} />}
-            >
-              <textarea
-                value={draft.subheadline}
-                onChange={(e) => setField('subheadline', e.target.value)}
-                rows={2}
-                className={inputCls}
-              />
-            </Field>
+              value={draft.subheadline}
+              onChange={(v) => setField('subheadline', v)}
+              multiline
+              max={SUBHEAD_MAX}
+            />
 
             <FieldGroup label="Call to action">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Label">
-                  <input
-                    type="text"
-                    value={draft.cta_label}
-                    onChange={(e) => setField('cta_label', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Link">
-                  <input
-                    type="text"
-                    value={draft.cta_href}
-                    onChange={(e) => setField('cta_href', e.target.value)}
-                    className={inputCls}
-                    placeholder="/path or https://…"
-                  />
-                </Field>
-              </div>
+              <BilingualField
+                label="Label"
+                value={draft.cta_label}
+                onChange={(v) => setField('cta_label', v)}
+              />
+              <Field label="Link">
+                <input
+                  type="text"
+                  value={draft.cta_href}
+                  onChange={(e) => setField('cta_href', e.target.value)}
+                  className={inputCls}
+                  placeholder="/path or https://…"
+                />
+              </Field>
             </FieldGroup>
           </Card>
 
@@ -249,31 +238,22 @@ export default function PricingComparisonEditor({
           {/* Promo overlay text */}
           <Card title="Promo overlay text">
             <FieldGroup label="Heading">
-              <Field label="Line 1">
-                <input
-                  type="text"
-                  value={draft.promo_heading_line_1}
-                  onChange={(e) => setField('promo_heading_line_1', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-              <Field label="Line 2">
-                <input
-                  type="text"
-                  value={draft.promo_heading_line_2}
-                  onChange={(e) => setField('promo_heading_line_2', e.target.value)}
-                  className={inputCls}
-                />
-              </Field>
-            </FieldGroup>
-            <Field label="Subheading">
-              <input
-                type="text"
-                value={draft.promo_subheading}
-                onChange={(e) => setField('promo_subheading', e.target.value)}
-                className={inputCls}
+              <BilingualField
+                label="Line 1"
+                value={draft.promo_heading_line_1}
+                onChange={(v) => setField('promo_heading_line_1', v)}
               />
-            </Field>
+              <BilingualField
+                label="Line 2"
+                value={draft.promo_heading_line_2}
+                onChange={(v) => setField('promo_heading_line_2', v)}
+              />
+            </FieldGroup>
+            <BilingualField
+              label="Subheading"
+              value={draft.promo_subheading}
+              onChange={(v) => setField('promo_subheading', v)}
+            />
           </Card>
 
           {/* Checklist */}
@@ -281,14 +261,11 @@ export default function PricingComparisonEditor({
             title="Checklist preview"
             count={draft.checklist.length}
           >
-            <Field label="Checklist label">
-              <input
-                type="text"
-                value={draft.checklist_label}
-                onChange={(e) => setField('checklist_label', e.target.value)}
-                className={inputCls}
-              />
-            </Field>
+            <BilingualField
+              label="Checklist label"
+              value={draft.checklist_label}
+              onChange={(v) => setField('checklist_label', v)}
+            />
 
             <div className="space-y-1.5 mt-2">
               {draft.checklist.map((item, i) => (
@@ -349,9 +326,24 @@ export default function PricingComparisonEditor({
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-            <span className="text-xs text-gray-400">Approximate</span>
+            <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+              {LOCALES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreviewLocale(l)}
+                  aria-pressed={previewLocale === l}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 transition-colors',
+                    previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                  )}
+                >
+                  {LOCALE_LABELS[l]}
+                </button>
+              ))}
+            </div>
           </div>
-          <PricingComparisonPreview content={draft} />
+          <PricingComparisonPreview content={draft} locale={previewLocale} />
         </div>
       </div>
     </div>
@@ -485,56 +477,56 @@ function ChecklistRow({
   onMoveDown: () => void
 }) {
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-50 group border border-transparent hover:border-gray-100">
-      <button
-        type="button"
-        onClick={() => onChange({ done: !item.done })}
-        aria-label={item.done ? 'Mark not done' : 'Mark done'}
-        className="text-gray-400 hover:text-gray-700 shrink-0"
-      >
-        {item.done ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
-      </button>
-      <input
-        type="text"
-        value={item.label}
-        onChange={(e) => onChange({ label: e.target.value })}
-        className="flex-1 min-w-0 px-2 py-1 bg-transparent border-0 text-sm text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#C9A0DC] rounded"
-      />
-      <input
-        type="text"
-        value={item.weeks}
-        onChange={(e) => onChange({ weeks: e.target.value })}
-        className="w-24 px-2 py-1 bg-transparent border-0 text-xs text-gray-500 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#C9A0DC] rounded text-right shrink-0"
-        placeholder="3 wks left"
-      />
-      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+    <div className="border border-gray-200 rounded-xl p-3 space-y-3">
+      <div className="flex items-center justify-between">
         <button
           type="button"
-          onClick={onMoveUp}
-          disabled={index === 0}
-          aria-label="Move up"
-          className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          onClick={() => onChange({ done: !item.done })}
+          aria-label={item.done ? 'Mark not done' : 'Mark done'}
+          className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 hover:text-gray-700"
         >
-          <ArrowUp className="w-3.5 h-3.5" />
+          {item.done ? <CheckCircle2 className="w-4 h-4" /> : <Circle className="w-4 h-4" />}
+          {item.done ? 'Done' : 'Pending'}
         </button>
-        <button
-          type="button"
-          onClick={onMoveDown}
-          disabled={index === total - 1}
-          aria-label="Move down"
-          className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-        >
-          <ArrowDown className="w-3.5 h-3.5" />
-        </button>
-        <button
-          type="button"
-          onClick={onRemove}
-          aria-label="Remove"
-          className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
-        >
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            type="button"
+            onClick={onMoveUp}
+            disabled={index === 0}
+            aria-label="Move up"
+            className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          >
+            <ArrowUp className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onMoveDown}
+            disabled={index === total - 1}
+            aria-label="Move down"
+            className="p-1 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+          >
+            <ArrowDown className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onRemove}
+            aria-label="Remove"
+            className="p-1 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </div>
+      <BilingualField
+        label="Label"
+        value={item.label}
+        onChange={(label) => onChange({ label })}
+      />
+      <BilingualField
+        label="Status / timing"
+        value={item.weeks}
+        onChange={(weeks) => onChange({ weeks })}
+      />
     </div>
   )
 }
@@ -594,28 +586,19 @@ function FeatureCardEditor({
       <Field label="Icon">
         <FeatureIconPicker value={card.icon} onChange={(icon) => onChange({ icon })} />
       </Field>
-      <Field
+      <BilingualField
         label="Title"
-        hint={<CharCount value={card.title} max={FEATURE_TITLE_MAX} />}
-      >
-        <input
-          type="text"
-          value={card.title}
-          onChange={(e) => onChange({ title: e.target.value })}
-          className={inputCls}
-        />
-      </Field>
-      <Field
+        value={card.title}
+        onChange={(title) => onChange({ title })}
+        max={FEATURE_TITLE_MAX}
+      />
+      <BilingualField
         label="Body"
-        hint={<CharCount value={card.body} max={FEATURE_BODY_MAX} />}
-      >
-        <textarea
-          value={card.body}
-          onChange={(e) => onChange({ body: e.target.value })}
-          rows={3}
-          className={inputCls}
-        />
-      </Field>
+        value={card.body}
+        onChange={(body) => onChange({ body })}
+        multiline
+        max={FEATURE_BODY_MAX}
+      />
     </div>
   )
 }
@@ -685,26 +668,16 @@ function Field({
   )
 }
 
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span
-      className={cn(
-        'tabular-nums font-medium',
-        over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400'
-      )}
-    >
-      {len}/{max}
-    </span>
-  )
-}
-
 const inputCls =
   'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
 
-function PricingComparisonPreview({ content }: { content: PricingComparisonContent }) {
+function PricingComparisonPreview({
+  content,
+  locale,
+}: {
+  content: PricingComparisonContent
+  locale: Locale
+}) {
   const couple = resolveMediaUrl(content.couple_image_url)
   const promo = resolveMediaUrl(content.promo_image_url)
   const checklistShown = content.checklist.slice(0, 4)
@@ -713,12 +686,14 @@ function PricingComparisonPreview({ content }: { content: PricingComparisonConte
     <div className="bg-[#C9A0DC] rounded-xl p-4 space-y-4">
       <div>
         <h2 className="text-xl font-black uppercase tracking-tighter leading-[0.95] text-[#1A1A1A]">
-          <span className="block">{content.headline_line_1}</span>
-          <span className="block">{content.headline_line_2}</span>
+          <span className="block">{resolveLocalized(content.headline_line_1, locale)}</span>
+          <span className="block">{resolveLocalized(content.headline_line_2, locale)}</span>
         </h2>
-        <p className="text-xs text-[#1A1A1A]/60 mt-2 leading-relaxed">{content.subheadline}</p>
+        <p className="text-xs text-[#1A1A1A]/60 mt-2 leading-relaxed">
+          {resolveLocalized(content.subheadline, locale)}
+        </p>
         <button className="mt-3 bg-[#1A1A1A] text-white text-[11px] font-bold px-4 py-2 rounded-full">
-          {content.cta_label}
+          {resolveLocalized(content.cta_label, locale)}
         </button>
       </div>
 
@@ -738,17 +713,17 @@ function PricingComparisonPreview({ content }: { content: PricingComparisonConte
           {!promo && <div className="absolute inset-0 bg-gray-200" />}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
           <p className="relative text-white text-sm font-black tracking-tighter leading-tight">
-            {content.promo_heading_line_1}
+            {resolveLocalized(content.promo_heading_line_1, locale)}
             <br />
-            {content.promo_heading_line_2}
+            {resolveLocalized(content.promo_heading_line_2, locale)}
           </p>
           <p className="relative text-white text-[9px] font-semibold leading-relaxed">
-            {content.promo_subheading}
+            {resolveLocalized(content.promo_subheading, locale)}
           </p>
         </div>
         <div className="bg-[#1A1A1A] rounded-lg flex flex-col justify-center gap-1 px-2 py-2 overflow-hidden">
           <p className="text-[8px] font-black uppercase tracking-widest text-white mb-0.5">
-            {content.checklist_label}
+            {resolveLocalized(content.checklist_label, locale)}
           </p>
           {checklistShown.map((it) => (
             <div key={it.id} className="flex items-center gap-1.5">
@@ -763,7 +738,7 @@ function PricingComparisonPreview({ content }: { content: PricingComparisonConte
                   it.done ? 'line-through text-white/20' : 'text-white'
                 )}
               >
-                {it.label}
+                {resolveLocalized(it.label, locale)}
               </p>
             </div>
           ))}
@@ -777,10 +752,10 @@ function PricingComparisonPreview({ content }: { content: PricingComparisonConte
             <div key={feat.id} className="space-y-1">
               <Icon className="w-4 h-4 text-[#1A1A1A]" />
               <h4 className="text-[#1A1A1A] font-black text-[10px] uppercase tracking-tight">
-                {feat.title}
+                {resolveLocalized(feat.title, locale)}
               </h4>
               <p className="text-[#1A1A1A]/60 text-[9px] leading-relaxed line-clamp-3">
-                {feat.body}
+                {resolveLocalized(feat.body, locale)}
               </p>
             </div>
           )

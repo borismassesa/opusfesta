@@ -2,8 +2,10 @@
 
 import { useEffect, useState, useTransition } from 'react'
 import { ArrowDown, ArrowUp, ChevronDown, ChevronRight, Plus, Trash2 } from 'lucide-react'
-import type { FaqContent, FaqItem } from '@/lib/cms/faq'
+import type { FaqContent, FaqItem } from '@/lib/cms/vendors-portal-faq'
 import { cn } from '@/lib/utils'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { useEditorActions } from '../EditorActionsContext'
 import { discardFaqDraft, publishFaq, saveFaqDraft } from './actions'
 
@@ -19,6 +21,7 @@ export default function FaqEditor({ initial, hasDraft: initialHasDraft }: Props)
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
   const [openItemId, setOpenItemId] = useState<string | null>(initial.items[0]?.id ?? null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const { bind, unbind } = useEditorActions()
 
   const setField = <K extends keyof FaqContent>(key: K, value: FaqContent[K]) =>
@@ -91,57 +94,43 @@ export default function FaqEditor({ initial, hasDraft: initialHasDraft }: Props)
         <div className="space-y-4">
           {/* Section header */}
           <Card title="Section header">
-            <Field label="Eyebrow">
-              <input
-                type="text"
-                value={draft.eyebrow}
-                onChange={(e) => setField('eyebrow', e.target.value)}
-                className={inputCls}
-              />
-            </Field>
+            <BilingualField
+              label="Eyebrow"
+              value={draft.eyebrow}
+              onChange={(v) => setField('eyebrow', v)}
+            />
             <FieldGroup label="Headline (3 lines)">
               {(['headline_line_1', 'headline_line_2', 'headline_line_3'] as const).map((k, i) => (
-                <Field
+                <BilingualField
                   key={k}
                   label={`Line ${i + 1}`}
-                  hint={<CharCount value={draft[k]} max={HEADLINE_MAX} />}
-                >
-                  <input
-                    type="text"
-                    value={draft[k]}
-                    onChange={(e) => setField(k, e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
+                  value={draft[k]}
+                  onChange={(v) => setField(k, v)}
+                  max={HEADLINE_MAX}
+                />
               ))}
             </FieldGroup>
-            <Field label="Subheadline">
-              <textarea
-                value={draft.subheadline}
-                onChange={(e) => setField('subheadline', e.target.value)}
-                rows={2}
-                className={inputCls}
-              />
-            </Field>
+            <BilingualField
+              label="Subheadline"
+              value={draft.subheadline}
+              onChange={(v) => setField('subheadline', v)}
+              multiline
+              rows={2}
+            />
             <FieldGroup label="Call to action">
-              <div className="grid grid-cols-2 gap-3">
-                <Field label="Label">
-                  <input
-                    type="text"
-                    value={draft.cta_label}
-                    onChange={(e) => setField('cta_label', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-                <Field label="Link">
-                  <input
-                    type="text"
-                    value={draft.cta_href}
-                    onChange={(e) => setField('cta_href', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
-              </div>
+              <BilingualField
+                label="Label"
+                value={draft.cta_label}
+                onChange={(v) => setField('cta_label', v)}
+              />
+              <Field label="Link">
+                <input
+                  type="text"
+                  value={draft.cta_href}
+                  onChange={(e) => setField('cta_href', e.target.value)}
+                  className={inputCls}
+                />
+              </Field>
             </FieldGroup>
           </Card>
 
@@ -177,9 +166,24 @@ export default function FaqEditor({ initial, hasDraft: initialHasDraft }: Props)
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-            <span className="text-xs text-gray-400">Approximate</span>
+            <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+              {LOCALES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreviewLocale(l)}
+                  aria-pressed={previewLocale === l}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 transition-colors',
+                    previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                  )}
+                >
+                  {LOCALE_LABELS[l]}
+                </button>
+              ))}
+            </div>
           </div>
-          <FaqPreview content={draft} />
+          <FaqPreview content={draft} locale={previewLocale} />
         </div>
       </div>
     </div>
@@ -204,7 +208,7 @@ function ItemAccordion({
       <div className="flex items-center gap-2 px-3 py-2 bg-gray-50/50">
         <button type="button" onClick={onToggle} className="flex items-center gap-2 flex-1 min-w-0 text-left">
           {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
-          <span className="text-sm font-semibold text-gray-900 truncate">{item.q}</span>
+          <span className="text-sm font-semibold text-gray-900 truncate">{resolveLocalized(item.q, 'en')}</span>
         </button>
         <div className="flex items-center gap-0.5 shrink-0">
           <IconBtn onClick={onMoveUp} disabled={index === 0} aria-label="Move up"><ArrowUp className="w-3.5 h-3.5" /></IconBtn>
@@ -215,22 +219,20 @@ function ItemAccordion({
 
       {isOpen && (
         <div className="p-4 space-y-3 border-t border-gray-100">
-          <Field label="Question" hint={<CharCount value={item.q} max={QUESTION_MAX} />}>
-            <input
-              type="text"
-              value={item.q}
-              onChange={(e) => onChange({ q: e.target.value })}
-              className={inputCls}
-            />
-          </Field>
-          <Field label="Answer" hint={<CharCount value={item.a} max={ANSWER_MAX} />}>
-            <textarea
-              value={item.a}
-              onChange={(e) => onChange({ a: e.target.value })}
-              rows={4}
-              className={inputCls}
-            />
-          </Field>
+          <BilingualField
+            label="Question"
+            value={item.q}
+            onChange={(v) => onChange({ q: v })}
+            max={QUESTION_MAX}
+          />
+          <BilingualField
+            label="Answer"
+            value={item.a}
+            onChange={(v) => onChange({ a: v })}
+            multiline
+            rows={4}
+            max={ANSWER_MAX}
+          />
         </div>
       )}
     </div>
@@ -299,33 +301,22 @@ function Field({ label, children, hint }: { label: string; children: React.React
   )
 }
 
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span className={cn('tabular-nums font-medium', over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400')}>
-      {len}/{max}
-    </span>
-  )
-}
-
 const inputCls =
   'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
 
-function FaqPreview({ content }: { content: FaqContent }) {
+function FaqPreview({ content, locale }: { content: FaqContent; locale: Locale }) {
   const [openIdx, setOpenIdx] = useState<number | null>(0)
   return (
     <div className="space-y-4">
       <div>
-        <span className="text-[#C9A0DC] text-[9px] font-bold uppercase tracking-widest">{content.eyebrow}</span>
+        <span className="text-[#C9A0DC] text-[9px] font-bold uppercase tracking-widest">{resolveLocalized(content.eyebrow, locale)}</span>
         <h2 className="text-2xl font-black uppercase tracking-tighter leading-[0.9] mt-1 text-[#1A1A1A]">
-          {content.headline_line_1}<br />{content.headline_line_2}<br />{content.headline_line_3}
+          {resolveLocalized(content.headline_line_1, locale)}<br />{resolveLocalized(content.headline_line_2, locale)}<br />{resolveLocalized(content.headline_line_3, locale)}
         </h2>
         <div className="w-8 h-1 bg-[#C9A0DC] rounded-full my-2" />
-        <p className="text-[10px] text-gray-500 leading-relaxed">{content.subheadline}</p>
+        <p className="text-[10px] text-gray-500 leading-relaxed">{resolveLocalized(content.subheadline, locale)}</p>
         <button className="mt-2 inline-flex items-center gap-2 bg-[#1A1A1A] text-white text-[10px] font-bold px-3 py-1.5 rounded-full">
-          {content.cta_label}
+          {resolveLocalized(content.cta_label, locale)}
           <span className="w-3 h-3 rounded-full bg-[#C9A0DC] flex items-center justify-center text-[#1A1A1A] text-[8px] leading-none">→</span>
         </button>
       </div>
@@ -340,7 +331,7 @@ function FaqPreview({ content }: { content: FaqContent }) {
                 className="w-full flex items-center justify-between py-3 text-left gap-3 group"
               >
                 <span className={cn('text-xs font-bold leading-snug', open ? 'text-[#1A1A1A]' : 'text-gray-600 group-hover:text-[#1A1A1A]')}>
-                  {it.q}
+                  {resolveLocalized(it.q, locale)}
                 </span>
                 <span className={cn('shrink-0 text-base font-black leading-none transition-transform', open ? 'text-[#C9A0DC] rotate-45' : 'text-gray-400')}>
                   +
@@ -348,7 +339,7 @@ function FaqPreview({ content }: { content: FaqContent }) {
               </button>
               {open && (
                 <p className="pb-3 text-[10px] text-gray-500 font-medium leading-relaxed">
-                  {it.a}
+                  {resolveLocalized(it.a, locale)}
                 </p>
               )}
             </div>

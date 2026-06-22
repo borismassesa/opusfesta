@@ -10,12 +10,14 @@ import { FieldLabel, TextArea, TextInput } from '@/components/onboard/FormField'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { LANGUAGES } from '@/lib/onboarding/languages'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 const MIN_BIO = 80
 
 export default function AboutPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
+  const { t, tn } = useOnboardT()
   const category = findCategory(draft.categoryId)
 
   useEffect(() => {
@@ -50,31 +52,31 @@ export default function AboutPage() {
       backHref="/onboard/profile/markets"
     >
       <OnboardHeading
-        title="Tell couples about your work"
-        description="This is the first thing couples will read on your storefront. Be specific about what makes your work yours. Couples decide quickly."
+        title={t('details.about.title')}
+        description={t('details.about.subtitle')}
       />
 
       <div className="space-y-8 max-w-3xl">
         <div>
-          <FieldLabel required>About your business</FieldLabel>
+          <FieldLabel required>{t('details.about.bio.label')}</FieldLabel>
           <TextArea
-            placeholder="e.g. Editorial documentary photographer that captures atmosphere, not just moments. Based in Dar es Salaam, available across East Africa."
+            placeholder={t('details.about.bio.placeholder')}
             value={draft.bio}
             onChange={(e) => update({ bio: e.target.value })}
             rows={6}
             hint={
               bioLength < MIN_BIO
-                ? `${MIN_BIO - bioLength} more character${MIN_BIO - bioLength === 1 ? '' : 's'} to go (min ${MIN_BIO}).`
-                : `${bioLength} characters. Looking good.`
+                ? tn('details.about.bio.hint_more', MIN_BIO - bioLength, { min: MIN_BIO })
+                : t('details.about.bio.hint_ok', { n: bioLength })
             }
           />
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4 max-w-xl">
           <div>
-            <FieldLabel required>Years in business</FieldLabel>
+            <FieldLabel required>{t('details.about.years.label')}</FieldLabel>
             <TextInput
-              placeholder="e.g. 11"
+              placeholder={t('details.about.years.placeholder')}
               inputMode="numeric"
               value={draft.yearsInBusiness}
               onChange={(e) =>
@@ -85,8 +87,8 @@ export default function AboutPage() {
         </div>
 
         <div>
-          <FieldLabel required>Languages spoken with clients</FieldLabel>
-          <p className="text-xs text-gray-500 -mt-1 mb-3">Select all that apply.</p>
+          <FieldLabel required>{t('details.about.languages.label')}</FieldLabel>
+          <p className="text-xs text-gray-500 -mt-1 mb-3">{t('common.select_all_that_apply')}</p>
           <div className="grid sm:grid-cols-2 gap-3">
             {LANGUAGES.map((lang) => (
               <OptionCard
@@ -103,7 +105,7 @@ export default function AboutPage() {
 
       <div className="mt-10">
         <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          Next step
+          {t('common.next_step')}
         </PrimaryButton>
       </div>
     </OnboardShell>

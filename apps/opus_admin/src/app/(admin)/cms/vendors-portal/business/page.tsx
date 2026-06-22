@@ -3,7 +3,7 @@ import {
   BUSINESS_FALLBACK,
   type BusinessContent,
   type BusinessRow,
-} from '@/lib/cms/business'
+} from '@/lib/cms/vendors-portal-business'
 import BusinessEditor from './BusinessEditor'
 
 export const dynamic = 'force-dynamic'

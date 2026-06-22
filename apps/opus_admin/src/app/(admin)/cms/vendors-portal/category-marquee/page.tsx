@@ -3,7 +3,7 @@ import {
   CATEGORY_MARQUEE_FALLBACK,
   type CategoryMarqueeContent,
   type CategoryMarqueeRow,
-} from '@/lib/cms/category-marquee'
+} from '@/lib/cms/vendors-portal-category-marquee'
 import CategoryMarqueeEditor from './CategoryMarqueeEditor'
 
 export const dynamic = 'force-dynamic'

@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { AlertCircle, RotateCw } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 export default function CategoryPageError({
   error,
@@ -12,6 +13,8 @@ export default function CategoryPageError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  const { t } = useOnboardT()
+
   useEffect(() => {
     console.error('[vendors_portal] onboarding category page error:', error)
   }, [error])
@@ -20,7 +23,7 @@ export default function CategoryPageError({
     <div className="min-h-screen bg-white text-gray-900">
       <header className="bg-white border-b border-gray-100">
         <div className="px-6 lg:px-12 py-4 flex items-center">
-          <Link href="/" aria-label="OpusFesta home" className="shrink-0">
+          <Link href="/" aria-label={t('stepper.aria.home')} className="shrink-0">
             <Logo className="h-7 w-auto text-gray-900" />
           </Link>
         </div>
@@ -35,10 +38,10 @@ export default function CategoryPageError({
               </div>
               <div className="min-w-0 flex-1">
                 <h2 className="text-base font-semibold text-gray-900">
-                  Could not load this step
+                  {t('category.error.title')}
                 </h2>
                 <p className="mt-1 text-sm text-gray-500">
-                  Something went wrong loading the category selection. Tap below to try again.
+                  {t('category.error.body')}
                 </p>
                 <button
                   type="button"
@@ -46,7 +49,7 @@ export default function CategoryPageError({
                   className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold transition-colors"
                 >
                   <RotateCw className="w-4 h-4" />
-                  Try again
+                  {t('common.try_again')}
                 </button>
               </div>
             </div>

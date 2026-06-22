@@ -8,10 +8,12 @@ import type {
   GuestStatus,
   WebsiteDemo,
   WebsiteTheme,
-} from '@/lib/cms/do-more'
-import { WEBSITE_THEME_OPTIONS } from '@/lib/cms/do-more'
+} from '@/lib/cms/vendors-portal-do-more'
+import { WEBSITE_THEME_OPTIONS } from '@/lib/cms/vendors-portal-do-more'
 import { uploadCmsMedia } from '@/lib/cms/upload-client'
 import { cn } from '@/lib/utils'
+import { BilingualField } from '@/components/cms/BilingualField'
+import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardDoMoreDraft,
@@ -28,6 +30,7 @@ export default function DoMoreEditor({ initial, hasDraft: initialHasDraft }: Pro
   const [hasDraft, setHasDraft] = useState(initialHasDraft)
   const [pending, startTransition] = useTransition()
   const [message, setMessage] = useState<string | null>(null)
+  const [previewLocale, setPreviewLocale] = useState<Locale>('en')
   const [openWebsiteId, setOpenWebsiteId] = useState<string | null>(initial.websites[0]?.id ?? null)
   const { bind, unbind } = useEditorActions()
 
@@ -142,38 +145,28 @@ export default function DoMoreEditor({ initial, hasDraft: initialHasDraft }: Pro
           <Card title="Section header">
             <FieldGroup label="Headline (3 lines)">
               {(['headline_line_1', 'headline_line_2', 'headline_line_3'] as const).map((k, i) => (
-                <Field
+                <BilingualField
                   key={k}
                   label={`Line ${i + 1}`}
-                  hint={<CharCount value={draft[k]} max={HEADLINE_MAX} />}
-                >
-                  <input
-                    type="text"
-                    value={draft[k]}
-                    onChange={(e) => setField(k, e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
+                  value={draft[k]}
+                  onChange={(v) => setField(k, v)}
+                  max={HEADLINE_MAX}
+                />
               ))}
             </FieldGroup>
-            <Field label="Side description">
-              <textarea
-                value={draft.side_description}
-                onChange={(e) => setField('side_description', e.target.value)}
-                rows={3}
-                className={inputCls}
-              />
-            </Field>
+            <BilingualField
+              label="Side description"
+              value={draft.side_description}
+              onChange={(v) => setField('side_description', v)}
+              multiline
+            />
             <FieldGroup label="Section CTA">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Label">
-                  <input
-                    type="text"
-                    value={draft.cta_label}
-                    onChange={(e) => setField('cta_label', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
+                <BilingualField
+                  label="Label"
+                  value={draft.cta_label}
+                  onChange={(v) => setField('cta_label', v)}
+                />
                 <Field label="Link">
                   <input
                     type="text"
@@ -188,32 +181,25 @@ export default function DoMoreEditor({ initial, hasDraft: initialHasDraft }: Pro
 
           {/* Websites card */}
           <Card title="Wedding websites card" count={draft.websites.length}>
-            <Field label="Card title">
-              <input
-                type="text"
-                value={draft.websites_title}
-                onChange={(e) => setField('websites_title', e.target.value)}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Card description">
-              <textarea
-                value={draft.websites_description}
-                onChange={(e) => setField('websites_description', e.target.value)}
-                rows={2}
-                className={inputCls}
-              />
-            </Field>
+            <BilingualField
+              label="Card title"
+              value={draft.websites_title}
+              onChange={(v) => setField('websites_title', v)}
+            />
+            <BilingualField
+              label="Card description"
+              value={draft.websites_description}
+              onChange={(v) => setField('websites_description', v)}
+              multiline
+              rows={2}
+            />
             <FieldGroup label="Card CTA">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Label">
-                  <input
-                    type="text"
-                    value={draft.websites_cta}
-                    onChange={(e) => setField('websites_cta', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
+                <BilingualField
+                  label="Label"
+                  value={draft.websites_cta}
+                  onChange={(v) => setField('websites_cta', v)}
+                />
                 <Field label="Link">
                   <input
                     type="text"
@@ -254,32 +240,25 @@ export default function DoMoreEditor({ initial, hasDraft: initialHasDraft }: Pro
 
           {/* Guests card */}
           <Card title="Guest list card" count={draft.guests.length}>
-            <Field label="Card title">
-              <input
-                type="text"
-                value={draft.guests_title}
-                onChange={(e) => setField('guests_title', e.target.value)}
-                className={inputCls}
-              />
-            </Field>
-            <Field label="Card description">
-              <textarea
-                value={draft.guests_description}
-                onChange={(e) => setField('guests_description', e.target.value)}
-                rows={2}
-                className={inputCls}
-              />
-            </Field>
+            <BilingualField
+              label="Card title"
+              value={draft.guests_title}
+              onChange={(v) => setField('guests_title', v)}
+            />
+            <BilingualField
+              label="Card description"
+              value={draft.guests_description}
+              onChange={(v) => setField('guests_description', v)}
+              multiline
+              rows={2}
+            />
             <FieldGroup label="Card CTA">
               <div className="grid grid-cols-2 gap-3">
-                <Field label="Label">
-                  <input
-                    type="text"
-                    value={draft.guests_cta}
-                    onChange={(e) => setField('guests_cta', e.target.value)}
-                    className={inputCls}
-                  />
-                </Field>
+                <BilingualField
+                  label="Label"
+                  value={draft.guests_cta}
+                  onChange={(v) => setField('guests_cta', v)}
+                />
                 <Field label="Link">
                   <input
                     type="text"
@@ -304,16 +283,14 @@ export default function DoMoreEditor({ initial, hasDraft: initialHasDraft }: Pro
                   </Field>
                 ))}
               </div>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 gap-3">
                 {(['guests_label_invited', 'guests_label_confirmed', 'guests_label_pending', 'guests_label_declined'] as const).map((k) => (
-                  <Field key={k} label={`${k.split('_').slice(-1)[0]} label`}>
-                    <input
-                      type="text"
-                      value={draft[k]}
-                      onChange={(e) => setField(k, e.target.value)}
-                      className={cn(inputCls, 'text-xs')}
-                    />
-                  </Field>
+                  <BilingualField
+                    key={k}
+                    label={`${k.split('_').slice(-1)[0]} label`}
+                    value={draft[k]}
+                    onChange={(v) => setField(k, v)}
+                  />
                 ))}
               </div>
             </FieldGroup>
@@ -359,9 +336,24 @@ export default function DoMoreEditor({ initial, hasDraft: initialHasDraft }: Pro
         <div className="bg-white border border-gray-100 rounded-2xl p-6 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)]">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-[15px] font-semibold text-gray-900">Live preview</h3>
-            <span className="text-xs text-gray-400">Approximate</span>
+            <div className="inline-flex items-center rounded-full border border-gray-200 p-0.5 text-[11px] font-semibold">
+              {LOCALES.map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  onClick={() => setPreviewLocale(l)}
+                  aria-pressed={previewLocale === l}
+                  className={cn(
+                    'rounded-full px-2.5 py-0.5 transition-colors',
+                    previewLocale === l ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                  )}
+                >
+                  {LOCALE_LABELS[l]}
+                </button>
+              ))}
+            </div>
           </div>
-          <DoMorePreview content={draft} />
+          <DoMorePreview content={draft} locale={previewLocale} />
         </div>
       </div>
     </div>
@@ -386,7 +378,7 @@ function WebsiteAccordion({
       <div className="flex items-center gap-2 px-3 py-2 bg-gray-50/50">
         <button type="button" onClick={onToggle} className="flex items-center gap-2 flex-1 min-w-0 text-left">
           {isOpen ? <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronRight className="w-4 h-4 text-gray-400 shrink-0" />}
-          <span className="text-sm font-semibold text-gray-900 truncate">{website.name}</span>
+          <span className="text-sm font-semibold text-gray-900 truncate">{resolveLocalized(website.name, 'en') || 'Untitled'}</span>
           <span className="text-xs text-gray-400 truncate">· {website.theme}</span>
         </button>
         <div className="flex items-center gap-0.5 shrink-0">
@@ -398,14 +390,14 @@ function WebsiteAccordion({
       {isOpen && (
         <div className="p-3 space-y-3 border-t border-gray-100">
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Couple name"><input type="text" value={website.name} onChange={(e) => onChange({ name: e.target.value })} className={inputCls} /></Field>
-            <Field label="Initials"><input type="text" value={website.initials} onChange={(e) => onChange({ initials: e.target.value })} className={inputCls} /></Field>
+            <BilingualField label="Couple name" value={website.name} onChange={(v) => onChange({ name: v })} />
+            <BilingualField label="Initials" value={website.initials} onChange={(v) => onChange({ initials: v })} />
             <Field label="URL"><input type="text" value={website.url} onChange={(e) => onChange({ url: e.target.value })} className={inputCls} /></Field>
-            <Field label="Date"><input type="text" value={website.date} onChange={(e) => onChange({ date: e.target.value })} className={inputCls} /></Field>
-            <Field label="Location (full)"><input type="text" value={website.location} onChange={(e) => onChange({ location: e.target.value })} className={inputCls} /></Field>
-            <Field label="Venue"><input type="text" value={website.venue} onChange={(e) => onChange({ venue: e.target.value })} className={inputCls} /></Field>
-            <Field label="Venue city"><input type="text" value={website.venue_city} onChange={(e) => onChange({ venue_city: e.target.value })} className={inputCls} /></Field>
-            <Field label="Countdown label"><input type="text" value={website.countdown_label ?? ''} onChange={(e) => onChange({ countdown_label: e.target.value })} className={inputCls} placeholder="Days to go" /></Field>
+            <BilingualField label="Date" value={website.date} onChange={(v) => onChange({ date: v })} />
+            <BilingualField label="Location (full)" value={website.location} onChange={(v) => onChange({ location: v })} />
+            <BilingualField label="Venue" value={website.venue} onChange={(v) => onChange({ venue: v })} />
+            <BilingualField label="Venue city" value={website.venue_city} onChange={(v) => onChange({ venue_city: v })} />
+            <BilingualField label="Countdown label" value={website.countdown_label} onChange={(v) => onChange({ countdown_label: v })} placeholder="Days to go" />
           </div>
           <Field label="Theme">
             <div className="grid grid-cols-3 gap-2">
@@ -459,53 +451,51 @@ function GuestRow({
   }, [guest.image_url])
 
   return (
-    <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg border border-gray-100 hover:bg-gray-50 group">
-      <button
-        type="button"
-        onClick={() => fileRef.current?.click()}
-        className="w-9 h-9 rounded-full overflow-hidden bg-gray-100 border border-gray-200 shrink-0 relative group/avatar"
-        title="Click to upload new avatar"
-      >
-        {guest.image_url && !errored ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img key={guest.image_url} src={guest.image_url} alt="" onError={() => setErrored(true)} className="w-full h-full object-cover" />
-        ) : (
-          <span className="absolute inset-0 flex items-center justify-center text-[8px] text-gray-400">No img</span>
-        )}
-        <span className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
-          <Upload className="w-3 h-3 text-white" />
-        </span>
-      </button>
-      <input
-        ref={fileRef}
-        type="file"
-        accept="image/*"
-        hidden
-        onChange={(e) => {
-          const f = e.target.files?.[0]
-          if (f) { onUpload(f); setErrored(false) }
-        }}
-      />
-      <input
-        type="text"
-        value={guest.name}
-        onChange={(e) => onChange({ name: e.target.value })}
-        className="flex-1 min-w-0 px-2 py-1.5 bg-transparent border-0 text-sm text-gray-900 focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#C9A0DC] rounded"
-      />
-      <select
-        value={guest.status}
-        onChange={(e) => onChange({ status: e.target.value as GuestStatus })}
-        className={cn(inputCls, 'w-auto text-xs py-1 pr-6 shrink-0')}
-      >
-        <option value="Confirmed">Confirmed</option>
-        <option value="Pending">Pending</option>
-        <option value="Declined">Declined</option>
-      </select>
-      <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
-        <IconBtn onClick={onMoveUp} disabled={index === 0} aria-label="Move up"><ArrowUp className="w-3.5 h-3.5" /></IconBtn>
-        <IconBtn onClick={onMoveDown} disabled={index === total - 1} aria-label="Move down"><ArrowDown className="w-3.5 h-3.5" /></IconBtn>
-        <IconBtn onClick={onRemove} aria-label="Remove" danger><Trash2 className="w-3.5 h-3.5" /></IconBtn>
+    <div className="px-2 py-2 rounded-lg border border-gray-100 hover:bg-gray-50 group space-y-2">
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="w-9 h-9 rounded-full overflow-hidden bg-gray-100 border border-gray-200 shrink-0 relative group/avatar"
+          title="Click to upload new avatar"
+        >
+          {guest.image_url && !errored ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={guest.image_url} src={guest.image_url} alt="" onError={() => setErrored(true)} className="w-full h-full object-cover" />
+          ) : (
+            <span className="absolute inset-0 flex items-center justify-center text-[8px] text-gray-400">No img</span>
+          )}
+          <span className="absolute inset-0 bg-black/40 opacity-0 group-hover/avatar:opacity-100 transition-opacity flex items-center justify-center">
+            <Upload className="w-3 h-3 text-white" />
+          </span>
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          hidden
+          onChange={(e) => {
+            const f = e.target.files?.[0]
+            if (f) { onUpload(f); setErrored(false) }
+          }}
+        />
+        <span className="flex-1 min-w-0 text-xs font-semibold text-gray-600">Guest {index + 1}</span>
+        <select
+          value={guest.status}
+          onChange={(e) => onChange({ status: e.target.value as GuestStatus })}
+          className={cn(inputCls, 'w-auto text-xs py-1 pr-6 shrink-0')}
+        >
+          <option value="Confirmed">Confirmed</option>
+          <option value="Pending">Pending</option>
+          <option value="Declined">Declined</option>
+        </select>
+        <div className="flex items-center gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+          <IconBtn onClick={onMoveUp} disabled={index === 0} aria-label="Move up"><ArrowUp className="w-3.5 h-3.5" /></IconBtn>
+          <IconBtn onClick={onMoveDown} disabled={index === total - 1} aria-label="Move down"><ArrowDown className="w-3.5 h-3.5" /></IconBtn>
+          <IconBtn onClick={onRemove} aria-label="Remove" danger><Trash2 className="w-3.5 h-3.5" /></IconBtn>
+        </div>
       </div>
+      <BilingualField label="Name" value={guest.name} onChange={(v) => onChange({ name: v })} />
     </div>
   )
 }
@@ -572,40 +562,29 @@ function Field({ label, children, hint }: { label: string; children: React.React
   )
 }
 
-function CharCount({ value, max }: { value: string; max: number }) {
-  const len = (value ?? '').length
-  const over = len > max
-  const near = !over && len > max * 0.85
-  return (
-    <span className={cn('tabular-nums font-medium', over ? 'text-red-500' : near ? 'text-amber-600' : 'text-gray-400')}>
-      {len}/{max}
-    </span>
-  )
-}
-
 const inputCls =
   'w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#C9A0DC] focus:border-transparent transition-all'
 
-function DoMorePreview({ content }: { content: DoMoreContent }) {
+function DoMorePreview({ content, locale }: { content: DoMoreContent; locale: Locale }) {
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-2xl font-black uppercase tracking-tighter leading-[0.9] text-[#1A1A1A]">
-          {content.headline_line_1}<br />
-          {content.headline_line_2}<br />
-          {content.headline_line_3}
+          {resolveLocalized(content.headline_line_1, locale)}<br />
+          {resolveLocalized(content.headline_line_2, locale)}<br />
+          {resolveLocalized(content.headline_line_3, locale)}
         </h2>
-        <p className="text-xs text-gray-500 mt-2">{content.side_description}</p>
+        <p className="text-xs text-gray-500 mt-2">{resolveLocalized(content.side_description, locale)}</p>
       </div>
 
       <div className="grid grid-cols-1 gap-3">
         <div className="bg-white border border-gray-100 rounded-xl p-3">
-          <h4 className="text-sm font-black mb-1">{content.websites_title}</h4>
-          <p className="text-[11px] text-gray-500 mb-2">{content.websites_description}</p>
+          <h4 className="text-sm font-black mb-1">{resolveLocalized(content.websites_title, locale)}</h4>
+          <p className="text-[11px] text-gray-500 mb-2">{resolveLocalized(content.websites_description, locale)}</p>
           <div className="flex gap-2 overflow-hidden">
             {content.websites.slice(0, 3).map((w) => (
               <div key={w.id} className="flex-1 min-w-0 rounded border border-gray-200 px-2 py-1 text-[10px]">
-                <p className="font-bold truncate">{w.name}</p>
+                <p className="font-bold truncate">{resolveLocalized(w.name, locale)}</p>
                 <p className="text-gray-400 truncate">{w.theme}</p>
               </div>
             ))}
@@ -613,16 +592,16 @@ function DoMorePreview({ content }: { content: DoMoreContent }) {
         </div>
 
         <div className="bg-[#F2F2F0] rounded-xl p-3">
-          <h4 className="text-sm font-black mb-1">{content.guests_title}</h4>
-          <p className="text-[11px] text-gray-500 mb-3">{content.guests_description}</p>
+          <h4 className="text-sm font-black mb-1">{resolveLocalized(content.guests_title, locale)}</h4>
+          <p className="text-[11px] text-gray-500 mb-3">{resolveLocalized(content.guests_description, locale)}</p>
           <div className="grid grid-cols-4 gap-1.5 mb-3">
             {[
-              { label: content.guests_label_invited, value: content.guests_total },
-              { label: content.guests_label_confirmed, value: content.guests_confirmed },
-              { label: content.guests_label_pending, value: content.guests_pending },
-              { label: content.guests_label_declined, value: content.guests_declined },
-            ].map((s) => (
-              <div key={s.label} className="bg-white rounded p-2 text-center">
+              { label: resolveLocalized(content.guests_label_invited, locale), value: content.guests_total },
+              { label: resolveLocalized(content.guests_label_confirmed, locale), value: content.guests_confirmed },
+              { label: resolveLocalized(content.guests_label_pending, locale), value: content.guests_pending },
+              { label: resolveLocalized(content.guests_label_declined, locale), value: content.guests_declined },
+            ].map((s, i) => (
+              <div key={i} className="bg-white rounded p-2 text-center">
                 <p className="text-sm font-black text-[#1A1A1A]">{s.value}</p>
                 <p className="text-[8px] text-gray-400 uppercase tracking-wider">{s.label}</p>
               </div>
@@ -633,7 +612,7 @@ function DoMorePreview({ content }: { content: DoMoreContent }) {
               <div key={g.id} className="bg-white rounded px-2 py-1 flex items-center gap-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={g.image_url} alt="" className="w-5 h-5 rounded-full object-cover" />
-                <p className="text-[10px] font-bold text-[#1A1A1A] flex-1 truncate">{g.name}</p>
+                <p className="text-[10px] font-bold text-[#1A1A1A] flex-1 truncate">{resolveLocalized(g.name, locale)}</p>
                 <span
                   className={cn(
                     'text-[9px] font-bold px-1.5 py-0.5 rounded-full',

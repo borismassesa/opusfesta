@@ -3,7 +3,7 @@ import {
   PRICING_COMPARISON_FALLBACK,
   type PricingComparisonContent,
   type PricingComparisonRow,
-} from '@/lib/cms/pricing-comparison'
+} from '@/lib/cms/vendors-portal-pricing-comparison'
 import PricingComparisonEditor from './PricingComparisonEditor'
 
 export const dynamic = 'force-dynamic'

@@ -9,10 +9,12 @@ import { PrimaryButton } from '@/components/onboard/PrimaryButton'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { getServicesForCategory } from '@/lib/onboarding/services'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 export default function ServicesPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
+  const { t } = useOnboardT()
   const category = findCategory(draft.categoryId)
   const services = useMemo(() => getServicesForCategory(draft.categoryId), [draft.categoryId])
 
@@ -38,8 +40,8 @@ export default function ServicesPage() {
       backHref="/onboard/details/about"
     >
       <OnboardHeading
-        title="Do you offer any of these special services?"
-        description="Select all that apply."
+        title={t('details.services.title')}
+        description={t('common.select_all_that_apply')}
       />
 
       <div className="grid sm:grid-cols-2 gap-3 lg:gap-4">
@@ -55,7 +57,7 @@ export default function ServicesPage() {
       </div>
 
       <div className="mt-10">
-        <PrimaryButton onClick={onNext}>Next step</PrimaryButton>
+        <PrimaryButton onClick={onNext}>{t('common.next_step')}</PrimaryButton>
       </div>
     </OnboardShell>
   )

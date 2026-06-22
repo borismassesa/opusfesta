@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
 export type FeatureIconKey =
   | 'calendar-check'
@@ -14,6 +15,8 @@ export type FeatureIconKey =
   | 'map-pin'
   | 'star'
 
+// What the render components receive: every translatable field already resolved
+// to a flat string in the active locale.
 export type ChecklistItem = {
   id: string
   label: string
@@ -42,6 +45,47 @@ export type PricingComparisonContent = {
   checklist_label: string
   checklist: ChecklistItem[]
   features: FeatureCard[]
+}
+
+// What's stored in the DB: translatable fields may be `{ en, sw }` objects (or
+// legacy plain strings). Resolved down to the flat types above at load time.
+type StoredChecklistItem = {
+  id: string
+  label: MaybeLocalized
+  weeks: MaybeLocalized
+  done: boolean
+}
+
+type StoredFeatureCard = {
+  id: string
+  icon: FeatureIconKey
+  title: MaybeLocalized
+  body: MaybeLocalized
+}
+
+type StoredPricingComparisonContent = Omit<
+  PricingComparisonContent,
+  | 'headline_line_1'
+  | 'headline_line_2'
+  | 'subheadline'
+  | 'cta_label'
+  | 'promo_heading_line_1'
+  | 'promo_heading_line_2'
+  | 'promo_subheading'
+  | 'checklist_label'
+  | 'checklist'
+  | 'features'
+> & {
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  subheadline: MaybeLocalized
+  cta_label: MaybeLocalized
+  promo_heading_line_1: MaybeLocalized
+  promo_heading_line_2: MaybeLocalized
+  promo_subheading: MaybeLocalized
+  checklist_label: MaybeLocalized
+  checklist: StoredChecklistItem[]
+  features: StoredFeatureCard[]
 }
 
 export const PRICING_COMPARISON_FALLBACK: PricingComparisonContent = {
@@ -86,7 +130,9 @@ export const PRICING_COMPARISON_FALLBACK: PricingComparisonContent = {
   ],
 }
 
-export async function loadPricingComparisonContent(): Promise<PricingComparisonContent> {
+export async function loadPricingComparisonContent(
+  locale: Locale = DEFAULT_LOCALE
+): Promise<PricingComparisonContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return PRICING_COMPARISON_FALLBACK
   }
@@ -98,19 +144,58 @@ export async function loadPricingComparisonContent(): Promise<PricingComparisonC
       .eq('page_key', 'vendors_home')
       .eq('section_key', 'pricing-comparison')
       .maybeSingle()
-    const stored = data?.content as Partial<PricingComparisonContent> | undefined
+    const stored = data?.content as Partial<StoredPricingComparisonContent> | undefined
     if (stored) {
+      // Translatable fields are resolved to the active locale (legacy plain
+      // strings render as-is). Scalars (hrefs, image urls, icon keys, ids,
+      // done flags) pass through unchanged.
+      const checklist =
+        Array.isArray(stored.checklist) && stored.checklist.length > 0
+          ? stored.checklist.map((it) => ({
+              id: it.id,
+              label: resolveLocalized(it.label, locale),
+              weeks: resolveLocalized(it.weeks, locale),
+              done: it.done,
+            }))
+          : PRICING_COMPARISON_FALLBACK.checklist
+      const features =
+        Array.isArray(stored.features) && stored.features.length > 0
+          ? stored.features.map((f) => ({
+              id: f.id,
+              icon: f.icon,
+              title: resolveLocalized(f.title, locale),
+              body: resolveLocalized(f.body, locale),
+            }))
+          : PRICING_COMPARISON_FALLBACK.features
       return {
-        ...PRICING_COMPARISON_FALLBACK,
-        ...stored,
-        checklist:
-          Array.isArray(stored.checklist) && stored.checklist.length > 0
-            ? (stored.checklist as ChecklistItem[])
-            : PRICING_COMPARISON_FALLBACK.checklist,
-        features:
-          Array.isArray(stored.features) && stored.features.length > 0
-            ? (stored.features as FeatureCard[])
-            : PRICING_COMPARISON_FALLBACK.features,
+        headline_line_1:
+          resolveLocalized(stored.headline_line_1, locale) ||
+          PRICING_COMPARISON_FALLBACK.headline_line_1,
+        headline_line_2:
+          resolveLocalized(stored.headline_line_2, locale) ||
+          PRICING_COMPARISON_FALLBACK.headline_line_2,
+        subheadline:
+          resolveLocalized(stored.subheadline, locale) || PRICING_COMPARISON_FALLBACK.subheadline,
+        cta_label:
+          resolveLocalized(stored.cta_label, locale) || PRICING_COMPARISON_FALLBACK.cta_label,
+        cta_href: stored.cta_href ?? PRICING_COMPARISON_FALLBACK.cta_href,
+        couple_image_url:
+          stored.couple_image_url ?? PRICING_COMPARISON_FALLBACK.couple_image_url,
+        promo_image_url: stored.promo_image_url ?? PRICING_COMPARISON_FALLBACK.promo_image_url,
+        promo_heading_line_1:
+          resolveLocalized(stored.promo_heading_line_1, locale) ||
+          PRICING_COMPARISON_FALLBACK.promo_heading_line_1,
+        promo_heading_line_2:
+          resolveLocalized(stored.promo_heading_line_2, locale) ||
+          PRICING_COMPARISON_FALLBACK.promo_heading_line_2,
+        promo_subheading:
+          resolveLocalized(stored.promo_subheading, locale) ||
+          PRICING_COMPARISON_FALLBACK.promo_subheading,
+        checklist_label:
+          resolveLocalized(stored.checklist_label, locale) ||
+          PRICING_COMPARISON_FALLBACK.checklist_label,
+        checklist,
+        features,
       }
     }
     return PRICING_COMPARISON_FALLBACK

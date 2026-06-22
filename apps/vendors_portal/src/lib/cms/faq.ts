@@ -1,5 +1,8 @@
 import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { DEFAULT_LOCALE, resolveLocalized, type Locale, type MaybeLocalized } from './localized'
 
+// What the render components receive: every translatable field already resolved
+// to a flat string in the active locale.
 export type FaqItem = {
   id: string
   q: string
@@ -15,6 +18,25 @@ export type FaqContent = {
   cta_label: string
   cta_href: string
   items: FaqItem[]
+}
+
+// What's stored in the DB: translatable fields may be `{ en, sw }` objects (or
+// legacy plain strings). Resolved down to FaqContent at load time.
+type StoredFaqItem = {
+  id: string
+  q: MaybeLocalized
+  a: MaybeLocalized
+}
+
+type StoredFaqContent = {
+  eyebrow: MaybeLocalized
+  headline_line_1: MaybeLocalized
+  headline_line_2: MaybeLocalized
+  headline_line_3: MaybeLocalized
+  subheadline: MaybeLocalized
+  cta_label: MaybeLocalized
+  cta_href: string
+  items: StoredFaqItem[]
 }
 
 export const FAQ_FALLBACK: FaqContent = {
@@ -59,7 +81,7 @@ export const FAQ_FALLBACK: FaqContent = {
   ],
 }
 
-export async function loadFaqContent(): Promise<FaqContent> {
+export async function loadFaqContent(locale: Locale = DEFAULT_LOCALE): Promise<FaqContent> {
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SERVICE_ROLE_KEY) {
     return FAQ_FALLBACK
   }
@@ -71,15 +93,33 @@ export async function loadFaqContent(): Promise<FaqContent> {
       .eq('page_key', 'vendors_home')
       .eq('section_key', 'faq')
       .maybeSingle()
-    const stored = data?.content as Partial<FaqContent> | undefined
+    const stored = data?.content as Partial<StoredFaqContent> | undefined
     if (stored) {
+      const items =
+        Array.isArray(stored.items) && stored.items.length > 0
+          ? stored.items.map((it) => ({
+              id: it.id,
+              q: resolveLocalized(it.q, locale),
+              a: resolveLocalized(it.a, locale),
+            }))
+          : FAQ_FALLBACK.items
+      // Preserve the original spread-fallback semantics: a key present in the
+      // stored row wins (even when it resolves to an empty string); only a
+      // TRULY-missing key falls back to FAQ_FALLBACK. Translatable fields are
+      // resolved to the active locale (legacy plain strings render as-is).
       return {
-        ...FAQ_FALLBACK,
-        ...stored,
-        items:
-          Array.isArray(stored.items) && stored.items.length > 0
-            ? (stored.items as FaqItem[])
-            : FAQ_FALLBACK.items,
+        eyebrow: 'eyebrow' in stored ? resolveLocalized(stored.eyebrow, locale) : FAQ_FALLBACK.eyebrow,
+        headline_line_1:
+          'headline_line_1' in stored ? resolveLocalized(stored.headline_line_1, locale) : FAQ_FALLBACK.headline_line_1,
+        headline_line_2:
+          'headline_line_2' in stored ? resolveLocalized(stored.headline_line_2, locale) : FAQ_FALLBACK.headline_line_2,
+        headline_line_3:
+          'headline_line_3' in stored ? resolveLocalized(stored.headline_line_3, locale) : FAQ_FALLBACK.headline_line_3,
+        subheadline:
+          'subheadline' in stored ? resolveLocalized(stored.subheadline, locale) : FAQ_FALLBACK.subheadline,
+        cta_label: 'cta_label' in stored ? resolveLocalized(stored.cta_label, locale) : FAQ_FALLBACK.cta_label,
+        cta_href: stored.cta_href ?? FAQ_FALLBACK.cta_href,
+        items,
       }
     }
     return FAQ_FALLBACK

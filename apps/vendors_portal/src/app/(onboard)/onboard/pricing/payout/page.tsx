@@ -15,6 +15,7 @@ import {
   type PayoutEntry,
 } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
+import { useOnboardT, type TFn } from '@/lib/onboarding/strings'
 import { LIPA_NAMBA_NETWORKS, PAYOUT_OPTIONS, TZ_BANKS } from '@/lib/onboarding/payouts'
 
 const MAX_PAYOUT_METHODS = 4
@@ -23,6 +24,7 @@ export default function PayoutPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
   const category = findCategory(draft.categoryId)
+  const { t } = useOnboardT()
 
   useEffect(() => {
     if (!hydrated) return
@@ -100,14 +102,15 @@ export default function PayoutPage() {
       backHref="/onboard/pricing/policies"
     >
       <OnboardHeading
-        title="Where should we send your payouts?"
-        description="OpusFesta releases the deposit when a booking confirms and the balance after the event. Add one or more destinations — mobile money, Lipa Namba, or any TZ bank — and pick which one is primary."
+        title={t('payout.title')}
+        description={t('payout.subtitle')}
       />
 
       <div className="space-y-5 max-w-3xl">
         {entries.map((entry, index) => (
           <PayoutEntryCard
             key={entry.id}
+            t={t}
             entry={entry}
             index={index}
             canRemove={entries.length > 1}
@@ -125,30 +128,22 @@ export default function PayoutPage() {
             className="inline-flex items-center gap-2 text-sm font-semibold text-[#7E5896] hover:text-[#6B4880] transition-colors"
           >
             <Plus className="w-4 h-4" strokeWidth={2.5} />
-            Add another payout method
+            {t('payout.add_method')}
           </button>
         ) : (
           <p className="text-xs text-gray-500">
-            You can add up to {MAX_PAYOUT_METHODS} payout methods.
+            {t('payout.max_reached', { max: MAX_PAYOUT_METHODS })}
           </p>
         )}
       </div>
 
       <div className="mt-10 flex items-center gap-6 flex-wrap">
         <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          Next step
+          {t('common.next_step')}
         </PrimaryButton>
-        <WhyWeAsk title="When and how do payouts work?">
-          <p>
-            We hold each booking’s funds in escrow. The <strong>deposit</strong> is released to
-            your account within 24 hours of the couple confirming, and the <strong>balance</strong>{' '}
-            is released within 48 hours after the event.
-          </p>
-          <p>
-            Money goes to your <strong>primary</strong> method by default; the others are kept on
-            file as alternates. Mobile money payouts arrive instantly. Bank transfers take 1–2
-            business days. We never charge a payout fee. TZS in, TZS out.
-          </p>
+        <WhyWeAsk title={t('payout.why.title')}>
+          <p>{t('payout.why.body1')}</p>
+          <p>{t('payout.why.body2')}</p>
         </WhyWeAsk>
       </div>
     </OnboardShell>
@@ -156,6 +151,7 @@ export default function PayoutPage() {
 }
 
 function PayoutEntryCard({
+  t,
   entry,
   index,
   canRemove,
@@ -164,6 +160,7 @@ function PayoutEntryCard({
   onMakePrimary,
   onRemove,
 }: {
+  t: TFn
   entry: PayoutEntry
   index: number
   canRemove: boolean
@@ -181,12 +178,12 @@ function PayoutEntryCard({
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold tracking-tight text-gray-900">
-            Payout method {index + 1}
+            {t('payout.method_n', { n: index + 1 })}
           </h2>
           {entry.primary && (
             <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-[#F0DFF6] text-[#7E5896]">
               <Star className="w-2.5 h-2.5 fill-current" />
-              Primary
+              {t('payout.primary')}
             </span>
           )}
         </div>
@@ -198,27 +195,27 @@ function PayoutEntryCard({
               className="inline-flex items-center gap-1 text-xs font-semibold text-[#7E5896] hover:text-[#6B4880] transition-colors"
             >
               <Star className="w-3.5 h-3.5" />
-              Make primary
+              {t('payout.make_primary')}
             </button>
           )}
           {canRemove && (
             <button
               type="button"
               onClick={onRemove}
-              aria-label={`Remove payout method ${index + 1}`}
+              aria-label={t('payout.remove_method', { n: index + 1 })}
               className="inline-flex items-center gap-1 text-xs font-semibold text-gray-500 hover:text-rose-600 transition-colors"
             >
               <Trash2 className="w-3.5 h-3.5" />
-              Remove
+              {t('common.remove')}
             </button>
           )}
         </div>
       </div>
 
       <div>
-        <FieldLabel required>Method</FieldLabel>
+        <FieldLabel required>{t('payout.method.label')}</FieldLabel>
         <SelectInput
-          placeholder="Select a payout method"
+          placeholder={t('payout.method.placeholder')}
           value={entry.method ?? ''}
           onChange={(e) => onMethodChange((e.target.value || null) as PayoutEntry['method'])}
         >
@@ -234,9 +231,9 @@ function PayoutEntryCard({
         <>
           {isBank ? (
             <div>
-              <FieldLabel required>Bank</FieldLabel>
+              <FieldLabel required>{t('payout.bank.label')}</FieldLabel>
               <SelectInput
-                placeholder="Select bank"
+                placeholder={t('payout.bank.placeholder')}
                 value={entry.bankName}
                 onChange={(e) => onPatch({ bankName: e.target.value })}
               >
@@ -251,9 +248,9 @@ function PayoutEntryCard({
 
           {isLipaNamba ? (
             <div>
-              <FieldLabel required>Network</FieldLabel>
+              <FieldLabel required>{t('payout.network.label')}</FieldLabel>
               <SelectInput
-                placeholder="Which provider issued this Lipa Namba?"
+                placeholder={t('payout.network.placeholder')}
                 value={entry.network}
                 onChange={(e) => onPatch({ network: e.target.value })}
               >
@@ -264,8 +261,7 @@ function PayoutEntryCard({
                 ))}
               </SelectInput>
               <p className="mt-2 text-xs text-gray-500">
-                Your Lipa Namba is registered with one of these networks. Pick whichever issued
-                your merchant account.
+                {t('payout.network.hint')}
               </p>
             </div>
           ) : null}
@@ -288,28 +284,27 @@ function PayoutEntryCard({
             />
             {isLipaNamba ? (
               <p className="mt-2 text-xs text-gray-500">
-                Usually 5–7 digits. You’ll find it on your M-Pesa for Business / merchant
-                statement.
+                {t('payout.number.hint')}
               </p>
             ) : null}
           </div>
 
           <div>
-            <FieldLabel required>Account holder / business name</FieldLabel>
+            <FieldLabel required>{t('payout.holder.label')}</FieldLabel>
             <TextInput
-              placeholder="As registered with your provider"
+              placeholder={t('payout.holder.placeholder')}
               value={entry.accountName}
               onChange={(e) => onPatch({ accountName: e.target.value })}
               autoComplete="name"
             />
             <p className="mt-2 text-xs text-gray-500">
-              Must match the name registered with{' '}
-              {isBank
-                ? 'your bank'
-                : isLipaNamba
-                  ? 'your merchant account'
-                  : 'your mobile money provider'}
-              , or payouts will be rejected.
+              {t('payout.holder.hint', {
+                provider: isBank
+                  ? t('payout.provider.bank')
+                  : isLipaNamba
+                    ? t('payout.provider.merchant')
+                    : t('payout.provider.mobile'),
+              })}
             </p>
           </div>
         </>

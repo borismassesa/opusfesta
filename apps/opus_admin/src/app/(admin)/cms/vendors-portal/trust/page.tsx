@@ -1,5 +1,5 @@
 import { createSupabaseAdminClient } from '@/lib/supabase'
-import { TRUST_FALLBACK, type TrustContent, type TrustRow } from '@/lib/cms/trust'
+import { TRUST_FALLBACK, type TrustContent, type TrustRow } from '@/lib/cms/vendors-portal-trust'
 import TrustEditor from './TrustEditor'
 
 export const dynamic = 'force-dynamic'

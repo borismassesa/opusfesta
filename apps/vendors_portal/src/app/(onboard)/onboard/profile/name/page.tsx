@@ -8,10 +8,12 @@ import { PrimaryButton } from '@/components/onboard/PrimaryButton'
 import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
+import { useOnboardT } from '@/lib/onboarding/strings'
 
 export default function NamePage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
+  const { t } = useOnboardT()
   const category = findCategory(draft.categoryId)
 
   useEffect(() => {
@@ -33,30 +35,30 @@ export default function NamePage() {
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/vows"
     >
-      <OnboardHeading title="What is your name?" />
+      <OnboardHeading title={t('profile.name.title')} />
       <div className="space-y-5 max-w-xl">
         <div>
-          <FieldLabel required>First name</FieldLabel>
+          <FieldLabel required>{t('profile.name.first.label')}</FieldLabel>
           <TextInput
-            placeholder="First name"
+            placeholder={t('profile.name.first.label')}
             value={draft.firstName}
             onChange={(e) => update({ firstName: e.target.value })}
             autoComplete="given-name"
           />
         </div>
         <div>
-          <FieldLabel required>Last name</FieldLabel>
+          <FieldLabel required>{t('profile.name.last.label')}</FieldLabel>
           <TextInput
-            placeholder="Last name"
+            placeholder={t('profile.name.last.label')}
             value={draft.lastName}
             onChange={(e) => update({ lastName: e.target.value })}
             autoComplete="family-name"
           />
         </div>
         <div>
-          <FieldLabel>Business name</FieldLabel>
+          <FieldLabel>{t('profile.name.business.label')}</FieldLabel>
           <TextInput
-            placeholder="e.g. Festa Films"
+            placeholder={t('profile.name.business.placeholder')}
             value={draft.businessName}
             onChange={(e) => update({ businessName: e.target.value })}
             autoComplete="organization"
@@ -66,7 +68,7 @@ export default function NamePage() {
 
       <div className="mt-10">
         <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          Next step
+          {t('common.next_step')}
         </PrimaryButton>
       </div>
     </OnboardShell>

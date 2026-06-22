@@ -11,6 +11,7 @@ import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import { OptionCard } from '@/components/onboard/OptionCard'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
+import { useOnboardT } from '@/lib/onboarding/strings'
 import {
   CANCELLATION_OPTIONS,
   DEPOSIT_PRESETS,
@@ -22,6 +23,7 @@ export default function PoliciesPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
   const category = findCategory(draft.categoryId)
+  const { t } = useOnboardT()
 
   useEffect(() => {
     if (!hydrated) return
@@ -47,18 +49,18 @@ export default function PoliciesPage() {
       backHref="/onboard/pricing"
     >
       <OnboardHeading
-        title="Booking policies"
-        description="These show up at checkout so couples know exactly what they’re agreeing to. You can change them anytime. Existing bookings keep the policy that was active when they confirmed."
+        title={t('policies.title')}
+        description={t('policies.subtitle')}
       />
 
       <div className="space-y-12 max-w-3xl">
         {/* Deposit */}
         <section>
           <h2 className="text-base font-semibold tracking-tight text-gray-900">
-            Deposit to confirm a booking
+            {t('policies.deposit.title')}
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            How much of the package price couples pay upfront to lock in their date.
+            {t('policies.deposit.subtitle')}
           </p>
 
           <div className="mt-5 flex flex-wrap items-center gap-2 mb-4">
@@ -80,17 +82,17 @@ export default function PoliciesPage() {
           </div>
 
           <div className="max-w-xs">
-            <FieldLabel>Custom percentage</FieldLabel>
+            <FieldLabel>{t('policies.deposit.custom.label')}</FieldLabel>
             <TextInput
               inputMode="numeric"
-              placeholder="e.g. 25"
+              placeholder={t('policies.deposit.custom.placeholder')}
               value={draft.depositPercent}
               onChange={(e) =>
                 update({ depositPercent: e.target.value.replace(/[^\d]/g, '').slice(0, 3) })
               }
             />
             {!validDeposit && draft.depositPercent ? (
-              <p className="mt-2 text-xs text-rose-600">Enter a value between 5 and 100.</p>
+              <p className="mt-2 text-xs text-rose-600">{t('policies.deposit.custom.error')}</p>
             ) : null}
           </div>
         </section>
@@ -98,10 +100,10 @@ export default function PoliciesPage() {
         {/* Cancellation */}
         <section>
           <h2 className="text-base font-semibold tracking-tight text-gray-900">
-            Cancellation policy
+            {t('policies.cancellation.title')}
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            What couples get back if they cancel before the event.
+            {t('policies.cancellation.subtitle')}
           </p>
 
           <div className="mt-5 grid sm:grid-cols-2 gap-3">
@@ -136,10 +138,10 @@ export default function PoliciesPage() {
         {/* Reschedule */}
         <section>
           <h2 className="text-base font-semibold tracking-tight text-gray-900">
-            Reschedule policy
+            {t('policies.reschedule.title')}
           </h2>
           <p className="mt-1 text-sm text-gray-600">
-            What happens when a couple needs to move their date.
+            {t('policies.reschedule.subtitle')}
           </p>
 
           <div className="mt-5 grid sm:grid-cols-2 gap-3">
@@ -159,18 +161,11 @@ export default function PoliciesPage() {
 
       <div className="mt-12 flex items-center gap-6 flex-wrap">
         <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          Next step
+          {t('common.next_step')}
         </PrimaryButton>
-        <WhyWeAsk title="Why we ask about policies">
-          <p>
-            Couples want to know the rules before they pay a deposit. Vendors with clear, fair
-            policies convert significantly better, and OpusFesta uses your policies to handle
-            cancellations and refunds automatically. So you don’t have to argue.
-          </p>
-          <p>
-            Pick the level that matches your real cancellation costs. You can always update these
-            for new bookings, and existing bookings keep the policy they were created under.
-          </p>
+        <WhyWeAsk title={t('policies.why.title')}>
+          <p>{t('policies.why.body1')}</p>
+          <p>{t('policies.why.body2')}</p>
         </WhyWeAsk>
       </div>
     </OnboardShell>

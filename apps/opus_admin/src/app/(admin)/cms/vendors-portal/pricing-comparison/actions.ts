@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { revalidateVendorsPortal } from '@/lib/revalidate'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { requirePermission } from '@/lib/admin-auth'
-import type { PricingComparisonContent } from '@/lib/cms/pricing-comparison'
+import type { PricingComparisonContent } from '@/lib/cms/vendors-portal-pricing-comparison'
 
 const PAGE_KEY = 'vendors_home'
 const SECTION_KEY = 'pricing-comparison'

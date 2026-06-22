@@ -13,11 +13,13 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
+import { LocaleToggle } from '@/components/LocaleToggle'
 import { cn } from '@/lib/utils'
 import { OnboardHeading } from '@/components/onboard/OnboardHeading'
 import { PrimaryButton } from '@/components/onboard/PrimaryButton'
 import { WhyWeAsk } from '@/components/onboard/WhyWeAsk'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
+import { useOnboardT } from '@/lib/onboarding/strings'
 import { VENDOR_VOWS } from '@/lib/onboarding/vows'
 
 // Per-vow icon + tile tone. Keyed by the vow id so the data file stays a plain
@@ -37,6 +39,7 @@ const DEFAULT_VOW_STYLE = { icon: Heart, tile: 'bg-gray-100 text-gray-600' }
 export default function VowsPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
+  const { t } = useOnboardT()
 
   useEffect(() => {
     if (hydrated && !draft.categoryId) router.replace('/onboard/category')
@@ -50,18 +53,19 @@ export default function VowsPage() {
   return (
     <div className="min-h-screen bg-white text-gray-900">
       <header className="bg-white border-b border-gray-100">
-        <div className="px-6 lg:px-12 py-4 flex items-center">
-          <Link href="/" aria-label="OpusFesta home" className="shrink-0">
+        <div className="px-6 lg:px-12 py-4 flex items-center justify-between">
+          <Link href="/" aria-label={t('stepper.aria.home')} className="shrink-0">
             <Logo className="h-7 w-auto text-gray-900" />
           </Link>
+          <LocaleToggle />
         </div>
       </header>
 
       <main className="px-6 lg:px-12 py-10 lg:py-14">
         <div className="max-w-3xl mx-auto pb-24">
           <OnboardHeading
-            title="Before we start, meet our Vendor Vows"
-            description="As an OpusFesta vendor, you pledge to uphold these values:"
+            title={t('vows.title')}
+            description={t('vows.subtitle')}
           />
 
           <ul className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
@@ -93,16 +97,10 @@ export default function VowsPage() {
           </ul>
 
           <div className="mt-10 flex items-center gap-6 flex-wrap">
-            <PrimaryButton onClick={accept}>Say “I do”</PrimaryButton>
-            <WhyWeAsk title="Why the Vendor Vows?">
-              <p>
-                The Vendor Vows are how OpusFesta keeps the marketplace a respectful, trusted space
-                for every couple in Tanzania.
-              </p>
-              <p>
-                Couples can see which vendors have signed the vows, and we may remove vendors who
-                don’t uphold them. Signing is a one-time pledge. You won’t see this screen again.
-              </p>
+            <PrimaryButton onClick={accept}>{t('vows.cta')}</PrimaryButton>
+            <WhyWeAsk title={t('vows.why.title')}>
+              <p>{t('vows.why.body1')}</p>
+              <p>{t('vows.why.body2')}</p>
             </WhyWeAsk>
           </div>
         </div>
