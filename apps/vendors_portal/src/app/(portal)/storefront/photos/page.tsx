@@ -27,6 +27,7 @@ import {
   loadStorefrontPhotos,
   savePhotos,
   uploadStorefrontPhoto,
+  type StorefrontPhotos,
 } from '../sections/actions'
 import { compressImage } from '@/lib/compress-image'
 
@@ -105,6 +106,27 @@ function newId() {
   return `p_${Math.random().toString(36).slice(2, 9)}`
 }
 
+// Derive the persisted shape from editor state. Cover slot 0 is the
+// cover_image; the remaining cover slots + every portfolio photo go into
+// gallery_urls. Only http(s) URLs survive (blob: previews from in-flight
+// uploads are dropped). Shared by the autosave effect and the manual Save.
+function buildPhotosPayload(
+  covers: CoverSlot[],
+  photos: Photo[],
+  videos: VideoReel[],
+): StorefrontPhotos {
+  const coverUrls = covers
+    .filter((c): c is { id: string; url: string } => !!c)
+    .map((c) => c.url)
+  const portfolioUrls = photos.map((p) => p.url)
+  const videoUrls = videos.map((v) => v.url).filter((u) => /^https?:\/\//i.test(u))
+  return {
+    coverImage: coverUrls[0] ?? null,
+    galleryUrls: Array.from(new Set([...coverUrls.slice(1), ...portfolioUrls])),
+    videoUrls,
+  }
+}
+
 export default function PhotosPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
@@ -122,6 +144,10 @@ export default function PhotosPage() {
   // this page sees the gallery they previously saved. Without this, the
   // page reads empty on every reload and the vendor has to re-upload.
   const [hydratedFromDb, setHydratedFromDb] = useState(false)
+  // Signature of the gallery state last persisted to the DB. Seeded from the
+  // hydrated DB state so the autosave effect doesn't immediately re-write what
+  // it just loaded; updated on every successful save (auto or manual).
+  const lastPersistedRef = useRef<string | null>(null)
   useEffect(() => {
     let cancelled = false
     void (async () => {
@@ -141,21 +167,22 @@ export default function PhotosPage() {
         remainingCovers.forEach((url, i) => {
           restoredCovers[i + 1] = { id: newId(), url }
         })
+        const restoredPhotos: Photo[] = portfolioFromDb.map((url) => ({
+          id: newId(),
+          url,
+          caption: '',
+        }))
+        const restoredVideos: VideoReel[] = videoUrls.map((url) => ({
+          id: newId(),
+          kind: isEmbedUrl(url) ? 'embed' : 'upload',
+          url,
+          title: '',
+        }))
         setCovers(restoredCovers)
-        setPhotos(
-          portfolioFromDb.map((url) => ({
-            id: newId(),
-            url,
-            caption: '',
-          })),
-        )
-        setVideos(
-          videoUrls.map((url) => ({
-            id: newId(),
-            kind: isEmbedUrl(url) ? 'embed' : 'upload',
-            url,
-            title: '',
-          })),
+        setPhotos(restoredPhotos)
+        setVideos(restoredVideos)
+        lastPersistedRef.current = JSON.stringify(
+          buildPhotosPayload(restoredCovers, restoredPhotos, restoredVideos),
         )
       }
       setHydratedFromDb(true)
@@ -233,6 +260,40 @@ export default function PhotosPage() {
   const [saving, startSaving] = useTransition()
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveOk, setSaveOk] = useState(false)
+
+  // Auto-persist the gallery whenever it changes after hydration, so a vendor
+  // who uploads photos/videos and then navigates away WITHOUT clicking "Save
+  // photos" doesn't lose them (the original report: uploads landed in storage
+  // but the vendor row stayed null). Waits for in-flight uploads to finish so
+  // a half-uploaded set is never persisted, debounces bursts, and skips writes
+  // that match what's already saved.
+  useEffect(() => {
+    if (!hydratedFromDb) return
+    if (portfolioUploads > 0 || videoUploads > 0 || uploadingCovers.size > 0) return
+    const payload = buildPhotosPayload(covers, photos, videos)
+    const sig = JSON.stringify(payload)
+    if (sig === lastPersistedRef.current) return
+    const handle = setTimeout(() => {
+      lastPersistedRef.current = sig
+      void savePhotos(payload).then((res) => {
+        if (!res.ok) {
+          setSaveError(res.error)
+          lastPersistedRef.current = null // allow a retry on the next change
+        } else {
+          setSaveOk(true)
+        }
+      })
+    }, 1000)
+    return () => clearTimeout(handle)
+  }, [
+    covers,
+    photos,
+    videos,
+    hydratedFromDb,
+    portfolioUploads,
+    videoUploads,
+    uploadingCovers,
+  ])
 
   if (!hydrated) {
     return <div className="p-8" aria-hidden />
@@ -623,26 +684,15 @@ export default function PhotosPage() {
   const onSave = () => {
     setSaveError(null)
     setSaveOk(false)
+    const payload = buildPhotosPayload(covers, photos, videos)
     startSaving(async () => {
-      const coverUrls = covers.filter((c): c is { id: string; url: string } => !!c).map((c) => c.url)
-      const portfolioUrls = photos.map((p) => p.url)
-      // Skip any video that's still on a blob: URL — those uploads either
-      // failed or are still in flight and would be rejected by the
-      // server's http(s) check anyway.
-      const videoUrls = videos
-        .map((v) => v.url)
-        .filter((u) => /^https?:\/\//i.test(u))
-      const res = await savePhotos({
-        coverImage: coverUrls[0] ?? null,
-        // Slots 2-4 of the cover carousel + every portfolio photo all land
-        // in `gallery_urls` on the public profile. Dedupe just in case.
-        galleryUrls: Array.from(new Set([...coverUrls.slice(1), ...portfolioUrls])),
-        videoUrls,
-      })
+      const res = await savePhotos(payload)
       if (!res.ok) {
         setSaveError(res.error)
         return
       }
+      // Keep the autosave signature in sync so it doesn't immediately re-fire.
+      lastPersistedRef.current = JSON.stringify(payload)
       setSaveOk(true)
     })
   }
