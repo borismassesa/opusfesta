@@ -45,11 +45,16 @@ WHERE id IN (
 
 -- ---------------------------------------------------------------------------
 -- STEP 1 — delete the storage objects (the actual ID/selfie images) from the
--- private `vendor_verification` bucket. NOTE: deleting storage.objects rows is
--- the SQL-side removal; if your project also needs the physical file purged
--- from the storage backend, prefer the Storage API
--- (supabase.storage.from('vendor_verification').remove([...paths])). Run inside
--- the transaction below so DB rows + object rows drop atomically.
+-- private `vendor_verification` bucket.
+--
+-- ⚠️ PII WARNING: deleting rows from storage.objects removes the metadata, but
+-- it does NOT reliably purge the underlying blob from the storage backend, and
+-- any signed URL minted before deletion may still resolve until it expires.
+-- These are real people's National IDs and selfies. To actually destroy the
+-- files you MUST also call the Storage API:
+--     supabase.storage.from('vendor_verification').remove([... the 12 paths ...])
+-- Run that and confirm it returns success for all 12 paths; treat THAT as the
+-- authoritative deletion. The SQL below only keeps the metadata table in sync.
 -- ---------------------------------------------------------------------------
 
 BEGIN;
@@ -71,9 +76,13 @@ WHERE bucket_id = 'vendor_verification'
     'e637019c-1ba1-44d9-977e-21d9e70a4069/selfie_liveness/3d575a2b-7728-4d48-bd94-e31f8e57f1f7.jpg'
   );
 
--- STEP 2 — delete the 12 misattributed metadata rows.
+-- STEP 2 — delete the 12 misattributed metadata rows. The vendor_id predicate
+-- is a safety guard: if any id below is mistyped and happens to match a row on
+-- a DIFFERENT vendor, this clause makes the delete a no-op for that row instead
+-- of destroying another vendor's legitimate KYC.
 DELETE FROM vendor_verification_documents
-WHERE id IN (
+WHERE vendor_id = 'e637019c-1ba1-44d9-977e-21d9e70a4069'
+  AND id IN (
   '3a66d950-01af-45e8-b80e-155e15e9c13a',
   'a5f6148d-abe9-484d-affd-c4f9b0eb3e80',
   '83221c52-faf3-46bd-af39-c80652153fe1',
