@@ -30,7 +30,11 @@ type VendorRow = {
     whatsapp?: string | null
   } | null
   social_links: Record<string, string | null> | null
-  services_offered: Array<{ id?: string; title?: string; custom?: boolean }> | null
+  // text[] of plain title strings on the live DB; legacy rows may also hold
+  // objects or JSON-stringified objects, so accept the union.
+  services_offered:
+    | Array<string | { id?: string; title?: string; custom?: boolean }>
+    | null
   years_in_business: number | null
   onboarding_status: string
   onboarding_started_at: string | null

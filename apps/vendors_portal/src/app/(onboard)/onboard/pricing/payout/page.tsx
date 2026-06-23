@@ -274,13 +274,17 @@ function PayoutEntryCard({
               value={entry.number}
               onChange={(e) =>
                 onPatch({
-                  number:
-                    isBank || isLipaNamba
+                  number: isBank
+                    ? // Bank account numbers can contain letters — e.g. the
+                      // older CRDB format `015-2000-GGS`. Allow alphanumerics
+                      // plus spaces and dashes; only strip punctuation/symbols.
+                      e.target.value.replace(/[^a-zA-Z0-9\s-]/g, '')
+                    : isLipaNamba
                       ? e.target.value.replace(/[^\d\s-]/g, '')
                       : e.target.value.replace(/[^\d\s]/g, ''),
                 })
               }
-              inputMode={isBank || isLipaNamba ? 'numeric' : 'tel'}
+              inputMode={isBank ? 'text' : isLipaNamba ? 'numeric' : 'tel'}
             />
             {isLipaNamba ? (
               <p className="mt-2 text-xs text-gray-500">

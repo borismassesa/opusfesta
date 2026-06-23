@@ -1,10 +1,13 @@
 'use client'
 
 import { useMemo, useState, useTransition, type FormEvent } from 'react'
-import { Plus, Save, Sparkles, X } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ArrowRight, Plus, Save, Sparkles, X } from 'lucide-react'
 import { OptionCard } from '@/components/onboard/OptionCard'
 import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import { findCategory } from '@/lib/onboarding/categories'
+import { useOnboardingDraft } from '@/lib/onboarding/draft'
+import { getStorefrontSections } from '@/lib/storefront/completion'
 import { saveServices } from './actions'
 
 const MAX_CUSTOM_LABEL = 60
@@ -45,6 +48,8 @@ export default function ServicesEditor({
   canEdit,
   category,
 }: ServicesEditorProps) {
+  const router = useRouter()
+  const { draft } = useOnboardingDraft()
   const [specialServices, setSpecial] = useState<string[]>(initialPresetIds)
   const [customServices, setCustom] = useState<string[]>(initialCustomServices)
   const [customDraft, setCustomDraft] = useState('')
@@ -55,6 +60,16 @@ export default function ServicesEditor({
 
   const banner = BANNER_BY_SOURCE[source.kind]
   const categoryMeta = findCategory(category)
+
+  const nextHref = useMemo(() => {
+    const sections = getStorefrontSections(draft)
+    const idx = sections.findIndex((s) => s.id === 'services')
+    return idx >= 0 && idx < sections.length - 1 ? sections[idx + 1].href : null
+  }, [draft])
+
+  const onNext = () => {
+    if (nextHref) router.push(nextHref)
+  }
 
   const isDirty = useMemo(() => {
     if (specialServices.length !== initialPresetIds.length) return true
@@ -264,15 +279,27 @@ export default function ServicesEditor({
               </span>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saveDisabled}
-            className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-          >
-            <Save className="w-4 h-4" />
-            {pending ? 'Saving…' : 'Save changes'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleSave}
+              disabled={saveDisabled}
+              className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors"
+            >
+              <Save className="w-4 h-4" />
+              {pending ? 'Saving…' : 'Save changes'}
+            </button>
+            {nextHref ? (
+              <button
+                type="button"
+                onClick={onNext}
+                className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
+              >
+                Next
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

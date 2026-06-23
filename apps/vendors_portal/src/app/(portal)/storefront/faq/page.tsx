@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Plus, Save, Trash2 } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { Check, Plus, Save, Trash2 } from 'lucide-react'
 import { FieldLabel, TextArea, TextInput } from '@/components/onboard/FormField'
 import { useOnboardingDraft, type FAQItem } from '@/lib/onboarding/draft'
 import { saveFaqs } from '../sections/actions'
@@ -27,6 +28,7 @@ const newFaq = (seed?: Partial<FAQItem>): FAQItem => ({
 })
 
 export default function ListingFAQPage() {
+  const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
   const [showSuggestions, setShowSuggestions] = useState(false)
   const [saving, startSaving] = useTransition()
@@ -171,15 +173,27 @@ export default function ListingFAQPage() {
               <span className="ml-3 text-emerald-700">Saved.</span>
             )}
           </div>
-          <button
-            type="button"
-            onClick={onSave}
-            disabled={saving}
-            className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 disabled:opacity-50 transition-colors"
-          >
-            <Save className="w-3.5 h-3.5" />
-            {saving ? 'Saving…' : 'Save FAQs'}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onSave}
+              disabled={saving}
+              className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 transition-colors"
+            >
+              <Save className="w-3.5 h-3.5" />
+              {saving ? 'Saving…' : 'Save FAQs'}
+            </button>
+            {/* FAQ is the last storefront section — send the vendor back to the
+                storefront overview so they can review completeness and publish. */}
+            <button
+              type="button"
+              onClick={() => router.push('/storefront')}
+              className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
+            >
+              Done
+              <Check className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

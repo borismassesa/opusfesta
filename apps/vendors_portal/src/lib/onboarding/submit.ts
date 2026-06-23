@@ -154,16 +154,19 @@ function buildSnapshotLabels(draft: OnboardingDraft) {
   }
 }
 
-function buildServicesOfferedJsonb(draft: OnboardingDraft) {
-  // Per migration 025, services_offered is JSONB of {id, title, description}.
+function buildServicesOffered(draft: OnboardingDraft): string[] {
+  // vendors.services_offered is a Postgres text[] of plain title strings — the
+  // shape the live column and the public marketplace (opus_website) use.
+  // Migration 025 meant to convert it to a jsonb array of {title, description}
+  // objects, but that DDL never took effect on the live database; writing
+  // objects therefore got stringified into text cells ("double-encoding").
+  // Resolve preset ids to their human labels so they round-trip in the
+  // storefront editor, then append custom labels as-is.
+  const presets = draft.categoryId ? getServicesForCategory(draft.categoryId) : []
+  const labelById = new Map(presets.map((p) => [p.id, p.label]))
   return [
-    ...draft.specialServices.map((id) => ({ id, title: id, description: '' })),
-    ...draft.customServices.map((label) => ({
-      id: `custom-${slugify(label)}`,
-      title: label,
-      description: '',
-      custom: true,
-    })),
+    ...draft.specialServices.map((id) => labelById.get(id) ?? id),
+    ...draft.customServices.map((label) => label.trim()).filter(Boolean),
   ]
 }
 
@@ -411,7 +414,7 @@ export async function submitApplication(
   // when the project hasn't applied every historical migration.
   const optionalPayload: Record<string, unknown> = {
     social_links: buildSocialLinks(draft),
-    services_offered: buildServicesOfferedJsonb(draft),
+    services_offered: buildServicesOffered(draft),
     packages: draft.packages,
     years_in_business: draft.yearsInBusiness
       ? Number.parseInt(draft.yearsInBusiness, 10) || null

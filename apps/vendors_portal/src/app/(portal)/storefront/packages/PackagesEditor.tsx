@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Check, Pencil, Plus, Tag, X } from 'lucide-react'
+import { ArrowRight, Check, Pencil, Plus, Tag, X } from 'lucide-react'
+import { getStorefrontSections } from '@/lib/storefront/completion'
 import { primaryPayoutEntry, useOnboardingDraft } from '@/lib/onboarding/draft'
 import { CANCELLATION_OPTIONS, RESCHEDULE_OPTIONS } from '@/lib/onboarding/policies'
 import { LIPA_NAMBA_NETWORKS, PAYOUT_OPTIONS } from '@/lib/onboarding/payouts'
@@ -87,6 +88,16 @@ export default function PackagesEditor({
   }, [initialPackages])
 
   const banner = BANNER_BY_SOURCE[source.kind]
+
+  const nextHref = useMemo(() => {
+    const sections = getStorefrontSections(draft)
+    const idx = sections.findIndex((s) => s.id === 'packages')
+    return idx >= 0 && idx < sections.length - 1 ? sections[idx + 1].href : null
+  }, [draft])
+
+  const onNext = () => {
+    if (nextHref) router.push(nextHref)
+  }
 
   const validPrices = packages
     .map((p) => Number(p.price.replace(/[^\d]/g, '')))
@@ -291,6 +302,16 @@ export default function PackagesEditor({
             </span>{' '}
             with custom badges
           </p>
+          {nextHref ? (
+            <button
+              type="button"
+              onClick={onNext}
+              className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
+            >
+              Next
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          ) : null}
         </div>
       </div>
     </div>
