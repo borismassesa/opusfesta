@@ -61,6 +61,26 @@ export default function RsvpSetupPanel({
   )
 
   const published = publicInvite.enabled && Boolean(publicInvite.slug)
+  const anyCollecting = useMemo(() => events.some((e) => e.allow_rsvp), [events])
+
+  // One reconciled status so the toggle(s) and the banner never contradict:
+  //  paused        — nothing is collecting; sharing a link would lead nowhere.
+  //  live_unshared — collecting, but the invite link hasn't been shared yet.
+  //  live_shared   — collecting AND shared; RSVPs are fully live.
+  const status: 'paused' | 'live_unshared' | 'live_shared' = !anyCollecting
+    ? 'paused'
+    : !published
+      ? 'live_unshared'
+      : 'live_shared'
+
+  function copyShareLink() {
+    if (!publicInvite.slug) return
+    const url = `${window.location.origin}/i/${publicInvite.slug}`
+    navigator.clipboard?.writeText(url).then(
+      () => toast.success('Invite link copied'),
+      () => toast.error('Could not copy link'),
+    )
+  }
 
   function toggleEvent(eventId: string, allow: boolean) {
     startTransition(async () => {
@@ -141,31 +161,24 @@ export default function RsvpSetupPanel({
 
   return (
     <div className="space-y-6">
-      {/* Publish heads-up — shown until the couple has shared their invite link */}
-      {!published ? (
-        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#F2D9A0] bg-[#FBF3DD] px-4 py-3.5">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-[#1A1A1A]">Heads up!</p>
-            <p className="text-xs text-[#1A1A1A]/60">
-              No one can RSVP until you’ve shared your invitation link.
-            </p>
-          </div>
-          <Link href="/my/dashboard/invitations">
-            <Button className="shrink-0">Share invite</Button>
-          </Link>
-        </div>
-      ) : null}
+      {/* Reconciled status — toggle state + share state in one clear message */}
+      <StatusBanner status={status} onCopyLink={copyShareLink} />
 
       {/* Per-event follow-up questions */}
       {events.map((event) => {
         const summary = summaryByEvent.get(event.id)
         const followUps = questionsByEvent.get(event.id) ?? []
         return (
-          <Card key={event.id} className="overflow-hidden">
+          <Card key={event.id} className="overflow-hidden shadow-sm ring-1 ring-black/[0.04]">
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-black/[0.06] px-5 py-4">
               <h2 className="text-base font-semibold text-[#1A1A1A]">{event.name}</h2>
-              <label className="inline-flex cursor-pointer items-center gap-2.5">
-                <span className="text-sm text-[#1A1A1A]/70">Collect RSVPs</span>
+              <label
+                className="inline-flex cursor-pointer items-center gap-2.5"
+                title={event.allow_rsvp ? 'Guests can RSVP to this event' : "Off — guests can't RSVP to this event yet"}
+              >
+                <span className="text-sm text-[#1A1A1A]/70">
+                  Collect RSVPs <span className="text-[#1A1A1A]/40">· {event.allow_rsvp ? 'On' : 'Off'}</span>
+                </span>
                 <Toggle
                   checked={event.allow_rsvp}
                   disabled={pending}
@@ -180,7 +193,7 @@ export default function RsvpSetupPanel({
               <div>
                 <h3 className="text-sm font-semibold text-[#1A1A1A]">Follow-up questions</h3>
                 <p className="mb-3 mt-0.5 text-xs text-[#1A1A1A]/55">
-                  Asked to guests on the {event.name} list who RSVP.
+                  Asked to everyone who RSVPs to {event.name}.
                 </p>
 
                 <QuestionList
@@ -221,7 +234,7 @@ export default function RsvpSetupPanel({
       })}
 
       {/* General questions */}
-      <Card className="p-5">
+      <Card className="p-5 shadow-sm ring-1 ring-black/[0.04]">
         <SectionTitle
           title="General questions"
           subtitle="Asked to everyone who RSVPs, whether or not they can attend."
@@ -282,6 +295,84 @@ export default function RsvpSetupPanel({
   )
 }
 
+/**
+ * One reconciled status so the per-event toggles and the share state never give
+ * contradictory "off" signals. Three states, one clear next step each.
+ */
+function StatusBanner({
+  status,
+  onCopyLink,
+}: {
+  status: 'paused' | 'live_unshared' | 'live_shared'
+  onCopyLink: () => void
+}) {
+  const pill =
+    status === 'paused' ? (
+      <span className="rounded-full bg-black/[0.06] px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
+        Paused
+      </span>
+    ) : (
+      <span className="rounded-full bg-[#9FE870]/35 px-2.5 py-0.5 text-[11px] font-semibold uppercase tracking-wide text-[#2f5417]">
+        Live
+      </span>
+    )
+
+  if (status === 'paused') {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#F2D9A0] bg-[#FBF3DD] px-4 py-3.5">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A]">RSVPs are paused {pill}</p>
+          <p className="mt-0.5 text-xs text-[#8a6a14]">
+            Guests can’t reply yet. Turn on <b>Collect RSVPs</b> for an event below to start.
+          </p>
+        </div>
+        <button
+          type="button"
+          disabled
+          title="Turn on collection first — sharing a link now would lead nowhere"
+          className="shrink-0 cursor-not-allowed rounded-full border border-black/[0.12] bg-white px-4 py-2 text-sm font-semibold text-[#1A1A1A]/40"
+        >
+          Share invite
+        </button>
+      </div>
+    )
+  }
+
+  if (status === 'live_unshared') {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#C9A0DC]/50 bg-[#F0DFF6]/60 px-4 py-3.5">
+        <div className="min-w-0">
+          <p className="flex items-center gap-2 text-sm font-semibold text-[#1A1A1A]">RSVPs are live — one step left {pill}</p>
+          <p className="mt-0.5 text-xs text-[#5d3a78]">
+            Now share your invite link so guests can find it and reply.
+          </p>
+        </div>
+        <Link href="/my/dashboard/invitations" className="shrink-0">
+          <Button>Share invite</Button>
+        </Link>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#9FE870]/60 bg-[#9FE870]/15 px-4 py-3.5">
+      <div className="min-w-0">
+        <p className="flex items-center gap-2 text-sm font-semibold text-[#14342B]">RSVPs are live {pill}</p>
+        <p className="mt-0.5 text-xs text-[#3f6b1f]">
+          Collection is on and your invite is shared. Replies appear here as guests respond.
+        </p>
+      </div>
+      <button
+        type="button"
+        onClick={onCopyLink}
+        className="shrink-0 rounded-full border border-[#9FE870]/70 bg-white px-4 py-2 text-sm font-semibold text-[#2f5417] hover:bg-[#9FE870]/15"
+      >
+        Copy link
+      </button>
+    </div>
+  )
+}
+
 function QuestionList({
   questions,
   answerSummaries,
@@ -310,7 +401,12 @@ function QuestionList({
             <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-[#1A1A1A]/50">
               <span>{RSVP_QUESTION_KIND_LABELS[q.kind]}</span>
               {q.kind === 'multiple_choice' ? <span>· {q.options.length} options</span> : null}
-              {q.required ? <span>· Required</span> : <span>· Optional</span>}
+              <span aria-hidden>·</span>
+              {q.required ? (
+                <span className="font-semibold text-[#b4456b]">Required</span>
+              ) : (
+                <span>Optional</span>
+              )}
               {q.event_id && q.attending_only ? <span>· Attending only</span> : null}
               {summary ? <span className="text-[#7E5896]">· {summary.total} response{summary.total === 1 ? '' : 's'}</span> : null}
             </p>

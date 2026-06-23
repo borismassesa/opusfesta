@@ -7,23 +7,49 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type {
-  Block,
   FontKey,
-  HeroLayout,
+  HeroSpec,
+  LayoutKind,
   Palette,
+  Section,
   SiteDoc,
+  TemplateDecor,
 } from './types'
+import { buildTemplateSections, SECTION_PAGE } from './templateContent'
 
 // ── Design presets ───────────────────────────────────────────────────────────
 
-export type DesignStyle = 'Photo' | 'Floral' | 'Minimal' | 'Classic' | 'Modern' | 'Rustic'
-export type DesignColor = 'Neutral' | 'Green' | 'Blue' | 'Pink' | 'Bold' | 'Warm'
+export type DesignStyle =
+  | 'Elegant & Formal'
+  | 'Floral'
+  | 'Simple & Minimalist'
+  | 'Modern'
+  | 'Greenery'
+  | 'Rustic'
+  | 'Typography'
+
+export type DesignColor =
+  | 'Red'
+  | 'Orange'
+  | 'Yellow'
+  | 'Green'
+  | 'Blue'
+  | 'Purple'
+  | 'Pink'
+  | 'Brown'
+  | 'Neutral'
+
+/** How the thumbnail hero is drawn — independent of the filter category. */
+export type ThumbKind = 'photo' | 'floral' | 'text'
 
 export type DesignPreset = {
   id: string
   name: string
+  /** One-line vibe shown in the Design summary. */
+  tagline: string
   style: DesignStyle
   color: DesignColor
+  thumb: ThumbKind
   palette: Palette
   headingFont: FontKey
   bodyFont: FontKey
@@ -32,229 +58,183 @@ export type DesignPreset = {
   heroOverlay: number
   /** 3-4 swatch dots shown under the thumbnail. */
   swatches: string[]
+  /** Decoration family — drives section dividers, eyebrows, motifs, surfaces. */
+  decor: TemplateDecor
+  /** Hero layout this template ships with. */
+  defaultLayoutId: string
 }
+
+/** Backwards-compatible alias — these are full templates now, not just recolors. */
+export type Template = DesignPreset
 
 export const DESIGN_PRESETS: DesignPreset[] = [
   {
-    id: 'deepcreek',
-    name: 'Deepcreek',
-    style: 'Photo',
-    color: 'Neutral',
-    palette: { bg: '#F6F4EF', surface: '#FFFFFF', ink: '#2B2B2B', accent: '#9A7B53', onAccent: '#FFFFFF' },
+    id: 'bagamoyo',
+    name: 'Bagamoyo',
+    tagline: 'Soft coastal watercolour — airy, romantic, beach-wedding calm.',
+    style: 'Modern',
+    color: 'Blue',
+    thumb: 'photo',
+    palette: { bg: '#F2F6F8', surface: '#FFFFFF', ink: '#28333B', accent: '#6E93A6', onAccent: '#FFFFFF' },
     headingFont: 'Cormorant Garamond',
     bodyFont: 'EB Garamond',
     heroPhoto: '/assets/images/couples_together.jpg',
-    heroOverlay: 24,
-    swatches: ['#E07A5F', '#9A7B53', '#2B2B2B', '#F6F4EF'],
-  },
-  {
-    id: 'buxton',
-    name: 'Buxton',
-    style: 'Floral',
-    color: 'Neutral',
-    palette: { bg: '#F3EFE7', surface: '#FFFFFF', ink: '#3A3326', accent: '#8A8460', onAccent: '#FFFFFF' },
-    headingFont: 'Playfair Display',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/flowers_pinky.jpg',
-    heroOverlay: 10,
-    swatches: ['#C7CBAE', '#8A8460', '#3A3326'],
-  },
-  {
-    id: 'galata',
-    name: 'Galata',
-    style: 'Classic',
-    color: 'Warm',
-    palette: { bg: '#FBF6EE', surface: '#FFFFFF', ink: '#4A2C22', accent: '#B07A4C', onAccent: '#FFFFFF' },
-    headingFont: 'Cormorant Garamond',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/churchcouples.jpg',
-    heroOverlay: 22,
-    swatches: ['#E6C9A8', '#B07A4C', '#4A2C22'],
-  },
-  {
-    id: 'octavia',
-    name: 'Octavia',
-    style: 'Floral',
-    color: 'Pink',
-    palette: { bg: '#FBF1F0', surface: '#FFFFFF', ink: '#5A2A35', accent: '#C28491', onAccent: '#FFFFFF' },
-    headingFont: 'Playfair Display',
-    bodyFont: 'Cormorant Garamond',
-    heroPhoto: '/assets/images/beautiful_bride.jpg',
-    heroOverlay: 14,
-    swatches: ['#F2C8CB', '#C28491', '#5A2A35'],
-  },
-  {
-    id: 'goundry',
-    name: 'Goundry',
-    style: 'Classic',
-    color: 'Bold',
-    palette: { bg: '#F7F3EE', surface: '#FFFFFF', ink: '#1A1A1A', accent: '#7A1F2B', onAccent: '#FFFFFF' },
-    headingFont: 'Playfair Display',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/bride_umbrella.jpg',
     heroOverlay: 26,
-    swatches: ['#000000', '#7A1F2B', '#C49A6C', '#F7F3EE'],
+    swatches: ['#CFE0E6', '#6E93A6', '#28333B', '#EDE6D8'],
+    decor: { motif: 'watercolor', eyebrow: 'tracked', divider: 'rule', card: 'soft', headingUpper: false },
+    defaultLayoutId: 'full-width',
   },
   {
-    id: 'nahomi',
-    name: 'Nahomi',
-    style: 'Modern',
-    color: 'Blue',
-    palette: { bg: '#F2F6F8', surface: '#FFFFFF', ink: '#1B3A47', accent: '#4F7E94', onAccent: '#FFFFFF' },
-    headingFont: 'Montserrat',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/coupleswithpiano.jpg',
-    heroOverlay: 22,
-    swatches: ['#CADFE6', '#4F7E94', '#1B3A47'],
-  },
-  {
-    id: 'morrison',
-    name: 'Morrison',
-    style: 'Minimal',
-    color: 'Neutral',
-    palette: { bg: '#FFFFFF', surface: '#FFFFFF', ink: '#1A1A1A', accent: '#1A1A1A', onAccent: '#FFFFFF' },
-    headingFont: 'Montserrat',
-    bodyFont: 'Montserrat',
-    heroPhoto: '/assets/images/cutesy_couple.jpg',
-    heroOverlay: 18,
-    swatches: ['#FFFFFF', '#9CA3AF', '#1A1A1A'],
-  },
-  {
-    id: 'malina',
-    name: 'Malina',
-    style: 'Classic',
-    color: 'Bold',
-    palette: { bg: '#F4ECE2', surface: '#FFFFFF', ink: '#3A2419', accent: '#A23B2E', onAccent: '#FFFFFF' },
-    headingFont: 'Playfair Display',
-    bodyFont: 'Cormorant Garamond',
-    heroPhoto: '/assets/images/brideincar.jpg',
-    heroOverlay: 30,
-    swatches: ['#A23B2E', '#D9B68C', '#3A2419'],
-  },
-  {
-    id: 'poet',
-    name: 'Poet',
-    style: 'Minimal',
-    color: 'Neutral',
-    palette: { bg: '#F2EDE3', surface: '#FFFFFF', ink: '#2A2A2A', accent: '#8C7B63', onAccent: '#FFFFFF' },
-    headingFont: 'Cormorant Garamond',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/authentic_couple.jpg',
-    heroOverlay: 28,
-    swatches: ['#D8CDBA', '#8C7B63', '#2A2A2A'],
-  },
-  {
-    id: 'violin',
-    name: 'Violin',
-    style: 'Minimal',
-    color: 'Neutral',
-    palette: { bg: '#FFFFFF', surface: '#FFFFFF', ink: '#2B2B2B', accent: '#B59A7A', onAccent: '#FFFFFF' },
-    headingFont: 'Cormorant Garamond',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/beautyinbride.jpg',
-    heroOverlay: 16,
-    swatches: ['#FFFFFF', '#E4D8C6', '#B59A7A'],
-  },
-  {
-    id: 'abbey',
-    name: 'Abbey',
-    style: 'Photo',
-    color: 'Blue',
-    palette: { bg: '#EEF1F2', surface: '#FFFFFF', ink: '#22303A', accent: '#3E5C6B', onAccent: '#FFFFFF' },
-    headingFont: 'Playfair Display',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/bridewithumbrella.jpg',
-    heroOverlay: 26,
-    swatches: ['#1F3A5F', '#3E5C6B', '#B7C4CC'],
-  },
-  {
-    id: 'windsong',
-    name: 'Windsong',
-    style: 'Floral',
+    id: 'serengeti',
+    name: 'Serengeti',
+    tagline: 'Botanical greenery and classic serif — fresh and timeless.',
+    style: 'Greenery',
     color: 'Green',
+    thumb: 'floral',
     palette: { bg: '#F1EFE8', surface: '#FFFFFF', ink: '#2F3B2A', accent: '#5C6B4D', onAccent: '#FFFFFF' },
-    headingFont: 'Cormorant Garamond',
+    headingFont: 'Playfair Display',
     bodyFont: 'EB Garamond',
     heroPhoto: '/assets/images/bridering.jpg',
-    heroOverlay: 12,
+    heroOverlay: 16,
     swatches: ['#D6E0CC', '#5C6B4D', '#2F3B2A'],
+    decor: { motif: 'greenery', eyebrow: 'rule', divider: 'ornament', card: 'flat', headingUpper: false },
+    defaultLayoutId: 'banner',
   },
   {
-    id: 'bryn',
-    name: 'Bryn',
-    style: 'Rustic',
-    color: 'Green',
-    palette: { bg: '#EFEFE7', surface: '#FFFFFF', ink: '#2E332A', accent: '#6E7A56', onAccent: '#FFFFFF' },
-    headingFont: 'Cormorant Garamond',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/hand_rings.jpg',
-    heroOverlay: 24,
-    swatches: ['#6E7A56', '#B8B89C', '#2E332A'],
-  },
-  {
-    id: 'avila',
-    name: 'Avila',
-    style: 'Modern',
-    color: 'Neutral',
-    palette: { bg: '#F5F4F2', surface: '#FFFFFF', ink: '#2A2A2A', accent: '#7C7468', onAccent: '#FFFFFF' },
-    headingFont: 'Montserrat',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/ring_piano.jpg',
-    heroOverlay: 26,
-    swatches: ['#FFFFFF', '#C9C2B6', '#2A2A2A'],
-  },
-  {
-    id: 'eleanora',
-    name: 'Eleanora',
-    style: 'Classic',
-    color: 'Warm',
-    palette: { bg: '#FAF4EA', surface: '#FFFFFF', ink: '#3E2E20', accent: '#C49A6C', onAccent: '#1A1A1A' },
-    headingFont: 'Playfair Display',
-    bodyFont: 'Cormorant Garamond',
-    heroPhoto: '/assets/images/couples_together.jpg',
-    heroOverlay: 8,
-    swatches: ['#000000', '#C49A6C', '#E6D3B3'],
-  },
-  {
-    id: 'samai',
-    name: 'Samai',
-    style: 'Photo',
-    color: 'Neutral',
-    palette: { bg: '#F0EEE9', surface: '#FFFFFF', ink: '#242424', accent: '#8E8576', onAccent: '#FFFFFF' },
-    headingFont: 'Cormorant Garamond',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/cutesy_couple.jpg',
-    heroOverlay: 22,
-    swatches: ['#8E8576', '#D5CFC3', '#242424'],
-  },
-  {
-    id: 'latona',
-    name: 'Latona',
-    style: 'Modern',
-    color: 'Bold',
-    palette: { bg: '#EFEAE3', surface: '#FFFFFF', ink: '#1A1A1A', accent: '#9C5B3B', onAccent: '#FFFFFF' },
-    headingFont: 'Montserrat',
-    bodyFont: 'EB Garamond',
-    heroPhoto: '/assets/images/coupleswithpiano.jpg',
-    heroOverlay: 30,
-    swatches: ['#9C5B3B', '#D8C4A8', '#1A1A1A'],
-  },
-  {
-    id: 'twilight',
-    name: 'Twilight',
-    style: 'Modern',
-    color: 'Bold',
+    id: 'tanzanite',
+    name: 'Tanzanite',
+    tagline: 'Deep navy and gold — a jewel-box, black-tie evening.',
+    style: 'Elegant & Formal',
+    color: 'Blue',
+    thumb: 'text',
     palette: { bg: '#0F1A30', surface: '#16223C', ink: '#F4E9C6', accent: '#E8D9A7', onAccent: '#0F1A30' },
     headingFont: 'Playfair Display',
     bodyFont: 'Cormorant Garamond',
     heroPhoto: '/assets/images/churchcouples.jpg',
-    heroOverlay: 44,
-    swatches: ['#0F1A30', '#E8D9A7', '#172846'],
+    heroOverlay: 46,
+    swatches: ['#0F1A30', '#E8D9A7', '#16223C'],
+    decor: { motif: 'deco', eyebrow: 'tracked', divider: 'ornament', card: 'bordered', headingUpper: true },
+    defaultLayoutId: 'text-only',
+  },
+  {
+    id: 'zahari',
+    name: 'Zahari',
+    tagline: 'Blush florals with a hand-script touch — soft and romantic.',
+    style: 'Floral',
+    color: 'Pink',
+    thumb: 'floral',
+    palette: { bg: '#FBF1F0', surface: '#FFFFFF', ink: '#5A2A35', accent: '#C28491', onAccent: '#FFFFFF' },
+    headingFont: 'Cormorant Garamond',
+    bodyFont: 'EB Garamond',
+    heroPhoto: '/assets/images/beautiful_bride.jpg',
+    heroOverlay: 16,
+    swatches: ['#F2C8CB', '#C28491', '#5A2A35'],
+    decor: { motif: 'floral', eyebrow: 'script', divider: 'ornament', card: 'soft', headingUpper: false },
+    defaultLayoutId: 'side-by-side',
+  },
+  {
+    id: 'amani',
+    name: 'Amani',
+    tagline: 'Minimal editorial — crisp type, lots of white space.',
+    style: 'Simple & Minimalist',
+    color: 'Neutral',
+    thumb: 'photo',
+    palette: { bg: '#FFFFFF', surface: '#FFFFFF', ink: '#1A1A1A', accent: '#1A1A1A', onAccent: '#FFFFFF' },
+    headingFont: 'Montserrat',
+    bodyFont: 'EB Garamond',
+    heroPhoto: '/assets/images/cutesy_couple.jpg',
+    heroOverlay: 18,
+    swatches: ['#FFFFFF', '#9CA3AF', '#1A1A1A'],
+    decor: { motif: 'minimal', eyebrow: 'tracked', divider: 'none', card: 'flat', headingUpper: true },
+    defaultLayoutId: 'marquee',
+  },
+  {
+    id: 'dhahabu',
+    name: 'Dhahabu',
+    tagline: 'Cream and gold with a monogram crest — classic and formal.',
+    style: 'Elegant & Formal',
+    color: 'Yellow',
+    thumb: 'text',
+    palette: { bg: '#FAF4EA', surface: '#FFFFFF', ink: '#3E2E20', accent: '#C49A6C', onAccent: '#1A1A1A' },
+    headingFont: 'Playfair Display',
+    bodyFont: 'Cormorant Garamond',
+    heroPhoto: '/assets/images/couples_together.jpg',
+    heroOverlay: 10,
+    swatches: ['#1A1A1A', '#C49A6C', '#E6D3B3'],
+    decor: { motif: 'crest', eyebrow: 'rule', divider: 'ornament', card: 'bordered', headingUpper: true },
+    defaultLayoutId: 'text-only',
+  },
+  {
+    id: 'kanga',
+    name: 'Kanga',
+    tagline: 'Bold East-African colour and pattern — vibrant and joyful.',
+    style: 'Modern',
+    color: 'Red',
+    thumb: 'photo',
+    palette: { bg: '#FBF6EF', surface: '#FFFFFF', ink: '#1A1A1A', accent: '#C0392B', onAccent: '#FFFFFF' },
+    headingFont: 'Montserrat',
+    bodyFont: 'EB Garamond',
+    heroPhoto: '/assets/images/brideincar.jpg',
+    heroOverlay: 28,
+    swatches: ['#C0392B', '#E2A53F', '#1A7A6A', '#1A1A1A'],
+    decor: { motif: 'kanga', eyebrow: 'tracked', divider: 'ornament', card: 'filled', headingUpper: true },
+    defaultLayoutId: 'squares',
+  },
+  {
+    id: 'mwangaza',
+    name: 'Mwangaza',
+    tagline: 'Warm sunrise terracotta — golden-hour and welcoming.',
+    style: 'Rustic',
+    color: 'Orange',
+    thumb: 'photo',
+    palette: { bg: '#FDF3EC', surface: '#FFFFFF', ink: '#46291E', accent: '#C56A3E', onAccent: '#FFFFFF' },
+    headingFont: 'Cormorant Garamond',
+    bodyFont: 'Montserrat',
+    heroPhoto: '/assets/images/coupleswithpiano.jpg',
+    heroOverlay: 26,
+    swatches: ['#F3C9A8', '#C56A3E', '#46291E'],
+    decor: { motif: 'sunrise', eyebrow: 'tracked', divider: 'rule', card: 'soft', headingUpper: false },
+    defaultLayoutId: 'slideshow',
   },
 ]
 
-export const DESIGN_STYLES: DesignStyle[] = ['Photo', 'Floral', 'Minimal', 'Classic', 'Modern', 'Rustic']
-export const DESIGN_COLORS: DesignColor[] = ['Neutral', 'Green', 'Blue', 'Pink', 'Bold', 'Warm']
+/** Alias — the catalog is full templates now. */
+export const TEMPLATES = DESIGN_PRESETS
+
+export const DESIGN_STYLES: DesignStyle[] = [
+  'Elegant & Formal',
+  'Floral',
+  'Simple & Minimalist',
+  'Modern',
+  'Greenery',
+  'Rustic',
+  'Typography',
+]
+
+export const DESIGN_COLORS: DesignColor[] = [
+  'Red',
+  'Orange',
+  'Yellow',
+  'Green',
+  'Blue',
+  'Purple',
+  'Pink',
+  'Brown',
+  'Neutral',
+]
+
+/** Swatch shown beside each colour option in the filter dropdown. */
+export const COLOR_DOTS: Record<DesignColor, string> = {
+  Red: '#E2483D',
+  Orange: '#F08C36',
+  Yellow: '#F4C542',
+  Green: '#4CAF50',
+  Blue: '#4F90E0',
+  Purple: '#8B6FC9',
+  Pink: '#E58FB4',
+  Brown: '#8A6B4F',
+  Neutral: '#B8B2A8',
+}
 
 export function getPreset(id: string): DesignPreset {
   return DESIGN_PRESETS.find((p) => p.id === id) ?? DESIGN_PRESETS[0]
@@ -262,22 +242,46 @@ export function getPreset(id: string): DesignPreset {
 
 // ── Layout options ───────────────────────────────────────────────────────────
 
-export type LayoutOption = { id: string; label: string; hero: HeroLayout; photo: boolean }
+export type LayoutOption = {
+  id: string
+  label: string
+  kind: LayoutKind
+  /** Photos the layout needs (min..max). 0 = text only. */
+  min: number
+  max: number
+}
 
 export const LAYOUT_OPTIONS: LayoutOption[] = [
-  { id: 'banner', label: 'Banner', hero: 'photo', photo: true },
-  { id: 'full-width', label: 'Full width', hero: 'photo', photo: true },
-  { id: 'side-by-side', label: 'Side by side', hero: 'split', photo: true },
-  { id: 'squares', label: 'Squares', hero: 'photo', photo: true },
-  { id: 'slideshow', label: 'Slideshow', hero: 'photo', photo: true },
-  { id: 'marquee', label: 'Marquee', hero: 'photo', photo: true },
-  { id: 'text-only', label: 'Text only', hero: 'centered', photo: false },
-  { id: 'single-page', label: 'Single page', hero: 'centered', photo: false },
+  { id: 'banner', label: 'Banner', kind: 'banner', min: 1, max: 1 },
+  { id: 'full-width', label: 'Full width', kind: 'full', min: 1, max: 1 },
+  { id: 'side-by-side', label: 'Side by side', kind: 'side', min: 2, max: 2 },
+  { id: 'squares', label: 'Squares', kind: 'squares', min: 2, max: 2 },
+  { id: 'slideshow', label: 'Slideshow', kind: 'slideshow', min: 3, max: 6 },
+  { id: 'marquee', label: 'Marquee', kind: 'marquee', min: 4, max: 6 },
+  { id: 'text-only', label: 'Text only', kind: 'text', min: 0, max: 0 },
+  { id: 'single-page', label: 'Single page', kind: 'single', min: 1, max: 1 },
 ]
 
 export function getLayout(id: string): LayoutOption {
   return LAYOUT_OPTIONS.find((l) => l.id === id) ?? LAYOUT_OPTIONS[6]
 }
+
+/** "Photo (required)" / "Photos (2 required)" / "Photos (4 - 6 required)". */
+export function photoLabel(l: LayoutOption): string {
+  if (l.max === 0) return ''
+  if (l.min === l.max) return l.max === 1 ? 'Photo (required)' : `Photos (${l.max} required)`
+  return `Photos (${l.min} - ${l.max} required)`
+}
+
+/** Built-in couple photos used as defaults / padding when slots are empty. */
+export const SAMPLE_PHOTOS = [
+  '/assets/images/couples_together.jpg',
+  '/assets/images/cutesy_couple.jpg',
+  '/assets/images/coupleswithpiano.jpg',
+  '/assets/images/authentic_couple.jpg',
+  '/assets/images/churchcouples.jpg',
+  '/assets/images/beautiful_bride.jpg',
+]
 
 // ── Animation catalogs (cosmetic, mirror Zola's premium tab) ─────────────────
 
@@ -320,6 +324,7 @@ export function formatLongDate(iso: string): string {
 // ── Compose render-ready doc ─────────────────────────────────────────────────
 
 const firstName = (full: string) => full.trim().split(/\s+/)[0] || full
+const initial = (full: string) => (full.trim()[0] || '').toUpperCase()
 
 /**
  * Fold the structured `meta` choices (design, layout, names, page visibility)
@@ -330,106 +335,61 @@ export function composeDoc(doc: SiteDoc): SiteDoc {
   const meta = doc.meta
   const preset = getPreset(meta.presetId)
   const layout = getLayout(meta.layoutId)
-  const onPhoto = layout.photo
-  const nameColor = onPhoto ? '#FFFFFF' : preset.palette.accent
-  const subColor = onPhoto ? '#FFFFFF' : preset.palette.ink
+  // Per-design overrides (set from the Design summary) fall back to the preset.
+  const accent = meta.accentOverride || preset.palette.accent
+  const ink = meta.paragraphColor || preset.palette.ink
+  const surface = meta.bgColor || preset.palette.surface
+  const bg = meta.bgColor || preset.palette.bg
+  const headingFont = meta.headingFont || preset.headingFont
+  const bodyFont = meta.bodyFont || preset.bodyFont
+  const palette = { ...preset.palette, accent, ink, surface, bg }
+  const nameColor = meta.headingColor || accent
 
-  const heroBlocks: Block[] = [
-    {
-      id: 'blk_name_a',
-      type: 'heading',
-      text: meta.partnerA,
-      font: preset.headingFont,
-      fontSize: 46,
-      letterSpacing: 0,
-      color: nameColor,
-      animation: 'Fade In Up',
-      animate: meta.animationStyle !== 'none',
-      align: 'center',
-      mt: 0,
-      mb: 8,
-    },
-    {
-      id: 'blk_amp',
-      type: 'text',
-      text: '&',
-      fontSize: 20,
-      color: preset.palette.accent,
-      align: 'center',
-      mt: 0,
-      mb: 8,
-    },
-    {
-      id: 'blk_name_b',
-      type: 'heading',
-      text: meta.partnerB,
-      font: preset.headingFont,
-      fontSize: 46,
-      letterSpacing: 0,
-      color: nameColor,
-      animation: 'Fade In Up',
-      animate: meta.animationStyle !== 'none',
-      align: 'center',
-      mt: 0,
-      mb: 24,
-    },
-    {
-      id: 'blk_date',
-      type: 'eyebrow',
-      text: `${formatLongDate(meta.date)}${meta.location ? `  ·  ${meta.location}` : ''}`,
-      color: subColor,
-      letterSpacing: 24,
-      align: 'center',
-      mt: 0,
-      mb: 24,
-    },
-    {
-      id: 'blk_count',
-      type: 'countdown',
-      date: meta.date,
-      label: '',
-      align: 'center',
-      mt: 8,
-      mb: 0,
-    },
-  ]
+  // Resolve the photos this layout needs, padding empty slots with DISTINCT
+  // library photos (slot 0 prefers the design's own hero photo).
+  const slots = meta.photos ?? []
+  const photos = Array.from({ length: layout.max }, (_, i) => {
+    const u = slots[i]?.trim()
+    if (u) return u
+    return i === 0 ? preset.heroPhoto || SAMPLE_PHOTOS[0] : SAMPLE_PHOTOS[i % SAMPLE_PHOTOS.length]
+  })
 
-  if (meta.welcome.trim()) {
-    heroBlocks.splice(3, 0, {
-      id: 'blk_welcome',
-      type: 'text',
-      text: meta.welcome,
-      fontSize: 16,
-      color: subColor,
-      align: 'center',
-      mt: 0,
-      mb: 20,
-    })
+  const heroSpec: HeroSpec = {
+    kind: layout.kind,
+    photos,
+    monogram: `${initial(meta.partnerA)} & ${initial(meta.partnerB)}`,
+    partnerA: meta.partnerA,
+    partnerB: meta.partnerB,
+    dateLabel: `${formatLongDate(meta.date)}${meta.location ? `  ·  ${meta.location}` : ''}`,
+    welcome: meta.welcome,
+    countdownDate: meta.date,
+    nameColor,
   }
 
-  const sections = doc.sections.map((s) => {
-    if (s.id !== 'sec_hero') return s
-    return {
-      ...s,
-      layout: layout.hero,
-      padding: onPhoto ? 104 : 92,
-      background: onPhoto
-        ? { kind: 'image' as const, value: preset.heroPhoto, overlay: preset.heroOverlay }
-        : { kind: 'color' as const, value: preset.palette.surface, overlay: 0 },
-      blocks: heroBlocks,
-    }
-  })
+  // The hero is composed from meta; everything below the hero is the TEMPLATE's
+  // own content blueprint (distinct copy + section set + rhythm per template), so
+  // switching template gives a genuinely fresh design — not a recoloured skeleton.
+  const heroSection: Section = {
+    id: 'sec_hero',
+    type: 'hero',
+    name: 'Home',
+    layout: 'centered',
+    padding: 0,
+    background: { kind: 'color', value: surface, overlay: 0 },
+    blocks: [],
+    hero: heroSpec,
+  }
+  let bodySections = buildTemplateSections(meta.presetId, palette, headingFont, meta)
+  // A chosen background colour applies site-wide.
+  if (meta.bgColor) {
+    bodySections = bodySections.map((s) => ({ ...s, background: { ...s.background, value: meta.bgColor! } }))
+  }
+  const sections = [heroSection, ...bodySections]
 
   // Keep only sections whose matching page is visible (hero/home always shows).
   const hidden = new Set(meta.pages.filter((p) => !p.visible).map((p) => p.key))
-  const sectionPage: Record<string, string> = {
-    sec_story: 'home',
-    sec_details: 'schedule',
-    sec_registry: 'registry',
-    sec_rsvp: 'rsvp',
-  }
   const visibleSections = sections.filter((s) => {
-    const page = sectionPage[s.id]
+    const page = SECTION_PAGE[s.id]
     if (!page || page === 'home') return true
     return !hidden.has(page as never)
   })
@@ -441,9 +401,10 @@ export function composeDoc(doc: SiteDoc): SiteDoc {
     title: `${firstName(meta.partnerA)} & ${firstName(meta.partnerB)}`,
     nav: navLabels,
     theme: {
-      palette: preset.palette,
-      headingFont: preset.headingFont,
-      bodyFont: preset.bodyFont,
+      palette,
+      headingFont,
+      bodyFont,
+      decor: preset.decor,
     },
     sections: visibleSections,
   }

@@ -5,6 +5,7 @@ import { formatLongDate, publicOrigin } from './share'
 import { getWhatsAppProvider } from '@/lib/whatsapp'
 import { eventTypeLabel } from './types'
 import type { PledgePageConfig, PledgePaymentMethod } from './pledge-page'
+import type { SiteDoc } from '@/lib/builder/types'
 import type {
   DashboardStats,
   EventPledge,
@@ -736,6 +737,33 @@ export interface PublicInviteData {
  * so a revoked link 404s. Reads run through the service-role client; only the
  * non-PII projection above is ever exposed.
  */
+/**
+ * Public, slug-scoped fetch of a PUBLISHED wedding website (the full SiteDoc).
+ * Returns null when the slug is unknown, the site isn't published, or sharing
+ * is disabled — so a revoked link 404s. Service-role read; the doc is non-PII.
+ */
+export async function getPublishedWebsite(slug: string): Promise<SiteDoc | null> {
+  if (!slug) return null
+  const supabase = createDashboardClient()
+  const { data, error } = await supabase
+    .from('couple_profiles')
+    .select('website_doc, website_published_at, public_sharing_enabled')
+    .eq('public_slug', slug)
+    .maybeSingle<{
+      website_doc: SiteDoc | null
+      website_published_at: string | null
+      public_sharing_enabled: boolean
+    }>()
+  if (error) {
+    console.error('[published-website] lookup failed', error)
+    return null
+  }
+  if (!data || !data.website_doc || !data.website_published_at || !data.public_sharing_enabled) {
+    return null
+  }
+  return data.website_doc
+}
+
 export async function getPublicInvite(slug: string): Promise<PublicInviteData | null> {
   if (!slug) return null
   const supabase = createDashboardClient()

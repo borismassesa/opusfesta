@@ -1,7 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import Image from 'next/image'
 import {
+  ArrowLeft,
   Check,
   ChevronDown,
   ChevronRight,
@@ -11,26 +13,35 @@ import {
   Lock,
   Globe,
   Megaphone,
+  Monitor,
   Pencil,
   Search,
+  Smartphone,
   Sparkles,
+  Upload,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { FONT_STACKS } from '@/lib/builder/types'
+import { FONT_OPTIONS, FONT_STACKS, type FontKey } from '@/lib/builder/types'
 import {
   ANIMATION_STYLES,
+  COLOR_DOTS,
   DESIGN_COLORS,
   DESIGN_PRESETS,
   DESIGN_STYLES,
   FONT_EFFECTS,
   TRANSITIONS,
   formatLongDate,
+  getLayout,
+  getPreset,
+  photoLabel,
+  SAMPLE_PHOTOS,
   LAYOUT_OPTIONS,
   type DesignColor,
   type DesignPreset,
   type DesignStyle,
 } from '@/lib/builder/presets'
 import type { BuilderApi } from '../useBuilder'
+import { uploadWebsitePhoto } from '../actions'
 import { Field, TextInput } from './ui'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -46,18 +57,22 @@ function PanelTitle({ children, action }: { children: React.ReactNode; action?: 
   )
 }
 
+/** Multi-select dropdown with checkbox rows (and optional colour dots). */
 function FilterMenu({
   label,
   options,
-  value,
-  onChange,
+  selected,
+  onToggle,
+  dots,
 }: {
   label: string
   options: string[]
-  value: string | null
-  onChange: (v: string | null) => void
+  selected: string[]
+  onToggle: (v: string) => void
+  dots?: Record<string, string>
 }) {
   const [open, setOpen] = useState(false)
+  const count = selected.length
   return (
     <div className="relative">
       <button
@@ -65,40 +80,47 @@ function FilterMenu({
         onClick={() => setOpen((v) => !v)}
         className={cn(
           'flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-[13px] font-semibold transition-colors',
-          value ? 'border-[#C9A0DC] bg-[#F3EAFA] text-[#7A3FB8]' : 'border-black/15 text-gray-700 hover:border-black/30',
+          count ? 'border-[#C9A0DC] bg-[#F3EAFA] text-[#7A3FB8]' : 'border-black/15 text-gray-700 hover:border-black/30',
         )}
       >
-        {value ?? label}
+        {label}
+        {count > 0 && (
+          <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-[#7A3FB8] px-1 text-[10px] font-bold text-white">
+            {count}
+          </span>
+        )}
         <ChevronDown size={14} className={cn('transition-transform', open && 'rotate-180')} />
       </button>
       {open && (
-        <div className="absolute left-0 z-30 mt-1.5 w-40 overflow-hidden rounded-xl border border-black/10 bg-white py-1 shadow-lg">
-          <button
-            type="button"
-            onClick={() => {
-              onChange(null)
-              setOpen(false)
-            }}
-            className="flex w-full items-center justify-between px-3.5 py-2 text-left text-[13.5px] hover:bg-[#F3EAFA]"
-          >
-            All {label}
-            {!value && <Check size={14} className="text-[#7A3FB8]" />}
-          </button>
-          {options.map((o) => (
-            <button
-              key={o}
-              type="button"
-              onClick={() => {
-                onChange(o)
-                setOpen(false)
-              }}
-              className="flex w-full items-center justify-between px-3.5 py-2 text-left text-[13.5px] hover:bg-[#F3EAFA]"
-            >
-              {o}
-              {value === o && <Check size={14} className="text-[#7A3FB8]" />}
-            </button>
-          ))}
-        </div>
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} aria-hidden />
+          <div className="absolute left-0 z-30 mt-1.5 max-h-80 w-56 overflow-auto rounded-2xl border border-black/10 bg-white py-1.5 shadow-xl">
+            {options.map((o) => {
+              const on = selected.includes(o)
+              return (
+                <button
+                  key={o}
+                  type="button"
+                  onClick={() => onToggle(o)}
+                  className="flex w-full items-center gap-3 px-3.5 py-2.5 text-left transition-colors hover:bg-[#F3EAFA]"
+                >
+                  <span
+                    className={cn(
+                      'flex h-5 w-5 shrink-0 items-center justify-center rounded-md border-2 transition-colors',
+                      on ? 'border-[#7A3FB8] bg-[#7A3FB8] text-white' : 'border-black/25',
+                    )}
+                  >
+                    {on && <Check size={13} strokeWidth={3} />}
+                  </span>
+                  {dots && (
+                    <span className="h-4 w-4 shrink-0 rounded-full ring-1 ring-black/10" style={{ backgroundColor: dots[o] }} />
+                  )}
+                  <span className="text-[15px] text-[#1A1A1A]">{o}</span>
+                </button>
+              )
+            })}
+          </div>
+        </>
       )}
     </div>
   )
@@ -108,92 +130,520 @@ function FilterMenu({
 //  DESIGN — "Pick a design"
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function DesignPanel({ api }: { api: BuilderApi }) {
-  const [style, setStyle] = useState<DesignStyle | null>(null)
-  const [color, setColor] = useState<DesignColor | null>(null)
-  const current = api.doc.meta.presetId
+export type DesignView = 'summary' | 'grid'
 
-  const visible = DESIGN_PRESETS.filter(
-    (p) => (!style || p.style === style) && (!color || p.color === color),
+export function DesignPanel({
+  api,
+  view,
+  onViewChange,
+}: {
+  api: BuilderApi
+  view: DesignView
+  onViewChange: (v: DesignView) => void
+}) {
+  // Two levels, like Zola: the design summary (current design + fonts + colours)
+  // and the "Pick a design" grid. Back from the grid returns to the summary.
+  return view === 'summary' ? (
+    <DesignSummary api={api} onChangeDesign={() => onViewChange('grid')} />
+  ) : (
+    <DesignGrid api={api} onBack={() => onViewChange('summary')} />
   )
+}
+
+// ── Design summary (the default Design view) ─────────────────────────────────
+
+export function DesignSummary({ api, onChangeDesign }: { api: BuilderApi; onChangeDesign: () => void }) {
+  const meta = api.doc.meta
+  const preset = getPreset(meta.presetId)
+  const p = preset.palette
 
   return (
-    <div className="space-y-5">
-      <PanelTitle action={<span className="text-[13px] font-medium text-gray-500">Sort: Featured</span>}>
-        Pick a design
-      </PanelTitle>
+    <div className="space-y-6">
+      <h2 className="text-[20px] font-semibold tracking-tight">Design</h2>
 
-      <div className="flex items-center gap-2">
-        <FilterMenu label="Style" options={DESIGN_STYLES} value={style} onChange={(v) => setStyle(v as DesignStyle | null)} />
-        <FilterMenu label="Color" options={DESIGN_COLORS} value={color} onChange={(v) => setColor(v as DesignColor | null)} />
+      {/* Current design */}
+      <div className="flex items-start gap-5">
+        <div className="w-[140px] shrink-0 overflow-hidden rounded-lg ring-1 ring-black/10">
+          <DesignThumb preset={preset} />
+        </div>
+        <div className="pt-2">
+          <p className="text-[20px] font-semibold tracking-tight text-[#1A1A1A]">{preset.name}</p>
+          <p className="mt-1 max-w-[220px] text-[12.5px] leading-snug text-gray-500">{preset.tagline}</p>
+          <button
+            type="button"
+            onClick={onChangeDesign}
+            className="mt-3 rounded-full bg-[#1A1A1A] px-6 py-2.5 text-[14px] font-semibold text-white transition-colors hover:bg-black"
+          >
+            Change design
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-4 gap-y-6 xl:grid-cols-3">
-        {visible.map((p) => (
+      {/* Fonts */}
+      <Field label="Header font">
+        <FontSelect
+          value={meta.headingFont ?? preset.headingFont}
+          defaultFont={preset.headingFont}
+          onChange={(f) => api.updateMeta({ headingFont: f })}
+        />
+      </Field>
+      <Field label="Body font">
+        <FontSelect
+          value={meta.bodyFont ?? preset.bodyFont}
+          defaultFont={preset.bodyFont}
+          onChange={(f) => api.updateMeta({ bodyFont: f })}
+        />
+      </Field>
+
+      <div className="border-t border-black/8" />
+
+      {/* Colours */}
+      <div className="overflow-hidden rounded-2xl border border-black/10">
+        <ColorControl
+          label="Background color"
+          value={meta.bgColor ?? p.bg}
+          swatches={['#FFFFFF', p.bg]}
+          onChange={(c) => api.updateMeta({ bgColor: c })}
+        />
+        <ColorControl
+          label="Heading font color"
+          value={meta.headingColor ?? p.accent}
+          swatches={[p.accent, '#1A1A1A']}
+          onChange={(c) => api.updateMeta({ headingColor: c })}
+        />
+        <ColorControl
+          label="Paragraph font color"
+          value={meta.paragraphColor ?? p.ink}
+          swatches={['#1A1A1A', p.ink]}
+          onChange={(c) => api.updateMeta({ paragraphColor: c })}
+        />
+        <ColorControl
+          label="Button and link color"
+          value={meta.accentOverride ?? p.accent}
+          swatches={[p.accent, '#1A1A1A']}
+          onChange={(c) => api.updateMeta({ accentOverride: c })}
+        />
+      </div>
+
+      <label className="flex cursor-pointer items-center gap-3">
+        <input
+          type="checkbox"
+          checked={meta.navDifferent ?? false}
+          onChange={(e) => api.updateMeta({ navDifferent: e.target.checked })}
+          className="h-4 w-4 rounded border-black/25 accent-[#7A3FB8]"
+        />
+        <span className="text-[14px] text-[#1A1A1A]">Use different colors for navigation</span>
+      </label>
+    </div>
+  )
+}
+
+function FontSelect({
+  value,
+  defaultFont,
+  onChange,
+}: {
+  value: FontKey
+  defaultFont: FontKey
+  onChange: (f: FontKey) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const label = (f: FontKey) => (f === defaultFont ? `${f} (Default)` : f)
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex w-full items-center justify-between rounded-lg border border-black/15 bg-white px-4 py-3 text-[15px] transition-colors hover:border-black/30"
+      >
+        <span style={{ fontFamily: FONT_STACKS[value] }}>{label(value)}</span>
+        <ChevronDown size={18} className={cn('text-gray-400 transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <ul className="absolute z-30 mt-1.5 max-h-72 w-full overflow-auto rounded-lg border border-black/10 bg-white py-1 shadow-lg">
+          {FONT_OPTIONS.map((f) => (
+            <li key={f}>
+              <button
+                type="button"
+                onClick={() => {
+                  onChange(f)
+                  setOpen(false)
+                }}
+                className={cn(
+                  'flex w-full items-center justify-between px-4 py-2.5 text-left text-[15px] hover:bg-[#F3EAFA]',
+                  f === value && 'bg-[#FBF7FE]',
+                )}
+                style={{ fontFamily: FONT_STACKS[f] }}
+              >
+                {label(f)}
+                {f === value && <Check size={15} className="text-[#7A3FB8]" />}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function ColorControl({
+  label,
+  value,
+  swatches,
+  onChange,
+}: {
+  label: string
+  value: string
+  swatches: string[]
+  onChange: (c: string) => void
+}) {
+  const eq = (a: string, b: string) => a.toLowerCase() === b.toLowerCase()
+  return (
+    <div className="flex items-center justify-between border-b border-black/8 px-4 py-3.5 last:border-b-0">
+      <span className="text-[14px] text-[#1A1A1A]">{label}</span>
+      <div className="flex items-center gap-2">
+        {swatches.map((c) => (
           <button
-            key={p.id}
+            key={c}
             type="button"
-            onClick={() => api.updateMeta({ presetId: p.id })}
-            className="group text-left"
-          >
-            <div
-              className={cn(
-                'relative overflow-hidden rounded-lg ring-1 transition-all',
-                p.id === current ? 'ring-2 ring-[#7A3FB8]' : 'ring-black/10 group-hover:ring-black/25',
-              )}
-            >
-              <DesignThumb preset={p} />
-              {p.id === current && (
-                <span className="absolute left-2 top-2 rounded-md bg-[#7A3FB8] px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow">
-                  Current
-                </span>
-              )}
-            </div>
-            <div className="mt-2 flex items-center justify-between gap-2">
-              <span className="text-[13.5px] font-semibold text-[#1A1A1A]">{p.name}</span>
-              <span className="flex items-center gap-1">
-                {p.swatches.map((c, i) => (
-                  <span
-                    key={i}
-                    aria-hidden
-                    className="block h-3 w-3 rounded-full ring-1 ring-black/10"
-                    style={{ backgroundColor: c }}
-                  />
-                ))}
-              </span>
-            </div>
-          </button>
+            aria-label={`${label} ${c}`}
+            onClick={() => onChange(c)}
+            className={cn(
+              'h-7 w-7 rounded-full ring-1 ring-black/15 transition-all',
+              eq(value, c) && 'ring-2 ring-[#1A1A1A] ring-offset-1',
+            )}
+            style={{ backgroundColor: c }}
+          />
         ))}
+        {/* Custom colour — native picker behind a rainbow swatch */}
+        <label
+          className="relative h-7 w-7 cursor-pointer overflow-hidden rounded-full ring-1 ring-black/15"
+          style={{ background: 'conic-gradient(red, orange, yellow, lime, cyan, blue, magenta, red)' }}
+        >
+          <input
+            type="color"
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            className="absolute -inset-2 cursor-pointer opacity-0"
+            aria-label={`Custom ${label}`}
+          />
+        </label>
       </div>
     </div>
   )
 }
 
-/** Tiny CSS mock of the hero in the preset's colours + fonts. */
-function DesignThumb({ preset }: { preset: DesignPreset }) {
-  const p = preset.palette
-  const heading = { fontFamily: FONT_STACKS[preset.headingFont], color: p.accent, lineHeight: 1.05 }
+// ── "Pick a design" grid ─────────────────────────────────────────────────────
+
+type SortKey = 'featured' | 'newest' | 'popular'
+const SORT_OPTIONS: { id: SortKey; label: string }[] = [
+  { id: 'featured', label: 'Featured' },
+  { id: 'newest', label: 'Newest' },
+  { id: 'popular', label: 'Popular' },
+]
+
+// Curated "Popular" ranking; designs not listed fall to the end in original order.
+const POPULAR_ORDER = ['serengeti', 'bagamoyo', 'zahari', 'dhahabu', 'tanzanite', 'mwangaza', 'amani', 'kanga']
+const popRank = (id: string) => {
+  const i = POPULAR_ORDER.indexOf(id)
+  return i === -1 ? POPULAR_ORDER.length + 1 : i
+}
+
+function SortMenu({ value, onChange }: { value: SortKey; onChange: (v: SortKey) => void }) {
+  const [open, setOpen] = useState(false)
+  const current = SORT_OPTIONS.find((o) => o.id === value)?.label ?? 'Featured'
   return (
-    <div className="aspect-[4/5] w-full" style={{ backgroundColor: p.surface }}>
-      {/* pt-7 leaves the top-left corner clear for the "Current" badge */}
-      <div className="flex h-full flex-col items-center px-3 pb-3.5 pt-7 text-center">
-        <div className="flex flex-1 flex-col items-center justify-center gap-1">
-          <span style={{ ...heading, fontSize: 16 }}>Neema</span>
-          <span style={{ color: p.accent, fontSize: 8 }}>&amp;</span>
-          <span style={{ ...heading, fontSize: 16 }}>Amani</span>
-          <span className="my-1 block h-px w-5" style={{ backgroundColor: p.accent, opacity: 0.4 }} />
-          <span className="text-[5.5px] uppercase tracking-[0.22em]" style={{ color: p.ink, opacity: 0.6 }}>
-            22 Aug 2026
-          </span>
-        </div>
-        <span
-          className="rounded-full px-3 py-1 text-[5px] font-bold uppercase tracking-[0.16em]"
-          style={{ backgroundColor: p.accent, color: p.onAccent }}
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-[13px] font-semibold text-gray-700 transition-colors hover:text-[#1A1A1A]"
+      >
+        Sort: {current}
+        <ChevronDown size={14} className={cn('transition-transform', open && 'rotate-180')} />
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-20" onClick={() => setOpen(false)} aria-hidden />
+          <div className="absolute right-0 z-30 mt-1.5 w-48 overflow-hidden rounded-2xl border border-black/10 bg-white py-1.5 shadow-xl">
+            {SORT_OPTIONS.map((o) => (
+              <button
+                key={o.id}
+                type="button"
+                onClick={() => {
+                  onChange(o.id)
+                  setOpen(false)
+                }}
+                className="flex w-full items-center justify-between px-3.5 py-2.5 text-left text-[14px] hover:bg-[#F3EAFA]"
+              >
+                {o.label}
+                {value === o.id && <Check size={14} className="text-[#7A3FB8]" />}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  )
+}
+
+function DesignGrid({ api, onBack }: { api: BuilderApi; onBack: () => void }) {
+  const [styles, setStyles] = useState<DesignStyle[]>([])
+  const [colors, setColors] = useState<DesignColor[]>([])
+  const [sort, setSort] = useState<SortKey>('featured')
+  const current = api.doc.meta.presetId
+
+  const toggle = <T,>(set: React.Dispatch<React.SetStateAction<T[]>>, v: T) =>
+    set((prev) => (prev.includes(v) ? prev.filter((x) => x !== v) : [...prev, v]))
+
+  const visible = DESIGN_PRESETS.filter(
+    (p) => (!styles.length || styles.includes(p.style)) && (!colors.length || colors.includes(p.color)),
+  )
+  if (sort === 'newest') visible.reverse()
+  else if (sort === 'popular') visible.sort((a, b) => popRank(a.id) - popRank(b.id))
+
+  // Selecting a template clears every per-design override so it starts clean,
+  // and adopts the template's own default hero layout.
+  const selectPreset = (id: string) =>
+    api.updateMeta({
+      presetId: id,
+      layoutId: getPreset(id).defaultLayoutId,
+      accentOverride: undefined,
+      headingFont: undefined,
+      bodyFont: undefined,
+      bgColor: undefined,
+      headingColor: undefined,
+      paragraphColor: undefined,
+    })
+
+  return (
+    <div className="space-y-5">
+      {/* Header: ← Back · centered title · Sort */}
+      <div className="flex items-center">
+        <button
+          type="button"
+          onClick={onBack}
+          className="flex items-center gap-1.5 text-[14px] font-semibold text-[#1A1A1A] transition-opacity hover:opacity-70"
         >
-          RSVP
-        </span>
+          <ArrowLeft size={17} /> Back
+        </button>
+        <h2 className="flex-1 text-center text-[19px] font-semibold tracking-tight">Pick a design</h2>
+        <span className="w-[58px]" aria-hidden />
+      </div>
+
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FilterMenu label="Style" options={DESIGN_STYLES} selected={styles} onToggle={(v) => toggle(setStyles, v as DesignStyle)} />
+          <FilterMenu label="Color" options={DESIGN_COLORS} selected={colors} onToggle={(v) => toggle(setColors, v as DesignColor)} dots={COLOR_DOTS} />
+        </div>
+        <SortMenu value={sort} onChange={setSort} />
+      </div>
+
+      <div className="grid grid-cols-2 gap-x-4 gap-y-6 xl:grid-cols-3">
+        {visible.map((p) => {
+          const selected = p.id === current
+          return (
+            <div key={p.id} className="group">
+              <button
+                type="button"
+                onClick={() => selectPreset(p.id)}
+                className={cn(
+                  'relative block w-full overflow-hidden rounded-lg bg-white ring-1 transition-all',
+                  selected ? 'ring-2 ring-[#1A1A1A]' : 'ring-black/10 group-hover:ring-black/25',
+                )}
+              >
+                <DesignThumb preset={p} />
+                {selected && (
+                  <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-[#9FE870] px-2 py-0.5 text-[10px] font-bold text-[#1A1A1A] shadow ring-1 ring-black/5">
+                    <Check size={11} strokeWidth={3} /> Selected
+                  </span>
+                )}
+              </button>
+              <p
+                className={cn(
+                  'mt-2 text-[14px] font-semibold text-[#1A1A1A]',
+                  selected && 'underline underline-offset-[3px]',
+                )}
+              >
+                {p.name}
+              </p>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                {p.swatches.map((c, i) => (
+                  <button
+                    key={`${c}-${i}`}
+                    type="button"
+                    aria-label={`Select ${p.name}`}
+                    onClick={() => selectPreset(p.id)}
+                    className={cn(
+                      'h-4 w-4 rounded-full ring-1 ring-black/10 transition-all',
+                      selected && i === 0 && 'ring-2 ring-[#1A1A1A] ring-offset-1',
+                    )}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            </div>
+          )
+        })}
       </div>
     </div>
+  )
+}
+
+// ── Realistic mini-site thumbnail ────────────────────────────────────────────
+
+/** Browser chrome + a faithful miniature hero in the preset's colours/fonts. */
+function DesignThumb({ preset }: { preset: DesignPreset }) {
+  const kind = preset.thumb
+  return (
+    <div className="flex aspect-[5/6] w-full flex-col overflow-hidden" style={{ backgroundColor: preset.palette.surface }}>
+      <ThumbChrome />
+      {kind === 'photo' && <ThumbPhoto preset={preset} />}
+      {kind === 'floral' && <ThumbFloral preset={preset} />}
+      {kind === 'text' && <ThumbText preset={preset} />}
+    </div>
+  )
+}
+
+function ThumbChrome() {
+  return (
+    <div className="flex shrink-0 items-center gap-[3px] bg-[#ECEAE6] px-2 py-[5px]">
+      {[0, 1, 2].map((i) => (
+        <span key={i} className="h-[3px] w-[3px] rounded-full bg-black/25" />
+      ))}
+    </div>
+  )
+}
+
+function ThumbTitle({ preset }: { preset: DesignPreset }) {
+  return (
+    <p
+      className="text-center text-[5.5px] font-semibold uppercase tracking-[0.16em]"
+      style={{ color: preset.palette.ink, fontFamily: FONT_STACKS[preset.headingFont] }}
+    >
+      Neema &amp; Amani
+    </p>
+  )
+}
+
+function ThumbNav() {
+  return (
+    <div className="mt-1 flex justify-center gap-[3px]">
+      {Array.from({ length: 7 }).map((_, i) => (
+        <span key={i} className="h-[2px] w-2 rounded-full bg-black/12" />
+      ))}
+    </div>
+  )
+}
+
+function ThumbNames({ preset, size = 13 }: { preset: DesignPreset; size?: number }) {
+  const p = preset.palette
+  const h = { fontFamily: FONT_STACKS[preset.headingFont], color: p.ink, lineHeight: 1.04 }
+  return (
+    <div className="flex flex-col items-center gap-[1px]">
+      <span style={{ ...h, fontSize: size }}>Neema</span>
+      <span style={{ color: p.accent, fontSize: size * 0.42 }}>&amp;</span>
+      <span style={{ ...h, fontSize: size }}>Amani</span>
+    </div>
+  )
+}
+
+function ThumbMeta({ preset }: { preset: DesignPreset }) {
+  return (
+    <span className="text-[5px] uppercase tracking-[0.2em]" style={{ color: preset.palette.ink, opacity: 0.55 }}>
+      22 Aug 2026
+    </span>
+  )
+}
+
+function ThumbRsvp({ preset }: { preset: DesignPreset }) {
+  return (
+    <span
+      className="rounded-full px-2.5 py-[3px] text-[4.5px] font-bold uppercase tracking-[0.14em]"
+      style={{ backgroundColor: preset.palette.accent, color: preset.palette.onAccent }}
+    >
+      RSVP
+    </span>
+  )
+}
+
+function ThumbPhoto({ preset }: { preset: DesignPreset }) {
+  return (
+    <div className="flex flex-1 flex-col px-2.5 pb-2.5 pt-1.5">
+      <ThumbTitle preset={preset} />
+      <ThumbNav />
+      <div className="relative mt-1.5 h-[42%] w-full overflow-hidden rounded-[2px]">
+        <Image src={preset.heroPhoto} alt="" fill sizes="160px" className="object-cover" />
+      </div>
+      <div className="flex flex-1 flex-col items-center justify-center gap-1">
+        <ThumbNames preset={preset} size={11} />
+        <ThumbMeta preset={preset} />
+      </div>
+      <div className="mt-auto flex justify-center">
+        <ThumbRsvp preset={preset} />
+      </div>
+    </div>
+  )
+}
+
+function ThumbFloral({ preset }: { preset: DesignPreset }) {
+  return (
+    <div className="relative flex flex-1 flex-col px-2.5 pb-2.5 pt-1.5">
+      <LeafCorner className="left-0 top-5" />
+      <LeafCorner className="right-0 top-5" flip />
+      <div className="relative z-10 flex flex-1 flex-col">
+        <ThumbTitle preset={preset} />
+        <ThumbNav />
+        <div className="flex flex-1 flex-col items-center justify-center gap-1">
+          <ThumbNames preset={preset} size={12} />
+          <span className="block h-px w-4" style={{ backgroundColor: preset.palette.accent, opacity: 0.4 }} />
+          <ThumbMeta preset={preset} />
+        </div>
+        <div className="mt-auto flex justify-center">
+          <ThumbRsvp preset={preset} />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ThumbText({ preset }: { preset: DesignPreset }) {
+  return (
+    <div className="flex flex-1 flex-col px-2.5 pb-2.5 pt-1.5">
+      <ThumbTitle preset={preset} />
+      <ThumbNav />
+      <div className="flex flex-1 flex-col items-center justify-center gap-1">
+        <ThumbNames preset={preset} size={13} />
+        <ThumbMeta preset={preset} />
+      </div>
+      <div className="mt-auto flex justify-center">
+        <ThumbRsvp preset={preset} />
+      </div>
+    </div>
+  )
+}
+
+/** Small watercolour-style greenery cluster for floral/classic thumbnails. */
+function LeafCorner({ className, flip }: { className?: string; flip?: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 100 100"
+      aria-hidden
+      className={cn('pointer-events-none absolute h-[40%] w-[40%]', flip && 'scale-x-[-1]', className)}
+    >
+      <path d="M6 8 Q34 26 50 60" fill="none" stroke="#6E7A56" strokeWidth="2.4" strokeLinecap="round" />
+      {[
+        [14, 20, -32, '#7E8C5A'],
+        [24, 34, -20, '#5C6B4D'],
+        [34, 48, -8, '#8DA06A'],
+        [20, 12, -55, '#9CAE78'],
+        [40, 30, -38, '#4F5B3C'],
+      ].map(([cx, cy, rot, fill], i) => (
+        <ellipse key={i} cx={cx as number} cy={cy as number} rx="5" ry="9" fill={fill as string} transform={`rotate(${rot} ${cx} ${cy})`} opacity="0.92" />
+      ))}
+      <circle cx="46" cy="20" r="2.4" fill="#D7B7C0" />
+      <circle cx="52" cy="27" r="2" fill="#E4C9D0" />
+    </svg>
   )
 }
 
@@ -204,10 +654,10 @@ function DesignThumb({ preset }: { preset: DesignPreset }) {
 export function LayoutPanel({ api }: { api: BuilderApi }) {
   const meta = api.doc.meta
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       <PanelTitle>Layout</PanelTitle>
 
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-4 gap-x-3 gap-y-4">
         {LAYOUT_OPTIONS.map((l) => {
           const active = meta.layoutId === l.id
           return (
@@ -215,23 +665,25 @@ export function LayoutPanel({ api }: { api: BuilderApi }) {
               key={l.id}
               type="button"
               onClick={() => api.updateMeta({ layoutId: l.id })}
-              className="text-center"
+              className="group text-center"
             >
               <div
                 className={cn(
-                  'flex aspect-[5/4] items-center justify-center rounded-xl border-2 bg-[#F7F6F2] p-3 transition-colors',
-                  active ? 'border-[#7A3FB8]' : 'border-transparent ring-1 ring-black/10 hover:ring-black/25',
+                  'flex aspect-[4/3] items-center justify-center rounded-xl border-2 bg-white p-3 transition-colors',
+                  active ? 'border-[#1A1A1A]' : 'border-gray-200 group-hover:border-gray-300',
                 )}
               >
-                <LayoutGlyph id={l.id} />
+                <LayoutGlyph id={l.id} active={active} />
               </div>
-              <span className={cn('mt-1.5 block text-[12.5px]', active ? 'font-bold text-[#1A1A1A]' : 'font-medium text-gray-600')}>
+              <span className={cn('mt-1.5 block text-[12px] leading-tight', active ? 'font-bold text-[#1A1A1A]' : 'font-medium text-gray-600')}>
                 {l.label}
               </span>
             </button>
           )
         })}
       </div>
+
+      <PhotoUploaders api={api} />
 
       <div>
         <Field label="Welcome message">
@@ -244,44 +696,303 @@ export function LayoutPanel({ api }: { api: BuilderApi }) {
         <p className="mt-1 text-right text-[11px] text-gray-400">{meta.welcome.length}/150</p>
       </div>
 
-      <div className="rounded-2xl bg-[#F3EAFA] p-5">
-        <p className="text-[15px] font-bold text-[#7A3FB8]">Test drive your save the dates</p>
-        <p className="mt-1 text-[13px] text-gray-700">
-          See your paper in real life, printed with your names and wedding date.
-        </p>
+      <SaveTheDatePromo meta={meta} />
+    </div>
+  )
+}
+
+// ── Per-layout photo uploaders ───────────────────────────────────────────────
+
+function PhotoUploaders({ api }: { api: BuilderApi }) {
+  const meta = api.doc.meta
+  const layout = getLayout(meta.layoutId)
+  const [device, setDevice] = useState<'desktop' | 'mobile'>('desktop')
+  if (layout.max === 0) return null
+
+  const photos = meta.photos ?? []
+  const rows =
+    layout.min === layout.max ? layout.max : Math.max(layout.min, Math.min(layout.max, photos.length || layout.min))
+  const eff = (i: number) => photos[i] || SAMPLE_PHOTOS[i % SAMPLE_PHOTOS.length]
+
+  const setPhoto = (i: number, url: string) => {
+    const next = Array.from({ length: Math.max(rows, photos.length) }, (_, k) => (k === i ? url : photos[k] ?? eff(k)))
+    api.updateMeta({ photos: next })
+  }
+  const move = (i: number, dir: -1 | 1) => {
+    const arr = Array.from({ length: rows }, (_, k) => photos[k] ?? eff(k))
+    const j = i + dir
+    if (j < 0 || j >= arr.length) return
+    ;[arr[i], arr[j]] = [arr[j], arr[i]]
+    api.updateMeta({ photos: arr })
+  }
+  const addPhoto = () => {
+    const cur = Array.from({ length: rows }, (_, k) => photos[k] ?? eff(k))
+    if (cur.length >= layout.max) return
+    api.updateMeta({ photos: [...cur, SAMPLE_PHOTOS[cur.length % SAMPLE_PHOTOS.length]] })
+  }
+  const canAdd = layout.min !== layout.max && rows < layout.max
+  const multi = rows > 1
+
+  return (
+    <div>
+      <div className="mb-3 flex items-center justify-between">
+        <span className="text-[15px] font-medium text-[#1A1A1A]">{photoLabel(layout)}</span>
+        <div className="flex items-center gap-1 rounded-full bg-[#F2F0EB] p-1 ring-1 ring-black/5">
+          {([
+            { k: 'desktop' as const, Icon: Monitor },
+            { k: 'mobile' as const, Icon: Smartphone },
+          ]).map(({ k, Icon }) => (
+            <button
+              key={k}
+              type="button"
+              aria-label={k}
+              onClick={() => setDevice(k)}
+              className={cn(
+                'flex h-7 w-9 items-center justify-center rounded-full transition-colors',
+                device === k ? 'bg-white text-[#1A1A1A] shadow-sm' : 'text-gray-400 hover:text-gray-700',
+              )}
+            >
+              <Icon size={15} />
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-xl border border-black/10">
+        {Array.from({ length: rows }).map((_, i) => (
+          <PhotoRow key={i} src={eff(i)} index={i} total={rows} multi={multi} onUpload={(u) => setPhoto(i, u)} onMove={move} />
+        ))}
+      </div>
+      {canAdd && (
         <button
           type="button"
-          className="mt-3 rounded-full bg-[#1A1A1A] px-4 py-2 text-[13px] font-semibold text-white hover:bg-black"
+          onClick={addPhoto}
+          className="mt-3 rounded-full bg-[#1A1A1A] px-5 py-2.5 text-[13.5px] font-semibold text-white transition-colors hover:bg-black"
         >
-          Get your free sample
+          Add a photo
         </button>
+      )}
+    </div>
+  )
+}
+
+function PhotoRow({
+  src,
+  index,
+  total,
+  multi,
+  onUpload,
+  onMove,
+}: {
+  src: string
+  index: number
+  total: number
+  multi: boolean
+  onUpload: (url: string) => void
+  onMove: (i: number, dir: -1 | 1) => void
+}) {
+  const inputRef = useRef<HTMLInputElement>(null)
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    // Signed-in couples get a durable storage URL (keeps the published doc lean);
+    // otherwise fall back to a local data URL for editing.
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const url = await uploadWebsitePhoto(fd)
+      onUpload(url)
+      return
+    } catch {
+      /* not signed in / upload failed — use a local preview */
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      if (typeof reader.result === 'string') onUpload(reader.result)
+    }
+    reader.readAsDataURL(file)
+  }
+  return (
+    <div className="flex items-center gap-3 border-b border-black/8 px-3 py-2.5 last:border-b-0">
+      {multi && (
+        <span className="flex flex-col text-gray-400">
+          <button
+            type="button"
+            aria-label="Move up"
+            onClick={() => onMove(index, -1)}
+            disabled={index === 0}
+            className="transition-opacity hover:text-[#1A1A1A] disabled:opacity-25"
+          >
+            <ChevronDown size={14} className="rotate-180" />
+          </button>
+          <button
+            type="button"
+            aria-label="Move down"
+            onClick={() => onMove(index, 1)}
+            disabled={index === total - 1}
+            className="transition-opacity hover:text-[#1A1A1A] disabled:opacity-25"
+          >
+            <ChevronDown size={14} />
+          </button>
+        </span>
+      )}
+      <div className="relative h-12 w-16 shrink-0 overflow-hidden rounded-md bg-gray-100 ring-1 ring-black/10">
+        <Image src={src} alt="" fill sizes="64px" className="object-cover" />
+      </div>
+      <button
+        type="button"
+        onClick={() => inputRef.current?.click()}
+        className="ml-auto flex items-center gap-1.5 text-[14px] font-semibold text-[#1A1A1A] transition-opacity hover:opacity-70"
+      >
+        <Upload size={15} /> Upload
+      </button>
+      <input ref={inputRef} type="file" accept="image/*" onChange={onFile} className="hidden" />
+    </div>
+  )
+}
+
+/** Light-gray wireframe placeholder used inside every layout glyph. */
+function Ph({ className }: { className?: string }) {
+  return <div className={cn('rounded-[3px] bg-[#E6E4DF]', className)} />
+}
+
+function LayoutGlyph({ id, active }: { id: string; active: boolean }) {
+  switch (id) {
+    case 'banner':
+      return (
+        <div className="flex h-full w-full flex-col justify-start gap-1.5">
+          <Ph className="h-[42%] w-full" />
+          <Ph className="h-[14%] w-1/2" />
+        </div>
+      )
+    case 'full-width':
+      return <Ph className="h-full w-full" />
+    case 'side-by-side':
+      return (
+        <div className="flex h-full w-full gap-1.5">
+          <Ph className="h-full flex-[1.7]" />
+          <Ph className="h-full flex-1" />
+        </div>
+      )
+    case 'squares':
+      return (
+        <div className="relative h-full w-full">
+          <Ph className="absolute bottom-0 left-0 h-[68%] w-[58%]" />
+          <Ph className="absolute right-0 top-0 h-[68%] w-[58%] ring-2 ring-white" />
+        </div>
+      )
+    case 'slideshow':
+      return (
+        <div className="relative h-full w-full">
+          <Ph className="h-full w-full" />
+          <span className="absolute right-1 top-1/2 h-4 w-[3px] -translate-y-1/2 rounded-full bg-white/80" />
+          <span className="absolute bottom-1 left-1/2 flex -translate-x-1/2 gap-0.5">
+            <span className="h-1 w-1 rounded-full bg-white/90" />
+            <span className="h-1 w-1 rounded-full bg-white/50" />
+            <span className="h-1 w-1 rounded-full bg-white/50" />
+          </span>
+        </div>
+      )
+    case 'marquee':
+      return (
+        <div className="flex h-full w-full items-center gap-1">
+          <Ph className="h-[78%] flex-1" />
+          <Ph className="h-[78%] flex-1" />
+          <Ph className="h-[78%] flex-1" />
+        </div>
+      )
+    case 'text-only':
+      return (
+        <div className="relative flex items-center justify-center rounded-[3px] border border-[#1A1A1A]/40 px-3 py-1.5">
+          <span className="text-[10px] font-semibold tracking-wide text-[#1A1A1A]/55">ABC</span>
+          {active &&
+            ['-left-1 -top-1', '-right-1 -top-1', '-left-1 -bottom-1', '-right-1 -bottom-1'].map((pos) => (
+              <span key={pos} className={cn('absolute h-1.5 w-1.5 rounded-[1px] border border-[#1A1A1A] bg-white', pos)} />
+            ))}
+        </div>
+      )
+    case 'single-page':
+      return (
+        <div className="flex h-full w-full gap-1.5">
+          <Ph className="h-full flex-1" />
+          <Ph className="h-full w-[18%]" />
+        </div>
+      )
+    default:
+      return null
+  }
+}
+
+// ── Save-the-dates promo ─────────────────────────────────────────────────────
+
+function SaveTheDatePromo({ meta }: { meta: BuilderApi['doc']['meta'] }) {
+  const tints = ['#E07A5F', '#9FB89B', '#C9A0DC', '#1A1A1A']
+  const [tint, setTint] = useState(tints[0])
+  return (
+    <div className="rounded-2xl bg-[#F4F2EC] p-4">
+      <div className="flex gap-4">
+        <SaveTheDateCard meta={meta} tint={tint} />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <p
+            className="text-[18px] font-bold leading-[1.15] text-[#1A1A1A]"
+            style={{ fontFamily: FONT_STACKS['Playfair Display'] }}
+          >
+            Test drive your save the dates
+          </p>
+          <p className="mt-2 text-[12.5px] leading-relaxed text-gray-600">
+            See your paper in real life, printed with your names and wedding date.
+          </p>
+          <button
+            type="button"
+            className="mt-3 inline-flex w-fit rounded-full bg-[#1A1A1A] px-4 py-2 text-[12.5px] font-semibold text-white transition-colors hover:bg-black"
+          >
+            Get your free sample
+          </button>
+        </div>
+      </div>
+      <div className="mt-4 flex items-center gap-2">
+        {tints.map((c) => (
+          <button
+            key={c}
+            type="button"
+            aria-label={`Paper colour ${c}`}
+            onClick={() => setTint(c)}
+            className={cn(
+              'h-6 w-6 rounded-full ring-1 ring-black/10 transition-all',
+              tint === c && 'ring-2 ring-[#1A1A1A] ring-offset-1',
+            )}
+            style={{ backgroundColor: c }}
+          />
+        ))}
+        <span className="ml-1 text-[12.5px] font-semibold text-gray-500">More</span>
       </div>
     </div>
   )
 }
 
-function LayoutGlyph({ id }: { id: string }) {
-  const bar = 'rounded-[3px] bg-black/15'
-  switch (id) {
-    case 'banner':
-      return <div className="flex w-full flex-col gap-1"><div className={cn(bar, 'h-6 w-full')} /></div>
-    case 'full-width':
-      return <div className={cn(bar, 'h-12 w-full')} />
-    case 'side-by-side':
-      return <div className="flex w-full gap-1"><div className={cn(bar, 'h-12 flex-[2]')} /><div className={cn(bar, 'h-12 flex-1')} /></div>
-    case 'squares':
-      return <div className="grid w-full grid-cols-2 gap-1"><div className={cn(bar, 'aspect-square')} /><div className={cn(bar, 'aspect-square')} /></div>
-    case 'slideshow':
-      return <div className="relative w-full"><div className={cn(bar, 'h-12 w-full')} /><div className="absolute inset-y-0 right-1 my-auto h-6 w-1 rounded bg-black/25" /></div>
-    case 'marquee':
-      return <div className="flex w-full gap-1"><div className={cn(bar, 'h-12 w-6')} /><div className={cn(bar, 'h-12 w-6')} /><div className={cn(bar, 'h-12 w-6')} /></div>
-    case 'text-only':
-      return <span className="rounded border border-black/30 px-2 py-1 text-[10px] font-semibold text-black/50">ABC</span>
-    case 'single-page':
-      return <div className="flex w-full gap-1"><div className={cn(bar, 'h-12 flex-1')} /><div className="h-12 w-2 rounded bg-black/25" /></div>
-    default:
-      return null
-  }
+function SaveTheDateCard({ meta, tint }: { meta: BuilderApi['doc']['meta']; tint: string }) {
+  const a = meta.partnerA.trim().split(/\s+/)[0] || meta.partnerA
+  const b = meta.partnerB.trim().split(/\s+/)[0] || meta.partnerB
+  return (
+    <div className="w-[100px] shrink-0 overflow-hidden rounded-md bg-white shadow-[0_8px_24px_-8px_rgba(0,0,0,0.3)] ring-1 ring-black/5">
+      <div className="flex aspect-[5/7] flex-col">
+        <div
+          className="h-[44%] w-full"
+          style={{ background: `linear-gradient(135deg, ${tint}26 0%, ${tint}99 100%)` }}
+        />
+        <div className="flex flex-1 flex-col items-center justify-center px-1.5 text-center">
+          <span className="text-[5px] font-bold uppercase tracking-[0.22em] text-gray-500">Save the Date</span>
+          <span
+            className="mt-1 text-[9px] font-semibold leading-tight text-[#1A1A1A]"
+            style={{ fontFamily: FONT_STACKS['Playfair Display'] }}
+          >
+            {a} &amp; {b}
+          </span>
+          <span className="mt-1 text-[5.5px] uppercase tracking-[0.16em] text-gray-600">{formatLongDate(meta.date)}</span>
+          {meta.location && <span className="mt-0.5 text-[5px] text-gray-400">{meta.location}</span>}
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -596,12 +1307,13 @@ function SettingRow({
   children?: React.ReactNode
 }) {
   const [open, setOpen] = useState(false)
+  // A plain div (not a button) so the interactive `value` (a ValuePill button)
+  // is never nested inside a button — which is invalid HTML / hydration error.
   return (
     <div className="border-b border-black/8 last:border-b-0">
-      <button
-        type="button"
+      <div
         onClick={() => children && setOpen((v) => !v)}
-        className={cn('flex w-full items-center gap-3 px-4 py-4 text-left', !children && 'cursor-default')}
+        className={cn('flex w-full items-center gap-3 px-4 py-4 text-left', children ? 'cursor-pointer' : undefined)}
       >
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-[#F3EAFA] text-[#7A3FB8]">{icon}</span>
         <span className="min-w-0 flex-1">
@@ -609,7 +1321,7 @@ function SettingRow({
           <span className="block text-[12.5px] text-gray-500">{sub}</span>
         </span>
         <span onClick={(e) => e.stopPropagation()}>{value}</span>
-      </button>
+      </div>
       {children && open && <div className="px-4 pb-4">{children}</div>}
     </div>
   )
