@@ -156,9 +156,18 @@ export default function VerifyClient({
   // "resolved" and the agreement opens. A signature already in progress also
   // counts as resolved, so returning vendors aren't sent back through skip.
   const optionalResolved = skippedOptional || signedCount > 0
+  // …but if admin rejected a TIN/license during corrections, the vendor MUST be
+  // able to re-upload it. Without this, a returning vendor who already signed
+  // (or skipped) sees this section collapsed to "done", with no upload control
+  // for the very document they were sent back to fix. Re-open the section on a
+  // rejection — but leave `optionalResolved` alone so the agreement step below
+  // keeps its state instead of getting re-locked.
+  const optionalNeedsFix =
+    tinSlot.currentDoc?.status === 'rejected' ||
+    licenseSlot.currentDoc?.status === 'rejected'
   const optionalMode: StepMode = !idComplete
     ? 'locked'
-    : optionalResolved
+    : optionalResolved && !optionalNeedsFix
       ? 'done'
       : 'active'
 
