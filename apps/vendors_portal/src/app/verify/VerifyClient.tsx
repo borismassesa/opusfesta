@@ -163,8 +163,8 @@ export default function VerifyClient({
   // rejection — but leave `optionalResolved` alone so the agreement step below
   // keeps its state instead of getting re-locked.
   const optionalNeedsFix =
-    tinSlot.currentDoc?.status === 'rejected' ||
-    licenseSlot.currentDoc?.status === 'rejected'
+    tinSlot?.currentDoc?.status === 'rejected' ||
+    licenseSlot?.currentDoc?.status === 'rejected'
   const optionalMode: StepMode = !idComplete
     ? 'locked'
     : optionalResolved && !optionalNeedsFix
