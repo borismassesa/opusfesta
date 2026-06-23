@@ -1,5 +1,6 @@
 import 'server-only'
 import { randomUUID } from 'node:crypto'
+import { cache } from 'react'
 import { redirect } from 'next/navigation'
 import { auth, currentUser } from '@clerk/nextjs/server'
 import { createDashboardClient } from './supabase'
@@ -26,7 +27,7 @@ export interface DashboardUser {
  * earlier sign-up. Neither path mutates the row's `id`, so foreign keys that
  * reference it (vendors, couple_profiles, …) stay intact.
  */
-export async function getDashboardUser(): Promise<DashboardUser | null> {
+async function loadDashboardUser(): Promise<DashboardUser | null> {
   const { userId } = await auth()
   if (!userId) return null
 
@@ -141,26 +142,51 @@ export async function getDashboardUser(): Promise<DashboardUser | null> {
     }
   }
 
-  // Last resort: a concurrent request may have provisioned (or adopted) the row
-  // under this clerk_id while we were racing. One final read before giving up,
-  // so a lost race redirects to sign-in only when the row genuinely isn't there.
-  const { data: finalByClerk } = await supabase
-    .from('users')
-    .select('id, clerk_id, email, name')
-    .eq('clerk_id', userId)
-    .maybeSingle<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
-  if (finalByClerk) {
-    return {
-      id: finalByClerk.id,
-      clerkId: finalByClerk.clerk_id,
-      email: finalByClerk.email ?? '',
-      name: finalByClerk.name,
+  // Last resort: a concurrent writer — another request, or the Clerk
+  // `user.created` webhook (hosted in opus_website / vendors_portal) — may be
+  // provisioning this row right now. Its INSERT can be mid-flight, committed
+  // micro-seconds from now, so retry the read a few times with a short backoff
+  // before giving up. Without this, losing that race redirects a legitimately
+  // signed-in user to /sign-in (or renders a blank dashboard) even though their
+  // row is about to exist.
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const { data: finalByClerk } = await supabase
+      .from('users')
+      .select('id, clerk_id, email, name')
+      .eq('clerk_id', userId)
+      .maybeSingle<{ id: string; clerk_id: string; email: string | null; name: string | null }>()
+    if (finalByClerk) {
+      return {
+        id: finalByClerk.id,
+        clerkId: finalByClerk.clerk_id,
+        email: finalByClerk.email ?? '',
+        name: finalByClerk.name,
+      }
     }
+    if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)))
   }
 
-  console.error('[dashboard auth] failed to provision Clerk user', error)
+  // `error` here is the upsert error from above, which on this retry-exhausted
+  // path is typically null (the insert no-op'd cleanly); log the actionable
+  // context instead so a genuine provisioning failure is diagnosable.
+  console.error('[dashboard auth] failed to provision Clerk user', {
+    userId,
+    hasEmail: Boolean(email),
+    attempts: 4,
+    upsertError: error?.message ?? null,
+  })
   return null
 }
+
+/**
+ * Per-request memoized resolver. The dashboard layout + page each call
+ * requireDashboardUser(), so several getDashboardUser() calls fire in parallel
+ * within a single request. React cache() collapses them to one execution, so a
+ * brand-new user is provisioned exactly once instead of N racing inserts — the
+ * losers of which used to re-read before the winner's row had committed and
+ * returned null, blanking the dashboard until a manual reload.
+ */
+export const getDashboardUser = cache(loadDashboardUser)
 
 /**
  * Guard for /my/* routes. Redirects to /sign-in (preserving return_to) when
