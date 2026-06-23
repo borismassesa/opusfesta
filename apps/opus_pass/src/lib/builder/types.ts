@@ -10,6 +10,7 @@ export type FontKey =
   | 'EB Garamond'
   | 'Montserrat'
   | 'Dancing Script'
+  | 'Yellowtail'
 
 export type Align = 'left' | 'center' | 'right' | 'justify'
 
@@ -21,10 +22,36 @@ export type Palette = {
   onAccent: string
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+//  Template decoration — what makes templates differ BELOW the hero (not just
+//  recolour): the motif/ornament family, eyebrow + heading treatment, section
+//  dividers and widget-surface style. Threaded through Theme → RenderCtx so the
+//  renderer can draw per-template flourishes.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type Motif =
+  | 'watercolor'
+  | 'greenery'
+  | 'deco'
+  | 'floral'
+  | 'minimal'
+  | 'crest'
+  | 'kanga'
+  | 'sunrise'
+
+export type TemplateDecor = {
+  motif: Motif
+  eyebrow: 'tracked' | 'rule' | 'script'
+  divider: 'ornament' | 'rule' | 'none'
+  card: 'soft' | 'bordered' | 'flat' | 'filled'
+  headingUpper: boolean
+}
+
 export type Theme = {
   palette: Palette
   headingFont: FontKey
   bodyFont: FontKey
+  decor?: TemplateDecor
 }
 
 export type BlockType =
@@ -129,6 +156,30 @@ export type Block =
 export type SectionType = 'hero' | 'content' | 'rsvp' | 'details' | 'registry' | 'gallery'
 export type HeroLayout = 'centered' | 'split' | 'photo'
 
+/** The "Layout" tab's eight hero treatments. */
+export type LayoutKind =
+  | 'banner'
+  | 'full'
+  | 'side'
+  | 'squares'
+  | 'slideshow'
+  | 'marquee'
+  | 'text'
+  | 'single'
+
+/** A fully-resolved hero, composed from `meta` — drawn by SiteRenderer's HeroView. */
+export type HeroSpec = {
+  kind: LayoutKind
+  photos: string[]
+  monogram: string
+  partnerA: string
+  partnerB: string
+  dateLabel: string
+  welcome: string
+  countdownDate: string
+  nameColor: string
+}
+
 export type SectionBackground = {
   kind: 'image' | 'color'
   value: string
@@ -143,6 +194,63 @@ export type Section = {
   background: SectionBackground
   padding: number
   blocks: Block[]
+  /** Present only on the hero section; when set, HeroView renders it. */
+  hero?: HeroSpec
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  Builder meta — the structured, "Zola-style" knobs that live alongside the
+//  free-form sections: the couple's names, the URL slug, page visibility,
+//  animation choices and publish/privacy settings. The live preview is composed
+//  from `meta` (hero) + `sections` (everything below the fold).
+// ─────────────────────────────────────────────────────────────────────────────
+
+export type PageKey =
+  | 'home'
+  | 'schedule'
+  | 'travel'
+  | 'registry'
+  | 'party'
+  | 'gallery'
+  | 'things'
+  | 'faqs'
+  | 'rsvp'
+
+export type BuilderPage = { key: PageKey; label: string; visible: boolean }
+
+export type Visibility = 'published' | 'private'
+
+export type BuilderMeta = {
+  /** Couple */
+  partnerA: string
+  partnerB: string
+  date: string // ISO date
+  location: string
+  welcome: string
+  /** Design / layout / animation selections (ids into the catalogs) */
+  presetId: string
+  /** Per-design overrides on top of the preset; all clear on preset change. */
+  accentOverride?: string // button & link colour
+  headingFont?: FontKey
+  bodyFont?: FontKey
+  bgColor?: string
+  headingColor?: string
+  paragraphColor?: string
+  navDifferent?: boolean
+  layoutId: string
+  /** Hero photos (per-slot); layouts use the first N. */
+  photos: string[]
+  animationStyle: string
+  transition: string
+  fontEffect: string
+  /** Navigation pages */
+  pages: BuilderPage[]
+  /** Settings */
+  slug: string
+  visibility: Visibility
+  announcement: boolean
+  password: boolean
+  searchVisible: boolean
 }
 
 export type SiteDoc = {
@@ -150,6 +258,7 @@ export type SiteDoc = {
   nav: string[]
   theme: Theme
   sections: Section[]
+  meta: BuilderMeta
 }
 
 export type Selection =
@@ -163,6 +272,7 @@ export const FONT_STACKS: Record<FontKey, string> = {
   'EB Garamond': 'var(--font-garamond), Georgia, serif',
   Montserrat: 'var(--font-montserrat), system-ui, sans-serif',
   'Dancing Script': 'var(--font-dancing), cursive',
+  Yellowtail: 'var(--font-yellowtail), cursive',
 }
 
 export const FONT_OPTIONS = Object.keys(FONT_STACKS) as FontKey[]

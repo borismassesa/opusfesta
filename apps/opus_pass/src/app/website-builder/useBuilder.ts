@@ -4,6 +4,7 @@ import { useCallback, useEffect, useReducer, useRef, useState } from 'react'
 import type {
   Block,
   BlockType,
+  BuilderMeta,
   Section,
   SectionType,
   Selection,
@@ -12,7 +13,8 @@ import type {
 } from '@/lib/builder/types'
 import { DEFAULT_DOC, makeBlock, makeSection } from '@/lib/builder/defaults'
 
-const STORAGE_KEY = 'opuspass:website-builder:v1'
+// v2: the doc gained a structured `meta` block (names, pages, settings).
+const STORAGE_KEY = 'opuspass:website-builder:v2'
 
 type State = {
   doc: SiteDoc
@@ -27,6 +29,7 @@ type Action =
   | { type: 'updateBlock'; sectionId: string; blockId: string; patch: Partial<Block> }
   | { type: 'updateSection'; sectionId: string; patch: Partial<Section> }
   | { type: 'updateTheme'; patch: Partial<Theme> }
+  | { type: 'updateMeta'; patch: Partial<BuilderMeta> }
   | { type: 'setTitle'; title: string }
   | { type: 'addBlock'; sectionId: string; blockType: BlockType }
   | { type: 'removeBlock'; sectionId: string; blockId: string }
@@ -64,6 +67,11 @@ function reducer(state: State, action: Action): State {
       return withHistory(state, {
         ...state.doc,
         theme: { ...state.doc.theme, ...action.patch },
+      })
+    case 'updateMeta':
+      return withHistory(state, {
+        ...state.doc,
+        meta: { ...state.doc.meta, ...action.patch },
       })
     case 'updateBlock':
       return withHistory(
@@ -175,7 +183,9 @@ export function useBuilder() {
       const raw = localStorage.getItem(STORAGE_KEY)
       if (raw) {
         const doc = JSON.parse(raw) as SiteDoc
-        if (doc && Array.isArray(doc.sections) && doc.sections.length) {
+        // Require the v2 shape (`meta` present) — older saves are ignored so the
+        // composer never reads an undefined meta.
+        if (doc && doc.meta && Array.isArray(doc.sections) && doc.sections.length) {
           dispatch({ type: 'replace', doc, select: null })
         }
       }
@@ -246,6 +256,7 @@ export function useBuilder() {
       [],
     ),
     updateTheme: useCallback((patch: Partial<Theme>) => dispatch({ type: 'updateTheme', patch }), []),
+    updateMeta: useCallback((patch: Partial<BuilderMeta>) => dispatch({ type: 'updateMeta', patch }), []),
     setTitle: useCallback((title: string) => dispatch({ type: 'setTitle', title }), []),
     addBlock: useCallback(
       (sectionId: string, blockType: BlockType) =>

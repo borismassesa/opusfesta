@@ -7,12 +7,14 @@ import { cn } from '@/lib/utils'
 import {
   FONT_STACKS,
   type Block,
+  type HeroSpec,
   type Section,
   type Selection,
   type SiteDoc,
   type Theme,
   type Align,
 } from '@/lib/builder/types'
+import { MotifMark, SectionDivider, cardSurfaceClass } from './Motifs'
 
 // ─────────────────────────────────────────────────────────────────────────────
 //  SiteRenderer — renders a SiteDoc. Used by the editor canvas (editable) and
@@ -94,10 +96,14 @@ function SiteFooter({ doc }: { doc: SiteDoc }) {
   return (
     <footer
       className="flex flex-col items-center gap-2 px-6 py-10 text-center"
-      style={{ backgroundColor: doc.theme.palette.bg }}
+      style={{ backgroundColor: doc.theme.palette.bg, color: doc.theme.palette.ink }}
     >
-      <Heart size={16} style={{ color: doc.theme.palette.accent }} />
-      <p className="text-[13px]" style={{ color: doc.theme.palette.ink, fontFamily: FONT_STACKS[doc.theme.headingFont] }}>
+      {doc.theme.decor?.motif && doc.theme.decor.motif !== 'minimal' ? (
+        <MotifMark motif={doc.theme.decor.motif} color={doc.theme.palette.accent} className="mb-1" />
+      ) : (
+        <Heart size={16} style={{ color: doc.theme.palette.accent }} />
+      )}
+      <p className="text-[15px]" style={{ color: doc.theme.palette.ink, fontFamily: FONT_STACKS[doc.theme.headingFont] }}>
         {doc.title}
       </p>
       <p className="text-[11px] uppercase tracking-[0.2em] opacity-60">Made with OpusPass</p>
@@ -110,6 +116,20 @@ function SectionView({ section, ctx }: { section: Section; ctx: RenderCtx }) {
     ctx.selection?.kind === 'section' && ctx.selection.sectionId === section.id
   const isHero = section.type === 'hero'
 
+  // A composed hero (from the Layout tab) renders via HeroView, not the generic
+  // block flow.
+  if (section.hero) {
+    return (
+      <section
+        data-section={section.id}
+        className={cn('relative w-full', sectionSelected && ctx.editable && 'outline outline-2 -outline-offset-2 outline-[#C9A0DC]')}
+        style={{ backgroundColor: section.background.value }}
+      >
+        <HeroView spec={section.hero} theme={ctx.theme} compact={ctx.compact} />
+      </section>
+    )
+  }
+
   // Hero "Split Editorial" → image is on the right, content on a light left
   // column, so the content is NOT on a photo. "Modern Minimalist" (photo) →
   // full-bleed image behind the content. "Classic Centered" → no photo.
@@ -119,6 +139,7 @@ function SectionView({ section, ctx }: { section: Section; ctx: RenderCtx }) {
 
   const blocks = (
     <div className={cn('mx-auto flex w-full max-w-2xl flex-col', alignSelf(blocksAlign(section)))}>
+      {!onPhoto && <SectionDivider decor={ctx.theme.decor} color={ctx.theme.palette.accent} />}
       {section.blocks.map((b) => (
         <BlockView key={b.id} block={b} section={section} ctx={ctx} onPhoto={onPhoto} />
       ))}
@@ -173,6 +194,193 @@ function SectionView({ section, ctx }: { section: Section; ctx: RenderCtx }) {
         </div>
       )}
     </section>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+//  HeroView — the eight "Layout" treatments
+// ─────────────────────────────────────────────────────────────────────────────
+
+function HeroView({ spec, theme, compact }: { spec: HeroSpec; theme: Theme; compact: boolean }) {
+  const heading = FONT_STACKS[theme.headingFont]
+  const [iA, iB] = spec.monogram.split(' & ')
+
+  const Monogram = (
+    <div className="pointer-events-none absolute inset-0 z-[1] flex items-center justify-center">
+      <span
+        className="flex items-end leading-none text-white drop-shadow-[0_2px_12px_rgba(0,0,0,0.45)]"
+        style={{ fontFamily: heading }}
+      >
+        <span style={{ fontSize: compact ? 52 : 96 }}>{iA}</span>
+        <span className="mx-1 italic" style={{ fontSize: compact ? 24 : 44 }}>&amp;</span>
+        <span style={{ fontSize: compact ? 52 : 96 }}>{iB}</span>
+      </span>
+    </div>
+  )
+
+  const Names = (
+    <div
+      className="flex flex-col items-center px-6 py-12 text-center"
+      style={{ backgroundColor: theme.palette.surface }}
+    >
+      <HeroNames spec={spec} theme={theme} />
+    </div>
+  )
+
+  // Text only — no photo
+  if (spec.kind === 'text') {
+    return (
+      <div className="flex flex-col items-center px-6 py-20 text-center" style={{ backgroundColor: theme.palette.surface }}>
+        <HeroNames spec={spec} theme={theme} large />
+      </div>
+    )
+  }
+
+  // Keeps the white monogram legible on light photos.
+  const Vignette = (
+    <div aria-hidden className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/15 via-black/15 to-black/30" />
+  )
+
+  // Single page — photo left, names right
+  if (spec.kind === 'single') {
+    return (
+      <div className={cn('grid', compact ? 'grid-cols-1' : 'grid-cols-2')}>
+        <div className={cn('relative overflow-hidden', compact ? 'aspect-[16/10]' : 'min-h-[460px]')}>
+          <Image src={spec.photos[0]} alt="" fill sizes="520px" className="wb-kenburns object-cover" priority />
+          {Vignette}
+          {Monogram}
+        </div>
+        <div className="flex flex-col items-center justify-center px-8 py-16 text-center" style={{ backgroundColor: theme.palette.surface }}>
+          <HeroNames spec={spec} theme={theme} />
+        </div>
+      </div>
+    )
+  }
+
+  // Photo arrangements with the monogram overlaid, names below
+  return (
+    <div>
+      <div className="relative w-full overflow-hidden">
+        <PhotoArrangement kind={spec.kind} photos={spec.photos} compact={compact} />
+        {Vignette}
+        {Monogram}
+      </div>
+      {Names}
+    </div>
+  )
+}
+
+function PhotoArrangement({ kind, photos, compact }: { kind: HeroSpec['kind']; photos: string[]; compact: boolean }) {
+  if (kind === 'banner') {
+    return (
+      <div className="relative aspect-[16/7] w-full">
+        <Image src={photos[0]} alt="" fill sizes="1000px" className="wb-kenburns object-cover" priority />
+      </div>
+    )
+  }
+  if (kind === 'full') {
+    return (
+      <div className="relative aspect-[16/9] w-full">
+        <Image src={photos[0]} alt="" fill sizes="1000px" className="wb-kenburns object-cover" priority />
+      </div>
+    )
+  }
+  if (kind === 'side') {
+    return (
+      <div className={cn('grid grid-cols-2', compact ? 'h-[300px]' : 'h-[460px]')}>
+        {photos.slice(0, 2).map((src, i) => (
+          <div key={i} className="relative overflow-hidden">
+            <Image src={src} alt="" fill sizes="500px" className={cn('object-cover', i === 0 ? 'wb-kenburns' : 'wb-kenburns-2')} />
+          </div>
+        ))}
+      </div>
+    )
+  }
+  if (kind === 'squares') {
+    return (
+      <div className={cn('relative', compact ? 'h-[300px]' : 'h-[460px]')}>
+        <div className="absolute left-[4%] top-[6%] h-[68%] w-[52%] overflow-hidden">
+          <Image src={photos[0]} alt="" fill sizes="500px" className="wb-kenburns object-cover" />
+        </div>
+        <div className="absolute bottom-[6%] right-[4%] h-[68%] w-[52%] overflow-hidden shadow-xl ring-4 ring-white">
+          <Image src={photos[1] ?? photos[0]} alt="" fill sizes="500px" className="wb-kenburns-2 object-cover" />
+        </div>
+      </div>
+    )
+  }
+  if (kind === 'marquee') {
+    // Triple the photos for a seamless -33.333% scroll loop.
+    const loop = [...photos, ...photos, ...photos]
+    const cellW = compact ? 150 : 280
+    return (
+      <div className={cn('w-full overflow-hidden', compact ? 'h-[300px]' : 'h-[460px]')}>
+        <div className="flex h-full w-max wb-hero-marquee">
+          {loop.map((src, i) => (
+            <div key={i} className="relative h-full" style={{ width: cellW }}>
+              <Image src={src} alt="" fill sizes="280px" className="object-cover" />
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+  // slideshow
+  return <HeroSlideshow photos={photos} />
+}
+
+function HeroSlideshow({ photos }: { photos: string[] }) {
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    if (photos.length < 2) return
+    const t = setInterval(() => setI((n) => (n + 1) % photos.length), 3500)
+    return () => clearInterval(t)
+  }, [photos.length])
+  return (
+    <div className="relative aspect-[16/9] w-full">
+      {photos.map((src, idx) => (
+        <Image
+          key={idx}
+          src={src}
+          alt=""
+          fill
+          sizes="1000px"
+          priority={idx === 0}
+          className={cn('object-cover transition-opacity duration-700', idx === i ? 'opacity-100' : 'opacity-0')}
+        />
+      ))}
+    </div>
+  )
+}
+
+function HeroNames({ spec, theme, large = false }: { spec: HeroSpec; theme: Theme; large?: boolean }) {
+  const heading = FONT_STACKS[theme.headingFont]
+  const size = large ? 46 : 38
+  return (
+    <>
+      {theme.decor?.motif && theme.decor.motif !== 'minimal' && (
+        <MotifMark motif={theme.decor.motif} color={theme.palette.accent} className="mb-3" />
+      )}
+      <h1 className="leading-tight" style={{ fontFamily: heading, color: spec.nameColor, fontSize: size }}>
+        {spec.partnerA}
+      </h1>
+      <span className="my-1 text-[18px]" style={{ color: theme.palette.accent }}>
+        &amp;
+      </span>
+      <h1 className="leading-tight" style={{ fontFamily: heading, color: spec.nameColor, fontSize: size }}>
+        {spec.partnerB}
+      </h1>
+      {spec.welcome.trim() && (
+        <p className="mt-4 max-w-md text-[15px]" style={{ color: theme.palette.ink, fontFamily: FONT_STACKS[theme.bodyFont] }}>
+          {spec.welcome}
+        </p>
+      )}
+      <p className="mt-4 text-[11px] font-semibold uppercase" style={{ color: theme.palette.ink, letterSpacing: '0.24em' }}>
+        {spec.dateLabel}
+      </p>
+      <div className="mt-6 w-full max-w-md">
+        <Countdown date={spec.countdownDate} label="" theme={theme} />
+      </div>
+    </>
   )
 }
 
@@ -243,7 +451,38 @@ function BlockBody({ block, ctx, onPhoto }: { block: Block; ctx: RenderCtx; onPh
   const { theme, compact } = ctx
   const readable = (color: string) => (!onPhoto && isLight(color) ? theme.palette.ink : color)
   switch (block.type) {
-    case 'eyebrow':
+    case 'eyebrow': {
+      const eb = theme.decor?.eyebrow ?? 'tracked'
+      if (eb === 'script') {
+        // Flowing script eyebrow (e.g. the floral template).
+        return (
+          <p
+            className="text-[26px]"
+            style={{
+              color: readable(theme.palette.accent),
+              fontFamily: FONT_STACKS.Yellowtail,
+              textShadow: onPhoto ? '0 1px 4px rgba(0,0,0,0.4)' : undefined,
+            }}
+          >
+            {block.text}
+          </p>
+        )
+      }
+      if (eb === 'rule') {
+        // Small-caps label flanked by short rules.
+        return (
+          <span className="inline-flex items-center gap-3">
+            <span className="h-px w-6" style={{ backgroundColor: readable(block.color), opacity: 0.5 }} />
+            <span
+              className="text-[11px] font-semibold uppercase"
+              style={{ color: readable(block.color), letterSpacing: `${Math.max(block.letterSpacing, 16) * 0.01}em` }}
+            >
+              {block.text}
+            </span>
+            <span className="h-px w-6" style={{ backgroundColor: readable(block.color), opacity: 0.5 }} />
+          </span>
+        )
+      }
       return (
         <p
           className="text-[11px] font-semibold uppercase"
@@ -256,14 +495,17 @@ function BlockBody({ block, ctx, onPhoto }: { block: Block; ctx: RenderCtx; onPh
           {block.text}
         </p>
       )
-    case 'heading':
+    }
+    case 'heading': {
+      const upper = theme.decor?.headingUpper ?? false
       return (
         <h1
           className="leading-[1.05]"
           style={{
             fontFamily: FONT_STACKS[block.font],
             fontSize: compact ? Math.round(block.fontSize * 0.62) : block.fontSize,
-            letterSpacing: `${block.letterSpacing * 0.02}em`,
+            letterSpacing: upper ? '0.06em' : `${block.letterSpacing * 0.02}em`,
+            textTransform: upper ? 'uppercase' : undefined,
             color: block.color,
             textShadow: onPhoto ? '0 1px 12px rgba(255,255,255,0.25)' : undefined,
           }}
@@ -271,6 +513,7 @@ function BlockBody({ block, ctx, onPhoto }: { block: Block; ctx: RenderCtx; onPh
           {block.text || 'Your headline'}
         </h1>
       )
+    }
     case 'text':
       return (
         <p
@@ -412,8 +655,8 @@ function RsvpForm({
   if (done) {
     return (
       <div
-        className="mx-auto w-full max-w-md rounded-2xl px-6 py-10 text-center"
-        style={{ backgroundColor: theme.palette.surface, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+        className={cn('mx-auto w-full max-w-md px-6 py-10 text-center', cardSurfaceClass(theme.decor?.card))}
+        style={{ backgroundColor: theme.palette.surface }}
       >
         <span
           className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
@@ -433,8 +676,8 @@ function RsvpForm({
 
   return (
     <div
-      className="mx-auto w-full max-w-md rounded-2xl px-6 py-7 text-left"
-      style={{ backgroundColor: theme.palette.surface, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+      className={cn('mx-auto w-full max-w-md px-6 py-7 text-left', cardSurfaceClass(theme.decor?.card))}
+      style={{ backgroundColor: theme.palette.surface }}
     >
       <p className="text-center text-[18px] font-semibold" style={{ fontFamily: FONT_STACKS[theme.headingFont] }}>
         {title}
@@ -500,8 +743,8 @@ function VenueMap({ venue, address, theme }: { venue: string; address: string; t
   const query = encodeURIComponent(`${venue}, ${address}`)
   return (
     <div
-      className="mx-auto w-full max-w-md overflow-hidden rounded-2xl text-left"
-      style={{ backgroundColor: theme.palette.surface, boxShadow: '0 8px 30px rgba(0,0,0,0.08)' }}
+      className={cn('mx-auto w-full max-w-md overflow-hidden text-left', cardSurfaceClass(theme.decor?.card))}
+      style={{ backgroundColor: theme.palette.surface }}
     >
       <div className="relative h-36 w-full overflow-hidden" style={{ backgroundColor: '#E8EDE4' }}>
         {/* Stylised map backdrop */}
@@ -545,8 +788,11 @@ function Registry({ items, theme }: { items: { id: string; label: string; href: 
           key={it.id}
           href={it.href}
           onClick={(e) => e.stopPropagation()}
-          className="flex flex-col items-center gap-2 rounded-2xl px-4 py-6 text-center transition-transform hover:-translate-y-0.5"
-          style={{ backgroundColor: theme.palette.surface, boxShadow: '0 6px 20px rgba(0,0,0,0.06)' }}
+          className={cn(
+            'flex flex-col items-center gap-2 px-4 py-6 text-center transition-transform hover:-translate-y-0.5',
+            cardSurfaceClass(theme.decor?.card),
+          )}
+          style={{ backgroundColor: theme.palette.surface }}
         >
           <span
             className="flex h-11 w-11 items-center justify-center rounded-full"

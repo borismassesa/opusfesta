@@ -109,6 +109,50 @@ export interface GuestWithInvitations extends GuestContact {
   invitations: GuestInvitation[]
 }
 
+// ──────────────────────────────── RSVP questions ────────────────────────────────
+
+/** Short answer (skippable) or multiple choice (guest must pick an option). */
+export type RsvpQuestionKind = 'short_answer' | 'multiple_choice'
+
+/** One selectable answer for a multiple-choice question. */
+export interface RsvpQuestionOption {
+  id: string
+  label: string
+  description: string | null
+}
+
+export interface RsvpQuestion {
+  id: string
+  /** NULL = a "general" question asked to everyone; set = a per-event follow-up. */
+  event_id: string | null
+  prompt: string
+  description: string | null
+  kind: RsvpQuestionKind
+  required: boolean
+  /** Only ask when the guest is attending (ignored for general questions). */
+  attending_only: boolean
+  options: RsvpQuestionOption[]
+  sort_order: number
+  created_at: string
+  updated_at: string
+}
+
+/** A guest's answer to one question, captured during their RSVP. */
+export interface RsvpAnswer {
+  id: string
+  guest_invitation_id: string
+  question_id: string
+  answer_text: string | null
+  option_id: string | null
+  created_at: string
+  updated_at: string
+}
+
+export const RSVP_QUESTION_KIND_LABELS: Record<RsvpQuestionKind, string> = {
+  short_answer: 'Short answer',
+  multiple_choice: 'Multiple choice',
+}
+
 /** When/how a guest was last contacted (latest send), for the RSVP tracker. */
 export interface LastSend {
   channel: SendChannel

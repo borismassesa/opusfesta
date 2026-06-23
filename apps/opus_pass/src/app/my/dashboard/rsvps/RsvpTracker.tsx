@@ -2,13 +2,30 @@
 
 import { useMemo, useRef, useState, useTransition } from 'react'
 import { toast } from 'sonner'
-import { Download, ClipboardCheck, Utensils, Search, Flag, Check, X } from 'lucide-react'
-import { Card, EmptyState, StatusPill } from '@/components/dashboard/primitives'
+import {
+  ClipboardCheck,
+  Utensils,
+  Search,
+  Flag,
+  Check,
+  X,
+  Clock,
+  Mail,
+  MessageCircle,
+  MessageSquare,
+  Link2,
+  CornerUpLeft,
+  Send,
+  CheckCircle2,
+  XCircle,
+  Users,
+  ChevronDown,
+  type LucideIcon,
+} from 'lucide-react'
+import { Card, EmptyState } from '@/components/dashboard/primitives'
 import { inputClass } from '@/components/dashboard/controls'
-import { DashboardHero } from '@/components/dashboard/DashboardHero'
 import { cn } from '@/lib/utils'
 import { updateRsvp, approveReviewGuest, dismissReviewGuest } from '@/lib/dashboard/actions'
-import type { DashboardHeroContent } from '@/lib/cms/dashboard-hero'
 import type { RsvpsDashboardCopy } from '@/lib/cms/dashboard-copy'
 import {
   RSVP_STATUS_LABELS,
@@ -48,11 +65,19 @@ const CHANNEL_LABELS: Record<SendChannel, string> = {
   link: 'Link',
 }
 
-const CHANNEL_DOT: Record<SendChannel, string> = {
-  whatsapp: 'bg-[#25D366]',
-  sms: 'bg-[#3478F6]',
-  email: 'bg-[#E0A458]',
-  link: 'bg-[#C9A0DC]',
+const CHANNEL_ICON: Record<SendChannel, LucideIcon> = {
+  whatsapp: MessageCircle,
+  sms: MessageSquare,
+  email: Mail,
+  link: Link2,
+}
+
+/** Status-colored dropdown styling — the select doubles as the status display. */
+const STATUS_SELECT_COLOR: Record<RsvpStatus, string> = {
+  attending: 'border-emerald-300 bg-emerald-50 text-emerald-700',
+  maybe: 'border-amber-300 bg-amber-50 text-amber-700',
+  declined: 'border-rose-300 bg-rose-50 text-rose-700',
+  pending: 'border-black/15 bg-white text-[#1A1A1A]/65',
 }
 
 /** Compact "2d ago" style relative time. Client-only (uses the wall clock). */
@@ -77,13 +102,11 @@ export default function RsvpTracker({
   guests,
   events,
   lastSend,
-  hero,
   copy,
 }: {
   guests: GuestWithInvitations[]
   events: WeddingEvent[]
   lastSend: Record<string, LastSend>
-  hero: DashboardHeroContent
   copy: RsvpsDashboardCopy
 }) {
   const [eventFilter, setEventFilter] = useState('all')
@@ -270,55 +293,8 @@ export default function RsvpTracker({
     tableRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
 
-  function exportCsv() {
-    const header = ['Guest', 'Group', 'Event', 'Status', 'Party size', 'Meal', 'Dietary notes', 'Message', 'Review']
-    const escape = (v: string | number | null) => {
-      let s = String(v ?? '')
-      // Neutralize spreadsheet formula injection from free-text guest fields.
-      if (/^[=+\-@\t\r]/.test(s)) s = `'${s}`
-      return `"${s.replace(/"/g, '""')}"`
-    }
-    const lines = [...scoped, ...reviewRows].map((r) =>
-      [
-        r.guestName,
-        r.group,
-        r.eventName,
-        RSVP_STATUS_LABELS[r.status],
-        r.status === 'attending' ? r.partySize : '',
-        r.meal,
-        r.dietary,
-        r.message,
-        reviewRows.some((rr) => rr.guestId === r.guestId) ? 'Needs review' : '',
-      ]
-        .map(escape)
-        .join(','),
-    )
-    const csv = [header.map(escape).join(','), ...lines].join('\n')
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = 'rsvps.csv'
-    a.click()
-    URL.revokeObjectURL(url)
-  }
-
   return (
     <div className="space-y-6">
-      <DashboardHero
-        content={hero}
-        actions={
-          hasRows ? (
-            <button
-              onClick={exportCsv}
-              className="inline-flex items-center gap-2 rounded-full bg-black/[0.05] px-3.5 py-2 text-xs font-semibold text-[#1A1A1A] hover:bg-black/[0.08]"
-            >
-              <Download className="h-3.5 w-3.5" /> {copy.export_cta}
-            </button>
-          ) : null
-        }
-      />
-
       {!hasRows ? (
         <EmptyState
           icon={<ClipboardCheck className="h-7 w-7" />}
@@ -376,25 +352,29 @@ export default function RsvpTracker({
           {/* Stat cards */}
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <StatTile
-              dot="bg-emerald-500"
+              icon={CheckCircle2}
+              iconColor="text-emerald-500"
               label="Attending"
               value={stats.attendingGuests}
               hint={stats.plusOnes > 0 ? `+${stats.plusOnes} plus-one${stats.plusOnes === 1 ? '' : 's'}` : 'guests confirmed'}
             />
             <StatTile
-              dot="bg-rose-500"
+              icon={XCircle}
+              iconColor="text-rose-500"
               label="Declined"
               value={stats.declined}
               hint={stats.replied > 0 ? `${Math.round((stats.declined / stats.replied) * 100)}% of replies` : 'No replies yet'}
             />
             <StatTile
-              dot="bg-neutral-400"
+              icon={Clock}
+              iconColor="text-neutral-400"
               label="Awaiting reply"
               value={stats.awaiting}
               hint={stats.maybe > 0 ? `${stats.maybe} said maybe` : 'Yet to respond'}
             />
             <StatTile
-              dot="bg-[#C9A0DC]"
+              icon={Users}
+              iconColor="text-[#C9A0DC]"
               label="Total headcount"
               value={stats.headcount}
               hint="Seats to plan for catering"
@@ -402,74 +382,77 @@ export default function RsvpTracker({
             />
           </div>
 
-          {/* Response rate */}
-          <Card className="flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4">
-            <p className="text-sm text-[#1A1A1A]/60">
-              <b className="text-[#1A1A1A]">{stats.replied}</b> of {stats.invited} invited have replied ·{' '}
-              <b className="text-[#1A1A1A]">{stats.responseRate}%</b> response rate
-            </p>
-            <div className="flex h-2.5 min-w-[160px] flex-1 overflow-hidden rounded-full bg-black/[0.06]">
-              <span className="bg-emerald-500" style={{ width: `${pct(counts.attending, stats.invited)}%` }} />
-              <span className="bg-rose-500" style={{ width: `${pct(stats.declined, stats.invited)}%` }} />
-              <span className="bg-[#C9A0DC]" style={{ width: `${pct(stats.awaiting, stats.invited)}%` }} />
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#1A1A1A]/55">
-              <Legend dot="bg-emerald-500" label="Attending" />
-              <Legend dot="bg-rose-500" label="Declined" />
-              <Legend dot="bg-[#C9A0DC]" label="Awaiting" />
-            </div>
-          </Card>
-
-          {/* Meals & dietary */}
-          {meals.length > 0 || dietary.length > 0 ? (
-            <div className="grid gap-3 lg:grid-cols-[1.4fr_1fr]">
-              <Card className="p-5">
-                <h2 className="text-base font-semibold text-[#1A1A1A]">Meal preferences</h2>
-                <p className="mb-4 mt-0.5 text-xs text-[#1A1A1A]/55">
-                  From guests who are attending — share this with your caterer.
+          {/* Response progress + meal choices, side by side (mirrors the overview) */}
+          <div className="grid gap-3 lg:grid-cols-2">
+            {/* Response rate — same donut as the per-event cards, for consistency */}
+            <Card className="flex flex-wrap items-center gap-x-6 gap-y-4 px-5 py-5">
+              <ResponseDonut
+                attending={counts.attending}
+                declined={stats.declined}
+                awaiting={stats.awaiting}
+                invited={stats.invited}
+                rate={stats.responseRate}
+              />
+              <div className="min-w-[150px] flex-1 space-y-3">
+                <p className="text-sm text-[#1A1A1A]/60">
+                  <b className="text-[#1A1A1A]">{stats.replied}</b> of {stats.invited} invited have replied ·{' '}
+                  <b className="text-[#1A1A1A]">{stats.responseRate}%</b> response rate
                 </p>
-                {meals.length === 0 ? (
-                  <p className="text-sm text-[#1A1A1A]/45">No meal choices collected yet.</p>
-                ) : (
-                  <div className="space-y-3">
-                    {meals.map((m) => (
-                      <div key={m.choice} className="flex items-center gap-3">
-                        <span className="w-32 shrink-0 truncate text-sm font-medium text-[#1A1A1A]" title={m.choice}>
-                          {m.choice}
-                        </span>
-                        <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-black/[0.06]">
-                          <span
-                            className="block h-full rounded-full bg-[#C9A0DC]"
-                            style={{ width: `${pct(m.count, meals[0].count)}%` }}
-                          />
-                        </div>
-                        <span className="w-8 shrink-0 text-right text-sm font-semibold tabular-nums text-[#1A1A1A]/65">
-                          {m.count}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </Card>
-              <Card className="p-5">
-                <h2 className="text-base font-semibold text-[#1A1A1A]">Dietary notes</h2>
-                <p className="mb-4 mt-0.5 text-xs text-[#1A1A1A]/55">Flagged by guests on their RSVP.</p>
-                {dietary.length === 0 ? (
-                  <p className="text-sm text-[#1A1A1A]/45">No dietary notes flagged yet.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {dietary.map((d) => (
-                      <span
-                        key={d.note}
-                        className="inline-flex items-center gap-1.5 rounded-full bg-[#9FE870]/35 px-3 py-1.5 text-xs font-medium text-[#3f6b1f]"
-                      >
-                        {d.note} <b className="text-[#2f5417]">{d.count}</b>
+                <ul className="space-y-1.5 text-sm">
+                  <DonutLegend color="#10b981" label="Attending" value={counts.attending} />
+                  <DonutLegend color="#f43f5e" label="Declined" value={stats.declined} />
+                  <DonutLegend color="#C9A0DC" label="Awaiting" value={stats.awaiting} />
+                </ul>
+              </div>
+            </Card>
+
+            {/* Meal preferences */}
+            <Card className="p-5">
+              <h2 className="text-base font-semibold text-[#1A1A1A]">Meal choices</h2>
+              <p className="mb-4 mt-0.5 text-xs text-[#1A1A1A]/55">
+                From guests who are attending — share this with your caterer.
+              </p>
+              {meals.length === 0 ? (
+                <p className="text-sm text-[#1A1A1A]/45">No meal choices collected yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {meals.map((m) => (
+                    <div key={m.choice} className="flex items-center gap-3">
+                      <span className="w-28 shrink-0 truncate text-sm font-medium text-[#1A1A1A]" title={m.choice}>
+                        {m.choice}
                       </span>
-                    ))}
-                  </div>
-                )}
-              </Card>
-            </div>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-black/[0.06]">
+                        <span
+                          className="block h-full rounded-full bg-[#C9A0DC]"
+                          style={{ width: `${pct(m.count, meals[0].count)}%` }}
+                        />
+                      </div>
+                      <span className="w-8 shrink-0 text-right text-sm font-semibold tabular-nums text-[#1A1A1A]/65">
+                        {m.count}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </div>
+
+          {/* Dietary notes — full width below, only when guests have flagged any */}
+          {dietary.length > 0 ? (
+            <Card className="p-5">
+              <h2 className="text-base font-semibold text-[#1A1A1A]">Dietary notes</h2>
+              <p className="mb-4 mt-0.5 text-xs text-[#1A1A1A]/55">Flagged by guests on their RSVP.</p>
+              <div className="flex flex-wrap gap-2">
+                {dietary.map((d) => (
+                  <span
+                    key={d.note}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[#9FE870]/35 px-3 py-1.5 text-xs font-medium text-[#3f6b1f]"
+                  >
+                    {d.note} <b className="text-[#2f5417]">{d.count}</b>
+                  </span>
+                ))}
+              </div>
+            </Card>
           ) : null}
 
           {/* Filters + search */}
@@ -557,20 +540,23 @@ export default function RsvpTracker({
                               Needs review
                             </span>
                           ) : (
-                            <div className="flex flex-col gap-1.5">
-                              <StatusPill status={r.status} />
+                            <div className="relative inline-block">
                               <select
                                 value={r.status}
                                 disabled={pending}
                                 onChange={(e) => changeStatus(r.invitationId, e.target.value as RsvpStatus)}
-                                className="rounded-lg border border-black/[0.1] bg-white px-2 py-1 text-xs text-[#1A1A1A]/70 outline-none focus:border-[#C9A0DC]"
+                                className={cn(
+                                  'appearance-none rounded-full border py-1.5 pl-3 pr-7 text-xs font-semibold outline-none transition-colors focus:ring-2 focus:ring-[#C9A0DC]/30 disabled:opacity-60',
+                                  STATUS_SELECT_COLOR[r.status],
+                                )}
                               >
                                 {STATUSES.map((s) => (
-                                  <option key={s} value={s}>
-                                    {RSVP_STATUS_LABELS[s]}
+                                  <option key={s} value={s} className="bg-white font-medium text-[#1A1A1A]">
+                                    {s === 'pending' ? 'Awaiting' : RSVP_STATUS_LABELS[s]}
                                   </option>
                                 ))}
                               </select>
+                              <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 opacity-70" />
                             </div>
                           )}
                         </td>
@@ -632,13 +618,15 @@ function pct(part: number, whole: number): number {
 }
 
 function StatTile({
-  dot,
+  icon: Icon,
+  iconColor,
   label,
   value,
   hint,
   accent,
 }: {
-  dot: string
+  icon: LucideIcon
+  iconColor: string
   label: string
   value: number
   hint: string
@@ -646,8 +634,8 @@ function StatTile({
 }) {
   return (
     <Card className={cn('p-4', accent && 'bg-gradient-to-br from-[#F0DFF6]/70 to-white')}>
-      <div className="flex items-center gap-2">
-        <span className={cn('h-2 w-2 rounded-full', dot)} />
+      <div className="flex items-center gap-1.5">
+        <Icon className={cn('h-4 w-4', iconColor)} />
         <span className="text-[11px] font-medium uppercase tracking-wide text-[#1A1A1A]/55">{label}</span>
       </div>
       <p className="mt-2 text-3xl font-bold tabular-nums tracking-tight text-[#1A1A1A]">{value}</p>
@@ -656,11 +644,67 @@ function StatTile({
   )
 }
 
-function Legend({ dot, label }: { dot: string; label: string }) {
+/** Response-rate ring — mirrors the per-event AttendanceDonut for consistency. */
+function ResponseDonut({
+  attending,
+  declined,
+  awaiting,
+  invited,
+  rate,
+}: {
+  attending: number
+  declined: number
+  awaiting: number
+  invited: number
+  rate: number
+}) {
+  const r = 52
+  const c = 2 * Math.PI * r
+  const seg = (n: number) => (invited > 0 ? (n / invited) * c : 0)
+  const segs = [
+    { len: seg(attending), color: '#10b981' },
+    { len: seg(declined), color: '#f43f5e' },
+    { len: seg(awaiting), color: '#C9A0DC' },
+  ]
+  let offset = 0
   return (
-    <span className="inline-flex items-center gap-1.5">
-      <span className={cn('h-2 w-2 rounded-full', dot)} /> {label}
-    </span>
+    <div className="relative h-32 w-32 shrink-0">
+      <svg viewBox="0 0 128 128" className="h-32 w-32 -rotate-90">
+        <circle cx="64" cy="64" r={r} fill="none" stroke="#e9e4ee" strokeWidth="12" />
+        {invited > 0 &&
+          segs.map((s, i) => {
+            const el = (
+              <circle
+                key={i}
+                cx="64"
+                cy="64"
+                r={r}
+                fill="none"
+                stroke={s.color}
+                strokeWidth="12"
+                strokeDasharray={`${s.len} ${c - s.len}`}
+                strokeDashoffset={-offset}
+              />
+            )
+            offset += s.len
+            return el
+          })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-bold tabular-nums text-[#1A1A1A]">{rate}%</span>
+        <span className="text-[10px] uppercase tracking-wide text-[#1A1A1A]/50">replied</span>
+      </div>
+    </div>
+  )
+}
+
+function DonutLegend({ color, label, value }: { color: string; label: string; value: number }) {
+  return (
+    <li className="flex items-center gap-2">
+      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: color }} />
+      <span className="text-[#1A1A1A]/60">{label}</span>
+      <span className="ml-auto font-semibold tabular-nums text-[#1A1A1A]">{value}</span>
+    </li>
   )
 }
 
@@ -699,30 +743,42 @@ function FilterChip({
 
 function ReplyVia({ row }: { row: Row }) {
   if (row.source === 'public') {
-    return <ChannelLine dot="bg-[#C9A0DC]" label="Public link" time={relTime(row.respondedAt)} />
+    return <ChannelLines icon={Link2} label="Public link" time={relTime(row.respondedAt)} />
   }
   const channel = row.lastSend?.channel
   if (row.respondedAt) {
     return (
-      <ChannelLine
-        dot={channel ? CHANNEL_DOT[channel] : 'bg-[#1A1A1A]/25'}
+      <ChannelLines
+        icon={channel ? CHANNEL_ICON[channel] : CornerUpLeft}
         label={channel ? CHANNEL_LABELS[channel] : 'Replied'}
         time={relTime(row.respondedAt)}
       />
     )
   }
   if (row.lastSend) {
-    return <ChannelLine dot={CHANNEL_DOT[row.lastSend.channel]} label="Invite sent" time={relTime(row.lastSend.at)} />
+    return <ChannelLines icon={Send} label="Invite sent" time={relTime(row.lastSend.at)} />
   }
-  return <span className="text-xs text-[#1A1A1A]/40">Not sent yet</span>
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs text-[#1A1A1A]/40">
+      <Clock className="h-3.5 w-3.5" /> Not sent yet
+    </span>
+  )
 }
 
-function ChannelLine({ dot, label, time }: { dot: string; label: string; time: string }) {
+/** Two stacked rows, each with an icon: the channel/status, then the time. */
+function ChannelLines({ icon: Icon, label, time }: { icon: LucideIcon; label: string; time: string }) {
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs text-[#1A1A1A]/55">
-      <span className={cn('h-2 w-2 rounded-full', dot)} />
-      {label}
-      {time ? <span className="text-[#1A1A1A]/40">· {time}</span> : null}
-    </span>
+    <div className="flex flex-col gap-1">
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#1A1A1A]/65">
+        <Icon className="h-3.5 w-3.5 text-[#1A1A1A]/45" />
+        {label}
+      </span>
+      {time ? (
+        <span className="inline-flex items-center gap-1.5 text-xs text-[#1A1A1A]/40">
+          <Clock className="h-3.5 w-3.5" />
+          {time}
+        </span>
+      ) : null}
+    </div>
   )
 }

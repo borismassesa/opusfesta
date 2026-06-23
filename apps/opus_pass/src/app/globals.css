@@ -37,6 +37,47 @@ svg {
   max-width: 100%;
 }
 
+/* Wedding-website builder — hero "transition" previews. Applied to the live
+   preview hero so picking Rise / Pan / Wipe / Breathe shows immediately. */
+@keyframes wb-rise {
+  from { opacity: 0; transform: translateY(28px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes wb-pan {
+  from { opacity: 0; transform: translateX(-32px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+@keyframes wb-wipe {
+  from { opacity: 0; clip-path: inset(0 100% 0 0); }
+  to   { opacity: 1; clip-path: inset(0 0 0 0); }
+}
+@keyframes wb-breathe {
+  from { opacity: 0; transform: scale(1.06); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.wb-anim-rise { animation: wb-rise 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.wb-anim-pan { animation: wb-pan 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.wb-anim-wipe { animation: wb-wipe 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.wb-anim-breathe { animation: wb-breathe 1.1s ease-out both; }
+
+/* Slow "Ken Burns" drift for single-photo hero layouts (banner / full / single
+   / side / squares). The -2 variant uses a different origin + duration so two
+   adjacent photos never move in lock-step. */
+@keyframes wb-kenburns {
+  from { transform: scale(1); }
+  to   { transform: scale(1.09); }
+}
+.wb-kenburns { animation: wb-kenburns 16s ease-in-out infinite alternate; will-change: transform; }
+.wb-kenburns-2 { animation: wb-kenburns 21s ease-in-out infinite alternate; transform-origin: top right; will-change: transform; }
+
+/* Continuous horizontal scroll for the Marquee hero (photos tripled for a
+   seamless -33.333% loop). */
+@keyframes wb-hero-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-33.333%); }
+}
+.wb-hero-marquee { animation: wb-hero-marquee 40s linear infinite; will-change: transform; }
+
 @keyframes marquee {
   from {
     transform: translateX(0);

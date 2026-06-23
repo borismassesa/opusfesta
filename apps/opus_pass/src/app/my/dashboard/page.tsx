@@ -17,7 +17,8 @@ import {
   coupleDisplayName,
   getGuestsAwaitingReview,
 } from '@/lib/dashboard/queries'
-import { Card, StatCard, SectionTitle, ProgressBar, StatusPill, EmptyState } from '@/components/dashboard/primitives'
+import { Card, StatCard, SectionTitle, StatusPill, EmptyState } from '@/components/dashboard/primitives'
+import { AttendanceDonut } from '@/components/dashboard/AttendanceDonut'
 import { Button } from '@/components/dashboard/controls'
 import { loadDashboardHero } from '@/lib/cms/dashboard-hero'
 import { loadDashboardCopy } from '@/lib/cms/dashboard-copy'
@@ -141,22 +142,17 @@ export default async function DashboardOverviewPage() {
             {/* Response rate + funnel */}
             <Card className="p-6 lg:col-span-2">
               <SectionTitle title={copy.response_title} subtitle={copy.response_subtitle.replace('{rate}', String(stats.responseRate))} />
-              <ProgressBar value={stats.responseRate} />
-              <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-                {[
-                  { label: 'Attending', value: stats.attending, dot: 'bg-emerald-500' },
-                  { label: 'Maybe', value: stats.maybe, dot: 'bg-amber-500' },
-                  { label: 'Declined', value: stats.declined, dot: 'bg-rose-500' },
-                  { label: 'Awaiting', value: stats.pending, dot: 'bg-neutral-400' },
-                ].map((s) => (
-                  <div key={s.label}>
-                    <div className="flex items-center gap-2">
-                      <span className={`h-2.5 w-2.5 rounded-full ${s.dot}`} />
-                      <span className="text-xs text-[#1A1A1A]/55">{s.label}</span>
-                    </div>
-                    <p className="mt-1 text-xl font-bold text-[#1A1A1A]">{s.value}</p>
-                  </div>
-                ))}
+              <div className="mt-4">
+                <AttendanceDonut
+                  segments={[
+                    { label: 'Attending', value: stats.attending, color: '#10b981' },
+                    { label: 'Maybe', value: stats.maybe, color: '#f59e0b' },
+                    { label: 'Declined', value: stats.declined, color: '#f43f5e' },
+                    { label: 'Awaiting', value: stats.pending, color: '#cfc6d8' },
+                  ]}
+                  centerValue={`${stats.responseRate}%`}
+                  centerLabel="answered"
+                />
               </div>
             </Card>
 

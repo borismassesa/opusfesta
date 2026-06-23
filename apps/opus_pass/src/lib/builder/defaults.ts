@@ -1,6 +1,7 @@
 import type {
   Block,
   BlockType,
+  BuilderMeta,
   Section,
   SectionType,
   SiteDoc,
@@ -21,9 +22,61 @@ export function uid(prefix = 'id'): string {
   return `${prefix}_${counter}_${Math.round(performance.now())}`
 }
 
+// Declared up here (not lower in the file) because the deterministic
+// makeStaticBlock() factory reads it while DEFAULT_DOC is being built at module
+// init — a `const` declared after DEFAULT_DOC would still be in its TDZ.
+const LOREM =
+  'We met under the warm Bagamoyo sun and have been writing our story ever since. We would be honoured to have you with us as we begin this new chapter.'
+
+// The default navigation mirrors the structured pages an OpusPass couple gets.
+export const DEFAULT_NAV = [
+  'Home',
+  'Schedule',
+  'Travel',
+  'Registry',
+  'Wedding Party',
+  'Gallery',
+  'Things To Do',
+  'FAQs',
+]
+
+export const DEFAULT_META: BuilderMeta = {
+  partnerA: 'Neema Joseph',
+  partnerB: 'Amani Mushi',
+  date: '2026-08-22',
+  location: 'Bagamoyo, Tanzania',
+  welcome: "We're getting married!",
+  presetId: 'bagamoyo',
+  layoutId: 'full-width',
+  animationStyle: 'none',
+  transition: 'rise',
+  fontEffect: 'none',
+  pages: [
+    { key: 'home', label: 'Home', visible: true },
+    { key: 'schedule', label: 'Schedule', visible: true },
+    { key: 'travel', label: 'Travel', visible: true },
+    { key: 'registry', label: 'Registry', visible: true },
+    { key: 'party', label: 'Wedding Party', visible: true },
+    { key: 'gallery', label: 'Gallery', visible: true },
+    { key: 'things', label: 'Things To Do', visible: true },
+    { key: 'faqs', label: 'FAQs', visible: true },
+    { key: 'rsvp', label: 'RSVP', visible: false },
+  ],
+  photos: [],
+  slug: 'neema-and-amani',
+  visibility: 'published',
+  announcement: false,
+  password: false,
+  searchVisible: true,
+}
+
+// The hero is COMPOSED from `meta` at render time (see composeDoc in
+// presets.ts), so the hero section here is just a deterministic seed; the
+// builder panels drive it through `meta`.
 export const DEFAULT_DOC: SiteDoc = {
   title: 'Neema & Amani',
-  nav: ['Our Story', 'Wedding Day', 'RSVP', 'Registry'],
+  nav: DEFAULT_NAV,
+  meta: DEFAULT_META,
   theme: {
     palette: {
       bg: '#FBF9F5',
@@ -39,66 +92,145 @@ export const DEFAULT_DOC: SiteDoc = {
     {
       id: 'sec_hero',
       type: 'hero',
-      name: 'Hero',
-      layout: 'photo',
-      background: {
-        kind: 'image',
-        value: '/assets/images/couples_together.jpg',
-        overlay: 22,
-      },
-      padding: 96,
+      name: 'Home',
+      layout: 'centered',
+      background: { kind: 'color', value: '#FFFFFF', overlay: 0 },
+      padding: 120,
       blocks: [
-        {
-          id: 'blk_eyebrow',
-          type: 'eyebrow',
-          text: '22 August 2026 · Bagamoyo',
-          color: '#FFFFFF',
-          letterSpacing: 30,
-          align: 'center',
-          mt: 0,
-          mb: 0,
-        },
         {
           id: 'blk_headline',
           type: 'heading',
-          text: 'Finally Forever',
+          text: 'Neema Joseph',
           font: 'Playfair Display',
           fontSize: 48,
-          letterSpacing: -2,
+          letterSpacing: -1,
           color: '#1A1A1A',
           animation: 'Fade In Up',
           animate: true,
           align: 'center',
-          mt: 32,
-          mb: 24,
-        },
-        {
-          id: 'blk_sub',
-          type: 'text',
-          text: "We can't wait to celebrate the start of our new chapter with the people who mean the most to us.",
-          fontSize: 16,
-          color: '#FFFFFF',
-          align: 'center',
           mt: 0,
           mb: 0,
         },
-        {
-          id: 'blk_cta',
-          type: 'button',
-          label: 'Our Story',
-          href: '#our-story',
-          variant: 'solid',
-          align: 'center',
-          mt: 28,
-          mb: 0,
-        },
+      ],
+    },
+    {
+      id: 'sec_story',
+      type: 'content',
+      name: 'Our Story',
+      layout: 'centered',
+      padding: 80,
+      background: { kind: 'color', value: '#FBF9F5', overlay: 0 },
+      blocks: [
+        { ...makeStaticBlock('eyebrow', 'blk_story_eb'), text: 'Our Story' } as Block,
+        { ...makeStaticBlock('heading', 'blk_story_h'), text: 'How it all began', fontSize: 40, mt: 8 } as Block,
+        makeStaticBlock('text', 'blk_story_t'),
+        makeStaticBlock('gallery', 'blk_story_g'),
+      ],
+    },
+    {
+      id: 'sec_details',
+      type: 'details',
+      name: 'Wedding Day',
+      layout: 'centered',
+      padding: 80,
+      background: { kind: 'color', value: '#F3EAFA', overlay: 0 },
+      blocks: [
+        { ...makeStaticBlock('eyebrow', 'blk_det_eb'), text: 'Wedding Day' } as Block,
+        { ...makeStaticBlock('heading', 'blk_det_h'), text: 'When & where', fontSize: 40, mt: 8 } as Block,
+        makeStaticBlock('countdown', 'blk_det_c'),
+        makeStaticBlock('map', 'blk_det_m'),
+      ],
+    },
+    {
+      id: 'sec_registry',
+      type: 'registry',
+      name: 'Registry',
+      layout: 'centered',
+      padding: 80,
+      background: { kind: 'color', value: '#FFFFFF', overlay: 0 },
+      blocks: [
+        { ...makeStaticBlock('eyebrow', 'blk_reg_eb'), text: 'Registry' } as Block,
+        { ...makeStaticBlock('heading', 'blk_reg_h'), text: 'Your presence is the present', fontSize: 38, mt: 8 } as Block,
+        makeStaticBlock('registry', 'blk_reg_r'),
+      ],
+    },
+    {
+      id: 'sec_rsvp',
+      type: 'rsvp',
+      name: 'RSVP',
+      layout: 'centered',
+      padding: 80,
+      background: { kind: 'color', value: '#FBF9F5', overlay: 0 },
+      blocks: [
+        { ...makeStaticBlock('heading', 'blk_rsvp_h'), text: 'RSVP', fontSize: 40 } as Block,
+        makeStaticBlock('rsvp', 'blk_rsvp_r'),
       ],
     },
   ],
 }
 
-const LOREM =
-  'We met under the warm Bagamoyo sun and have been writing our story ever since. We would be honoured to have you with us as we begin this new chapter.'
+/**
+ * Deterministic block factory for the module-level DEFAULT_DOC — identical
+ * output to makeBlock() but with a caller-supplied id and no uid()/Date/random,
+ * so the server and the first client render match exactly.
+ */
+function makeStaticBlock<T extends BlockType>(type: T, id: string): Extract<Block, { type: T }> {
+  const base = { id, mt: 16, mb: 16, align: 'center' as const }
+  const build = (): Block => {
+    switch (type) {
+      case 'eyebrow':
+        return { ...base, type, text: 'A small detail', color: '#1A1A1A', letterSpacing: 24 }
+      case 'heading':
+        return {
+          ...base,
+          type,
+          text: 'New heading',
+          font: 'Playfair Display',
+          fontSize: 36,
+          letterSpacing: 0,
+          color: '#1A1A1A',
+          animation: 'Fade In Up',
+          animate: true,
+        }
+      case 'text':
+        return { ...base, type, text: LOREM, fontSize: 16, color: '#3A3A3A' }
+      case 'countdown':
+        return { ...base, type, date: '2026-08-22', label: 'Until we say "I do"' }
+      case 'map':
+        return { ...base, type, venue: 'Bagamoyo Beach Resort', address: 'Bagamoyo, Pwani, Tanzania' }
+      case 'registry':
+        return {
+          ...base,
+          type,
+          items: [
+            { id: `${id}_1`, label: 'Honeymoon Fund', href: '#', hint: 'Help us explore Zanzibar' },
+            { id: `${id}_2`, label: 'Our Home', href: '#', hint: 'Pieces for our first home' },
+            { id: `${id}_3`, label: 'Charity Gift', href: '#', hint: 'Give back in our name' },
+          ],
+        }
+      case 'rsvp':
+        return {
+          ...base,
+          type,
+          title: 'Will you celebrate with us?',
+          note: 'Kindly respond by 1 August 2026.',
+        }
+      case 'gallery':
+        return {
+          ...base,
+          type,
+          images: [
+            '/assets/images/cutesy_couple.jpg',
+            '/assets/images/coupleswithpiano.jpg',
+            '/assets/images/authentic_couple.jpg',
+          ],
+        }
+      default:
+        return { ...base, type: 'text', text: '', fontSize: 16, color: '#1A1A1A' }
+    }
+  }
+  return build() as Extract<Block, { type: T }>
+}
 
 export function makeBlock<T extends BlockType>(type: T): Extract<Block, { type: T }> {
   const base = { id: uid('blk'), mt: 16, mb: 16, align: 'center' as const }
