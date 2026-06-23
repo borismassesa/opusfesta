@@ -542,19 +542,6 @@ export type NationalIdResult =
       reason: 'wrong-state' | 'invalid' | 'unknown'
     }
 
-/** Resolve the caller's own active vendor id via the Clerk-authed client. */
-async function resolveOwnVendorId(): Promise<string | null> {
-  const userClient = await createClerkSupabaseServerClient()
-  const r = await userClient
-    .from('vendor_memberships')
-    .select('vendor_id')
-    .eq('status', 'active')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle<{ vendor_id: string }>()
-  return r.data?.vendor_id ?? null
-}
-
 /** Gate National ID actions to the right state + resolve the vendor id. */
 async function requirePendingVendor(): Promise<
   | { ok: true; vendorId: string }
@@ -583,11 +570,14 @@ async function requirePendingVendor(): Promise<
       error: 'Verification is only open while your application is in review.',
     }
   }
-  const vendorId = await resolveOwnVendorId()
-  if (!vendorId) {
-    return { ok: false, reason: 'unknown', error: '[verify] no active membership found' }
-  }
-  return { ok: true, vendorId }
+  // Use the vendor id that getCurrentVendor already resolved for THIS caller
+  // (it filters vendor_memberships by the authenticated user's id). Never
+  // re-resolve via an RLS-only query: createClerkSupabaseServerClient falls
+  // back to the service-role client when the Clerk 'supabase' JWT template is
+  // absent, which bypasses RLS and would return the globally-oldest active
+  // vendor — silently writing one applicant's National ID + selfie onto a
+  // different vendor's record.
+  return { ok: true, vendorId: state.vendorId }
 }
 
 /**

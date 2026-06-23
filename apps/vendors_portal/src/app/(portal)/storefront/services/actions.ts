@@ -1,10 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { createClerkSupabaseServerClient } from '@/lib/supabase'
+import { createSupabaseAdminClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import { getServicesForCategory } from '@/lib/onboarding/services'
-import type { DbServiceEntry } from './mapping'
 
 export type SaveServicesInput = {
   specialServices: string[]
@@ -19,15 +18,13 @@ const MAX_CUSTOM_LABEL = 60
 const MAX_TOTAL_SERVICES = 100
 
 /**
- * Persist the vendor's services to vendors.services_offered (JSONB array of
- * `{title, description}` per migration 025). RLS via migration 056 limits
- * write access to owner/manager — staff role calls will be rejected by Postgres
- * with code 42501 and surfaced as a friendly error.
- *
- * Description preservation: the editor doesn't expose descriptions yet, so
- * the action reads the current row first and merges descriptions in by
- * case-insensitive title before writing. This protects descriptions that may
- * have been set via admin tooling or future write paths.
+ * Persist the vendor's services to vendors.services_offered — a Postgres
+ * text[] of plain title strings. This is the shape the live DB column and the
+ * public marketplace (opus_website) both use. (Migration 025 meant to convert
+ * the column to a jsonb array of {title, description} objects, but that DDL
+ * never took effect on the live database; writing objects therefore made
+ * PostgREST stringify each one into a text cell, so saved services read back
+ * malformed and disappeared from the editor.)
  */
 export async function saveServices(
   input: SaveServicesInput,
@@ -70,25 +67,24 @@ export async function saveServices(
   const presets = getServicesForCategory(state.vendor.category)
   const presetById = new Map(presets.map((p) => [p.id, p.label]))
 
-  const presetEntries = presetIds
+  const presetTitles = presetIds
     .filter((id) => presetById.has(id))
-    .map((id) => ({ title: presetById.get(id)!, description: '' }))
+    .map((id) => presetById.get(id)!)
 
   // De-dupe custom against preset labels (case-insensitive) to keep the public
   // services list tidy after a vendor adds a custom that shadows a preset.
-  const presetLabelsLower = new Set(
-    presetEntries.map((e) => e.title.toLowerCase()),
-  )
+  const presetLabelsLower = new Set(presetTitles.map((t) => t.toLowerCase()))
   const seenCustom = new Set<string>()
-  const customEntries: Array<{ title: string; description: string }> = []
+  const customTitles: string[] = []
   for (const label of customLabels) {
     const lower = label.toLowerCase()
     if (presetLabelsLower.has(lower) || seenCustom.has(lower)) continue
     seenCustom.add(lower)
-    customEntries.push({ title: label, description: '' })
+    customTitles.push(label)
   }
 
-  const services_offered = [...presetEntries, ...customEntries]
+  // text[] of plain title strings (see jsdoc) — never an array of objects.
+  const services_offered = [...presetTitles, ...customTitles]
 
   if (services_offered.length > MAX_TOTAL_SERVICES) {
     return {
@@ -97,40 +93,17 @@ export async function saveServices(
     }
   }
 
-  // Merge descriptions from the current row by lowercase title so we don't
-  // wipe descriptions set elsewhere (admin tooling, future writes).
-  const supabase = await createClerkSupabaseServerClient()
-  const current = await supabase
-    .from('vendors')
-    .select('services_offered')
-    .eq('id', state.vendor.id)
-    .single<{ services_offered: DbServiceEntry[] | null }>()
-
-  if (current.error) {
-    console.error('[storefront/services] read-before-write failed:', current.error)
-    return { ok: false, error: 'Could not load current services. Try again.' }
-  }
-
-  const descByLower = new Map<string, string>()
-  for (const entry of current.data?.services_offered ?? []) {
-    if (
-      entry &&
-      typeof entry.title === 'string' &&
-      typeof entry.description === 'string' &&
-      entry.description.length > 0
-    ) {
-      descByLower.set(entry.title.toLowerCase(), entry.description)
-    }
-  }
-  for (const entry of services_offered) {
-    const desc = descByLower.get(entry.title.toLowerCase())
-    if (desc) entry.description = desc
-  }
-
-  const { error } = await supabase
+  // Use the service-role admin client, scoped to the vendor id getCurrentVendor
+  // already resolved for this authenticated owner. The Clerk-authed client
+  // silently no-ops the UPDATE (RLS matches 0 rows, error: null) when the
+  // 'supabase' JWT template isn't configured — the same failure mode savePhotos
+  // guards against. `.select('id')` lets us detect a 0-row update.
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin
     .from('vendors')
     .update({ services_offered })
     .eq('id', state.vendor.id)
+    .select('id')
 
   if (error) {
     console.error('[storefront/services] save failed:', error)
@@ -140,15 +113,16 @@ export async function saveServices(
         error: 'You need owner or manager role to edit services.',
       }
     }
-    if (error.code === '23514') {
-      return {
-        ok: false,
-        error: 'Service entries failed validation. Please check titles are non-empty.',
-      }
-    }
     return {
       ok: false,
       error: 'Could not save services. Please try again.',
+    }
+  }
+  if (!data || data.length === 0) {
+    return {
+      ok: false,
+      error:
+        '[storefront/services] save matched no rows — vendor record may have been deleted.',
     }
   }
 

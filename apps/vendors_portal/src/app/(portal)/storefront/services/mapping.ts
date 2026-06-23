@@ -1,26 +1,57 @@
 import { getServicesForCategory } from '@/lib/onboarding/services'
 
-export type DbServiceEntry = { title: string; description?: string | null }
-
 export type UiServicesState = {
   specialServices: string[]
   customServices: string[]
 }
 
 /**
- * Map DB services_offered (Array<{title, description}>) to the editor's UI
- * shape (preset IDs + free-text custom labels).
+ * Extract a service title from one stored `services_offered` element.
  *
- * Resolution: a DB entry whose `title` case-insensitively matches a preset
- * label for the vendor's category becomes a preset selection (uses the preset
- * id). Anything else becomes a custom label.
+ * Across the data's history an element can be:
+ *  - a plain title string — the live text[] shape + what opus_website reads
+ *  - an object `{ title, description }` — migration 025's intended jsonb shape
+ *  - a string holding the JSON of that object, because earlier code wrote
+ *    objects into the text[] column and PostgREST stringified each one
+ *    ("double-encoding"). We parse those back so legacy rows still resolve
+ *    instead of silently vanishing from the editor.
+ */
+export function serviceTitle(entry: unknown): string | null {
+  if (typeof entry === 'string') {
+    const s = entry.trim()
+    if (!s) return null
+    if (s.startsWith('{') && s.includes('"title"')) {
+      try {
+        const parsed = JSON.parse(s) as { title?: unknown }
+        if (typeof parsed?.title === 'string') return parsed.title.trim() || null
+      } catch {
+        // Not valid JSON after all — fall through and treat as a plain title.
+      }
+    }
+    return s
+  }
+  if (entry && typeof entry === 'object' && 'title' in entry) {
+    const t = (entry as { title?: unknown }).title
+    return typeof t === 'string' ? t.trim() || null : null
+  }
+  return null
+}
+
+/**
+ * Map DB `services_offered` to the editor's UI shape (preset IDs + free-text
+ * custom labels).
  *
- * Unknown preset categories return only the COMMON presets (`getServicesForCategory`
- * fallback), so a vendor whose category was changed to something without
- * specific presets will see their old service titles flow through as custom.
+ * Resolution: an entry whose title case-insensitively matches a preset label
+ * for the vendor's category becomes a preset selection (uses the preset id).
+ * Anything else becomes a custom label.
+ *
+ * Unknown preset categories return only the COMMON presets
+ * (`getServicesForCategory` fallback), so a vendor whose category was changed
+ * to something without specific presets will see their old service titles flow
+ * through as custom.
  */
 export function dbServicesToUi(
-  dbServices: DbServiceEntry[] | null | undefined,
+  dbServices: ReadonlyArray<unknown> | null | undefined,
   category: string | null | undefined,
 ): UiServicesState {
   const presets = getServicesForCategory(category)
@@ -35,11 +66,7 @@ export function dbServicesToUi(
 
   let dropped = 0
   for (const entry of dbServices ?? []) {
-    if (!entry || typeof entry.title !== 'string') {
-      dropped += 1
-      continue
-    }
-    const title = entry.title.trim()
+    const title = serviceTitle(entry)
     if (!title) {
       dropped += 1
       continue

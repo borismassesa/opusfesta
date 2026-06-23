@@ -113,7 +113,7 @@ export type VendorReviewProps = {
       whatsapp?: string | null
     } | null
     socialLinks: Record<string, string | null> | null
-    services: Array<{ id?: string; title?: string; custom?: boolean }>
+    services: Array<string | { id?: string; title?: string; custom?: boolean }>
     packages: Array<{
       id?: string
       name?: string

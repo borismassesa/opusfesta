@@ -2,10 +2,13 @@ import { createClerkSupabaseServerClient } from '@/lib/supabase'
 import { getCurrentVendor } from '@/lib/vendor'
 import { getServicesForCategory } from '@/lib/onboarding/services'
 import ServicesEditor, { type ServicesSource } from './ServicesEditor'
-import { dbServicesToUi, type DbServiceEntry } from './mapping'
+import { dbServicesToUi } from './mapping'
 
 type VendorServicesRow = {
-  services_offered: DbServiceEntry[] | null
+  // text[] of plain title strings on the live DB; typed as unknown[] so the
+  // tolerant mapper (dbServicesToUi) can also absorb legacy object / stringified
+  // shapes without a type cast. See ./mapping serviceTitle().
+  services_offered: unknown[] | null
 }
 
 async function loadServices(): Promise<{
