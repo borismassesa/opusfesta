@@ -46,16 +46,19 @@ export default function WebsiteBuilderClient() {
   const [showPreview, setShowPreview] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null)
+  const [publishError, setPublishError] = useState<string | null>(null)
 
   const handlePublish = async () => {
     setPublishing(true)
+    setPublishError(null)
     try {
       const { slug } = await publishWebsite(api.doc)
       setPublishedUrl(`opuspass.opusfesta.com/w/${slug}`)
     } catch (err) {
       // requireDashboardUser() redirects to /sign-in when signed out; any other
-      // failure surfaces here.
+      // failure surfaces here so the couple isn't left thinking it published.
       console.error('[publish] failed', err)
+      setPublishError("Couldn't publish — please make sure you're signed in and try again.")
     } finally {
       setPublishing(false)
     }
@@ -263,6 +266,15 @@ export default function WebsiteBuilderClient() {
       )}
 
       {publishedUrl && <PublishedModal url={publishedUrl} onClose={() => setPublishedUrl(null)} />}
+
+      {publishError && (
+        <div className="fixed bottom-6 left-1/2 z-[60] flex -translate-x-1/2 items-center gap-3 rounded-xl bg-[#1A1A1A] px-5 py-3 text-[13.5px] font-medium text-white shadow-xl">
+          {publishError}
+          <button type="button" onClick={() => setPublishError(null)} className="text-white/70 hover:text-white">
+            <X size={16} />
+          </button>
+        </div>
+      )}
     </div>
   )
 }

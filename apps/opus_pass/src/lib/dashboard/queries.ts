@@ -761,6 +761,9 @@ export async function getPublishedWebsite(slug: string): Promise<SiteDoc | null>
   if (!data || !data.website_doc || !data.website_published_at || !data.public_sharing_enabled) {
     return null
   }
+  // Defensive: only serve a well-formed v2 doc (composeDoc requires meta). A
+  // malformed/legacy doc 404s instead of 500-ing the public route.
+  if (!data.website_doc.meta || !Array.isArray(data.website_doc.sections)) return null
   return data.website_doc
 }
 

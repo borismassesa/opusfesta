@@ -43,13 +43,18 @@ export async function saveWebsiteDraft(doc: SiteDoc): Promise<{ ok: boolean }> {
  * enablePublicSharing), store the doc, stamp published. Returns the live slug.
  */
 export async function publishWebsite(doc: SiteDoc): Promise<{ slug: string }> {
-  const { slug } = await enablePublicSharing() // ensures slug + public_sharing_enabled
-  const user = await requireDashboardUser()
+  const user = await requireDashboardUser() // auth first
+  const { slug } = await enablePublicSharing() // ensures slug + public_sharing_enabled (+ row exists)
   const supabase = createDashboardClient()
   const now = new Date().toISOString()
+  // Keep the stored doc lean: drop any local base64 data-URL photos (durable
+  // uploads are http(s) URLs via uploadWebsitePhoto). composeDoc pads any empty
+  // slot from the sample library.
+  const cleanPhotos = (doc.meta.photos ?? []).filter((u) => u && !u.startsWith('data:'))
+  const cleanDoc: SiteDoc = { ...doc, meta: { ...doc.meta, photos: cleanPhotos } }
   const { error } = await supabase
     .from('couple_profiles')
-    .update({ website_doc: doc, website_published_at: now, updated_at: now })
+    .update({ website_doc: cleanDoc, website_published_at: now, updated_at: now })
     .eq('user_id', user.id)
   if (error) throw new Error(error.message)
   revalidatePath(`/w/${slug}`)
