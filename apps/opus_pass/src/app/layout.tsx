@@ -5,6 +5,7 @@ import { Yellowtail, Playfair_Display, Cormorant_Garamond, Dancing_Script, Monts
 import SmoothScrollProvider from '@/components/providers/SmoothScrollProvider'
 import ToastProvider from '@/components/providers/ToastProvider'
 import { CartProvider } from '@/components/providers/CartProvider'
+import ClerkLoadFallback from '@/components/ClerkLoadFallback'
 import JsonLd from '@/components/JsonLd'
 import './globals.css'
 
@@ -77,6 +78,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <ClerkProvider>
       <html lang="en" className={`bg-white ${fontVars}`}>
         <body className="bg-white">
+          <ClerkLoadFallback />
           <JsonLd data={organizationSchema} />
           <CartProvider>
             <SmoothScrollProvider>{children}</SmoothScrollProvider>
