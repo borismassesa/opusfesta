@@ -166,7 +166,15 @@ async function loadDashboardUser(): Promise<DashboardUser | null> {
     if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, 100 * (attempt + 1)))
   }
 
-  console.error('[dashboard auth] failed to provision Clerk user', error)
+  // `error` here is the upsert error from above, which on this retry-exhausted
+  // path is typically null (the insert no-op'd cleanly); log the actionable
+  // context instead so a genuine provisioning failure is diagnosable.
+  console.error('[dashboard auth] failed to provision Clerk user', {
+    userId,
+    hasEmail: Boolean(email),
+    attempts: 4,
+    upsertError: error?.message ?? null,
+  })
   return null
 }
 
