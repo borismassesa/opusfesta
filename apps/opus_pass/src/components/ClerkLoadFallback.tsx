@@ -36,10 +36,6 @@ export default function ClerkLoadFallback() {
       }
       // Stuck mid-load: ask clerk-js to complete initialization.
       if (clerk.status === 'loading' && typeof clerk.load === 'function') {
-        // Marker so prod verification can tell whether the fallback was actually
-        // needed — once the @clerk version-align lands, this should stop firing
-        // and the component can be removed.
-        console.warn('[clerk-fallback] nudged Clerk.load()')
         clerk.load().catch(() => {})
       }
       if (++attempts >= 12) clearInterval(id)
