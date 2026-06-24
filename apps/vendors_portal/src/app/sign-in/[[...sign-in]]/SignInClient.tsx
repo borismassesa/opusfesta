@@ -19,6 +19,7 @@ import CodeBoxes from '@/components/CodeBoxes'
 
 const AFTER_SIGN_IN_URL = '/dashboard'
 const STALL_THRESHOLD_MS = 15000
+const BLOCKED_REDIRECT_PREFIXES = ['/sign-in', '/sign-up', '/sso-callback']
 
 type Step = 'password' | 'forgot' | 'reset'
 
@@ -30,6 +31,29 @@ function clerkError(err: unknown, fallback: string): string {
     if (first) return first.longMessage || first.message || fallback
   }
   return fallback
+}
+
+function safeRedirectPath(raw: string | undefined): string {
+  if (!raw) return AFTER_SIGN_IN_URL
+
+  try {
+    const origin =
+      typeof window === 'undefined' ? 'https://vendors.opusfesta.local' : window.location.origin
+    const url = new URL(raw, origin)
+    if (url.origin !== origin) return AFTER_SIGN_IN_URL
+
+    const path = `${url.pathname}${url.search}${url.hash}`
+    if (
+      !path.startsWith('/') ||
+      path.startsWith('//') ||
+      BLOCKED_REDIRECT_PREFIXES.some((prefix) => path === prefix || path.startsWith(`${prefix}/`))
+    ) {
+      return AFTER_SIGN_IN_URL
+    }
+    return path
+  } catch {
+    return AFTER_SIGN_IN_URL
+  }
 }
 
 const inputClass =
@@ -78,8 +102,6 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
   const [oauthBusy, setOauthBusy] = useState<'google' | null>(null)
   const [stalled, setStalled] = useState(false)
 
-  const dest = redirectUrl || AFTER_SIGN_IN_URL
-
   useEffect(() => {
     if (isLoaded) return
     const t = setTimeout(() => setStalled(true), STALL_THRESHOLD_MS)
@@ -89,7 +111,7 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
   async function activate(createdSessionId: string | null) {
     if (createdSessionId && setActive) {
       await setActive({ session: createdSessionId })
-      router.push(dest)
+      router.push(safeRedirectPath(redirectUrl))
       return true
     }
     return false
@@ -164,7 +186,7 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
       await signIn.authenticateWithRedirect({
         strategy: 'oauth_google',
         redirectUrl: '/sso-callback',
-        redirectUrlComplete: dest,
+        redirectUrlComplete: safeRedirectPath(redirectUrl),
       })
     } catch (err) {
       setError(clerkError(err, "Couldn't continue with Google."))

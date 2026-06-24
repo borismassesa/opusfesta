@@ -2,9 +2,9 @@
 
 import { AuthenticateWithRedirectCallback } from '@clerk/nextjs'
 
-// Landing route for headless OAuth (Google). Clerk redirects the
-// provider hand-off back here; this component finishes the transfer and then
-// sends new vendors to /onboard and returning vendors to /dashboard.
+// Landing route for headless OAuth (Google). Clerk redirects the provider
+// hand-off back here; this component finishes the transfer and then lets
+// Clerk use the redirectUrlComplete value from the initiating auth request.
 export default function SSOCallbackPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-white">
@@ -14,8 +14,8 @@ export default function SSOCallbackPage() {
         aria-label="Finishing sign-in"
       />
       <AuthenticateWithRedirectCallback
-        signUpForceRedirectUrl="/onboard"
-        signInForceRedirectUrl="/dashboard"
+        signUpFallbackRedirectUrl="/onboard"
+        signInFallbackRedirectUrl="/dashboard"
       />
     </div>
   )
