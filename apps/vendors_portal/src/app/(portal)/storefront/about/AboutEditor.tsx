@@ -325,23 +325,23 @@ export default function AboutEditor({
             className="lg:col-span-2"
           >
             <div className="space-y-4">
-              <div className="grid sm:grid-cols-3 gap-4">
-                <div className="sm:col-span-2">
-                  <FieldLabel required>Street address</FieldLabel>
+              <div className="grid sm:grid-cols-2 gap-4">
+                <div>
+                  <FieldLabel required>Building / Plot number</FieldLabel>
                   <TextInput
-                    placeholder="Address"
-                    value={profile.street}
-                    onChange={(e) => setField('street', e.target.value)}
+                    placeholder="e.g. Plot 24, Building 12B"
+                    value={profile.houseNumber}
+                    onChange={(e) => setField('houseNumber', e.target.value)}
                     autoComplete="address-line1"
                     disabled={!canEdit}
                   />
                 </div>
                 <div>
-                  <FieldLabel>Apartment, suite, plot</FieldLabel>
+                  <FieldLabel required>Street / Village</FieldLabel>
                   <TextInput
-                    placeholder="Optional"
-                    value={profile.street2}
-                    onChange={(e) => setField('street2', e.target.value)}
+                    placeholder="e.g. Mwenge"
+                    value={profile.street}
+                    onChange={(e) => setField('street', e.target.value)}
                     autoComplete="address-line2"
                     disabled={!canEdit}
                   />
@@ -349,11 +349,20 @@ export default function AboutEditor({
               </div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
-                  <FieldLabel required>City / Town</FieldLabel>
+                  <FieldLabel required>Ward</FieldLabel>
                   <TextInput
-                    placeholder="e.g. Dar es Salaam"
-                    value={profile.city}
-                    onChange={(e) => setField('city', e.target.value)}
+                    placeholder="e.g. Kinondoni"
+                    value={profile.ward}
+                    onChange={(e) => setField('ward', e.target.value)}
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div>
+                  <FieldLabel required>District</FieldLabel>
+                  <TextInput
+                    placeholder="e.g. Kinondoni"
+                    value={profile.district}
+                    onChange={(e) => setField('district', e.target.value)}
                     autoComplete="address-level2"
                     disabled={!canEdit}
                   />
@@ -361,7 +370,7 @@ export default function AboutEditor({
                 <div>
                   <FieldLabel required>Region</FieldLabel>
                   <SelectInput
-                    placeholder="Region"
+                    placeholder="Select region"
                     value={profile.region}
                     onChange={(e) => setField('region', e.target.value)}
                     disabled={!canEdit}
@@ -373,10 +382,21 @@ export default function AboutEditor({
                     ))}
                   </SelectInput>
                 </div>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-4">
                 <div>
-                  <FieldLabel>Postal code</FieldLabel>
+                  <FieldLabel>Landmark / directions (optional)</FieldLabel>
                   <TextInput
-                    placeholder="e.g. 11101"
+                    placeholder="e.g. Near Mlimani City, opposite the mosque"
+                    value={profile.landmark}
+                    onChange={(e) => setField('landmark', e.target.value)}
+                    disabled={!canEdit}
+                  />
+                </div>
+                <div>
+                  <FieldLabel>P.O. Box / Postal code (optional)</FieldLabel>
+                  <TextInput
+                    placeholder="e.g. P.O. Box 1234 or 11101"
                     value={profile.postalCode}
                     onChange={(e) => setField('postalCode', e.target.value)}
                     autoComplete="postal-code"

@@ -10,10 +10,13 @@ export type DbProfile = {
   yearsInBusiness: string // editor uses string, DB stores INTEGER (or null)
   bio: string
 
+  // Tanzania administrative address.
+  houseNumber: string
   street: string
-  street2: string
-  city: string
+  ward: string
+  district: string
   region: string
+  landmark: string
   postalCode: string
 
   phone: string
@@ -40,10 +43,12 @@ const EMPTY: DbProfile = {
   businessName: '',
   yearsInBusiness: '',
   bio: '',
+  houseNumber: '',
   street: '',
-  street2: '',
-  city: '',
+  ward: '',
+  district: '',
   region: '',
+  landmark: '',
   postalCode: '',
   phone: '',
   email: '',
@@ -71,10 +76,13 @@ export function dbVendorToProfile(row: VendorRowFromDb | null | undefined): DbPr
         : '',
     bio: row.bio ?? '',
 
+    houseNumber: readString(row.location, 'houseNumber'),
     street: readString(row.location, 'street'),
-    street2: readString(row.location, 'street2'),
-    city: readString(row.location, 'city'),
+    ward: readString(row.location, 'ward'),
+    // Backward compatibility: pre-migration rows stored the locality as `city`.
+    district: readString(row.location, 'district') || readString(row.location, 'city'),
     region: readString(row.location, 'region'),
+    landmark: readString(row.location, 'landmark'),
     postalCode: readString(row.location, 'postalCode'),
 
     phone: readString(row.contact_info, 'phone'),
@@ -123,11 +131,15 @@ export function profileToUpdatePatch(
     bio: profile.bio,
     location: {
       ...baseLocation,
+      houseNumber: profile.houseNumber.trim(),
       street: profile.street.trim(),
-      street2: profile.street2.trim(),
-      city: profile.city.trim(),
+      ward: profile.ward.trim(),
+      district: profile.district.trim(),
       region: profile.region.trim(),
+      landmark: profile.landmark.trim(),
       postalCode: profile.postalCode.trim(),
+      // Keep `city` mirrored to District for public-marketplace compatibility.
+      city: profile.district.trim(),
     },
     contact_info: {
       ...baseContact,

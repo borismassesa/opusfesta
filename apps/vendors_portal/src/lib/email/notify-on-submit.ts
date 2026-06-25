@@ -39,13 +39,11 @@ function adminReviewUrl(vendorId: string): string {
 }
 
 function vendorPortalUrl(): string {
-  // The custom subdomain `vendors.opusfesta.com` is not yet attached in DNS,
-  // so emails using it produce DNS_PROBE_FINISHED_NXDOMAIN for recipients.
-  // Default to the Vercel deployment URL until the subdomain is configured;
-  // override via NEXT_PUBLIC_VENDORS_PORTAL_URL once DNS lands.
+  // Live vendors portal. Override via NEXT_PUBLIC_VENDORS_PORTAL_URL (e.g.
+  // http://localhost:3003 in local dev).
   return (
     process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL?.trim() ||
-    'https://opusfesta-vendors-portal.vercel.app'
+    'https://vendorsportal.opusfesta.com'
   )
 }
 

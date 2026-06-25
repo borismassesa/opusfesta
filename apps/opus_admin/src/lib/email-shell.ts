@@ -126,7 +126,7 @@ function reviewerSignatureHtml(args: {
 function footerHtml(note?: string): string {
   const reason =
     note ??
-    'You received this because you have an OpusFesta editorial account. This is an automated message — replies route to a human editor when applicable.'
+    'You received this because you have an OpusFesta editorial account. This is an automated message; for help, contact the OpusFesta team.'
   return `
     <tr>
       <td style="padding:28px 32px 20px;border-top:1px solid ${BRAND.ink.line};">

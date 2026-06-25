@@ -5,8 +5,10 @@ export type ProfileErrorKey =
   | 'firstName'
   | 'lastName'
   | 'bio'
+  | 'houseNumber'
   | 'street'
-  | 'city'
+  | 'ward'
+  | 'district'
   | 'region'
   | 'phone'
   | 'whatsapp'
@@ -35,8 +37,10 @@ export function validateProfile(d: OnboardingDraft): ProfileErrors {
     errors.bio = `${MIN_BIO - bio.length} more character${MIN_BIO - bio.length === 1 ? '' : 's'} needed (min ${MIN_BIO}).`
   }
 
-  if (!d.street.trim()) errors.street = 'Street address is required.'
-  if (!d.city.trim()) errors.city = 'City is required.'
+  if (!d.houseNumber.trim()) errors.houseNumber = 'Building / Plot number is required.'
+  if (!d.street.trim()) errors.street = 'Street / Village is required.'
+  if (!d.ward.trim()) errors.ward = 'Ward is required.'
+  if (!d.district.trim()) errors.district = 'District is required.'
   if (!d.region) errors.region = 'Region is required.'
 
   if (d.phone && phoneDigits(d.phone).length !== TZ_PHONE_DIGITS) {

@@ -25,7 +25,11 @@ export default function LocationPage() {
   }, [hydrated, draft.categoryId, draft.vowsAccepted, router])
 
   const canContinue =
-    draft.street.trim() && draft.city.trim() && draft.region && draft.phone.trim().length >= 9
+    draft.houseNumber.trim() &&
+    draft.street.trim() &&
+    draft.ward.trim() &&
+    draft.district.trim() &&
+    Boolean(draft.region)
 
   const onNext = () => {
     if (!canContinue) return
@@ -37,36 +41,54 @@ export default function LocationPage() {
       step="profile"
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/profile/name"
+      primaryAction={
+        <PrimaryButton onClick={onNext} disabled={!canContinue}>
+          {t('common.next_step')}
+        </PrimaryButton>
+      }
     >
       <OnboardHeading title={t('profile.location.title')} />
 
-      <div className="space-y-6 max-w-2xl">
-        <div>
-          <FieldLabel required>{t('profile.location.street.label')}</FieldLabel>
-          <div className="space-y-3">
+      <div className="space-y-6">
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <FieldLabel required>{t('profile.location.house.label')}</FieldLabel>
+            <TextInput
+              placeholder={t('profile.location.house.placeholder')}
+              value={draft.houseNumber}
+              onChange={(e) => update({ houseNumber: e.target.value })}
+              autoComplete="address-line1"
+            />
+          </div>
+          <div>
+            <FieldLabel required>{t('profile.location.street.label')}</FieldLabel>
             <TextInput
               placeholder={t('profile.location.street.placeholder')}
               value={draft.street}
               onChange={(e) => update({ street: e.target.value })}
-              autoComplete="address-line1"
-            />
-            <TextInput
-              placeholder={t('profile.location.street2.placeholder')}
-              value={draft.street2}
-              onChange={(e) => update({ street2: e.target.value })}
               autoComplete="address-line2"
             />
           </div>
         </div>
 
-        <div>
-          <FieldLabel required>{t('profile.location.city.label')}</FieldLabel>
-          <TextInput
-            placeholder={t('profile.location.city.placeholder')}
-            value={draft.city}
-            onChange={(e) => update({ city: e.target.value })}
-            autoComplete="address-level2"
-          />
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <FieldLabel required>{t('profile.location.ward.label')}</FieldLabel>
+            <TextInput
+              placeholder={t('profile.location.ward.placeholder')}
+              value={draft.ward}
+              onChange={(e) => update({ ward: e.target.value })}
+            />
+          </div>
+          <div>
+            <FieldLabel required>{t('profile.location.district.label')}</FieldLabel>
+            <TextInput
+              placeholder={t('profile.location.district.placeholder')}
+              value={draft.district}
+              onChange={(e) => update({ district: e.target.value })}
+              autoComplete="address-level2"
+            />
+          </div>
         </div>
 
         <div className="grid sm:grid-cols-2 gap-4">
@@ -96,22 +118,16 @@ export default function LocationPage() {
         </div>
 
         <div>
-          <FieldLabel required>{t('profile.location.phone.label')}</FieldLabel>
+          <FieldLabel>{t('profile.location.landmark.label')}</FieldLabel>
           <TextInput
-            prefix="+255"
-            placeholder={t('profile.location.phone.placeholder')}
-            value={draft.phone}
-            onChange={(e) => update({ phone: e.target.value.replace(/[^\d\s]/g, '') })}
-            inputMode="tel"
-            autoComplete="tel-national"
+            placeholder={t('profile.location.landmark.placeholder')}
+            value={draft.landmark}
+            onChange={(e) => update({ landmark: e.target.value })}
           />
         </div>
       </div>
 
-      <div className="mt-10 flex items-center gap-6 flex-wrap">
-        <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          {t('common.next_step')}
-        </PrimaryButton>
+      <div className="mt-10">
         <WhyWeAsk title={t('profile.location.why.title')}>
           <p>{t('profile.location.why.body1')}</p>
           <p>{t('profile.location.why.body2')}</p>

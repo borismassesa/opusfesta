@@ -104,11 +104,14 @@ export type OnboardingDraft = {
   firstName: string
   lastName: string
   businessName: string
-  street: string
-  street2: string
-  city: string
-  region: string
-  postalCode: string
+  // Tanzania administrative address (Region › District › Ward › Street/Village).
+  houseNumber: string // House / Plot number
+  street: string // Street / Village (Mtaa / Kijiji)
+  ward: string // Ward (Kata)
+  district: string // District (Wilaya)
+  region: string // Region (Mkoa) — TZ_REGIONS code
+  landmark: string // Landmark / directions (Alama ya kujulikana) — optional
+  postalCode: string // P.O. Box / Postal code — optional
   phone: string
   email: string
   whatsapp: string
@@ -196,10 +199,12 @@ const EMPTY: OnboardingDraft = {
   firstName: '',
   lastName: '',
   businessName: '',
+  houseNumber: '',
   street: '',
-  street2: '',
-  city: '',
+  ward: '',
+  district: '',
   region: '',
+  landmark: '',
   postalCode: '',
   phone: '',
   email: '',

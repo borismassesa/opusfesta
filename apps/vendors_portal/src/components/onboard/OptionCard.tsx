@@ -49,7 +49,7 @@ export function OptionCard({
             variant === 'radio'
               ? 'w-5 h-5 rounded-full border'
               : 'w-5 h-5 rounded-md border',
-            selected ? 'border-gray-900 bg-gray-900 text-white' : 'border-gray-300 bg-white',
+            selected ? 'border-[#1A1A1A] bg-[#1A1A1A] text-white' : 'border-gray-300 bg-white',
           )}
         >
           {selected ? <Check className="w-3.5 h-3.5" strokeWidth={3} /> : null}

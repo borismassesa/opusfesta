@@ -15,10 +15,14 @@ type VendorRow = {
   bio: string | null
   description: string | null
   location: {
+    houseNumber?: string | null
     street?: string | null
-    street2?: string | null
-    city?: string | null
+    ward?: string | null
+    district?: string | null
+    street2?: string | null // legacy
+    city?: string | null // legacy locality
     region?: string | null
+    landmark?: string | null
     postalCode?: string | null
     country?: string | null
     homeMarket?: string | null

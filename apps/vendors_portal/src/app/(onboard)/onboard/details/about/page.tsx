@@ -10,6 +10,7 @@ import { FieldLabel, TextArea, TextInput } from '@/components/onboard/FormField'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { LANGUAGES } from '@/lib/onboarding/languages'
+import { pick } from '@/lib/onboarding/localize'
 import { useOnboardT } from '@/lib/onboarding/strings'
 
 const MIN_BIO = 80
@@ -17,7 +18,7 @@ const MIN_BIO = 80
 export default function AboutPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
-  const { t, tn } = useOnboardT()
+  const { t, tn, locale } = useOnboardT()
   const category = findCategory(draft.categoryId)
 
   useEffect(() => {
@@ -50,6 +51,11 @@ export default function AboutPage() {
       step="details"
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/profile/markets"
+      primaryAction={
+        <PrimaryButton onClick={onNext} disabled={!canContinue}>
+          {t('common.next_step')}
+        </PrimaryButton>
+      }
     >
       <OnboardHeading
         title={t('details.about.title')}
@@ -94,19 +100,13 @@ export default function AboutPage() {
               <OptionCard
                 key={lang.id}
                 variant="checkbox"
-                label={lang.label}
+                label={pick(locale, lang.label, lang.label_sw)}
                 selected={draft.languages.includes(lang.id)}
                 onToggle={() => toggleLanguage(lang.id)}
               />
             ))}
           </div>
         </div>
-      </div>
-
-      <div className="mt-10">
-        <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          {t('common.next_step')}
-        </PrimaryButton>
       </div>
     </OnboardShell>
   )

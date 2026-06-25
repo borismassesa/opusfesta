@@ -43,6 +43,9 @@ export default function SocialsPage() {
       step="profile"
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/profile/contact"
+      primaryAction={
+        <PrimaryButton onClick={onNext}>{t('common.next_step')}</PrimaryButton>
+      }
     >
       <OnboardHeading
         title={t('profile.socials.title')}
@@ -83,7 +86,6 @@ export default function SocialsPage() {
       </div>
 
       <div className="mt-10 flex items-center gap-6 flex-wrap">
-        <PrimaryButton onClick={onNext}>{t('common.next_step')}</PrimaryButton>
         {filledCount === 0 ? (
           <button
             type="button"

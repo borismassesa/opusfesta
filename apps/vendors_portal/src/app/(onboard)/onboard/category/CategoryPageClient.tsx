@@ -24,6 +24,8 @@ import { LocaleToggle } from '@/components/LocaleToggle'
 import { OnboardHeading } from '@/components/onboard/OnboardHeading'
 import { OptionCard } from '@/components/onboard/OptionCard'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
+import { categorySw } from '@/lib/onboarding/categories'
+import { pick } from '@/lib/onboarding/localize'
 import { useOnboardT } from '@/lib/onboarding/strings'
 
 // Plain-object shape safe to pass across the server→client boundary.
@@ -53,7 +55,7 @@ type Props = {
 export default function CategoryPageClient({ categories, otherCategory }: Props) {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
-  const { t } = useOnboardT()
+  const { t, locale } = useOnboardT()
   const [customLabel, setCustomLabel] = useState(draft.customCategoryLabel ?? '')
 
   const select = (id: string) => {
@@ -98,9 +100,9 @@ export default function CategoryPageClient({ categories, otherCategory }: Props)
                   variant="plain"
                   selected={hydrated && draft.categoryId === cat.id}
                   onToggle={() => select(cat.id)}
-                  label={cat.label}
+                  label={pick(locale, cat.label, categorySw(cat.id)?.label)}
                   icon={<Icon className="w-5 h-5" />}
-                  hint={cat.hint}
+                  hint={pick(locale, cat.hint ?? '', categorySw(cat.id)?.hint) || undefined}
                 />
               )
             })}
@@ -114,7 +116,7 @@ export default function CategoryPageClient({ categories, otherCategory }: Props)
                   variant="plain"
                   selected={isOtherSelected}
                   onToggle={() => select('other')}
-                  label={otherCategory.label}
+                  label={pick(locale, otherCategory.label, categorySw('other')?.label)}
                   icon={<Icon className="w-5 h-5" />}
                 />
               )
@@ -137,7 +139,7 @@ export default function CategoryPageClient({ categories, otherCategory }: Props)
                 <button
                   onClick={confirmOther}
                   disabled={!customLabel.trim()}
-                  className="px-6 py-2.5 bg-gray-900 text-white text-sm font-semibold rounded-lg disabled:opacity-40"
+                  className="px-6 py-2.5 bg-[#1A1A1A] text-white text-sm font-semibold rounded-lg hover:bg-black transition-colors disabled:opacity-40"
                 >
                   {t('common.continue')}
                 </button>

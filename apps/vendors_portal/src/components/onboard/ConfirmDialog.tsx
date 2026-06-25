@@ -84,7 +84,7 @@ export function ConfirmDialog({
         <div
           className={cn(
             'h-1 w-full',
-            tone === 'danger' ? 'bg-red-500' : 'bg-gray-900',
+            tone === 'danger' ? 'bg-red-500' : 'bg-[#1A1A1A]',
           )}
         />
 
@@ -137,7 +137,7 @@ export function ConfirmDialog({
                 'px-5 py-2.5 rounded-full text-sm font-semibold text-white transition-colors',
                 tone === 'danger'
                   ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-gray-900 hover:bg-gray-800',
+                  : 'bg-[#1A1A1A] hover:bg-black',
               )}
             >
               {confirmLabel}

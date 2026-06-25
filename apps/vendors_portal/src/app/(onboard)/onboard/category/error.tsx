@@ -46,7 +46,7 @@ export default function CategoryPageError({
                 <button
                   type="button"
                   onClick={() => reset()}
-                  className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-900 hover:bg-gray-700 text-white text-sm font-semibold transition-colors"
+                  className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#1A1A1A] hover:bg-black text-white text-sm font-semibold transition-colors"
                 >
                   <RotateCw className="w-4 h-4" />
                   {t('common.try_again')}

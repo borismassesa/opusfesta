@@ -190,10 +190,13 @@ export type ProfileInitial = {
   businessName: string
   bio: string
   yearsInBusiness: number | null
+  // Tanzania administrative address.
+  houseNumber: string
   street: string
-  street2: string
-  city: string
+  ward: string
+  district: string
   region: string
+  landmark: string
   postalCode: string
   phone: string
   email: string
@@ -224,10 +227,12 @@ export function AdminProfileEditor({
         v.yearsInBusiness === null || Number.isNaN(v.yearsInBusiness)
           ? null
           : v.yearsInBusiness,
+      houseNumber: v.houseNumber,
       street: v.street,
-      street2: v.street2,
-      city: v.city,
+      ward: v.ward,
+      district: v.district,
       region: v.region,
+      landmark: v.landmark,
       postalCode: v.postalCode,
       phone: v.phone,
       email: v.email,
@@ -293,25 +298,32 @@ export function AdminProfileEditor({
           Address
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <Field label="Street">
+          <Field label="Building / Plot number">
+            <input
+              className={inputCls}
+              value={v.houseNumber}
+              onChange={(e) => setV({ ...v, houseNumber: e.target.value })}
+            />
+          </Field>
+          <Field label="Street / Village">
             <input
               className={inputCls}
               value={v.street}
               onChange={(e) => setV({ ...v, street: e.target.value })}
             />
           </Field>
-          <Field label="Apt / suite / plot">
+          <Field label="Ward">
             <input
               className={inputCls}
-              value={v.street2}
-              onChange={(e) => setV({ ...v, street2: e.target.value })}
+              value={v.ward}
+              onChange={(e) => setV({ ...v, ward: e.target.value })}
             />
           </Field>
-          <Field label="City / town">
+          <Field label="District">
             <input
               className={inputCls}
-              value={v.city}
-              onChange={(e) => setV({ ...v, city: e.target.value })}
+              value={v.district}
+              onChange={(e) => setV({ ...v, district: e.target.value })}
             />
           </Field>
           <Field label="Region">
@@ -321,12 +333,19 @@ export function AdminProfileEditor({
               onChange={(e) => setV({ ...v, region: e.target.value })}
             />
           </Field>
+          <Field label="P.O. Box / Postal code">
+            <input
+              className={inputCls}
+              value={v.postalCode}
+              onChange={(e) => setV({ ...v, postalCode: e.target.value })}
+            />
+          </Field>
           <div className="sm:col-span-2">
-            <Field label="Postal code">
+            <Field label="Landmark / directions">
               <input
                 className={inputCls}
-                value={v.postalCode}
-                onChange={(e) => setV({ ...v, postalCode: e.target.value })}
+                value={v.landmark}
+                onChange={(e) => setV({ ...v, landmark: e.target.value })}
               />
             </Field>
           </div>

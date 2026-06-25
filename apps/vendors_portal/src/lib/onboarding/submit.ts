@@ -69,11 +69,18 @@ function slugify(input: string): string {
 
 function buildLocation(draft: OnboardingDraft) {
   return {
+    // Tanzania administrative address.
+    houseNumber: draft.houseNumber || null,
     street: draft.street || null,
-    street2: draft.street2 || null,
-    city: draft.city || null,
+    ward: draft.ward || null,
+    district: draft.district || null,
     region: draft.region || null,
+    landmark: draft.landmark || null,
     postalCode: draft.postalCode || null,
+    // `city` is kept populated (= District) for backward compatibility: the
+    // public marketplace (cards, map, search) and the admin vendor list still
+    // read `location.city` as the locality label.
+    city: draft.district || null,
     country: 'TZ',
     serviceMarkets: draft.serviceMarkets,
     homeMarket: draft.homeMarket,
@@ -175,7 +182,7 @@ function validateDraft(draft: OnboardingDraft): string | null {
   if (!draft.vowsAccepted) return 'Vendor Vows must be accepted before submitting.'
   if (!draft.businessName.trim()) return 'Add a business name before submitting.'
   if (!draft.region) return 'Add a region before submitting.'
-  if (!draft.city.trim()) return 'Add a city before submitting.'
+  if (!draft.district.trim()) return 'Add a district before submitting.'
   if (!draft.phone.trim() && !draft.email.trim()) {
     return 'Add at least one contact method (phone or email).'
   }
@@ -632,7 +639,7 @@ export async function submitApplication(
           ? draft.customCategoryLabel.trim()
           : null,
         region,
-        city: draft.city.trim() || null,
+        city: draft.district.trim() || null,
         vendorContactEmail: draft.email?.trim() || email,
         vendorContactPhone: draft.phone?.trim() || null,
         submittedAt: new Date().toISOString(),

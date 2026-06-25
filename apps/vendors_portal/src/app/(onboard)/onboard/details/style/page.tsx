@@ -9,12 +9,13 @@ import { PrimaryButton } from '@/components/onboard/PrimaryButton'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { getStylesForCategory } from '@/lib/onboarding/styles'
+import { pick } from '@/lib/onboarding/localize'
 import { useOnboardT } from '@/lib/onboarding/strings'
 
 export default function StylePage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
-  const { t } = useOnboardT()
+  const { t, locale } = useOnboardT()
   const category = findCategory(draft.categoryId)
   const styles = useMemo(() => getStylesForCategory(draft.categoryId), [draft.categoryId])
 
@@ -34,6 +35,11 @@ export default function StylePage() {
       step="details"
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/details/services"
+      primaryAction={
+        <PrimaryButton onClick={onNext} disabled={!draft.style}>
+          {t('common.next_step')}
+        </PrimaryButton>
+      }
     >
       <OnboardHeading
         title={t('details.style.title')}
@@ -45,18 +51,12 @@ export default function StylePage() {
           <OptionCard
             key={s.id}
             variant="radio"
-            label={s.label}
-            description={s.body}
+            label={pick(locale, s.label, s.label_sw)}
+            description={pick(locale, s.body, s.body_sw)}
             selected={draft.style === s.id}
             onToggle={() => update({ style: s.id })}
           />
         ))}
-      </div>
-
-      <div className="mt-10">
-        <PrimaryButton onClick={onNext} disabled={!draft.style}>
-          {t('common.next_step')}
-        </PrimaryButton>
       </div>
     </OnboardShell>
   )

@@ -67,6 +67,9 @@ export default function MarketsPage() {
       step="profile"
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/profile/socials"
+      primaryAction={
+        <PrimaryButton onClick={onNext}>{t('common.next_step')}</PrimaryButton>
+      }
     >
       <OnboardHeading
         title={t('profile.markets.title', {
@@ -93,8 +96,7 @@ export default function MarketsPage() {
         })}
       </div>
 
-      <div className="mt-10 flex items-center gap-6 flex-wrap">
-        <PrimaryButton onClick={onNext}>{t('common.next_step')}</PrimaryButton>
+      <div className="mt-10">
         <WhyWeAsk title={t('profile.markets.why.title')}>
           <p>{t('profile.markets.why.body1')}</p>
           <p>{t('profile.markets.why.body2')}</p>

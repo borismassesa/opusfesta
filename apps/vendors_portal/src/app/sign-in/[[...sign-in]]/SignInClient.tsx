@@ -88,12 +88,18 @@ function GoogleIcon() {
   )
 }
 
-export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) {
+export default function SignInClient({
+  redirectUrl,
+  initialEmail,
+}: {
+  redirectUrl?: string
+  initialEmail?: string
+}) {
   const { isLoaded, signIn, setActive } = useSignIn()
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('password')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail ?? '')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [newPassword, setNewPassword] = useState('')
@@ -123,7 +129,24 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
     setError(null)
     setBusy(true)
     try {
-      const res = await signIn.create({ identifier: email.trim(), password })
+      // Resolve the account first so we can tell a wrong password apart from an
+      // account that has NO password (created via Google). OpusFesta shares one
+      // login across the platform, so a vendor may have signed up on the
+      // couples site or OpusPass with Google and never set a password.
+      const attempt = await signIn.create({ identifier: email.trim() })
+      const hasPassword = attempt.supportedFirstFactors?.some(
+        (f) => f.strategy === 'password',
+      )
+      if (!hasPassword) {
+        setError(
+          'This account doesn’t have a password (it was created with Google sign-in). Use “Continue with Google” above, or set a password with “Forgot password?”.',
+        )
+        return
+      }
+      const res = await signIn.attemptFirstFactor({
+        strategy: 'password',
+        password,
+      })
       if (res.status === 'complete') {
         if (!(await activate(res.createdSessionId))) {
           setError('Additional verification is required to sign in.')
@@ -252,6 +275,7 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
               {error}
             </p>
           )}
+
 
           {step === 'password' && (
             <>

@@ -12,6 +12,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Download,
   ExternalLink,
   FileSignature,
   FileText,
@@ -98,10 +99,14 @@ export type VendorReviewProps = {
     description: string | null
     yearsInBusiness: number | null
     location: {
+      houseNumber?: string | null
       street?: string | null
-      street2?: string | null
-      city?: string | null
+      ward?: string | null
+      district?: string | null
+      street2?: string | null // legacy
+      city?: string | null // legacy locality
       region?: string | null
+      landmark?: string | null
       postalCode?: string | null
       country?: string | null
       homeMarket?: string | null
@@ -347,6 +352,39 @@ export default function VendorReviewClient(props: VendorReviewProps) {
     })
   }
 
+  const openCorrectionsPrompt = () =>
+    setNotePrompt({
+      title: 'Request corrections',
+      label:
+        'What does the vendor need to fix? (optional, included in the email to the vendor):',
+      placeholder:
+        'e.g. The business licence is expired, please re-upload a current one.',
+      confirmLabel: 'Request corrections',
+      run: (note) =>
+        runAction('Request corrections', () =>
+          requestCorrections(vendor.id, note || undefined)
+        ),
+    })
+
+  // Guardrail: documents the admin rejected but hasn't yet notified the vendor
+  // about. Rejecting a doc does not email or change the vendor's status on its
+  // own; "Request corrections" batches every rejection into one email and moves
+  // the vendor to needs_corrections. If anything is rejected and that hasn't
+  // happened, the vendor is stuck with no notice, so surface a prompt that can
+  // not be missed.
+  const rejectedDocCount = [
+    tin,
+    license,
+    nationalIdFront,
+    nationalIdBack,
+    selfie,
+  ].filter((d) => d?.status === 'rejected').length
+  const showUnsentRejections =
+    rejectedDocCount > 0 &&
+    vendor.onboardingStatus !== 'needs_corrections' &&
+    !isApproved &&
+    !isSuspended
+
   return (
     <VendorEditorProvider>
     <div className="px-8 pt-4 pb-12">
@@ -407,19 +445,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
             <>
               <button
                 type="button"
-                onClick={() =>
-                  setNotePrompt({
-                    title: 'Request corrections',
-                    label:
-                      'What does the vendor need to fix? (optional — included in the email to the vendor):',
-                    placeholder: 'e.g. The business licence is expired — please re-upload a current one.',
-                    confirmLabel: 'Request corrections',
-                    run: (note) =>
-                      runAction('Request corrections', () =>
-                        requestCorrections(vendor.id, note || undefined)
-                      ),
-                  })
-                }
+                onClick={openCorrectionsPrompt}
                 disabled={pending}
                 className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50 transition-colors"
               >
@@ -492,6 +518,35 @@ export default function VendorReviewClient(props: VendorReviewProps) {
           </div>
         )}
 
+        {/* Un-sent rejections guardrail — rejecting a document neither emails
+            the vendor nor changes their status. This makes sure the admin
+            doesn't reject docs and forget to actually notify the vendor. */}
+        {showUnsentRejections && (
+          <div className="mb-4 flex items-start gap-3 rounded-lg bg-rose-50 border border-rose-200 px-4 py-3">
+            <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-rose-900">
+                {rejectedDocCount} document{rejectedDocCount === 1 ? '' : 's'}{' '}
+                rejected, but the vendor hasn&rsquo;t been notified yet
+              </p>
+              <p className="text-xs text-rose-800 leading-relaxed mt-0.5">
+                Rejecting a document doesn&rsquo;t email the vendor on its own.
+                Send their corrections so they get one email (with your note and
+                a link to re-upload) and can fix everything in one pass.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={openCorrectionsPrompt}
+              disabled={pending}
+              className="shrink-0 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full bg-rose-600 hover:bg-rose-700 text-white disabled:opacity-50 transition-colors"
+            >
+              <ThumbsDown className="w-3 h-3" />
+              Request corrections
+            </button>
+          </div>
+        )}
+
         {/* Tab navigation — splits the page into 4 distinct jobs so the
             highest-leverage actions (Verification & Payout) aren't buried
             at the bottom of a long scroll. */}
@@ -538,10 +593,13 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                 businessName: vendor.businessName,
                 bio: vendor.bio ?? '',
                 yearsInBusiness: vendor.yearsInBusiness,
+                houseNumber: vendor.location?.houseNumber ?? '',
                 street: vendor.location?.street ?? '',
-                street2: vendor.location?.street2 ?? '',
-                city: vendor.location?.city ?? '',
+                ward: vendor.location?.ward ?? '',
+                // Backward compatibility: legacy rows stored the locality as `city`.
+                district: vendor.location?.district ?? vendor.location?.city ?? '',
                 region: vendor.location?.region ?? '',
+                landmark: vendor.location?.landmark ?? '',
                 postalCode: vendor.location?.postalCode ?? '',
                 phone: formatTzPhone(vendor.contact?.phone ?? null) ?? '',
                 email: vendor.contact?.email ?? '',
@@ -1735,6 +1793,87 @@ function PayoutCard({
   )
 }
 
+// Force-download a Supabase signed URL as a file. Appending `&download=<name>`
+// makes storage respond with Content-Disposition: attachment, so the browser
+// saves the file instead of opening it (the anchor `download` attribute alone
+// is ignored cross-origin).
+function downloadSignedUrl(signedUrl: string, filename: string) {
+  const sep = signedUrl.includes('?') ? '&' : '?'
+  const a = document.createElement('a')
+  a.href = `${signedUrl}${sep}download=${encodeURIComponent(filename)}`
+  a.rel = 'noopener'
+  document.body.appendChild(a)
+  a.click()
+  a.remove()
+}
+
+function slugifyFilename(s: string): string {
+  return s
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+}
+
+// Open a print-optimized window with the full signing audit + drawn signature
+// for one signed agreement document. The admin saves it as a PDF from the
+// browser's print dialog. Self-contained so it doubles as a legal record.
+function printAgreementRecord(
+  doc: VendorReviewProps['agreements'][number],
+  signatureUrl: string | null,
+) {
+  const s = doc.signed
+  if (!s) return
+  const esc = (v: string | null | undefined) =>
+    (v ?? '').replace(
+      /[&<>"]/g,
+      (c) =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] as string,
+    )
+  const signedAt = new Date(s.signedAt).toLocaleString('en-GB', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  })
+  const win = window.open('', '_blank', 'width=820,height=1040')
+  if (!win) return
+  const row = (label: string, value: string, mono = false) =>
+    `<tr><td class="lbl">${esc(label)}</td><td class="${mono ? 'mono' : ''}">${esc(value)}</td></tr>`
+  win.document.write(
+    `<!doctype html><html><head><meta charset="utf-8"><title>${esc(doc.title)} — signed record</title>
+<style>
+  *{box-sizing:border-box} body{font-family:-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;color:#111;margin:48px;line-height:1.5}
+  .brand{font-weight:700;font-size:18px;letter-spacing:-.01em;margin-bottom:24px}
+  h1{font-size:20px;margin:0 0 2px} .code{font-family:ui-monospace,Menlo,monospace;color:#888;font-size:12px}
+  table{border-collapse:collapse;width:100%;margin-top:20px;font-size:13px}
+  td{padding:7px 0;border-bottom:1px solid #eee;vertical-align:top}
+  td.lbl{color:#888;width:170px;padding-right:16px} .mono{font-family:ui-monospace,Menlo,monospace;font-size:12px;word-break:break-all}
+  .sig{margin-top:24px} .sig p{color:#888;font-size:11px;text-transform:uppercase;letter-spacing:.08em;font-weight:700;margin:0 0 6px}
+  .sig img{max-width:280px;border:1px solid #ddd;border-radius:8px;background:#fff;padding:4px}
+  .foot{margin-top:32px;font-size:11px;color:#999}
+</style></head><body>
+  <div class="brand">OpusFesta — Vendor agreement record</div>
+  <h1>${esc(doc.title)}</h1>
+  <div class="code">${esc(doc.code)}</div>
+  <table>
+    ${row('Version', doc.version, true)}
+    ${row('Signed name', s.signedFullName)}
+    ${row('Signed at', signedAt)}
+    ${s.signedIp ? row('IP address', s.signedIp, true) : ''}
+    ${s.signedUserAgent ? row('User-agent', s.signedUserAgent, true) : ''}
+    ${row('Body hash (SHA-256)', s.textHash, true)}
+  </table>
+  ${signatureUrl ? `<div class="sig"><p>Drawn signature</p><img src="${esc(signatureUrl)}" alt="signature"></div>` : ''}
+  <div class="foot">This record certifies the vendor e-signed ${esc(doc.title)} (${esc(doc.code)}). The body hash binds the signature to the exact agreement text presented at signing.</div>
+</body></html>`,
+  )
+  win.document.close()
+  win.focus()
+  // Give the signature image a moment to load before printing.
+  setTimeout(() => win.print(), 400)
+}
+
 function DocReviewCard({
   title,
   subtitle,
@@ -1876,17 +2015,32 @@ function DocReviewCard({
             )}
           </div>
 
-          {/* Open in tab affordance */}
+          {/* Open / download affordances */}
           {signedUrl && (
-            <a
-              href={signedUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900 mb-4"
-            >
-              <ExternalLink className="w-3 h-3" />
-              Open in new tab
-            </a>
+            <div className="flex items-center gap-4 mb-4">
+              <a
+                href={signedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900"
+              >
+                <ExternalLink className="w-3 h-3" />
+                Open in new tab
+              </a>
+              <button
+                type="button"
+                onClick={() =>
+                  downloadSignedUrl(
+                    signedUrl,
+                    doc?.filename || `${slugifyFilename(title)}.jpg`,
+                  )
+                }
+                className="inline-flex items-center gap-1 text-xs font-semibold text-gray-600 hover:text-gray-900"
+              >
+                <Download className="w-3 h-3" />
+                Download
+              </button>
+            </div>
           )}
 
           {/* Existing rejection reason if any */}
@@ -2057,16 +2211,28 @@ function AgreementDocRow({
             </span>
           </div>
         </div>
-        {doc.signed ? (
-          <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-            <CheckCircle2 className="w-2.5 h-2.5" />
-            Signed
-          </span>
-        ) : (
-          <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200 shrink-0">
-            Not signed
-          </span>
-        )}
+        <div className="flex items-center gap-2 shrink-0">
+          {doc.signed ? (
+            <>
+              <button
+                type="button"
+                onClick={() => printAgreementRecord(doc, signatureUrl)}
+                className="inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 hover:text-gray-900 px-2 py-0.5 rounded-md border border-gray-200 bg-white transition-colors"
+              >
+                <Download className="w-3 h-3" />
+                Download record
+              </button>
+              <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                <CheckCircle2 className="w-2.5 h-2.5" />
+                Signed
+              </span>
+            </>
+          ) : (
+            <span className="inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
+              Not signed
+            </span>
+          )}
+        </div>
       </div>
 
       {!doc.signed ? (
@@ -2130,6 +2296,16 @@ function AgreementDocRow({
                 alt="Vendor's drawn signature"
                 className="block w-48 h-auto rounded-lg border border-gray-200 bg-white"
               />
+              <button
+                type="button"
+                onClick={() =>
+                  downloadSignedUrl(signatureUrl, `signature-${slugifyFilename(doc.code)}.png`)
+                }
+                className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-semibold text-gray-600 hover:text-gray-900"
+              >
+                <Download className="w-3 h-3" />
+                Download signature
+              </button>
             </div>
           ) : (
             <p className="text-[11px] text-gray-400 italic">

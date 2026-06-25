@@ -10,6 +10,7 @@ import {
   useOnboardingDraft,
   type OnboardingDraft,
 } from '@/lib/onboarding/draft'
+import { localizeProfileLabel } from '@/lib/onboarding/categories'
 import { useOnboardT } from '@/lib/onboarding/strings'
 import { cn } from '@/lib/utils'
 
@@ -26,8 +27,10 @@ const profileComplete = (d: OnboardingDraft) =>
   Boolean(
     d.firstName.trim() &&
       d.lastName.trim() &&
+      d.houseNumber.trim() &&
       d.street.trim() &&
-      d.city.trim() &&
+      d.ward.trim() &&
+      d.district.trim() &&
       d.region &&
       d.phone.trim().length >= 9 &&
       d.email.trim() &&
@@ -61,12 +64,12 @@ export function Stepper({
   profileLabel: string
 }) {
   const { draft, hydrated } = useOnboardingDraft()
-  const { t } = useOnboardT()
+  const { t, locale } = useOnboardT()
 
   const steps: Step[] = [
     {
       key: 'profile',
-      label: t('stepper.profile', { label: profileLabel }),
+      label: t('stepper.profile', { label: localizeProfileLabel(profileLabel, locale) }),
       href: '/onboard/profile/name',
       isComplete: profileComplete,
     },
@@ -85,19 +88,20 @@ export function Stepper({
 
   return (
     <header className="bg-white border-b border-gray-100 sticky top-0 z-40">
-      <div className="relative px-6 lg:px-12 py-4 flex items-center justify-center overflow-x-auto">
+      <div className="px-4 sm:px-6 lg:px-12 py-3 lg:py-4 flex items-center gap-2 sm:gap-3 lg:gap-4">
         <Link
           href="/"
           aria-label={t('stepper.aria.home')}
-          className="absolute left-6 lg:left-12 top-1/2 -translate-y-1/2 shrink-0"
+          className="shrink-0"
         >
-          <Logo className="h-7 w-auto text-gray-900" />
+          <Logo className="h-6 lg:h-7 w-auto text-gray-900" />
         </Link>
 
-        <LocaleToggle className="absolute right-6 lg:right-12 top-1/2 -translate-y-1/2" />
-
+        {/* On phones the header stays minimal — logo + language toggle. The thin
+            progress bar below carries position, and the page's own H1 names the
+            step. The labelled circle row returns at `sm`. */}
         <ol
-          className="flex items-center gap-1 lg:gap-2 text-sm"
+          className="hidden sm:flex flex-1 min-w-0 items-center justify-center gap-1 lg:gap-2 text-sm overflow-x-auto hide-scrollbar"
           aria-label={t('stepper.aria.progress')}
         >
           {steps.map((step, i) => {
@@ -112,7 +116,7 @@ export function Stepper({
                   <li
                     aria-hidden
                     className={cn(
-                      'h-[2px] w-6 lg:w-10 rounded-full transition-colors duration-500',
+                      'h-[2px] w-4 sm:w-6 lg:w-10 rounded-full transition-colors duration-500',
                       connectorActive ? 'bg-emerald-500' : 'bg-gray-200',
                     )}
                   />
@@ -130,6 +134,10 @@ export function Stepper({
             )
           })}
         </ol>
+
+        {/* ml-auto pins the toggle to the right edge on phones, where the step
+            row is hidden; on sm+ the flex-1 <ol> already fills the gap. */}
+        <LocaleToggle className="shrink-0 ml-auto" />
       </div>
 
       {/* Progress bar — bottom edge of header */}
@@ -161,7 +169,7 @@ function StepItem({
     <span
       className={cn(
         'shrink-0 inline-flex items-center justify-center w-6 h-6 lg:w-7 lg:h-7 rounded-full text-xs font-bold transition-all duration-300',
-        isActive && 'bg-gray-900 text-white shadow-md scale-105',
+        isActive && 'bg-[#1A1A1A] text-white shadow-md scale-105',
         isComplete && 'bg-emerald-500 text-white',
         !isActive && !isComplete && 'bg-white border-2 border-gray-300 text-gray-400',
       )}
@@ -174,7 +182,10 @@ function StepItem({
   const text = (
     <span
       className={cn(
-        'whitespace-nowrap transition-colors duration-200',
+        // Labels are hidden on mobile to keep the stepper compact — the page
+        // heading already names the current step. Circles + progress bar carry
+        // the wayfinding on small screens; full labels return at lg.
+        'hidden lg:inline whitespace-nowrap transition-colors duration-200',
         isActive && 'text-gray-900 font-semibold',
         isComplete && 'text-emerald-700 font-semibold',
         !isActive && !isComplete && 'text-gray-400 font-medium',
@@ -192,7 +203,7 @@ function StepItem({
   )
 
   const baseClasses =
-    'inline-flex items-center gap-2 lg:gap-2.5 px-2 lg:px-2.5 py-1.5 rounded-full transition-colors'
+    'inline-flex items-center gap-1.5 lg:gap-2.5 px-1 sm:px-2 lg:px-2.5 py-1.5 rounded-full transition-colors'
 
   if (href && !isActive) {
     return (
