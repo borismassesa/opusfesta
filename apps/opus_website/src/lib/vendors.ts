@@ -80,6 +80,9 @@ export type Vendor = {
   // Extended profile fields (populated by vendors_portal)
   about?: string
   startingPrice?: string
+  // True when the vendor accepts custom/negotiated quotes beyond fixed
+  // packages — surfaced as a line in the pricing section.
+  customQuotes?: boolean
   responseTime?: string
   locallyOwned?: boolean
   yearsInBusiness?: number
@@ -93,7 +96,14 @@ export type Vendor = {
   location?: { address: string; lat: number; lng: number }
   serviceArea?: string[]
   team?: Array<{ avatar?: string; role?: string; name?: string; bio?: string }>
-  socialLinks?: { instagram?: string; facebook?: string; website?: string }
+  socialLinks?: { instagram?: string; facebook?: string; website?: string; tiktok?: string; whatsapp?: string }
+  // Booking policies captured in onboarding (/onboard/pricing/policies) and
+  // editable in the storefront. `depositPercent` is a bare number string
+  // ("30"); the level/policy fields are the raw enum keys resolved to human
+  // labels at render time.
+  depositPercent?: string
+  cancellationLevel?: 'flexible' | 'moderate' | 'strict' | string
+  reschedulePolicy?: 'one-free' | 'unlimited' | 'none' | string
   // Vendor self-described style and personality, captured during onboarding
   // (e.g. style = "Modern", personality = "Warm"). Surfaced as facts in the
   // About section when set; otherwise hidden.

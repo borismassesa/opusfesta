@@ -817,6 +817,10 @@ export type StorefrontPatch = {
   // Capacity (admin-fillable until onboarding gains the step)
   capacityMin?: number | null
   capacityMax?: number | null
+  // Pricing extras + availability (migration 20260624000001)
+  startingPrice?: string | null
+  customQuotes?: boolean | null
+  availability?: Array<Record<string, unknown>>
 }
 
 /**
@@ -983,6 +987,11 @@ export async function updateStorefrontSection(
 
   if (patch.team !== undefined) update.team = patch.team
   if (patch.faqs !== undefined) update.faqs = patch.faqs
+
+  if (patch.startingPrice !== undefined)
+    update.starting_price = patch.startingPrice
+  if (patch.customQuotes !== undefined) update.custom_quotes = patch.customQuotes
+  if (patch.availability !== undefined) update.availability = patch.availability
 
   if (patch.lat !== undefined) update.lat = patch.lat
   if (patch.lng !== undefined) update.lng = patch.lng

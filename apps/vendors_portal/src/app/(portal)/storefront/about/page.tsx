@@ -6,9 +6,6 @@ import {
   type VendorRowFromDb,
 } from './mapping'
 import AboutEditor, { type AboutSource } from './AboutEditor'
-import LocationAndCapacityEditor, {
-  type LocationAndCapacityInitial,
-} from './LocationAndCapacityEditor'
 
 const EMPTY_PROFILE: DbProfile = {
   businessName: '',
@@ -35,22 +32,14 @@ async function loadProfile(): Promise<{
   source: AboutSource
   initialProfile: DbProfile
   canEdit: boolean
-  locationAndCapacity: LocationAndCapacityInitial
 }> {
   const state = await getCurrentVendor()
 
-  const emptyLocation: LocationAndCapacityInitial = {
-    capacityMin: null,
-    capacityMax: null,
-    lat: null,
-    lng: null,
-  }
   if (state.kind === 'no-env') {
     return {
       source: { kind: 'no-env' },
       initialProfile: EMPTY_PROFILE,
       canEdit: false,
-      locationAndCapacity: emptyLocation,
     }
   }
   if (state.kind === 'no-application') {
@@ -58,7 +47,6 @@ async function loadProfile(): Promise<{
       source: { kind: 'no-application' },
       initialProfile: EMPTY_PROFILE,
       canEdit: false,
-      locationAndCapacity: emptyLocation,
     }
   }
   if (state.kind === 'pending-approval') {
@@ -66,7 +54,6 @@ async function loadProfile(): Promise<{
       source: { kind: 'pending-approval' },
       initialProfile: EMPTY_PROFILE,
       canEdit: false,
-      locationAndCapacity: emptyLocation,
     }
   }
   if (state.kind === 'suspended') {
@@ -74,7 +61,6 @@ async function loadProfile(): Promise<{
       source: { kind: 'suspended' },
       initialProfile: EMPTY_PROFILE,
       canEdit: false,
-      locationAndCapacity: emptyLocation,
     }
   }
 
@@ -82,15 +68,12 @@ async function loadProfile(): Promise<{
   const { data, error } = await supabase
     .from('vendors')
     .select(
-      'business_name, years_in_business, bio, location, contact_info, social_links, draft_content, capacity, lat, lng',
+      'business_name, years_in_business, bio, location, contact_info, social_links, draft_content',
     )
     .eq('id', state.vendor.id)
     .single<
       VendorRowFromDb & {
         draft_content: { about?: Partial<VendorRowFromDb> } | null
-        capacity: { min?: number; max?: number } | null
-        lat: number | null
-        lng: number | null
       }
     >()
 
@@ -129,26 +112,10 @@ async function loadProfile(): Promise<{
     source: { kind: 'live' },
     initialProfile: dbVendorToProfile(editorRow),
     canEdit,
-    locationAndCapacity: {
-      capacityMin: data.capacity?.min ?? null,
-      capacityMax: data.capacity?.max ?? null,
-      lat: data.lat,
-      lng: data.lng,
-    },
   }
 }
 
 export default async function StorefrontAboutPage() {
-  const { locationAndCapacity, ...aboutProps } = await loadProfile()
-  return (
-    <>
-      <AboutEditor {...aboutProps} />
-      <div className="px-6 lg:px-10">
-        <LocationAndCapacityEditor
-          initial={locationAndCapacity}
-          canEdit={aboutProps.canEdit}
-        />
-      </div>
-    </>
-  )
+  const aboutProps = await loadProfile()
+  return <AboutEditor {...aboutProps} />
 }

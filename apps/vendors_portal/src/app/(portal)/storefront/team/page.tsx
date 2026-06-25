@@ -7,7 +7,7 @@ import { FieldLabel, TextArea, TextInput } from '@/components/onboard/FormField'
 import { useOnboardingDraft, type TeamMember } from '@/lib/onboarding/draft'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { cn } from '@/lib/utils'
-import { saveTeam } from '../sections/actions'
+import { loadTeam, saveTeam } from '../sections/actions'
 
 const newMember = (seed?: Partial<TeamMember>): TeamMember => ({
   id:
@@ -56,6 +56,28 @@ export default function TeamPage() {
   // Mutations are gated on `hydrated` so a click before useEffect runs
   // can't clobber localStorage with the empty default.
   const team = hydrated ? draft.team : []
+
+  // Hydrate from the DB (source of truth) when the local draft is empty —
+  // a fresh device / cleared storage / admin-approved vendor would otherwise
+  // see no team members despite having saved some. Seeding only when empty
+  // avoids clobbering unsaved edits made on this device. Avatars are
+  // session-only blobs that were never persisted, so seeded members have none.
+  const seeded = useRef(false)
+  useEffect(() => {
+    if (!hydrated || seeded.current) return
+    seeded.current = true
+    if (draft.team.length > 0) return
+    void loadTeam().then((res) => {
+      if (res.ok && res.team.length > 0) {
+        update({
+          team: res.team.map((m) =>
+            newMember({ name: m.name ?? '', role: m.role ?? '', bio: m.bio ?? '' }),
+          ),
+        })
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated])
 
   const updateMember = (id: string, patch: Partial<TeamMember>) => {
     if (!hydrated) return

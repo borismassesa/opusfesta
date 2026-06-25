@@ -168,6 +168,95 @@ export async function saveRecognition(input: StorefrontRecognition): Promise<Sav
   return { ok: true }
 }
 
+// ----- Section reads (hydrate editors from DB) ---------------------------
+//
+// Team / FAQ / Recognition editors keep their working copy in the
+// localStorage onboarding draft, but the source of truth is the vendors
+// row. On a fresh device (or after clearing storage, or when an admin
+// approved the vendor) the draft is empty, so the editor must pull the
+// saved values back from the DB. These read actions power that hydration.
+//
+// We read through the service-role admin client for the same reason the
+// photo/save actions do: when the Clerk 'supabase' JWT template isn't set,
+// the Clerk-authed client falls back to anon and RLS returns zero rows,
+// which would look like "no data" to the editor. `ensureLiveVendor` has
+// already proven the caller owns `vendorId`, so scoping every read to that
+// id is safe.
+
+export async function loadFaqs(): Promise<
+  { ok: true; faqs: StorefrontFaq[] } | { ok: false }
+> {
+  const guard = await ensureLiveVendor()
+  if (!guard.ok) return { ok: false }
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin
+    .from('vendors')
+    .select('faqs')
+    .eq('id', guard.vendorId)
+    .maybeSingle<{ faqs: StorefrontFaq[] | null }>()
+  if (error || !data) return { ok: false }
+  const faqs = Array.isArray(data.faqs)
+    ? data.faqs.filter(
+        (f): f is StorefrontFaq =>
+          !!f && typeof f.question === 'string' && typeof f.answer === 'string',
+      )
+    : []
+  return { ok: true, faqs }
+}
+
+export async function loadTeam(): Promise<
+  { ok: true; team: StorefrontTeamMember[] } | { ok: false }
+> {
+  const guard = await ensureLiveVendor()
+  if (!guard.ok) return { ok: false }
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin
+    .from('vendors')
+    .select('team')
+    .eq('id', guard.vendorId)
+    .maybeSingle<{ team: StorefrontTeamMember[] | null }>()
+  if (error || !data) return { ok: false }
+  const team = Array.isArray(data.team)
+    ? data.team.filter(
+        (m): m is StorefrontTeamMember =>
+          !!m && (typeof m.name === 'string' || typeof m.role === 'string'),
+      )
+    : []
+  return { ok: true, team }
+}
+
+export async function loadRecognition(): Promise<
+  { ok: true; data: StorefrontRecognition } | { ok: false }
+> {
+  const guard = await ensureLiveVendor()
+  if (!guard.ok) return { ok: false }
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin
+    .from('vendors')
+    .select('awards, response_time_hours, locally_owned, languages, award_certificates')
+    .eq('id', guard.vendorId)
+    .maybeSingle<{
+      awards: string | null
+      response_time_hours: string | null
+      locally_owned: boolean | null
+      languages: string[] | null
+      award_certificates: Array<Record<string, unknown>> | null
+    }>()
+  if (error || !data) return { ok: false }
+  return {
+    ok: true,
+    data: {
+      awards: data.awards ?? '',
+      responseTimeHours: data.response_time_hours ?? '',
+      locallyOwned: !!data.locally_owned,
+      languages: Array.isArray(data.languages) ? data.languages : [],
+      awardCertificates: Array.isArray(data.award_certificates)
+        ? data.award_certificates
+        : [],
+    },
+  }
+}
+
 // ----- Photo uploads -----------------------------------------------------
 //
 // Uploads land in the existing `vendor-portfolios` Supabase Storage bucket

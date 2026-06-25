@@ -4,10 +4,12 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition, type ReactNode } from 'react'
 import {
   AlertCircle,
+  Banknote,
   Building2,
   Calendar,
   Check,
   ClipboardList,
+  MapPin,
   Facebook,
   Globe,
   HelpCircle,
@@ -206,7 +208,25 @@ export type ProfileInitial = {
   socialFacebook: string
   socialTiktok: string
   socialWhatsapp: string
+  // Service area — home market + additional markets the vendor serves. Mirrors
+  // SERVICE_MARKETS in the vendors_portal onboarding regions catalogue.
+  homeMarket: string | null
+  serviceMarkets: string[]
 }
+
+// Service-market IDs → labels. Kept in sync with vendors_portal
+// lib/onboarding/regions.ts SERVICE_MARKETS so admin edits write the same IDs
+// the vendor portal and public marketplace resolve.
+const MARKET_OPTIONS: Array<{ id: string; label: string }> = [
+  { id: 'dar', label: 'Dar es Salaam' },
+  { id: 'zanzibar', label: 'Zanzibar' },
+  { id: 'arusha', label: 'Arusha & Kilimanjaro' },
+  { id: 'mwanza', label: 'Mwanza & Lake Zone' },
+  { id: 'dodoma', label: 'Dodoma & Central' },
+  { id: 'mbeya', label: 'Mbeya & Southern Highlands' },
+  { id: 'south', label: 'Southern Coast' },
+  { id: 'morogoro', label: 'Morogoro & Tanga' },
+]
 
 export function AdminProfileEditor({
   vendorId,
@@ -242,6 +262,8 @@ export function AdminProfileEditor({
       socialFacebook: v.socialFacebook,
       socialTiktok: v.socialTiktok,
       socialWhatsapp: v.socialWhatsapp,
+      homeMarket: v.homeMarket,
+      serviceMarkets: v.serviceMarkets,
     })
 
   useEditorRegistration({
@@ -348,6 +370,68 @@ export function AdminProfileEditor({
                 onChange={(e) => setV({ ...v, landmark: e.target.value })}
               />
             </Field>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 pt-4 border-t border-gray-100">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+          Service area
+        </p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <Field label="Home market">
+            <select
+              className={inputCls}
+              value={v.homeMarket ?? ''}
+              onChange={(e) =>
+                setV({
+                  ...v,
+                  homeMarket: e.target.value || null,
+                  // Drop the home market from additional markets if it was
+                  // also ticked — a vendor can't "also serve" their base.
+                  serviceMarkets: v.serviceMarkets.filter(
+                    (id) => id !== e.target.value,
+                  ),
+                })
+              }
+            >
+              <option value="">Not set</option>
+              {MARKET_OPTIONS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.label}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+        <div className="mt-3">
+          <p className="text-[11px] text-gray-500 mb-1.5">
+            Additional markets served
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+            {MARKET_OPTIONS.filter((m) => m.id !== v.homeMarket).map((m) => {
+              const checked = v.serviceMarkets.includes(m.id)
+              return (
+                <label
+                  key={m.id}
+                  className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() =>
+                      setV({
+                        ...v,
+                        serviceMarkets: checked
+                          ? v.serviceMarkets.filter((x) => x !== m.id)
+                          : [...v.serviceMarkets, m.id],
+                      })
+                    }
+                  />
+                  {m.label}
+                </label>
+              )
+            })}
           </div>
         </div>
       </div>
@@ -770,6 +854,138 @@ export function AdminBookingPoliciesEditor({
             <option value="none">No reschedules</option>
           </select>
         </Field>
+      </div>
+    </Card>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// 4b. Pricing extras + capacity + map coordinates
+//
+// These are admin-fillable fields the vendor portal doesn't surface its own
+// editor for: `starting_price` / `custom_quotes` come from onboarding but had
+// no column until migration 20260624000001; `capacity` + `lat`/`lng` are the
+// fields the portal "Capacity & location" card used to own before it was
+// removed. Centralising them here keeps the public detail page populated.
+// ---------------------------------------------------------------------------
+
+export function AdminPricingCapacityEditor({
+  vendorId,
+  initial,
+}: {
+  vendorId: string
+  initial: {
+    startingPrice: string | null
+    customQuotes: boolean | null
+    capacityMin: number | null
+    capacityMax: number | null
+    lat: number | null
+    lng: number | null
+  }
+}) {
+  const [v, setV] = useState(initial)
+  const dirty = JSON.stringify(v) !== JSON.stringify(initial)
+  const { save } = useStorefrontSave(vendorId)
+
+  useEditorRegistration({
+    id: 'pricing-capacity',
+    label: 'Pricing & capacity',
+    dirty,
+    save: () =>
+      save({
+        startingPrice: v.startingPrice,
+        customQuotes: v.customQuotes,
+        capacityMin: v.capacityMin,
+        capacityMax: v.capacityMax,
+        lat: v.lat,
+        lng: v.lng,
+      }),
+    discard: () => setV(initial),
+  })
+
+  const numOrNull = (s: string) => (s === '' ? null : Number(s))
+
+  return (
+    <Card
+      icon={<Banknote className="w-5 h-5" strokeWidth={1.75} />}
+      title="Pricing & capacity"
+      subtitle="Starting price, custom quotes, guest capacity, and map location couples see on the public page."
+    >
+      <div className="flex flex-col gap-3">
+        <Field label="Starting price (TZS)">
+          <input
+            className={inputCls}
+            value={v.startingPrice ?? ''}
+            placeholder="e.g. 500,000"
+            onChange={(e) =>
+              setV({ ...v, startingPrice: e.target.value || null })
+            }
+          />
+        </Field>
+        <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={!!v.customQuotes}
+            onChange={(e) => setV({ ...v, customQuotes: e.target.checked })}
+          />
+          Accepts custom quotes
+        </label>
+      </div>
+
+      <div className="mt-5 pt-4 border-t border-gray-100">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2">
+          Guest capacity
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Minimum">
+            <input
+              type="number"
+              min={0}
+              className={inputCls}
+              value={v.capacityMin ?? ''}
+              onChange={(e) =>
+                setV({ ...v, capacityMin: numOrNull(e.target.value) })
+              }
+            />
+          </Field>
+          <Field label="Maximum">
+            <input
+              type="number"
+              min={0}
+              className={inputCls}
+              value={v.capacityMax ?? ''}
+              onChange={(e) =>
+                setV({ ...v, capacityMax: numOrNull(e.target.value) })
+              }
+            />
+          </Field>
+        </div>
+      </div>
+
+      <div className="mt-5 pt-4 border-t border-gray-100">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-2 flex items-center gap-1.5">
+          <MapPin className="w-3.5 h-3.5" /> Map location
+        </p>
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Latitude">
+            <input
+              type="number"
+              step="any"
+              className={inputCls}
+              value={v.lat ?? ''}
+              onChange={(e) => setV({ ...v, lat: numOrNull(e.target.value) })}
+            />
+          </Field>
+          <Field label="Longitude">
+            <input
+              type="number"
+              step="any"
+              className={inputCls}
+              value={v.lng ?? ''}
+              onChange={(e) => setV({ ...v, lng: numOrNull(e.target.value) })}
+            />
+          </Field>
+        </div>
       </div>
     </Card>
   )

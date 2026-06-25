@@ -65,6 +65,10 @@ type VendorRow = {
   personality?: string | null
   service_markets?: string[] | null
   home_market?: string | null
+  // Migration 20260624000001 — pricing extras + availability.
+  starting_price?: string | null
+  custom_quotes?: boolean | null
+  availability?: Array<{ date?: string; status?: string; note?: string }> | null
   // Optional storefront-extended columns (added by later migrations); typed
   // loosely so the loader keeps working before/after each migration lands.
   gallery?: unknown
@@ -136,6 +140,26 @@ const VALID_CATEGORY_IDS: VendorCategoryId[] = [
   'bridal-wear',
   'officiant-mc',
 ]
+
+// Service-market IDs (stored in vendors.home_market / vendors.service_markets)
+// → human labels. Mirrors SERVICE_MARKETS in the vendors_portal onboarding
+// regions catalogue. The storefront editor writes the raw IDs to the columns,
+// so without this map the public page would render "dodoma" instead of
+// "Dodoma & Central".
+const MARKET_LABELS: Record<string, string> = {
+  dar: 'Dar es Salaam',
+  zanzibar: 'Zanzibar',
+  arusha: 'Arusha & Kilimanjaro',
+  mwanza: 'Mwanza & Lake Zone',
+  dodoma: 'Dodoma & Central',
+  mbeya: 'Mbeya & Southern Highlands',
+  south: 'Southern Coast',
+  morogoro: 'Morogoro & Tanga',
+}
+
+function marketLabel(id: string): string {
+  return MARKET_LABELS[id] ?? id
+}
 
 function toCategoryId(category: string | null): VendorCategoryId {
   if (!category) return 'venues'
@@ -429,15 +453,32 @@ function mapVendorRow(row: VendorRow): Vendor {
   const locallyOwned =
     typeof row.locally_owned === 'boolean' ? row.locally_owned : snapBool(s, 'locallyOwned')
 
-  // --- Service area: snapshot's resolved label list ("Dodoma & Central"),
-  // falling back to the raw IDs from `vendors.location.serviceMarkets`.
+  // --- Service area: the storefront editor writes the structured
+  // `home_market` + `service_markets` columns, so those win. Each is a raw
+  // market ID resolved to a label here (home market first). Falls back to the
+  // snapshot's pre-resolved label list, then to the legacy raw IDs on
+  // `vendors.location.serviceMarkets`. Without the column read, vendor edits
+  // to their service area never reached this page.
+  const homeMarketId =
+    typeof row.home_market === 'string' && row.home_market.trim() ? row.home_market.trim() : null
+  const serviceMarketIds = Array.isArray(row.service_markets)
+    ? row.service_markets.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+    : []
+  const marketsFromColumns = Array.from(
+    new Set([...(homeMarketId ? [homeMarketId] : []), ...serviceMarketIds]),
+  ).map(marketLabel)
   const labeledMarkets = labels ? snapStrList(labels, 'serviceMarkets') : []
   const rawMarkets = Array.isArray((row.location as Record<string, unknown> | null)?.serviceMarkets)
-    ? ((row.location as Record<string, unknown>).serviceMarkets as unknown[]).filter(
-        (x): x is string => typeof x === 'string' && x.trim() !== '',
-      )
+    ? ((row.location as Record<string, unknown>).serviceMarkets as unknown[])
+        .filter((x): x is string => typeof x === 'string' && x.trim() !== '')
+        .map(marketLabel)
     : []
-  const serviceArea = labeledMarkets.length > 0 ? labeledMarkets : rawMarkets
+  const serviceArea =
+    marketsFromColumns.length > 0
+      ? marketsFromColumns
+      : labeledMarkets.length > 0
+        ? labeledMarkets
+        : rawMarkets
 
   // --- Gallery: prefer the new admin-managed `gallery_urls` text[] column,
   // fall back to the legacy `gallery` JSONB column if a vendor still has it.
@@ -503,7 +544,62 @@ function mapVendorRow(row: VendorRow): Vendor {
     if (typeof social.instagram === 'string' && social.instagram.trim()) out.instagram = social.instagram
     if (typeof social.facebook === 'string' && social.facebook.trim()) out.facebook = social.facebook
     if (typeof social.website === 'string' && social.website.trim()) out.website = social.website
+    if (typeof social.tiktok === 'string' && social.tiktok.trim()) out.tiktok = social.tiktok
+    if (typeof social.whatsapp === 'string' && social.whatsapp.trim()) out.whatsapp = social.whatsapp
     return Object.keys(out).length > 0 ? out : undefined
+  })()
+
+  // --- Booking policies: structured columns win, snapshot is the fallback
+  // for vendors who submitted before the columns existed. Raw values
+  // ("30", "flexible", "one-free") — the render layer maps them to labels.
+  const depositPercent = (() => {
+    const fromColumn =
+      typeof row.deposit_percent === 'string' && row.deposit_percent.trim()
+        ? row.deposit_percent.trim()
+        : null
+    return fromColumn ?? snapStr(s, 'depositPercent') ?? undefined
+  })()
+  const cancellationLevel = (() => {
+    const fromColumn =
+      typeof row.cancellation_level === 'string' && row.cancellation_level.trim()
+        ? row.cancellation_level.trim()
+        : null
+    return fromColumn ?? snapStr(s, 'cancellationLevel') ?? undefined
+  })()
+  const reschedulePolicy = (() => {
+    const fromColumn =
+      typeof row.reschedule_policy === 'string' && row.reschedule_policy.trim()
+        ? row.reschedule_policy.trim()
+        : null
+    return fromColumn ?? snapStr(s, 'reschedulePolicy') ?? undefined
+  })()
+
+  // --- Pricing extras: column wins, snapshot fallback.
+  const startingPrice = (() => {
+    const fromColumn =
+      typeof row.starting_price === 'string' && row.starting_price.trim()
+        ? row.starting_price.trim()
+        : null
+    return fromColumn ?? snapStr(s, 'startingPrice') ?? undefined
+  })()
+  const customQuotes =
+    typeof row.custom_quotes === 'boolean'
+      ? row.custom_quotes
+      : (snapBool(s, 'customQuotes') ?? undefined)
+
+  // --- Availability: the vendor declares unavailable dates as
+  // [{ date, status }]. The public type wants booked/limited date lists, so
+  // map every "unavailable" entry into bookedDates. Returns undefined when
+  // empty so the detail page keeps its deterministic demo fallback.
+  const availability = (() => {
+    const raw = Array.isArray(row.availability)
+      ? row.availability
+      : (snapArr(s, 'availability') as Array<{ date?: string; status?: string }>)
+    const bookedDates = raw
+      .filter((e) => e && typeof e.date === 'string' && e.date.trim())
+      .map((e) => e.date as string)
+    if (bookedDates.length === 0) return undefined
+    return { bookedDates, limitedDates: [], leadTimeWeeks: 0 }
   })()
 
   return {
@@ -545,6 +641,12 @@ function mapVendorRow(row: VendorRow): Vendor {
     locallyOwned: locallyOwned ?? undefined,
     style: style ?? undefined,
     personality: personality ?? undefined,
+    depositPercent,
+    cancellationLevel,
+    reschedulePolicy,
+    startingPrice,
+    customQuotes,
+    availability,
     hours: (() => {
       // Column wins; snapshot fallback. Normalise to the strict public shape
       // (open boolean, from string, to string) — partial entries become
@@ -583,8 +685,7 @@ function mapVendorRow(row: VendorRow): Vendor {
             const fromSnap = s?.parallelBookingCapacity
             return typeof fromSnap === 'number' ? fromSnap : undefined
           })(),
-    // detailedReviews / capacity / startingPrice / availability still
-    // intentionally omitted — those data sources don't exist yet (reviews
-    // need a moderation pipeline; capacity & coords need new columns).
+    // `detailedReviews` is layered on by getVendorFromDb() from the real
+    // reviews pipeline, so it's intentionally not set here.
   }
 }

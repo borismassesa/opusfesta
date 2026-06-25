@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useEffect, useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import { Check, Plus, Save, Trash2 } from 'lucide-react'
 import { FieldLabel, TextArea, TextInput } from '@/components/onboard/FormField'
 import { useOnboardingDraft, type FAQItem } from '@/lib/onboarding/draft'
-import { saveFaqs } from '../sections/actions'
+import { loadFaqs, saveFaqs } from '../sections/actions'
 
 const SUGGESTED_QUESTIONS = [
   'How early should we book you?',
@@ -43,6 +43,26 @@ export default function ListingFAQPage() {
   // arrays until useEffect populates from localStorage — and the
   // component re-renders cleanly once hydrated.
   const faqs = hydrated ? draft.faqs : []
+
+  // Hydrate the editor from the DB (source of truth). The localStorage draft
+  // is only a per-device scratch pad, so a fresh device / cleared storage /
+  // admin-approved vendor would otherwise see an empty list even though the
+  // storefront has saved FAQs. We seed only when the local draft is empty so
+  // we never clobber unsaved edits made on this device.
+  const seeded = useRef(false)
+  useEffect(() => {
+    if (!hydrated || seeded.current) return
+    seeded.current = true
+    if (draft.faqs.length > 0) return
+    void loadFaqs().then((res) => {
+      if (res.ok && res.faqs.length > 0) {
+        update({
+          faqs: res.faqs.map((f) => newFaq({ question: f.question, answer: f.answer })),
+        })
+      }
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated])
 
   const updateFaq = (id: string, patch: Partial<FAQItem>) => {
     if (!hydrated) return

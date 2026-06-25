@@ -54,6 +54,7 @@ import {
 } from '../actions'
 import {
   AdminBookingPoliciesEditor,
+  AdminPricingCapacityEditor,
   AdminFaqEditor,
   AdminHoursEditor,
   AdminPackagesEditor,
@@ -155,6 +156,12 @@ export type VendorReviewProps = {
     coverImageColumn: string | null
     galleryUrlsColumn: string[]
     videoUrlsColumn: string[]
+    startingPriceColumn: string | null
+    customQuotesColumn: boolean | null
+    availabilityColumn: Array<Record<string, unknown>>
+    capacityColumn: { min?: number; max?: number } | null
+    latColumn: number | null
+    lngColumn: number | null
   }
   tin: DocSummary | null
   license: DocSummary | null
@@ -616,6 +623,8 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                   formatTzPhone(
                     (vendor.socialLinks?.whatsapp as string | null) ?? null
                   ) ?? '',
+                homeMarket: vendor.location?.homeMarket ?? null,
+                serviceMarkets: vendor.location?.serviceMarkets ?? [],
               }}
             />
 
@@ -627,6 +636,21 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                 languages: vendor.languagesColumn,
               }}
             />
+
+            {/* Read-only audit of the raw onboarding submission. Lets admins
+                inspect exactly what the vendor answered — including any field
+                that doesn't (yet) map to a structured column or editor. */}
+            {vendor.applicationSnapshot &&
+              Object.keys(vendor.applicationSnapshot).length > 0 && (
+                <details className="rounded-xl border border-gray-200 bg-gray-50">
+                  <summary className="cursor-pointer select-none px-4 py-3 text-sm font-semibold text-gray-700">
+                    Original application (raw onboarding submission)
+                  </summary>
+                  <pre className="max-h-96 overflow-auto whitespace-pre-wrap break-words border-t border-gray-200 px-4 py-3 text-xs leading-relaxed text-gray-600">
+                    {JSON.stringify(vendor.applicationSnapshot, null, 2)}
+                  </pre>
+                </details>
+              )}
           </ReviewSection>
           )}
 
@@ -719,6 +743,18 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                 cancellationLevel: vendor.cancellationLevelColumn,
                 reschedulePolicy: vendor.reschedulePolicyColumn,
                 parallelBookingCapacity: vendor.parallelBookingCapacityColumn,
+              }}
+            />
+
+            <AdminPricingCapacityEditor
+              vendorId={vendor.id}
+              initial={{
+                startingPrice: vendor.startingPriceColumn,
+                customQuotes: vendor.customQuotesColumn,
+                capacityMin: vendor.capacityColumn?.min ?? null,
+                capacityMax: vendor.capacityColumn?.max ?? null,
+                lat: vendor.latColumn,
+                lng: vendor.lngColumn,
               }}
             />
           </ReviewSection>

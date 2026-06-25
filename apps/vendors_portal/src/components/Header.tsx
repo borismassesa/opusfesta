@@ -111,7 +111,7 @@ export function Header({ vendorName, vendorSlug }: HeaderProps) {
   const storefrontHeading = useStorefrontHeading(pathname)
   const bookingsHeading = useBookingsHeading(pathname)
   const rootHeading =
-    pathname === '/'
+    pathname === '/' || pathname === '/dashboard'
       ? {
           title: `Welcome back, ${vendorName || 'OpusFesta Photography'}.`,
           subtitle: "Here's what's happening with your storefront today.",
