@@ -11,15 +11,14 @@ export default async function PortalLayout({
   const state = await getCurrentVendor()
 
   // Gate the portal shell behind admin approval. Only `live` vendors reach the
-  // dashboard; everyone else funnels through /pending which shows exactly which
-  // verification gate they're at.
-  if (
-    state.kind === 'no-application' ||
-    state.kind === 'pending-approval' ||
-    state.kind === 'suspended'
-  ) {
-    redirect('/pending')
+  // dashboard; everyone else is funnelled to where they can act:
+  //   - not applied / mid-application → the onboarding wizard
+  //   - submitted (pending) / suspended → the /verify status + document hub
+  if (state.kind === 'no-application') redirect('/onboard')
+  if (state.kind === 'pending-approval') {
+    redirect(state.status === 'application_in_progress' ? '/onboard' : '/verify')
   }
+  if (state.kind === 'suspended') redirect('/verify')
 
   // Vendor name + slug are resolved here in the server layout — PortalShell
   // needs the name to greet the vendor in the header, and the slug feeds
