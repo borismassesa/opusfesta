@@ -43,8 +43,12 @@ export default function ServicesPage() {
     const label = customDraft.trim().slice(0, MAX_CUSTOM_LABEL)
     if (!label) return
     const lower = label.toLowerCase()
+    // Match against both languages so a Swahili user can't re-add a preset they
+    // already selected (the cards show the Swahili label, the data keeps both).
     const dupePreset = services.some(
-      (s) => draft.specialServices.includes(s.id) && s.label.toLowerCase() === lower,
+      (s) =>
+        draft.specialServices.includes(s.id) &&
+        (s.label.toLowerCase() === lower || s.label_sw.toLowerCase() === lower),
     )
     const dupeCustom = draft.customServices.some((c) => c.toLowerCase() === lower)
     if (!dupePreset && !dupeCustom) {

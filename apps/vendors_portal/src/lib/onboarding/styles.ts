@@ -81,8 +81,8 @@ const BY_CATEGORY: Record<string, StyleOption[]> = {
       id: 'photojournalistic',
       label: 'Photojournalistic',
       label_sw: 'Kihabari',
-      body: 'Candid, in-the-moment storytelling — minimal direction.',
-      body_sw: 'Kunasa matukio halisi papo hapo — maelekezo machache.',
+      body: 'Candid, in-the-moment storytelling with minimal direction.',
+      body_sw: 'Kunasa matukio halisi papo hapo kwa maelekezo machache.',
     },
     {
       id: 'fine-art',
@@ -108,7 +108,7 @@ const BY_CATEGORY: Record<string, StyleOption[]> = {
   ],
   florist: [
     { id: 'romantic', label: 'Romantic', label_sw: 'Kimapenzi', body: 'Soft palettes, lush garlands, and trailing greenery.', body_sw: 'Rangi laini, mashada mazuri, na majani yanayoning’inia.' },
-    { id: 'tropical', label: 'Tropical', label_sw: 'Kitropiki', body: 'Bold blooms and lush leaves — perfect for coastal celebrations.', body_sw: 'Maua makubwa na majani mazuri — yanafaa kwa sherehe za pwani.' },
+    { id: 'tropical', label: 'Tropical', label_sw: 'Kitropiki', body: 'Bold blooms and lush leaves, perfect for coastal celebrations.', body_sw: 'Maua makubwa na majani mazuri, yanafaa kwa sherehe za pwani.' },
     { id: 'minimalist', label: 'Minimalist', label_sw: 'Sahili', body: 'Single-stem accents and architectural arrangements.', body_sw: 'Maua ya tawi moja na mipangilio ya kiusanifu.' },
     { id: 'classic', label: 'Classic', label_sw: 'Asilia', body: 'Timeless centerpieces with traditional palettes.', body_sw: 'Mapambo yasiyopitwa na wakati yenye rangi za kimila.' },
   ],

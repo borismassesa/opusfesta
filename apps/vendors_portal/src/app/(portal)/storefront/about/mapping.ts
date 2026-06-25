@@ -138,8 +138,9 @@ export function profileToUpdatePatch(
       region: profile.region.trim(),
       landmark: profile.landmark.trim(),
       postalCode: profile.postalCode.trim(),
-      // Keep `city` mirrored to District for public-marketplace compatibility.
-      city: profile.district.trim(),
+      // Mirror `city` to District for public-marketplace compatibility, but
+      // never blank an existing locality when District is left empty.
+      ...(profile.district.trim() ? { city: profile.district.trim() } : {}),
     },
     contact_info: {
       ...baseContact,

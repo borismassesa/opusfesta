@@ -880,8 +880,9 @@ export async function updateStorefrontSection(
       ...(patch.ward !== undefined && { ward: patch.ward.trim() }),
       ...(patch.district !== undefined && {
         district: patch.district.trim(),
-        // Keep `city` mirrored to District for public-marketplace compatibility.
-        city: patch.district.trim(),
+        // Mirror `city` to District for public-marketplace compatibility, but
+        // never blank an existing locality when District is cleared.
+        ...(patch.district.trim() ? { city: patch.district.trim() } : {}),
       }),
       ...(patch.region !== undefined && { region: patch.region.trim() }),
       ...(patch.landmark !== undefined && { landmark: patch.landmark.trim() }),
@@ -1067,8 +1068,9 @@ async function mirrorPatchToSnapshot(
   if (patch.ward !== undefined) snapPatch.ward = patch.ward
   if (patch.district !== undefined) {
     snapPatch.district = patch.district
-    // Keep `city` mirrored to District for public-marketplace compatibility.
-    snapPatch.city = patch.district
+    // Mirror `city` to District for public-marketplace compatibility, but never
+    // blank an existing locality when District is cleared.
+    if (patch.district.trim()) snapPatch.city = patch.district
   }
   if (patch.region !== undefined) snapPatch.region = patch.region
   if (patch.landmark !== undefined) snapPatch.landmark = patch.landmark

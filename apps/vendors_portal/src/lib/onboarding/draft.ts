@@ -251,13 +251,31 @@ type LegacyPayoutShape = {
   payoutNetwork?: string
 }
 
+// Legacy address fields stored by drafts created before the Tanzania
+// administrative address model (city/street2 → district/houseNumber).
+type LegacyAddressShape = {
+  city?: string
+  street2?: string
+}
+
 function readDraft(userId: string | null): OnboardingDraft {
   if (typeof window === 'undefined' || !userId) return EMPTY
   try {
     const raw = window.localStorage.getItem(storageKey(userId))
     if (!raw) return EMPTY
-    const parsed = JSON.parse(raw) as Partial<OnboardingDraft> & LegacyPayoutShape
+    const parsed = JSON.parse(raw) as Partial<OnboardingDraft> &
+      LegacyPayoutShape &
+      LegacyAddressShape
     const merged = { ...EMPTY, ...parsed }
+    // Migrate a legacy address into the Tanzania administrative model so drafts
+    // started before the address change keep their locality and aren't bounced
+    // back to re-enter it (the contact/Stepper gates now key off `district`).
+    if (!merged.district.trim() && parsed.city?.trim()) {
+      merged.district = parsed.city.trim()
+    }
+    if (!merged.houseNumber.trim() && parsed.street2?.trim()) {
+      merged.houseNumber = parsed.street2.trim()
+    }
     // Migrate a legacy single payout method into the array so drafts started
     // before multi-payout don't lose what the vendor already entered.
     if (merged.payoutMethods.length === 0 && parsed.payoutMethod) {
