@@ -118,6 +118,11 @@ export default function PricingPage() {
       step="pricing"
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/details/personality"
+      primaryAction={
+        <PrimaryButton onClick={onNext} disabled={!canContinue}>
+          {t('common.next_step')}
+        </PrimaryButton>
+      }
     >
       <OnboardHeading
         title={t('pricing.title')}
@@ -236,10 +241,7 @@ export default function PricingPage() {
         )}
       </div>
 
-      <div className="mt-10 flex items-center gap-6 flex-wrap">
-        <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          {t('common.next_step')}
-        </PrimaryButton>
+      <div className="mt-10">
         <WhyWeAsk title={t('pricing.why.title')}>
           <p>{t('pricing.why.body1')}</p>
           <p>{t('pricing.why.body2')}</p>

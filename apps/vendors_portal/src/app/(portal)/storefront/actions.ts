@@ -115,11 +115,15 @@ export async function publishStorefront(): Promise<PublishResult> {
   }
   if ('location' in livePatch && typeof livePatch.location === 'object' && livePatch.location) {
     const loc = livePatch.location as Record<string, unknown>
-    if (typeof loc.city === 'string') snapshotPatch.city = loc.city
-    if (typeof loc.region === 'string') snapshotPatch.region = loc.region
+    if (typeof loc.houseNumber === 'string') snapshotPatch.houseNumber = loc.houseNumber
     if (typeof loc.street === 'string') snapshotPatch.street = loc.street
-    if (typeof loc.street2 === 'string') snapshotPatch.street2 = loc.street2
+    if (typeof loc.ward === 'string') snapshotPatch.ward = loc.ward
+    if (typeof loc.district === 'string') snapshotPatch.district = loc.district
+    if (typeof loc.region === 'string') snapshotPatch.region = loc.region
+    if (typeof loc.landmark === 'string') snapshotPatch.landmark = loc.landmark
     if (typeof loc.postalCode === 'string') snapshotPatch.postalCode = loc.postalCode
+    // Keep `city` mirrored to District for public-marketplace compatibility.
+    if (typeof loc.city === 'string') snapshotPatch.city = loc.city
     if (typeof loc.homeMarket === 'string') snapshotPatch.homeMarket = loc.homeMarket
     if (Array.isArray(loc.serviceMarkets)) snapshotPatch.serviceMarkets = loc.serviceMarkets
   }

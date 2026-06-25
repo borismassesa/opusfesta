@@ -11,6 +11,7 @@ import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import { OptionCard } from '@/components/onboard/OptionCard'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
+import { pick } from '@/lib/onboarding/localize'
 import { useOnboardT } from '@/lib/onboarding/strings'
 import {
   CANCELLATION_OPTIONS,
@@ -23,7 +24,7 @@ export default function PoliciesPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
   const category = findCategory(draft.categoryId)
-  const { t } = useOnboardT()
+  const { t, locale } = useOnboardT()
 
   useEffect(() => {
     if (!hydrated) return
@@ -47,6 +48,11 @@ export default function PoliciesPage() {
       step="pricing"
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/pricing"
+      primaryAction={
+        <PrimaryButton onClick={onNext} disabled={!canContinue}>
+          {t('common.next_step')}
+        </PrimaryButton>
+      }
     >
       <OnboardHeading
         title={t('policies.title')}
@@ -72,7 +78,7 @@ export default function PoliciesPage() {
                 className={cn(
                   'inline-flex items-center justify-center rounded-full px-4 py-2 text-sm font-semibold transition-colors',
                   draft.depositPercent === p
-                    ? 'bg-gray-900 text-white'
+                    ? 'bg-[#1A1A1A] text-white'
                     : 'bg-white border border-gray-200 text-gray-700 hover:border-gray-400',
                 )}
               >
@@ -111,12 +117,12 @@ export default function PoliciesPage() {
               <OptionCard
                 key={opt.id}
                 variant="radio"
-                label={opt.label}
+                label={pick(locale, opt.label, opt.label_sw)}
                 description={
                   <>
-                    <span className="block">{opt.body}</span>
+                    <span className="block">{pick(locale, opt.body, opt.body_sw)}</span>
                     <ul className="mt-2 space-y-1 text-xs text-gray-700">
-                      {opt.schedule.map((line) => (
+                      {(locale === 'sw' ? opt.schedule_sw : opt.schedule).map((line) => (
                         <li key={line} className="flex items-start gap-1.5">
                           <Check
                             className="w-3 h-3 text-emerald-600 mt-0.5 shrink-0"
@@ -149,8 +155,8 @@ export default function PoliciesPage() {
               <OptionCard
                 key={opt.id}
                 variant="radio"
-                label={opt.label}
-                description={opt.body}
+                label={pick(locale, opt.label, opt.label_sw)}
+                description={pick(locale, opt.body, opt.body_sw)}
                 selected={draft.reschedulePolicy === opt.id}
                 onToggle={() => update({ reschedulePolicy: opt.id })}
               />
@@ -159,10 +165,7 @@ export default function PoliciesPage() {
         </section>
       </div>
 
-      <div className="mt-12 flex items-center gap-6 flex-wrap">
-        <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          {t('common.next_step')}
-        </PrimaryButton>
+      <div className="mt-12">
         <WhyWeAsk title={t('policies.why.title')}>
           <p>{t('policies.why.body1')}</p>
           <p>{t('policies.why.body2')}</p>

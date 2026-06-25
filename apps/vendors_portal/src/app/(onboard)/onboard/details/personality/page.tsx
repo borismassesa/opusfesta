@@ -9,12 +9,13 @@ import { PrimaryButton } from '@/components/onboard/PrimaryButton'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { PERSONALITY_OPTIONS } from '@/lib/onboarding/personality'
+import { pick } from '@/lib/onboarding/localize'
 import { useOnboardT } from '@/lib/onboarding/strings'
 
 export default function PersonalityPage() {
   const router = useRouter()
   const { draft, update, hydrated } = useOnboardingDraft()
-  const { t } = useOnboardT()
+  const { t, locale } = useOnboardT()
   const category = findCategory(draft.categoryId)
 
   useEffect(() => {
@@ -33,6 +34,11 @@ export default function PersonalityPage() {
       step="details"
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/details/style"
+      primaryAction={
+        <PrimaryButton onClick={onNext} disabled={!draft.personality}>
+          {t('common.next_step')}
+        </PrimaryButton>
+      }
     >
       <OnboardHeading
         title={t('details.personality.title')}
@@ -44,18 +50,12 @@ export default function PersonalityPage() {
           <OptionCard
             key={p.id}
             variant="radio"
-            label={p.label}
-            description={p.body}
+            label={pick(locale, p.label, p.label_sw)}
+            description={pick(locale, p.body, p.body_sw)}
             selected={draft.personality === p.id}
             onToggle={() => update({ personality: p.id })}
           />
         ))}
-      </div>
-
-      <div className="mt-10">
-        <PrimaryButton onClick={onNext} disabled={!draft.personality}>
-          {t('common.next_step')}
-        </PrimaryButton>
       </div>
     </OnboardShell>
   )

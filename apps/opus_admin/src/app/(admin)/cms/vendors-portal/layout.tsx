@@ -137,7 +137,7 @@ export default function VendorsPortalCmsLayout({ children }: { children: ReactNo
 
 function VendorsPortalCmsShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
-  const vendorsPortalUrl = process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL ?? 'http://localhost:3003'
+  const vendorsPortalUrl = process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL ?? 'https://vendorsportal.opusfesta.com'
   const activeSection = sections.find((s) => s.href && pathname.startsWith(s.href)) ?? sections[0]
 
   const liveSections = sections.filter((s) => s.status === 'live')

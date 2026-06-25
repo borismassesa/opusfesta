@@ -16,6 +16,8 @@ import {
 } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
 import { useOnboardT, type TFn } from '@/lib/onboarding/strings'
+import { useLocale } from '@/lib/cms/locale-store'
+import { pick } from '@/lib/onboarding/localize'
 import { LIPA_NAMBA_NETWORKS, PAYOUT_OPTIONS, TZ_BANKS } from '@/lib/onboarding/payouts'
 
 const MAX_PAYOUT_METHODS = 4
@@ -100,6 +102,11 @@ export default function PayoutPage() {
       step="pricing"
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/pricing/policies"
+      primaryAction={
+        <PrimaryButton onClick={onNext} disabled={!canContinue}>
+          {t('common.next_step')}
+        </PrimaryButton>
+      }
     >
       <OnboardHeading
         title={t('payout.title')}
@@ -137,10 +144,7 @@ export default function PayoutPage() {
         )}
       </div>
 
-      <div className="mt-10 flex items-center gap-6 flex-wrap">
-        <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          {t('common.next_step')}
-        </PrimaryButton>
+      <div className="mt-10">
         <WhyWeAsk title={t('payout.why.title')}>
           <p>{t('payout.why.body1')}</p>
           <p>{t('payout.why.body2')}</p>
@@ -169,6 +173,7 @@ function PayoutEntryCard({
   onRemove: () => void
   onMakePrimary: () => void
 }) {
+  const locale = useLocale()
   const selected = PAYOUT_OPTIONS.find((o) => o.id === entry.method)
   const isBank = entry.method === 'bank'
   const isLipaNamba = entry.method === 'lipa-namba'
@@ -221,7 +226,7 @@ function PayoutEntryCard({
         >
           {PAYOUT_OPTIONS.map((o) => (
             <option key={o.id} value={o.id}>
-              {o.label}
+              {pick(locale, o.label, o.label_sw)}
             </option>
           ))}
         </SelectInput>
@@ -267,7 +272,7 @@ function PayoutEntryCard({
           ) : null}
 
           <div>
-            <FieldLabel required>{selected.numberLabel}</FieldLabel>
+            <FieldLabel required>{pick(locale, selected.numberLabel, selected.numberLabel_sw)}</FieldLabel>
             <TextInput
               prefix={selected.prefix}
               placeholder={selected.numberPlaceholder}

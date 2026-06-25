@@ -14,7 +14,7 @@ export function PrimaryButton({ className, children, disabled, ...rest }: Props)
         'inline-flex items-center justify-center px-7 py-3.5 rounded-full text-sm font-semibold transition-colors',
         disabled
           ? 'bg-gray-300 text-white cursor-not-allowed'
-          : 'bg-gray-900 text-white hover:bg-gray-800',
+          : 'bg-[#1A1A1A] text-white hover:bg-black',
         className,
       )}
     >

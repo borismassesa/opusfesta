@@ -46,7 +46,7 @@ export function LocaleToggle({ className = '' }: { className?: string }) {
             aria-pressed={active}
             suppressHydrationWarning
             className={`rounded-full px-2.5 py-1 transition-colors disabled:opacity-60 ${
-              active ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+              active ? 'bg-[#1A1A1A] text-white' : 'text-gray-500 hover:text-gray-900'
             }`}
           >
             {SHORT_LABEL[l]}

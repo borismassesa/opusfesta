@@ -51,6 +51,48 @@ export const OTHER_CATEGORY: VendorCategory = {
   icon: HelpCircle,
 }
 
+// Swahili translations keyed by category id/slug. Categories can come from the
+// `vendor_categories` DB table (no Swahili column) or the fallback list above,
+// so we resolve Swahili by stable id rather than carrying it inline.
+export const CATEGORY_SW: Record<
+  string,
+  { label: string; profileLabel: string; hint?: string }
+> = {
+  venue: { label: 'Ukumbi au eneo la tukio', profileLabel: 'Ukumbi' },
+  caterer: { label: 'Mpishi / Huduma za baa', profileLabel: 'Mpishi' },
+  photographer: { label: 'Mpiga picha', profileLabel: 'Mpiga picha' },
+  cakes: { label: 'Keki na vitamu', profileLabel: 'Mtengeneza keki' },
+  florist: { label: 'Mwuza maua', profileLabel: 'Mwuza maua' },
+  planner: { label: 'Mpangaji / Mratibu', profileLabel: 'Mpangaji' },
+  musician: { label: 'Mwanamuziki / DJ', profileLabel: 'Mwanamuziki / DJ' },
+  officiant: { label: 'Mwendesha sherehe', profileLabel: 'Mwendesha sherehe' },
+  videographer: { label: 'Mpiga video', profileLabel: 'Mpiga video' },
+  extras: {
+    label: 'Vifaa vya ziada vya tukio',
+    profileLabel: 'Vifaa vya ziada',
+    hint: 'Vibanda vya picha, mapambo, taa, usafiri, ulinzi, MC',
+  },
+  beauty: { label: 'Mtaalam wa urembo', profileLabel: 'Mtaalam wa urembo' },
+  other: { label: 'Kitu kingine', profileLabel: 'Nyingine' },
+}
+
+export function categorySw(id: string | null | undefined) {
+  return id ? CATEGORY_SW[id] : undefined
+}
+
+// Reverse lookup: English `profileLabel` → Swahili. Used by the Stepper, which
+// only receives the resolved English profileLabel string (not the category id).
+// A custom "Other" label that isn't in the map passes through unchanged.
+const PROFILE_LABEL_SW: Record<string, string> = Object.fromEntries(
+  VENDOR_CATEGORIES.map((c) => [c.profileLabel, CATEGORY_SW[c.id]?.profileLabel ?? c.profileLabel]),
+)
+PROFILE_LABEL_SW[OTHER_CATEGORY.profileLabel] = CATEGORY_SW.other.profileLabel
+PROFILE_LABEL_SW['Vendor'] = 'Mtoa huduma'
+
+export function localizeProfileLabel(profileLabel: string, locale: string): string {
+  return locale === 'sw' ? PROFILE_LABEL_SW[profileLabel] ?? profileLabel : profileLabel
+}
+
 // Maps lucide icon name strings (stored in DB) to components.
 const ICON_MAP: Record<string, LucideIcon> = {
   Building2, ChefHat, Camera, Cake, Flower2, ClipboardList, Music2,

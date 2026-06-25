@@ -275,7 +275,7 @@ async function handleInquiryRequest(request: Request) {
         guestCount: typeof guests === 'string' && guests.trim() ? guests.trim() : null,
         location: nullIfBlank(location as string | undefined),
         message: noteLines.join('\n\n') || null,
-        portalUrl: process.env.VENDOR_PORTAL_URL ?? 'https://vendors.opusfesta.com',
+        portalUrl: process.env.VENDOR_PORTAL_URL ?? 'https://vendorsportal.opusfesta.com',
       })
 
       mailJobs.push(

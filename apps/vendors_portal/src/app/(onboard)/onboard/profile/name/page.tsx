@@ -34,9 +34,14 @@ export default function NamePage() {
       step="profile"
       profileLabel={category?.profileLabel ?? 'Vendor'}
       backHref="/onboard/vows"
+      primaryAction={
+        <PrimaryButton onClick={onNext} disabled={!canContinue}>
+          {t('common.next_step')}
+        </PrimaryButton>
+      }
     >
       <OnboardHeading title={t('profile.name.title')} />
-      <div className="space-y-5 max-w-xl">
+      <div className="space-y-5">
         <div>
           <FieldLabel required>{t('profile.name.first.label')}</FieldLabel>
           <TextInput
@@ -64,12 +69,6 @@ export default function NamePage() {
             autoComplete="organization"
           />
         </div>
-      </div>
-
-      <div className="mt-10">
-        <PrimaryButton onClick={onNext} disabled={!canContinue}>
-          {t('common.next_step')}
-        </PrimaryButton>
       </div>
     </OnboardShell>
   )

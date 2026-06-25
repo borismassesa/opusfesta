@@ -37,6 +37,16 @@ function clerkError(err: unknown, fallback: string): string {
   return fallback
 }
 
+// Clerk's machine-readable error code (e.g. `form_identifier_exists` when the
+// email is already registered), used to branch on specific failures.
+function clerkErrorCode(err: unknown): string | null {
+  if (typeof err === 'object' && err !== null && 'errors' in err) {
+    const errs = (err as { errors?: Array<{ code?: string }> }).errors
+    return errs?.[0]?.code ?? null
+  }
+  return null
+}
+
 const inputClass =
   'w-full rounded-lg border border-gray-300 bg-white px-4 py-3 text-[15px] text-[#1A1A1A] outline-none transition focus:border-[#C9A0DC] focus:ring-2 focus:ring-[#C9A0DC]/25 placeholder:text-gray-400'
 const buttonClass =
@@ -69,7 +79,7 @@ function GoogleIcon() {
   )
 }
 
-export default function SignUpClient() {
+export default function SignUpClient({ redirectUrl }: { redirectUrl?: string }) {
   const { isLoaded, signUp, setActive } = useSignUp()
   const router = useRouter()
 
@@ -80,9 +90,19 @@ export default function SignUpClient() {
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // Set when Clerk reports the email already exists. OpusFesta shares one login
+  // across the whole platform (couples site, OpusPass, vendors), so an existing
+  // account can't sign up again — we route them to sign in instead.
+  const [existingAccount, setExistingAccount] = useState(false)
   const [busy, setBusy] = useState(false)
   const [oauthBusy, setOauthBusy] = useState<'google' | null>(null)
   const [stalled, setStalled] = useState(false)
+
+  // Carry the email (and any post-auth redirect) over to sign-in so the vendor
+  // doesn't retype it.
+  const signInHref =
+    `/sign-in?email=${encodeURIComponent(email.trim())}` +
+    (redirectUrl ? `&redirect_url=${encodeURIComponent(redirectUrl)}` : '')
 
   useEffect(() => {
     if (isLoaded) return
@@ -94,6 +114,7 @@ export default function SignUpClient() {
     e.preventDefault()
     if (!isLoaded || !signUp || busy) return
     setError(null)
+    setExistingAccount(false)
     setBusy(true)
     try {
       await signUp.create({
@@ -105,7 +126,13 @@ export default function SignUpClient() {
       await signUp.prepareEmailAddressVerification({ strategy: 'email_code' })
       setStep('verify')
     } catch (err) {
-      setError(clerkError(err, "We couldn't create your account. Please check your details and try again."))
+      // Email already registered: don't dead-end on "taken" — send them to
+      // sign in, where their existing OpusFesta login works.
+      if (clerkErrorCode(err) === 'form_identifier_exists') {
+        setExistingAccount(true)
+      } else {
+        setError(clerkError(err, "We couldn't create your account. Please check your details and try again."))
+      }
     } finally {
       setBusy(false)
     }
@@ -213,6 +240,28 @@ export default function SignUpClient() {
                 </p>
               )}
 
+              {existingAccount && (
+                <div
+                  className="mb-5 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-3 text-sm"
+                  role="alert"
+                >
+                  <p className="font-semibold text-amber-900">
+                    You already have an OpusFesta account
+                  </p>
+                  <p className="mt-1 text-amber-800">
+                    <strong>{email.trim()}</strong> is already registered. Your
+                    OpusFesta login works across the whole platform, so just sign
+                    in to start your vendor application.
+                  </p>
+                  <Link
+                    href={signInHref}
+                    className={`mt-3 ${buttonClass}`}
+                  >
+                    Sign in instead
+                  </Link>
+                </div>
+              )}
+
               {step === 'details' && (
                 <>
                   <button
@@ -276,7 +325,10 @@ export default function SignUpClient() {
                         autoComplete="email"
                         required
                         value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        onChange={(e) => {
+                          setEmail(e.target.value)
+                          if (existingAccount) setExistingAccount(false)
+                        }}
                         placeholder="you@business.co.tz"
                         className={inputClass}
                       />

@@ -227,12 +227,11 @@ async function notifyVendorOfStatusChange(
     return
   }
 
-  // The custom subdomain `vendors.opusfesta.com` isn't attached in DNS yet,
-  // so default to the live Vercel URL until it lands. Override via
-  // NEXT_PUBLIC_VENDORS_PORTAL_URL once the subdomain is configured.
+  // Live vendors portal. Override via NEXT_PUBLIC_VENDORS_PORTAL_URL (e.g.
+  // http://localhost:3003 in local dev).
   const portalUrl =
     process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL?.trim() ||
-    'https://opusfesta-vendors-portal.vercel.app'
+    'https://vendorsportal.opusfesta.com'
   const message = buildVendorStatusEmail({
     event,
     businessName: data.business_name?.trim() || 'OpusFesta vendor',
@@ -768,10 +767,13 @@ export type StorefrontPatch = {
   businessName?: string
   bio?: string
   yearsInBusiness?: number | null
+  // Tanzania administrative address.
+  houseNumber?: string
   street?: string
-  street2?: string
-  city?: string
+  ward?: string
+  district?: string
   region?: string
+  landmark?: string
   postalCode?: string
   homeMarket?: string | null
   serviceMarkets?: string[]
@@ -860,10 +862,12 @@ export async function updateStorefrontSection(
 
   // location merge
   if (
+    patch.houseNumber !== undefined ||
     patch.street !== undefined ||
-    patch.street2 !== undefined ||
-    patch.city !== undefined ||
+    patch.ward !== undefined ||
+    patch.district !== undefined ||
     patch.region !== undefined ||
+    patch.landmark !== undefined ||
     patch.postalCode !== undefined ||
     patch.homeMarket !== undefined ||
     patch.serviceMarkets !== undefined
@@ -871,10 +875,17 @@ export async function updateStorefrontSection(
     const base = (current.data?.location as Record<string, unknown>) ?? {}
     update.location = {
       ...base,
+      ...(patch.houseNumber !== undefined && { houseNumber: patch.houseNumber.trim() }),
       ...(patch.street !== undefined && { street: patch.street.trim() }),
-      ...(patch.street2 !== undefined && { street2: patch.street2.trim() }),
-      ...(patch.city !== undefined && { city: patch.city.trim() }),
+      ...(patch.ward !== undefined && { ward: patch.ward.trim() }),
+      ...(patch.district !== undefined && {
+        district: patch.district.trim(),
+        // Mirror `city` to District for public-marketplace compatibility, but
+        // never blank an existing locality when District is cleared.
+        ...(patch.district.trim() ? { city: patch.district.trim() } : {}),
+      }),
       ...(patch.region !== undefined && { region: patch.region.trim() }),
+      ...(patch.landmark !== undefined && { landmark: patch.landmark.trim() }),
       ...(patch.postalCode !== undefined && {
         postalCode: patch.postalCode.trim(),
       }),
@@ -1052,10 +1063,17 @@ async function mirrorPatchToSnapshot(
         ? String(patch.yearsInBusiness)
         : patch.yearsInBusiness
   }
+  if (patch.houseNumber !== undefined) snapPatch.houseNumber = patch.houseNumber
   if (patch.street !== undefined) snapPatch.street = patch.street
-  if (patch.street2 !== undefined) snapPatch.street2 = patch.street2
-  if (patch.city !== undefined) snapPatch.city = patch.city
+  if (patch.ward !== undefined) snapPatch.ward = patch.ward
+  if (patch.district !== undefined) {
+    snapPatch.district = patch.district
+    // Mirror `city` to District for public-marketplace compatibility, but never
+    // blank an existing locality when District is cleared.
+    if (patch.district.trim()) snapPatch.city = patch.district
+  }
   if (patch.region !== undefined) snapPatch.region = patch.region
+  if (patch.landmark !== undefined) snapPatch.landmark = patch.landmark
   if (patch.postalCode !== undefined) snapPatch.postalCode = patch.postalCode
   if (patch.homeMarket !== undefined) snapPatch.homeMarket = patch.homeMarket
   if (patch.serviceMarkets !== undefined)

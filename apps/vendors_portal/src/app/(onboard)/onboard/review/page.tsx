@@ -13,9 +13,11 @@ import {
 } from 'lucide-react'
 import { OnboardShell } from '@/components/onboard/OnboardShell'
 import { Confetti } from '@/components/onboard/Confetti'
+import { LocaleToggle } from '@/components/LocaleToggle'
 import Logo from '@/components/ui/Logo'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
-import { findCategory } from '@/lib/onboarding/categories'
+import { findCategory, localizeProfileLabel } from '@/lib/onboarding/categories'
+import { pick } from '@/lib/onboarding/localize'
 import { SERVICE_MARKETS, TZ_REGIONS } from '@/lib/onboarding/regions'
 import { getServicesForCategory } from '@/lib/onboarding/services'
 import { getStylesForCategory } from '@/lib/onboarding/styles'
@@ -35,12 +37,12 @@ function formatTZS(raw: string) {
 
 export default function ReviewPage() {
   const router = useRouter()
-  const { t } = useOnboardT()
+  const { t, locale } = useOnboardT()
   const { draft, update, hydrated } = useOnboardingDraft()
   const category = findCategory(draft.categoryId)
   const categoryLabel = draft.categoryId === 'other'
     ? (draft.customCategoryLabel || t('common.other'))
-    : (category?.profileLabel ?? t('common.not_set'))
+    : (category ? localizeProfileLabel(category.profileLabel, locale) : t('common.not_set'))
   const [submitting, setSubmitting] = useState(false)
   const [submitted, setSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -57,8 +59,12 @@ export default function ReviewPage() {
   )
   const styles = useMemo(() => getStylesForCategory(draft.categoryId), [draft.categoryId])
 
-  const styleLabel = styles.find((s) => s.id === draft.style)?.label
-  const personalityLabel = PERSONALITY_OPTIONS.find((p) => p.id === draft.personality)?.label
+  const styleOption = styles.find((s) => s.id === draft.style)
+  const styleLabel = styleOption ? pick(locale, styleOption.label, styleOption.label_sw) : undefined
+  const personalityOption = PERSONALITY_OPTIONS.find((p) => p.id === draft.personality)
+  const personalityLabel = personalityOption
+    ? pick(locale, personalityOption.label, personalityOption.label_sw)
+    : undefined
   const regionLabel = TZ_REGIONS.find((r) => r.code === draft.region)?.name
   const homeMarketLabel = SERVICE_MARKETS.find((m) => m.id === draft.homeMarket)?.name
   const extraMarketLabels = draft.serviceMarkets
@@ -66,18 +72,26 @@ export default function ReviewPage() {
     .filter(Boolean) as string[]
   const allMarkets = [homeMarketLabel, ...extraMarketLabels].filter(Boolean) as string[]
   const selectedServices = draft.specialServices
-    .map((id) => services.find((s) => s.id === id)?.label)
+    .map((id) => {
+      const s = services.find((svc) => svc.id === id)
+      return s ? pick(locale, s.label, s.label_sw) : undefined
+    })
     .filter(Boolean) as string[]
   const languageLabels = draft.languages
-    .map((id) => LANGUAGES.find((l) => l.id === id)?.label)
+    .map((id) => {
+      const l = LANGUAGES.find((lang) => lang.id === id)
+      return l ? pick(locale, l.label, l.label_sw) : undefined
+    })
     .filter(Boolean) as string[]
 
-  const cancellationLabel = CANCELLATION_OPTIONS.find(
-    (o) => o.id === draft.cancellationLevel,
-  )?.label
-  const rescheduleLabel = RESCHEDULE_OPTIONS.find(
-    (o) => o.id === draft.reschedulePolicy,
-  )?.label
+  const cancellationOption = CANCELLATION_OPTIONS.find((o) => o.id === draft.cancellationLevel)
+  const cancellationLabel = cancellationOption
+    ? pick(locale, cancellationOption.label, cancellationOption.label_sw)
+    : undefined
+  const rescheduleOption = RESCHEDULE_OPTIONS.find((o) => o.id === draft.reschedulePolicy)
+  const rescheduleLabel = rescheduleOption
+    ? pick(locale, rescheduleOption.label, rescheduleOption.label_sw)
+    : undefined
   const fullName = [draft.firstName, draft.lastName].filter(Boolean).join(' ').trim()
 
   // A draft that already carries `submittedAt` means the vendor submitted once
@@ -142,19 +156,19 @@ export default function ReviewPage() {
     return (
       <div className="min-h-screen bg-white flex flex-col">
         <Confetti active={submitted} />
-        <header className="px-6 sm:px-10 py-5 border-b border-gray-100/80 bg-white/70 backdrop-blur">
+        <header className="px-6 sm:px-10 py-5 border-b border-gray-100/80 bg-white/70 backdrop-blur flex items-center justify-between gap-3">
           <Link href="/" aria-label={t('stepper.aria.home')} className="inline-block">
             <Logo className="h-7 w-auto" />
           </Link>
+          <LocaleToggle />
         </header>
 
-        <main className="flex-1 flex items-center justify-center px-4 sm:px-6 py-16">
-          <div className="max-w-xl w-full text-center">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] px-3 py-1.5 rounded-full border bg-emerald-50 text-emerald-800 border-emerald-200">
-              <Check className="w-3 h-3" strokeWidth={3} />
-              {t('review.done.badge')}
+        <main className="flex-1 px-4 sm:px-6 pt-10 sm:pt-14 pb-16">
+          <div className="max-w-xl w-full mx-auto text-center">
+            <span className="text-6xl sm:text-7xl leading-none" role="img" aria-label="Celebration">
+              🎉
             </span>
-            <h1 className="mt-5 text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]">
+            <h1 className="mt-6 text-3xl sm:text-4xl font-semibold text-gray-900 tracking-tight leading-[1.1]">
               {t('review.done.title')}
             </h1>
             <p className="mt-4 text-base text-gray-600 leading-relaxed max-w-md mx-auto">
@@ -163,7 +177,7 @@ export default function ReviewPage() {
             <button
               type="button"
               onClick={onContinueToVerify}
-              className="group mt-8 inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px"
+              className="group mt-8 inline-flex items-center gap-2 bg-[#1A1A1A] hover:bg-black text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px"
             >
               {t('review.done.cta')}
               <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
@@ -171,7 +185,7 @@ export default function ReviewPage() {
             <p className="mt-3 text-xs text-gray-500">
               {t('review.done.later_prefix')}
               <Link
-                href="/pending"
+                href="/verify"
                 className="font-semibold text-gray-700 hover:text-gray-900 underline underline-offset-2"
               >
                 {t('review.done.later_link')}
@@ -189,6 +203,34 @@ export default function ReviewPage() {
       step="review"
       profileLabel={categoryLabel}
       backHref="/onboard/pricing/payout"
+      footerAside={
+        submitError ? (
+          <div className="flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
+            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+            <p className="text-xs text-rose-800 leading-relaxed">{submitError}</p>
+          </div>
+        ) : null
+      }
+      primaryAction={
+        <button
+          type="button"
+          onClick={onSubmit}
+          disabled={submitting}
+          className="group shrink-0 inline-flex items-center gap-2 bg-[#1A1A1A] hover:bg-black disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px disabled:shadow-none disabled:hover:translate-y-0"
+        >
+          {submitting ? (
+            <>
+              <Clock className="w-4 h-4 animate-pulse" />
+              {isEdit ? t('review.footer.saving') : t('review.footer.submitting')}
+            </>
+          ) : (
+            <>
+              {isEdit ? t('review.footer.save_changes') : t('review.footer.submit_application')}
+              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+            </>
+          )}
+        </button>
+      }
     >
       {/* Page heading */}
       <header className="mb-12">
@@ -207,7 +249,16 @@ export default function ReviewPage() {
           <Row label={t('review.row.category')}>{categoryLabel}</Row>
           <Row label={t('review.row.owner')}>{fullName || t('common.not_set')}</Row>
           <Row label={t('review.row.location')}>
-            {[draft.city, regionLabel].filter(Boolean).join(', ') || t('common.not_set')}
+            {[
+              draft.houseNumber,
+              draft.street,
+              draft.ward,
+              draft.district,
+              regionLabel,
+            ]
+              .map((p) => p?.trim?.() ?? p)
+              .filter(Boolean)
+              .join(', ') || t('common.not_set')}
           </Row>
           <Row label={t('review.row.service_area')}>
             {allMarkets.length > 0 ? allMarkets.join(', ') : t('common.not_set')}
@@ -379,52 +430,6 @@ export default function ReviewPage() {
           )}
         </Section>
       </div>
-
-      {/* Sticky submit footer */}
-      <div className="sticky bottom-0 -mx-6 lg:-mx-12 mt-16 bg-white/95 backdrop-blur border-t border-gray-200 px-6 lg:px-12 py-4">
-        <div className="max-w-3xl mx-auto">
-          {submitError ? (
-            <div className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-              <p className="text-xs text-rose-800 leading-relaxed">
-                {submitError}
-              </p>
-            </div>
-          ) : null}
-          <div className="flex items-center gap-6">
-            <p className="flex-1 min-w-0 text-sm text-gray-600 leading-relaxed">
-              <span className="text-gray-900 font-semibold">
-                {isEdit ? t('review.footer.save.primary') : t('review.footer.submit.primary')}
-              </span>{' '}
-              <span className="hidden sm:inline">
-                {isEdit
-                  ? t('review.footer.save.secondary')
-                  : t('review.footer.submit.secondary')}
-              </span>
-            </p>
-            <button
-              type="button"
-              onClick={onSubmit}
-              disabled={submitting}
-              className={
-                'group shrink-0 inline-flex items-center gap-2 bg-gray-900 hover:bg-gray-800 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-semibold pl-6 pr-5 py-3 rounded-full transition-all shadow-[0_4px_14px_-4px_rgba(17,24,39,0.35)] hover:shadow-[0_6px_18px_-4px_rgba(17,24,39,0.45)] hover:-translate-y-px disabled:shadow-none disabled:hover:translate-y-0'
-              }
-            >
-              {submitting ? (
-                <>
-                  <Clock className="w-4 h-4 animate-pulse" />
-                  {isEdit ? t('review.footer.saving') : t('review.footer.submitting')}
-                </>
-              ) : (
-                <>
-                  {isEdit ? t('review.footer.save_changes') : t('review.footer.submit_application')}
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      </div>
     </OnboardShell>
   )
 }
@@ -501,12 +506,12 @@ function PackageRow({
     <div
       className={
         popular
-          ? 'relative bg-white rounded-lg border-2 border-gray-900 p-4'
+          ? 'relative bg-white rounded-lg border-2 border-[#1A1A1A] p-4'
           : 'relative bg-white rounded-lg border border-gray-200 p-4'
       }
     >
       {popular ? (
-        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 bg-gray-900 text-white text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap">
+        <span className="absolute -top-2.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 bg-[#1A1A1A] text-white text-[10px] font-semibold uppercase tracking-wider px-2.5 py-1 rounded-full whitespace-nowrap">
           <Star className="w-2.5 h-2.5 fill-current" />
           {popularLabel}
         </span>

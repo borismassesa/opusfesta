@@ -88,16 +88,25 @@ function GoogleIcon() {
   )
 }
 
-export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) {
+export default function SignInClient({
+  redirectUrl,
+  initialEmail,
+}: {
+  redirectUrl?: string
+  initialEmail?: string
+}) {
   const { isLoaded, signIn, setActive } = useSignIn()
   const router = useRouter()
 
   const [step, setStep] = useState<Step>('password')
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(initialEmail ?? '')
   const [password, setPassword] = useState('')
   const [code, setCode] = useState('')
   const [newPassword, setNewPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
+  // Set after a failed password sign-in, to hint that the account may be a
+  // password-less Google account (shared OpusFesta login).
+  const [passwordFailed, setPasswordFailed] = useState(false)
   const [busy, setBusy] = useState(false)
   const [oauthBusy, setOauthBusy] = useState<'google' | null>(null)
   const [stalled, setStalled] = useState(false)
@@ -121,6 +130,7 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
     e.preventDefault()
     if (!isLoaded || !signIn || busy) return
     setError(null)
+    setPasswordFailed(false)
     setBusy(true)
     try {
       const res = await signIn.create({ identifier: email.trim(), password })
@@ -132,7 +142,12 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
         setError('Additional verification is required to sign in.')
       }
     } catch (err) {
+      // A failed password sign-in is often a Google account (no password) since
+      // OpusFesta shares one login across the platform. Surface that as a hint
+      // rather than probing supportedFirstFactors, which Clerk enumeration
+      // protection can hide (it would wrongly block a real password user).
       setError(clerkError(err, 'Incorrect email or password.'))
+      setPasswordFailed(true)
     } finally {
       setBusy(false)
     }
@@ -252,6 +267,14 @@ export default function SignInClient({ redirectUrl }: { redirectUrl?: string }) 
               {error}
             </p>
           )}
+
+          {passwordFailed && step === 'password' && (
+            <p className="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5 text-sm text-amber-800">
+              Signed up with Google? Use <strong>Continue with Google</strong>{' '}
+              above. To set a password, use <strong>Forgot password?</strong>.
+            </p>
+          )}
+
 
           {step === 'password' && (
             <>
