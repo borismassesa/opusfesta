@@ -180,12 +180,17 @@ export async function notifyOnVerificationSubmitted(input: {
       reviewUrl,
       resubmission: input.resubmission,
     })
-    await sendEmail({
+    const result = await sendEmail({
       to: recipients,
       subject: message.subject,
       html: message.html,
       text: message.text,
     })
+    if (!result.sent) {
+      console.warn(
+        `[email] admin verification notify failed (vendor=${input.vendorId}): ${result.reason}${result.error ? ` — ${result.error}` : ''}`,
+      )
+    }
   }
 
   const sendToVendor = async () => {
@@ -197,12 +202,17 @@ export async function notifyOnVerificationSubmitted(input: {
       verifyUrl,
       resubmission: input.resubmission,
     })
-    await sendEmail({
+    const result = await sendEmail({
       to: recipient,
       subject: message.subject,
       html: message.html,
       text: message.text,
     })
+    if (!result.sent) {
+      console.warn(
+        `[email] vendor verification receipt failed (vendor=${input.vendorId}): ${result.reason}${result.error ? ` — ${result.error}` : ''}`,
+      )
+    }
   }
 
   await Promise.allSettled([sendToAdmins(), sendToVendor()])
