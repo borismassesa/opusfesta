@@ -32,4 +32,7 @@ where home_market is null
 update public.vendors
 set service_markets = array(select jsonb_array_elements_text(location->'serviceMarkets'))
 where (service_markets is null or array_length(service_markets, 1) is null)
-  and jsonb_array_length(coalesce(location->'serviceMarkets', '[]'::jsonb)) > 0;
+  -- Guard the array functions: a legacy row that stored serviceMarkets as a
+  -- non-array (object/string) would otherwise abort the whole migration.
+  and jsonb_typeof(location->'serviceMarkets') = 'array'
+  and jsonb_array_length(location->'serviceMarkets') > 0;

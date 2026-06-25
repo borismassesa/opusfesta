@@ -2019,9 +2019,17 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
           <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
             <p className="text-[11px] font-black uppercase tracking-[0.16em] text-gray-400">Starting Price</p>
             <p className="text-lg font-black text-[#1A1A1A]">
-              {vendor.startingPrice.replace(/TZS\s*([\d.]+)M/, (_, n) =>
-                `TZS ${(parseFloat(n) * 1_000_000).toLocaleString()}`
-              )}
+              {(() => {
+                // Expand shorthand millions ("1.5M" -> "1,500,000") and ensure a
+                // currency prefix. Onboarding stores a plain grouped number
+                // ("500,000"), so without this the value rendered unit-less.
+                const expanded = vendor.startingPrice
+                  .trim()
+                  .replace(/([\d.]+)M/i, (_, n) =>
+                    (parseFloat(n) * 1_000_000).toLocaleString(),
+                  )
+                return /tzs|tsh/i.test(expanded) ? expanded : `TZS ${expanded}`
+              })()}
             </p>
           </div>
         )}

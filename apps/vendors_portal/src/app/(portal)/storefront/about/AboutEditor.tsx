@@ -443,7 +443,7 @@ export default function AboutEditor({
               Wireable via social_links JSONB. */}
           <Section
             title="Social media & website"
-            hint="Optional — helps couples explore your work."
+            hint="Optional. Helps couples explore your work."
             className="lg:col-span-2"
           >
             <div className="grid sm:grid-cols-2 gap-x-6 gap-y-3">
@@ -505,7 +505,7 @@ export default function AboutEditor({
                   {homeMarketName ?? 'Home market not set'}
                 </p>
                 <p className="text-xs text-gray-500">
-                  Home market — auto-set from your region above.
+                  Home market, auto-set from your region above.
                 </p>
               </div>
               <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
