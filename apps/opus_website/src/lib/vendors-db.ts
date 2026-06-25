@@ -1,3 +1,4 @@
+import { marketLabel } from '@opusfesta/lib'
 import { createSupabaseServerClient } from '@/lib/supabase'
 import { resolveServiceLabel } from '@/lib/vendor-services-catalog'
 import type { Vendor, VendorCategoryId, VendorReview } from '@/lib/vendors'
@@ -140,26 +141,6 @@ const VALID_CATEGORY_IDS: VendorCategoryId[] = [
   'bridal-wear',
   'officiant-mc',
 ]
-
-// Service-market IDs (stored in vendors.home_market / vendors.service_markets)
-// → human labels. Mirrors SERVICE_MARKETS in the vendors_portal onboarding
-// regions catalogue. The storefront editor writes the raw IDs to the columns,
-// so without this map the public page would render "dodoma" instead of
-// "Dodoma & Central".
-const MARKET_LABELS: Record<string, string> = {
-  dar: 'Dar es Salaam',
-  zanzibar: 'Zanzibar',
-  arusha: 'Arusha & Kilimanjaro',
-  mwanza: 'Mwanza & Lake Zone',
-  dodoma: 'Dodoma & Central',
-  mbeya: 'Mbeya & Southern Highlands',
-  south: 'Southern Coast',
-  morogoro: 'Morogoro & Tanga',
-}
-
-function marketLabel(id: string): string {
-  return MARKET_LABELS[id] ?? id
-}
 
 function toCategoryId(category: string | null): VendorCategoryId {
   if (!category) return 'venues'
