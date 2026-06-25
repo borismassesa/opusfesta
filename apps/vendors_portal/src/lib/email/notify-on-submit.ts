@@ -15,6 +15,10 @@ import { resolveAdminRecipients } from './admin-recipients'
 import { buildVendorSubmitNotificationEmail } from './vendor-submit-notification-email'
 import { buildVendorSubmitConfirmationEmail } from './vendor-submit-confirmation-email'
 import { buildCategoryRequestNotificationEmail } from './category-request-notification-email'
+import {
+  buildVerificationAdminEmail,
+  buildVerificationVendorEmail,
+} from './verification-submitted-email'
 
 export type NotifyOnSubmitInput = {
   vendorId: string
@@ -144,4 +148,62 @@ export async function notifyOnVendorSubmit(input: NotifyOnSubmitInput): Promise<
   // Run both sends in parallel; each handles its own failure path so one
   // recipient bailing out does not block the other.
   await Promise.allSettled([notifyAdmins(input), notifyVendor(input)])
+}
+
+// Fired when a vendor's verification documents reach the admin_review queue
+// (identity captured + agreement signed). Notifies the admin team AND the
+// vendor. `resubmission` is true when the vendor came back from
+// needs_corrections (re-uploaded flagged documents). Best-effort, like above.
+export async function notifyOnVerificationSubmitted(input: {
+  vendorId: string
+  vendorCode: string | null
+  businessName: string
+  vendorContactEmail: string | null
+  resubmission: boolean
+}): Promise<void> {
+  if (!isEmailConfigured()) return
+
+  const reviewUrl = adminReviewUrl(input.vendorId)
+  const verifyUrl = `${vendorPortalUrl().replace(/\/$/, '')}/verify`
+
+  const sendToAdmins = async () => {
+    const { recipients, source } = await resolveAdminRecipients()
+    if (recipients.length === 0) {
+      console.warn(
+        `[email] no admin recipients for verification notify (vendor=${input.vendorId}, source=${source})`,
+      )
+      return
+    }
+    const message = buildVerificationAdminEmail({
+      businessName: input.businessName,
+      vendorCode: input.vendorCode,
+      reviewUrl,
+      resubmission: input.resubmission,
+    })
+    await sendEmail({
+      to: recipients,
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+    })
+  }
+
+  const sendToVendor = async () => {
+    const recipient = input.vendorContactEmail?.trim()
+    if (!recipient) return
+    const message = buildVerificationVendorEmail({
+      businessName: input.businessName,
+      vendorCode: input.vendorCode,
+      verifyUrl,
+      resubmission: input.resubmission,
+    })
+    await sendEmail({
+      to: recipient,
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+    })
+  }
+
+  await Promise.allSettled([sendToAdmins(), sendToVendor()])
 }

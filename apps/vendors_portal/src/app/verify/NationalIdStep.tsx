@@ -179,7 +179,9 @@ export default function NationalIdStep({
               : 'Unlocks after both sides of your ID are captured.'
         }
         done={selfie}
-        locked={!idDone}
+        // An already-captured selfie stays shown as captured even if one ID
+        // side was sent back for re-upload (it only locks before it exists).
+        locked={!idDone && !selfie}
         onTake={() => setCapturing('selfie')}
         disabled={pending}
       />

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { ALL_AGREEMENT_VERSIONS } from '@/lib/onboarding/vendor-agreement'
+import { notifyOnVerificationSubmitted } from '@/lib/email/notify-on-submit'
 
 // Server-only helpers shared by the authenticated desktop upload action and
 // the token-scoped phone-capture action. Both store a National ID photo for a
@@ -219,6 +220,21 @@ export async function maybeTransitionToAdminReview(
   const allSigned = ALL_AGREEMENT_VERSIONS.every((v) => signedVersions.has(v))
   if ((payouts.count ?? 0) === 0 || !allSigned) return
 
+  // Read the vendor BEFORE the update so we know the prior status (to tell a
+  // re-submission apart from a first completion) and have the data the emails
+  // need.
+  const vendorRow = await admin
+    .from('vendors')
+    .select('business_name, vendor_code, contact_info, onboarding_status')
+    .eq('id', vendorId)
+    .maybeSingle<{
+      business_name: string | null
+      vendor_code: string | null
+      contact_info: { email?: string | null } | null
+      onboarding_status: string
+    }>()
+  const priorStatus = vendorRow.data?.onboarding_status
+
   const transition = await admin
     .from('vendors')
     .update({
@@ -227,9 +243,29 @@ export async function maybeTransitionToAdminReview(
     })
     .eq('id', vendorId)
     .in('onboarding_status', ['verification_pending', 'needs_corrections'])
+    .select('id')
   if (transition.error) {
     console.warn(
       `[verify] auto-transition to admin_review failed for ${vendorId}: ${transition.error.code} ${transition.error.message}`,
+    )
+    return
+  }
+  // Only notify if THIS call performed the transition (the guard matched a row),
+  // so concurrent uploads don't double-send.
+  if ((transition.data?.length ?? 0) === 0) return
+
+  try {
+    await notifyOnVerificationSubmitted({
+      vendorId,
+      vendorCode: vendorRow.data?.vendor_code ?? null,
+      businessName: vendorRow.data?.business_name?.trim() || 'OpusFesta vendor',
+      vendorContactEmail: vendorRow.data?.contact_info?.email ?? null,
+      resubmission: priorStatus === 'needs_corrections',
+    })
+  } catch (err) {
+    console.warn(
+      `[verify] verification-submitted notify threw for ${vendorId}:`,
+      err instanceof Error ? err.message : err,
     )
   }
 }
