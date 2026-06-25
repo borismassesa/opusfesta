@@ -17,7 +17,7 @@ import {
   UploadCloud,
   XCircle,
 } from 'lucide-react'
-import { saveRecognition } from '../sections/actions'
+import { loadRecognition, saveRecognition } from '../sections/actions'
 import { FieldLabel, TextInput } from '@/components/onboard/FormField'
 import {
   useOnboardingDraft,
@@ -99,6 +99,47 @@ export default function RecognitionPage() {
   const certificates = hydrated ? draft.awardCertificates : []
   const verifiedCount = certificates.filter((c) => c.status === 'verified').length
   const pendingCount = certificates.filter((c) => c.status === 'pending').length
+
+  // Hydrate from the DB (source of truth) when the local draft has no
+  // recognition data yet — a fresh device / cleared storage / admin-approved
+  // vendor would otherwise see empty awards, response time, and certificates
+  // despite having saved them. We key the "empty" check on the
+  // recognition-specific fields (not languages, which the About editor also
+  // owns) and only fill draft.languages when it's empty so we don't clobber
+  // a language selection made on the About page in this session.
+  const seeded = useRef(false)
+  useEffect(() => {
+    if (!hydrated || seeded.current) return
+    seeded.current = true
+    const recognitionEmpty =
+      !draft.awards?.trim() &&
+      !draft.responseTimeHours?.trim() &&
+      !draft.locallyOwned &&
+      draft.awardCertificates.length === 0
+    if (!recognitionEmpty) return
+    void loadRecognition().then((res) => {
+      if (!res.ok) return
+      const { awards, responseTimeHours, locallyOwned, languages, awardCertificates } =
+        res.data
+      const hasAny =
+        awards.trim() !== '' ||
+        responseTimeHours.trim() !== '' ||
+        locallyOwned ||
+        languages.length > 0 ||
+        awardCertificates.length > 0
+      if (!hasAny) return
+      update({
+        awards,
+        responseTimeHours,
+        locallyOwned,
+        awardCertificates: awardCertificates as typeof draft.awardCertificates,
+        ...(draft.languages.length === 0 && languages.length > 0
+          ? { languages }
+          : {}),
+      })
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated])
 
   const onSave = () => {
     setSaveError(null)

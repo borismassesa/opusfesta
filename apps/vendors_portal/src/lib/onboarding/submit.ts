@@ -437,6 +437,20 @@ export async function submitApplication(
     deposit_percent: draft.depositPercent
       ? Number.parseInt(draft.depositPercent, 10) || null
       : null,
+    // Service area — the wizard collects these (Markets step), but they were
+    // previously written ONLY into the `location` JSONB. The admin review page
+    // and the storefront editors read the dedicated `home_market` /
+    // `service_markets` columns, so without this write the vendor's service
+    // area showed up blank in admin and required a manual storefront re-save
+    // before it reached the public page via the columns.
+    home_market: draft.homeMarket,
+    service_markets: draft.serviceMarkets,
+    // Pricing extras + availability (migration 20260624000001). Previously
+    // these onboarding answers lived only in `application_snapshot`, so neither
+    // admin nor the public detail page could read them.
+    starting_price: draft.startingPrice || null,
+    custom_quotes: draft.customQuotes,
+    availability: draft.availability,
     // Full draft kept as a JSONB blob so admin review can audit every answered
     // field (resolved labels included), even ones we haven't broken out into
     // columns yet (FAQs, team avatars, etc.).

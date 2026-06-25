@@ -273,6 +273,45 @@ export default async function VendorReviewPage({
     videoUrls = videoRes.data?.video_urls ?? []
   }
 
+  // Best-effort fetch of capacity/map coords (migration 20260503000001) plus
+  // pricing extras + availability (migration 20260624000001). Admin-fillable
+  // fields the vendor portal doesn't expose an editor for; degrade gracefully
+  // when a project is behind on migrations.
+  type PricingCapacityRow = {
+    starting_price: string | null
+    custom_quotes: boolean | null
+    availability: Array<Record<string, unknown>> | null
+    capacity: { min?: number; max?: number } | null
+    lat: number | null
+    lng: number | null
+  }
+  let pricingCapacity: PricingCapacityRow = {
+    starting_price: null,
+    custom_quotes: null,
+    availability: null,
+    capacity: null,
+    lat: null,
+    lng: null,
+  }
+  const pcRes = await admin
+    .from('vendors')
+    .select('starting_price, custom_quotes, availability, capacity, lat, lng')
+    .eq('id', vendorId)
+    .maybeSingle<PricingCapacityRow>()
+  if (pcRes.error) {
+    if (pcRes.error.code === '42703' || pcRes.error.code === 'PGRST204') {
+      console.warn(
+        `[admin] vendors pricing/capacity columns not available (${pcRes.error.code}). Apply migrations 20260503000001 + 20260624000001.`,
+      )
+    } else {
+      console.warn(
+        `[admin] vendors pricing/capacity query failed: ${pcRes.error.code} ${pcRes.error.message}`,
+      )
+    }
+  } else if (pcRes.data) {
+    pricingCapacity = pcRes.data
+  }
+
   const docs = docsRes.data ?? []
   const latestDocs = docs.filter((d) => d.is_latest)
   const docByType = new Map<string, DocRow>()
@@ -424,6 +463,12 @@ export default async function VendorReviewPage({
       coverImageColumn: v.cover_image,
       galleryUrlsColumn: v.gallery_urls ?? [],
       videoUrlsColumn: videoUrls,
+      startingPriceColumn: pricingCapacity.starting_price,
+      customQuotesColumn: pricingCapacity.custom_quotes,
+      availabilityColumn: pricingCapacity.availability ?? [],
+      capacityColumn: pricingCapacity.capacity,
+      latColumn: pricingCapacity.lat,
+      lngColumn: pricingCapacity.lng,
     },
     tin: tin && {
       id: tin.id,

@@ -28,12 +28,13 @@ export function StorefrontSidebar({
     )
   }
 
-  // Vendors who haven't submitted onboarding see the gate screen instead of the
-  // sidebar — without this the sidebar would render alongside that gate.
-  if (!draft.categoryId || !draft.submittedAt) {
-    return null
-  }
-
+  // No onboarding gate here: every vendor that reaches the portal is already
+  // approved-and-active (the server portal layout redirects everyone else).
+  // The old `!draft.categoryId || !draft.submittedAt` check hid the sidebar
+  // for approved vendors whose localStorage draft was empty (fresh device,
+  // cleared storage, admin approval), matching the dead-end lock screen the
+  // storefront layout used to show. Completion still reads from the draft;
+  // it simply starts empty until the vendor saves a section.
   const sections = getStorefrontSections(draft)
   const { percent, complete, total, requiredMissing } = computeCompleteness(sections)
 

@@ -258,7 +258,7 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
           {/* Social icons — render only the ones the vendor actually
               provided. Empty links would dead-end on '#' and falsely imply
               the vendor has a profile on every network. */}
-          {(vendor.socialLinks?.instagram || vendor.socialLinks?.facebook || vendor.socialLinks?.website) && (
+          {(vendor.socialLinks?.instagram || vendor.socialLinks?.facebook || vendor.socialLinks?.website || vendor.socialLinks?.tiktok || vendor.socialLinks?.whatsapp) && (
             <div className="flex items-center gap-3">
               {vendor.socialLinks?.instagram && (
                 <a href={vendor.socialLinks.instagram} aria-label="Instagram" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-75">
@@ -283,6 +283,22 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
                   <svg className="w-6 h-6" viewBox="0 0 24 24" aria-hidden="true">
                     <rect width="24" height="24" rx="5" fill="#1877F2"/>
                     <path d="M15.12 13H13v7h-2.88v-7H8.5v-2.5h1.62v-1.5c0-2.2 1.3-3.5 3.28-3.5.94 0 1.93.17 1.93.17V8H14.1c-1.07 0-1.4.67-1.4 1.35V10.5h2.38L14.77 13h-.01z" fill="white"/>
+                  </svg>
+                </a>
+              )}
+              {vendor.socialLinks?.tiktok && (
+                <a href={tiktokHref(vendor.socialLinks.tiktok)} aria-label="TikTok" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-75">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect width="24" height="24" rx="5" fill="#010101"/>
+                    <path d="M17.5 8.6a4.3 4.3 0 0 1-2.6-.9v4.9a3.9 3.9 0 1 1-3.9-3.9c.2 0 .4 0 .6.05v2a1.9 1.9 0 1 0 1.3 1.8V5h1.95a4.3 4.3 0 0 0 2.65 3.05V8.6z" fill="white"/>
+                  </svg>
+                </a>
+              )}
+              {vendor.socialLinks?.whatsapp && (
+                <a href={whatsappHref(vendor.socialLinks.whatsapp)} aria-label="WhatsApp" target="_blank" rel="noopener noreferrer" className="transition-opacity hover:opacity-75">
+                  <svg className="w-6 h-6" viewBox="0 0 24 24" aria-hidden="true">
+                    <rect width="24" height="24" rx="5" fill="#25D366"/>
+                    <path d="M12 6.2a5.7 5.7 0 0 0-4.9 8.6L6.3 18l3.3-.86A5.7 5.7 0 1 0 12 6.2zm0 1.5a4.2 4.2 0 0 1 3 7.2 4.2 4.2 0 0 1-5 .7l-.24-.14-1.6.42.43-1.55-.16-.25A4.2 4.2 0 0 1 12 7.7zm-1.6 2c-.1 0-.27.04-.4.2-.14.16-.52.5-.52 1.24 0 .73.53 1.43.6 1.53.08.1 1.05 1.67 2.6 2.28 1.28.5 1.55.4 1.83.38.28-.03.9-.37 1.03-.73.13-.36.13-.66.1-.73-.04-.06-.14-.1-.3-.18-.16-.08-.9-.44-1.04-.5-.14-.05-.24-.07-.34.08-.1.16-.4.5-.48.6-.09.1-.18.11-.33.04a4.2 4.2 0 0 1-1.24-.77 4.6 4.6 0 0 1-.86-1.06c-.09-.16-.01-.24.07-.32.07-.07.16-.18.24-.27.08-.1.1-.16.16-.27.05-.1.03-.2-.01-.28-.04-.08-.34-.84-.48-1.15-.12-.28-.25-.24-.34-.25h-.3z" fill="white"/>
                   </svg>
                 </a>
               )}
@@ -379,6 +395,25 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
 function parsePrice(value: string): number {
   const m = value.match(/([\d.]+)M/i)
   return m ? parseFloat(m[1]) * 1_000_000 : parseFloat(value.replace(/[^\d.]/g, '')) || 0
+}
+
+// Normalise a stored WhatsApp value into a tappable link. Accepts a full
+// URL (wa.me / api.whatsapp.com), or a phone number in any local format
+// ("+255 754 123 456", "0754123456") which we reduce to digits for wa.me.
+function whatsappHref(raw: string): string {
+  const v = raw.trim()
+  if (/^https?:\/\//i.test(v)) return v
+  const digits = v.replace(/[^\d]/g, '')
+  return digits ? `https://wa.me/${digits}` : v
+}
+
+// TikTok is captured in onboarding as a bare handle ("ruge_bakery"), but a
+// vendor may also paste a full profile URL. Normalise to an absolute link so
+// the anchor never dead-ends on a relative path.
+function tiktokHref(raw: string): string {
+  const v = raw.trim()
+  if (/^https?:\/\//i.test(v)) return v
+  return `https://www.tiktok.com/@${v.replace(/^@+/, '')}`
 }
 
 // ── Service description resolver ─────────────────────────
@@ -576,6 +611,40 @@ function VendorPricingSection({ vendor }: { vendor: Vendor }) {
         </div>
       )}
 
+      {/* Booking policies — deposit / cancellation / reschedule, captured in
+          onboarding and editable in the storefront. Rendered only when set. */}
+      {(vendor.depositPercent || vendor.cancellationLevel || vendor.reschedulePolicy) && (
+        <div className="mb-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {vendor.depositPercent && (
+            <div className="flex items-start gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+              <Banknote size={18} className="mt-0.5 shrink-0 text-(--accent-hover)" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-400">Deposit</p>
+                <p className="text-sm font-semibold text-[#1A1A1A]">{vendor.depositPercent}% to reserve your date</p>
+              </div>
+            </div>
+          )}
+          {vendor.cancellationLevel && (
+            <div className="flex items-start gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+              <BadgeCheck size={18} className="mt-0.5 shrink-0 text-(--accent-hover)" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-400">Cancellation</p>
+                <p className="text-sm font-semibold text-[#1A1A1A]">{CANCELLATION_LABELS[vendor.cancellationLevel] ?? vendor.cancellationLevel}</p>
+              </div>
+            </div>
+          )}
+          {vendor.reschedulePolicy && (
+            <div className="flex items-start gap-3 rounded-xl border border-gray-100 bg-white p-4 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+              <Calendar size={18} className="mt-0.5 shrink-0 text-(--accent-hover)" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.14em] text-gray-400">Reschedule</p>
+                <p className="text-sm font-semibold text-[#1A1A1A]">{RESCHEDULE_LABELS[vendor.reschedulePolicy] ?? vendor.reschedulePolicy}</p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
         <svg className="mt-0.5 w-4 h-4 shrink-0 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -587,6 +656,18 @@ function VendorPricingSection({ vendor }: { vendor: Vendor }) {
       </div>
     </section>
   )
+}
+
+// Human labels for the raw policy enum keys stored in the DB.
+const CANCELLATION_LABELS: Record<string, string> = {
+  flexible: 'Flexible',
+  moderate: 'Moderate',
+  strict: 'Strict',
+}
+const RESCHEDULE_LABELS: Record<string, string> = {
+  'one-free': 'One free reschedule',
+  unlimited: 'Unlimited reschedules',
+  none: 'No reschedules',
 }
 
 // ── TeamSection ───────────────────────────────────────────
@@ -1943,6 +2024,12 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
               )}
             </p>
           </div>
+        )}
+        {vendor.customQuotes && (
+          <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-gray-500">
+            <Check size={13} className="shrink-0 text-(--accent-hover)" />
+            Custom quotes available on request
+          </p>
         )}
       </div>
 

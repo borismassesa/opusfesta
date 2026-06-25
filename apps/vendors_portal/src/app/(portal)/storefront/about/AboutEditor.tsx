@@ -35,12 +35,6 @@ import { saveProfileFields } from '../sections/actions'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { profilesEqual, type DbProfile } from './mapping'
 
-// Custom event the About sticky save bar fires after its own save lands.
-// LocationAndCapacityEditor (rendered below this component) listens for
-// it and triggers its own save in response — that's how the single
-// "Save changes" button persists every section on the page in one click.
-export const ABOUT_PAGE_SAVE_EVENT = 'opusfesta:about-page-save'
-
 const DAYS = [
   { key: 'mon', label: 'Monday', short: 'Mon' },
   { key: 'tue', label: 'Tuesday', short: 'Tue' },
@@ -216,14 +210,6 @@ export default function AboutEditor({
       }
       setSavedSnapshot(profile)
       setDraftSnapshot(snapshotDraft(draft))
-      // Tell the LocationAndCapacityEditor (rendered below this component
-      // by the parent page) to persist its own state. Keeping it as a
-      // sibling event rather than lifting state lets each editor own its
-      // dirty tracking, but a single Save click still writes everything
-      // on the page.
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent(ABOUT_PAGE_SAVE_EVENT))
-      }
       // Mirror the DB-backed profile fields into the onboarding draft
       // so the storefront sidebar's completion checks (which read from
       // the draft) reflect the just-saved values. Without this, the
@@ -407,164 +393,14 @@ export default function AboutEditor({
             </div>
           </Section>
 
-          {/* Bio (wireable) + Languages (still on draft) */}
-          <Section
-            title="Bio"
-            hint="What couples read first on your storefront."
-            className="lg:col-span-2"
-          >
-            <div className="space-y-5">
-              <div>
-                <FieldLabel required>Description</FieldLabel>
-                <TextArea
-                  value={profile.bio}
-                  onChange={(e) => setField('bio', e.target.value)}
-                  rows={6}
-                  hint={bioHint}
-                  disabled={!canEdit}
-                />
-              </div>
-              <div>
-                <FieldLabel>
-                  Languages spoken with clients
-                </FieldLabel>
-                <div className="grid sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-1">
-                  {LANGUAGES.map((lang) => (
-                    <OptionCard
-                      key={lang.id}
-                      variant="checkbox"
-                      label={lang.label}
-                      selected={hydrated && draft.languages.includes(lang.id)}
-                      onToggle={() => toggleLanguage(lang.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Section>
-
-          {/* Style & personality — persisted to vendors.style /
-              vendors.personality on Save. */}
-          <Section
-            title="Style & personality"
-            className="lg:col-span-2"
-          >
-            <div className="grid sm:grid-cols-2 gap-6">
-              <div>
-                <FieldLabel>Style</FieldLabel>
-                <div className="grid gap-2 mt-1">
-                  {styles.map((s) => (
-                    <OptionCard
-                      key={s.id}
-                      variant="radio"
-                      label={s.label}
-                      description={s.body}
-                      selected={hydrated && draft.style === s.id}
-                      onToggle={() => canEdit && update({ style: s.id })}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div>
-                <FieldLabel>Personality</FieldLabel>
-                <div className="grid gap-2 mt-1">
-                  {PERSONALITY_OPTIONS.map((p) => (
-                    <OptionCard
-                      key={p.id}
-                      variant="radio"
-                      label={p.label}
-                      description={p.body}
-                      selected={hydrated && draft.personality === p.id}
-                      onToggle={() => canEdit && update({ personality: p.id })}
-                    />
-                  ))}
-                </div>
-              </div>
-            </div>
-          </Section>
-
-          {/* Service area — persisted to vendors.home_market /
-              vendors.service_markets on Save. */}
-          <Section
-            title="Service area"
-            className="lg:col-span-2"
-          >
-            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 flex items-center gap-3 mb-5">
-              <span className="w-7 h-7 rounded-lg bg-gray-900 text-white flex items-center justify-center shrink-0">
-                <MapPin className="w-3.5 h-3.5" />
-              </span>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900">
-                  {homeMarketName ?? 'Home market not set'}
-                </p>
-                <p className="text-xs text-gray-500">
-                  Home market — auto-set from your region above.
-                </p>
-              </div>
-              <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
-                Home
-              </span>
-            </div>
-
-            <FieldLabel>Additional markets you serve</FieldLabel>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
-              {extraMarkets.map((m) => (
-                <OptionCard
-                  key={m.id}
-                  variant="checkbox"
-                  label={m.name}
-                  description={m.hint}
-                  selected={hydrated && draft.serviceMarkets.includes(m.id)}
-                  onToggle={() => toggleServiceMarket(m.id)}
-                />
-              ))}
-            </div>
-          </Section>
-
-          {/* Business hours — persisted to vendors.hours on Save. */}
-          <Section
-            title="Business hours"
-            right={
-              <button
-                type="button"
-                disabled={!canEdit}
-                onClick={() => {
-                  const monday = draft.hours.mon
-                  const next = { ...draft.hours }
-                  ;(['tue', 'wed', 'thu', 'fri'] as const).forEach((k) => {
-                    next[k] = { ...monday }
-                  })
-                  update({ hours: next })
-                }}
-                className="text-xs font-semibold text-gray-600 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-              >
-                Copy Mon to weekdays
-              </button>
-            }
-          >
-            <div className="divide-y divide-gray-100">
-              {DAYS.map((d) => (
-                <DayRow
-                  key={d.key}
-                  label={d.label}
-                  short={d.short}
-                  value={
-                    hydrated
-                      ? draft.hours[d.key]
-                      : { open: false, from: '09:00', to: '18:00' }
-                  }
-                  disabled={!canEdit}
-                  onChange={(patch) => updateDay(d.key, patch)}
-                />
-              ))}
-            </div>
-          </Section>
-
+          {/* Contact details — onboarding "Contact" step.
+              Wireable via contact_info JSONB. */}
           <Section
             title="Contact details"
             hint="Shared with couples after booking, not on your public storefront."
+            className="lg:col-span-2"
           >
-            <div className="space-y-4">
+            <div className="grid sm:grid-cols-3 gap-4">
               <div>
                 <FieldLabel>Business phone</FieldLabel>
                 <TextInput
@@ -603,7 +439,8 @@ export default function AboutEditor({
             </div>
           </Section>
 
-          {/* Socials — wireable via social_links JSONB */}
+          {/* Socials — onboarding "Socials" step.
+              Wireable via social_links JSONB. */}
           <Section
             title="Social media & website"
             hint="Optional — helps couples explore your work."
@@ -650,6 +487,162 @@ export default function AboutEditor({
                 onChange={(v) => setField('socialTiktok', v)}
                 disabled={!canEdit}
               />
+            </div>
+          </Section>
+
+          {/* Service area — onboarding "Markets" step.
+              Persisted to vendors.home_market / vendors.service_markets on Save. */}
+          <Section
+            title="Service area"
+            className="lg:col-span-2"
+          >
+            <div className="rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 flex items-center gap-3 mb-5">
+              <span className="w-7 h-7 rounded-lg bg-gray-900 text-white flex items-center justify-center shrink-0">
+                <MapPin className="w-3.5 h-3.5" />
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">
+                  {homeMarketName ?? 'Home market not set'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Home market — auto-set from your region above.
+                </p>
+              </div>
+              <span className="text-[10px] uppercase tracking-wider font-bold text-gray-500">
+                Home
+              </span>
+            </div>
+
+            <FieldLabel>Additional markets you serve</FieldLabel>
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-2">
+              {extraMarkets.map((m) => (
+                <OptionCard
+                  key={m.id}
+                  variant="checkbox"
+                  label={m.name}
+                  description={m.hint}
+                  selected={hydrated && draft.serviceMarkets.includes(m.id)}
+                  onToggle={() => toggleServiceMarket(m.id)}
+                />
+              ))}
+            </div>
+          </Section>
+
+          {/* Bio — onboarding "About" step (bio + languages).
+              Bio wireable; languages persisted via saveProfileFields. */}
+          <Section
+            title="Bio"
+            hint="What couples read first on your storefront."
+            className="lg:col-span-2"
+          >
+            <div className="space-y-5">
+              <div>
+                <FieldLabel required>Description</FieldLabel>
+                <TextArea
+                  value={profile.bio}
+                  onChange={(e) => setField('bio', e.target.value)}
+                  rows={6}
+                  hint={bioHint}
+                  disabled={!canEdit}
+                />
+              </div>
+              <div>
+                <FieldLabel>
+                  Languages spoken with clients
+                </FieldLabel>
+                <div className="grid sm:grid-cols-3 lg:grid-cols-4 gap-2 mt-1">
+                  {LANGUAGES.map((lang) => (
+                    <OptionCard
+                      key={lang.id}
+                      variant="checkbox"
+                      label={lang.label}
+                      selected={hydrated && draft.languages.includes(lang.id)}
+                      onToggle={() => toggleLanguage(lang.id)}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          {/* Style & personality — onboarding "Style" + "Personality" steps.
+              Persisted to vendors.style / vendors.personality on Save. */}
+          <Section
+            title="Style & personality"
+            className="lg:col-span-2"
+          >
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div>
+                <FieldLabel>Style</FieldLabel>
+                <div className="grid gap-2 mt-1">
+                  {styles.map((s) => (
+                    <OptionCard
+                      key={s.id}
+                      variant="radio"
+                      label={s.label}
+                      description={s.body}
+                      selected={hydrated && draft.style === s.id}
+                      onToggle={() => canEdit && update({ style: s.id })}
+                    />
+                  ))}
+                </div>
+              </div>
+              <div>
+                <FieldLabel>Personality</FieldLabel>
+                <div className="grid gap-2 mt-1">
+                  {PERSONALITY_OPTIONS.map((p) => (
+                    <OptionCard
+                      key={p.id}
+                      variant="radio"
+                      label={p.label}
+                      description={p.body}
+                      selected={hydrated && draft.personality === p.id}
+                      onToggle={() => canEdit && update({ personality: p.id })}
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </Section>
+
+          {/* Business hours — operational detail (not in the onboarding
+              wizard). Persisted to vendors.hours on Save. */}
+          <Section
+            title="Business hours"
+            className="lg:col-span-2"
+            right={
+              <button
+                type="button"
+                disabled={!canEdit}
+                onClick={() => {
+                  const monday = draft.hours.mon
+                  const next = { ...draft.hours }
+                  ;(['tue', 'wed', 'thu', 'fri'] as const).forEach((k) => {
+                    next[k] = { ...monday }
+                  })
+                  update({ hours: next })
+                }}
+                className="text-xs font-semibold text-gray-600 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
+              >
+                Copy Mon to weekdays
+              </button>
+            }
+          >
+            <div className="divide-y divide-gray-100">
+              {DAYS.map((d) => (
+                <DayRow
+                  key={d.key}
+                  label={d.label}
+                  short={d.short}
+                  value={
+                    hydrated
+                      ? draft.hours[d.key]
+                      : { open: false, from: '09:00', to: '18:00' }
+                  }
+                  disabled={!canEdit}
+                  onChange={(patch) => updateDay(d.key, patch)}
+                />
+              ))}
             </div>
           </Section>
         </div>
