@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   Banknote,
+  CalendarDays,
   Check,
   CheckCircle2,
   ChevronRight,
@@ -757,6 +758,8 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                 lng: vendor.lngColumn,
               }}
             />
+
+            <AvailabilitySummaryCard entries={vendor.availabilityColumn} />
           </ReviewSection>
           )}
 
@@ -1327,6 +1330,64 @@ function ImpactPill({ label, count }: { label: string; count: number }) {
     <span className="inline-flex items-center gap-1 text-[11px] font-bold uppercase tracking-wider px-2 py-1 rounded-md bg-gray-100 text-gray-600 border border-gray-200">
       {count} {label}
     </span>
+  )
+}
+
+// Read-only view of the vendor's blocked dates (vendors.availability). The
+// vendor owns editing this in their portal calendar; admin only needs to see
+// it during review, so this is a compact summary rather than an editor.
+function AvailabilitySummaryCard({
+  entries,
+}: {
+  entries: Array<Record<string, unknown>>
+}) {
+  const clean = (Array.isArray(entries) ? entries : [])
+    .filter(
+      (e): e is { date: string; status: string } =>
+        !!e &&
+        typeof e.date === 'string' &&
+        (e.status === 'unavailable' || e.status === 'limited'),
+    )
+    .sort((a, b) => a.date.localeCompare(b.date))
+  const unavailable = clean.filter((e) => e.status === 'unavailable')
+  const limited = clean.filter((e) => e.status === 'limited')
+
+  return (
+    <section className="rounded-xl border border-gray-200 bg-white p-5 shadow-[0_2px_12px_rgba(0,0,0,0.04)]">
+      <div className="mb-3 flex items-center gap-2">
+        <CalendarDays className="h-4 w-4 text-gray-400" />
+        <h3 className="text-sm font-semibold text-gray-900">Availability</h3>
+        <span className="text-xs text-gray-400">vendor-managed</span>
+      </div>
+      {clean.length === 0 ? (
+        <p className="text-sm text-gray-500">
+          No blocked dates. The vendor&rsquo;s calendar shows as fully open.
+        </p>
+      ) : (
+        <div className="space-y-3 text-sm">
+          {unavailable.length > 0 && (
+            <div>
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-rose-500">
+                Unavailable ({unavailable.length})
+              </p>
+              <p className="leading-relaxed text-gray-700">
+                {unavailable.map((e) => e.date).join(', ')}
+              </p>
+            </div>
+          )}
+          {limited.length > 0 && (
+            <div>
+              <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-amber-500">
+                Limited ({limited.length})
+              </p>
+              <p className="leading-relaxed text-gray-700">
+                {limited.map((e) => e.date).join(', ')}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </section>
   )
 }
 
