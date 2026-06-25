@@ -26,6 +26,7 @@ import {
   Users,
   Video as VideoIcon,
 } from 'lucide-react'
+import { SERVICE_MARKETS } from '@opusfesta/lib'
 import { cn } from '@/lib/utils'
 import {
   adminCreateVendorVideoUploadUrl,
@@ -208,25 +209,12 @@ export type ProfileInitial = {
   socialFacebook: string
   socialTiktok: string
   socialWhatsapp: string
-  // Service area — home market + additional markets the vendor serves. Mirrors
-  // SERVICE_MARKETS in the vendors_portal onboarding regions catalogue.
+  // Service area — home market + additional markets the vendor serves. The
+  // catalogue (SERVICE_MARKETS) is shared via @opusfesta/lib so admin edits
+  // write the same IDs the vendor portal and public marketplace resolve.
   homeMarket: string | null
   serviceMarkets: string[]
 }
-
-// Service-market IDs → labels. Kept in sync with vendors_portal
-// lib/onboarding/regions.ts SERVICE_MARKETS so admin edits write the same IDs
-// the vendor portal and public marketplace resolve.
-const MARKET_OPTIONS: Array<{ id: string; label: string }> = [
-  { id: 'dar', label: 'Dar es Salaam' },
-  { id: 'zanzibar', label: 'Zanzibar' },
-  { id: 'arusha', label: 'Arusha & Kilimanjaro' },
-  { id: 'mwanza', label: 'Mwanza & Lake Zone' },
-  { id: 'dodoma', label: 'Dodoma & Central' },
-  { id: 'mbeya', label: 'Mbeya & Southern Highlands' },
-  { id: 'south', label: 'Southern Coast' },
-  { id: 'morogoro', label: 'Morogoro & Tanga' },
-]
 
 export function AdminProfileEditor({
   vendorId,
@@ -396,9 +384,9 @@ export function AdminProfileEditor({
               }
             >
               <option value="">Not set</option>
-              {MARKET_OPTIONS.map((m) => (
+              {SERVICE_MARKETS.map((m) => (
                 <option key={m.id} value={m.id}>
-                  {m.label}
+                  {m.name}
                 </option>
               ))}
             </select>
@@ -409,7 +397,7 @@ export function AdminProfileEditor({
             Additional markets served
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-            {MARKET_OPTIONS.filter((m) => m.id !== v.homeMarket).map((m) => {
+            {SERVICE_MARKETS.filter((m) => m.id !== v.homeMarket).map((m) => {
               const checked = v.serviceMarkets.includes(m.id)
               return (
                 <label
@@ -428,7 +416,7 @@ export function AdminProfileEditor({
                       })
                     }
                   />
-                  {m.label}
+                  {m.name}
                 </label>
               )
             })}

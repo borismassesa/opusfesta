@@ -33,22 +33,10 @@ export const TZ_REGIONS: TanzaniaRegion[] = [
   { code: 'SON', name: 'Songwe' },
 ]
 
-export type ServiceMarket = {
-  id: string
-  name: string
-  hint: string
-}
-
-export const SERVICE_MARKETS: ServiceMarket[] = [
-  { id: 'dar', name: 'Dar es Salaam', hint: 'City + Pwani coast' },
-  { id: 'zanzibar', name: 'Zanzibar', hint: 'Unguja + Pemba' },
-  { id: 'arusha', name: 'Arusha & Kilimanjaro', hint: 'Northern circuit' },
-  { id: 'mwanza', name: 'Mwanza & Lake Zone', hint: 'Mwanza, Mara, Kagera' },
-  { id: 'dodoma', name: 'Dodoma & Central', hint: 'Dodoma, Singida, Manyara' },
-  { id: 'mbeya', name: 'Mbeya & Southern Highlands', hint: 'Mbeya, Iringa, Njombe' },
-  { id: 'south', name: 'Southern Coast', hint: 'Lindi, Mtwara, Ruvuma' },
-  { id: 'morogoro', name: 'Morogoro & Tanga', hint: 'Eastern interior' },
-]
+// The service-market catalogue is shared across the portal, public marketplace,
+// and admin tools, so it lives in @opusfesta/lib. Re-exported here so the many
+// existing `from '@/lib/onboarding/regions'` imports keep working unchanged.
+export { SERVICE_MARKETS, marketLabel, type ServiceMarket } from '@opusfesta/lib'
 
 const HOME_MARKET_BY_REGION: Record<string, string> = {
   DSM: 'dar',

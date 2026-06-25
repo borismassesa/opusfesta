@@ -2,6 +2,8 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // Transpile the shared workspace package (TS source, not pre-built).
+  transpilePackages: ['@opusfesta/lib'],
   images: {
     remotePatterns: [
       {
