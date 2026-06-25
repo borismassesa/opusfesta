@@ -163,20 +163,24 @@ export default function VerifyClient({
   const optionalNeedsFix =
     tinSlot?.currentDoc?.status === 'rejected' ||
     licenseSlot?.currentDoc?.status === 'rejected'
-  const optionalMode: StepMode = !idComplete
-    ? 'locked'
-    : optionalResolved && !optionalNeedsFix
+  // A step the vendor already completed STAYS done even if a different document
+  // (e.g. one ID side) was sent back for re-upload — it must not re-lock and
+  // hide work that was already accepted. Only genuinely-incomplete steps gate
+  // on the identity step.
+  const optionalMode: StepMode =
+    optionalResolved && !optionalNeedsFix
       ? 'done'
-      : 'active'
+      : optionalNeedsFix
+        ? 'active' // a flagged TIN/license must stay re-uploadable
+        : !idComplete
+          ? 'locked'
+          : 'active'
 
-  // Agreement unlocks once identity is verified AND the optional step has been
-  // resolved (documents added, or skipped).
-  const agreementMode: StepMode =
-    !idComplete || !optionalResolved
+  const agreementMode: StepMode = agreementSigned
+    ? 'done'
+    : !idComplete || !optionalResolved
       ? 'locked'
-      : agreementSigned
-        ? 'done'
-        : 'active'
+      : 'active'
 
   // Build the visual timeline rendered above the active form. Payout appears
   // immediately after the application because it is captured during onboarding;
