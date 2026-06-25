@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { after } from 'next/server'
 import { createSupabaseAdminClient } from '@/lib/supabase'
 import { ALL_AGREEMENT_VERSIONS } from '@/lib/onboarding/vendor-agreement'
 import { notifyOnVerificationSubmitted } from '@/lib/email/notify-on-submit'
@@ -233,6 +234,14 @@ export async function maybeTransitionToAdminReview(
       contact_info: { email?: string | null } | null
       onboarding_status: string
     }>()
+  if (vendorRow.error) {
+    // A transient read failure means we lose priorStatus (resubmission flag
+    // silently becomes false) and the vendor's contact email — surface it so a
+    // mislabelled or skipped notification isn't invisible.
+    console.warn(
+      `[verify] pre-transition vendor read failed for ${vendorId}: ${vendorRow.error.code} ${vendorRow.error.message}`,
+    )
+  }
   const priorStatus = vendorRow.data?.onboarding_status
 
   const transition = await admin
@@ -254,18 +263,32 @@ export async function maybeTransitionToAdminReview(
   // so concurrent uploads don't double-send.
   if ((transition.data?.length ?? 0) === 0) return
 
+  // The two notification emails are best-effort and must not hold up the
+  // vendor's document-upload response — a slow Resend call would otherwise
+  // stall the "Uploading…" spinner even though the DB write already landed.
+  // Schedule them with after() so they run in the background once the response
+  // is sent. Fall back to a detached send if we're somehow outside a request
+  // scope (after() throws there).
+  const runNotify = async () => {
+    try {
+      await notifyOnVerificationSubmitted({
+        vendorId,
+        vendorCode: vendorRow.data?.vendor_code ?? null,
+        businessName:
+          vendorRow.data?.business_name?.trim() || 'OpusFesta vendor',
+        vendorContactEmail: vendorRow.data?.contact_info?.email ?? null,
+        resubmission: priorStatus === 'needs_corrections',
+      })
+    } catch (err) {
+      console.warn(
+        `[verify] verification-submitted notify threw for ${vendorId}:`,
+        err instanceof Error ? err.message : err,
+      )
+    }
+  }
   try {
-    await notifyOnVerificationSubmitted({
-      vendorId,
-      vendorCode: vendorRow.data?.vendor_code ?? null,
-      businessName: vendorRow.data?.business_name?.trim() || 'OpusFesta vendor',
-      vendorContactEmail: vendorRow.data?.contact_info?.email ?? null,
-      resubmission: priorStatus === 'needs_corrections',
-    })
-  } catch (err) {
-    console.warn(
-      `[verify] verification-submitted notify threw for ${vendorId}:`,
-      err instanceof Error ? err.message : err,
-    )
+    after(runNotify)
+  } catch {
+    void runNotify()
   }
 }
