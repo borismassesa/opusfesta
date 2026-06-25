@@ -568,19 +568,23 @@ function mapVendorRow(row: VendorRow): Vendor {
       ? row.custom_quotes
       : (snapBool(s, 'customQuotes') ?? undefined)
 
-  // --- Availability: the vendor declares unavailable dates as
-  // [{ date, status }]. The public type wants booked/limited date lists, so
-  // map every "unavailable" entry into bookedDates. Returns undefined when
-  // empty so the detail page keeps its deterministic demo fallback.
+  // --- Availability: the vendor declares dates as [{ date, status }] where
+  // status is "unavailable" (fully booked/off) or "limited" (tight). The public
+  // calendar wants booked vs limited date lists. Returns undefined when empty
+  // so the detail page hides the calendar rather than inventing one.
   const availability = (() => {
     const raw = Array.isArray(row.availability)
       ? row.availability
       : (snapArr(s, 'availability') as Array<{ date?: string; status?: string }>)
-    const bookedDates = raw
-      .filter((e) => e && typeof e.date === 'string' && e.date.trim())
-      .map((e) => e.date as string)
-    if (bookedDates.length === 0) return undefined
-    return { bookedDates, limitedDates: [], leadTimeWeeks: 0 }
+    const bookedDates: string[] = []
+    const limitedDates: string[] = []
+    for (const e of raw) {
+      if (!e || typeof e.date !== 'string' || !e.date.trim()) continue
+      if (e.status === 'limited') limitedDates.push(e.date)
+      else bookedDates.push(e.date)
+    }
+    if (bookedDates.length === 0 && limitedDates.length === 0) return undefined
+    return { bookedDates, limitedDates, leadTimeWeeks: 0 }
   })()
 
   return {

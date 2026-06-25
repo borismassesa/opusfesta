@@ -69,7 +69,9 @@ export type TeamMember = {
 // The Availability tab represents the vendor's *operating* posture (when they
 // can work) — booking entries themselves live in the Bookings module so the
 // two responsibilities don't bleed into each other.
-export type AvailabilityStatus = 'unavailable'
+// `unavailable` = fully booked / off (shown red on the public calendar);
+// `limited` = still bookable but tight (shown amber).
+export type AvailabilityStatus = 'unavailable' | 'limited'
 
 export type AvailabilityDate = {
   // Local date in YYYY-MM-DD form. Times-of-day aren't needed at this layer.

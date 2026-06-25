@@ -61,6 +61,12 @@ const servicesStatus = (d: OnboardingDraft): SectionStatus => {
   return 'partial'
 }
 
+// Availability is wholly optional: a vendor with a wide-open calendar is a
+// perfectly valid (and desirable) state, so we never nag with 'partial'. Any
+// date the vendor has blocked marks the section complete; none leaves it empty.
+const availabilityStatus = (d: OnboardingDraft): SectionStatus =>
+  d.availability.length > 0 ? 'complete' : 'empty'
+
 const PORTFOLIO_TARGET = 6
 const COVER_SLOTS = 4
 
@@ -167,6 +173,16 @@ export function getStorefrontSections(d: OnboardingDraft): StorefrontSection[] {
       required: false,
       pageTitle: 'Frequently asked questions',
       pageDescription: 'Pre-empt the questions couples always ask.',
+    },
+    {
+      id: 'availability',
+      label: 'Availability',
+      hint: 'Block dates you are already booked',
+      href: '/storefront/availability',
+      status: availabilityStatus(d),
+      required: false,
+      pageTitle: 'Availability',
+      pageDescription: 'Mark the dates you are already booked or have limited capacity.',
     },
   ]
 }

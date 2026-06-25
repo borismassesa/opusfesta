@@ -130,6 +130,74 @@ export async function saveFaqs(faqs: StorefrontFaq[]): Promise<SaveResult> {
   return { ok: true }
 }
 
+// ----- Availability -------------------------------------------------------
+
+export type StorefrontAvailabilityEntry = {
+  date: string
+  status: 'unavailable' | 'limited'
+  note?: string
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/
+
+export async function saveAvailability(
+  entries: StorefrontAvailabilityEntry[],
+): Promise<SaveResult> {
+  const guard = await ensureLiveVendor()
+  if (!guard.ok) return guard
+
+  // Keep only well-formed YYYY-MM-DD entries with a known status, de-duped by
+  // date (last write wins) so a calendar double-tap can't store two rows for
+  // one day. Sorted for a stable, reviewable column value.
+  const byDate = new Map<string, StorefrontAvailabilityEntry>()
+  for (const e of Array.isArray(entries) ? entries : []) {
+    if (!e || typeof e.date !== 'string' || !ISO_DATE.test(e.date)) continue
+    if (e.status !== 'unavailable' && e.status !== 'limited') continue
+    byDate.set(e.date, {
+      date: e.date,
+      status: e.status,
+      ...(e.note?.trim() ? { note: e.note.trim().slice(0, 120) } : {}),
+    })
+  }
+  const cleaned = [...byDate.values()].sort((a, b) => a.date.localeCompare(b.date))
+
+  const supabase = await createClerkSupabaseServerClient()
+  const { error } = await supabase
+    .from('vendors')
+    .update({ availability: cleaned.length > 0 ? cleaned : null })
+    .eq('id', guard.vendorId)
+  if (error) {
+    if (isPermissionError(error)) return permissionResult()
+    return unknownResult(error)
+  }
+  revalidatePath('/storefront/availability')
+  return { ok: true }
+}
+
+export async function loadAvailability(): Promise<
+  { ok: true; entries: StorefrontAvailabilityEntry[] } | { ok: false }
+> {
+  const guard = await ensureLiveVendor()
+  if (!guard.ok) return { ok: false }
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin
+    .from('vendors')
+    .select('availability')
+    .eq('id', guard.vendorId)
+    .maybeSingle<{ availability: StorefrontAvailabilityEntry[] | null }>()
+  if (error || !data) return { ok: false }
+  const entries = Array.isArray(data.availability)
+    ? data.availability.filter(
+        (e): e is StorefrontAvailabilityEntry =>
+          !!e &&
+          typeof e.date === 'string' &&
+          ISO_DATE.test(e.date) &&
+          (e.status === 'unavailable' || e.status === 'limited'),
+      )
+    : []
+  return { ok: true, entries }
+}
+
 // ----- Recognition (awards, response time, locally owned, languages) -----
 
 export type StorefrontRecognition = {
