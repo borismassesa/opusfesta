@@ -206,7 +206,6 @@ export async function uploadVerificationDocument(
   await maybeTransitionToAdminReview(vendorId)
 
   revalidatePath('/verify')
-  revalidatePath('/pending')
   return { ok: true }
 }
 
@@ -473,7 +472,6 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
         await uploadSignatureImage(admin, vendorId, doc.version, signaturePngBuffer)
       }
       revalidatePath('/verify')
-      revalidatePath('/pending')
       return { ok: true }
     }
     return {
@@ -493,7 +491,6 @@ export async function signVendorAgreement(formData: FormData): Promise<SignAgree
   await maybeTransitionToAdminReview(vendorId)
 
   revalidatePath('/verify')
-  revalidatePath('/pending')
   return { ok: true }
 }
 
@@ -597,7 +594,6 @@ export async function uploadNationalIdShot(
   const res = await storeVerificationShot(guard.vendorId, kind, dataUrl)
   if (!res.ok) return { ok: false, reason: 'unknown', error: res.error }
   revalidatePath('/verify')
-  revalidatePath('/pending')
   return { ok: true }
 }
 

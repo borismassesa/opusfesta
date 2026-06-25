@@ -8,6 +8,7 @@ import VerifyClient, {
   type AgreementDocView,
   type VerifyDocSlot,
 } from './VerifyClient'
+import VerifyStatusScreen from './VerifyStatusScreen'
 
 export const dynamic = 'force-dynamic'
 
@@ -28,10 +29,13 @@ type VendorBusinessRow = {
   business_name: string | null
   category: string | null
   location: {
+    houseNumber?: string | null
     street?: string | null
-    street2?: string | null
-    city?: string | null
+    ward?: string | null
+    district?: string | null
+    city?: string | null // legacy (pre-migration locality)
     region?: string | null
+    landmark?: string | null
     postalCode?: string | null
   } | null
   contact_info: {
@@ -45,7 +49,15 @@ function buildBusinessAddress(
   loc: VendorBusinessRow['location'],
 ): string {
   if (!loc) return ''
-  return [loc.street, loc.street2, loc.city, loc.region, loc.postalCode]
+  return [
+    loc.houseNumber,
+    loc.street,
+    loc.ward,
+    loc.district ?? loc.city, // district, falling back to legacy city
+    loc.region,
+    loc.landmark,
+    loc.postalCode,
+  ]
     .filter((p): p is string => Boolean(p && p.trim()))
     .join(', ')
 }
@@ -53,22 +65,21 @@ function buildBusinessAddress(
 export default async function VerifyPage() {
   const state = await getCurrentVendor()
 
-  // Funnel everyone who shouldn't see the verify hub to /pending. The portal
-  // layout would already have caught a `live` user — this guard is for the
-  // standalone /verify route which lives outside (portal).
+  // /verify is the single vendor status surface (the old /pending route was
+  // retired). Route the states that don't belong on the document hub:
+  //   - live                         → dashboard
+  //   - not yet applied / mid-apply  → back into the onboarding wizard
+  //   - suspended / admin review     → a lightweight status screen here
   if (state.kind === 'live') redirect('/dashboard')
-  if (state.kind === 'no-application') redirect('/pending')
-  if (state.kind === 'suspended') redirect('/pending')
-  if (state.kind === 'no-env') redirect('/pending')
-
-  // Only `pending-approval` vendors should be here, and only in the substates
-  // where document uploads make sense.
-  if (
-    state.status !== 'verification_pending' &&
-    state.status !== 'needs_corrections'
-  ) {
-    redirect('/pending')
+  if (state.kind === 'no-application') redirect('/onboard')
+  if (state.kind === 'no-env') redirect('/onboard')
+  if (state.kind === 'suspended') {
+    return <VerifyStatusScreen variant="suspended" />
   }
+  if (state.status === 'application_in_progress') redirect('/onboard')
+  // Remaining: `verification_pending`, `needs_corrections`, and `admin_review`.
+  // All three render the verification journey below — `admin_review` shows every
+  // step done with "Under review" active (a completed, waiting-on-us timeline).
 
   const supabase = await createClerkSupabaseServerClient()
   const clerkUser = await currentUser()

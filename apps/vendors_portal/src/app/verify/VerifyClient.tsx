@@ -18,8 +18,10 @@ import {
   PenLine,
   ShieldCheck,
   Upload,
+  Wallet,
 } from 'lucide-react'
 import Logo from '@/components/ui/Logo'
+import { LocaleToggle } from '@/components/LocaleToggle'
 import { cn } from '@/lib/utils'
 import {
   signVendorAgreement,
@@ -80,7 +82,7 @@ export type AgreementDocView = {
 }
 
 type Props = {
-  status: 'verification_pending' | 'needs_corrections'
+  status: 'verification_pending' | 'needs_corrections' | 'admin_review'
   slots: VerifyDocSlot[]
   /** National ID + liveness selfie capture progress (the required identity
    *  step). TIN + business license in `slots` are optional. */
@@ -122,6 +124,9 @@ export default function VerifyClient({
   agreementBusinessDefaults,
 }: Props) {
   const isCorrection = status === 'needs_corrections'
+  // Everything is submitted and the vendor is waiting on admin. The timeline
+  // shows every step done with "Under review" as the active step.
+  const isUnderReview = status === 'admin_review'
 
   // Required identity step: National ID front + back + a liveness selfie. This
   // is the gate — TIN certificate and business license (in `slots`) are now
@@ -139,13 +144,6 @@ export default function VerifyClient({
   const signedCount = agreementDocs.filter((d) => d.signedAt).length
   const agreementSigned =
     agreementDocs.length > 0 && signedCount === agreementDocs.length
-  // The most recent signature across the family — used for the "Signed …"
-  // relative-time label on the done state.
-  const latestSignedAt = agreementDocs
-    .map((d) => d.signedAt)
-    .filter((s): s is string => Boolean(s))
-    .sort()
-    .at(-1)
 
   const [skippedOptional, setSkippedOptional] = useState(false)
 
@@ -180,12 +178,10 @@ export default function VerifyClient({
         ? 'done'
         : 'active'
 
-  // Build the visual timeline rendered above the active form. We model 5
-  // steps total — Application (always done), TIN, License, Agreement, Under
-  // review — to mirror /pending end-to-end. The status pill copy bends to
-  // the actual artifact state: a doc that's pending review reads as
-  // "Awaiting review" (amber), a rejected doc as "Needs fix" (rose), an
-  // agreement that's signed as "Signed" (emerald), and so on.
+  // Build the visual timeline rendered above the active form. Payout appears
+  // immediately after the application because it is captured during onboarding;
+  // identity and optional documents follow, matching the actual verification
+  // flow the vendor completes here.
   type JourneyStep = {
     icon: LucideIcon
     title: string
@@ -209,6 +205,14 @@ export default function VerifyClient({
       title: 'Application',
       description:
         'Business profile, services, packages, and portfolio captured during onboarding.',
+      mode: 'done',
+      doneLabel: 'Submitted',
+    },
+    {
+      icon: Wallet,
+      title: 'Payout setup',
+      description:
+        'Payout method recorded during onboarding. The final name match happens during admin review.',
       mode: 'done',
       doneLabel: 'Submitted',
     },
@@ -241,10 +245,10 @@ export default function VerifyClient({
       description:
         optionalMode === 'done'
           ? tinDone || licenseDone
-            ? 'Optional documents added — thanks, this helps speed up review.'
+            ? 'Optional documents added. Thanks, this helps speed up review.'
             : 'Skipped for now. Your National ID alone is enough to get approved.'
           : optionalMode === 'active'
-            ? 'Not required to get approved — your National ID is enough. Adding your TIN or business license builds trust and can speed up review.'
+            ? 'Not required to get approved. Your National ID is enough. Adding your TIN or business license builds trust and can speed up review.'
             : 'Unlocks once your identity is verified.',
       doneLabel: tinDone || licenseDone ? 'Added' : 'Skipped',
       activeLabel: 'Optional',
@@ -287,11 +291,9 @@ export default function VerifyClient({
       mode: agreementMode,
       description:
         agreementMode === 'done'
-          ? latestSignedAt
-            ? `All ${agreementDocs.length} documents signed ${formatRelative(latestSignedAt)}. Separate from the Vendor Vows you accepted during onboarding.`
-            : 'Signed.'
+          ? `All ${agreementDocs.length} documents signed. Separate from the Vendor Vows you accepted during onboarding.`
           : agreementMode === 'active'
-            ? `Read and e-sign each part of the OpusFesta Mkataba wa Watoa Huduma (OF-LGL-AGR-002) — the main contract and its two schedules. Each is signed separately. This is the legally binding agreement, distinct from the Vendor Vows pledge.`
+            ? `Read and e-sign each part of the OpusFesta Mkataba wa Watoa Huduma (OF-LGL-AGR-002): the main contract and its two schedules. Each is signed separately. This is the legally binding agreement, distinct from the Vendor Vows pledge.`
             : !idComplete
               ? 'Unlocks once your identity is verified.'
               : 'Add the optional documents above, or skip, to continue.',
@@ -311,10 +313,13 @@ export default function VerifyClient({
     {
       icon: ShieldCheck,
       title: 'Under review',
-      mode: 'locked',
+      mode: isUnderReview ? 'active' : 'locked',
       tone: 'amber',
-      description:
-        'Once the steps above are complete, our team verifies your details and approves your storefront. Usually 2 to 3 business days.',
+      activeLabel: 'In progress',
+      activeTone: 'amber',
+      description: isUnderReview
+        ? "Everything's in. Our team is verifying your details, documents, payout, and portfolio, and we'll email you the moment your dashboard unlocks. Usually 2 to 3 business days."
+        : 'Once the steps above are complete, our team verifies your details and approves your storefront. Usually 2 to 3 business days.',
     },
   ]
 
@@ -328,15 +333,18 @@ export default function VerifyClient({
             so a link back to /pending led nowhere new. The vendor's progress
             persists in the DB; signing out and returning later resumes
             exactly here. */}
-        <SignOutButton redirectUrl="/sign-in">
-          <button
-            type="button"
-            className="inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 px-3 py-1.5 rounded-md hover:bg-gray-100 transition-colors"
-          >
-            <LogOut className="w-3.5 h-3.5" />
-            Sign out
-          </button>
-        </SignOutButton>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <LocaleToggle />
+          <SignOutButton redirectUrl="/sign-in">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-rose-600 hover:text-rose-700 px-3 py-1.5 rounded-md hover:bg-rose-50 transition-colors"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign out
+            </button>
+          </SignOutButton>
+        </div>
       </header>
 
       <main className="flex-1 px-4 sm:px-6 py-10 sm:py-12">
@@ -359,29 +367,36 @@ export default function VerifyClient({
                 isCorrection ? 'mt-5' : '',
               )}
             >
-              {isCorrection
-                ? 'Re-upload the documents we flagged'
-                : 'Verify your business'}
+              {isUnderReview
+                ? "We're reviewing your application"
+                : isCorrection
+                  ? 'Re-upload the documents we flagged'
+                  : 'Verify your business'}
             </h1>
             <p className="mt-4 text-base text-gray-600 leading-relaxed max-w-xl mx-auto">
-              {isCorrection
-                ? 'Pick up the flagged item below and re-submit. Re-reviews are typically completed within 1 business day.'
-                : "Three steps to admin review. Most vendors hear back within 2 to 3 business days once they've finished."}
+              {isUnderReview
+                ? "Thanks for submitting everything, you're all done. Here's the full picture of your verification while our team reviews it."
+                : isCorrection
+                  ? 'Pick up the flagged item below and re-submit. Re-reviews are typically completed within 1 business day.'
+                  : "Three steps to admin review. Most vendors hear back within 2 to 3 business days once they've finished."}
             </p>
             {/* Compact affordance for editing the application details. Replaces
                 the verbose "Already on file" panel that used to sit at the
                 bottom — the timeline already shows the application as
                 Submitted, so the only action that needed surfacing was the
-                edit link itself. */}
-            <p className="mt-2 text-xs text-gray-500">
-              Need to update your business details?{' '}
-              <Link
-                href="/onboard/review"
-                className="font-semibold text-gray-700 hover:text-gray-900 underline underline-offset-2"
-              >
-                Edit application
-              </Link>
-            </p>
+                edit link itself. Hidden once under review — the application is
+                locked while admin verifies it. */}
+            {!isUnderReview && (
+              <p className="mt-2 text-xs text-gray-500">
+                Need to update your business details?{' '}
+                <Link
+                  href="/onboard/review"
+                  className="font-semibold text-gray-700 hover:text-gray-900 underline underline-offset-2"
+                >
+                  Edit application
+                </Link>
+              </p>
+            )}
           </div>
 
           {/* Verification journey — same compact timeline visual as the
@@ -767,7 +782,7 @@ function AgreementDocsList({
   return (
     <div className="mt-4 space-y-3">
       <p className="text-[11px] text-gray-500 leading-relaxed">
-        The agreement comes in {docs.length} parts — the main contract and its
+        The agreement comes in {docs.length} parts: the main contract and its
         two schedules. Read and e-sign each one separately. They&rsquo;re all
         part of the same binding contract (OF-LGL-AGR-002).
       </p>

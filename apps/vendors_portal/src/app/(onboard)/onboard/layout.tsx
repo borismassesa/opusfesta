@@ -12,7 +12,7 @@ import { getCurrentVendor } from '@/lib/vendor'
 //   - no-application → still applying, let them through
 //   - pending-approval + application_in_progress → mid-wizard, let them through
 //   - pending-approval (submitted: verification_pending / admin_review /
-//     needs_corrections) or suspended → already applied, send to /pending
+//     needs_corrections) or suspended → already applied, send to /verify
 //   - live → already approved, send to the dashboard
 //   - no-env → dev fallback with no Supabase, keep the wizard previewable
 export default async function OnboardRouteLayout({
@@ -23,12 +23,14 @@ export default async function OnboardRouteLayout({
   const state = await getCurrentVendor()
 
   if (state.kind === 'live') redirect('/dashboard')
-  if (state.kind === 'suspended') redirect('/pending')
+  if (state.kind === 'suspended') redirect('/verify')
   if (
     state.kind === 'pending-approval' &&
     state.status !== 'application_in_progress'
   ) {
-    redirect('/pending')
+    // Already submitted (verification_pending / admin_review / needs_corrections)
+    // → the /verify status + document hub, not back into the wizard.
+    redirect('/verify')
   }
 
   return <>{children}</>

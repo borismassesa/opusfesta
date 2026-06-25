@@ -1,4 +1,4 @@
-import { auth } from '@clerk/nextjs/server'
+import { auth, currentUser } from '@clerk/nextjs/server'
 import { createSupabaseAdminClient } from './supabase'
 
 export type CurrentVendor = {
@@ -22,7 +22,7 @@ export type CurrentVendor = {
 
 // Mirrors the `vendor_onboarding_status` enum after migration
 // 20260501000002_vendor_verification_b_lite.sql. `active` is the only state
-// that grants dashboard access; everything else funnels to /pending.
+// that grants dashboard access; everything else funnels to /verify.
 export type VendorOnboardingStatus =
   | 'application_in_progress'
   | 'verification_pending'
@@ -64,12 +64,214 @@ type MembershipRow = {
   vendors: VendorRow | VendorRow[] | null
 }
 
+type UserLookupRow = {
+  id: string
+  clerk_id: string | null
+  email: string | null
+}
+
 const DEFAULT_STATS: CurrentVendor['stats'] = {
   viewCount: 0,
   inquiryCount: 0,
   saveCount: 0,
   averageRating: 0,
   reviewCount: 0,
+}
+
+function stateFromMembership(row: MembershipRow): CurrentVendorState | null {
+  const v = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors
+  if (!v) {
+    console.warn(
+      `[vendor] active membership has null vendor row — possible orphan (vendor_id=${row.vendor_id})`,
+    )
+    return null
+  }
+
+  if (v.onboarding_status === 'suspended') {
+    return { kind: 'suspended', vendorName: v.business_name, vendorId: v.id }
+  }
+
+  if (v.onboarding_status !== 'active') {
+    const status = normalizeStatus(v.onboarding_status)
+    return {
+      kind: 'pending-approval',
+      status,
+      vendorName: v.business_name,
+      vendorId: v.id,
+    }
+  }
+
+  return {
+    kind: 'live',
+    vendor: {
+      id: v.id,
+      slug: v.slug,
+      businessName: v.business_name,
+      category: v.category,
+      bio: v.bio,
+      logo: v.logo,
+      coverImage: v.cover_image,
+      onboardingStatus: v.onboarding_status,
+      role: row.role,
+      stats: v.stats ?? DEFAULT_STATS,
+    },
+  }
+}
+
+async function loadActiveMembership(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  supabaseUserId: string,
+): Promise<MembershipRow | null> {
+  const { data, error } = await admin
+    .from('vendor_memberships')
+    .select(
+      `
+      vendor_id,
+      role,
+      vendors (
+        id, slug, business_name, category, bio, logo, cover_image,
+        onboarding_status, stats
+      )
+    `,
+    )
+    .eq('user_id', supabaseUserId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: true })
+    .limit(5)
+    .returns<MembershipRow[]>()
+
+  if (error) {
+    if (error.code === 'PGRST205') {
+      console.warn(
+        `[vendor] ${error.code} — table 'public.vendor_memberships' not in schema cache. Run pending migrations on your Supabase project, or NOTIFY pgrst, 'reload schema'. Falling back to no-env state.`,
+      )
+      throw new Error('vendor_memberships_schema_cache')
+    }
+    throw new Error(
+      `[vendor] vendor_memberships query failed: ${error.code} ${error.message}`,
+    )
+  }
+
+  if (data && data.length > 1) {
+    console.warn(
+      `[vendor] user has ${data.length} active vendor memberships — silently using the oldest. Vendor switcher ships when staff support lands.`,
+    )
+  }
+
+  return data?.[0] ?? null
+}
+
+async function verifiedClerkEmail(): Promise<{
+  email: string
+  name: string | null
+} | null> {
+  const user = await currentUser()
+  const emailAddress = user?.primaryEmailAddress ?? user?.emailAddresses[0]
+  const email = emailAddress?.emailAddress?.trim().toLowerCase()
+  if (!email) return null
+
+  // Clerk normally only exposes signed-in sessions for verified emails, but
+  // keep the fallback conservative because it can claim a legacy vendor row.
+  const verificationStatus = emailAddress?.verification?.status
+  if (verificationStatus && verificationStatus !== 'verified') return null
+
+  const name =
+    [user?.firstName, user?.lastName]
+      .filter((p): p is string => Boolean(p && p.trim()))
+      .join(' ')
+      .trim() || null
+
+  return { email, name }
+}
+
+async function resolveVendorByVerifiedEmail(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+  clerkUserId: string,
+  currentSupabaseUserId: string | null,
+): Promise<CurrentVendorState | null> {
+  const clerkEmail = await verifiedClerkEmail()
+  if (!clerkEmail) return null
+
+  const usersByEmail = await admin
+    .from('users')
+    .select('id, clerk_id, email')
+    .ilike('email', clerkEmail.email)
+    .limit(10)
+    .returns<UserLookupRow[]>()
+
+  if (usersByEmail.error) {
+    console.warn(
+      `[vendor] email fallback users lookup failed: ${usersByEmail.error.code} ${usersByEmail.error.message}`,
+    )
+    return null
+  }
+
+  const matches: Array<{ user: UserLookupRow; membership: MembershipRow }> = []
+  for (const user of usersByEmail.data ?? []) {
+    if (user.email?.trim().toLowerCase() !== clerkEmail.email) continue
+
+    const membership = await loadActiveMembership(admin, user.id)
+    if (membership) matches.push({ user, membership })
+  }
+
+  if (matches.length !== 1) {
+    if (matches.length > 1) {
+      console.warn(
+        `[vendor] email fallback found ${matches.length} vendor memberships for ${clerkEmail.email}; refusing to guess.`,
+      )
+    }
+    return null
+  }
+
+  const { user, membership } = matches[0]
+  const vendorId = membership.vendor_id
+
+  if (!currentSupabaseUserId || currentSupabaseUserId === user.id) {
+    if (user.clerk_id !== clerkUserId) {
+      const repair = await admin
+        .from('users')
+        .update({ clerk_id: clerkUserId, name: clerkEmail.name })
+        .eq('id', user.id)
+
+      if (repair.error) {
+        console.warn(
+          `[vendor] email fallback clerk_id repair failed for users.id=${user.id}: ${repair.error.code} ${repair.error.message}`,
+        )
+      }
+    }
+  } else {
+    const [vendorRepair, membershipRepair] = await Promise.all([
+      admin
+        .from('vendors')
+        .update({ user_id: currentSupabaseUserId })
+        .eq('id', vendorId),
+      admin.from('vendor_memberships').upsert(
+        {
+          vendor_id: vendorId,
+          user_id: currentSupabaseUserId,
+          role: membership.role,
+          status: 'active' as const,
+        },
+        { onConflict: 'vendor_id,user_id' },
+      ),
+    ])
+
+    if (vendorRepair.error) {
+      console.warn(
+        `[vendor] email fallback vendor owner repair failed for vendor.id=${vendorId}: ${vendorRepair.error.code} ${vendorRepair.error.message}`,
+      )
+    }
+    if (membershipRepair.error) {
+      console.warn(
+        `[vendor] email fallback membership repair failed for vendor.id=${vendorId}: ${membershipRepair.error.code} ${membershipRepair.error.message}`,
+      )
+    }
+  }
+
+  console.warn(
+    `[vendor] resolved vendor by verified email fallback for clerk_id=${clerkUserId} users.id=${user.id} vendor.id=${vendorId}`,
+  )
+  return stateFromMembership(membership)
 }
 
 // Map legacy onboarding_status values to their B-lite equivalents. The
@@ -121,7 +323,7 @@ function normalizeStatus(
  *
  * Returns a discriminated state:
  *   - `live`: vendor approved and active — render the dashboard
- *   - `pending-approval`: vendor exists but not yet active — /pending shows
+ *   - `pending-approval`: vendor exists but not yet active — /verify shows
  *     which verification gate they're at (application / docs / agreement /
  *     admin review / corrections needed)
  *   - `suspended`: admin disabled the vendor — locked-out screen
@@ -173,6 +375,9 @@ export async function getCurrentVendor(): Promise<CurrentVendorState> {
   }
 
   if (!userLookup.data) {
+    const fallbackState = await resolveVendorByVerifiedEmail(admin, userId, null)
+    if (fallbackState) return fallbackState
+
     console.warn(
       `[vendor] no public.users row for clerk_id=${userId} — submit() never ran for this Clerk user, or the upsert failed. Returning no-application.`,
     )
@@ -180,99 +385,29 @@ export async function getCurrentVendor(): Promise<CurrentVendorState> {
   }
   const supabaseUserId = userLookup.data.id
 
-  // 2) Find the user's active vendor membership(s). We query with admin so
-  //    RLS doesn't drop rows when no Clerk JWT template is configured; the
-  //    explicit user_id filter scopes the result to the authenticated caller.
-  const { data, error } = await admin
-    .from('vendor_memberships')
-    .select(
-      `
-      vendor_id,
-      role,
-      vendors (
-        id, slug, business_name, category, bio, logo, cover_image,
-        onboarding_status, stats
-      )
-    `,
-    )
-    .eq('user_id', supabaseUserId)
-    .eq('status', 'active')
-    .order('created_at', { ascending: true })
-    .limit(5)
-    .returns<MembershipRow[]>()
-
-  if (error) {
-    if (error.code === 'PGRST205') {
-      console.warn(
-        `[vendor] ${error.code} — table 'public.vendor_memberships' not in schema cache. Run pending migrations on your Supabase project, or NOTIFY pgrst, 'reload schema'. Falling back to no-env state.`,
-      )
+  let row: MembershipRow | null
+  try {
+    row = await loadActiveMembership(admin, supabaseUserId)
+  } catch (err) {
+    if (err instanceof Error && err.message === 'vendor_memberships_schema_cache') {
       return { kind: 'no-env' }
     }
-    throw new Error(
-      `[vendor] vendor_memberships query failed: ${error.code} ${error.message}`,
-    )
+    throw err
   }
 
-  if (data && data.length > 1) {
-    console.warn(
-      `[vendor] user has ${data.length} active vendor memberships — silently using the oldest. Vendor switcher ships when staff support lands.`,
-    )
-  }
-
-  const row = data?.[0]
   if (!row) {
+    const fallbackState = await resolveVendorByVerifiedEmail(
+      admin,
+      userId,
+      supabaseUserId,
+    )
+    if (fallbackState) return fallbackState
+
     console.warn(
       `[vendor] no active vendor_memberships for users.id=${supabaseUserId} (clerk_id=${userId}). The vendor row may not have been inserted, or the ensure_vendor_owner_membership trigger didn't fire. Returning no-application.`,
     )
     return { kind: 'no-application' }
   }
 
-  const v = Array.isArray(row.vendors) ? row.vendors[0] : row.vendors
-  if (!v) {
-    console.warn(
-      `[vendor] active membership has null vendor row — possible orphan (vendor_id=${row.vendor_id})`,
-    )
-    return { kind: 'no-application' }
-  }
-
-  console.log(
-    `[vendor] resolved: clerk_id=${userId} users.id=${supabaseUserId} vendor.id=${v.id} status=${v.onboarding_status}`,
-  )
-
-  // Gate dashboard access behind admin approval. Only `active` grants
-  // dashboard access; everything else funnels through /pending so the vendor
-  // sees exactly which verification gate they're at.
-  if (v.onboarding_status === 'suspended') {
-    return { kind: 'suspended', vendorName: v.business_name, vendorId: v.id }
-  }
-
-  if (v.onboarding_status !== 'active') {
-    // Migration 20260501000003 maps legacy values (invited / in_progress /
-    // pending_review) to the new ones, but if any unmigrated row leaks through
-    // — e.g. someone re-applies an old script — we coerce to the closest new
-    // value rather than crash the /pending page.
-    const status = normalizeStatus(v.onboarding_status)
-    return {
-      kind: 'pending-approval',
-      status,
-      vendorName: v.business_name,
-      vendorId: v.id,
-    }
-  }
-
-  return {
-    kind: 'live',
-    vendor: {
-      id: v.id,
-      slug: v.slug,
-      businessName: v.business_name,
-      category: v.category,
-      bio: v.bio,
-      logo: v.logo,
-      coverImage: v.cover_image,
-      onboardingStatus: v.onboarding_status,
-      role: row.role,
-      stats: v.stats ?? DEFAULT_STATS,
-    },
-  }
+  return stateFromMembership(row) ?? { kind: 'no-application' }
 }
