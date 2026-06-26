@@ -12,6 +12,11 @@ import type { StatusResponse } from '@/lib/payments/types'
 import { Card, StatCard, EmptyState } from '@/components/dashboard/primitives'
 import { Button } from '@/components/dashboard/controls'
 import { cn } from '@/lib/utils'
+import type { DashboardOrdersStrings } from '@/lib/cms/ui-strings-fallback'
+
+/** Substitute `{var}` placeholders in a CMS template with dynamic values. */
+const fmt = (t: string, v: Record<string, string | number>) =>
+  t.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m))
 
 function formatTzs(n: number): string {
   return `TZS ${n.toLocaleString('en-US')}`
@@ -47,13 +52,18 @@ function tierPillClass(item: StoredOrderItem): string {
  * `guests`/`tier`/`addOns` are kept current. The summary split is only a
  * fallback for legacy orders stored before the structured fields existed.
  */
-function ItemPills({ item }: { item: StoredOrderItem }) {
+function ItemPills({ item, strings }: { item: StoredOrderItem; strings: DashboardOrdersStrings }) {
   const hasStructured = Boolean(item.tier) || item.guests != null || (item.addOns?.length ?? 0) > 0
   const pills = hasStructured
     ? [
         ...(item.tier ? [{ label: item.tier, className: tierPillClass(item) }] : []),
         ...(item.guests != null
-          ? [{ label: `${item.guests.toLocaleString('en-US')} guests`, className: GREEN_PILL }]
+          ? [
+              {
+                label: `${item.guests.toLocaleString('en-US')} ${strings.unit_guests}`,
+                className: GREEN_PILL,
+              },
+            ]
           : []),
         ...(item.addOns ?? []).map((a) => ({ label: a, className: GREEN_PILL })),
       ]
@@ -118,7 +128,7 @@ function OrderTracker({ activeIndex }: { activeIndex: number }) {
   )
 }
 
-function OrderCard({ order }: { order: StoredOrder }) {
+function OrderCard({ order, strings }: { order: StoredOrder; strings: DashboardOrdersStrings }) {
   const idx = currentStageIndex(order)
   const stage = ORDER_STAGES[idx]
   const tone = stageTone(stage.id)
@@ -162,7 +172,7 @@ function OrderCard({ order }: { order: StoredOrder }) {
             </div>
             <div className="min-w-0 grow">
               <p className="truncate text-sm font-medium text-[#1A1A1A]">{item.name}</p>
-              <ItemPills item={item} />
+              <ItemPills item={item} strings={strings} />
             </div>
             <span className="shrink-0 whitespace-nowrap text-sm font-semibold text-[#1A1A1A] tabular-nums">
               {formatTzs(item.total)}
@@ -177,10 +187,12 @@ function OrderCard({ order }: { order: StoredOrder }) {
         <p className="mt-3 flex items-center gap-1.5 text-xs text-[#1A1A1A]/55">
           <Clock className="size-3.5" />
           {stage.id === 'delivered'
-            ? 'Delivered — your design and OpusPass tickets are ready.'
+            ? strings.note_delivered
             : stage.id === 'payment_review'
-              ? `Awaiting payment confirmation from the OpusFesta team${order.paymentRef ? ` — ref ${order.paymentRef}` : ''}.`
-              : 'Being personalised — ready within 24 hours of payment.'}
+              ? order.paymentRef
+                ? fmt(strings.note_payment_review_ref, { ref: order.paymentRef })
+                : strings.note_payment_review
+              : strings.note_personalising}
         </p>
       </div>
 
@@ -188,7 +200,7 @@ function OrderCard({ order }: { order: StoredOrder }) {
       <div className="flex items-center justify-between gap-3 border-t border-black/[0.06] bg-black/[0.015] px-5 py-3">
         <div className="flex flex-wrap items-center gap-1">
           <span className={cn(META_PILL, GREEN_PILL)}>
-            {itemCount} {itemCount === 1 ? 'design' : 'designs'}
+            {itemCount} {itemCount === 1 ? strings.unit_design : strings.unit_designs}
           </span>
           {(order.paymentLabel?.split(' · ') ?? []).filter(Boolean).map((part) => (
             <span key={part} className={cn(META_PILL, GREEN_PILL)}>
@@ -197,14 +209,14 @@ function OrderCard({ order }: { order: StoredOrder }) {
           ))}
         </div>
         <Button variant="secondary" onClick={() => downloadInvoice(order)}>
-          <Download className="size-4" /> Invoice
+          <Download className="size-4" /> {strings.action_invoice}
         </Button>
       </div>
     </Card>
   )
 }
 
-export default function OrdersManager() {
+export default function OrdersManager({ strings }: { strings: DashboardOrdersStrings }) {
   const [orders, setOrders] = useState<StoredOrder[]>([])
   const [mounted, setMounted] = useState(false)
 
@@ -253,21 +265,21 @@ export default function OrdersManager() {
   return (
     <div className="space-y-8">
       <header className="border-b border-black/[0.06] pb-6">
-        <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">Orders</h1>
-        <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">
-          Track your invitation orders and download invoices.
-        </p>
+        <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
+          {strings.header_title}
+        </h1>
+        <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">{strings.header_subtitle}</p>
       </header>
 
       {!mounted ? null : orders.length === 0 ? (
         <EmptyState
           icon={<Receipt className="h-7 w-7" />}
-          title="No orders yet"
-          description="When you purchase an invitation design, your order and tracking will appear here."
+          title={strings.empty_title}
+          description={strings.empty_description}
           action={
             <Link href="/invitations/catalog">
               <Button>
-                <ArrowRight className="h-4 w-4" /> Browse designs
+                <ArrowRight className="h-4 w-4" /> {strings.empty_action}
               </Button>
             </Link>
           }
@@ -275,14 +287,14 @@ export default function OrdersManager() {
       ) : (
         <>
           <div className="grid grid-cols-3 gap-4">
-            <StatCard label="Total orders" value={stats.total} icon={<Package className="h-5 w-5" />} accent />
-            <StatCard label="In progress" value={stats.inProgress} icon={<Clock className="h-5 w-5" />} />
-            <StatCard label="Delivered" value={stats.delivered} icon={<Check className="h-5 w-5" />} />
+            <StatCard label={strings.stat_total} value={stats.total} icon={<Package className="h-5 w-5" />} accent />
+            <StatCard label={strings.stat_in_progress} value={stats.inProgress} icon={<Clock className="h-5 w-5" />} />
+            <StatCard label={strings.stat_delivered} value={stats.delivered} icon={<Check className="h-5 w-5" />} />
           </div>
 
           <div className="space-y-4">
             {orders.map((order) => (
-              <OrderCard key={order.ref} order={order} />
+              <OrderCard key={order.ref} order={order} strings={strings} />
             ))}
           </div>
         </>

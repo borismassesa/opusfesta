@@ -29,6 +29,9 @@ function validate(profile: DbProfile): string | null {
   if (bioTrimmed.length > 0 && bioTrimmed.length < MIN_BIO) {
     return `Bio is too short (min ${MIN_BIO} characters).`
   }
+  if (profile.description.trim().length > 200) {
+    return 'Short description is too long (max 200 characters).'
+  }
   if (profile.yearsInBusiness.trim()) {
     const n = Number.parseInt(profile.yearsInBusiness, 10)
     if (!Number.isFinite(n) || n < 0 || n > 199) {
@@ -87,7 +90,7 @@ export async function saveProfile(input: DbProfile): Promise<SaveProfileResult> 
   const supabase = await createClerkSupabaseServerClient()
   const current = await supabase
     .from('vendors')
-    .select('business_name, years_in_business, bio, location, contact_info, social_links')
+    .select('business_name, years_in_business, bio, description, location, contact_info, social_links')
     .eq('id', state.vendor.id)
     .single<VendorRowFromDb>()
 

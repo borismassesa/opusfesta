@@ -26,6 +26,10 @@ export type UiArea =
   | 'forms-rsvp'
   | 'forms-pledge'
   | 'dashboard-chrome'
+  | 'dashboard-orders'
+  | 'dashboard-events'
+  | 'dashboard-seating'
+  | 'dashboard-send'
 
 // One CMS page row per area; section_key is always 'copy'.
 //
@@ -51,6 +55,10 @@ export const UI_STRINGS_PAGE_KEY: Record<UiArea, string> = {
   'forms-rsvp': 'opus-pass-ui-forms-rsvp',
   'forms-pledge': 'opus-pass-ui-forms-pledge',
   'dashboard-chrome': 'opus-pass-ui-dashboard-chrome',
+  'dashboard-orders': 'opus-pass-ui-dashboard-orders',
+  'dashboard-events': 'opus-pass-ui-dashboard-events',
+  'dashboard-seating': 'opus-pass-ui-dashboard-seating',
+  'dashboard-send': 'opus-pass-ui-dashboard-send',
 }
 
 // The public navbar reads ONE merged 'navbar' namespace, but its keys are now
@@ -729,6 +737,271 @@ export interface DashboardChromeStrings {
   account_sign_out: string
 }
 
+export interface DashboardOrdersStrings {
+  // Header
+  header_title: string
+  header_subtitle: string
+  // Empty state
+  empty_title: string
+  empty_description: string
+  empty_action: string
+  // Stat cards
+  stat_total: string
+  stat_in_progress: string
+  stat_delivered: string
+  // Order tracker notes (note_payment_review_ref uses {ref})
+  note_delivered: string
+  note_payment_review_ref: string
+  note_payment_review: string
+  note_personalising: string
+  // Unit / plural labels
+  unit_guests: string
+  unit_design: string
+  unit_designs: string
+  // Actions
+  action_invoice: string
+}
+
+export interface DashboardEventsStrings {
+  // Page header
+  page_title: string
+  page_description: string
+  // View tabs
+  tabs_aria: string
+  tab_event_list: string
+  tab_create_event: string
+  // Empty state (no events)
+  empty_title: string
+  empty_body: string
+  empty_cta: string
+  // List item
+  untitled_event: string
+  badge_public: string
+  badge_hidden: string
+  aria_edit_event: string
+  aria_delete_event: string
+  // Editor heading
+  back_all_events: string
+  heading_new_event: string
+  editor_subtitle: string
+  // Form fields + placeholders
+  field_event_type: string
+  placeholder_custom_type: string
+  field_event_name: string
+  placeholder_event_name: string
+  hint_max_100: string
+  field_start_date: string
+  field_start_time: string
+  field_end_date: string
+  field_end_time: string
+  // Location section
+  section_location: string
+  field_venue_name: string
+  reset_address: string
+  placeholder_venue_name: string
+  field_street_address: string
+  field_city: string
+  placeholder_city: string
+  // Website settings section
+  section_website_settings: string
+  toggle_public: string
+  toggle_allow_rsvp: string
+  // Attire + note
+  field_attire: string
+  placeholder_attire: string
+  hint_max_400: string
+  field_note: string
+  placeholder_note: string
+  // Meal preferences section
+  section_meal_preferences: string
+  toggle_collect_meal: string
+  aria_remove_meal: string
+  placeholder_meal_option: string
+  add_meal_option: string
+  // Footer buttons
+  delete_event: string
+  btn_saving: string
+  btn_save_changes: string
+  btn_add_event: string
+  // Preview card
+  preview_label: string
+  preview_visible: string
+  preview_name_placeholder: string
+  preview_add_date: string
+  preview_attire_label: string
+  preview_note_label: string
+  preview_meal_label: string
+  // Promo (sharing) card
+  promo_label: string
+  promo_body: string
+  promo_cta: string
+  // Delete confirmation dialog
+  delete_dialog_title: string
+  delete_dialog_description: string
+  // Toasts + unsaved-changes guard
+  unsaved_confirm: string
+  toast_name_required: string
+  toast_updated: string
+  toast_added: string
+  toast_error_generic: string
+  toast_deleted: string
+  toast_delete_error: string
+}
+
+export interface DashboardSeatingStrings {
+  // Page header
+  header_title: string
+  header_description: string
+  // Empty state — no event yet
+  no_event_title: string
+  no_event_description: string
+  no_event_cta: string
+  // Empty state — selected event missing
+  event_not_found_title: string
+  event_not_found_description: string
+  // Toolbar
+  toolbar_event_label: string
+  toolbar_export: string
+  toolbar_share: string
+  // Stat tiles
+  stat_seated: string
+  stat_to_seat: string
+  stat_tables: string
+  stat_seats_used: string
+  // Empty state — no attending guests
+  empty_no_guests_title: string
+  empty_no_guests_description: string
+  // Guest pool ("to be seated")
+  pool_title: string
+  pool_description: string
+  pool_search_placeholder: string
+  pool_all_seated: string
+  pool_no_matches: string
+  // Table cards
+  table_edit_aria: string // {table}
+  table_empty_line1: string
+  table_empty_line2: string
+  new_table: string
+  // Guest chip + move menu
+  chip_remove_aria: string // {name}
+  menu_move_to: string
+  menu_add_table_first: string
+  menu_back_to_pool: string
+  // Delete-table confirmation
+  delete_confirm_title: string
+  delete_confirm_description: string
+  delete_confirm_label: string
+  // Edit-table dialog
+  edit_title: string
+  edit_remove: string
+  edit_cancel: string
+  edit_saving: string
+  edit_save: string
+  edit_name_label: string
+  edit_name_placeholder: string
+  edit_capacity_label: string
+  edit_top_table_label: string
+  edit_top_table_hint: string
+  // Shared / exported plan
+  plan_doc_title: string // {event}
+  plan_doc_not_seated: string // {count}
+  plan_doc_subtitle: string // {seated} {tables}
+  // Toasts
+  toast_move_failed: string
+  toast_add_table_failed: string
+  toast_remove_table_failed: string
+  toast_save_table_failed: string
+  toast_copied: string
+  toast_copy_failed: string
+  toast_popups_blocked: string
+}
+
+export interface DashboardSendStrings {
+  // Page header
+  heading: string
+  subheading: string
+  // Card context
+  manage_events: string
+  card_fallback_label: string
+  card_purchased: string
+  card_purchased_tier: string // {tier}
+  fact_package: string
+  fact_design: string
+  fact_invites_paid: string
+  fact_to_share: string // {n}
+  addons_label: string
+  // Send funnel + quota
+  funnel_invited: string
+  funnel_delivered: string
+  funnel_viewed: string
+  funnel_rsvpd: string
+  quota_label: string
+  quota_used_suffix: string // {m} (rendered after a bold used-count)
+  quota_remaining: string // {n}
+  quota_topup: string
+  // Public invite link (Broadcast) mode
+  broadcast_tag: string
+  broadcast_title: string
+  broadcast_desc: string
+  broadcast_best_for: string
+  best_for: string
+  sharing_on: string
+  sharing_off: string
+  sharing_toggle_aria: string
+  link_off_placeholder: string
+  copy: string
+  copy_done: string
+  chip_whatsapp: string
+  chip_sms: string
+  chip_copy_link: string
+  chip_open: string
+  // Personal invites (Targeted) mode
+  targeted_tag: string
+  targeted_title: string
+  targeted_desc: string
+  targeted_best_for: string
+  send_via_whatsapp: string
+  remind_awaiting: string // {n}
+  dryrun_pill: string
+  dryrun_note: string
+  // Guest table
+  guest_list: string
+  guest_count: string // {n}
+  search_placeholder: string
+  search_aria: string
+  filter_aria: string
+  filter_all: string
+  filter_notsent: string
+  filter_awaiting: string
+  send_to_selected: string
+  empty_search: string
+  empty_notsent: string
+  empty_awaiting: string
+  empty_none: string
+  th_guest: string
+  th_contact: string
+  th_channel: string
+  th_status: string
+  th_send: string
+  channel_whatsapp: string
+  channel_sms: string
+  row_whatsapp: string
+  row_sms: string
+  row_copy: string
+  // Toasts + bulk-send summary verbs
+  toast_sharing_error: string
+  toast_link_copied: string
+  toast_no_package: string
+  send_verb_dryrun: string
+  send_verb_reminded: string
+  send_verb_sent: string
+  send_over_quota: string // {n}
+  send_no_phone: string // {n}
+  toast_no_awaiting: string
+  toast_personal_copied: string
+  toast_reminder_ready: string // {name}
+}
+
 export type UiStringsByArea = {
   navbar: NavbarStrings
   footer: FooterStrings
@@ -745,6 +1018,10 @@ export type UiStringsByArea = {
   'forms-rsvp': FormsRsvpStrings
   'forms-pledge': FormsPledgeStrings
   'dashboard-chrome': DashboardChromeStrings
+  'dashboard-orders': DashboardOrdersStrings
+  'dashboard-events': DashboardEventsStrings
+  'dashboard-seating': DashboardSeatingStrings
+  'dashboard-send': DashboardSendStrings
 }
 
 export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
@@ -1318,5 +1595,239 @@ export const UI_STRINGS_FALLBACKS: UiStringsByArea = {
     account_marketplace: 'Vendors & planning',
     account_marketplace_sub: 'on OpusFesta',
     account_sign_out: 'Sign out',
+  },
+  'dashboard-orders': {
+    header_title: 'Orders',
+    header_subtitle: 'Track your invitation orders and download invoices.',
+    empty_title: 'No orders yet',
+    empty_description: 'When you purchase an invitation design, your order and tracking will appear here.',
+    empty_action: 'Browse designs',
+    stat_total: 'Total orders',
+    stat_in_progress: 'In progress',
+    stat_delivered: 'Delivered',
+    note_delivered: 'Delivered. Your design and OpusPass tickets are ready.',
+    note_payment_review_ref: 'Awaiting payment confirmation from the OpusFesta team. Ref {ref}.',
+    note_payment_review: 'Awaiting payment confirmation from the OpusFesta team.',
+    note_personalising: 'Being personalised. Ready within 24 hours of payment.',
+    unit_guests: 'guests',
+    unit_design: 'design',
+    unit_designs: 'designs',
+    action_invoice: 'Invoice',
+  },
+  'dashboard-events': {
+    page_title: 'Events',
+    page_description:
+      'Set up every moment of your ceremony, reception and everything in between. Guests will see the right details and RSVP to each event separately.',
+    tabs_aria: 'Event views',
+    tab_event_list: 'Event list',
+    tab_create_event: 'Create event',
+    empty_title: 'No events yet',
+    empty_body:
+      'Add your ceremony, reception, send-off and everything in between. Each one gets its own RSVP link.',
+    empty_cta: 'Create your first event',
+    untitled_event: 'Untitled event',
+    badge_public: 'Public',
+    badge_hidden: 'Hidden',
+    aria_edit_event: 'Edit event',
+    aria_delete_event: 'Delete event',
+    back_all_events: 'All events',
+    heading_new_event: 'New event',
+    editor_subtitle: "Edit the details below, and see how they'll look on your wedding website.",
+    field_event_type: 'Event type',
+    placeholder_custom_type: 'Name this event type (e.g. Welcome Dinner)',
+    field_event_name: 'Event name',
+    placeholder_event_name: 'Our ceremony',
+    hint_max_100: 'Maximum 100 characters',
+    field_start_date: 'Start date',
+    field_start_time: 'Start time',
+    field_end_date: 'End date',
+    field_end_time: 'End time',
+    section_location: 'Event location',
+    field_venue_name: 'Venue name',
+    reset_address: 'Reset address →',
+    placeholder_venue_name: 'Brooklyn Winery',
+    field_street_address: 'Street address',
+    field_city: 'City',
+    placeholder_city: 'e.g. Dar es Salaam',
+    section_website_settings: 'Event settings on website',
+    toggle_public: 'Make event public to all guests',
+    toggle_allow_rsvp: 'Let guests RSVP on website',
+    field_attire: 'Attire suggestions',
+    placeholder_attire:
+      'This event is black-tie optional. The grass can be soft, so maybe rethink stilettos.',
+    hint_max_400: 'Maximum 400 characters',
+    field_note: 'Note to guests',
+    placeholder_note:
+      "There will be a few light bites in addition to cocktails. Can't wait to see you!",
+    section_meal_preferences: 'Ask for meal preferences',
+    toggle_collect_meal: 'Collect meal choices for this event',
+    aria_remove_meal: 'Remove {option}',
+    placeholder_meal_option: 'Add a meal option (e.g. Vegetarian)',
+    add_meal_option: 'Add meal option',
+    delete_event: 'Delete event',
+    btn_saving: 'Saving…',
+    btn_save_changes: 'Save changes',
+    btn_add_event: 'Add event',
+    preview_label: 'Preview',
+    preview_visible: 'Visible to guests',
+    preview_name_placeholder: 'Your event name',
+    preview_add_date: 'Add a start date and time',
+    preview_attire_label: 'Attire',
+    preview_note_label: 'Note to guests',
+    preview_meal_label: 'Meal choices',
+    promo_label: 'Sharing',
+    promo_body:
+      'Each event has its own RSVP link. Send it on WhatsApp, SMS or email and guests reply per event. You can see every response in the guest list.',
+    promo_cta: 'Open guest list',
+    delete_dialog_title: 'Delete "{name}"?',
+    delete_dialog_description:
+      "This also removes the event from every guest's invitation. It can't be undone.",
+    unsaved_confirm: 'You have unsaved changes. Discard them?',
+    toast_name_required: 'Give the event a name',
+    toast_updated: 'Event updated',
+    toast_added: 'Event added',
+    toast_error_generic: 'Something went wrong',
+    toast_deleted: 'Event deleted',
+    toast_delete_error: 'Could not delete',
+  },
+  'dashboard-seating': {
+    header_title: 'Seat collection',
+    header_description:
+      'Build a seating plan for each event, assign guests to tables, and share a tidy arrangement with your venue.',
+    no_event_title: 'Add an event first',
+    no_event_description:
+      "Seating is organised per event, so start by creating one. Once you have an event and guests have RSVP'd, you can plan the tables here.",
+    no_event_cta: 'Create an event',
+    event_not_found_title: 'Event not found',
+    event_not_found_description: 'Pick a different event from your list.',
+    toolbar_event_label: 'Event',
+    toolbar_export: 'Export',
+    toolbar_share: 'Share with venue',
+    stat_seated: 'seated',
+    stat_to_seat: 'to seat',
+    stat_tables: 'tables',
+    stat_seats_used: 'seats used',
+    empty_no_guests_title: 'No attending guests yet',
+    empty_no_guests_description:
+      'Once guests RSVP "attending" to this event, they will appear here ready to drag onto tables.',
+    pool_title: 'To be seated',
+    pool_description: 'Attending guests not yet at a table. Drag them onto any table.',
+    pool_search_placeholder: 'Search guests',
+    pool_all_seated: 'Everyone is seated 🎉',
+    pool_no_matches: 'No matches.',
+    table_edit_aria: 'Edit {table}',
+    table_empty_line1: 'Drag guests here',
+    table_empty_line2: 'to fill this table',
+    new_table: 'New table',
+    chip_remove_aria: 'Remove {name} from table',
+    menu_move_to: 'Move to',
+    menu_add_table_first: 'Add a table first.',
+    menu_back_to_pool: 'Back to "to be seated"',
+    delete_confirm_title: 'Remove this table?',
+    delete_confirm_description:
+      'Guests seated here will go back to the "to be seated" list. This cannot be undone.',
+    delete_confirm_label: 'Remove table',
+    edit_title: 'Edit table',
+    edit_remove: 'Remove',
+    edit_cancel: 'Cancel',
+    edit_saving: 'Saving…',
+    edit_save: 'Save',
+    edit_name_label: 'Table name',
+    edit_name_placeholder: 'e.g. Familia ya Bibi',
+    edit_capacity_label: 'Seats (capacity)',
+    edit_top_table_label: 'Top table',
+    edit_top_table_hint: ', highlighted for the head party',
+    plan_doc_title: '{event}: Seating plan',
+    plan_doc_not_seated: 'Not yet seated ({count}):',
+    plan_doc_subtitle: 'Seating plan · {seated} seated · {tables} tables',
+    toast_move_failed: 'Could not save that change. Please try again.',
+    toast_add_table_failed: 'Could not add a table.',
+    toast_remove_table_failed: 'Could not remove the table.',
+    toast_save_table_failed: 'Could not save the table.',
+    toast_copied: 'Seating plan copied. Paste it to your venue or WhatsApp.',
+    toast_copy_failed: 'Could not copy. Try the Export button instead.',
+    toast_popups_blocked: 'Allow pop-ups to export the plan.',
+  },
+  'dashboard-send': {
+    heading: 'Send invites',
+    subheading:
+      'Your card is paid for. Now get it into your guests’ hands. Share a public link, or send each guest a personal invite.',
+    manage_events: 'Manage events',
+    card_fallback_label: 'INVITATION',
+    card_purchased: 'Card purchased',
+    card_purchased_tier: '{tier} card purchased',
+    fact_package: 'Package',
+    fact_design: 'Design',
+    fact_invites_paid: 'Invites paid',
+    fact_to_share: '{n} to share',
+    addons_label: 'Add-ons',
+    funnel_invited: 'Invited',
+    funnel_delivered: 'Delivered',
+    funnel_viewed: 'Viewed',
+    funnel_rsvpd: 'RSVP’d',
+    quota_label: 'Paid invitations',
+    quota_used_suffix: 'of {m} used',
+    quota_remaining: '{n} remaining',
+    quota_topup: 'Top up',
+    broadcast_tag: 'Broadcast',
+    broadcast_title: 'Public invite link',
+    broadcast_desc:
+      'One link you can drop into any WhatsApp group or status. It unfurls into a branded preview, and self-RSVPs land in a review queue, so no one can reply as someone else.',
+    broadcast_best_for: 'Big group chats and status. Fast reach, lighter control.',
+    best_for: 'Best for',
+    sharing_on: 'Sharing on',
+    sharing_off: 'Sharing off',
+    sharing_toggle_aria: 'Toggle public sharing',
+    link_off_placeholder: 'Turn on sharing to get your public link',
+    copy: 'Copy',
+    copy_done: 'Copied ✓',
+    chip_whatsapp: 'WhatsApp',
+    chip_sms: 'SMS',
+    chip_copy_link: 'Copy link',
+    chip_open: 'Open',
+    targeted_tag: 'Targeted',
+    targeted_title: 'Personal invites',
+    targeted_desc:
+      'Send each named guest their own card with Attend / Decline / View location buttons they tap right in WhatsApp, or as an SMS link, no app needed. Every send is tracked below.',
+    targeted_best_for: 'Your real guest list. Accurate counts and per-guest status.',
+    send_via_whatsapp: 'Send via WhatsApp',
+    remind_awaiting: 'Remind {n} awaiting',
+    dryrun_pill: 'Dry run',
+    dryrun_note:
+      'WhatsApp Business isn’t connected. Sends are logged only until the Meta account and template are approved.',
+    guest_list: 'Guest list',
+    guest_count: '{n} guests',
+    search_placeholder: 'Search name or number…',
+    search_aria: 'Search guests',
+    filter_aria: 'Filter guests',
+    filter_all: 'All',
+    filter_notsent: 'Not sent',
+    filter_awaiting: 'Awaiting',
+    send_to_selected: 'Send to selected',
+    empty_search: 'No guests match your search.',
+    empty_notsent: 'Everyone has been sent an invite.',
+    empty_awaiting: 'No one is awaiting a reply.',
+    empty_none: 'No guests yet.',
+    th_guest: 'Guest',
+    th_contact: 'Contact',
+    th_channel: 'Preferred channel',
+    th_status: 'Status',
+    th_send: 'Send',
+    channel_whatsapp: 'WhatsApp',
+    channel_sms: 'SMS',
+    row_whatsapp: 'WhatsApp',
+    row_sms: 'SMS',
+    row_copy: 'Copy personal link',
+    toast_sharing_error: 'Could not update sharing.',
+    toast_link_copied: 'Link copied',
+    toast_no_package: 'Buy an invitation package to send.',
+    send_verb_dryrun: 'queued (dry run)',
+    send_verb_reminded: 'reminded',
+    send_verb_sent: 'sent',
+    send_over_quota: '{n} over quota',
+    send_no_phone: '{n} no phone',
+    toast_no_awaiting: 'No one is awaiting a reply right now.',
+    toast_personal_copied: 'Personal link copied',
+    toast_reminder_ready: 'Reminder ready for {name}',
   },
 }

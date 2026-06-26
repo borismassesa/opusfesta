@@ -26,8 +26,14 @@ import {
   updateSeatingTable,
 } from '@/lib/dashboard/actions'
 import type { SeatableGuest, SeatingData, SeatingTable } from '@/lib/dashboard/types'
+import type { DashboardSeatingStrings } from '@/lib/cms/ui-strings-fallback'
 
 type EventLite = { id: string; name: string }
+
+/** Substitute {var} placeholders in a CMS template string. */
+function fmt(t: string, v: Record<string, string | number>): string {
+  return t.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m))
+}
 
 /** Card chrome, as a class string so drop zones can be plain divs with drag handlers. */
 const CARD_BASE = 'rounded-2xl border border-black/[0.06] bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04)]'
@@ -45,9 +51,11 @@ function mealLine(g: SeatableGuest): string {
 export default function SeatingPlanner({
   events,
   data,
+  strings,
 }: {
   events: EventLite[]
   data: SeatingData
+  strings: DashboardSeatingStrings
 }) {
   const router = useRouter()
   const eventId = data.event.id
@@ -102,7 +110,7 @@ export default function SeatingPlanner({
         }
       } catch {
         setGuests(snapshot) // revert
-        toast.error('Could not save that change. Please try again.')
+        toast.error(strings.toast_move_failed)
       }
     })
   }
@@ -134,7 +142,7 @@ export default function SeatingPlanner({
         await createSeatingTable({ eventId })
         router.refresh()
       } catch {
-        toast.error('Could not add a table.')
+        toast.error(strings.toast_add_table_failed)
       } finally {
         setBusy(false)
       }
@@ -149,7 +157,7 @@ export default function SeatingPlanner({
         await deleteSeatingTable(tableId)
         router.refresh()
       } catch {
-        toast.error('Could not remove the table.')
+        toast.error(strings.toast_remove_table_failed)
       } finally {
         setBusy(false)
       }
@@ -158,7 +166,7 @@ export default function SeatingPlanner({
 
   // ── Share / export ───────────────────────────────────────────────────────────
   function buildPlanText(): string {
-    const lines: string[] = [`${data.event.name} — Seating plan`, '']
+    const lines: string[] = [fmt(strings.plan_doc_title, { event: data.event.name }), '']
     for (const t of tables) {
       const gs = guestsAtTable(t.id)
       lines.push(`${t.is_head ? '★ ' : ''}${t.name}  (${seatsOf(gs)}/${t.capacity})`)
@@ -173,7 +181,7 @@ export default function SeatingPlanner({
       lines.push('')
     }
     if (pool.length > 0) {
-      lines.push(`Not yet seated (${toSeatTotal}):`)
+      lines.push(fmt(strings.plan_doc_not_seated, { count: toSeatTotal }))
       for (const g of pool) lines.push(`   • ${g.full_name} ×${g.seats}`)
     }
     return lines.join('\n')
@@ -182,16 +190,16 @@ export default function SeatingPlanner({
   async function shareWithVenue() {
     try {
       await navigator.clipboard.writeText(buildPlanText())
-      toast.success('Seating plan copied — paste it to your venue or WhatsApp.')
+      toast.success(strings.toast_copied)
     } catch {
-      toast.error('Could not copy. Try the Export button instead.')
+      toast.error(strings.toast_copy_failed)
     }
   }
 
   function exportPdf() {
     const w = window.open('', '_blank', 'noopener,noreferrer')
     if (!w) {
-      toast.error('Allow pop-ups to export the plan.')
+      toast.error(strings.toast_popups_blocked)
       return
     }
     const esc = (s: string) =>
@@ -216,8 +224,8 @@ export default function SeatingPlanner({
       })
       .join('')
     w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>${esc(
-      data.event.name,
-    )} — Seating plan</title><style>
+      fmt(strings.plan_doc_title, { event: data.event.name }),
+    )}</title><style>
       *{box-sizing:border-box;font-family:-apple-system,Segoe UI,Roboto,sans-serif;color:#1A1A1A}
       body{margin:32px}
       h1{font-size:22px;margin:0 0 4px}
@@ -233,7 +241,9 @@ export default function SeatingPlanner({
       .empty{color:#bbb}
     </style></head><body>
       <h1>${esc(data.event.name)}</h1>
-      <p class="sub">Seating plan · ${seatedTotal} seated · ${tables.length} tables</p>
+      <p class="sub">${esc(
+        fmt(strings.plan_doc_subtitle, { seated: seatedTotal, tables: tables.length }),
+      )}</p>
       <div class="grid">${tableBlocks}</div>
     </body></html>`)
     w.document.close()
@@ -250,7 +260,7 @@ export default function SeatingPlanner({
         {events.length > 1 ? (
           <label className="relative inline-flex items-center">
             <span className="pointer-events-none absolute left-3 text-xs font-medium uppercase tracking-wide text-[#1A1A1A]/40">
-              Event
+              {strings.toolbar_event_label}
             </span>
             <select
               value={eventId}
@@ -271,27 +281,27 @@ export default function SeatingPlanner({
 
         <div className="ml-auto flex items-center gap-2">
           <Button variant="secondary" onClick={exportPdf} disabled={noGuests}>
-            <Download className="h-4 w-4" /> Export
+            <Download className="h-4 w-4" /> {strings.toolbar_export}
           </Button>
           <Button onClick={shareWithVenue} disabled={noGuests}>
-            <Share2 className="h-4 w-4" /> Share with venue
+            <Share2 className="h-4 w-4" /> {strings.toolbar_share}
           </Button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <Stat label="seated" value={seatedTotal} />
-        <Stat label="to seat" value={toSeatTotal} />
-        <Stat label="tables" value={tables.length} />
-        <Stat label="seats used" value={`${seatedTotal} / ${totalCapacity}`} />
+        <Stat label={strings.stat_seated} value={seatedTotal} />
+        <Stat label={strings.stat_to_seat} value={toSeatTotal} />
+        <Stat label={strings.stat_tables} value={tables.length} />
+        <Stat label={strings.stat_seats_used} value={`${seatedTotal} / ${totalCapacity}`} />
       </div>
 
       {noGuests ? (
         <EmptyState
           icon={<Armchair className="h-7 w-7" />}
-          title="No attending guests yet"
-          description="Once guests RSVP “attending” to this event, they’ll appear here ready to drag onto tables."
+          title={strings.empty_no_guests_title}
+          description={strings.empty_no_guests_description}
         />
       ) : (
         <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
@@ -310,21 +320,19 @@ export default function SeatingPlanner({
             onDrop={() => onDropTo(null)}
           >
             <div className="border-b border-black/[0.06] px-4 pb-3 pt-4">
-              <h2 className="text-base font-semibold text-[#1A1A1A]">To be seated</h2>
-              <p className="mt-0.5 text-xs text-[#1A1A1A]/55">
-                Attending guests not yet at a table. Drag them onto any table.
-              </p>
+              <h2 className="text-base font-semibold text-[#1A1A1A]">{strings.pool_title}</h2>
+              <p className="mt-0.5 text-xs text-[#1A1A1A]/55">{strings.pool_description}</p>
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search guests"
+                placeholder={strings.pool_search_placeholder}
                 className={inputClass + ' mt-3'}
               />
             </div>
             <div className="flex-1 space-y-2 overflow-auto p-3">
               {filteredPool.length === 0 ? (
                 <p className="px-2 py-8 text-center text-xs text-[#1A1A1A]/40">
-                  {pool.length === 0 ? 'Everyone is seated 🎉' : 'No matches.'}
+                  {pool.length === 0 ? strings.pool_all_seated : strings.pool_no_matches}
                 </p>
               ) : (
                 filteredPool.map((g) => (
@@ -340,6 +348,7 @@ export default function SeatingPlanner({
                     tables={tables}
                     currentTableId={null}
                     onMove={moveGuest}
+                    strings={strings}
                   />
                 ))
               )}
@@ -383,7 +392,7 @@ export default function SeatingPlanner({
                     <button
                       type="button"
                       onClick={() => setEditTable(t)}
-                      aria-label={`Edit ${t.name}`}
+                      aria-label={fmt(strings.table_edit_aria, { table: t.name })}
                       className="flex h-7 w-7 items-center justify-center rounded-lg text-[#1A1A1A]/40 hover:bg-black/[0.05] hover:text-[#1A1A1A]"
                     >
                       <Pencil className="h-3.5 w-3.5" />
@@ -392,9 +401,9 @@ export default function SeatingPlanner({
                   <div className="flex-1 space-y-2 p-3">
                     {gs.length === 0 ? (
                       <p className="flex h-full items-center justify-center px-2 py-6 text-center text-xs leading-relaxed text-[#1A1A1A]/35">
-                        Drag guests here
+                        {strings.table_empty_line1}
                         <br />
-                        to fill this table
+                        {strings.table_empty_line2}
                       </p>
                     ) : (
                       gs.map((g) => (
@@ -413,6 +422,7 @@ export default function SeatingPlanner({
                           tables={tables}
                           currentTableId={t.id}
                           onMove={moveGuest}
+                          strings={strings}
                         />
                       ))
                     )}
@@ -431,7 +441,7 @@ export default function SeatingPlanner({
               <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-sm">
                 <Plus className="h-5 w-5" />
               </span>
-              New table
+              {strings.new_table}
             </button>
           </div>
         </div>
@@ -448,15 +458,16 @@ export default function SeatingPlanner({
           setEditTable(null)
           router.refresh()
         }}
+        strings={strings}
       />
 
       <ConfirmDialog
         open={confirmDeleteId !== null}
         onClose={() => setConfirmDeleteId(null)}
         onConfirm={() => confirmDeleteId && removeTable(confirmDeleteId)}
-        title="Remove this table?"
-        description="Guests seated here will go back to the “to be seated” list. This can’t be undone."
-        confirmLabel="Remove table"
+        title={strings.delete_confirm_title}
+        description={strings.delete_confirm_description}
+        confirmLabel={strings.delete_confirm_label}
         pending={busy}
       />
     </div>
@@ -482,6 +493,7 @@ function GuestChip({
   tables,
   currentTableId,
   onMove,
+  strings,
 }: {
   guest: SeatableGuest
   seated?: boolean
@@ -492,6 +504,7 @@ function GuestChip({
   tables: SeatingTable[]
   currentTableId: string | null
   onMove: (guestId: string, tableId: string | null) => void
+  strings: DashboardSeatingStrings
 }) {
   const meal = mealLine(guest)
   return (
@@ -528,7 +541,7 @@ function GuestChip({
           <button
             type="button"
             onClick={() => onMove(guest.guest_contact_id, null)}
-            aria-label={`Remove ${guest.full_name} from table`}
+            aria-label={fmt(strings.chip_remove_aria, { name: guest.full_name })}
             className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[#1A1A1A]/35 hover:bg-black/[0.05] hover:text-[#8e57b3]"
           >
             <X className="h-3.5 w-3.5" />
@@ -544,10 +557,10 @@ function GuestChip({
             className="absolute left-0 right-0 top-full z-30 mt-1 max-h-64 overflow-auto rounded-xl border border-black/[0.08] bg-white p-1 shadow-xl"
           >
             <p className="px-2.5 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-[#1A1A1A]/40">
-              Move to
+              {strings.menu_move_to}
             </p>
             {tables.length === 0 ? (
-              <p className="px-2.5 py-1.5 text-xs text-[#1A1A1A]/45">Add a table first.</p>
+              <p className="px-2.5 py-1.5 text-xs text-[#1A1A1A]/45">{strings.menu_add_table_first}</p>
             ) : (
               tables.map((t) => {
                 const isCurrent = t.id === currentTableId
@@ -574,7 +587,7 @@ function GuestChip({
                 onClick={() => onMove(guest.guest_contact_id, null)}
                 className="mt-1 flex w-full items-center gap-2 border-t border-black/[0.06] px-2.5 py-1.5 text-left text-sm text-[#1A1A1A]/70 hover:bg-black/[0.04]"
               >
-                <X className="h-3.5 w-3.5" /> Back to “to be seated”
+                <X className="h-3.5 w-3.5" /> {strings.menu_back_to_pool}
               </button>
             ) : null}
           </div>
@@ -589,11 +602,13 @@ function EditTableDialog({
   onClose,
   onAskDelete,
   onSaved,
+  strings,
 }: {
   table: SeatingTable | null
   onClose: () => void
   onAskDelete: (id: string) => void
   onSaved: () => void
+  strings: DashboardSeatingStrings
 }) {
   const [name, setName] = useState('')
   const [capacity, setCapacity] = useState(10)
@@ -617,7 +632,7 @@ function EditTableDialog({
       await updateSeatingTable(table.id, { name, capacity, isHead })
       onSaved()
     } catch {
-      toast.error('Could not save the table.')
+      toast.error(strings.toast_save_table_failed)
     } finally {
       setSaving(false)
     }
@@ -627,7 +642,7 @@ function EditTableDialog({
     <Dialog
       open={table !== null}
       onClose={onClose}
-      title="Edit table"
+      title={strings.edit_title}
       footer={
         <>
           <Button
@@ -635,27 +650,27 @@ function EditTableDialog({
             className="mr-auto text-rose-600 hover:bg-rose-50"
             onClick={() => onAskDelete(table.id)}
           >
-            <Trash2 className="h-4 w-4" /> Remove
+            <Trash2 className="h-4 w-4" /> {strings.edit_remove}
           </Button>
           <Button variant="secondary" onClick={onClose} disabled={saving}>
-            Cancel
+            {strings.edit_cancel}
           </Button>
           <Button onClick={save} disabled={saving}>
-            {saving ? 'Saving…' : 'Save'}
+            {saving ? strings.edit_saving : strings.edit_save}
           </Button>
         </>
       }
     >
       <div className="space-y-4">
-        <Field label="Table name">
+        <Field label={strings.edit_name_label}>
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
             className={inputClass}
-            placeholder="e.g. Familia ya Bibi"
+            placeholder={strings.edit_name_placeholder}
           />
         </Field>
-        <Field label="Seats (capacity)">
+        <Field label={strings.edit_capacity_label}>
           <input
             type="number"
             min={0}
@@ -672,8 +687,8 @@ function EditTableDialog({
             className="h-4 w-4 accent-[#8e57b3]"
           />
           <span className="text-sm">
-            <span className="font-medium text-[#1A1A1A]">Top table</span>
-            <span className="ml-1 text-[#1A1A1A]/55">— highlighted for the head party</span>
+            <span className="font-medium text-[#1A1A1A]">{strings.edit_top_table_label}</span>
+            <span className="ml-1 text-[#1A1A1A]/55">{strings.edit_top_table_hint}</span>
           </span>
         </label>
       </div>

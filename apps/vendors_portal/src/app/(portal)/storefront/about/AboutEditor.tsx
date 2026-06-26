@@ -98,9 +98,31 @@ export default function AboutEditor({
   // what's actually stored — and updates live as the vendor types.
   useEffect(() => {
     if (!hydrated) return
+    // Skip the write (and its localStorage serialize + cross-instance draft
+    // event) when nothing the sidebar reads actually changed, so an unrelated
+    // re-render or a post-save revalidate doesn't churn the whole draft.
+    const socialsUnchanged =
+      draft.socials.website === profile.socialWebsite &&
+      draft.socials.instagram === profile.socialInstagram &&
+      draft.socials.facebook === profile.socialFacebook &&
+      draft.socials.tiktok === profile.socialTiktok &&
+      draft.socials.whatsapp === profile.socialWhatsapp
+    if (
+      draft.businessName === profile.businessName &&
+      draft.bio === profile.bio &&
+      draft.description === profile.description &&
+      draft.yearsInBusiness === profile.yearsInBusiness &&
+      draft.phone === profile.phone &&
+      draft.email === profile.email &&
+      draft.whatsapp === profile.whatsapp &&
+      socialsUnchanged
+    ) {
+      return
+    }
     update({
       businessName: profile.businessName,
       bio: profile.bio,
+      description: profile.description,
       yearsInBusiness: profile.yearsInBusiness,
       phone: profile.phone,
       email: profile.email,
@@ -226,6 +248,7 @@ export default function AboutEditor({
       // still empty.
       update({
         bio: profile.bio,
+        description: profile.description,
         yearsInBusiness: profile.yearsInBusiness,
         phone: profile.phone,
         email: profile.email,
@@ -540,6 +563,17 @@ export default function AboutEditor({
             className="lg:col-span-2"
           >
             <div className="space-y-5">
+              <div>
+                <FieldLabel>Short description</FieldLabel>
+                <TextArea
+                  value={profile.description}
+                  onChange={(e) => setField('description', e.target.value)}
+                  rows={2}
+                  maxLength={200}
+                  hint={`One line couples see on your listing card. Leave blank to use the start of your bio. ${profile.description.trim().length}/200`}
+                  disabled={!canEdit}
+                />
+              </div>
               <div>
                 <FieldLabel required>Description</FieldLabel>
                 <TextArea

@@ -116,6 +116,35 @@ export type Vendor = {
 }
 
 /**
+ * Mirrors the vendors_portal "required sections" gate, but derived from the
+ * already-published public fields couples actually see. A storefront counts as
+ * complete when the vendor has filled in every essential: a written intro, a
+ * real photo gallery, the services they offer, and at least one priced package.
+ * Optional polish (awards, team, FAQ, availability) deliberately does NOT
+ * factor in — it mirrors the portal, where those are optional.
+ *
+ * Honest by construction: it reads the same live data rendered on the page, so
+ * the signal can never claim more than what a couple can see for themselves.
+ * Keep these thresholds in sync with the required checks in
+ * apps/vendors_portal/src/lib/storefront/completion.ts.
+ */
+export function isStorefrontComplete(vendor: Vendor): boolean {
+  const intro = (vendor.about ?? vendor.excerpt ?? '').trim()
+  const galleryCount = (vendor.gallery ?? []).filter(
+    (s) => typeof s === 'string' && s.trim() !== '',
+  ).length
+  const servicesCount = vendor.services?.length ?? 0
+  const packagesCount = vendor.pricingDetails?.length ?? 0
+
+  return (
+    intro.length >= 80 &&
+    galleryCount >= 6 &&
+    servicesCount >= 3 &&
+    packagesCount > 0
+  )
+}
+
+/**
  * Generates deterministic demo availability for a vendor based on their id.
  * Used as a fallback when no real availability data is stored.
  */

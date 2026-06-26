@@ -13,6 +13,7 @@ const EMPTY_PROFILE: DbProfile = {
   lastName: '',
   yearsInBusiness: '',
   bio: '',
+  description: '',
   houseNumber: '',
   street: '',
   ward: '',
@@ -70,7 +71,7 @@ async function loadProfile(): Promise<{
   const { data, error } = await supabase
     .from('vendors')
     .select(
-      'business_name, years_in_business, bio, location, contact_info, social_links, draft_content',
+      'business_name, years_in_business, bio, description, location, contact_info, social_links, draft_content',
     )
     .eq('id', state.vendor.id)
     .single<
@@ -102,6 +103,7 @@ async function loadProfile(): Promise<{
     business_name: data.business_name,
     years_in_business: data.years_in_business,
     bio: data.bio,
+    description: data.description,
     location: data.location,
     contact_info: data.contact_info,
     social_links: data.social_links,

@@ -123,18 +123,29 @@ export default function PackagesEditor({
     setPackages(initialPackages)
   }, [initialPackages])
 
-  // Seed the local draft's booking policies from the DB once, so a fresh device
-  // or cleared storage shows the saved values instead of blanks. Guarded so we
-  // never clobber edits the vendor just made on the policies step.
+  // Seed the local draft's booking policies from the DB once on mount, so a
+  // fresh device or cleared storage shows this vendor's saved values instead of
+  // blanks. The draft is now scoped to the ACTIVE vendor, so the DB row is the
+  // source of truth for THIS business and seeding from it can never surface
+  // another business's policies. We treat "no policy chosen yet" off the two
+  // nullable fields (depositPercent carries a non-empty default, so it can't
+  // stand in for "unset") — that way we prefer the DB on first view but don't
+  // clobber a cancellation/reschedule the vendor just picked on the policies
+  // step before saving here.
   const policiesSeeded = useRef(false)
   useEffect(() => {
     if (!hydrated || policiesSeeded.current) return
     policiesSeeded.current = true
-    const draftEmpty =
-      !draft.depositPercent && !draft.cancellationLevel && !draft.reschedulePolicy
-    if (draftEmpty && (initialPolicies.depositPercent || initialPolicies.cancellationLevel || initialPolicies.reschedulePolicy)) {
+    const draftHasPolicy =
+      draft.cancellationLevel !== null || draft.reschedulePolicy !== null
+    const dbHasPolicy = Boolean(
+      initialPolicies.depositPercent ||
+        initialPolicies.cancellationLevel ||
+        initialPolicies.reschedulePolicy,
+    )
+    if (!draftHasPolicy && dbHasPolicy) {
       update({
-        depositPercent: initialPolicies.depositPercent,
+        depositPercent: initialPolicies.depositPercent || draft.depositPercent,
         cancellationLevel: initialPolicies.cancellationLevel,
         reschedulePolicy: initialPolicies.reschedulePolicy,
       })

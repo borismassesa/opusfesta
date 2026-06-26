@@ -11,6 +11,7 @@ export type DbProfile = {
   lastName: string
   yearsInBusiness: string // editor uses string, DB stores INTEGER (or null)
   bio: string
+  description: string
 
   // Tanzania administrative address.
   houseNumber: string
@@ -36,6 +37,7 @@ export type VendorRowFromDb = {
   business_name: string | null
   years_in_business: number | null
   bio: string | null
+  description: string | null
   location: Record<string, unknown> | null
   contact_info: Record<string, unknown> | null
   social_links: Record<string, unknown> | null
@@ -47,6 +49,7 @@ const EMPTY: DbProfile = {
   lastName: '',
   yearsInBusiness: '',
   bio: '',
+  description: '',
   houseNumber: '',
   street: '',
   ward: '',
@@ -81,6 +84,7 @@ export function dbVendorToProfile(row: VendorRowFromDb | null | undefined): DbPr
         ? String(row.years_in_business)
         : '',
     bio: row.bio ?? '',
+    description: row.description ?? '',
 
     houseNumber: readString(row.location, 'houseNumber'),
     street: readString(row.location, 'street'),
@@ -116,6 +120,7 @@ export function profileToUpdatePatch(
   business_name: string
   years_in_business: number | null
   bio: string
+  description: string
   location: Record<string, unknown>
   contact_info: Record<string, unknown>
   social_links: Record<string, unknown>
@@ -135,6 +140,7 @@ export function profileToUpdatePatch(
     business_name: profile.businessName.trim(),
     years_in_business: yearsValue,
     bio: profile.bio,
+    description: profile.description.trim(),
     location: {
       ...baseLocation,
       houseNumber: profile.houseNumber.trim(),

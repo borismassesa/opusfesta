@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useAuth } from '@clerk/nextjs'
+import { useActiveVendorId } from './active-vendor-context'
 import type { PackageDraft } from './packages'
 import {
   emptyPayoutEntry,
@@ -120,6 +121,7 @@ export type OnboardingDraft = {
   homeMarket: string | null
   serviceMarkets: string[]
   bio: string
+  description: string
   yearsInBusiness: string
   languages: string[]
   specialServices: string[]
@@ -177,21 +179,38 @@ const DEFAULT_SOCIALS: SocialLinks = {
   whatsapp: '',
 }
 
-// Per-user storage. The draft used to live under a single global key, which
-// meant a SHARED device (a staff laptop demoing signups, a phone passed
-// between vendors, an internet café) leaked the previous vendor's draft —
-// including PII like phone, email, and payout/bank account numbers — into the
-// next vendor's onboarding form. Scoping the key to the Clerk user id makes
-// that impossible: a different signed-in user reads a different key.
+// Per-(user, vendor) storage. The draft first lived under a single global key,
+// which leaked a previous vendor's draft into the next vendor's form on a
+// SHARED device. Scoping to the Clerk user id closed that. But one user can own
+// SEVERAL vendor businesses (one profile per category — see the multi-category
+// model + `of-active-vendor` cookie), and a user-only key let business A's
+// draft-only fields (booking policies, languages, style, service markets,
+// hours) bleed into business B's storefront editors after switching — and worse,
+// a Save would then write A's values onto B's columns. We now scope the key to
+// the ACTIVE vendor id so each business reads and writes its own draft.
 const STORAGE_PREFIX = 'opusfesta:vendor-onboarding-draft'
 
-// The old un-scoped key. It may hold a *different* vendor's data, so we never
-// inherit it — we delete it on load (see `useOnboardingDraft`), closing the
-// cross-vendor leak for good.
-const LEGACY_STORAGE_KEY = STORAGE_PREFIX
+// The earliest un-scoped global key. It may hold a *different* vendor's data, so
+// we never inherit it — we delete it on load (see `useOnboardingDraft`).
+const LEGACY_GLOBAL_KEY = STORAGE_PREFIX
 
-function storageKey(userId: string): string {
+// The per-USER key used before drafts were scoped to the active vendor. A given
+// user is in exactly one state when this ships (mid-onboarding, or editing one
+// existing business), so on first read we migrate this draft into whichever
+// slot we resolved (the active vendor, or 'onboarding') and then remove it.
+function legacyUserKey(userId: string): string {
   return `${STORAGE_PREFIX}:${userId}`
+}
+
+// While a brand-new application is being filled there is no vendor row yet, so
+// the draft lives in this shared slot. At submit we copy it into the freshly
+// created vendor's slot (see `claimDraftForVendor` / `claimForVendor`) so the
+// storefront editors — which read the active-vendor slot — show the onboarding
+// answers instead of blanks.
+const ONBOARDING_SLOT = 'onboarding'
+
+function storageKey(userId: string, slot: string): string {
+  return `${STORAGE_PREFIX}:${userId}:${slot}`
 }
 
 const EMPTY: OnboardingDraft = {
@@ -214,6 +233,7 @@ const EMPTY: OnboardingDraft = {
   homeMarket: null,
   serviceMarkets: [],
   bio: '',
+  description: '',
   yearsInBusiness: '',
   languages: [],
   specialServices: [],
@@ -260,10 +280,23 @@ type LegacyAddressShape = {
   street2?: string
 }
 
-function readDraft(userId: string | null): OnboardingDraft {
+function readDraft(userId: string | null, slot: string): OnboardingDraft {
   if (typeof window === 'undefined' || !userId) return EMPTY
   try {
-    const raw = window.localStorage.getItem(storageKey(userId))
+    const key = storageKey(userId, slot)
+    let raw = window.localStorage.getItem(key)
+    // One-time migration: adopt the pre-vendor-scoping per-user draft into the
+    // slot we resolved on this page (the active vendor, or 'onboarding'). A
+    // user is in exactly one state when this ships, so the legacy draft lands
+    // in the right slot. Remove it afterwards so it can't be claimed twice.
+    if (raw === null) {
+      const legacy = window.localStorage.getItem(legacyUserKey(userId))
+      if (legacy !== null) {
+        window.localStorage.setItem(key, legacy)
+        window.localStorage.removeItem(legacyUserKey(userId))
+        raw = legacy
+      }
+    }
     if (!raw) return EMPTY
     const parsed = JSON.parse(raw) as Partial<OnboardingDraft> &
       LegacyPayoutShape &
@@ -308,10 +341,10 @@ function readDraft(userId: string | null): OnboardingDraft {
 // write so every instance re-reads from localStorage.
 const DRAFT_CHANGE_EVENT = 'opusfesta:onboarding-draft-changed'
 
-function writeDraft(userId: string | null, draft: OnboardingDraft) {
+function writeDraft(userId: string | null, slot: string, draft: OnboardingDraft) {
   if (typeof window === 'undefined' || !userId) return
   try {
-    window.localStorage.setItem(storageKey(userId), JSON.stringify(draft))
+    window.localStorage.setItem(storageKey(userId, slot), JSON.stringify(draft))
     // Defer the cross-instance broadcast. `writeDraft` is called from
     // inside the `setDraft` state updater in `update()` — dispatching
     // synchronously would call listeners' setState during the calling
@@ -329,26 +362,51 @@ function writeDraft(userId: string | null, draft: OnboardingDraft) {
   }
 }
 
+// Copy a draft into a specific vendor's slot WITHOUT broadcasting. Used at
+// submit time to hand the freshly-filled onboarding draft to the new vendor's
+// slot: no mounted consumer is reading that slot yet (the wizard is still on the
+// 'onboarding' slot), so there's nothing to notify.
+function claimDraftForVendor(
+  userId: string | null,
+  vendorId: string,
+  draft: OnboardingDraft,
+) {
+  if (typeof window === 'undefined' || !userId || !vendorId) return
+  try {
+    window.localStorage.setItem(
+      storageKey(userId, vendorId),
+      JSON.stringify(draft),
+    )
+  } catch {
+    // ignore quota / private browsing errors
+  }
+}
+
 export function useOnboardingDraft() {
-  // The draft is keyed to the signed-in vendor, so we must wait for Clerk to
-  // resolve the user before reading — otherwise we'd read EMPTY (or, worse, the
-  // wrong key) and flash stale UI.
+  // The draft is keyed to the signed-in user AND the active vendor business, so
+  // we must wait for Clerk to resolve the user before reading — otherwise we'd
+  // read EMPTY (or, worse, the wrong key) and flash stale UI.
   const { isLoaded, userId: clerkUserId } = useAuth()
   const userId = clerkUserId ?? null
+  // The active vendor id comes from the (portal) server layout via context.
+  // It's null in the onboarding wizard (no vendor row yet) and the no-env dev
+  // fallback, where the draft uses the shared 'onboarding' slot.
+  const activeVendorId = useActiveVendorId()
+  const slot = activeVendorId ?? ONBOARDING_SLOT
   const [draft, setDraft] = useState<OnboardingDraft>(EMPTY)
   const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
     if (!isLoaded) return
 
-    // One-time purge of the legacy un-scoped key. It may belong to a *different*
-    // vendor who used this device before, so we never read it into the form —
-    // we delete it outright. This is what closes the cross-vendor data leak.
+    // One-time purge of the earliest un-scoped global key. It may belong to a
+    // *different* vendor who used this device before, so we never read it into
+    // the form — we delete it outright.
     if (typeof window !== 'undefined') {
-      window.localStorage.removeItem(LEGACY_STORAGE_KEY)
+      window.localStorage.removeItem(LEGACY_GLOBAL_KEY)
     }
 
-    setDraft(readDraft(userId))
+    setDraft(readDraft(userId, slot))
     setHydrated(true)
 
     if (!userId) return
@@ -356,18 +414,20 @@ export function useOnboardingDraft() {
     // Listen for cross-instance updates so every consumer of the hook
     // converges on the latest persisted draft. Same-tab updates come
     // through the custom event; cross-tab updates use the native
-    // `storage` event (scoped to THIS user's key).
-    const key = storageKey(userId)
+    // `storage` event (scoped to THIS user+vendor's key). Every consumer in a
+    // given route tree resolves the same slot, so the broadcast detail always
+    // matches the slot they're reading.
+    const key = storageKey(userId, slot)
     const onChange = (event: Event) => {
       const detail = (event as CustomEvent<OnboardingDraft>).detail
       if (detail) {
         setDraft(detail)
       } else {
-        setDraft(readDraft(userId))
+        setDraft(readDraft(userId, slot))
       }
     }
     const onStorage = (event: StorageEvent) => {
-      if (event.key === key) setDraft(readDraft(userId))
+      if (event.key === key) setDraft(readDraft(userId, slot))
     }
     window.addEventListener(DRAFT_CHANGE_EVENT, onChange)
     window.addEventListener('storage', onStorage)
@@ -375,35 +435,61 @@ export function useOnboardingDraft() {
       window.removeEventListener(DRAFT_CHANGE_EVENT, onChange)
       window.removeEventListener('storage', onStorage)
     }
-  }, [isLoaded, userId])
+  }, [isLoaded, userId, slot])
 
   const update = useCallback(
     (patch: Partial<OnboardingDraft>) => {
       setDraft((prev) => {
         const next = { ...prev, ...patch }
-        writeDraft(userId, next)
+        writeDraft(userId, slot, next)
         return next
       })
     },
-    [userId],
+    [userId, slot],
   )
 
   const reset = useCallback(() => {
     setDraft(EMPTY)
     if (typeof window !== 'undefined' && userId) {
-      window.localStorage.removeItem(storageKey(userId))
+      window.localStorage.removeItem(storageKey(userId, slot))
       window.dispatchEvent(
         new CustomEvent(DRAFT_CHANGE_EVENT, { detail: EMPTY }),
       )
     }
-  }, [userId])
+  }, [userId, slot])
 
-  return { draft, update, reset, hydrated }
+  // Hand the just-submitted onboarding draft to the new vendor's slot so the
+  // storefront editors (which read the active-vendor slot) show the onboarding
+  // answers. Optionally stamps a patch (e.g. submittedAt) first. We do NOT clear
+  // the current ('onboarding') slot — a vendor sent back to /verify can still
+  // re-open the wizard with their answers intact; a future "add another
+  // business" entry point should call `reset()` to start a clean draft.
+  const claimForVendor = useCallback(
+    (vendorId: string, patch?: Partial<OnboardingDraft>) => {
+      if (!userId) return
+      setDraft((prev) => {
+        const next = patch ? { ...prev, ...patch } : prev
+        writeDraft(userId, slot, next)
+        claimDraftForVendor(userId, vendorId, next)
+        return next
+      })
+    },
+    [userId, slot],
+  )
+
+  return { draft, update, reset, hydrated, claimForVendor }
 }
 
 export function clearOnboardingDraft(userId?: string) {
   if (typeof window === 'undefined') return
-  // Always drop the legacy global key; drop the per-user key when we know who.
-  window.localStorage.removeItem(LEGACY_STORAGE_KEY)
-  if (userId) window.localStorage.removeItem(storageKey(userId))
+  // Always drop the earliest global key. When we know the user, drop every
+  // per-(user, slot) draft and the legacy per-user key too.
+  window.localStorage.removeItem(LEGACY_GLOBAL_KEY)
+  if (!userId) return
+  window.localStorage.removeItem(legacyUserKey(userId))
+  const prefix = `${STORAGE_PREFIX}:${userId}:`
+  for (let i = window.localStorage.length - 1; i >= 0; i--) {
+    const key = window.localStorage.key(i)
+    if (key && key.startsWith(prefix)) window.localStorage.removeItem(key)
+  }
 }

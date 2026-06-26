@@ -7,7 +7,6 @@ import {
   BarChart3,
   CalendarCheck,
   HelpCircle,
-  Image as ImageIcon,
   Inbox,
   LayoutDashboard,
   MessageSquare,
@@ -34,7 +33,6 @@ const topItems: NavItem[] = [
 
 const mainItems: NavItem[] = [
   { icon: Store, label: 'Storefront', href: '/storefront' },
-  { icon: ImageIcon, label: 'Portfolio', href: '/portfolio' },
   { icon: CalendarCheck, label: 'Bookings', href: '/bookings' },
   { icon: Star, label: 'Reviews', href: '/reviews' },
 ]

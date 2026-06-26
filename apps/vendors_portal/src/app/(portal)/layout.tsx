@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentVendor } from '@/lib/vendor'
+import { ActiveVendorProvider } from '@/lib/onboarding/active-vendor-context'
 import PortalShell from './PortalShell'
 
 export default async function PortalLayout({
@@ -29,10 +30,17 @@ export default async function PortalLayout({
     state.kind === 'live' ? state.vendor.businessName : 'OpusFesta Photography'
   const vendorSlug =
     state.kind === 'live' ? state.vendor.slug : null
+  // Scope every storefront/onboarding-draft consumer in the portal to THIS
+  // business, so a user who owns several vendor profiles never sees (or saves)
+  // one business's draft fields against another. `null` only on the no-env dev
+  // fallback, which reads the shared 'onboarding' slot.
+  const activeVendorId = state.kind === 'live' ? state.vendor.id : null
 
   return (
     <PortalShell vendorName={vendorName} vendorSlug={vendorSlug}>
-      {children}
+      <ActiveVendorProvider vendorId={activeVendorId}>
+        {children}
+      </ActiveVendorProvider>
     </PortalShell>
   )
 }

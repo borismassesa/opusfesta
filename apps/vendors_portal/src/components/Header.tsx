@@ -13,7 +13,6 @@ import { eventDateLabel, relativeDays } from '@/lib/bookings'
 const SEGMENT_LABELS: Record<string, string> = {
   leads: 'Leads',
   storefront: 'Storefront',
-  portfolio: 'Portfolio',
   bookings: 'Bookings',
   reviews: 'Reviews',
   'lead-preferences': 'Lead preferences',

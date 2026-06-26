@@ -2,7 +2,7 @@
 
 import { type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
-import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, LayoutDashboard, Save, Send, Trash2 } from 'lucide-react'
+import { PanelTop, PanelBottom, LifeBuoy, Receipt, ListChecks, ShoppingCart, MapPin, CheckCircle2, CreditCard, Smartphone, ReceiptText, UserPlus, MailCheck, HandCoins, LayoutDashboard, Package, CalendarDays, Armchair, Megaphone, Save, Send, Trash2 } from 'lucide-react'
 import { useSetPageHeading } from '@/components/PageHeading'
 import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import { CmsSecondarySidebar, type CmsSection } from '@/components/cms/CmsSecondarySidebar'
@@ -140,6 +140,42 @@ const sections: CmsSection[] = [
     status: 'live',
     description:
       'Couple dashboard shell — sidebar nav labels, collapse/menu controls and the account menu — bilingual. Routing, icons and the couple’s name/email are not editable here.',
+  },
+  {
+    key: 'dashboard-orders',
+    label: 'Dashboard — Orders',
+    icon: Package,
+    href: '/cms/opus-pass/site-ui/dashboard-orders',
+    status: 'live',
+    description:
+      'Couple dashboard Orders page — header, empty state, stat cards, order-tracker notes, unit labels and the invoice button — bilingual. Order data and stage labels are not editable here.',
+  },
+  {
+    key: 'dashboard-events',
+    label: 'Dashboard — Events',
+    icon: CalendarDays,
+    href: '/cms/opus-pass/site-ui/dashboard-events',
+    status: 'live',
+    description:
+      'Couple dashboard Events page — list, create/edit form, live preview and toasts — bilingual. Event data and event-type names are not editable here.',
+  },
+  {
+    key: 'dashboard-seating',
+    label: 'Dashboard — Seating',
+    icon: Armchair,
+    href: '/cms/opus-pass/site-ui/dashboard-seating',
+    status: 'live',
+    description:
+      'Couple dashboard Seat collection page — header, stat tiles, guest pool, table cards, dialogs, toasts and the exported plan text — bilingual. Guest and table data are not editable here.',
+  },
+  {
+    key: 'dashboard-send',
+    label: 'Dashboard — Send invites',
+    icon: Megaphone,
+    href: '/cms/opus-pass/site-ui/dashboard-send',
+    status: 'live',
+    description:
+      'Couple dashboard Send invites page — heading, card context, send funnel, public-link and personal-invite modes, guest table and all toasts — bilingual.',
   },
 ]
 
