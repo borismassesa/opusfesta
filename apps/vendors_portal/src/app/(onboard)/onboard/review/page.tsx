@@ -38,7 +38,7 @@ function formatTZS(raw: string) {
 export default function ReviewPage() {
   const router = useRouter()
   const { t, locale } = useOnboardT()
-  const { draft, update, hydrated } = useOnboardingDraft()
+  const { draft, hydrated, claimForVendor } = useOnboardingDraft()
   const category = findCategory(draft.categoryId)
   const categoryLabel = draft.categoryId === 'other'
     ? (draft.customCategoryLabel || t('common.other'))
@@ -109,7 +109,10 @@ export default function ReviewPage() {
         setSubmitError(result.error)
         return
       }
-      update({ submittedAt: new Date().toISOString() })
+      // Stamp submittedAt AND copy this draft into the new vendor's slot, so the
+      // storefront editors (which read the active-vendor slot once the vendor is
+      // approved) show the onboarding answers instead of blanks.
+      claimForVendor(result.vendorId, { submittedAt: new Date().toISOString() })
       if (isEdit) {
         // Editing an existing application — return to the verification hub
         // instead of replaying the first-time "Application complete" screen.
@@ -281,6 +284,13 @@ export default function ReviewPage() {
 
         <Section title={t('review.section.about')} editHref="/onboard/details/about">
           <Row label={t('review.row.description')} valign="top">
+            {draft.description.trim() ? (
+              <span className="block whitespace-pre-line">{draft.description}</span>
+            ) : (
+              t('common.not_set')
+            )}
+          </Row>
+          <Row label={t('review.row.bio')} valign="top">
             {draft.bio.trim() ? (
               <span className="block whitespace-pre-line">{draft.bio}</span>
             ) : (

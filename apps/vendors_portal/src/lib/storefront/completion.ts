@@ -176,13 +176,14 @@ export function getStorefrontSections(d: OnboardingDraft): StorefrontSection[] {
     },
     {
       id: 'availability',
-      label: 'Availability',
-      hint: 'Block dates you are already booked',
+      label: 'Availability & hours',
+      hint: 'Block booked dates and set your weekly hours',
       href: '/storefront/availability',
       status: availabilityStatus(d),
       required: false,
-      pageTitle: 'Availability',
-      pageDescription: 'Mark the dates you are already booked or have limited capacity.',
+      pageTitle: 'Availability & hours',
+      pageDescription:
+        'Block the dates you are already booked and set the weekly hours couples can reach you.',
     },
   ]
 }
@@ -192,27 +193,48 @@ export function computeCompleteness(sections: StorefrontSection[]) {
   const total = trackable.length
   const complete = trackable.filter((s) => s.status === 'complete').length
 
-  // Percentage math: required sections drive the headline number, optional
-  // sections only ever add credit. A vendor with no awards (recognition is
-  // optional) shouldn't see their % drop just for leaving an optional
-  // section untouched — that contradicts the "optional" label.
   const required = trackable.filter((s) => s.required)
+  const optional = trackable.filter((s) => !s.required)
+
   const requiredComplete = required.filter((s) => s.status === 'complete').length
   const requiredPartial = required.filter((s) => s.status === 'partial').length
-  const optionalComplete = trackable.filter(
-    (s) => !s.required && s.status === 'complete',
-  ).length
-  // Each filled-in optional section adds bonus credit equal to one required
-  // slot's worth. Capped at the same denominator so the headline never
-  // exceeds 100%.
-  const earnedRequired = requiredComplete + requiredPartial * 0.5
-  const earned = Math.min(required.length, earnedRequired + optionalComplete)
-  const percent = required.length === 0
-    ? 0
-    : Math.round((earned / required.length) * 100)
+  const requiredTotal = required.length
+
+  const optionalComplete = optional.filter((s) => s.status === 'complete').length
+  const optionalTotal = optional.length
+
+  // The headline number tracks REQUIRED readiness only. Optional sections used
+  // to add bonus credit, but that let the ring read 100% while a required
+  // section was still missing — a dishonest number that contradicted the
+  // "required" warning shown right beside it. Now optional polish is reported
+  // separately (optionalComplete/optionalTotal) and never inflates the gate.
+  // Partial required sections earn half a slot so progress still moves as the
+  // vendor fills a section in.
+  const earned = requiredComplete + requiredPartial * 0.5
+  const percent =
+    requiredTotal === 0 ? 100 : Math.round((earned / requiredTotal) * 100)
+
+  // "Ready" is the meaningful milestone: every required section is complete, so
+  // couples have everything they need to discover and book this vendor.
+  const isReady = requiredComplete === requiredTotal
 
   const requiredMissing = sections.filter(
     (s) => s.required && s.status !== 'complete' && s.status !== 'auto',
   )
-  return { percent, complete, total, requiredMissing }
+  const optionalMissing = sections.filter(
+    (s) => !s.required && s.status !== 'complete' && s.status !== 'auto',
+  )
+
+  return {
+    percent,
+    isReady,
+    complete,
+    total,
+    requiredComplete,
+    requiredTotal,
+    optionalComplete,
+    optionalTotal,
+    requiredMissing,
+    optionalMissing,
+  }
 }

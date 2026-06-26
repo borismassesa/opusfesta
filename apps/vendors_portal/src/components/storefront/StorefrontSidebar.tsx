@@ -2,7 +2,16 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { AlertCircle, Check, ChevronRight, CircleDashed, Eye, Lock, Minus } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowRight,
+  Check,
+  ChevronRight,
+  CircleDashed,
+  Lock,
+  Minus,
+  Sparkles,
+} from 'lucide-react'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import {
   computeCompleteness,
@@ -11,11 +20,7 @@ import {
 } from '@/lib/storefront/completion'
 import { cn } from '@/lib/utils'
 
-export function StorefrontSidebar({
-  vendorSlug,
-}: {
-  vendorSlug: string | null
-}) {
+export function StorefrontSidebar() {
   const pathname = usePathname()
   const { draft, hydrated } = useOnboardingDraft()
 
@@ -36,7 +41,16 @@ export function StorefrontSidebar({
   // storefront layout used to show. Completion still reads from the draft;
   // it simply starts empty until the vendor saves a section.
   const sections = getStorefrontSections(draft)
-  const { percent, complete, total, requiredMissing } = computeCompleteness(sections)
+  const {
+    percent,
+    isReady,
+    requiredComplete,
+    requiredTotal,
+    optionalComplete,
+    optionalTotal,
+    requiredMissing,
+    optionalMissing,
+  } = computeCompleteness(sections)
 
   return (
     <aside className="w-72 shrink-0 border-r border-gray-100 bg-white h-full flex flex-col">
@@ -104,54 +118,72 @@ export function StorefrontSidebar({
         })}
       </nav>
 
-      {/* Bottom: completion summary + preview link */}
+      {/* Bottom: completion summary + clear next step */}
       <div className="border-t border-gray-100 px-5 pt-5 pb-5 bg-white">
         <div className="flex items-center gap-4">
-          <CircularProgress percent={percent} />
+          <CircularProgress percent={percent} ready={isReady} />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-gray-900 leading-tight">
-              Profile completeness
+              {isReady ? 'Ready for couples' : 'Profile completeness'}
             </p>
             <p className="text-xs text-gray-500 mt-0.5">
-              {complete} of {total} sections complete
+              {isReady
+                ? optionalComplete === optionalTotal
+                  ? 'Every section complete'
+                  : `${optionalComplete} of ${optionalTotal} extras added`
+                : `${requiredComplete} of ${requiredTotal} essentials done`}
             </p>
           </div>
         </div>
 
-        {requiredMissing.length > 0 ? (
-          <div className="mt-4 flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5">
-            <AlertCircle className="w-3.5 h-3.5 text-amber-600 mt-0.5 shrink-0" />
-            <p className="text-xs text-amber-900 leading-snug">
+        {!isReady ? (
+          // One clear next action beats a count the vendor has to translate
+          // into "so where do I go?". Deep-links straight to the first
+          // unfinished required section.
+          <Link
+            href={requiredMissing[0].href}
+            className="group mt-4 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-100 px-3 py-2.5 hover:bg-amber-100/70 transition-colors"
+          >
+            <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+            <span className="flex-1 min-w-0 text-xs text-amber-900 leading-snug">
               <span className="font-semibold">
                 {requiredMissing.length} required section
-                {requiredMissing.length === 1 ? '' : 's'}
+                {requiredMissing.length === 1 ? '' : 's'} left.
               </span>{' '}
-              still need attention before couples can book you.
+              Finish {requiredMissing[0].label.toLowerCase()}.
+            </span>
+            <ArrowRight className="w-3.5 h-3.5 text-amber-600 shrink-0 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        ) : optionalMissing.length > 0 ? (
+          // Required work is done — pivot from nagging to encouraging. Point at
+          // an optional section that makes the public profile stronger.
+          <Link
+            href={optionalMissing[0].href}
+            className="group mt-4 flex items-center gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5 hover:bg-emerald-100/70 transition-colors"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+            <span className="flex-1 min-w-0 text-xs text-emerald-900 leading-snug">
+              <span className="font-semibold">Stand out:</span> add{' '}
+              {optionalMissing[0].label.toLowerCase()}.
+            </span>
+            <ArrowRight className="w-3.5 h-3.5 text-emerald-600 shrink-0 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        ) : (
+          <div className="mt-4 flex items-start gap-2 rounded-lg bg-emerald-50 border border-emerald-100 px-3 py-2.5">
+            <span className="mt-0.5 shrink-0 w-3.5 h-3.5 rounded-full bg-emerald-500 text-white flex items-center justify-center">
+              <Check className="w-2.5 h-2.5" strokeWidth={3} />
+            </span>
+            <p className="text-xs text-emerald-900 leading-snug">
+              Couples can discover and book you. Keep it fresh as your work grows.
             </p>
           </div>
-        ) : null}
-
-        {/* Preview link — opens the public storefront on opus_website in a
-            new tab. `NEXT_PUBLIC_WEBSITE_URL` is set per environment (e.g.
-            http://localhost:3007 in dev, https://opusfesta.com in prod).
-            We render the link only once we have a slug; otherwise it'd
-            point at /vendors/null. */}
-        {vendorSlug ? (
-          <a
-            href={buildPublicStorefrontUrl(vendorSlug)}
-            target="_blank"
-            rel="noreferrer"
-            className="mt-4 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-600 hover:text-gray-900 transition-colors"
-          >
-            <Eye className="w-3.5 h-3.5" /> Preview public storefront
-          </a>
-        ) : null}
+        )}
       </div>
     </aside>
   )
 }
 
-function CircularProgress({ percent }: { percent: number }) {
+function CircularProgress({ percent, ready }: { percent: number; ready?: boolean }) {
   const size = 56
   const stroke = 5
   const radius = (size - stroke) / 2
@@ -166,7 +198,7 @@ function CircularProgress({ percent }: { percent: number }) {
       aria-valuenow={percent}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label={`Profile ${percent}% complete`}
+      aria-label={ready ? 'Storefront ready for couples' : `Profile ${percent}% complete`}
     >
       <svg
         width={size}
@@ -197,7 +229,11 @@ function CircularProgress({ percent }: { percent: number }) {
         />
       </svg>
       <span className="absolute inset-0 flex items-center justify-center text-sm font-semibold tabular-nums text-gray-900">
-        {percent}%
+        {ready ? (
+          <Check className="w-5 h-5 text-emerald-500" strokeWidth={3} aria-hidden />
+        ) : (
+          `${percent}%`
+        )}
       </span>
     </div>
   )
@@ -244,11 +280,3 @@ function StatusIcon({ status }: { status: SectionStatus }) {
   )
 }
 
-// Resolve the public storefront URL for a vendor. NEXT_PUBLIC_WEBSITE_URL
-// points at opus_website (http://localhost:3007 in dev, the production
-// URL in prod). Falls back to a relative path if the env var is missing
-// so the link still resolves to *something* on shared previews.
-function buildPublicStorefrontUrl(slug: string): string {
-  const base = (process.env.NEXT_PUBLIC_WEBSITE_URL ?? '').replace(/\/$/, '')
-  return `${base}/vendors/${encodeURIComponent(slug)}`
-}

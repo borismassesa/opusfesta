@@ -64,6 +64,18 @@ export default function AboutPage() {
 
       <div className="space-y-8 max-w-3xl">
         <div>
+          <FieldLabel>{t('details.about.description.label')}</FieldLabel>
+          <TextArea
+            placeholder={t('details.about.description.placeholder')}
+            value={draft.description}
+            onChange={(e) => update({ description: e.target.value })}
+            rows={2}
+            maxLength={200}
+            hint={t('details.about.description.hint', { n: draft.description.trim().length })}
+          />
+        </div>
+
+        <div>
           <FieldLabel required>{t('details.about.bio.label')}</FieldLabel>
           <TextArea
             placeholder={t('details.about.bio.placeholder')}

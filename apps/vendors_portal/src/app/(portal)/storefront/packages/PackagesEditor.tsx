@@ -3,9 +3,14 @@
 import { useEffect, useMemo, useRef, useState, useTransition } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Check, Pencil, Plus, Tag, X } from 'lucide-react'
+import { ArrowRight, Check, Lock, Pencil, Plus, Save, Tag, X } from 'lucide-react'
 import { getStorefrontSections } from '@/lib/storefront/completion'
-import { primaryPayoutEntry, useOnboardingDraft } from '@/lib/onboarding/draft'
+import {
+  primaryPayoutEntry,
+  useOnboardingDraft,
+  type CancellationLevel,
+  type ReschedulePolicy,
+} from '@/lib/onboarding/draft'
 import { CANCELLATION_OPTIONS, RESCHEDULE_OPTIONS } from '@/lib/onboarding/policies'
 import { LIPA_NAMBA_NETWORKS, PAYOUT_OPTIONS } from '@/lib/onboarding/payouts'
 import {
@@ -22,6 +27,31 @@ import {
 } from '@/lib/storefront/package-badge'
 import { cn } from '@/lib/utils'
 import { saveBadge } from './actions'
+import { saveProfileFields } from '../sections/actions'
+
+export type InitialPolicies = {
+  depositPercent: string
+  cancellationLevel: CancellationLevel
+  reschedulePolicy: ReschedulePolicy
+}
+
+export type PayoutSummary = {
+  methodType: string
+  provider: string | null
+  accountNumber: string
+  accountHolder: string
+  count: number
+} | null
+
+// DB `method_type` enum → human label. Mirrors PAYOUT_OPTIONS but keyed by the
+// stored enum value (halopesa collapses into lipa_namba at write time).
+const PAYOUT_DB_LABEL: Record<string, string> = {
+  mpesa: 'M-Pesa',
+  airtel: 'Airtel Money',
+  tigo: 'Mixx by Yas',
+  lipa_namba: 'Lipa Namba',
+  bank: 'Bank account',
+}
 
 export type PackagesSource =
   | { kind: 'live' }
@@ -58,26 +88,32 @@ const DEFAULT_BADGE: PackageBadge = {
 type PackagesEditorProps = {
   source: PackagesSource
   initialPackages: PackageDraft[]
+  initialPolicies: InitialPolicies
+  initialPayout: PayoutSummary
   canEdit: boolean
 }
 
 export default function PackagesEditor({
   source,
   initialPackages,
+  initialPolicies,
+  initialPayout,
   canEdit,
 }: PackagesEditorProps) {
-  // Packages are hydrated from vendors.packages via the Server Component.
-  // Booking policies + payout still come from useOnboardingDraft() — those
-  // fields don't have backing columns on vendors yet (Phase 5 will extend
-  // the schema and replace the draft reads).
+  // Packages come from vendors.packages (Server Component). Booking policies
+  // (deposit / cancellation / reschedule) have their own vendors columns and
+  // are saved from this page. Payout lives in the secure vendor_payout_methods
+  // table, edited via the onboarding payout step — shown here read-only.
   const router = useRouter()
-  const { draft, hydrated } = useOnboardingDraft()
+  const { draft, update, hydrated } = useOnboardingDraft()
   const [packages, setPackages] = useState<PackageDraft[]>(initialPackages)
   const [editingBadgeId, setEditingBadgeId] = useState<string | null>(null)
   const [feedback, setFeedback] = useState<
     { kind: 'success' | 'error'; message: string } | null
   >(null)
   const [, startTransition] = useTransition()
+  const [saving, startSaving] = useTransition()
+  const [saveMsg, setSaveMsg] = useState<{ kind: 'success' | 'error'; text: string } | null>(null)
 
   // Sync local state when the Server Component re-renders with fresh data
   // (e.g. after revalidatePath fires post-save, or another tab made a change
@@ -86,6 +122,50 @@ export default function PackagesEditor({
   useEffect(() => {
     setPackages(initialPackages)
   }, [initialPackages])
+
+  // Seed the local draft's booking policies from the DB once on mount, so a
+  // fresh device or cleared storage shows this vendor's saved values instead of
+  // blanks. The draft is now scoped to the ACTIVE vendor, so the DB row is the
+  // source of truth for THIS business and seeding from it can never surface
+  // another business's policies. We treat "no policy chosen yet" off the two
+  // nullable fields (depositPercent carries a non-empty default, so it can't
+  // stand in for "unset") — that way we prefer the DB on first view but don't
+  // clobber a cancellation/reschedule the vendor just picked on the policies
+  // step before saving here.
+  const policiesSeeded = useRef(false)
+  useEffect(() => {
+    if (!hydrated || policiesSeeded.current) return
+    policiesSeeded.current = true
+    const draftHasPolicy =
+      draft.cancellationLevel !== null || draft.reschedulePolicy !== null
+    const dbHasPolicy = Boolean(
+      initialPolicies.depositPercent ||
+        initialPolicies.cancellationLevel ||
+        initialPolicies.reschedulePolicy,
+    )
+    if (!draftHasPolicy && dbHasPolicy) {
+      update({
+        depositPercent: initialPolicies.depositPercent || draft.depositPercent,
+        cancellationLevel: initialPolicies.cancellationLevel,
+        reschedulePolicy: initialPolicies.reschedulePolicy,
+      })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated])
+
+  const onSavePolicies = () => {
+    if (!canEdit) return
+    setSaveMsg(null)
+    startSaving(async () => {
+      const res = await saveProfileFields({
+        depositPercent: draft.depositPercent,
+        cancellationLevel: draft.cancellationLevel,
+        reschedulePolicy: draft.reschedulePolicy,
+      })
+      if (res.ok) setSaveMsg({ kind: 'success', text: 'Booking policies saved.' })
+      else setSaveMsg({ kind: 'error', text: res.error })
+    })
+  }
 
   const banner = BANNER_BY_SOURCE[source.kind]
 
@@ -113,16 +193,45 @@ export default function PackagesEditor({
   const rescheduleLabel = RESCHEDULE_OPTIONS.find(
     (o) => o.id === draft.reschedulePolicy,
   )?.label
-  // Storefront shows the primary payout method; the full set lives on the
-  // onboarding payout step and in admin review.
-  const primaryPayout = primaryPayoutEntry(draft)
-  const payoutCount = draft.payoutMethods.length
-  const payoutLabel = PAYOUT_OPTIONS.find(
-    (o) => o.id === primaryPayout?.method,
-  )?.label
-  const lipaNetworkLabel = LIPA_NAMBA_NETWORKS.find(
-    (n) => n.id === primaryPayout?.network,
-  )?.label
+
+  // Payout: prefer the value actually on file in the DB; fall back to the local
+  // draft (e.g. mid-onboarding before the first submit writes the payout table).
+  const draftPrimary = primaryPayoutEntry(draft)
+  const payoutView = useMemo(() => {
+    if (initialPayout) {
+      const isBank = initialPayout.methodType === 'bank'
+      const isLipa = initialPayout.methodType === 'lipa_namba'
+      return {
+        methodLabel: PAYOUT_DB_LABEL[initialPayout.methodType] ?? initialPayout.methodType,
+        isBank,
+        isLipa,
+        provider: isLipa
+          ? LIPA_NAMBA_NETWORKS.find((n) => n.id === initialPayout.provider)?.label ??
+            initialPayout.provider
+          : initialPayout.provider,
+        number: initialPayout.accountNumber,
+        accountHolder: initialPayout.accountHolder,
+        count: initialPayout.count,
+      }
+    }
+    if (hydrated && draftPrimary?.method) {
+      return {
+        methodLabel:
+          PAYOUT_OPTIONS.find((o) => o.id === draftPrimary.method)?.label ?? draftPrimary.method,
+        isBank: draftPrimary.method === 'bank',
+        isLipa: draftPrimary.method === 'lipa-namba',
+        provider:
+          draftPrimary.method === 'lipa-namba'
+            ? LIPA_NAMBA_NETWORKS.find((n) => n.id === draftPrimary.network)?.label ??
+              draftPrimary.network
+            : draftPrimary.bankName,
+        number: draftPrimary.number,
+        accountHolder: draftPrimary.accountName,
+        count: draft.payoutMethods.length,
+      }
+    }
+    return null
+  }, [initialPayout, hydrated, draftPrimary, draft.payoutMethods.length])
 
   const persistBadge = (
     pkg: PackageDraft,
@@ -228,10 +337,9 @@ export default function PackagesEditor({
             ) : null}
           </Card>
 
-          {/* Booking policies — still on local draft until Phase 5 extends vendors */}
+          {/* Booking policies — saved to vendors.{deposit_percent,cancellation_level,reschedule_policy} via the Save bar below */}
           <Card
             title="Booking policies"
-            hint="Still on local draft — saves on this device only until onboarding wires Supabase."
             right={<EditLink href="/onboard/pricing/policies" />}
           >
             <dl className="divide-y divide-gray-100">
@@ -245,73 +353,106 @@ export default function PackagesEditor({
             </dl>
           </Card>
 
-          {/* Payout — still on local draft until Phase 5 extends vendors */}
+          {/* Payout — read-only summary of the secure vendor_payout_methods table */}
           <Card
             title="Payout"
-            hint="Still on local draft — saves on this device only until onboarding wires Supabase."
+            icon={Lock}
+            hint="Saved securely from your onboarding payout step. Use Edit to change your bank or mobile-money details."
             right={<EditLink href="/onboard/pricing/payout" />}
           >
-            <dl className="divide-y divide-gray-100">
-              <Row label={payoutCount > 1 ? 'Primary method' : 'Method'}>
-                {(hydrated && payoutLabel) || '—'}
-              </Row>
-              {hydrated && primaryPayout?.method === 'bank' ? (
-                <Row label="Bank">{primaryPayout.bankName || '—'}</Row>
-              ) : null}
-              {hydrated && primaryPayout?.method === 'lipa-namba' ? (
-                <Row label="Network">{lipaNetworkLabel ?? '—'}</Row>
-              ) : null}
-              <Row
-                label={
-                  primaryPayout?.method === 'bank'
-                    ? 'Account number'
-                    : primaryPayout?.method === 'lipa-namba'
-                      ? 'Lipa Namba'
-                      : 'Number'
-                }
-              >
-                {hydrated && primaryPayout?.number
-                  ? primaryPayout.method === 'bank' ||
-                    primaryPayout.method === 'lipa-namba'
-                    ? primaryPayout.number
-                    : `+255 ${primaryPayout.number}`
-                  : '—'}
-              </Row>
-              <Row label="Account holder">
-                {(hydrated && primaryPayout?.accountName) || '—'}
-              </Row>
-              {hydrated && payoutCount > 1 ? (
-                <Row label="Other methods">
-                  {payoutCount - 1} more on file
+            {payoutView ? (
+              <dl className="divide-y divide-gray-100">
+                <Row label={payoutView.count > 1 ? 'Primary method' : 'Method'}>
+                  {payoutView.methodLabel}
                 </Row>
-              ) : null}
-            </dl>
+                {payoutView.isBank && payoutView.provider ? (
+                  <Row label="Bank">{payoutView.provider}</Row>
+                ) : null}
+                {payoutView.isLipa && payoutView.provider ? (
+                  <Row label="Network">{payoutView.provider}</Row>
+                ) : null}
+                <Row
+                  label={
+                    payoutView.isBank
+                      ? 'Account number'
+                      : payoutView.isLipa
+                        ? 'Lipa Namba'
+                        : 'Number'
+                  }
+                >
+                  {payoutView.number
+                    ? payoutView.isBank || payoutView.isLipa
+                      ? payoutView.number
+                      : `+255 ${payoutView.number}`
+                    : '—'}
+                </Row>
+                <Row label="Account holder">{payoutView.accountHolder || '—'}</Row>
+                {payoutView.count > 1 ? (
+                  <Row label="Other methods">{payoutView.count - 1} more on file</Row>
+                ) : null}
+              </dl>
+            ) : (
+              <p className="text-sm text-gray-500 py-2">
+                No payout method on file yet. Add one on the{' '}
+                <Link href="/onboard/pricing/payout" className="underline">
+                  payout step
+                </Link>
+                .
+              </p>
+            )}
           </Card>
         </div>
       </div>
 
       <div className="sticky bottom-0 border-t border-gray-100 bg-white/95 backdrop-blur z-30">
-        <div className="px-6 lg:px-10 py-3 flex items-center justify-between gap-4">
-          <p className="text-xs text-gray-500">
-            <span className="font-semibold text-gray-900 tabular-nums">
-              {packages.length}
-            </span>{' '}
-            package{packages.length === 1 ? '' : 's'} ·{' '}
-            <span className="font-semibold text-gray-900 tabular-nums">
-              {packages.filter((p) => p.badge).length}
-            </span>{' '}
-            with custom badges
+        <div className="px-6 lg:px-10 py-3 flex items-center justify-between gap-4 flex-wrap">
+          <p className="text-xs text-gray-500 flex items-center gap-x-3 gap-y-1 flex-wrap">
+            <span>
+              <span className="font-semibold text-gray-900 tabular-nums">
+                {packages.length}
+              </span>{' '}
+              package{packages.length === 1 ? '' : 's'} ·{' '}
+              <span className="font-semibold text-gray-900 tabular-nums">
+                {packages.filter((p) => p.badge).length}
+              </span>{' '}
+              with custom badges
+            </span>
+            {saveMsg ? (
+              <span
+                className={cn(
+                  'inline-flex items-center gap-1 font-semibold',
+                  saveMsg.kind === 'success' ? 'text-emerald-700' : 'text-rose-700',
+                )}
+                role="status"
+              >
+                {saveMsg.kind === 'success' && <Check className="w-3.5 h-3.5" />}
+                {saveMsg.text}
+              </span>
+            ) : null}
           </p>
-          {nextHref ? (
-            <button
-              type="button"
-              onClick={onNext}
-              className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
-            >
-              Next
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          ) : null}
+          <div className="flex items-center gap-2">
+            {canEdit ? (
+              <button
+                type="button"
+                onClick={onSavePolicies}
+                disabled={saving || !hydrated}
+                className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                <Save className="w-3.5 h-3.5" />
+                {saving ? 'Saving…' : 'Save'}
+              </button>
+            ) : null}
+            {nextHref ? (
+              <button
+                type="button"
+                onClick={onNext}
+                className="inline-flex items-center gap-2 bg-gray-900 text-white text-sm font-semibold px-5 py-2.5 rounded-full hover:bg-gray-800 transition-colors"
+              >
+                Next
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            ) : null}
+          </div>
         </div>
       </div>
     </div>
@@ -561,11 +702,13 @@ function BadgeEditor({
 function Card({
   title,
   hint,
+  icon: Icon = Tag,
   right,
   children,
 }: {
   title: string
   hint?: string
+  icon?: typeof Tag
   right?: React.ReactNode
   children: React.ReactNode
 }) {
@@ -575,14 +718,14 @@ function Card({
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">
             <span className="w-7 h-7 rounded-lg bg-gray-100 text-gray-700 flex items-center justify-center">
-              <Tag className="w-4 h-4" />
+              <Icon className="w-4 h-4" />
             </span>
             <h2 className="text-base font-semibold text-gray-900 tracking-tight">
               {title}
             </h2>
           </div>
           {hint ? (
-            <p className="text-[11px] text-amber-700 mt-1.5 ml-9">{hint}</p>
+            <p className="text-[11px] text-gray-500 mt-1.5 ml-9">{hint}</p>
           ) : null}
         </div>
         {right}

@@ -148,70 +148,47 @@ function DesignsPicker({ content }: { content: WebsitesDesignsContent }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-//  FEATURE ROW — 3 peach cards (echoes /invitations FeatureRow)
+//  FEATURE ROW — clean icon columns (echoes /invitations FeatureRow)
 // ─────────────────────────────────────────────────────────────────────────────
 
 function FeatureRow({ content }: { content: WebsitesFeaturesContent }) {
   return (
     <section className="px-4 sm:px-6">
-      <div className="mx-auto max-w-7xl pt-12 sm:pt-16">
-        <div className="text-center mb-8 sm:mb-10">
-          <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-gray-900 mb-4">
+      <div className="mx-auto max-w-7xl pt-16 sm:pt-24">
+        <div className="text-center mb-10 sm:mb-14">
+          <h2 className="text-2xl md:text-3xl lg:text-4xl font-serif font-medium text-gray-900">
             {content.heading}
           </h2>
-          <p className="max-w-2xl mx-auto text-sm md:text-base text-gray-700 leading-relaxed">
-            {content.description}
-          </p>
+          {content.description && (
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-gray-600 md:text-base">
+              {content.description}
+            </p>
+          )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4">
+        <div className="mx-auto grid max-w-5xl grid-cols-1 gap-x-8 gap-y-10 sm:grid-cols-3">
           {content.items.map((card) => {
             const Icon = FEATURE_ICONS[card.icon] ?? Sparkles
             return (
-              <div
-                key={card.id}
-                className="rounded-md p-6 sm:p-7 flex flex-col items-center text-center"
-                style={{ backgroundColor: content.background_color || '#FCE9C2' }}
-              >
-                <div className="w-11 h-11 rounded-full bg-white/70 flex items-center justify-center mb-4">
-                  <Icon className="text-[#1A1A1A]" size={18} />
-                </div>
-                <h3 className="text-[18px] sm:text-[20px] font-extrabold tracking-tight text-[#1A1A1A]">
+              <div key={card.id} className="flex flex-col items-center px-2 text-center">
+                <Icon className="h-8 w-8 text-[#1A1A1A]" strokeWidth={1.5} aria-hidden="true" />
+                <h3 className="mt-5 text-[18px] font-extrabold tracking-tight text-[#1A1A1A] sm:text-[20px]">
                   {card.title}
                 </h3>
-                <p className="mt-3 text-[13px] text-[#1A1A1A]/75 leading-relaxed max-w-[280px]">
+                <p className="mt-3 max-w-[280px] text-[13px] leading-relaxed text-[#1A1A1A]/65 sm:text-sm">
                   {card.body}
                 </p>
                 <Link
                   href={card.cta_href}
-                  className="mt-3 text-[13px] font-bold text-[#1A1A1A] underline underline-offset-2 hover:text-[var(--accent-hover)]"
+                  className="mt-4 inline-flex items-center gap-1 text-[13px] font-bold text-[#1A1A1A] underline underline-offset-4 hover:text-[var(--accent-hover)]"
                 >
                   {card.cta_label}
+                  <ArrowRight size={14} aria-hidden="true" />
                 </Link>
-                <div className="mt-7 sm:mt-9 w-full h-[180px] sm:h-[200px]">
-                  {card.image_url ? (
-                    <div className="relative h-full w-full overflow-hidden rounded-md">
-                      <Image
-                        src={card.image_url}
-                        alt={card.title}
-                        fill
-                        sizes="(min-width: 768px) 33vw, 100vw"
-                        className="object-cover"
-                      />
-                    </div>
-                  ) : card.visual === 'laptop' ? (
-                    <FeatureVisualLaptop />
-                  ) : card.visual === 'rsvp' ? (
-                    <FeatureVisualRsvp />
-                  ) : (
-                    <FeatureVisualRegistry />
-                  )}
-                </div>
               </div>
             )
           })}
         </div>
-
       </div>
     </section>
   )
@@ -717,79 +694,4 @@ function RoseMotif({ color }: { color: string }) {
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-//  FEATURE CARD VISUALS — small CSS mocks that sit inside the peach cards
-// ─────────────────────────────────────────────────────────────────────────────
-
-function FeatureVisualLaptop() {
-  return (
-    <div className="relative h-full w-full flex items-center justify-center">
-      <div className="relative w-[78%] aspect-[16/10] rounded-md bg-[#1A1A1A] p-[4px] shadow-md">
-        <div className="relative h-full w-full overflow-hidden rounded-sm bg-white">
-          <WebsitePreview treatment="floral-cream" />
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function FeatureVisualRsvp() {
-  return (
-    <div className="relative h-full w-full flex items-center justify-center">
-      <div className="relative w-[58%] bg-white rounded-md shadow-md p-3.5 ring-1 ring-black/5">
-        <p className="text-[8px] uppercase tracking-[0.22em] font-bold text-gray-500">
-          RSVP
-        </p>
-        <p className="font-serif italic text-[12px] text-[#1A1A1A] mt-1">
-          Neema &amp; Amani
-        </p>
-        <div className="mt-2.5 space-y-1.5">
-          {['Maria K. · Joyful yes', 'James M. · Joyful yes', 'Faith L. · Maybe', 'Daniel W. · Joyful yes'].map(
-            (line, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span
-                  className="h-1.5 w-1.5 rounded-full"
-                  style={{
-                    backgroundColor: line.includes('Maybe') ? '#E8B547' : '#9FE870',
-                  }}
-                />
-                <span className="text-[9px] text-[#1A1A1A]">{line}</span>
-              </div>
-            ),
-          )}
-        </div>
-        <div className="mt-3 pt-2.5 border-t border-gray-100 flex items-center justify-between text-[8px] uppercase tracking-[0.18em] font-bold">
-          <span className="text-gray-500">42 attending</span>
-          <span className="text-[#9FE870]">+3 today</span>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-function FeatureVisualRegistry() {
-  const items = [
-    { color: '#9FE870', label: 'M' },
-    { color: '#C9A0DC', label: 'A' },
-    { color: '#F5E6D3', label: 'Z' },
-    { color: '#FAE6E9', label: 'TG' },
-    { color: '#CADFE6', label: 'AM' },
-    { color: '#E8D9A7', label: 'WS' },
-  ]
-  return (
-    <div className="relative h-full w-full flex items-center justify-center">
-      <div className="grid grid-cols-3 gap-2">
-        {items.map((it) => (
-          <div
-            key={it.label}
-            className="w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center font-bold text-[11px] text-[#1A1A1A] shadow-sm ring-1 ring-black/5"
-            style={{ backgroundColor: it.color }}
-          >
-            {it.label}
-          </div>
-        ))}
-      </div>
-    </div>
-  )
-}
 

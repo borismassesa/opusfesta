@@ -25,6 +25,11 @@ import {
   type EventType,
   type WeddingEvent,
 } from '@/lib/dashboard/types'
+import type { DashboardEventsStrings } from '@/lib/cms/ui-strings-fallback'
+
+// Substitute {var} placeholders in a CMS template with runtime values.
+const fmt = (t: string, v: Record<string, string | number>) =>
+  t.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m))
 
 const EVENT_TYPES = Object.keys(EVENT_TYPE_LABELS) as EventType[]
 const NAME_MAX = 100
@@ -168,7 +173,13 @@ function formatWhen(date: string, time: string): string | null {
 
 type SelectedId = string | 'new'
 
-export default function EventsManager({ initialEvents }: { initialEvents: WeddingEvent[] }) {
+export default function EventsManager({
+  initialEvents,
+  strings,
+}: {
+  initialEvents: WeddingEvent[]
+  strings: DashboardEventsStrings
+}) {
   // Top-level view: the list of events, or the create/edit form.
   const [view, setView] = useState<'list' | 'form'>(
     initialEvents.length ? 'list' : 'form',
@@ -192,7 +203,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
 
   // Block navigation away from a form with unsaved edits.
   function guardDirty() {
-    return view !== 'form' || !dirty || confirm('You have unsaved changes. Discard them?')
+    return view !== 'form' || !dirty || confirm(strings.unsaved_confirm)
   }
 
   function openList() {
@@ -225,7 +236,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
 
   function save() {
     if (!form.name.trim()) {
-      toast.error('Give the event a name')
+      toast.error(strings.toast_name_required)
       return
     }
     const payload = toPayload(form)
@@ -233,10 +244,10 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
       try {
         if (editing) {
           await updateEvent(editing.id, payload)
-          toast.success('Event updated')
+          toast.success(strings.toast_updated)
         } else {
           await createEvent(payload)
-          toast.success('Event added')
+          toast.success(strings.toast_added)
           setSelectedId('new')
           setForm(EMPTY_FORM)
           setOriginal(EMPTY_FORM)
@@ -244,7 +255,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
         // Drop back to the list so the saved event is visible right away.
         setView('list')
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Something went wrong')
+        toast.error(err instanceof Error ? err.message : strings.toast_error_generic)
       }
     })
   }
@@ -255,7 +266,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
     startTransition(async () => {
       try {
         await deleteEvent(target.id)
-        toast.success('Event deleted')
+        toast.success(strings.toast_deleted)
         setPendingDelete(null)
         // If the deleted event was open in the form, return to the list.
         if (selectedId === target.id) {
@@ -265,7 +276,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
           setView('list')
         }
       } catch (err) {
-        toast.error(err instanceof Error ? err.message : 'Could not delete')
+        toast.error(err instanceof Error ? err.message : strings.toast_delete_error)
       }
     })
   }
@@ -276,11 +287,10 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
     <div className="space-y-6">
       <header className="border-b border-black/[0.06] pb-6">
         <h1 className="text-2xl font-bold tracking-tight text-[#1A1A1A] sm:text-3xl">
-          Events
+          {strings.page_title}
         </h1>
         <p className="mt-2 text-sm text-[#1A1A1A]/65 sm:text-base">
-          Set up every moment of your ceremony, reception and everything in between. Guests will
-          see the right details and RSVP to each event separately.
+          {strings.page_description}
         </p>
       </header>
 
@@ -290,6 +300,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
         count={initialEvents.length}
         onList={openList}
         onCreate={openNew}
+        strings={strings}
       />
 
       {view === 'list' ? (
@@ -298,6 +309,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
           onEdit={openEvent}
           onCreate={openNew}
           onDelete={(e) => setPendingDelete(e)}
+          strings={strings}
         />
       ) : (
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_28rem]">
@@ -309,19 +321,19 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
               onClick={openList}
               className="mb-1 inline-flex items-center gap-1.5 text-sm font-medium text-[#1A1A1A]/55 transition-colors hover:text-[#1A1A1A]"
             >
-              <ArrowLeft className="h-3.5 w-3.5" /> All events
+              <ArrowLeft className="h-3.5 w-3.5" /> {strings.back_all_events}
             </button>
             <h2 className="text-xl font-semibold text-[#1A1A1A]">
-              {editing ? editing.name || 'Untitled event' : 'New event'}
+              {editing ? editing.name || strings.untitled_event : strings.heading_new_event}
             </h2>
             <p className="text-sm text-[#1A1A1A]/60">
-              Edit the details below, and see how they&apos;ll look on your wedding website.
+              {strings.editor_subtitle}
             </p>
           </div>
 
           {/* Event type + name */}
           <div className="space-y-4">
-            <Field label="Event type" required>
+            <Field label={strings.field_event_type} required>
               <div className="relative">
                 <select
                   className={cn(inputClass, 'appearance-none pr-10')}
@@ -342,24 +354,24 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                   value={form.custom_type}
                   onChange={(e) => set('custom_type', e.target.value)}
                   maxLength={NAME_MAX}
-                  placeholder="Name this event type (e.g. Welcome Dinner)"
+                  placeholder={strings.placeholder_custom_type}
                 />
               ) : null}
             </Field>
 
-            <Field label="Event name" required>
+            <Field label={strings.field_event_name} required>
               <input
                 className={inputClass}
                 value={form.name}
                 maxLength={NAME_MAX}
                 onChange={(e) => set('name', e.target.value)}
-                placeholder="Our ceremony"
+                placeholder={strings.placeholder_event_name}
               />
-              <CounterRow value={form.name.length} max={NAME_MAX} hint="Maximum 100 characters" />
+              <CounterRow value={form.name.length} max={NAME_MAX} hint={strings.hint_max_100} />
             </Field>
 
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field label="Start date" required>
+              <Field label={strings.field_start_date} required>
                 <input
                   type="date"
                   className={inputClass}
@@ -367,7 +379,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                   onChange={(e) => set('startDate', e.target.value)}
                 />
               </Field>
-              <Field label="Start time" required>
+              <Field label={strings.field_start_time} required>
                 <input
                   type="time"
                   className={inputClass}
@@ -375,7 +387,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                   onChange={(e) => set('startTime', e.target.value)}
                 />
               </Field>
-              <Field label="End date">
+              <Field label={strings.field_end_date}>
                 <input
                   type="date"
                   className={inputClass}
@@ -383,7 +395,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                   onChange={(e) => set('endDate', e.target.value)}
                 />
               </Field>
-              <Field label="End time">
+              <Field label={strings.field_end_time}>
                 <input
                   type="time"
                   className={inputClass}
@@ -395,9 +407,9 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
           </div>
 
           {/* Event location */}
-          <Section title="Event location">
+          <Section title={strings.section_location}>
             <Field
-              label="Venue name"
+              label={strings.field_venue_name}
               hintInline={
                 form.address || form.city ? (
                   <button
@@ -405,7 +417,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                     onClick={resetAddress}
                     className="text-xs font-medium text-[#7E5896] hover:text-[#5d3a78]"
                   >
-                    Reset address →
+                    {strings.reset_address}
                   </button>
                 ) : null
               }
@@ -414,35 +426,35 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                 className={inputClass}
                 value={form.venue_name}
                 onChange={(e) => set('venue_name', e.target.value)}
-                placeholder="Brooklyn Winery"
+                placeholder={strings.placeholder_venue_name}
               />
             </Field>
-            <Field label="Street address">
+            <Field label={strings.field_street_address}>
               <input
                 className={inputClass}
                 value={form.address}
                 onChange={(e) => set('address', e.target.value)}
               />
             </Field>
-            <Field label="City">
+            <Field label={strings.field_city}>
               <input
                 className={inputClass}
                 value={form.city}
                 onChange={(e) => set('city', e.target.value)}
-                placeholder="e.g. Dar es Salaam"
+                placeholder={strings.placeholder_city}
               />
             </Field>
           </Section>
 
           {/* Website settings */}
-          <Section title="Event settings on website">
+          <Section title={strings.section_website_settings}>
             <Toggle
-              label="Make event public to all guests"
+              label={strings.toggle_public}
               checked={form.is_public}
               onChange={(v) => set('is_public', v)}
             />
             <Toggle
-              label="Let guests RSVP on website"
+              label={strings.toggle_allow_rsvp}
               checked={form.allow_rsvp}
               onChange={(v) => set('allow_rsvp', v)}
             />
@@ -450,34 +462,34 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
 
           {/* Attire + Note */}
           <div className="space-y-4">
-            <Field label="Attire suggestions">
+            <Field label={strings.field_attire}>
               <textarea
                 className={inputClass}
                 rows={2}
                 value={form.dress_code}
                 maxLength={ATTIRE_MAX}
                 onChange={(e) => set('dress_code', e.target.value)}
-                placeholder="This event is black-tie optional. The grass can be soft, so maybe rethink stilettos."
+                placeholder={strings.placeholder_attire}
               />
-              <CounterRow value={form.dress_code.length} max={ATTIRE_MAX} hint="Maximum 400 characters" />
+              <CounterRow value={form.dress_code.length} max={ATTIRE_MAX} hint={strings.hint_max_400} />
             </Field>
-            <Field label="Note to guests">
+            <Field label={strings.field_note}>
               <textarea
                 className={inputClass}
                 rows={3}
                 value={form.description}
                 maxLength={NOTE_MAX}
                 onChange={(e) => set('description', e.target.value)}
-                placeholder="There will be a few light bites in addition to cocktails. Can't wait to see you!"
+                placeholder={strings.placeholder_note}
               />
               <CounterRow value={form.description.length} max={NOTE_MAX} />
             </Field>
           </div>
 
           {/* Meal preferences */}
-          <Section title="Ask for meal preferences">
+          <Section title={strings.section_meal_preferences}>
             <Toggle
-              label="Collect meal choices for this event"
+              label={strings.toggle_collect_meal}
               checked={form.collect_meal_choice}
               onChange={(v) => set('collect_meal_choice', v)}
             />
@@ -485,6 +497,7 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
               <MealOptionsEditor
                 options={form.meal_options}
                 onChange={(next) => set('meal_options', next)}
+                strings={strings}
               />
             ) : null}
           </Section>
@@ -499,19 +512,19 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
                 className="inline-flex items-center gap-2 rounded-full border border-rose-200 bg-rose-50 px-4 py-2.5 text-sm font-semibold text-rose-700 transition-colors hover:border-rose-300 hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Trash2 className="h-4 w-4" />
-                Delete event
+                {strings.delete_event}
               </button>
             ) : null}
             <Button onClick={save} disabled={pending || !dirty || !form.name.trim()}>
-              {pending ? 'Saving…' : editing ? 'Save changes' : 'Add event'}
+              {pending ? strings.btn_saving : editing ? strings.btn_save_changes : strings.btn_add_event}
             </Button>
           </div>
         </div>
 
         {/* ──────────────────────── Right: preview ──────────────────────── */}
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
-          <PreviewCard form={form} editing={editing} />
-          <PromoCard />
+          <PreviewCard form={form} editing={editing} strings={strings} />
+          <PromoCard strings={strings} />
         </aside>
       </div>
       )}
@@ -520,9 +533,9 @@ export default function EventsManager({ initialEvents }: { initialEvents: Weddin
         open={pendingDelete !== null}
         onClose={() => setPendingDelete(null)}
         onConfirm={confirmRemove}
-        title={pendingDelete ? `Delete "${pendingDelete.name}"?` : ''}
-        description="This also removes the event from every guest's invitation. It can't be undone."
-        confirmLabel="Delete event"
+        title={pendingDelete ? fmt(strings.delete_dialog_title, { name: pendingDelete.name }) : ''}
+        description={strings.delete_dialog_description}
+        confirmLabel={strings.delete_event}
         pending={pending}
       />
     </div>
@@ -537,17 +550,19 @@ function ViewTabs({
   count,
   onList,
   onCreate,
+  strings,
 }: {
   view: 'list' | 'form'
   isNew: boolean
   count: number
   onList: () => void
   onCreate: () => void
+  strings: DashboardEventsStrings
 }) {
   const tabs = [
     {
       id: 'list',
-      label: 'Event list',
+      label: strings.tab_event_list,
       icon: CalendarDays,
       badge: count,
       active: view === 'list',
@@ -555,7 +570,7 @@ function ViewTabs({
     },
     {
       id: 'create',
-      label: 'Create event',
+      label: strings.tab_create_event,
       icon: Plus,
       badge: 0,
       active: view === 'form' && isNew,
@@ -565,7 +580,7 @@ function ViewTabs({
   return (
     <nav
       role="tablist"
-      aria-label="Event views"
+      aria-label={strings.tabs_aria}
       className="-mx-4 flex flex-wrap items-center gap-x-6 gap-y-2 overflow-x-auto border-b border-black/[0.06] px-4 pb-2 sm:mx-0 sm:px-0"
     >
       {tabs.map(({ id, label, icon: Icon, badge, active, onClick }) => (
@@ -605,11 +620,13 @@ function EventList({
   onEdit,
   onCreate,
   onDelete,
+  strings,
 }: {
   events: WeddingEvent[]
   onEdit: (id: string) => void
   onCreate: () => void
   onDelete: (e: WeddingEvent) => void
+  strings: DashboardEventsStrings
 }) {
   if (!events.length) {
     return (
@@ -617,17 +634,16 @@ function EventList({
         <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#F0DFF6] text-[#5d3a78]">
           <CalendarDays className="h-5 w-5" />
         </span>
-        <h3 className="mt-4 text-base font-semibold text-[#1A1A1A]">No events yet</h3>
+        <h3 className="mt-4 text-base font-semibold text-[#1A1A1A]">{strings.empty_title}</h3>
         <p className="mx-auto mt-1 max-w-sm text-sm text-[#1A1A1A]/60">
-          Add your ceremony, reception, send-off and everything in between. Each one gets
-          its own RSVP link.
+          {strings.empty_body}
         </p>
         <button
           type="button"
           onClick={onCreate}
           className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-[#1A1A1A] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-black"
         >
-          <Plus className="h-4 w-4" /> Create your first event
+          <Plus className="h-4 w-4" /> {strings.empty_cta}
         </button>
       </div>
     )
@@ -653,15 +669,15 @@ function EventList({
               <span className="min-w-0">
                 <span className="flex items-center gap-2">
                   <span className="truncate font-semibold text-[#1A1A1A]">
-                    {e.name || 'Untitled event'}
+                    {e.name || strings.untitled_event}
                   </span>
                   {e.is_public ? (
                     <span className="inline-flex items-center gap-1 rounded-full bg-black/[0.05] px-2 py-0.5 text-[10px] font-medium text-[#1A1A1A]/70">
-                      <Globe2 className="h-3 w-3" /> Public
+                      <Globe2 className="h-3 w-3" /> {strings.badge_public}
                     </span>
                   ) : (
                     <span className="rounded-full bg-black/[0.05] px-2 py-0.5 text-[10px] font-medium text-[#1A1A1A]/55">
-                      Hidden
+                      {strings.badge_hidden}
                     </span>
                   )}
                 </span>
@@ -673,7 +689,7 @@ function EventList({
             <button
               type="button"
               onClick={() => onEdit(e.id)}
-              aria-label="Edit event"
+              aria-label={strings.aria_edit_event}
               className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#1A1A1A]/55 transition-colors hover:bg-black/[0.04] hover:text-[#1A1A1A] sm:inline-flex"
             >
               <Pencil className="h-4 w-4" />
@@ -681,7 +697,7 @@ function EventList({
             <button
               type="button"
               onClick={() => onDelete(e)}
-              aria-label="Delete event"
+              aria-label={strings.aria_delete_event}
               className="hidden h-9 w-9 shrink-0 items-center justify-center rounded-lg text-[#1A1A1A]/55 transition-colors hover:bg-rose-50 hover:text-rose-600 sm:inline-flex"
             >
               <Trash2 className="h-4 w-4" />
@@ -750,9 +766,11 @@ function Toggle({
 function MealOptionsEditor({
   options,
   onChange,
+  strings,
 }: {
   options: string[]
   onChange: (next: string[]) => void
+  strings: DashboardEventsStrings
 }) {
   const [draft, setDraft] = useState('')
 
@@ -780,7 +798,7 @@ function MealOptionsEditor({
               type="button"
               onClick={() => onChange(options.filter((o) => o !== opt))}
               className="text-[#5d3a78]/60 hover:text-[#5d3a78]"
-              aria-label={`Remove ${opt}`}
+              aria-label={fmt(strings.aria_remove_meal, { option: opt })}
             >
               ×
             </button>
@@ -798,14 +816,14 @@ function MealOptionsEditor({
               add()
             }
           }}
-          placeholder="Add a meal option (e.g. Vegetarian)"
+          placeholder={strings.placeholder_meal_option}
         />
         <button
           type="button"
           onClick={add}
           className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-black/[0.12] bg-white px-3 py-2 text-sm font-medium text-[#1A1A1A] hover:bg-black/[0.03]"
         >
-          <Plus className="h-3.5 w-3.5" /> Add meal option
+          <Plus className="h-3.5 w-3.5" /> {strings.add_meal_option}
         </button>
       </div>
     </div>
@@ -815,16 +833,18 @@ function MealOptionsEditor({
 function PreviewCard({
   form,
   editing,
+  strings,
 }: {
   form: FormState
   editing: WeddingEvent | null
+  strings: DashboardEventsStrings
 }) {
   const when = formatWhen(form.startDate, form.startTime)
   const whereParts = [form.venue_name, form.city].filter(Boolean)
   return (
     <Card className="overflow-hidden p-0">
       <div className="border-b border-black/[0.06] px-5 py-3 text-xs font-medium uppercase tracking-wide text-[#1A1A1A]/55">
-        Preview
+        {strings.preview_label}
       </div>
       <div className="space-y-4 p-5">
         <div className="flex items-center gap-2 text-[11px] font-medium uppercase tracking-wide text-[#1A1A1A]/55">
@@ -833,17 +853,17 @@ function PreviewCard({
             : EVENT_TYPE_LABELS[form.event_type]}
           {form.is_public ? (
             <span className="ml-auto inline-flex items-center gap-1 rounded-full bg-black/[0.05] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[#1A1A1A]/70">
-              <Globe2 className="h-3 w-3" /> Visible to guests
+              <Globe2 className="h-3 w-3" /> {strings.preview_visible}
             </span>
           ) : (
             <span className="ml-auto rounded-full bg-black/[0.05] px-2 py-0.5 text-[10px] font-medium normal-case tracking-normal text-[#1A1A1A]/55">
-              Hidden
+              {strings.badge_hidden}
             </span>
           )}
         </div>
         <div>
           <h3 className="text-xl font-semibold tracking-tight text-[#1A1A1A]">
-            {form.name || (editing ? editing.name : 'Your event name')}
+            {form.name || (editing ? editing.name : strings.preview_name_placeholder)}
           </h3>
           <div className="mt-3 space-y-1.5 text-sm text-[#1A1A1A]/70">
             {when ? (
@@ -852,7 +872,7 @@ function PreviewCard({
               </p>
             ) : (
               <p className="flex items-center gap-2 text-[#1A1A1A]/45">
-                <Clock className="h-4 w-4 shrink-0" /> Add a start date and time
+                <Clock className="h-4 w-4 shrink-0" /> {strings.preview_add_date}
               </p>
             )}
             {whereParts.length ? (
@@ -866,7 +886,7 @@ function PreviewCard({
         {form.dress_code ? (
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
-              Attire
+              {strings.preview_attire_label}
             </p>
             <p className="mt-1 text-sm text-[#1A1A1A]/75">{form.dress_code}</p>
           </div>
@@ -874,7 +894,7 @@ function PreviewCard({
         {form.description ? (
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
-              Note to guests
+              {strings.preview_note_label}
             </p>
             <p className="mt-1 text-sm text-[#1A1A1A]/75">{form.description}</p>
           </div>
@@ -882,7 +902,7 @@ function PreviewCard({
         {form.collect_meal_choice && form.meal_options.length ? (
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-wide text-[#1A1A1A]/55">
-              Meal choices
+              {strings.preview_meal_label}
             </p>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {form.meal_options.map((m) => (
@@ -909,25 +929,24 @@ function WhatsAppGlyph({ className }: { className?: string }) {
   )
 }
 
-function PromoCard() {
+function PromoCard({ strings }: { strings: DashboardEventsStrings }) {
   return (
     <Card className="overflow-hidden p-0">
       <div className="flex items-center gap-2.5 border-b border-black/[0.06] px-5 py-3">
         <WhatsAppGlyph className="h-4 w-4 text-[#25D366]" />
         <span className="text-xs font-medium uppercase tracking-wide text-[#1A1A1A]/55">
-          Sharing
+          {strings.promo_label}
         </span>
       </div>
       <div className="p-5">
         <p className="text-sm leading-relaxed text-[#1A1A1A]/75">
-          Each event has its own RSVP link. Send it on WhatsApp, SMS or email and
-          guests reply per event — you can see every response in the guest list.
+          {strings.promo_body}
         </p>
         <a
           href="/my/dashboard/guests"
           className="group mt-4 inline-flex items-center gap-1.5 text-sm font-semibold text-[#5d3a78]"
         >
-          Open guest list
+          {strings.promo_cta}
           <ArrowRight className="h-4 w-4 transition-transform duration-150 group-hover:translate-x-0.5" />
         </a>
       </div>

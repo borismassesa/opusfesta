@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react'
 import { redirect } from 'next/navigation'
 import { getCurrentVendor } from '@/lib/vendor'
+import { ActiveVendorProvider } from '@/lib/onboarding/active-vendor-context'
 import PortalShell from './PortalShell'
 
 export default async function PortalLayout({
@@ -22,17 +23,24 @@ export default async function PortalLayout({
 
   // Vendor name + slug are resolved here in the server layout — PortalShell
   // needs the name to greet the vendor in the header, and the slug feeds
-  // the "Preview public storefront" link in the storefront sidebar.
+  // the "View public storefront" link in the header.
   // `no-env` falls back to the seed values so designers see a populated
   // greeting offline.
   const vendorName =
     state.kind === 'live' ? state.vendor.businessName : 'OpusFesta Photography'
   const vendorSlug =
     state.kind === 'live' ? state.vendor.slug : null
+  // Scope every storefront/onboarding-draft consumer in the portal to THIS
+  // business, so a user who owns several vendor profiles never sees (or saves)
+  // one business's draft fields against another. `null` only on the no-env dev
+  // fallback, which reads the shared 'onboarding' slot.
+  const activeVendorId = state.kind === 'live' ? state.vendor.id : null
 
   return (
-    <PortalShell vendorName={vendorName} vendorSlug={vendorSlug}>
-      {children}
-    </PortalShell>
+    <ActiveVendorProvider vendorId={activeVendorId}>
+      <PortalShell vendorName={vendorName} vendorSlug={vendorSlug}>
+        {children}
+      </PortalShell>
+    </ActiveVendorProvider>
   )
 }

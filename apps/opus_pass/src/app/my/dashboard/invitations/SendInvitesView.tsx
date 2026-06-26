@@ -20,6 +20,7 @@ import {
   reminderMessage,
 } from '@/lib/dashboard/share'
 import type { SendInvitesData, SendGuestRow } from '@/lib/dashboard/queries'
+import type { DashboardSendStrings } from '@/lib/cms/ui-strings-fallback'
 
 const STATUS_CLASS: Record<SendGuestRow['status'], string> = {
   none: 's-none',
@@ -30,7 +31,17 @@ const STATUS_CLASS: Record<SendGuestRow['status'], string> = {
   maybe: 's-maybe',
 }
 
-export default function SendInvitesView({ data }: { data: SendInvitesData }) {
+/** Substitute `{var}` placeholders in a CMS template with runtime values. */
+const fmt = (t: string, v: Record<string, string | number>) =>
+  t.replace(/\{(\w+)\}/g, (m, k) => (k in v ? String(v[k]) : m))
+
+export default function SendInvitesView({
+  data,
+  strings,
+}: {
+  data: SendInvitesData
+  strings: DashboardSendStrings
+}) {
   const router = useRouter()
   const { event, funnel, quota, publicLink, whatsappLive, guests } = data
 
@@ -64,7 +75,7 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
   const headingName = event.eventName ?? event.coupleName
   const heading =
     event.eventTypeLabel && event.eventTypeLabel.toLowerCase() !== headingName.toLowerCase()
-      ? `${headingName} — ${event.eventTypeLabel}`
+      ? `${headingName}, ${event.eventTypeLabel}`
       : headingName
 
   function toggleSharing() {
@@ -77,7 +88,7 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
         }
         router.refresh()
       } catch {
-        toast.error('Could not update sharing.')
+        toast.error(strings.toast_sharing_error)
       }
     })
   }
@@ -86,7 +97,7 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
     if (!publicLink.url) return
     await navigator.clipboard.writeText(publicLink.url)
     setCopied(true)
-    toast.success('Link copied')
+    toast.success(strings.toast_link_copied)
     setTimeout(() => setCopied(false), 1800)
   }
 
@@ -106,13 +117,17 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
     startTransition(async () => {
       const res = await sendWhatsAppInvites(ids)
       if (!res.hasPaidOrder) {
-        toast.error('Buy an invitation package to send.')
+        toast.error(strings.toast_no_package)
         return
       }
-      const verb = res.dryRun ? 'queued (dry run)' : reminder ? 'reminded' : 'sent'
+      const verb = res.dryRun
+        ? strings.send_verb_dryrun
+        : reminder
+          ? strings.send_verb_reminded
+          : strings.send_verb_sent
       const parts = [`${res.sent} ${verb}`]
-      if (res.blocked > 0) parts.push(`${res.blocked} over quota`)
-      if (res.skipped > 0) parts.push(`${res.skipped} no phone`)
+      if (res.blocked > 0) parts.push(fmt(strings.send_over_quota, { n: res.blocked }))
+      if (res.skipped > 0) parts.push(fmt(strings.send_no_phone, { n: res.skipped }))
       toast.success(parts.join(' · '))
       setSelected(new Set())
       router.refresh()
@@ -123,7 +138,7 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
   function remindAwaiting() {
     const ids = guests.filter((g) => isAwaiting(g.status)).map((g) => g.id)
     if (ids.length === 0) {
-      toast('No one is awaiting a reply right now.')
+      toast(strings.toast_no_awaiting)
       return
     }
     bulkSend(ids, { reminder: true })
@@ -137,14 +152,15 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
       : inviteMessage(event.coupleName, g.name, g.rsvpUrl)
     if (channel === 'copy') {
       navigator.clipboard.writeText(g.rsvpUrl)
-      toast.success('Personal link copied')
+      toast.success(strings.toast_personal_copied)
       return
     }
     const guestLike = { full_name: g.name, phone: g.phone, whatsapp_phone: g.whatsappPhone }
     const url = channel === 'whatsapp' ? whatsappShareUrl(guestLike, msg) : smsShareUrl(guestLike, msg)
     window.open(url, '_blank', 'noopener,noreferrer')
     recordSend(g.id, channel).catch(() => {})
-    if (reminding) toast.success(`Reminder ready for ${g.name.split(/\s+/)[0] || g.name}`)
+    if (reminding)
+      toast.success(fmt(strings.toast_reminder_ready, { name: g.name.split(/\s+/)[0] || g.name }))
   }
 
   function toggleSelect(id: string) {
@@ -163,11 +179,8 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
     <div className="si">
       <style>{css}</style>
 
-      <h1>Send invites</h1>
-      <p className="sub">
-        Your card is paid for. Now get it into your guests&apos; hands — share a public link, or send each
-        guest a personal invite.
-      </p>
+      <h1>{strings.heading}</h1>
+      <p className="sub">{strings.subheading}</p>
 
       {/* Event context */}
       <div className="ctx">
@@ -183,7 +196,7 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
             />
           ) : (
             <div className="ci">
-              <span>{event.eventTypeLabel ? event.eventTypeLabel.toUpperCase() : 'INVITATION'}</span>
+              <span>{event.eventTypeLabel ? event.eventTypeLabel.toUpperCase() : strings.card_fallback_label}</span>
               <b>{headingName}</b>
               {event.dateLabel ? <span>{event.dateLabel.toUpperCase()}</span> : null}
             </div>
@@ -195,7 +208,7 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
             {event.dateLabel ? <span>📅 {event.dateLabel}</span> : null}
             {event.venue ? <span>📍 {event.venue}</span> : null}
             {event.hasPaidOrder ? (
-              <span className="badge">✓ {event.cardTier ? `${event.cardTier} card` : 'Card'} purchased</span>
+              <span className="badge">✓ {event.cardTier ? fmt(strings.card_purchased_tier, { tier: event.cardTier }) : strings.card_purchased}</span>
             ) : null}
           </div>
 
@@ -203,20 +216,20 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
             <>
               <div className="pmeta">
                 {event.cardTier ? (
-                  <span className="fact"><i>Package</i>{event.cardTier}</span>
+                  <span className="fact"><i>{strings.fact_package}</i>{event.cardTier}</span>
                 ) : null}
                 {event.cardName ? (
-                  <span className="fact"><i>Design</i>{event.cardName}</span>
+                  <span className="fact"><i>{strings.fact_design}</i>{event.cardName}</span>
                 ) : null}
                 <span className="fact">
-                  <i>Invites paid</i>
-                  {quota.purchased} to share
+                  <i>{strings.fact_invites_paid}</i>
+                  {fmt(strings.fact_to_share, { n: quota.purchased })}
                 </span>
               </div>
 
               {event.addOns.length > 0 ? (
                 <div className="addons">
-                  <span className="al">Add-ons</span>
+                  <span className="al">{strings.addons_label}</span>
                   {event.addOns.map((a) => (
                     <span key={a} className="ao">{a}</span>
                   ))}
@@ -225,19 +238,19 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
             </>
           ) : null}
         </div>
-        <Link href="/my/dashboard/events" className="chg">Manage events</Link>
+        <Link href="/my/dashboard/events" className="chg">{strings.manage_events}</Link>
       </div>
 
       {/* Funnel + quota */}
       <div className="funnel">
-        <div className="fc"><div className="n">{funnel.invited}</div><div className="l">Invited</div></div>
-        <div className="fc"><div className="n">{funnel.delivered}</div><div className="l"><span className="ar">→</span> Delivered</div></div>
-        <div className="fc"><div className="n">{funnel.viewed}</div><div className="l"><span className="ar">→</span> Viewed</div></div>
-        <div className="fc"><div className="n">{funnel.rsvpd}</div><div className="l"><span className="ar">→</span> RSVP&apos;d</div></div>
+        <div className="fc"><div className="n">{funnel.invited}</div><div className="l">{strings.funnel_invited}</div></div>
+        <div className="fc"><div className="n">{funnel.delivered}</div><div className="l"><span className="ar">→</span> {strings.funnel_delivered}</div></div>
+        <div className="fc"><div className="n">{funnel.viewed}</div><div className="l"><span className="ar">→</span> {strings.funnel_viewed}</div></div>
+        <div className="fc"><div className="n">{funnel.rsvpd}</div><div className="l"><span className="ar">→</span> {strings.funnel_rsvpd}</div></div>
         <div className="fc quota">
-          <div className="top"><span>Paid invitations</span><span><b>{quota.used}</b> of {quota.purchased} used</span></div>
+          <div className="top"><span>{strings.quota_label}</span><span><b>{quota.used}</b> {fmt(strings.quota_used_suffix, { m: quota.purchased })}</span></div>
           <div className="bar"><i style={{ width: `${pct}%` }} /></div>
-          <div className="ft">{quota.remaining} remaining · <Link href="/invitations/catalog">Top up</Link></div>
+          <div className="ft">{fmt(strings.quota_remaining, { n: quota.remaining })} · <Link href="/invitations/catalog">{strings.quota_topup}</Link></div>
         </div>
       </div>
 
@@ -245,61 +258,55 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
       <div className="modes">
         <section className="mode">
           <div className="hrow">
-            <div><div className="tag">Broadcast</div><h2>Public invite link</h2></div>
+            <div><div className="tag">{strings.broadcast_tag}</div><h2>{strings.broadcast_title}</h2></div>
             <button
               className={`tg ${publicLink.enabled ? 'on' : 'off'}`}
               onClick={toggleSharing}
               disabled={pending}
-              title={publicLink.enabled ? 'Sharing on' : 'Sharing off'}
-              aria-label="Toggle public sharing"
+              title={publicLink.enabled ? strings.sharing_on : strings.sharing_off}
+              aria-label={strings.sharing_toggle_aria}
             ><i /></button>
           </div>
-          <p>
-            One link you can drop into any WhatsApp group or status. It unfurls into a branded preview, and
-            self-RSVPs land in a <b>review queue</b> — so no one can reply as someone else.
-          </p>
+          <p>{strings.broadcast_desc}</p>
 
           {publicLink.enabled && publicLink.url ? (
             <>
               <div className="linkbox">
                 <code>{publicLink.url.replace(/^https?:\/\//, '')}</code>
-                <button className="copybtn" onClick={copyLink}>{copied ? 'Copied ✓' : 'Copy'}</button>
+                <button className="copybtn" onClick={copyLink}>{copied ? strings.copy_done : strings.copy}</button>
               </div>
               <div className="chips">
-                <button className="chip wa" onClick={() => shareLink('whatsapp')}><span className="dot" />WhatsApp</button>
-                <button className="chip sms" onClick={() => shareLink('sms')}><span className="dot" />SMS</button>
-                <button className="chip copy" onClick={copyLink}><span className="dot" />Copy link</button>
-                <button className="chip qr" onClick={() => shareLink('qr')}><span className="dot" />Open</button>
+                <button className="chip wa" onClick={() => shareLink('whatsapp')}><span className="dot" />{strings.chip_whatsapp}</button>
+                <button className="chip sms" onClick={() => shareLink('sms')}><span className="dot" />{strings.chip_sms}</button>
+                <button className="chip copy" onClick={copyLink}><span className="dot" />{strings.chip_copy_link}</button>
+                <button className="chip qr" onClick={() => shareLink('qr')}><span className="dot" />{strings.chip_open}</button>
               </div>
             </>
           ) : (
-            <div className="linkbox off"><code>Turn on sharing to get your public link</code></div>
+            <div className="linkbox off"><code>{strings.link_off_placeholder}</code></div>
           )}
 
-          <div className="note"><span className="k">Best for</span><span>big group chats and status — fast reach, lighter control.</span></div>
+          <div className="note"><span className="k">{strings.best_for}</span><span>{strings.broadcast_best_for}</span></div>
         </section>
 
         <section className="mode">
-          <div className="hrow"><div><div className="tag">Targeted</div><h2>Personal invites</h2></div></div>
-          <p>
-            Send each named guest their own card with <b>Attend / Decline / View location</b> buttons they tap
-            right in WhatsApp — or as an SMS link, no app needed. Every send is tracked below.
-          </p>
+          <div className="hrow"><div><div className="tag">{strings.targeted_tag}</div><h2>{strings.targeted_title}</h2></div></div>
+          <p>{strings.targeted_desc}</p>
           <div className="chips">
-            <button className="chip wa" disabled={pending} onClick={() => bulkSend()}><span className="dot" />Send via WhatsApp</button>
+            <button className="chip wa" disabled={pending} onClick={() => bulkSend()}><span className="dot" />{strings.send_via_whatsapp}</button>
             {awaitingCount > 0 ? (
               <button className="chip remind" disabled={pending} onClick={remindAwaiting}>
-                <span className="dot" />Remind {awaitingCount} awaiting
+                <span className="dot" />{fmt(strings.remind_awaiting, { n: awaitingCount })}
               </button>
             ) : null}
           </div>
           {!whatsappLive ? (
             <div className="connect">
-              <span className="dp">Dry run</span>
-              <span>WhatsApp Business isn&apos;t connected — sends are logged only until the Meta account &amp; template are approved.</span>
+              <span className="dp">{strings.dryrun_pill}</span>
+              <span>{strings.dryrun_note}</span>
             </div>
           ) : null}
-          <div className="note"><span className="k">Best for</span><span>your real guest list — accurate counts and per-guest status.</span></div>
+          <div className="note"><span className="k">{strings.best_for}</span><span>{strings.targeted_best_for}</span></div>
         </section>
       </div>
 
@@ -312,48 +319,48 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
             checked={visible.length > 0 && selected.size === visible.length}
             onChange={(e) => toggleSelectAll(e.target.checked)}
           />
-          <h2>Guest list</h2><span className="cnt">{guests.length} guests</span>
+          <h2>{strings.guest_list}</h2><span className="cnt">{fmt(strings.guest_count, { n: guests.length })}</span>
           <input
             className="gsearch"
             type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search name or number…"
-            aria-label="Search guests"
+            placeholder={strings.search_placeholder}
+            aria-label={strings.search_aria}
           />
           <div className="acts">
-            <div className="seg" role="tablist" aria-label="Filter guests">
+            <div className="seg" role="tablist" aria-label={strings.filter_aria}>
               <button className={`sg ${filter === 'all' ? 'on' : ''}`} onClick={() => setFilter('all')}>
-                All
+                {strings.filter_all}
               </button>
               <button className={`sg ${filter === 'notsent' ? 'on' : ''}`} onClick={() => setFilter('notsent')}>
-                Not sent{notSentCount ? ` ${notSentCount}` : ''}
+                {strings.filter_notsent}{notSentCount ? ` ${notSentCount}` : ''}
               </button>
               <button className={`sg ${filter === 'awaiting' ? 'on' : ''}`} onClick={() => setFilter('awaiting')}>
-                Awaiting{awaitingCount ? ` ${awaitingCount}` : ''}
+                {strings.filter_awaiting}{awaitingCount ? ` ${awaitingCount}` : ''}
               </button>
             </div>
             <button className="btn pri" disabled={pending || selected.size === 0} onClick={() => bulkSend([...selected])}>
-              Send to selected <ArrowRight size={15} />
+              {strings.send_to_selected} <ArrowRight size={15} />
             </button>
           </div>
         </div>
         {visible.length === 0 ? (
           <div className="empty">
             {search.trim()
-              ? 'No guests match your search.'
+              ? strings.empty_search
               : filter === 'notsent'
-                ? 'Everyone has been sent an invite.'
+                ? strings.empty_notsent
                 : filter === 'awaiting'
-                  ? 'No one is awaiting a reply.'
-                  : 'No guests yet.'}
+                  ? strings.empty_awaiting
+                  : strings.empty_none}
           </div>
         ) : (
           <table>
             <thead>
               <tr>
-                <th style={{ width: 30 }}></th><th>Guest</th><th>Contact</th>
-                <th>Preferred channel</th><th>Status</th><th style={{ textAlign: 'right' }}>Send</th>
+                <th style={{ width: 30 }}></th><th>{strings.th_guest}</th><th>{strings.th_contact}</th>
+                <th>{strings.th_channel}</th><th>{strings.th_status}</th><th style={{ textAlign: 'right' }}>{strings.th_send}</th>
               </tr>
             </thead>
             <tbody>
@@ -363,14 +370,14 @@ export default function SendInvitesView({ data }: { data: SendInvitesData }) {
                   <td className="who">{g.name}</td>
                   <td className="contact">{g.phone ?? g.whatsappPhone ?? '—'}</td>
                   <td>
-                    <span className={`mini ${g.channel}`}><span className="dot" />{g.channel === 'whatsapp' ? 'WhatsApp' : 'SMS'}</span>
+                    <span className={`mini ${g.channel}`}><span className="dot" />{g.channel === 'whatsapp' ? strings.channel_whatsapp : strings.channel_sms}</span>
                   </td>
                   <td><span className={`status ${STATUS_CLASS[g.status]}`}>{g.statusLabel}</span></td>
                   <td>
                     <div className="ra">
-                      <button className="ia wa" title="WhatsApp" onClick={() => rowShare(g, 'whatsapp')}><MessageCircle size={15} /></button>
-                      <button className="ia sms" title="SMS" onClick={() => rowShare(g, 'sms')}><Mail size={15} /></button>
-                      <button className="ia copy" title="Copy personal link" onClick={() => rowShare(g, 'copy')}><Copy size={15} /></button>
+                      <button className="ia wa" title={strings.row_whatsapp} onClick={() => rowShare(g, 'whatsapp')}><MessageCircle size={15} /></button>
+                      <button className="ia sms" title={strings.row_sms} onClick={() => rowShare(g, 'sms')}><Mail size={15} /></button>
+                      <button className="ia copy" title={strings.row_copy} onClick={() => rowShare(g, 'copy')}><Copy size={15} /></button>
                     </div>
                   </td>
                 </tr>

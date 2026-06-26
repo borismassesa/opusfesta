@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
+import { toast } from 'sonner'
 import {
   AlertTriangle,
   CalendarDays,
@@ -22,6 +23,7 @@ import {
 } from '@/lib/onboarding/draft'
 import type { CalendarBooking } from '@/lib/mock-data'
 import { cn } from '@/lib/utils'
+import { loadAvailability, loadBusinessHours, saveAvailability } from '../../../storefront/sections/actions'
 
 const WEEKDAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] as const
 const MONTH_LABELS = [
@@ -34,8 +36,8 @@ type CalendarView = 'month' | 'week' | 'day'
 const BOOKING_STATUS_META = {
   pending: {
     label: 'Pending',
-    pillClass: 'bg-[#FCE9C2] text-[#8a5a14] border-[#F1D08F]',
-    dotClass: 'bg-[#F5C77E]',
+    pillClass: 'bg-amber-50 text-amber-700 border-amber-200',
+    dotClass: 'bg-amber-500',
   },
   confirmed: {
     label: 'Confirmed',
@@ -48,6 +50,45 @@ const BOOKING_STATUS_META = {
     dotClass: 'bg-gray-400',
   },
 } as const
+
+// Availability palette — kept identical to the storefront availability page so
+// the two calendars read as one colour system. Absence of an entry = Open;
+// an explicit unavailable/limited entry overrides the weekly-closed backdrop.
+type DayAvailability = 'open' | 'limited' | 'unavailable' | 'closed'
+
+const AVAILABILITY_CELL_CLASS: Record<DayAvailability, string> = {
+  open: 'border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+  limited: 'border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100',
+  unavailable: 'border-rose-200 bg-rose-50 text-rose-700 hover:bg-rose-100',
+  closed: 'border-gray-200 bg-gray-50 text-gray-400 hover:bg-gray-100',
+}
+
+// Subtle diagonal hatch marking weekly-closed days on the calendar.
+const CLOSED_HATCH = {
+  backgroundImage:
+    'repeating-linear-gradient(45deg, rgba(17,24,39,0.06) 0, rgba(17,24,39,0.06) 2px, transparent 2px, transparent 6px)',
+} as const
+
+// Denser, higher-contrast hatch for the small legend swatch so it reads clearly.
+const CLOSED_HATCH_STRONG = {
+  backgroundImage:
+    'repeating-linear-gradient(45deg, rgba(17,24,39,0.45) 0, rgba(17,24,39,0.45) 1.5px, transparent 1.5px, transparent 4px)',
+} as const
+
+// JS getDay() order (0=Sun … 6=Sat) for mapping a date to its weekly-hours flag.
+const WEEKDAY_KEY_ORDER = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
+
+// Precedence: explicit unavailable > explicit limited > weekly closed > open.
+const dayAvailability = (
+  entry: AvailabilityDate | undefined,
+  closedWeekday: boolean[],
+  date: Date,
+): DayAvailability => {
+  if (entry?.status === 'unavailable') return 'unavailable'
+  if (entry?.status === 'limited') return 'limited'
+  if (closedWeekday[date.getDay()]) return 'closed'
+  return 'open'
+}
 
 const formatISODate = (d: Date): string => {
   const y = d.getFullYear()
@@ -95,16 +136,29 @@ export default function BookingsCalendarClient({
   const [anchor, setAnchor] = useState<Date>(() => new Date())
   const [selected, setSelected] = useState<string | null>(null)
 
+  // Hydrate availability from the DB (source of truth) when the local draft is
+  // empty — a fresh device / cleared storage would otherwise show no blocked
+  // dates. Seed once, only when empty, so we never clobber unsaved edits.
+  const seeded = useRef(false)
   useEffect(() => {
-    if (!hydrated) return
-    if (draft.availability.length > 0) return
-    const seed = (offsetDays: number, note: string): AvailabilityDate => {
-      const d = new Date()
-      d.setDate(d.getDate() + offsetDays)
-      return { date: formatISODate(d), status: 'unavailable', note }
+    if (!hydrated || seeded.current) return
+    seeded.current = true
+    if (draft.availability.length === 0) {
+      void loadAvailability().then((res) => {
+        if (res.ok && res.entries.length > 0) update({ availability: res.entries })
+      })
     }
-    update({
-      availability: [seed(40, 'Personal leave'), seed(41, 'Personal leave')],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated])
+
+  // Business hours live on the vendor record — seed them back into the draft so
+  // weekly-closed days show on this calendar too. Seed once.
+  const hoursSeeded = useRef(false)
+  useEffect(() => {
+    if (!hydrated || hoursSeeded.current) return
+    hoursSeeded.current = true
+    void loadBusinessHours().then((res) => {
+      if (res.ok && res.hours) update({ hours: res.hours })
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated])
@@ -112,6 +166,9 @@ export default function BookingsCalendarClient({
   if (!hydrated) return <div className="p-8" aria-hidden />
 
   const offByDate = new Map(draft.availability.map((a) => [a.date, a]))
+
+  // Weekly-closed weekdays, indexed by JS getDay() (0=Sun … 6=Sat).
+  const closedWeekday = WEEKDAY_KEY_ORDER.map((k) => !draft.hours[k].open)
 
   const bookingsByDate = new Map<string, CalendarBooking[]>()
   for (const b of initialCalendarBookings) {
@@ -122,13 +179,29 @@ export default function BookingsCalendarClient({
 
   const capacity = draft.parallelBookingCapacity || 1
 
+  // Persist an availability change back to the vendor record (source of truth),
+  // optimistically updating the shared draft first. On failure we roll the draft
+  // back to its previous state so the calendar never drifts from the DB. The
+  // storefront Availability editor reads the same column, so edits made here show
+  // up there too.
+  const persistAvailability = (next: AvailabilityDate[]) => {
+    const prev = draft.availability
+    update({ availability: next })
+    void saveAvailability(next).then((res) => {
+      if (!res.ok) {
+        update({ availability: prev })
+        toast.error('Could not save your availability change. Please try again.')
+      }
+    })
+  }
+
   const setOffDay = (date: string, note?: string) => {
     const without = draft.availability.filter((a) => a.date !== date)
-    update({ availability: [...without, { date, status: 'unavailable', note }] })
+    persistAvailability([...without, { date, status: 'unavailable', note }])
   }
 
   const clearOffDay = (date: string) => {
-    update({ availability: draft.availability.filter((a) => a.date !== date) })
+    persistAvailability(draft.availability.filter((a) => a.date !== date))
   }
 
   const setCapacity = (n: number) => {
@@ -164,7 +237,7 @@ export default function BookingsCalendarClient({
       status: 'unavailable',
       note: `${WEEKDAY_LABELS[weekdayIndex]} closed`,
     }))
-    update({ availability: [...without, ...additions] })
+    persistAvailability([...without, ...additions])
   }
 
   const headerLabel = (() => {
@@ -249,6 +322,7 @@ export default function BookingsCalendarClient({
                   offByDate={offByDate}
                   bookingsByDate={bookingsByDate}
                   capacity={capacity}
+                  closedWeekday={closedWeekday}
                   onSelect={setSelected}
                   onWeekdayClick={blockNonWorkingDay}
                 />
@@ -260,6 +334,7 @@ export default function BookingsCalendarClient({
                   offByDate={offByDate}
                   bookingsByDate={bookingsByDate}
                   capacity={capacity}
+                  closedWeekday={closedWeekday}
                   onSelect={setSelected}
                 />
               ) : (
@@ -269,14 +344,34 @@ export default function BookingsCalendarClient({
                   offByDate={offByDate}
                   bookings={bookingsByDate.get(formatISODate(anchor)) ?? []}
                   capacity={capacity}
+                  closedWeekday={closedWeekday}
                   onSelect={setSelected}
                 />
               )}
 
-              <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-600">
-                <span className="inline-flex items-center gap-1.5 text-emerald-700">Confirmed booking</span>
-                <span className="inline-flex items-center gap-1.5 text-[#8a5a14]">Pending booking</span>
-                <span className="inline-flex items-center gap-1.5">Off / unavailable</span>
+              <div className="mt-5 pt-4 border-t border-gray-100 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-medium text-gray-700">
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-3.5 h-3.5 rounded bg-emerald-300 border border-emerald-500" /> Open
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-3.5 h-3.5 rounded bg-amber-300 border border-amber-500" /> Limited
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span className="w-3.5 h-3.5 rounded bg-rose-300 border border-rose-500" /> Unavailable
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <span
+                    className="w-3.5 h-3.5 rounded bg-gray-200 border border-gray-400"
+                    style={CLOSED_HATCH_STRONG}
+                  />{' '}
+                  Closed
+                </span>
+                <span className="inline-flex items-center gap-1.5 text-gray-600">
+                  <span className="w-3.5 h-3.5 rounded border border-emerald-200 bg-emerald-50 flex items-center justify-center">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  </span>
+                  Booking
+                </span>
                 <span className="inline-flex items-center gap-1.5 text-rose-600 font-semibold">
                   <AlertTriangle className="w-3 h-3" />
                   Over capacity
@@ -427,7 +522,7 @@ function ViewToggle({ view, onChange }: { view: CalendarView; onChange: (v: Cale
 /* ---------- Month view ---------- */
 
 function MonthView({
-  anchor, todayKey, selected, offByDate, bookingsByDate, capacity, onSelect, onWeekdayClick,
+  anchor, todayKey, selected, offByDate, bookingsByDate, capacity, closedWeekday, onSelect, onWeekdayClick,
 }: {
   anchor: Date
   todayKey: string
@@ -435,6 +530,7 @@ function MonthView({
   offByDate: Map<string, AvailabilityDate>
   bookingsByDate: Map<string, CalendarBooking[]>
   capacity: number
+  closedWeekday: boolean[]
   onSelect: (iso: string) => void
   onWeekdayClick: (idx: number) => void
 }) {
@@ -461,7 +557,10 @@ function MonthView({
           const inMonth = d.getMonth() === anchor.getMonth()
           const isToday = iso === todayKey
           const isSelected = iso === selected
+          const isPast = iso < todayKey
           const off = offByDate.get(iso)
+          const avail = dayAvailability(off, closedWeekday, d)
+          const isClosed = avail === 'closed'
           const bookings = bookingsByDate.get(iso) ?? []
           const over = bookings.length > capacity
           return (
@@ -469,24 +568,25 @@ function MonthView({
               key={iso}
               type="button"
               onClick={() => onSelect(iso)}
+              style={isClosed ? CLOSED_HATCH : undefined}
               className={cn(
                 'relative aspect-square rounded-lg border text-left transition-colors p-1.5 flex flex-col gap-0.5 overflow-hidden',
-                off ? 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200' : 'bg-white border-gray-100 text-gray-900 hover:bg-gray-50',
+                isPast ? 'bg-white border-gray-100 text-gray-300 hover:bg-gray-50' : AVAILABILITY_CELL_CLASS[avail],
                 !inMonth && 'opacity-40',
-                isToday && !off && 'border-gray-900',
+                isToday && !isSelected && 'ring-2 ring-gray-900/30 ring-offset-1',
                 over && 'ring-1 ring-rose-400',
                 isSelected && 'ring-2 ring-gray-900 ring-offset-1',
               )}
             >
-              <span className={cn('text-xs font-semibold tabular-nums', isToday && 'text-gray-900')}>
+              <span className="text-xs font-semibold tabular-nums">
                 {d.getDate()}
               </span>
-              {off ? (
-                <span className="text-[9px] leading-tight font-bold uppercase tracking-wider mt-auto">
-                  {off.note ? off.note : 'Off'}
+              {off?.note ? (
+                <span className="text-[9px] leading-tight font-bold uppercase tracking-wider mt-auto truncate">
+                  {off.note}
                 </span>
               ) : bookings.length > 0 ? (
-                <span className="text-[9px] leading-tight font-medium mt-auto truncate">
+                <span className="text-[9px] leading-tight font-medium mt-auto truncate text-gray-700">
                   {bookings[0].couple}
                   {bookings.length > 1 ? ` +${bookings.length - 1}` : ''}
                 </span>
@@ -512,7 +612,7 @@ function MonthView({
 /* ---------- Week view ---------- */
 
 function WeekView({
-  anchor, todayKey, selected, offByDate, bookingsByDate, capacity, onSelect,
+  anchor, todayKey, selected, offByDate, bookingsByDate, capacity, closedWeekday, onSelect,
 }: {
   anchor: Date
   todayKey: string
@@ -520,6 +620,7 @@ function WeekView({
   offByDate: Map<string, AvailabilityDate>
   bookingsByDate: Map<string, CalendarBooking[]>
   capacity: number
+  closedWeekday: boolean[]
   onSelect: (iso: string) => void
 }) {
   const week = weekGrid(anchor)
@@ -529,7 +630,12 @@ function WeekView({
         const iso = formatISODate(d)
         const isToday = iso === todayKey
         const isSelected = iso === selected
+        const isPast = iso < todayKey
         const off = offByDate.get(iso)
+        const avail = dayAvailability(off, closedWeekday, d)
+        const isClosed = avail === 'closed'
+        const availLabel =
+          avail === 'unavailable' ? 'Unavailable' : avail === 'limited' ? 'Limited' : avail === 'closed' ? 'Closed' : null
         const bookings = bookingsByDate.get(iso) ?? []
         const over = bookings.length > capacity
         return (
@@ -537,25 +643,26 @@ function WeekView({
             key={iso}
             type="button"
             onClick={() => onSelect(iso)}
+            style={isClosed ? CLOSED_HATCH : undefined}
             className={cn(
               'min-h-[180px] rounded-lg border p-2 flex flex-col text-left transition-colors',
-              off ? 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200' : 'bg-white border-gray-100 hover:bg-gray-50',
-              isToday && !off && 'border-gray-900',
+              isPast ? 'bg-white border-gray-100 text-gray-300 hover:bg-gray-50' : AVAILABILITY_CELL_CLASS[avail],
+              isToday && !isSelected && 'ring-2 ring-gray-900/30 ring-offset-1',
               over && 'ring-1 ring-rose-400',
               isSelected && 'ring-2 ring-gray-900 ring-offset-1',
             )}
           >
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+              <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
                 {WEEKDAY_LABELS[(d.getDay() + 6) % 7]}
               </span>
-              <span className={cn('text-sm font-semibold tabular-nums', isToday ? 'text-gray-900' : 'text-gray-700')}>
+              <span className="text-sm font-semibold tabular-nums">
                 {d.getDate()}
               </span>
             </div>
-            {off ? (
-              <span className="text-[10px] leading-tight font-bold uppercase tracking-wider text-gray-500">
-                {off.note ?? 'Off'}
+            {availLabel || off?.note ? (
+              <span className="text-[10px] leading-tight font-bold uppercase tracking-wider">
+                {off?.note ?? availLabel}
               </span>
             ) : null}
             <div className="space-y-1 mt-1 flex-1">
@@ -575,17 +682,20 @@ function WeekView({
 /* ---------- Day view ---------- */
 
 function DayView({
-  anchor, todayKey, offByDate, bookings, capacity, onSelect,
+  anchor, todayKey, offByDate, bookings, capacity, closedWeekday, onSelect,
 }: {
   anchor: Date
   todayKey: string
   offByDate: Map<string, AvailabilityDate>
   bookings: CalendarBooking[]
   capacity: number
+  closedWeekday: boolean[]
   onSelect: (iso: string) => void
 }) {
   const iso = formatISODate(anchor)
   const off = offByDate.get(iso)
+  const avail = dayAvailability(off, closedWeekday, anchor)
+  const isClosed = avail === 'closed'
   const isToday = iso === todayKey
   const over = bookings.length > capacity
   const sorted = [...bookings].sort((a, b) => a.startTime.localeCompare(b.startTime))
@@ -602,15 +712,32 @@ function DayView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [iso])
 
+  const availLabel =
+    avail === 'unavailable' ? 'Unavailable' : avail === 'limited' ? 'Limited' : avail === 'closed' ? 'Closed' : 'Open'
+  const availPillClass =
+    avail === 'unavailable'
+      ? 'bg-rose-50 text-rose-700 border-rose-200'
+      : avail === 'limited'
+        ? 'bg-amber-50 text-amber-700 border-amber-200'
+        : avail === 'closed'
+          ? 'bg-gray-50 text-gray-500 border-gray-200'
+          : 'bg-emerald-50 text-emerald-700 border-emerald-200'
+
   return (
-    <div className={cn('rounded-xl border p-4', off ? 'bg-gray-50 border-gray-200' : 'bg-white border-gray-100', isToday && 'ring-1 ring-gray-900')}>
+    <div
+      style={isClosed ? CLOSED_HATCH : undefined}
+      className={cn('rounded-xl border p-4', AVAILABILITY_CELL_CLASS[avail], isToday && 'ring-1 ring-gray-900')}
+    >
       <div className="flex flex-wrap items-center gap-2 mb-3">
-        <span className="text-[10px] font-bold uppercase tracking-wider text-gray-500">
+        <span className="text-[10px] font-bold uppercase tracking-wider opacity-70">
           {anchor.toLocaleDateString('en-GB', { weekday: 'long' })}
         </span>
-        {off ? (
-          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
-            {off.note ?? 'Off'}
+        <span className={cn('inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md border', availPillClass)}>
+          {availLabel}
+        </span>
+        {off?.note ? (
+          <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-white/70 text-gray-700 border border-gray-200">
+            {off.note}
           </span>
         ) : null}
         {over ? (

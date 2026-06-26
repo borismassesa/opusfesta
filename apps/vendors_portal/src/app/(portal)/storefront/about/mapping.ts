@@ -7,8 +7,11 @@
 
 export type DbProfile = {
   businessName: string
+  firstName: string
+  lastName: string
   yearsInBusiness: string // editor uses string, DB stores INTEGER (or null)
   bio: string
+  description: string
 
   // Tanzania administrative address.
   houseNumber: string
@@ -34,6 +37,7 @@ export type VendorRowFromDb = {
   business_name: string | null
   years_in_business: number | null
   bio: string | null
+  description: string | null
   location: Record<string, unknown> | null
   contact_info: Record<string, unknown> | null
   social_links: Record<string, unknown> | null
@@ -41,8 +45,11 @@ export type VendorRowFromDb = {
 
 const EMPTY: DbProfile = {
   businessName: '',
+  firstName: '',
+  lastName: '',
   yearsInBusiness: '',
   bio: '',
+  description: '',
   houseNumber: '',
   street: '',
   ward: '',
@@ -70,11 +77,14 @@ export function dbVendorToProfile(row: VendorRowFromDb | null | undefined): DbPr
   if (!row) return EMPTY
   return {
     businessName: row.business_name ?? '',
+    firstName: readString(row.contact_info, 'firstName'),
+    lastName: readString(row.contact_info, 'lastName'),
     yearsInBusiness:
       typeof row.years_in_business === 'number' && Number.isFinite(row.years_in_business)
         ? String(row.years_in_business)
         : '',
     bio: row.bio ?? '',
+    description: row.description ?? '',
 
     houseNumber: readString(row.location, 'houseNumber'),
     street: readString(row.location, 'street'),
@@ -110,6 +120,7 @@ export function profileToUpdatePatch(
   business_name: string
   years_in_business: number | null
   bio: string
+  description: string
   location: Record<string, unknown>
   contact_info: Record<string, unknown>
   social_links: Record<string, unknown>
@@ -129,6 +140,7 @@ export function profileToUpdatePatch(
     business_name: profile.businessName.trim(),
     years_in_business: yearsValue,
     bio: profile.bio,
+    description: profile.description.trim(),
     location: {
       ...baseLocation,
       houseNumber: profile.houseNumber.trim(),
@@ -144,6 +156,8 @@ export function profileToUpdatePatch(
     },
     contact_info: {
       ...baseContact,
+      firstName: profile.firstName.trim(),
+      lastName: profile.lastName.trim(),
       phone: profile.phone.trim(),
       email: profile.email.trim(),
       whatsapp: profile.whatsapp.trim(),

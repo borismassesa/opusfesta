@@ -198,6 +198,25 @@ export async function loadAvailability(): Promise<
   return { ok: true, entries }
 }
 
+// Read the vendor's saved business hours so the Availability editor can hydrate
+// from the DB (source of truth) on a fresh device. The hours column is only
+// ever written via saveProfileFields; without this load it would silently
+// reset to client defaults whenever local storage was empty.
+export async function loadBusinessHours(): Promise<
+  { ok: true; hours: StorefrontHours | null } | { ok: false }
+> {
+  const guard = await ensureLiveVendor()
+  if (!guard.ok) return { ok: false }
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin
+    .from('vendors')
+    .select('hours')
+    .eq('id', guard.vendorId)
+    .maybeSingle<{ hours: StorefrontHours | null }>()
+  if (error || !data) return { ok: false }
+  return { ok: true, hours: data.hours ?? null }
+}
+
 // ----- Recognition (awards, response time, locally owned, languages) -----
 
 export type StorefrontRecognition = {
@@ -735,6 +754,10 @@ export async function saveProfileFields(input: StorefrontProfileFields): Promise
     if (isPermissionError(error)) return permissionResult()
     return unknownResult(error)
   }
+  // Both editors persist via this action: About (bio/contact/socials/…) and
+  // Packages (booking policies). Revalidate both so either page reflects the
+  // write immediately.
   revalidatePath('/storefront/about')
+  revalidatePath('/storefront/packages')
   return { ok: true }
 }

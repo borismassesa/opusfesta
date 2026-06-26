@@ -44,10 +44,34 @@ import {
   Check,
   ImagePlus,
 } from 'lucide-react'
-import { VENDORS_BASE_PATH, generateAvailability, type Vendor } from '@/lib/vendors'
+import { VENDORS_BASE_PATH, generateAvailability, isStorefrontComplete, type Vendor } from '@/lib/vendors'
 
 type GalleryTabKey = 'portfolio' | 'photos' | 'videos' | 'reviews'
 
+
+// Vendors may store languages as ISO-ish codes ("en", "sw") or full names.
+// Always present full, human-readable names to couples.
+const LANGUAGE_NAMES: Record<string, string> = {
+  en: 'English',
+  sw: 'Swahili',
+  fr: 'French',
+  ar: 'Arabic',
+  it: 'Italian',
+  pt: 'Portuguese',
+  es: 'Spanish',
+  de: 'German',
+  zh: 'Chinese',
+  hi: 'Hindi',
+}
+
+function formatLanguages(langs: string[]): string {
+  return langs
+    .map((l) => {
+      const key = l.trim().toLowerCase()
+      return LANGUAGE_NAMES[key] ?? (l.trim().charAt(0).toUpperCase() + l.trim().slice(1))
+    })
+    .join(', ')
+}
 
 function StarRow({ rating, size = 14 }: { rating: number; size?: number }) {
   return (
@@ -198,19 +222,53 @@ function VendorTabs({ onPhotos, saved, onSave, active, onActiveChange }: {
 }
 
 // ── AboutSection ──────────────────────────────────────────
+// Collapse long intros to a fixed character budget so a wall of text doesn't
+// push the rest of the profile down. Tuned to ~4 lines at the rendered width.
+const ABOUT_COLLAPSE_LIMIT = 300
+
 function AboutText({ text }: { text: string }) {
   const [expanded, setExpanded] = useState(false)
-  const paragraphs = text.split('\n\n')
-  const hasMore = paragraphs.length > 1
+  const trimmed = text.trim()
+  const paragraphs = trimmed.split('\n\n')
+
+  // Only worth a toggle when collapsing actually hides something — judged on
+  // total length, not paragraph count, so a single long paragraph (the common
+  // case) still gets a "Read more".
+  const hasMore = trimmed.length > ABOUT_COLLAPSE_LIMIT
+
+  if (!hasMore) {
+    return (
+      <div className="prose prose-sm max-w-none text-gray-700 mb-6">
+        {paragraphs.map((p, i) => (
+          <p key={i}>{p}</p>
+        ))}
+      </div>
+    )
+  }
+
+  // Cut the collapsed preview at the last word boundary before the limit so we
+  // never slice through the middle of a word.
+  const slice = trimmed.slice(0, ABOUT_COLLAPSE_LIMIT)
+  const lastSpace = slice.lastIndexOf(' ')
+  const preview = slice
+    .slice(0, lastSpace > 0 ? lastSpace : ABOUT_COLLAPSE_LIMIT)
+    .trimEnd()
+
   return (
     <div className="prose prose-sm max-w-none text-gray-700 mb-6">
-      <p>{paragraphs[0]}</p>
-      {hasMore && expanded && paragraphs.slice(1).map((p, i) => <p key={i}>{p}</p>)}
-      {hasMore && (
-        <button className="font-semibold underline mt-2" onClick={() => setExpanded(v => !v)}>
-          {expanded ? 'Show less' : 'Read more'}
-        </button>
+      {expanded ? (
+        paragraphs.map((p, i) => <p key={i}>{p}</p>)
+      ) : (
+        <p>{preview}&hellip;</p>
       )}
+      <button
+        type="button"
+        className="font-semibold underline mt-2 hover:text-gray-900 transition-colors"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+      >
+        {expanded ? 'Show less' : 'Read more'}
+      </button>
     </div>
   )
 }
@@ -319,6 +377,12 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
           <AboutText text={vendor.about ?? vendor.excerpt} />
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-8 text-sm text-gray-600">
+            {isStorefrontComplete(vendor) && (
+              <div className="flex items-center gap-2">
+                <BadgeCheck size={13} className="shrink-0 text-emerald-500" />
+                <span className="font-medium text-gray-700">Detailed storefront</span>
+              </div>
+            )}
             {vendor.responseTime && (
               <div className="flex items-center gap-2">
                 <Zap size={13} className="shrink-0 text-gray-400" />
@@ -358,7 +422,7 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
             {vendor.languages?.length ? (
               <div className="flex items-center gap-2">
                 <Globe size={13} className="shrink-0 text-gray-400" />
-                <span>Speaks {vendor.languages.join(', ')}</span>
+                <span>Speaks {formatLanguages(vendor.languages)}</span>
               </div>
             ) : null}
             {vendor.team?.length ? (
@@ -376,13 +440,13 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
             {vendor.style && (
               <div className="flex items-center gap-2">
                 <Sparkles size={13} className="shrink-0 text-gray-400" />
-                <span>{vendor.style} style</span>
+                <span><span className="capitalize">{vendor.style}</span> style</span>
               </div>
             )}
             {vendor.personality && (
               <div className="flex items-center gap-2">
                 <Heart size={13} className="shrink-0 text-gray-400" />
-                <span>{vendor.personality} energy</span>
+                <span><span className="capitalize">{vendor.personality}</span> energy</span>
               </div>
             )}
           </div>
@@ -1568,15 +1632,20 @@ function VendorFaqSection({ vendor }: { vendor: Vendor }) {
 
 // ── ServiceAreaContactSection ─────────────────────────────
 function VendorServiceAreaSection({ vendor }: { vendor: Vendor }) {
-  const hasMap  = !!vendor.location
   const hasArea = !!vendor.serviceArea?.length
-  if (!hasMap && !hasArea) return null
-
   const { location, serviceArea, city } = vendor
 
+  // Centre the map on precise coordinates when the vendor has them; otherwise
+  // fall back to their city or primary service area so couples still get a map
+  // of roughly where the vendor works.
+  const areaQuery = city || serviceArea?.[0] || null
   const mapSrc = location
     ? `https://maps.google.com/maps?q=${encodeURIComponent(location.address)}&ll=${location.lat},${location.lng}&z=16&output=embed`
-    : null
+    : areaQuery
+      ? `https://maps.google.com/maps?q=${encodeURIComponent(`${areaQuery}, Tanzania`)}&z=11&output=embed`
+      : null
+
+  if (!mapSrc && !hasArea) return null
 
   return (
     <section id="vendor-location" className="scroll-mt-28 border-t border-gray-200 pt-12">
@@ -1597,8 +1666,8 @@ function VendorServiceAreaSection({ vendor }: { vendor: Vendor }) {
         </div>
       )}
 
-      {/* Address row */}
-      {location && (
+      {/* Address row (precise coords) or area row (city / service-area fallback) */}
+      {location ? (
         <div className="flex items-center justify-between border-b border-gray-100 py-3">
           <div className="flex items-center gap-2 text-sm text-[#1A1A1A]">
             <MapPin size={15} className="shrink-0 text-gray-400" />
@@ -1613,7 +1682,22 @@ function VendorServiceAreaSection({ vendor }: { vendor: Vendor }) {
             Open map
           </a>
         </div>
-      )}
+      ) : areaQuery ? (
+        <div className="flex items-center justify-between border-b border-gray-100 py-3">
+          <div className="flex items-center gap-2 text-sm text-[#1A1A1A]">
+            <MapPin size={15} className="shrink-0 text-gray-400" />
+            <span>Based in {areaQuery}</span>
+          </div>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${areaQuery}, Tanzania`)}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-semibold text-[#1A1A1A] underline underline-offset-2 hover:opacity-70 transition-opacity"
+          >
+            Open map
+          </a>
+        </div>
+      ) : null}
 
       {/* Service area */}
       <div className="mt-4">
@@ -1661,12 +1745,15 @@ const CLR_RED_BG      = '#FEE2E2'
 const CLR_RED_TEXT    = '#EF4444'
 
 function MiniCalendar({
-  year, month, bookedSet, limitedSet, selectedDate, onDateClick,
+  year, month, bookedSet, limitedSet, closedWeekday, selectedDate, onDateClick,
 }: {
   year: number
   month: number
   bookedSet: Set<string>
   limitedSet: Set<string>
+  // Weekly-closed weekdays from the vendor's business hours, indexed by JS
+  // getDay() (0=Sun … 6=Sat). These render as a muted "Closed" day.
+  closedWeekday: boolean[]
   selectedDate: string | null
   onDateClick: (ds: string, kind: 'available' | 'limited' | 'booked') => void
 }) {
@@ -1695,8 +1782,11 @@ function MiniCalendar({
           const isToday    = year === todayY && month === todayM && day === todayD
           const isBooked   = bookedSet.has(ds)
           const isLimited  = !isPast && !isToday && !isBooked && limitedSet.has(ds)
-          const isSelected = !isPast && !isToday && !isBooked && !isLimited && ds === selectedDate
-          const isAvailable = !isPast && !isToday && !isBooked && !isLimited && !isSelected
+          // Weekly-closed weekday (from business hours) — only when not already
+          // booked/limited on that specific date.
+          const isClosed   = !isPast && !isToday && !isBooked && !isLimited && !!closedWeekday[new Date(year, month, day).getDay()]
+          const isSelected = !isPast && !isToday && !isBooked && !isLimited && !isClosed && ds === selectedDate
+          const isAvailable = !isPast && !isToday && !isBooked && !isLimited && !isClosed && !isSelected
 
           // All colours via inline style — no Tailwind arbitrary values for brand hex
           const base = 'relative flex aspect-square items-center justify-center rounded-lg text-[11px] font-medium m-px select-none'
@@ -1706,6 +1796,7 @@ function MiniCalendar({
             : isBooked   ? CLR_RED_BG
             : isSelected ? CLR_EMERALD
             : isLimited  ? CLR_AMBER_BG
+            : isClosed   ? '#F3F4F6'  // weekly closed
             : '#D1FAE5'  // available
 
           const cellFg = isPast      ? undefined
@@ -1713,6 +1804,7 @@ function MiniCalendar({
             : isBooked   ? CLR_RED_TEXT
             : isSelected ? '#fff'
             : isLimited  ? CLR_AMBER_TEXT
+            : isClosed   ? '#9CA3AF'  // weekly closed
             : '#1A1A1A'  // available
 
           const extra = isPast     ? 'text-gray-200'
@@ -1720,6 +1812,7 @@ function MiniCalendar({
             : isBooked   ? 'cursor-pointer'
             : isSelected ? 'cursor-pointer font-semibold'
             : isLimited  ? 'cursor-pointer font-semibold'
+            : isClosed   ? ''  // weekly closed — not selectable
             : 'cursor-pointer'  // available
 
           return (
@@ -1736,7 +1829,7 @@ function MiniCalendar({
                   (e.currentTarget as HTMLDivElement).style.backgroundColor = '#D1FAE5'
               }}
               onClick={() => {
-                if (!isPast && !isToday)
+                if (!isPast && !isToday && !isClosed)
                   onDateClick(ds, isBooked ? 'booked' : isLimited ? 'limited' : 'available')
               }}
             >
@@ -1797,16 +1890,20 @@ function VendorAvailabilitySection({ vendor }: { vendor: Vendor }) {
   const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [statusMsg, setStatusMsg]       = useState<{ text: string; warn: boolean } | null>(null)
 
-  // Hide the calendar entirely when the vendor hasn't posted real
-  // availability. The legacy `generateAvailability` synthesises booked /
-  // limited dates from the vendor id, which is not honest data — couples
-  // would book against a fictional calendar.
-  if (!vendor.availability) return null
+  // Show the calendar when the vendor has posted real date-level availability OR
+  // has weekly business hours. The weekly schedule alone makes an honest
+  // calendar: open weekdays are bookable, closed weekdays are greyed out, and
+  // any specifically blocked dates layer on top. Only fully hide it when there
+  // is neither, so we never invent a fictional calendar.
+  if (!vendor.availability && !vendor.hours) return null
   const avail = vendor.availability
 
   const now = new Date()
   const bookedSet = new Set(avail?.bookedDates ?? [])
   const limitedSet = new Set(avail?.limitedDates ?? [])
+  // Weekly-closed weekdays from business hours, indexed by JS getDay() (0=Sun…6=Sat).
+  const HOURS_KEYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat'] as const
+  const closedWeekday = HOURS_KEYS.map((k) => (vendor.hours ? !vendor.hours[k]?.open : false))
   const leadTimeCutoff = new Date(now)
   leadTimeCutoff.setDate(leadTimeCutoff.getDate() + (avail?.leadTimeWeeks ?? 0) * 7)
 
@@ -1874,6 +1971,7 @@ function VendorAvailabilitySection({ vendor }: { vendor: Vendor }) {
                     <MiniCalendar
                       year={year} month={month}
                       bookedSet={bookedSet} limitedSet={limitedSet}
+                      closedWeekday={closedWeekday}
                       selectedDate={selectedDate}
                       onDateClick={handleDateClick}
                     />
@@ -1894,18 +1992,19 @@ function VendorAvailabilitySection({ vendor }: { vendor: Vendor }) {
             {/* Legend */}
             <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 border-t border-gray-100 pt-5">
               {[
-                { bg: '#D1FAE5',              label: 'Available' },
-                { bg: CLR_EMERALD,            label: 'Selected'  },
-                { bg: CLR_PURPLE,             label: 'Today'     },
-                { bg: CLR_AMBER_BG,           label: 'Limited'   },
-                { bg: CLR_RED_BG,             label: 'Booked'    },
+                { bg: '#10B981',  label: 'Available' },
+                { bg: CLR_EMERALD, label: 'Selected'  },
+                { bg: CLR_PURPLE,  label: 'Today'     },
+                { bg: '#F59E0B',  label: 'Limited'   },
+                { bg: '#EF4444',  label: 'Booked'    },
+                { bg: '#9CA3AF',  label: 'Closed'    },
               ].map(({ bg, label }) => (
                 <div key={label} className="flex items-center gap-2 text-[11px] text-gray-500">
                   <span className="h-4 w-4 shrink-0 rounded" style={{ backgroundColor: bg }} />
                   {label}
                 </div>
               ))}
-              {avail.leadTimeWeeks ? (
+              {avail?.leadTimeWeeks ? (
                 <p className="ml-auto text-[11px] text-gray-400">Min. {avail.leadTimeWeeks} weeks notice</p>
               ) : null}
             </div>
@@ -1933,7 +2032,7 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
   const [form, setForm] = useState({
     firstName: '', lastName: '', email: '',
     weddingDate: '', flexibleDate: false, guests: '', phone: '',
-    location: '', interestedPackage: '', message: '',
+    interestedPackage: '', message: '',
     emailNotifications: true,
   })
   const [status, setStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle')
@@ -1988,24 +2087,23 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
     }
   }
   const inputCls = `w-full rounded border border-gray-300 text-sm focus:outline-none focus:border-(--accent) ${
-    compact ? 'p-2.5' : 'p-3'
+    compact ? 'p-2.5' : 'p-2.5 sm:p-3'
   }`
-  const stackCls = compact ? 'space-y-3' : 'space-y-4'
-  const headingCls = compact ? 'text-xl' : 'text-2xl'
+  const stackCls = compact ? 'space-y-3' : 'space-y-3 sm:space-y-4'
+  const headingCls = compact ? 'text-xl' : 'text-xl sm:text-2xl'
   const textareaCls = compact
     ? 'w-full h-24 resize-none rounded border border-gray-300 p-2.5 text-sm focus:outline-none focus:border-(--accent)'
-    : 'w-full h-32 resize-none rounded border border-gray-300 p-3 text-sm focus:outline-none focus:border-(--accent)'
+    : 'w-full h-24 sm:h-28 resize-none rounded border border-gray-300 p-2.5 sm:p-3 text-sm focus:outline-none focus:border-(--accent)'
 
   return (
     <div
       id="vendor-contact"
       className={`scroll-mt-28 w-full rounded-lg border border-gray-200 bg-white shadow-sm ${
-        compact ? 'p-4 sm:p-5' : 'p-5 sm:p-6'
+        compact ? 'p-4 sm:p-5' : 'p-4 sm:p-6'
       }`}
     >
       {/* Header */}
-      {/* Header */}
-      <div className="mb-6 rounded-2xl bg-gray-50 px-5 py-4">
+      <div className="mb-4 sm:mb-5 rounded-2xl bg-(--accent) px-4 py-3.5 sm:px-5 sm:py-4">
         <div className="flex items-center justify-between gap-3">
           <h2 className={`${headingCls} font-bold text-[#1A1A1A]`}>Start the Conversation</h2>
           <a
@@ -2016,8 +2114,8 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
           </a>
         </div>
         {vendor.startingPrice && (
-          <div className="mt-3 flex items-center justify-between border-t border-gray-200 pt-3">
-            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-gray-400">Starting Price</p>
+          <div className="mt-3 flex items-center justify-between border-t border-black/10 pt-3">
+            <p className="text-[11px] font-black uppercase tracking-[0.16em] text-[#1A1A1A]/55">Starting Price</p>
             <p className="text-lg font-black text-[#1A1A1A]">
               {(() => {
                 // Expand shorthand millions ("1.5M" -> "1,500,000") and ensure a
@@ -2034,8 +2132,8 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
           </div>
         )}
         {vendor.customQuotes && (
-          <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-gray-500">
-            <Check size={13} className="shrink-0 text-(--accent-hover)" />
+          <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-[#1A1A1A]/70">
+            <Check size={13} className="shrink-0 text-[#4A2870]" />
             Custom quotes available on request
           </p>
         )}
@@ -2061,7 +2159,7 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
               setStatus('idle')
               setInquiryId(null)
               setAccessToken(null)
-              setForm({ firstName: '', lastName: '', email: '', weddingDate: '', flexibleDate: false, guests: '', phone: '', location: '', interestedPackage: '', message: '', emailNotifications: true })
+              setForm({ firstName: '', lastName: '', email: '', weddingDate: '', flexibleDate: false, guests: '', phone: '', interestedPackage: '', message: '', emailNotifications: true })
             }}
             className="block w-full text-center text-xs underline text-green-700 hover:text-green-900"
           >
@@ -2070,35 +2168,6 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
         </div>
       ) : (
       <form className={stackCls} onSubmit={handleSubmit}>
-
-        {/* Package selector */}
-        {vendor.pricingDetails && vendor.pricingDetails.length > 0 && (
-          <div>
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.14em] text-gray-500">
-              Interested in a package? <span className="font-normal text-gray-400">(optional)</span>
-            </p>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {vendor.pricingDetails.map((pkg) => (
-                <button
-                  key={pkg.label}
-                  type="button"
-                  onClick={() => setForm((f) => ({
-                    ...f,
-                    interestedPackage: f.interestedPackage === pkg.label ? '' : pkg.label,
-                  }))}
-                  className={`flex flex-col rounded-lg border p-3 text-left transition-colors ${
-                    form.interestedPackage === pkg.label
-                      ? 'border-(--accent) bg-(--accent)/10'
-                      : 'border-gray-200 bg-white hover:border-gray-300'
-                  }`}
-                >
-                  <span className="truncate text-sm font-semibold text-[#1A1A1A]">{pkg.label}</span>
-                  <span className="mt-0.5 text-xs text-gray-500">{pkg.value}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <input type="text" placeholder="First name*" required value={form.firstName}
@@ -2138,11 +2207,6 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
             </label>
           </div>
         </div>
-
-        <input type="text" placeholder="Wedding location (city or venue)"
-          value={form.location}
-          onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
-          className={inputCls} />
 
         <div className="relative">
           <select required value={form.guests}
@@ -2217,7 +2281,7 @@ function VendorContactSidebar({ vendor, compact = false }: { vendor: Vendor; com
 
         <button type="submit" disabled={status === 'submitting'}
           className={`w-full rounded-full bg-(--accent) font-semibold text-[#1A1A1A] transition-colors hover:bg-(--accent-hover) disabled:opacity-60 disabled:cursor-not-allowed ${
-            compact ? 'py-2.5' : 'py-3'
+            compact ? 'py-2.5' : 'py-2.5 sm:py-3'
           }`}>
           {status === 'submitting' ? 'Sending…' : 'Request quote'}
         </button>
@@ -2361,6 +2425,11 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
           sidebarStoppedRef.current = nextSidebarStopped
           setSidebarStopped(nextSidebarStopped)
         }
+      } else if (sidebarStoppedRef.current) {
+        // Card no longer fits (or left desktop) — drop out of the pinned/stopped
+        // state so it returns to normal document flow.
+        sidebarStoppedRef.current = false
+        setSidebarStopped(false)
       }
 
       // Cache tabs height while the rail is mounted so the value survives when tabs unmount
@@ -2710,8 +2779,8 @@ export default function VendorDetailPage({ vendor }: { vendor: Vendor }) {
               <VendorAboutSection vendor={vendor} />
               <VendorServicesSection vendor={vendor} />
               <VendorPricingSection vendor={vendor} />
-              <VendorHoursSection vendor={vendor} />
               <VendorAvailabilitySection vendor={vendor} />
+              <VendorHoursSection vendor={vendor} />
               <VendorTeamSection vendor={vendor} />
               <VendorFaqSection vendor={vendor} />
               <VendorServiceAreaSection vendor={vendor} />

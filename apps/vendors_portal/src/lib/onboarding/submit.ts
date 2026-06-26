@@ -409,6 +409,7 @@ export async function submitApplication(
     business_name: draft.businessName.trim(),
     category: dbCategory,
     bio: draft.bio || null,
+    description: draft.description?.trim() || null,
     location: buildLocation(draft),
     contact_info: buildContactInfo(draft),
     ...lifecycleFields,
