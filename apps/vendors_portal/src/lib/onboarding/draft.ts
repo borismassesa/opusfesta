@@ -339,12 +339,20 @@ function readDraft(userId: string | null, slot: string): OnboardingDraft {
 // copy: the sidebar keeps showing "needs more work" even after the photos
 // page has marked everything complete. We dispatch a custom event on every
 // write so every instance re-reads from localStorage.
+//
+// The detail carries the FULL storage key the write targeted, so a listener
+// only adopts the payload when it's reading that same key. Without this guard a
+// write to business A's slot would also overwrite a business-B instance's state
+// if both are mounted at once (two tabs, or a transient navigation overlap).
 const DRAFT_CHANGE_EVENT = 'opusfesta:onboarding-draft-changed'
+
+type DraftChangeDetail = { key: string; draft: OnboardingDraft }
 
 function writeDraft(userId: string | null, slot: string, draft: OnboardingDraft) {
   if (typeof window === 'undefined' || !userId) return
   try {
-    window.localStorage.setItem(storageKey(userId, slot), JSON.stringify(draft))
+    const key = storageKey(userId, slot)
+    window.localStorage.setItem(key, JSON.stringify(draft))
     // Defer the cross-instance broadcast. `writeDraft` is called from
     // inside the `setDraft` state updater in `update()` — dispatching
     // synchronously would call listeners' setState during the calling
@@ -354,7 +362,9 @@ function writeDraft(userId: string | null, slot: string, draft: OnboardingDraft)
     // refreshes in the same tick.
     queueMicrotask(() => {
       window.dispatchEvent(
-        new CustomEvent(DRAFT_CHANGE_EVENT, { detail: draft }),
+        new CustomEvent<DraftChangeDetail>(DRAFT_CHANGE_EVENT, {
+          detail: { key, draft },
+        }),
       )
     })
   } catch {
@@ -419,12 +429,11 @@ export function useOnboardingDraft() {
     // matches the slot they're reading.
     const key = storageKey(userId, slot)
     const onChange = (event: Event) => {
-      const detail = (event as CustomEvent<OnboardingDraft>).detail
-      if (detail) {
-        setDraft(detail)
-      } else {
-        setDraft(readDraft(userId, slot))
-      }
+      const detail = (event as CustomEvent<DraftChangeDetail>).detail
+      // Only adopt a broadcast that targeted THIS instance's key — a write to a
+      // different (user, vendor) slot must not clobber our state.
+      if (!detail || detail.key !== key) return
+      setDraft(detail.draft)
     }
     const onStorage = (event: StorageEvent) => {
       if (event.key === key) setDraft(readDraft(userId, slot))
@@ -451,9 +460,12 @@ export function useOnboardingDraft() {
   const reset = useCallback(() => {
     setDraft(EMPTY)
     if (typeof window !== 'undefined' && userId) {
-      window.localStorage.removeItem(storageKey(userId, slot))
+      const key = storageKey(userId, slot)
+      window.localStorage.removeItem(key)
       window.dispatchEvent(
-        new CustomEvent(DRAFT_CHANGE_EVENT, { detail: EMPTY }),
+        new CustomEvent<DraftChangeDetail>(DRAFT_CHANGE_EVENT, {
+          detail: { key, draft: EMPTY },
+        }),
       )
     }
   }, [userId, slot])
