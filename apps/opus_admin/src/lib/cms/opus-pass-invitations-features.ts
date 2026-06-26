@@ -15,6 +15,7 @@ export type OpusPassInvitationsFeatureCard = {
 
 export type OpusPassInvitationsFeaturesContent = {
   heading: MaybeLocalized
+  subheading?: MaybeLocalized
   cards: OpusPassInvitationsFeatureCard[]
 }
 
@@ -36,6 +37,8 @@ export const INVITATIONS_FEATURE_VISUALS: OpusPassInvitationsFeatureVisual[] = [
 
 export const OPUS_PASS_INVITATIONS_FEATURES_FALLBACK: OpusPassInvitationsFeaturesContent = {
   heading: 'Wedding stationery made easy, from invite to seat',
+  subheading:
+    'From invite to seating, beautifully organized. Track confirmations, plus-ones, and special-guest notes in one live dashboard.',
   cards: [
     {
       id: 'guest-list',

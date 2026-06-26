@@ -17,11 +17,13 @@ export type InvitationsFeatureCard = {
 
 export type InvitationsFeaturesContent = {
   heading: string
+  subheading?: string
   cards: InvitationsFeatureCard[]
 }
 
 export const INVITATIONS_FEATURES_FALLBACK: InvitationsFeaturesContent = {
   heading: 'Wedding stationery made easy, from invite to seat',
+  subheading: 'From invite to seating, beautifully organized. Track confirmations, plus-ones, and special-guest notes in one live dashboard.',
   cards: [
     { id: 'guest-list', title: 'Free guest list, free RSVPs', body: 'Track every yes, every plus-one, every dietary need. Free with every OpusFesta wedding.', cta_label: 'Open my guest list', cta_href: '/my/guests', visual: 'invitations' },
     { id: 'matching-website', title: 'Free matching website', body: 'Pick an invitation, get a wedding website to match — bilingual RSVP form built in, ready to share.', cta_label: 'Find your match', cta_href: '/my/planning', visual: 'phone' },
@@ -46,6 +48,7 @@ type StoredFeatureCard = {
 
 type StoredFeaturesContent = {
   heading?: MaybeLocalized
+  subheading?: MaybeLocalized
   cards?: StoredFeatureCard[]
 }
 
@@ -71,6 +74,9 @@ export async function loadInvitationsFeaturesContent(
       const F = INVITATIONS_FEATURES_FALLBACK
       return {
         heading: resolveLocalized(stored.heading ?? F.heading, locale),
+        subheading: stored.subheading
+          ? resolveLocalized(stored.subheading, locale)
+          : F.subheading,
         cards:
           stored.cards && Array.isArray(stored.cards) && stored.cards.length > 0
             ? stored.cards.map((c, i) => ({

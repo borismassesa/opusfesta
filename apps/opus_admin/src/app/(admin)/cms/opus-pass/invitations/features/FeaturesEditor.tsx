@@ -7,7 +7,6 @@ import { ImageUploadField } from '@/components/cms/ImageUploadField'
 import { BilingualField } from '@/components/cms/BilingualField'
 import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
 import { cn } from '@/lib/utils'
-import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import {
   INVITATIONS_FEATURE_VISUALS,
   type OpusPassInvitationsFeatureCard,
@@ -163,6 +162,14 @@ export default function FeaturesEditor({ initial, hasDraft: initialHasDraft }: P
             onChange={(v) => setField('heading', v)}
             placeholder="Wedding stationery made easy, from invite to seat"
           />
+          <BilingualField
+            label="Subheading (optional)"
+            value={draft.subheading ?? ''}
+            onChange={(v) => setField('subheading', v)}
+            multiline
+            rows={2}
+            placeholder="From invite to seating, beautifully organized. Track confirmations, plus-ones, and special-guest notes in one live dashboard."
+          />
         </FieldGroup>
 
         <div className="space-y-3">
@@ -303,41 +310,44 @@ function FeaturesPreview({
   content: OpusPassInvitationsFeaturesContent
   locale: Locale
 }) {
+  const previewSubheading = resolveLocalized(content.subheading ?? '', locale)
   return (
     <div className="space-y-4">
-      <h2 className="text-center text-sm sm:text-base font-serif font-medium text-gray-900 leading-tight">
-        {resolveLocalized(content.heading, locale) || 'Section heading'}
-      </h2>
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+      <div className="text-center">
+        <h2 className="text-sm sm:text-base font-serif font-medium text-gray-900 leading-tight">
+          {resolveLocalized(content.heading, locale) || 'Section heading'}
+        </h2>
+        {previewSubheading && (
+          <p className="mx-auto mt-1.5 max-w-md text-[10px] leading-snug text-gray-500">
+            {previewSubheading}
+          </p>
+        )}
+      </div>
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
         {content.cards.map((card) => (
-          <div
-            key={card.id}
-            className="bg-[#FCE9C2] rounded-md p-3 flex flex-col items-center text-center"
-          >
-            <h3 className="text-[11px] font-extrabold tracking-tight text-[#1A1A1A]">
+          <div key={card.id} className="flex flex-col items-center px-1 text-center">
+            <div className="grid h-7 w-7 place-items-center rounded-full bg-gray-100 text-[10px] uppercase tracking-wider text-gray-500">
+              {VISUAL_ICON_GLYPH[card.visual] ?? '•'}
+            </div>
+            <h3 className="mt-2 text-[11px] font-extrabold tracking-tight text-[#1A1A1A]">
               {resolveLocalized(card.title, locale) || 'Title'}
             </h3>
-            <p className="mt-1 text-[9px] text-[#1A1A1A]/75 leading-snug line-clamp-3">
+            <p className="mt-1 text-[9px] text-[#1A1A1A]/65 leading-snug line-clamp-3">
               {resolveLocalized(card.body, locale)}
             </p>
             <span className="mt-1.5 text-[9px] font-bold text-[#1A1A1A] underline underline-offset-2">
               {resolveLocalized(card.cta_label, locale) || 'CTA'}
             </span>
-            <div className="mt-3 w-full h-[60px] rounded bg-white/60 overflow-hidden flex items-center justify-center text-[8px] uppercase tracking-wider text-gray-400">
-              {card.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={resolveOpusPassAssetUrl(card.image_url)}
-                  alt=""
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                card.visual
-              )}
-            </div>
           </div>
         ))}
       </div>
     </div>
   )
+}
+
+/** Compact glyphs standing in for the public page's line-art icons (icon chosen by `visual`). */
+const VISUAL_ICON_GLYPH: Record<OpusPassInvitationsFeatureVisual, string> = {
+  invitations: '✓',
+  phone: '🌐',
+  envelope: '✉',
 }

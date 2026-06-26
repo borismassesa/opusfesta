@@ -5,6 +5,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import {
   OPUS_PASS_WEBSITES_FEATURE_ICONS,
   OPUS_PASS_WEBSITES_FEATURE_VISUALS,
+  type OpusPassWebsitesFeatureIcon,
   type OpusPassWebsitesFeatureItem,
   type OpusPassWebsitesFeaturesContent,
 } from '@/lib/cms/opus-pass-websites-features'
@@ -13,7 +14,6 @@ import { ImageUploadField } from '@/components/cms/ImageUploadField'
 import { BilingualField } from '@/components/cms/BilingualField'
 import { cn } from '@/lib/utils'
 import { LOCALES, LOCALE_LABELS, resolveLocalized, type Locale } from '@/lib/cms/localized'
-import { resolveOpusPassAssetUrl } from '@/lib/cms/opus-pass-asset-url'
 import { useEditorActions } from '../EditorActionsContext'
 import {
   discardOpusPassWebsitesFeaturesDraft,
@@ -350,22 +350,20 @@ function FeaturesPreview({
           {resolveLocalized(content.description, locale)}
         </p>
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-3 pt-1">
         {content.items.slice(0, 3).map((card) => {
           const title = resolveLocalized(card.title, locale)
           const body = resolveLocalized(card.body, locale)
           const ctaLabel = resolveLocalized(card.cta_label, locale)
           return (
-            <div
-              key={card.id}
-              className="rounded-md p-2.5 flex flex-col items-center text-center"
-              style={{ backgroundColor: content.background_color || '#FCE9C2' }}
-            >
-              <div className="w-6 h-6 rounded-full bg-white/70 mb-2" />
-              <p className="text-[10px] font-extrabold text-[#1A1A1A] leading-tight line-clamp-2">
+            <div key={card.id} className="flex flex-col items-center px-1 text-center">
+              <div className="grid h-7 w-7 place-items-center rounded-full bg-gray-100 text-[10px] uppercase tracking-wider text-gray-500">
+                {ICON_GLYPH[card.icon] ?? '•'}
+              </div>
+              <p className="mt-2 text-[10px] font-extrabold text-[#1A1A1A] leading-tight line-clamp-2">
                 {title || 'Card title'}
               </p>
-              <p className="mt-1 text-[8px] text-[#1A1A1A]/75 leading-snug line-clamp-3">
+              <p className="mt-1 text-[8px] text-[#1A1A1A]/65 leading-snug line-clamp-3">
                 {body}
               </p>
               {ctaLabel && (
@@ -373,24 +371,17 @@ function FeaturesPreview({
                   {ctaLabel}
                 </span>
               )}
-              <div className="mt-2 w-full h-[64px] rounded-sm overflow-hidden bg-white/40 relative">
-                {card.image_url ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
-                    src={resolveOpusPassAssetUrl(card.image_url)}
-                    alt={title}
-                    className="absolute inset-0 w-full h-full object-cover"
-                  />
-                ) : (
-                  <span className="absolute inset-0 flex items-center justify-center text-[7px] uppercase tracking-[0.14em] text-[#1A1A1A]/40">
-                    {card.visual}
-                  </span>
-                )}
-              </div>
             </div>
           )
         })}
       </div>
     </div>
   )
+}
+
+/** Compact glyphs standing in for the public page's line-art icons (icon chosen per card). */
+const ICON_GLYPH: Record<OpusPassWebsitesFeatureIcon, string> = {
+  sparkles: '✦',
+  users: '👥',
+  link: '🔗',
 }
