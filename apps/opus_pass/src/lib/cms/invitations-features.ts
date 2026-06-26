@@ -74,9 +74,12 @@ export async function loadInvitationsFeaturesContent(
       const F = INVITATIONS_FEATURES_FALLBACK
       return {
         heading: resolveLocalized(stored.heading ?? F.heading, locale),
-        subheading: stored.subheading
-          ? resolveLocalized(stored.subheading, locale)
-          : F.subheading,
+        // `undefined` (key never saved) falls back to the default copy; an
+        // explicitly-saved empty value resolves to '' so admins can blank it.
+        subheading:
+          stored.subheading === undefined
+            ? F.subheading
+            : resolveLocalized(stored.subheading ?? '', locale),
         cards:
           stored.cards && Array.isArray(stored.cards) && stored.cards.length > 0
             ? stored.cards.map((c, i) => ({

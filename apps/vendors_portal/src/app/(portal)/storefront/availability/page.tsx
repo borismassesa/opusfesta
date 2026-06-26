@@ -91,6 +91,10 @@ export default function AvailabilityPage() {
   const [saving, startSaving] = useTransition()
   const [saveError, setSaveError] = useState<string | null>(null)
   const [saveOk, setSaveOk] = useState(false)
+  // Hours are safe to persist only once they've been loaded from the DB (or the
+  // vendor has edited them). Until then, draft.hours is just client defaults and
+  // saving would overwrite real saved hours — see onSave.
+  const [hoursReady, setHoursReady] = useState(false)
 
   const availability = hydrated ? draft.availability : []
 
@@ -120,9 +124,9 @@ export default function AvailabilityPage() {
     if (!hydrated || hoursSeeded.current) return
     hoursSeeded.current = true
     void loadBusinessHours().then((res) => {
-      if (res.ok && res.hours && !hoursTouched.current) {
-        update({ hours: res.hours })
-      }
+      if (!res.ok) return
+      if (res.hours && !hoursTouched.current) update({ hours: res.hours })
+      setHoursReady(true)
     })
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated])
@@ -194,6 +198,7 @@ export default function AvailabilityPage() {
   const updateDay = (key: DayKey, patch: Partial<DayHours>) => {
     if (!hydrated) return
     hoursTouched.current = true
+    setHoursReady(true)
     setSaveOk(false)
     update({ hours: { ...draft.hours, [key]: { ...draft.hours[key], ...patch } } })
   }
@@ -201,6 +206,7 @@ export default function AvailabilityPage() {
   const copyMonToWeekdays = () => {
     if (!hydrated) return
     hoursTouched.current = true
+    setHoursReady(true)
     setSaveOk(false)
     const monday = draft.hours.mon
     const next = { ...draft.hours }
@@ -214,12 +220,15 @@ export default function AvailabilityPage() {
     setSaveError(null)
     setSaveOk(false)
     startSaving(async () => {
-      const [availRes, hoursRes] = await Promise.all([
-        saveAvailability(availability),
-        saveProfileFields({ hours: draft.hours }),
-      ])
+      const availRes = await saveAvailability(availability)
       if (!availRes.ok) return setSaveError(availRes.error)
-      if (!hoursRes.ok) return setSaveError(hoursRes.error)
+      // Persist hours only once the DB value has loaded (or the vendor edited
+      // them here), so a Save fired before the seed lands cannot overwrite saved
+      // hours with client defaults.
+      if (hoursReady) {
+        const hoursRes = await saveProfileFields({ hours: draft.hours })
+        if (!hoursRes.ok) return setSaveError(hoursRes.error)
+      }
       setSaveOk(true)
     })
   }
@@ -314,7 +323,7 @@ export default function AvailabilityPage() {
                       type="button"
                       onClick={() => selectDate(cell.iso)}
                       disabled={isPast || !hydrated}
-                      aria-label={`${cell.iso} — ${status ?? (isClosedDay ? 'closed' : 'open')}${entry?.note ? ` — ${entry.note}` : ''}`}
+                      aria-label={`${cell.iso}: ${status ?? (isClosedDay ? 'closed' : 'open')}${entry?.note ? `. ${entry.note}` : ''}`}
                       aria-pressed={isSelected}
                       style={isClosedDay ? CLOSED_HATCH : undefined}
                       className={cn(
@@ -429,7 +438,7 @@ export default function AvailabilityPage() {
                         onChange={(e) => setDateNote(selectedISO, e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && setSelectedISO(null)}
                         maxLength={120}
-                        placeholder="e.g. Fully booked — Asha &amp; Juma's wedding"
+                        placeholder="e.g. Fully booked. Asha &amp; Juma's wedding"
                         className="w-full bg-white border border-gray-300 rounded-md px-2.5 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 outline-none"
                       />
                     </label>
