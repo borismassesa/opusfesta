@@ -22,7 +22,7 @@ export default async function PortalLayout({
 
   // Vendor name + slug are resolved here in the server layout — PortalShell
   // needs the name to greet the vendor in the header, and the slug feeds
-  // the "Preview public storefront" link in the storefront sidebar.
+  // the "View public storefront" link in the header.
   // `no-env` falls back to the seed values so designers see a populated
   // greeting offline.
   const vendorName =

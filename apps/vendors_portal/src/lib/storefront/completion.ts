@@ -176,13 +176,14 @@ export function getStorefrontSections(d: OnboardingDraft): StorefrontSection[] {
     },
     {
       id: 'availability',
-      label: 'Availability',
-      hint: 'Block dates you are already booked',
+      label: 'Availability & hours',
+      hint: 'Block booked dates and set your weekly hours',
       href: '/storefront/availability',
       status: availabilityStatus(d),
       required: false,
-      pageTitle: 'Availability',
-      pageDescription: 'Mark the dates you are already booked or have limited capacity.',
+      pageTitle: 'Availability & hours',
+      pageDescription:
+        'Block the dates you are already booked and set the weekly hours couples can reach you.',
     },
   ]
 }

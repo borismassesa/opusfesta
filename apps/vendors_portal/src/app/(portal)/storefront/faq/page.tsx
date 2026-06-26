@@ -184,7 +184,7 @@ export default function ListingFAQPage() {
 
       {/* Persist to DB so admin + public profile pick up the answers. */}
       <div className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white/95 backdrop-blur z-30">
-        <div className="mx-auto max-w-4xl px-6 lg:px-10 py-3 flex items-center justify-between gap-4 flex-wrap">
+        <div className="px-6 lg:px-10 py-3 flex items-center justify-between gap-4 flex-wrap">
           <div className="text-xs text-gray-500">
             <span className="font-semibold text-gray-900 tabular-nums">{completeFaqs}</span>{' '}
             complete · {faqs.length} total

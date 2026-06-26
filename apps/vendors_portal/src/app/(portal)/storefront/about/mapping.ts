@@ -7,6 +7,8 @@
 
 export type DbProfile = {
   businessName: string
+  firstName: string
+  lastName: string
   yearsInBusiness: string // editor uses string, DB stores INTEGER (or null)
   bio: string
 
@@ -41,6 +43,8 @@ export type VendorRowFromDb = {
 
 const EMPTY: DbProfile = {
   businessName: '',
+  firstName: '',
+  lastName: '',
   yearsInBusiness: '',
   bio: '',
   houseNumber: '',
@@ -70,6 +74,8 @@ export function dbVendorToProfile(row: VendorRowFromDb | null | undefined): DbPr
   if (!row) return EMPTY
   return {
     businessName: row.business_name ?? '',
+    firstName: readString(row.contact_info, 'firstName'),
+    lastName: readString(row.contact_info, 'lastName'),
     yearsInBusiness:
       typeof row.years_in_business === 'number' && Number.isFinite(row.years_in_business)
         ? String(row.years_in_business)
@@ -144,6 +150,8 @@ export function profileToUpdatePatch(
     },
     contact_info: {
       ...baseContact,
+      firstName: profile.firstName.trim(),
+      lastName: profile.lastName.trim(),
       phone: profile.phone.trim(),
       email: profile.email.trim(),
       whatsapp: profile.whatsapp.trim(),

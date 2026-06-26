@@ -9,6 +9,8 @@ import AboutEditor, { type AboutSource } from './AboutEditor'
 
 const EMPTY_PROFILE: DbProfile = {
   businessName: '',
+  firstName: '',
+  lastName: '',
   yearsInBusiness: '',
   bio: '',
   houseNumber: '',

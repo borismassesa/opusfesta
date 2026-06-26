@@ -21,7 +21,7 @@ import {
   TextArea,
   TextInput,
 } from '@/components/onboard/FormField'
-import { useOnboardingDraft, type DayHours } from '@/lib/onboarding/draft'
+import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { LANGUAGES } from '@/lib/onboarding/languages'
 import { getStylesForCategory } from '@/lib/onboarding/styles'
 import { PERSONALITY_OPTIONS } from '@/lib/onboarding/personality'
@@ -34,18 +34,6 @@ import { saveProfile } from './actions'
 import { saveProfileFields } from '../sections/actions'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import { profilesEqual, type DbProfile } from './mapping'
-
-const DAYS = [
-  { key: 'mon', label: 'Monday', short: 'Mon' },
-  { key: 'tue', label: 'Tuesday', short: 'Tue' },
-  { key: 'wed', label: 'Wednesday', short: 'Wed' },
-  { key: 'thu', label: 'Thursday', short: 'Thu' },
-  { key: 'fri', label: 'Friday', short: 'Fri' },
-  { key: 'sat', label: 'Saturday', short: 'Sat' },
-  { key: 'sun', label: 'Sunday', short: 'Sun' },
-] as const
-
-type DayKey = (typeof DAYS)[number]['key']
 
 const MIN_BIO = 80
 
@@ -101,6 +89,32 @@ export default function AboutEditor({
     setProfile(initialProfile)
     setSavedSnapshot(initialProfile)
   }, [initialProfile])
+
+  // The completeness sidebar judges the Profile section off the shared
+  // onboarding draft (d.bio / d.phone / d.socials / …), but these fields are
+  // edited here in `profile` (the DB-backed source of truth) and were never
+  // written back to the draft. That left Profile stuck on "required" no matter
+  // what the vendor saved. Mirror them into the draft so the tick reflects
+  // what's actually stored — and updates live as the vendor types.
+  useEffect(() => {
+    if (!hydrated) return
+    update({
+      businessName: profile.businessName,
+      bio: profile.bio,
+      yearsInBusiness: profile.yearsInBusiness,
+      phone: profile.phone,
+      email: profile.email,
+      whatsapp: profile.whatsapp,
+      socials: {
+        website: profile.socialWebsite,
+        instagram: profile.socialInstagram,
+        facebook: profile.socialFacebook,
+        tiktok: profile.socialTiktok,
+        whatsapp: profile.socialWhatsapp,
+      },
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, profile])
 
   const banner = BANNER_BY_SOURCE[source.kind]
   const styles = getStylesForCategory(draft.categoryId)
@@ -168,11 +182,6 @@ export default function AboutEditor({
     update({ serviceMarkets: Array.from(set) })
   }
 
-  const updateDay = (key: DayKey, patch: Partial<DayHours>) => {
-    if (!canEdit) return
-    update({ hours: { ...draft.hours, [key]: { ...draft.hours[key], ...patch } } })
-  }
-
   const handleSave = () => {
     if (!canEdit) return
     setFeedback(null)
@@ -189,7 +198,6 @@ export default function AboutEditor({
           ? saveProfile(profile)
           : Promise.resolve({ ok: true as const }),
         saveProfileFields({
-          hours: draft.hours,
           style: draft.style || null,
           personality: draft.personality || null,
           homeMarket: homeMarket ?? null,
@@ -264,23 +272,19 @@ export default function AboutEditor({
               </div>
               <div className="grid sm:grid-cols-3 gap-4">
                 <div>
-                  <FieldLabel>
-                    First name <DraftBadge />
-                  </FieldLabel>
+                  <FieldLabel>First name</FieldLabel>
                   <TextInput
-                    value={hydrated ? draft.firstName : ''}
-                    onChange={(e) => update({ firstName: e.target.value })}
+                    value={profile.firstName}
+                    onChange={(e) => setField('firstName', e.target.value)}
                     autoComplete="given-name"
                     disabled={!canEdit}
                   />
                 </div>
                 <div>
-                  <FieldLabel>
-                    Last name <DraftBadge />
-                  </FieldLabel>
+                  <FieldLabel>Last name</FieldLabel>
                   <TextInput
-                    value={hydrated ? draft.lastName : ''}
-                    onChange={(e) => update({ lastName: e.target.value })}
+                    value={profile.lastName}
+                    onChange={(e) => setField('lastName', e.target.value)}
                     autoComplete="family-name"
                     disabled={!canEdit}
                   />
@@ -605,46 +609,6 @@ export default function AboutEditor({
             </div>
           </Section>
 
-          {/* Business hours — operational detail (not in the onboarding
-              wizard). Persisted to vendors.hours on Save. */}
-          <Section
-            title="Business hours"
-            className="lg:col-span-2"
-            right={
-              <button
-                type="button"
-                disabled={!canEdit}
-                onClick={() => {
-                  const monday = draft.hours.mon
-                  const next = { ...draft.hours }
-                  ;(['tue', 'wed', 'thu', 'fri'] as const).forEach((k) => {
-                    next[k] = { ...monday }
-                  })
-                  update({ hours: next })
-                }}
-                className="text-xs font-semibold text-gray-600 hover:text-gray-900 disabled:cursor-not-allowed disabled:opacity-50 transition-colors"
-              >
-                Copy Mon to weekdays
-              </button>
-            }
-          >
-            <div className="divide-y divide-gray-100">
-              {DAYS.map((d) => (
-                <DayRow
-                  key={d.key}
-                  label={d.label}
-                  short={d.short}
-                  value={
-                    hydrated
-                      ? draft.hours[d.key]
-                      : { open: false, from: '09:00', to: '18:00' }
-                  }
-                  disabled={!canEdit}
-                  onChange={(patch) => updateDay(d.key, patch)}
-                />
-              ))}
-            </div>
-          </Section>
         </div>
       </div>
 
@@ -709,14 +673,12 @@ export default function AboutEditor({
 // it on hydration + after every save so the Save button can light up
 // when only these fields change.
 function snapshotDraft(draft: {
-  hours: unknown
   style: string | null
   personality: string | null
   serviceMarkets: string[]
   languages: string[]
 }) {
   return JSON.stringify({
-    hours: draft.hours,
     style: draft.style,
     personality: draft.personality,
     serviceMarkets: draft.serviceMarkets,
@@ -726,17 +688,6 @@ function snapshotDraft(draft: {
 
 function draftsEqual(a: string, b: string): boolean {
   return a === b
-}
-
-function DraftBadge() {
-  return (
-    <span
-      className="ml-1.5 inline-block bg-amber-100 text-amber-800 text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded"
-      title="Still on local draft — saves on this device only"
-    >
-      draft
-    </span>
-  )
 }
 
 function Section({
@@ -771,59 +722,6 @@ function Section({
       ) : null}
       {children}
     </section>
-  )
-}
-
-function DayRow({
-  label,
-  short,
-  value,
-  disabled,
-  onChange,
-}: {
-  label: string
-  short: string
-  value: DayHours
-  disabled?: boolean
-  onChange: (patch: Partial<DayHours>) => void
-}) {
-  return (
-    <div className="flex items-center gap-3 py-2.5">
-      <label
-        className="flex items-center gap-2.5 cursor-pointer w-20 shrink-0 select-none"
-        title={label}
-      >
-        <input
-          type="checkbox"
-          checked={value.open}
-          onChange={(e) => onChange({ open: e.target.checked })}
-          disabled={disabled}
-          className="w-4 h-4 accent-gray-900"
-        />
-        <span className="text-sm font-semibold text-gray-900">{short}</span>
-      </label>
-      {value.open ? (
-        <div className="flex items-center gap-1.5 flex-1 min-w-0">
-          <input
-            type="time"
-            value={value.from}
-            onChange={(e) => onChange({ from: e.target.value })}
-            disabled={disabled}
-            className="flex-1 min-w-0 bg-white border border-gray-300 rounded-md px-2 py-1.5 text-sm text-gray-900 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 disabled:bg-gray-50 disabled:cursor-not-allowed outline-none"
-          />
-          <span className="text-gray-400 text-xs shrink-0">–</span>
-          <input
-            type="time"
-            value={value.to}
-            onChange={(e) => onChange({ to: e.target.value })}
-            disabled={disabled}
-            className="flex-1 min-w-0 bg-white border border-gray-300 rounded-md px-2 py-1.5 text-sm text-gray-900 focus:border-gray-900 focus:ring-1 focus:ring-gray-900 disabled:bg-gray-50 disabled:cursor-not-allowed outline-none"
-          />
-        </div>
-      ) : (
-        <span className="text-sm text-gray-400 italic">Closed</span>
-      )}
-    </div>
   )
 }
 
