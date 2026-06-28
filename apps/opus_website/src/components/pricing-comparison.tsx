@@ -34,7 +34,7 @@ export default async function PricingComparison() {
           </div>
 
           {/* Right — bento grid */}
-          <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-3 h-[280px] md:h-[380px]">
+          <div className="flex-1 grid grid-cols-2 grid-rows-2 gap-3 h-[280px] sm:h-[340px] md:h-[380px]">
 
             {/* Tall couple photo */}
             {/* eslint-disable-next-line @next/next/no-img-element */}

@@ -63,8 +63,14 @@ export function vendorCardAvatar(v: Vendor): { src: string | null; isLogo: boole
 }
 
 function priceToNumber(s: string): number {
-  const m = s.match(/([\d.]+)\s*M/i)
-  if (m) return parseFloat(m[1]) * 1_000_000
+  // Handle "M" (millions) and "K" (thousands) suffixes, e.g. "2.5M", "500K".
+  const unit = s.match(/([\d.]+)\s*(M|K)/i)
+  if (unit) {
+    const n = parseFloat(unit[1])
+    return unit[2].toUpperCase() === 'M' ? n * 1_000_000 : n * 1_000
+  }
+  // Strip everything but digits and the decimal point (commas are thousands
+  // separators) before parsing.
   return parseFloat(s.replace(/[^\d.]/g, '')) || 0
 }
 
@@ -73,7 +79,9 @@ function priceToNumber(s: string): number {
 // cards read only `priceRange`, so a vendor with packages but no range label
 // rendered a blank "starting at".
 export function vendorStartingPrice(v: Vendor): string {
-  const pkgs = v.pricingDetails ?? []
+  // Only consider packages with a parseable numeric price, so text values like
+  // "Contact us"/"Negotiable" never get shown as the starting price.
+  const pkgs = (v.pricingDetails ?? []).filter((p) => priceToNumber(p.value) > 0)
   if (pkgs.length) {
     const cheapest = [...pkgs].sort(
       (a, b) => priceToNumber(a.value) - priceToNumber(b.value),

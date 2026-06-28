@@ -228,16 +228,16 @@ function HeroSection() {
   }
 
   return (
-    <div className="flex flex-col items-start gap-10 lg:flex-row lg:gap-16 2xl:gap-24 3xl:gap-32">
-      <div className="flex-1 pt-2 lg:pt-6">
-        <h1 className="text-[2rem] font-extrabold tracking-tight leading-[1.05] mb-5 text-[#1A1A1A] sm:text-[2.6rem] md:text-5xl lg:text-[3.2vw] xl:text-[56px] 2xl:text-[68px] 3xl:text-[80px]">
+    <div className="flex w-full flex-col items-start gap-10 lg:flex-row lg:gap-16 2xl:gap-24 3xl:gap-32">
+      <div className="w-full min-w-0 flex-1 pt-2 lg:pt-6">
+        <h1 className="text-[1.7rem] font-extrabold tracking-tight leading-[1.05] mb-5 text-[#1A1A1A] min-[400px]:text-[2rem] sm:text-[2.6rem] md:text-5xl lg:text-[3.2vw] xl:text-[56px] 2xl:text-[68px] 3xl:text-[80px]">
           Discover the<br /><span className="whitespace-nowrap">Best Wedding Vendors</span>
         </h1>
         <p className="mb-8 text-base font-medium leading-relaxed text-gray-500 sm:text-lg">
           Verified wedding professionals across Tanzania, all in one place.
         </p>
 
-        <div className="mb-7 flex items-center gap-1">
+        <div className="mb-7 -mx-1 flex items-center gap-1 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {HERO_TABS.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.label
@@ -245,7 +245,7 @@ function HeroSection() {
               <button
                 key={tab.label}
                 onClick={() => setActiveTab(tab.label)}
-                className={`flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-colors ${
+                className={`flex shrink-0 items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold transition-colors ${
                   isActive ? 'bg-[#C9A0DC] text-[#1A1A1A]' : 'text-gray-500 hover:bg-gray-100'
                 }`}
               >
@@ -279,8 +279,8 @@ function HeroSection() {
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm font-bold text-[#1A1A1A]">{POPULAR_BY_TAB[activeTab]?.label ?? 'Popular:'}</span>
+        <div className="-mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+          <span className="shrink-0 whitespace-nowrap text-sm font-bold text-[#1A1A1A]">{POPULAR_BY_TAB[activeTab]?.label ?? 'Popular:'}</span>
           {(POPULAR_BY_TAB[activeTab]?.items ?? []).map((tag) => (
             <button
               key={tag}
@@ -290,7 +290,7 @@ function HeroSection() {
                 if (categoryId) params.set('category', categoryId)
                 router.push(`${BROWSE_PATH}?${params.toString()}`)
               }}
-              className="rounded-full border border-gray-200 px-3.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
+              className="shrink-0 whitespace-nowrap rounded-full border border-gray-200 px-3.5 py-1.5 text-sm font-medium text-gray-600 transition-colors hover:border-gray-300 hover:bg-gray-50"
             >
               {tag}
             </button>
@@ -489,7 +489,7 @@ const cardVisibility = [
 
 function VendorRow({ vendors: rows }: { vendors: (typeof vendors) }) {
   return (
-    <div className="grid gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+    <div className="grid gap-x-6 gap-y-8 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
       {rows.map((vendor, i) => (
         <div key={vendor.id} className={cardVisibility[i] ?? 'hidden'}>
           <ListingCard vendor={vendor} />

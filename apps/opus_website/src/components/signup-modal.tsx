@@ -485,7 +485,7 @@ function Step4({
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         {CATEGORIES.map(({ id, label, Icon }) => {
           const isSelected = selected.has(id)
           return (
@@ -532,7 +532,7 @@ function Step5({
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2.5">
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
         {VENUE_TYPES.map((venue) => {
           const isSelected = selected.has(venue)
           return (
@@ -729,7 +729,7 @@ function Step8({
         </h2>
       </div>
 
-      <div className="grid grid-cols-2 gap-x-6 gap-y-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3">
         <div className="flex flex-col gap-3">
           {REFERRAL_LEFT.map((source) => (
             <CustomCheckbox

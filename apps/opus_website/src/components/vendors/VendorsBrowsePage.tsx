@@ -200,7 +200,7 @@ function FilterBar({
           <div className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setPanelOpen(false)} />
 
           {/* Panel */}
-          <div className="relative z-10 flex h-full w-[440px] flex-col bg-white shadow-2xl">
+          <div className="relative z-10 flex h-full w-full max-w-[440px] flex-col bg-white shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
               <span className="text-[15px] font-bold text-[#1A1A1A]">Filters</span>
@@ -329,51 +329,46 @@ function FilterBar({
       )}
 
       <div className="flex flex-col gap-2">
-        <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex min-w-0 flex-1 flex-col gap-2 md:flex-row md:items-center">
-            <button
-              onClick={() => setPanelOpen(true)}
-              className={`flex shrink-0 items-center gap-2 rounded-full border bg-white px-5 py-4 text-[13px] font-semibold transition-all ${
-                totalActive > 0
-                  ? 'border-[#C9A0DC] bg-[rgba(201,160,220,0.12)] text-[#1A1A1A]'
-                  : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
-              }`}
-            >
-              <SlidersHorizontal size={14} />
-              Filters
-              {totalActive > 0 && (
-                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#C9A0DC] text-[9px] font-black text-[#1A1A1A]">
-                  {totalActive}
-                </span>
-              )}
-            </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setPanelOpen(true)}
+            className={`flex shrink-0 items-center gap-2 rounded-full border bg-white px-4 py-3 text-[13px] font-semibold transition-all sm:px-5 sm:py-4 ${
+              totalActive > 0
+                ? 'border-[#C9A0DC] bg-[rgba(201,160,220,0.12)] text-[#1A1A1A]'
+                : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-gray-50'
+            }`}
+          >
+            <SlidersHorizontal size={14} />
+            <span className="hidden sm:inline">Filters</span>
+            {totalActive > 0 && (
+              <span className="flex h-4 w-4 items-center justify-center rounded-full bg-[#C9A0DC] text-[9px] font-black text-[#1A1A1A]">
+                {totalActive}
+              </span>
+            )}
+          </button>
 
-            {children && <div className="min-w-0 flex-1">{children}</div>}
-          </div>
+          {children && <div className="min-w-0 flex-1">{children}</div>}
 
-          <div className="flex flex-wrap items-center gap-2 xl:justify-end">
-            <div className="flex items-center rounded-full border border-gray-200 bg-white p-1">
-              {(
-                [
-                  { value: 'list' as ViewMode, icon: <LayoutList size={14} />, label: 'List' },
-                  { value: 'grid' as ViewMode, icon: <LayoutGrid size={14} />, label: 'Grid' },
-                  { value: 'map'  as ViewMode, icon: <Map size={14} />,         label: 'Map'  },
-                ] as const
-              ).map((opt) => (
-                <button
-                  key={opt.value}
-                  onClick={() => onViewChange(opt.value)}
-                  title={opt.label}
-                  className={`flex items-center gap-1 rounded-full px-4 py-3 text-[13px] font-semibold transition-colors ${
-                    viewMode === opt.value ? 'bg-[#1A1A1A] text-white' : 'text-gray-400 hover:text-[#1A1A1A]'
-                  }`}
-                >
-                  {opt.icon}
-                  <span className="hidden md:inline">{opt.label}</span>
-                </button>
-              ))}
-            </div>
-
+          <div className="flex shrink-0 items-center rounded-full border border-gray-200 bg-white p-1">
+            {(
+              [
+                { value: 'list' as ViewMode, icon: <LayoutList size={14} />, label: 'List', mobile: true  },
+                { value: 'grid' as ViewMode, icon: <LayoutGrid size={14} />, label: 'Grid', mobile: true  },
+                { value: 'map'  as ViewMode, icon: <Map size={14} />,         label: 'Map',  mobile: false },
+              ] as const
+            ).map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => onViewChange(opt.value)}
+                title={opt.label}
+                className={`items-center gap-1 rounded-full px-3 py-3 text-[13px] font-semibold transition-colors sm:px-4 ${opt.mobile ? 'flex' : 'hidden lg:flex'} ${
+                  viewMode === opt.value ? 'bg-[#1A1A1A] text-white' : 'text-gray-400 hover:text-[#1A1A1A]'
+                }`}
+              >
+                {opt.icon}
+                <span className="hidden md:inline">{opt.label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -442,11 +437,11 @@ function BrowseCard({ vendor, hovered, onHover }: {
       href={`${VENDORS_BASE_PATH}/${vendor.slug}`}
       onMouseEnter={() => onHover?.(vendor.id)}
       onMouseLeave={() => onHover?.(null)}
-      className={`group flex gap-4 rounded-2xl border bg-white p-4 transition-all sm:gap-5 ${
+      className={`group flex flex-col gap-4 rounded-2xl border bg-white p-4 transition-all sm:flex-row sm:gap-5 ${
         hovered ? 'border-[#C9A0DC] shadow-md' : 'border-gray-100 hover:border-gray-200 hover:shadow-md'
       }`}
     >
-      <div className="group/img relative h-[210px] w-[260px] shrink-0 overflow-hidden rounded-xl bg-gray-100 sm:h-[240px] sm:w-[300px]"
+      <div className="group/img relative h-[210px] w-full shrink-0 overflow-hidden rounded-xl bg-gray-100 sm:h-[240px] sm:w-[300px]"
         onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={images[idx]} alt={vendor.heroMedia.alt}
@@ -665,6 +660,10 @@ function GridCard({ vendor }: { vendor: Vendor }) {
           </div>
         )}
 
+        {vendor.excerpt && (
+          <p className="mt-2 line-clamp-2 text-[12px] leading-relaxed text-gray-500">{vendor.excerpt}</p>
+        )}
+
         <div className="mt-3 flex items-center justify-between gap-3">
           <div>
             <p className="text-[10px] text-gray-400">starting at</p>
@@ -864,6 +863,19 @@ export default function VendorsBrowsePage({
     mapListRef.current.querySelector(`[data-id="${activeVendorId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' })
   }, [activeVendorId])
 
+  // Map view only renders the actual map at lg+; the Map toggle is hidden below
+  // lg. If the viewport drops under lg while in map view (desktop → resize, or
+  // tablet rotated to portrait), fall back to grid so the user never lands on a
+  // mapless "map" view with no way to tell what happened.
+  useEffect(() => {
+    if (viewMode !== 'map') return
+    const mq = window.matchMedia('(max-width: 1023px)')
+    const apply = () => { if (mq.matches) setViewMode('grid') }
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [viewMode])
+
   const syncMapListEndState = useCallback(() => {
     const container = mapListRef.current
     if (!container) {
@@ -1003,7 +1015,7 @@ const pageTitle = activeCategory ? `${activeCategory.label} in Tanzania` : 'Wedd
                   <span className="rounded-full bg-[rgba(201,160,220,0.2)] border border-[#C9A0DC]/40 px-2.5 py-0.5 text-[11px] font-semibold text-[#1A1A1A]">Browse All</span>
                 )}
               </nav>
-              <h1 className="text-[1.75rem] font-extrabold text-[#1A1A1A] sm:text-[2rem]">{pageTitle}</h1>
+              <h1 className="text-[clamp(1.1rem,5.1vw,2rem)] font-extrabold text-[#1A1A1A]">{pageTitle}</h1>
             </>
           )}
           <div className={viewMode !== 'map' ? 'mt-4' : undefined}>
@@ -1038,7 +1050,7 @@ viewMode={viewMode}                     onViewChange={setViewMode}
 
       {/* ── MAP VIEW ── */}
       {viewMode === 'map' && (
-        <div className="flex min-h-0 overflow-hidden" style={{ height: 'calc(100vh - 120px)', minHeight: 600 }}>
+        <div className="flex min-h-0 overflow-hidden" style={{ height: 'calc(100dvh - 120px)', minHeight: 600 }}>
               {/* Left: 2-col grid */}
               <div
                 ref={mapListRef}
@@ -1050,7 +1062,7 @@ viewMode={viewMode}                     onViewChange={setViewMode}
                   syncMapListEndState()
                 }}
                 onWheel={handleMapListWheel}
-                className="flex h-full min-h-0 w-full touch-pan-y flex-col overflow-y-scroll overscroll-y-contain pl-16 sm:pl-20 lg:w-[560px] xl:w-[620px] shrink-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                className="flex h-full min-h-0 w-full touch-pan-y flex-col overflow-y-scroll overscroll-y-contain pl-4 sm:pl-6 lg:pl-20 lg:w-[560px] xl:w-[620px] shrink-0 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
               >
                 {filteredVendors.length === 0 ? (
                   <div className="flex flex-col items-center justify-center px-6 py-20 text-center">
@@ -1079,7 +1091,7 @@ viewMode={viewMode}                     onViewChange={setViewMode}
               {/* Right: map */}
               <div
                 className="hidden min-h-0 flex-1 lg:block pr-16 sm:pr-20 py-8"
-                style={{ height: 'calc(100vh - 120px)' }}
+                style={{ height: 'calc(100dvh - 120px)' }}
               >
                 <div className="h-full overflow-hidden rounded-2xl" style={{ isolation: 'isolate' }}>
                   <VendorsMap
@@ -1116,7 +1128,7 @@ viewMode={viewMode}                     onViewChange={setViewMode}
                 ))}
               </div>
             ) : (
-              <div className="grid gap-x-6 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+              <div className="grid gap-x-6 gap-y-8 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                 {visibleVendors.map((v) => <GridCard key={v.id} vendor={v} />)}
               </div>
             )}
