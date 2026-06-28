@@ -98,8 +98,14 @@ export function LogoUpload({
             }}
           />
           {shown ? (
+            // Logos are usually non-square with padding — contain keeps them
+            // whole instead of cropping; the white backdrop reads cleanly.
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={shown} alt="Logo" className="h-full w-full object-cover" />
+            <img
+              src={shown}
+              alt="Logo"
+              className="h-full w-full bg-white object-contain p-1"
+            />
           ) : (
             <span className="flex h-full w-full flex-col items-center justify-center gap-0.5 bg-[#FAF1FD] text-[#7E5896]">
               <Camera className="h-5 w-5" />

@@ -49,6 +49,40 @@ export type VendorPricingPackage = {
   value: string
   services?: string[]
   note?: string
+  // Vendor-set highlight badge (label + lucide icon id + tone), configured in
+  // the storefront Packages editor. Rendered on the public package card.
+  badge?: { label: string; icon: string; tone: string }
+}
+
+// The small identity avatar shown on vendor cards: the vendor's logo when set
+// (rendered `contain`, since logos are usually non-square), otherwise the hero
+// image (rendered `cover`). Keeps the four card layouts consistent.
+export function vendorCardAvatar(v: Vendor): { src: string | null; isLogo: boolean } {
+  if (v.logo && v.logo.trim() !== '') return { src: v.logo, isLogo: true }
+  return { src: v.heroMedia?.src?.trim() ? v.heroMedia.src : null, isLogo: false }
+}
+
+function priceToNumber(s: string): number {
+  const m = s.match(/([\d.]+)\s*M/i)
+  if (m) return parseFloat(m[1]) * 1_000_000
+  return parseFloat(s.replace(/[^\d.]/g, '')) || 0
+}
+
+// "Starting at" price shown on cards. Prefer the cheapest real package, then the
+// vendor's declared starting price, then the price-range label. Previously the
+// cards read only `priceRange`, so a vendor with packages but no range label
+// rendered a blank "starting at".
+export function vendorStartingPrice(v: Vendor): string {
+  const pkgs = v.pricingDetails ?? []
+  if (pkgs.length) {
+    const cheapest = [...pkgs].sort(
+      (a, b) => priceToNumber(a.value) - priceToNumber(b.value),
+    )[0]
+    if (cheapest?.value?.trim()) return cheapest.value
+  }
+  const sp = v.startingPrice?.trim()
+  if (sp) return /tzs|tsh/i.test(sp) ? sp : `TZS ${sp}`
+  return v.priceRange.split('–')[0].trim()
 }
 
 export type Vendor = {

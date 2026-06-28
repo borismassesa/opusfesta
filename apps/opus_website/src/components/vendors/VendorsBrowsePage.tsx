@@ -45,6 +45,7 @@ import {
   VENDORS_BASE_PATH,
 } from '@/lib/vendors'
 import type { Vendor, VendorCategoryId } from '@/lib/vendors'
+import { vendorCardAvatar, vendorStartingPrice } from '@/lib/vendors'
 import { getFallbackHeroImage, getVendorCardImages } from '@/lib/vendor-images'
 import { BROWSE_FOOTER_VISIBILITY_EVENT } from './VendorsFooterGate'
 
@@ -486,7 +487,7 @@ function BrowseCard({ vendor, hovered, onHover }: {
         {/* 1. Name + verified — identity first */}
         <h3 className="flex items-center gap-2 text-[17px] font-bold leading-snug text-[#1A1A1A] sm:text-[18px]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={vendor.heroMedia.src || getFallbackHeroImage(vendor.id)} alt="" className="h-8 w-8 shrink-0 rounded-full object-cover" />
+          <img src={vendorCardAvatar(vendor).src || getFallbackHeroImage(vendor.id)} alt="" className={`h-8 w-8 shrink-0 rounded-full ${vendorCardAvatar(vendor).isLogo ? 'bg-white object-contain' : 'object-cover'}`} />
           <span className="truncate">{vendor.name}</span>
           {vendor.badge === 'Verified' && (
             <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified" />
@@ -600,7 +601,7 @@ function GridCardImageCarousel({ vendor }: { vendor: Vendor }) {
 function GridCard({ vendor }: { vendor: Vendor }) {
   const router = useRouter()
   const isNew = vendor.badge === 'New'
-  const startingPrice = vendor.priceRange.split('–')[0].trim()
+  const startingPrice = vendorStartingPrice(vendor)
   const goToContact = (e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
@@ -616,7 +617,7 @@ function GridCard({ vendor }: { vendor: Vendor }) {
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={vendor.heroMedia.src || getFallbackHeroImage(vendor.id)} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+            <img src={vendorCardAvatar(vendor).src || getFallbackHeroImage(vendor.id)} alt="" className={`h-6 w-6 shrink-0 rounded-full ${vendorCardAvatar(vendor).isLogo ? 'bg-white object-contain' : 'object-cover'}`} />
             <h3 className="font-display truncate text-[16px] leading-snug text-black">{vendor.name}</h3>
             {vendor.badge === 'Verified' && (
               <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified vendor" />
@@ -631,8 +632,10 @@ function GridCard({ vendor }: { vendor: Vendor }) {
               </>
             ) : (
               <>
-                <Star size={9} className="text-[#9FE870]" fill="currentColor" />
-                <span className="font-semibold text-[#9FE870]">New</span>
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-[#9FE870] px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-[#1A1A1A]">
+                  <Star size={8} fill="currentColor" />
+                  New
+                </span>
                 <span className="text-gray-300">·</span>
               </>
             )}
@@ -685,7 +688,7 @@ function MapListCard({ vendor, onHover, onClick }: {
 }) {
   const router = useRouter()
   const isNew = vendor.badge === 'New'
-  const startingPrice = vendor.priceRange.split('–')[0].trim()
+  const startingPrice = vendorStartingPrice(vendor)
   const images = getVendorCardImages(vendor)
   const [idx, setIdx] = useState(0)
   const dragStart = useRef<number | null>(null)
@@ -754,7 +757,7 @@ function MapListCard({ vendor, onHover, onClick }: {
         <div className="flex items-center justify-between gap-2">
           <div className="flex min-w-0 items-center gap-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={vendor.heroMedia.src || getFallbackHeroImage(vendor.id)} alt="" className="h-6 w-6 shrink-0 rounded-full object-cover" />
+            <img src={vendorCardAvatar(vendor).src || getFallbackHeroImage(vendor.id)} alt="" className={`h-6 w-6 shrink-0 rounded-full ${vendorCardAvatar(vendor).isLogo ? 'bg-white object-contain' : 'object-cover'}`} />
             <h3 className="font-display truncate text-[16px] leading-snug text-black">{vendor.name}</h3>
             {vendor.badge === 'Verified' && (
               <BadgeCheck size={15} className="shrink-0 text-[#C9A0DC]" fill="currentColor" color="white" aria-label="Verified vendor" />
@@ -769,8 +772,10 @@ function MapListCard({ vendor, onHover, onClick }: {
               </>
             ) : (
               <>
-                <Star size={9} className="text-[#9FE870]" fill="currentColor" />
-                <span className="font-semibold text-[#9FE870]">New</span>
+                <span className="inline-flex items-center gap-0.5 rounded-full bg-[#9FE870] px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-[#1A1A1A]">
+                  <Star size={8} fill="currentColor" />
+                  New
+                </span>
                 <span className="text-gray-300">·</span>
               </>
             )}

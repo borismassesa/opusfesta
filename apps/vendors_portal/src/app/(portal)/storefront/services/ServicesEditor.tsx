@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useTransition, type FormEvent } from 'react'
+import { useEffect, useMemo, useState, useTransition, type FormEvent } from 'react'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Plus, Save, Sparkles, X } from 'lucide-react'
 import { OptionCard } from '@/components/onboard/OptionCard'
@@ -49,9 +49,27 @@ export default function ServicesEditor({
   category,
 }: ServicesEditorProps) {
   const router = useRouter()
-  const { draft } = useOnboardingDraft()
+  const { draft, update } = useOnboardingDraft()
   const [specialServices, setSpecial] = useState<string[]>(initialPresetIds)
   const [customServices, setCustom] = useState<string[]>(initialCustomServices)
+
+  // Mirror the saved/edited services into the onboarding draft so the
+  // storefront completion sidebar (which reads `draft.specialServices` +
+  // `draft.customServices`) reflects them. Without this, a vendor who has
+  // services in the DB but an empty draft (fresh device / cleared storage /
+  // a vendor-scoped slot that didn't inherit onboarding data) sees the
+  // Services section stuck on "Required" despite having saved it.
+  useEffect(() => {
+    const sameSpecial =
+      draft.specialServices.length === specialServices.length &&
+      specialServices.every((s) => draft.specialServices.includes(s))
+    const sameCustom =
+      draft.customServices.length === customServices.length &&
+      customServices.every((s) => draft.customServices.includes(s))
+    if (sameSpecial && sameCustom) return
+    update({ specialServices, customServices })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [specialServices, customServices])
   const [customDraft, setCustomDraft] = useState('')
   const [pending, startTransition] = useTransition()
   const [feedback, setFeedback] = useState<
