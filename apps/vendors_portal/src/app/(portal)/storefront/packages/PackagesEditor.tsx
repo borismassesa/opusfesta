@@ -6,9 +6,13 @@ import { useRouter } from 'next/navigation'
 import { ArrowRight, Check, Lock, Pencil, Plus, Save, Tag, X } from 'lucide-react'
 import { getStorefrontSections } from '@/lib/storefront/completion'
 import {
+  hasCompletePayout,
+  newPayoutEntryId,
   primaryPayoutEntry,
   useOnboardingDraft,
   type CancellationLevel,
+  type OnboardingDraft,
+  type PayoutMethod,
   type ReschedulePolicy,
 } from '@/lib/onboarding/draft'
 import { CANCELLATION_OPTIONS, RESCHEDULE_OPTIONS } from '@/lib/onboarding/policies'
@@ -51,6 +55,16 @@ const PAYOUT_DB_LABEL: Record<string, string> = {
   tigo: 'Mixx by Yas',
   lipa_namba: 'Lipa Namba',
   bank: 'Bank account',
+}
+
+// DB `method_type` enum → the draft's PayoutMethod tag, so the on-file payout
+// can be mirrored back into the draft for the completion sidebar.
+const DB_METHOD_TO_DRAFT: Record<string, PayoutMethod> = {
+  mpesa: 'mpesa',
+  airtel: 'airtel-money',
+  tigo: 'tigopesa',
+  lipa_namba: 'lipa-namba',
+  bank: 'bank',
 }
 
 export type PackagesSource =
@@ -152,6 +166,42 @@ export default function PackagesEditor({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated])
+
+  // Mirror the saved packages + the on-file payout into the draft so the
+  // storefront completion sidebar (which reads draft.packages /
+  // draft.payoutMethods) marks the Packages section complete on any device —
+  // not just the one where the vendor onboarded. Booking policies are seeded
+  // above; without this the section stays stuck on "Required" despite the DB
+  // holding packages, policies, and a payout method.
+  useEffect(() => {
+    if (!hydrated) return
+    const patch: Partial<OnboardingDraft> = {}
+    if (JSON.stringify(draft.packages) !== JSON.stringify(packages)) {
+      patch.packages = packages
+    }
+    if (initialPayout && !hasCompletePayout(draft)) {
+      const method = DB_METHOD_TO_DRAFT[initialPayout.methodType]
+      if (
+        method &&
+        initialPayout.accountNumber.trim() &&
+        initialPayout.accountHolder.trim()
+      ) {
+        patch.payoutMethods = [
+          {
+            id: newPayoutEntryId(),
+            method,
+            number: initialPayout.accountNumber,
+            accountName: initialPayout.accountHolder,
+            bankName: method === 'bank' ? initialPayout.provider ?? '' : '',
+            network: method === 'lipa-namba' ? initialPayout.provider ?? '' : '',
+            primary: true,
+          },
+        ]
+      }
+    }
+    if (Object.keys(patch).length > 0) update(patch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated, packages, initialPayout])
 
   const onSavePolicies = () => {
     if (!canEdit) return

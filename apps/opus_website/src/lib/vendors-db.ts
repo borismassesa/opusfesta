@@ -90,6 +90,7 @@ type SnapPkg = {
   price?: string
   description?: string
   includes?: string[]
+  badge?: { label?: string; icon?: string; tone?: string } | null
 }
 
 function snap(row: VendorRow): Record<string, unknown> | null {
@@ -381,6 +382,17 @@ function mapVendorRow(row: VendorRow): Vendor {
       ? p.includes.filter((x): x is string => typeof x === 'string' && x.trim() !== '')
       : undefined,
     note: p.description?.trim() || undefined,
+    // Carry the vendor's custom highlight badge (label + icon + tone) through to
+    // the public card. Without this the page falls back to a generic "Most
+    // popular" pill and the vendor's chosen label/icon/colour never appear.
+    badge:
+      p.badge && typeof p.badge === 'object' && p.badge.label?.trim()
+        ? {
+            label: p.badge.label.trim(),
+            icon: p.badge.icon?.trim() || 'star',
+            tone: p.badge.tone?.trim() || 'dark',
+          }
+        : undefined,
   })
   const pkgsFromColumn = (Array.isArray(row.packages) ? (row.packages as SnapPkg[]) : [])
     .filter((p) => p?.name?.trim() && p?.price?.trim())

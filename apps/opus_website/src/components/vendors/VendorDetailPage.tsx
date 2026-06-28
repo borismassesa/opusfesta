@@ -35,6 +35,10 @@ import {
   Shirt,
   Car,
   Gem,
+  Crown,
+  Award,
+  Flame,
+  type LucideIcon,
   ClipboardList,
   Mail,
   BookOpen,
@@ -287,19 +291,36 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
               or hero). Fall back to initials when neither exists rather than
               borrowing media from elsewhere. */}
           {(() => {
+            const logo =
+              vendor.logo && vendor.logo.trim() !== '' ? vendor.logo : null
             const avatarSrc =
-              vendor.logo && vendor.logo.trim() !== ''
-                ? vendor.logo
-                : vendor.team?.[0]?.avatar && vendor.team[0].avatar.trim() !== ''
-                  ? vendor.team[0].avatar
-                  : vendor.heroMedia.src && vendor.heroMedia.src.trim() !== ''
-                    ? vendor.heroMedia.src
-                    : null
+              logo ??
+              (vendor.team?.[0]?.avatar && vendor.team[0].avatar.trim() !== ''
+                ? vendor.team[0].avatar
+                : vendor.heroMedia.src && vendor.heroMedia.src.trim() !== ''
+                  ? vendor.heroMedia.src
+                  : null)
+            // A logo is usually non-square with built-in padding, so `cover`
+            // crops it badly inside the circle. Use `contain` + padding + a
+            // white backdrop for logos; photos (team/hero) still use `cover`.
+            const isLogo = avatarSrc !== null && avatarSrc === logo
             return (
-              <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-white shadow-md shrink-0 bg-gray-100 flex items-center justify-center">
+              <div
+                className={`w-32 h-32 rounded-full overflow-hidden ring-4 ring-white shadow-md shrink-0 flex items-center justify-center ${
+                  isLogo ? 'bg-white' : 'bg-gray-100'
+                }`}
+              >
                 {avatarSrc ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={avatarSrc} alt={vendor.name} className="h-full w-full object-cover" />
+                  <img
+                    src={avatarSrc}
+                    alt={vendor.name}
+                    className={
+                      isLogo
+                        ? 'h-full w-full object-contain p-3'
+                        : 'h-full w-full object-cover'
+                    }
+                  />
                 ) : (
                   <span className="text-3xl font-semibold text-gray-500">
                     {(vendor.name || '?').slice(0, 2).toUpperCase()}
@@ -463,6 +484,29 @@ function parsePrice(value: string): number {
   return m ? parseFloat(m[1]) * 1_000_000 : parseFloat(value.replace(/[^\d.]/g, '')) || 0
 }
 
+// Package highlight badge — mirrors the storefront editor's registry
+// (vendors_portal/lib/storefront/package-badge.ts) so the vendor's chosen
+// icon + colour render on the public card.
+const PKG_BADGE_ICONS: Record<string, LucideIcon> = {
+  star: Star,
+  crown: Crown,
+  gem: Gem,
+  sparkles: Sparkles,
+  award: Award,
+  trophy: Trophy,
+  flame: Flame,
+  heart: Heart,
+  'badge-check': BadgeCheck,
+  zap: Zap,
+}
+const PKG_BADGE_TONES: Record<string, string> = {
+  lavender: 'bg-[#F0DFF6] text-[#7E5896]',
+  gold: 'bg-[#FCE9C2] text-[#8a5a14]',
+  emerald: 'bg-emerald-50 text-emerald-700',
+  rose: 'bg-rose-50 text-rose-700',
+  dark: 'bg-gray-900 text-white',
+}
+
 // Normalise a stored WhatsApp value into a tappable link. Accepts a full
 // URL (wa.me / api.whatsapp.com), or a phone number in any local format
 // ("+255 754 123 456", "0754123456") which we reduce to digits for wa.me.
@@ -597,7 +641,10 @@ function VendorServicesSection({ vendor }: { vendor: Vendor }) {
 // ── PricingSection ────────────────────────────────────────
 function VendorPricingSection({ vendor }: { vendor: Vendor }) {
   const packages = [...(vendor.pricingDetails ?? [])].sort((a, b) => parsePrice(a.value) - parsePrice(b.value))
-  const popularIdx = packages.length > 1 ? Math.floor(packages.length / 2) : -1
+  // If the vendor set custom highlight badges, those drive which cards are
+  // featured; otherwise fall back to flagging the middle package "Most popular".
+  const anyBadge = packages.some((p) => p.badge?.label?.trim())
+  const popularIdx = anyBadge ? -1 : packages.length > 1 ? Math.floor(packages.length / 2) : -1
 
   return (
     <section id="vendor-pricing" className="scroll-mt-28 border-t border-gray-200 pt-12">
@@ -611,20 +658,35 @@ function VendorPricingSection({ vendor }: { vendor: Vendor }) {
       {packages.length ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-5 pt-4">
           {packages.map((pkg, i) => {
-            const popular = i === popularIdx
+            const customBadge = pkg.badge?.label?.trim() ? pkg.badge : null
+            const popular = !anyBadge && i === popularIdx
+            const featured = Boolean(customBadge) || popular
+            const BadgeIcon = customBadge
+              ? PKG_BADGE_ICONS[customBadge.icon] ?? Star
+              : null
             return (
               <div
                 key={pkg.label}
                 className={`group relative flex flex-col rounded-[20px] bg-white shadow-[0_2px_16px_rgba(0,0,0,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_8px_32px_rgba(0,0,0,0.12)] ${
-                  popular ? 'border-2 border-(--accent)' : 'border border-gray-100'
+                  featured ? 'border-2 border-(--accent)' : 'border border-gray-100'
                 }`}
               >
-                {/* Top center pill badge */}
-                {popular && (
+                {/* Top center pill badge — the vendor's custom badge (label +
+                    icon + colour) when set, else a generic "Most popular". */}
+                {customBadge && BadgeIcon ? (
+                  <span
+                    className={`absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1 whitespace-nowrap rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] shadow-sm z-10 ${
+                      PKG_BADGE_TONES[customBadge.tone] ?? PKG_BADGE_TONES.dark
+                    }`}
+                  >
+                    <BadgeIcon className="w-2.5 h-2.5" strokeWidth={2.5} />
+                    {customBadge.label}
+                  </span>
+                ) : popular ? (
                   <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-(--accent) px-3 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-[#1A1A1A] shadow-sm z-10">
                     Most popular
                   </span>
-                )}
+                ) : null}
 
                 <div className="flex flex-col flex-1 p-5 pt-6">
                   {/* Label */}
@@ -660,7 +722,7 @@ function VendorPricingSection({ vendor }: { vendor: Vendor }) {
 
                   {/* CTA */}
                   <button className={`mt-5 w-full rounded-full py-2.5 text-sm font-semibold transition-colors ${
-                    popular
+                    featured
                       ? 'bg-(--accent) text-[#1A1A1A] hover:bg-(--accent-hover)'
                       : 'bg-[#1A1A1A] text-white hover:bg-[#333]'
                   }`}>

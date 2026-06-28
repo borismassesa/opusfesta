@@ -691,7 +691,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                 <img
                   src={vendor.logoColumn}
                   alt="Vendor logo"
-                  className="h-16 w-16 shrink-0 rounded-xl border border-gray-200 object-cover"
+                  className="h-16 w-16 shrink-0 rounded-xl border border-gray-200 bg-white object-contain p-1"
                 />
               ) : (
                 <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white text-[10px] font-semibold uppercase tracking-wide text-gray-400">
