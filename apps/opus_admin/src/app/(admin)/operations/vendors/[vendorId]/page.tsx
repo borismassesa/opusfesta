@@ -100,6 +100,23 @@ type DocRow = {
   is_latest: boolean
 }
 
+type DocRequestRow = {
+  id: string
+  title: string
+  details: string | null
+  token: string
+  status: 'pending' | 'submitted' | 'completed' | 'cancelled'
+  expires_at: string
+  response_note: string | null
+  storage_path: string | null
+  original_filename: string | null
+  mime_type: string | null
+  size_bytes: number | null
+  submitted_at: string | null
+  completed_at: string | null
+  created_at: string
+}
+
 type PayoutRow = {
   id: string
   method_type: string
@@ -129,8 +146,12 @@ export default async function VendorReviewPage({
   const { vendorId } = await params
 
   const admin = createSupabaseAdminClient()
+  const vendorsPortalBase = (
+    process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL?.trim() ||
+    'https://vendorsportal.opusfesta.com'
+  ).replace(/\/$/, '')
 
-  const [vendorRes, docsRes, payoutRes, agreementRes] = await Promise.all([
+  const [vendorRes, docsRes, payoutRes, agreementRes, docRequestsRes] = await Promise.all([
     // Core columns guaranteed to exist after migrations 001 + 056. We pull
     // `packages` in a separate best-effort query below so a missing column
     // (migration 021 not yet applied to the project, or stale PostgREST
@@ -180,6 +201,16 @@ export default async function VendorReviewPage({
       .eq('vendor_id', vendorId)
       .order('signed_at', { ascending: false })
       .returns<AgreementRow[]>(),
+    admin
+      .from('vendor_document_requests')
+      .select(
+        `id, title, details, token, status, expires_at, response_note,
+         storage_path, original_filename, mime_type, size_bytes,
+         submitted_at, completed_at, created_at`,
+      )
+      .eq('vendor_id', vendorId)
+      .order('created_at', { ascending: false })
+      .returns<DocRequestRow[]>(),
   ])
 
   if (vendorRes.error) {
@@ -518,6 +549,21 @@ export default async function VendorReviewPage({
         rejectionReason: d.rejection_reason,
         uploadedAt: d.uploaded_at,
       })),
+    documentRequests: (docRequestsRes.data ?? []).map((r) => ({
+      id: r.id,
+      title: r.title,
+      details: r.details,
+      status: r.status,
+      expiresAt: r.expires_at,
+      responseNote: r.response_note,
+      storagePath: r.storage_path,
+      filename: r.original_filename,
+      sizeBytes: r.size_bytes,
+      submittedAt: r.submitted_at,
+      completedAt: r.completed_at,
+      createdAt: r.created_at,
+      uploadUrl: `${vendorsPortalBase}/upload/${r.token}`,
+    })),
   }
 
   return <VendorReviewClient {...props} />
