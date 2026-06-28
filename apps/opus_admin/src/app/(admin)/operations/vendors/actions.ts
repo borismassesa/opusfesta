@@ -4,11 +4,13 @@ import { revalidatePath } from 'next/cache'
 import { auth } from '@clerk/nextjs/server'
 import { requirePermission } from '@/lib/admin-auth'
 import { createSupabaseAdminClient } from '@/lib/supabase'
+import { randomBytes } from 'node:crypto'
 import { isEmailConfigured, sendEmail } from '@/lib/email'
 import {
   buildVendorStatusEmail,
   type VendorStatusEvent,
 } from '@/lib/vendor-status-email'
+import { buildDocumentRequestEmail } from '@/lib/document-request-email'
 
 export type ActionResult =
   | { ok: true; warning?: string }
@@ -2160,4 +2162,179 @@ export async function mergeVendors(input: {
   // if step 3 ever fails mid-way this keeps a stale page from lingering.
   revalidatePath(`/operations/vendors/${loserId}`)
   return { ok: true, warning: loginWarning }
+}
+
+// =============================================================================
+// Document requests — admin asks a vendor for an arbitrary document via a
+// tokenized, no-login upload link. See vendor_document_requests table.
+// =============================================================================
+
+const DOC_REQUEST_TTL_DAYS = 14
+
+function vendorsPortalBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_VENDORS_PORTAL_URL?.trim() ||
+    'https://vendorsportal.opusfesta.com'
+  ).replace(/\/$/, '')
+}
+
+/**
+ * Create a document request for a vendor and email them a tokenized upload
+ * link. The vendor uploads on a public (no-login) page; the file attaches to
+ * this request row for the admin to review and mark complete.
+ */
+export async function requestVendorDocument(
+  vendorId: string,
+  title: string,
+  details?: string
+): Promise<ActionResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
+
+  const cleanTitle = title.trim()
+  if (!cleanTitle) {
+    return { ok: false, reason: 'invalid', error: 'Describe the document you need.' }
+  }
+  if (cleanTitle.length > 160) {
+    return { ok: false, reason: 'invalid', error: 'Keep the document title under 160 characters.' }
+  }
+  const cleanDetails = details?.trim() || null
+
+  const admin = createSupabaseAdminClient()
+  const requestedBy = await resolveAdminUserId(admin, userId)
+  const token = randomBytes(24).toString('base64url')
+  const expiresAt = new Date(Date.now() + DOC_REQUEST_TTL_DAYS * 24 * 60 * 60 * 1000)
+
+  const { data: inserted, error } = await admin
+    .from('vendor_document_requests')
+    .insert({
+      vendor_id: vendorId,
+      title: cleanTitle,
+      details: cleanDetails,
+      token,
+      requested_by: requestedBy,
+      expires_at: expiresAt.toISOString(),
+    })
+    .select('id')
+    .single<{ id: string }>()
+
+  if (error || !inserted) {
+    return {
+      ok: false,
+      reason: 'unknown',
+      error: `[admin] document request insert failed: ${error?.code ?? ''} ${error?.message ?? 'no row'}`.trim(),
+    }
+  }
+
+  // Best-effort email — never roll back the request if the send fails.
+  let warning: string | undefined
+  if (isEmailConfigured()) {
+    const { data: vendor } = await admin
+      .from('vendors')
+      .select('business_name, contact_info, user_id, vendor_code')
+      .eq('id', vendorId)
+      .maybeSingle<{
+        business_name: string | null
+        contact_info: { email?: string | null } | null
+        user_id: string | null
+        vendor_code: string | null
+      }>()
+
+    let recipient = vendor?.contact_info?.email?.trim() || ''
+    if (!recipient && vendor?.user_id) {
+      const userRow = await admin
+        .from('users')
+        .select('email')
+        .eq('id', vendor.user_id)
+        .maybeSingle<{ email: string | null }>()
+      recipient = userRow.data?.email?.trim() || ''
+    }
+
+    if (!recipient) {
+      warning = 'Request saved, but the vendor has no email on file, so no message was sent.'
+    } else {
+      const message = buildDocumentRequestEmail({
+        businessName: vendor?.business_name?.trim() || 'OpusFesta vendor',
+        recipientEmail: recipient,
+        title: cleanTitle,
+        details: cleanDetails,
+        uploadUrl: `${vendorsPortalBaseUrl()}/upload/${token}`,
+        vendorCode: vendor?.vendor_code ?? null,
+      })
+      const adminCc = await resolveAdminBccRecipients(admin, recipient)
+      const result = await sendEmail({
+        to: recipient,
+        subject: message.subject,
+        html: message.html,
+        text: message.text,
+        bcc: adminCc.length > 0 ? adminCc : undefined,
+      })
+      if (!result.sent) {
+        warning = 'Request saved, but the email could not be sent. Share the link manually.'
+        console.warn(
+          `[email] document request notify failed (vendor=${vendorId}): ${result.reason}${result.error ? ` — ${result.error}` : ''}`
+        )
+      }
+    }
+  } else {
+    warning = 'Request saved. Email is not configured, so share the upload link manually.'
+  }
+
+  revalidatePath(`/operations/vendors/${vendorId}`)
+  return warning ? { ok: true, warning } : { ok: true }
+}
+
+/** Cancel a pending document request so its link stops working. */
+export async function cancelVendorDocumentRequest(
+  requestId: string
+): Promise<ActionResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
+
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin
+    .from('vendor_document_requests')
+    .update({ status: 'cancelled' })
+    .eq('id', requestId)
+    .in('status', ['pending', 'submitted'])
+    .select('vendor_id')
+    .maybeSingle<{ vendor_id: string }>()
+
+  if (error) {
+    return { ok: false, reason: 'unknown', error: `[admin] cancel request failed: ${error.message}` }
+  }
+  if (!data) {
+    return { ok: false, reason: 'not-found', error: 'Request not found or already closed.' }
+  }
+  revalidatePath(`/operations/vendors/${data.vendor_id}`)
+  return { ok: true }
+}
+
+/** Mark a submitted document request as handled. */
+export async function completeVendorDocumentRequest(
+  requestId: string
+): Promise<ActionResult> {
+  const { userId } = await auth()
+  if (!userId) return { ok: false, reason: 'unauth', error: 'Sign in first.' }
+  try { await requirePermission('vendor.moderate') } catch { return { ok: false, reason: 'unauth', error: "You don't have permission for that." } }
+
+  const admin = createSupabaseAdminClient()
+  const { data, error } = await admin
+    .from('vendor_document_requests')
+    .update({ status: 'completed', completed_at: new Date().toISOString() })
+    .eq('id', requestId)
+    .eq('status', 'submitted')
+    .select('vendor_id')
+    .maybeSingle<{ vendor_id: string }>()
+
+  if (error) {
+    return { ok: false, reason: 'unknown', error: `[admin] complete request failed: ${error.message}` }
+  }
+  if (!data) {
+    return { ok: false, reason: 'not-found', error: 'Only a submitted request can be marked complete.' }
+  }
+  revalidatePath(`/operations/vendors/${data.vendor_id}`)
+  return { ok: true }
 }

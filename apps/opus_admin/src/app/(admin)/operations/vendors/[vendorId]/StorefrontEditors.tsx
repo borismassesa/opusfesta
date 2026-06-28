@@ -1056,7 +1056,16 @@ export function AdminRecognitionEditor({
 // 6. Team CRUD
 // ---------------------------------------------------------------------------
 
-type TeamMember = { id: string; name: string; role: string; bio: string }
+type TeamMember = {
+  id: string
+  name: string
+  role: string
+  bio: string
+  // Public URL of the avatar the vendor uploaded (vendors.team[].avatar).
+  // Read-only here — admins display it but the vendor owns uploads. Preserved
+  // through save so an admin edit never wipes the photo.
+  avatar?: string
+}
 
 export function AdminTeamEditor({
   vendorId,
@@ -1082,6 +1091,9 @@ export function AdminTeamEditor({
             name: m.name.trim(),
             role: m.role.trim(),
             bio: m.bio.trim() || undefined,
+            // Preserve the vendor-uploaded avatar — admins don't edit it, but
+            // dropping it here would wipe the photo on any admin team save.
+            avatar: m.avatar,
           })),
       }),
     discard: () => setTeam(initial),
@@ -1113,6 +1125,23 @@ export function AdminTeamEditor({
               key={m.id}
               className="rounded-xl border border-gray-100 bg-gray-50 p-3"
             >
+              <div className="mb-2 flex items-center gap-3">
+                {m.avatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={m.avatar}
+                    alt={m.name || 'Team member'}
+                    className="h-12 w-12 shrink-0 rounded-full border border-gray-200 object-cover"
+                  />
+                ) : (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-dashed border-gray-300 bg-white text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                    No photo
+                  </div>
+                )}
+                <span className="text-xs text-gray-500">
+                  {m.avatar ? 'Photo uploaded by vendor' : 'No photo uploaded'}
+                </span>
+              </div>
               <div className="flex flex-col gap-2">
                 <Field label="Name">
                   <input

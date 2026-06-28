@@ -95,6 +95,13 @@ export default function AvailabilityPage() {
   // vendor has edited them). Until then, draft.hours is just client defaults and
   // saving would overwrite real saved hours — see onSave.
   const [hoursReady, setHoursReady] = useState(false)
+  // Separate from hoursReady (which only flips true on a *successful* load, so a
+  // load failure correctly skips the hours write): this tracks whether the load
+  // has settled at all. Save stays disabled until it does, so a vendor can't fire
+  // a save inside the sub-second window before loadBusinessHours resolves and
+  // silently lose their hours edit. Cleared in a .finally() so a load failure
+  // still re-enables Save (availability can save; hours skip via hoursReady).
+  const [hoursLoading, setHoursLoading] = useState(true)
 
   const availability = hydrated ? draft.availability : []
 
@@ -123,11 +130,13 @@ export default function AvailabilityPage() {
   useEffect(() => {
     if (!hydrated || hoursSeeded.current) return
     hoursSeeded.current = true
-    void loadBusinessHours().then((res) => {
-      if (!res.ok) return
-      if (res.hours && !hoursTouched.current) update({ hours: res.hours })
-      setHoursReady(true)
-    })
+    void loadBusinessHours()
+      .then((res) => {
+        if (!res.ok) return
+        if (res.hours && !hoursTouched.current) update({ hours: res.hours })
+        setHoursReady(true)
+      })
+      .finally(() => setHoursLoading(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hydrated])
 
@@ -544,7 +553,7 @@ export default function AvailabilityPage() {
             <button
               type="button"
               onClick={onSave}
-              disabled={saving || !hydrated}
+              disabled={saving || !hydrated || hoursLoading}
               className="inline-flex items-center gap-2 bg-white border border-gray-300 text-gray-900 text-sm font-semibold px-4 py-2 rounded-full hover:bg-gray-50 disabled:opacity-50 transition-colors"
             >
               <Save className="w-3.5 h-3.5" />

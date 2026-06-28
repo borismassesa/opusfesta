@@ -13,6 +13,7 @@ import {
   CheckCircle2,
   ChevronRight,
   Clock,
+  Copy,
   Download,
   ExternalLink,
   FileSignature,
@@ -39,6 +40,8 @@ import { HeaderActionsSlot, HeaderBadgeSlot } from '@/components/HeaderPortals'
 import {
   approveDocument,
   approveVendor,
+  cancelVendorDocumentRequest,
+  completeVendorDocumentRequest,
   deleteVendor,
   deleteVendorPayoutMethod,
   generateSignedUrl,
@@ -46,6 +49,7 @@ import {
   reactivateVendor,
   rejectDocument,
   requestCorrections,
+  requestVendorDocument,
   saveVendorPayoutMethod,
   setPrimaryPayoutMethod,
   suspendVendor,
@@ -155,6 +159,7 @@ export type VendorReviewProps = {
     styleColumn: string | null
     personalityColumn: string | null
     coverImageColumn: string | null
+    logoColumn: string | null
     galleryUrlsColumn: string[]
     videoUrlsColumn: string[]
     startingPriceColumn: string | null
@@ -204,6 +209,23 @@ export type VendorReviewProps = {
     status: string
     rejectionReason: string | null
     uploadedAt: string
+  }>
+  // Admin-requested ad-hoc document uploads (vendor_document_requests). Each is
+  // a free-text ask with a tokenized public upload link; the file lands here.
+  documentRequests: Array<{
+    id: string
+    title: string
+    details: string | null
+    status: 'pending' | 'submitted' | 'completed' | 'cancelled'
+    expiresAt: string
+    responseNote: string | null
+    storagePath: string | null
+    filename: string | null
+    sizeBytes: number | null
+    submittedAt: string | null
+    completedAt: string | null
+    createdAt: string
+    uploadUrl: string
   }>
 }
 
@@ -292,6 +314,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
     payouts,
     agreements,
     historicalDocs,
+    documentRequests,
   } = props
   const router = useRouter()
   const [pending, startTransition] = useTransition()
@@ -660,6 +683,33 @@ export default function VendorReviewClient(props: VendorReviewProps) {
             title="Storefront Content"
             description="Manage the commercial content and trust signals shown on the vendor storefront."
           >
+            {/* Logo / profile picture — read-only; the vendor uploads this in
+                onboarding or the storefront About editor. */}
+            <div className="mb-4 flex items-center gap-3 rounded-xl border border-gray-100 bg-gray-50 p-3">
+              {vendor.logoColumn ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={vendor.logoColumn}
+                  alt="Vendor logo"
+                  className="h-16 w-16 shrink-0 rounded-xl border border-gray-200 object-cover"
+                />
+              ) : (
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl border border-dashed border-gray-300 bg-white text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                  No logo
+                </div>
+              )}
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-gray-900">
+                  Logo / profile picture
+                </p>
+                <p className="text-xs text-gray-500">
+                  {vendor.logoColumn
+                    ? 'Uploaded by the vendor.'
+                    : 'The vendor has not uploaded a logo yet.'}
+                </p>
+              </div>
+            </div>
+
             <AdminPhotosVideosEditor
               vendorId={vendor.id}
               initial={{
@@ -705,6 +755,7 @@ export default function VendorReviewClient(props: VendorReviewProps) {
                 name: typeof m.name === 'string' ? m.name : '',
                 role: typeof m.role === 'string' ? m.role : '',
                 bio: typeof m.bio === 'string' ? m.bio : '',
+                avatar: typeof m.avatar === 'string' ? m.avatar : undefined,
               }))}
             />
 
@@ -849,6 +900,18 @@ export default function VendorReviewClient(props: VendorReviewProps) {
               actionsDisabled={pending || isApproved || isSuspended}
             />
           </ReviewSection>
+          )}
+
+          {activeTab === 'verification' && (
+            <ReviewSection
+              title="Document requests"
+              description="Ask the vendor for an extra document or information. They get an emailed link to upload it with no login, and the file lands here for you to review."
+            >
+              <DocumentRequestsPanel
+                vendorId={vendor.id}
+                requests={documentRequests}
+              />
+            </ReviewSection>
           )}
 
           {activeTab === 'verification' && historicalDocs.length > 0 && (
@@ -2515,4 +2578,236 @@ function formatRelative(iso: string): string {
     month: 'short',
     year: 'numeric',
   })
+}
+
+// ── Document requests panel ─────────────────────────────────────────────────
+
+function formatDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+type DocumentRequest = VendorReviewProps['documentRequests'][number]
+
+const DOC_REQUEST_TONE: Record<DocumentRequest['status'], string> = {
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  submitted: 'bg-blue-50 text-blue-700 border-blue-200',
+  completed: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  cancelled: 'bg-gray-100 text-gray-500 border-gray-200',
+}
+
+function formatBytes(n: number | null): string {
+  if (!n || n <= 0) return ''
+  if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`
+}
+
+function DocumentRequestsPanel({
+  vendorId,
+  requests,
+}: {
+  vendorId: string
+  requests: DocumentRequest[]
+}) {
+  const router = useRouter()
+  const [pending, startTransition] = useTransition()
+  const [error, setError] = useState<string | null>(null)
+  const [showForm, setShowForm] = useState(false)
+  const [title, setTitle] = useState('')
+  const [details, setDetails] = useState('')
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const run = (fn: () => Promise<{ ok: boolean; error?: string; warning?: string }>) => {
+    setError(null)
+    startTransition(async () => {
+      const res = await fn()
+      if (!res.ok) {
+        setError(res.error ?? 'Something went wrong.')
+        return
+      }
+      if (res.warning) setError(res.warning)
+      router.refresh()
+    })
+  }
+
+  const submitRequest = () => {
+    if (!title.trim()) {
+      setError('Describe the document you need.')
+      return
+    }
+    run(async () => {
+      const res = await requestVendorDocument(vendorId, title.trim(), details.trim() || undefined)
+      if (res.ok) {
+        setTitle('')
+        setDetails('')
+        setShowForm(false)
+      }
+      return res
+    })
+  }
+
+  const preview = (storagePath: string) => {
+    startTransition(async () => {
+      const res = await generateSignedUrl(storagePath)
+      if (!res.ok) {
+        setError(res.error)
+        return
+      }
+      window.open(res.url, '_blank', 'noopener,noreferrer')
+    })
+  }
+
+  const copyLink = async (id: string, url: string) => {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopiedId(id)
+      setTimeout(() => setCopiedId((c) => (c === id ? null : c)), 1800)
+    } catch {
+      setError('Could not copy the link.')
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      {error && (
+        <p className="text-xs text-rose-600 font-medium">{error}</p>
+      )}
+
+      {showForm ? (
+        <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            maxLength={160}
+            placeholder="What do you need? e.g. 2024 TRA tax clearance"
+            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC]"
+          />
+          <textarea
+            value={details}
+            onChange={(e) => setDetails(e.target.value)}
+            rows={2}
+            placeholder="Optional: extra instructions for the vendor."
+            className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:border-[#C9A0DC]"
+          />
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={submitRequest}
+              disabled={pending || !title.trim()}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-[#C9A0DC] hover:bg-[#b98dcc] text-white disabled:opacity-50 transition-colors"
+            >
+              {pending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+              Send request
+            </button>
+            <button
+              type="button"
+              onClick={() => { setShowForm(false); setError(null) }}
+              disabled={pending}
+              className="text-sm font-medium text-gray-600 hover:text-gray-900 px-3 py-2 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setShowForm(true)}
+          className="inline-flex items-center gap-1.5 text-sm font-semibold px-4 py-2 rounded-full bg-white border border-gray-200 text-gray-800 hover:bg-gray-50 transition-colors"
+        >
+          <Plus className="w-3.5 h-3.5" />
+          Request a document
+        </button>
+      )}
+
+      {requests.length === 0 ? (
+        <p className="text-xs text-gray-500">No document requests yet.</p>
+      ) : (
+        <ul className="space-y-2">
+          {requests.map((r) => {
+            const expired = r.status === 'pending' && new Date(r.expiresAt) < new Date()
+            return (
+              <li key={r.id} className="bg-white rounded-2xl border border-gray-100 px-4 py-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-semibold text-gray-900 truncate">{r.title}</span>
+                      <span className={cn('inline-flex items-center text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded border', DOC_REQUEST_TONE[r.status])}>
+                        {expired ? 'expired' : r.status}
+                      </span>
+                    </div>
+                    {r.details && <p className="mt-0.5 text-xs text-gray-500">{r.details}</p>}
+                    {r.status === 'submitted' && r.filename && (
+                      <p className="mt-1 text-xs text-gray-600 flex items-center gap-1.5">
+                        <FileText className="w-3 h-3 shrink-0" />
+                        {r.filename}{r.sizeBytes ? ` · ${formatBytes(r.sizeBytes)}` : ''}
+                      </p>
+                    )}
+                    {r.responseNote && (
+                      <p className="mt-1 text-xs text-gray-500 italic">“{r.responseNote}”</p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {r.status === 'pending' && !expired && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => copyLink(r.id, r.uploadUrl)}
+                          className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50"
+                        >
+                          {copiedId === r.id ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
+                          {copiedId === r.id ? 'Copied' : 'Copy link'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => run(() => cancelVendorDocumentRequest(r.id))}
+                          disabled={pending}
+                          className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-rose-200 text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+                        >
+                          <XCircle className="w-3 h-3" />
+                          Cancel
+                        </button>
+                      </>
+                    )}
+                    {r.status === 'submitted' && (
+                      <>
+                        {r.storagePath && (
+                          <button
+                            type="button"
+                            onClick={() => preview(r.storagePath as string)}
+                            disabled={pending}
+                            className="inline-flex items-center gap-1 text-xs font-medium px-2.5 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                          >
+                            <ExternalLink className="w-3 h-3" />
+                            Preview
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => run(() => completeVendorDocumentRequest(r.id))}
+                          disabled={pending}
+                          className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50"
+                        >
+                          <Check className="w-3 h-3" />
+                          Mark complete
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </div>
+                <p className="mt-1.5 text-[11px] text-gray-400">
+                  {r.status === 'pending' && !expired && `Link expires ${formatDate(r.expiresAt)}`}
+                  {r.status === 'submitted' && r.submittedAt && `Uploaded ${formatDate(r.submittedAt)}`}
+                  {r.status === 'completed' && r.completedAt && `Completed ${formatDate(r.completedAt)}`}
+                  {(r.status === 'cancelled' || expired) && `Requested ${formatDate(r.createdAt)}`}
+                </p>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </div>
+  )
 }

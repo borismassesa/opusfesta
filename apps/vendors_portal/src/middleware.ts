@@ -9,6 +9,9 @@ const isPublicRoute = createRouteMatcher([
   // Phone-handoff National ID capture — authorized by a signed token in the
   // URL, not a Clerk session (the phone scanning the QR isn't logged in).
   '/verify/capture(.*)',
+  // Admin-requested document upload — authorized by a per-request token in the
+  // URL, not a Clerk session. The vendor uploads without logging in.
+  '/upload(.*)',
 ])
 
 export default clerkMiddleware(

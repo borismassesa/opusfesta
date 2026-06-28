@@ -288,11 +288,13 @@ function VendorAboutSection({ vendor }: { vendor: Vendor }) {
               borrowing media from elsewhere. */}
           {(() => {
             const avatarSrc =
-              (vendor.team?.[0]?.avatar && vendor.team[0].avatar.trim() !== '')
-                ? vendor.team[0].avatar
-                : vendor.heroMedia.src && vendor.heroMedia.src.trim() !== ''
-                  ? vendor.heroMedia.src
-                  : null
+              vendor.logo && vendor.logo.trim() !== ''
+                ? vendor.logo
+                : vendor.team?.[0]?.avatar && vendor.team[0].avatar.trim() !== ''
+                  ? vendor.team[0].avatar
+                  : vendor.heroMedia.src && vendor.heroMedia.src.trim() !== ''
+                    ? vendor.heroMedia.src
+                    : null
             return (
               <div className="w-32 h-32 rounded-full overflow-hidden ring-4 ring-white shadow-md shrink-0 bg-gray-100 flex items-center justify-center">
                 {avatarSrc ? (

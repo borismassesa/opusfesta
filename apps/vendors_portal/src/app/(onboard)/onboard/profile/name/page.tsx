@@ -6,8 +6,10 @@ import { OnboardShell } from '@/components/onboard/OnboardShell'
 import { OnboardHeading } from '@/components/onboard/OnboardHeading'
 import { PrimaryButton } from '@/components/onboard/PrimaryButton'
 import { FieldLabel, TextInput } from '@/components/onboard/FormField'
+import { LogoUpload } from '@/components/onboard/LogoUpload'
 import { useOnboardingDraft } from '@/lib/onboarding/draft'
 import { findCategory } from '@/lib/onboarding/categories'
+import { uploadOnboardingLogo } from '@/lib/onboarding/logo-upload'
 import { useOnboardT } from '@/lib/onboarding/strings'
 
 export default function NamePage() {
@@ -68,6 +70,21 @@ export default function NamePage() {
             onChange={(e) => update({ businessName: e.target.value })}
             autoComplete="organization"
           />
+        </div>
+        <div>
+          <FieldLabel>Logo or profile picture</FieldLabel>
+          <div className="mt-1">
+            <LogoUpload
+              value={draft.logo}
+              onChange={(url) => update({ logo: url })}
+              upload={async (file) => {
+                const fd = new FormData()
+                fd.append('file', file)
+                return uploadOnboardingLogo(fd)
+              }}
+              hint="Optional. Square works best. Shown on your storefront."
+            />
+          </div>
         </div>
       </div>
     </OnboardShell>

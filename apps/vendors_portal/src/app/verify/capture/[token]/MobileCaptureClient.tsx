@@ -1,13 +1,17 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { Check, CheckCircle2 } from 'lucide-react'
+import { Check, CheckCircle2, Upload } from 'lucide-react'
 import CameraCapture from '@/components/CameraCapture'
 import { uploadCapturedNationalId } from './actions'
 
 type Kind = 'front' | 'back' | 'selfie'
 
 const ORDER: Kind[] = ['front', 'back', 'selfie']
+
+// Matches storeVerificationShot's server-side cap so the gallery-upload
+// fallback rejects oversized files before encoding them into a data URL.
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024
 
 const META: Record<
   Kind,
@@ -45,8 +49,7 @@ export default function MobileCaptureClient({ token }: { token: string }) {
 
   const allDone = done.front && done.back && done.selfie
 
-  const onCapture = (dataUrl: string) => {
-    setError(null)
+  const persistShot = (dataUrl: string) => {
     startTransition(async () => {
       const res = await uploadCapturedNationalId(token, kind, dataUrl)
       if (!res.ok) {
@@ -58,6 +61,43 @@ export default function MobileCaptureClient({ token }: { token: string }) {
       const remaining = ORDER.find((k) => !next[k])
       if (remaining) setKind(remaining)
     })
+  }
+
+  const onCapture = (dataUrl: string) => {
+    setError(null)
+    persistShot(dataUrl)
+  }
+
+  // Fallback for vendors whose camera is blocked — denied permission, no
+  // camera, or an in-app browser (WhatsApp/Instagram) that disables
+  // getUserMedia. They pick a photo from their gallery instead; admin review
+  // is still the backstop for every National ID. Reuses the same token-scoped
+  // server action as the camera path by reading the file into a data URL.
+  const handleFile = (file: File) => {
+    setError(null)
+    if (!/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      setError('Upload a JPG, PNG, or WEBP photo of your ID.')
+      return
+    }
+    if (file.size === 0) {
+      setError('That file is empty — pick another photo.')
+      return
+    }
+    if (file.size > MAX_UPLOAD_BYTES) {
+      setError('Photo is too large (max 15 MB). Pick a smaller one.')
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = () => {
+      const dataUrl = typeof reader.result === 'string' ? reader.result : ''
+      if (!dataUrl) {
+        setError('Could not read that photo — try another.')
+        return
+      }
+      persistShot(dataUrl)
+    }
+    reader.onerror = () => setError('Could not read that photo — try another.')
+    reader.readAsDataURL(file)
   }
 
   if (allDone) {
@@ -101,6 +141,32 @@ export default function MobileCaptureClient({ token }: { token: string }) {
         facingMode={META[kind].facing}
         guide={META[kind].guide}
       />
+
+      {/* Gallery-upload fallback for when the camera is unavailable (denied
+          permission, no camera, or an in-app browser that blocks it). */}
+      <div className="text-center">
+        <label
+          className={
+            'inline-flex cursor-pointer items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-800' +
+            (pending ? ' pointer-events-none opacity-50' : '')
+          }
+        >
+          <Upload className="h-4 w-4" />
+          Camera blocked? Upload instead
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            disabled={pending}
+            onChange={(e) => {
+              const file = e.target.files?.[0]
+              // Reset the value so picking the same file again still fires.
+              e.target.value = ''
+              if (file) handleFile(file)
+            }}
+          />
+        </label>
+      </div>
     </div>
   )
 }

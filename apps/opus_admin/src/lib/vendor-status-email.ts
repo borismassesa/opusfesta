@@ -88,7 +88,9 @@ function variantFor(event: VendorStatusEvent, businessName: string): Variant {
           'Fungua ukurasa wa uthibitishaji kwenye portal yako. Kila hati iliyotiwa alama inaonyesha maelezo ya msimamizi kuhusu cha kurekebisha. Ukiwasilisha tena, kwa kawaida tunakagua tena ndani ya siku 1 ya kazi.',
         ],
         ctaLabel: 'View what to fix',
-        ctaPath: '/verify',
+        // Deep-link straight to the documents / re-upload section so the vendor
+        // lands on the exact place they fix things, not the top of the page.
+        ctaPath: '/verify#documents',
         noteLabel: 'Note from the review team',
       }
     case 'suspended':
