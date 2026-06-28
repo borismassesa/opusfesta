@@ -115,25 +115,27 @@ function VendorHeader({ vendor, onSave, saved }: { vendor: Vendor; onSave: () =>
   const hasReviews = vendor.reviewCount > 0
   return (
     <div>
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <h1 className="text-4xl font-bold mb-2">{vendor.name}</h1>
-          <p className="text-sm font-bold uppercase tracking-[0.16em] text-gray-400 mb-3">{vendor.category}</p>
+      <div className="flex justify-between items-start gap-3 mb-4">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 break-words">{vendor.name}</h1>
+          <p className="text-xs sm:text-sm font-bold uppercase tracking-[0.16em] text-gray-400 mb-3 break-words">{vendor.category}</p>
           <div className="flex flex-col gap-1.5 text-sm">
             {hasReviews ? (
-              <div className="flex items-center gap-1">
-                <div className="flex text-amber-400">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star
-                      key={i}
-                      className="w-4 h-4"
-                      fill={i <= Math.round(vendor.rating) ? 'currentColor' : 'none'}
-                    />
-                  ))}
+              <div className="flex items-center gap-x-1.5 whitespace-nowrap">
+                <div className="flex items-center gap-1">
+                  <div className="flex text-amber-400">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star
+                        key={i}
+                        className="w-3.5 h-3.5 sm:w-4 sm:h-4"
+                        fill={i <= Math.round(vendor.rating) ? 'currentColor' : 'none'}
+                      />
+                    ))}
+                  </div>
+                  <span className="font-bold ml-1">{vendor.rating.toFixed(1)}</span>
+                  <span className={`ml-1 hidden text-xs font-bold min-[380px]:inline ${ratingLabel(vendor.rating).color}`}>{ratingLabel(vendor.rating).text}</span>
                 </div>
-                <span className="font-bold ml-1">{vendor.rating.toFixed(1)}</span>
-                <span className={`ml-1.5 text-xs font-bold ${ratingLabel(vendor.rating).color}`}>{ratingLabel(vendor.rating).text}</span>
-                <span className="text-gray-500 mx-1">·</span>
+                <span className="text-gray-500">·</span>
                 <a href="#vendor-reviews" className="underline font-medium">
                   {vendor.reviewCount} {vendor.reviewCount === 1 ? 'review' : 'reviews'}
                 </a>
@@ -186,7 +188,7 @@ function VendorTabs({ onPhotos, saved, onSave, active, onActiveChange }: {
   return (
     <div className="flex items-center gap-6 py-3">
       {/* Tabs */}
-      <div className="flex items-center gap-6 overflow-x-auto scrollbar-none flex-1">
+      <div className="flex items-center gap-6 overflow-x-auto scrollbar-none flex-1 pr-4">
         {VENDOR_TABS.map((tab) => (
           <button
             key={tab}
@@ -820,11 +822,11 @@ function VendorTeamSection({ vendor }: { vendor: Vendor }) {
         </p>
       </div>
 
-      <div className="grid grid-cols-3 gap-6">
+      <div className="-mx-4 flex snap-x snap-mandatory gap-6 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:grid sm:grid-cols-3 sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
         {team.map((member, i) => {
           const avatarSrc = member.avatar ?? photoPool[i % photoPool.length]
           return (
-          <div key={member.name} className="flex flex-col items-center text-center">
+          <div key={member.name} className="flex w-36 shrink-0 snap-start flex-col items-center text-center sm:w-auto sm:shrink">
             {/* Avatar */}
             <div className="mb-3">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1334,13 +1336,16 @@ function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
       <div className="rounded-2xl border border-gray-200 overflow-hidden mb-6">
         <div className="flex flex-col sm:flex-row gap-0 divide-y sm:divide-y-0 sm:divide-x divide-gray-200">
           {/* Score */}
-          <div className="flex flex-col items-start gap-2 p-6 sm:w-52 shrink-0">
-            <p className="text-4xl font-black text-[#1A1A1A]">{avg.toFixed(1)} <span className="text-base font-medium text-gray-400">out of 5.0</span></p>
+          <div className="flex flex-col items-center gap-2 p-6 text-center sm:w-52 sm:shrink-0 sm:items-start sm:text-left">
+            <p className="flex items-baseline gap-1.5 text-[#1A1A1A]">
+              <span className="text-5xl font-black leading-none sm:text-4xl">{avg.toFixed(1)}</span>
+              <span className="text-sm font-medium text-gray-400">out of 5.0</span>
+            </p>
             <StarRow rating={avg} size={18} />
-            <p className="text-sm text-gray-500">{vendor.reviewCount} reviews</p>
+            <p className="text-sm text-gray-500">{vendor.reviewCount} {vendor.reviewCount === 1 ? 'review' : 'reviews'}</p>
             <button
               onClick={() => setShowReviewModal(true)}
-              className="mt-2 rounded-full bg-(--accent) px-4 py-2 text-sm font-semibold text-[#1A1A1A] hover:bg-(--accent-hover) transition-colors"
+              className="mt-3 w-full rounded-full bg-(--accent) px-4 py-2.5 text-sm font-semibold text-[#1A1A1A] hover:bg-(--accent-hover) transition-colors sm:w-auto"
             >
               Write a review
             </button>
@@ -1409,9 +1414,9 @@ function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
 
       {/* ── Source tabs (OpusFesta / Google) ── */}
       <div className="mb-6 border-b border-gray-200">
-        <div className="flex items-end gap-8">
+        <div className="flex items-end gap-6 overflow-x-auto sm:gap-8 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
           {/* OpusFesta tab — active */}
-          <div className="flex flex-col items-start pb-3 border-b-2 border-[#1A1A1A]">
+          <div className="flex shrink-0 flex-col items-start pb-3 border-b-2 border-[#1A1A1A]">
             <div className="flex items-center gap-2.5 mb-1">
               {/* OF monogram */}
               <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#1A1A1A]">
@@ -1419,14 +1424,14 @@ function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
               </div>
               <span className="text-sm font-bold text-[#1A1A1A]">OpusFesta</span>
             </div>
-            <p className="text-sm text-gray-500 pl-10">
+            <p className="whitespace-nowrap text-sm text-gray-500 pl-10">
               <span className="font-semibold text-[#1A1A1A]">{vendor.rating.toFixed(1)}/5</span>
               {' · '}{vendor.reviewCount} reviews
             </p>
           </div>
 
           {/* Google tab — inactive */}
-          <div className="flex flex-col items-start pb-3 opacity-60">
+          <div className="flex shrink-0 flex-col items-start pb-3 opacity-60">
             <div className="flex items-center gap-2.5 mb-1">
               {/* Google G icon */}
               <svg className="h-8 w-8" viewBox="0 0 24 24" aria-label="Google">
@@ -1437,7 +1442,7 @@ function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
               </svg>
               <span className="text-sm font-bold text-[#1A1A1A]">Google</span>
             </div>
-            <p className="text-sm text-gray-500 pl-10">
+            <p className="whitespace-nowrap text-sm text-gray-500 pl-10">
               <span className="font-semibold text-[#1A1A1A]">4.3/5</span>
               {' · '}2,053 reviews
             </p>
@@ -1449,17 +1454,17 @@ function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
       {allReviews.length > 0 && (
         <div className="mb-5 space-y-3">
           {/* Row 1: search + sort */}
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             {/* Search */}
-            <div className="flex flex-1 items-stretch rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
+            <div className="flex min-w-0 flex-1 items-stretch rounded-lg border border-gray-200 bg-white overflow-hidden shadow-sm">
               <input
                 type="text"
                 placeholder="Search reviews"
                 value={searchQuery}
                 onChange={(e) => { setSearchQuery(e.target.value); setVisible(PAGE_SIZE) }}
-                className="flex-1 bg-transparent px-4 py-2.5 text-sm text-[#1A1A1A] placeholder:text-gray-400 focus:outline-none"
+                className="min-w-0 flex-1 bg-transparent px-4 py-2.5 text-sm text-[#1A1A1A] placeholder:text-gray-400 focus:outline-none"
               />
-              <button className="flex items-center justify-center bg-(--accent) px-4 text-[#1A1A1A] transition hover:bg-(--accent-hover)">
+              <button className="flex shrink-0 items-center justify-center bg-(--accent) px-4 text-[#1A1A1A] transition hover:bg-(--accent-hover)">
                 <Search size={16} />
               </button>
             </div>
@@ -1469,7 +1474,7 @@ function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
               <select
                 value={sortBy}
                 onChange={(e) => { setSortBy(e.target.value as 'top' | 'recent'); setVisible(PAGE_SIZE) }}
-                className="h-full appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-8 py-2.5 text-sm text-[#1A1A1A] focus:outline-none cursor-pointer"
+                className="h-full w-full appearance-none rounded-lg border border-gray-200 bg-white pl-3 pr-8 py-2.5 text-sm text-[#1A1A1A] focus:outline-none cursor-pointer sm:w-auto"
               >
                 <option value="top">Sort by: Top reviews</option>
                 <option value="recent">Sort by: Most recent</option>
@@ -1478,14 +1483,14 @@ function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
             </div>
           </div>
 
-          {/* Row 2: star filter pills */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs font-semibold text-gray-400 mr-1">Filter by rating:</span>
+          {/* Row 2: star filter pills — horizontal scroll on small screens */}
+          <div className="-mx-4 flex items-center gap-2 overflow-x-auto px-4 pb-1 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden">
+            <span className="mr-1 shrink-0 whitespace-nowrap text-xs font-semibold text-gray-400">Filter by rating:</span>
             {[5,4,3,2,1].map((s) => (
               <button
                 key={s}
                 onClick={() => { setFilterStar(filterStar === s ? null : s); setVisible(PAGE_SIZE) }}
-                className="flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors"
+                className="flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors"
                 style={filterStar === s
                   ? { backgroundColor: '#1A1A1A', color: '#fff', borderColor: '#1A1A1A' }
                   : { backgroundColor: '#fff', color: '#374151', borderColor: '#d1d5db' }
@@ -1498,7 +1503,7 @@ function VendorReviewsSection({ vendor }: { vendor: Vendor }) {
             {(filterStar || searchQuery) && (
               <button
                 onClick={() => { setFilterStar(null); setSearchQuery(''); setVisible(PAGE_SIZE) }}
-                className="ml-1 text-xs font-semibold text-gray-400 hover:text-[#1A1A1A] underline underline-offset-2 transition-colors"
+                className="ml-1 shrink-0 whitespace-nowrap text-xs font-semibold text-gray-400 hover:text-[#1A1A1A] underline underline-offset-2 transition-colors"
               >
                 Clear filters
               </button>
@@ -1732,31 +1737,31 @@ function VendorServiceAreaSection({ vendor }: { vendor: Vendor }) {
 
       {/* Address row (precise coords) or area row (city / service-area fallback) */}
       {location ? (
-        <div className="flex items-center justify-between border-b border-gray-100 py-3">
-          <div className="flex items-center gap-2 text-sm text-[#1A1A1A]">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 py-3">
+          <div className="flex min-w-0 items-center gap-2 text-sm text-[#1A1A1A]">
             <MapPin size={15} className="shrink-0 text-gray-400" />
-            <span>{location.address}</span>
+            <span className="truncate">{location.address}</span>
           </div>
           <a
             href={`https://www.google.com/maps/search/?api=1&query=${location.lat},${location.lng}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-semibold text-[#1A1A1A] underline underline-offset-2 hover:opacity-70 transition-opacity"
+            className="shrink-0 whitespace-nowrap text-sm font-semibold text-[#1A1A1A] underline underline-offset-2 hover:opacity-70 transition-opacity"
           >
             Open map
           </a>
         </div>
       ) : areaQuery ? (
-        <div className="flex items-center justify-between border-b border-gray-100 py-3">
-          <div className="flex items-center gap-2 text-sm text-[#1A1A1A]">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 py-3">
+          <div className="flex min-w-0 items-center gap-2 text-sm text-[#1A1A1A]">
             <MapPin size={15} className="shrink-0 text-gray-400" />
-            <span>Based in {areaQuery}</span>
+            <span className="truncate">Based in {areaQuery}</span>
           </div>
           <a
             href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${areaQuery}, Tanzania`)}`}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-semibold text-[#1A1A1A] underline underline-offset-2 hover:opacity-70 transition-opacity"
+            className="shrink-0 whitespace-nowrap text-sm font-semibold text-[#1A1A1A] underline underline-offset-2 hover:opacity-70 transition-opacity"
           >
             Open map
           </a>

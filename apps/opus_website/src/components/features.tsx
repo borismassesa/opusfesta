@@ -95,7 +95,7 @@ export default async function Features() {
   return (
     <section className="py-16 sm:py-24 md:py-32 px-4 sm:px-6 max-w-6xl mx-auto">
 
-      <Reveal direction="up" className="hidden sm:block text-center mb-14 sm:mb-20 md:mb-24">
+      <Reveal direction="up" className="text-center mb-14 sm:mb-20 md:mb-24">
         {content.eyebrow && (
           <span className="text-(--accent) text-xs font-bold uppercase tracking-widest">{content.eyebrow}</span>
         )}

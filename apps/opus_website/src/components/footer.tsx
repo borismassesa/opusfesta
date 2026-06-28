@@ -48,7 +48,7 @@ export default function Footer() {
             ))}
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-y-6 gap-x-4 mb-20">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-y-6 gap-x-4 mb-20">
             {cities.map((city) => (
               <a key={city} href="#" className="flex items-center gap-3 hover:underline text-sm font-medium text-gray-600">
                 <MapPin size={16} className="text-(--accent)" />
@@ -59,7 +59,7 @@ export default function Footer() {
         </Reveal>
 
         {/* Links grid */}
-        <Reveal direction="none" margin="-40px" className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-16 text-sm">
+        <Reveal direction="none" margin="-40px" className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-8 mb-16 text-sm">
           <div>
             <h4 className="font-bold mb-4 text-[#1A1A1A]">Planning Tools</h4>
             <ul className="space-y-3 text-gray-500">

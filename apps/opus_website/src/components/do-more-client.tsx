@@ -132,7 +132,7 @@ function WebsiteCardStack({ websites }: { websites: WebsiteDemo[] }) {
   if (websites.length === 0) return null
 
   return (
-    <div className="relative mb-8 w-full max-w-[288px] h-[380px]">
+    <div className="relative mb-8 w-full max-w-[min(288px,100%)] h-[380px]">
       {websites.map((card, i) => {
         const pos = (i - active + websites.length) % websites.length
         const fallback = POSITIONS[Math.min(pos, POSITIONS.length - 1)]
